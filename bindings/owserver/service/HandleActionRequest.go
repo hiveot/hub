@@ -19,7 +19,7 @@ func (svc *OWServerBinding) HandleActionRequest(action *hubclient.ThingMessage) 
 		slog.String("payload", action.DataAsText()),
 	)
 
-	if action.Operation == vocab.WotOpWriteProperty {
+	if action.Operation == vocab.OpWriteProperty {
 		return svc.HandleConfigRequest(action)
 	}
 

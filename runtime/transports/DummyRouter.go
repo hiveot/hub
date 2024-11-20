@@ -19,7 +19,7 @@ type DummyRouter struct {
 
 func (svc *DummyRouter) HandleMessage(msg *hubclient.ThingMessage) {
 	switch msg.Operation {
-	case vocab.WotOpPublishEvent:
+	case vocab.HTOpPublishEvent:
 		svc.OnEvent(msg)
 	}
 }
@@ -39,7 +39,7 @@ func (svc *DummyRouter) HandleRequest(msg *hubclient.ThingMessage, replyTo strin
 	case vocab.HTOpLogout:
 		svc.authenticator.Logout(msg.SenderID)
 		stat.Completed(msg, nil, nil)
-	case vocab.WotOpInvokeAction:
+	case vocab.OpInvokeAction:
 		// if a hook is provided, call it first
 		if svc.OnAction != nil {
 			stat = svc.OnAction(msg, replyTo)

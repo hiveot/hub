@@ -27,7 +27,7 @@ type ProtocolManager struct {
 	//dtwService *service.DigitwinService
 
 	// handler to pass incoming messages to
-	//handler func(tv *hubclient.ThingMessage) hubclient.RequestProgress
+	//handler func(tv *hubclient.ThingMessage) hubclient.ActionStatus
 	cm *connections.ConnectionManager
 }
 

@@ -109,9 +109,9 @@ func makeValueBatch(agentID string, nrValues, nrThings, timespanSec int) (
 		dThingID := tdd.MakeDigiTwinThingID(agentID, thingID)
 
 		randomMsgType := rand.Intn(2)
-		messageType := vocab.WotOpPublishEvent
+		messageType := vocab.HTOpPublishEvent
 		if randomMsgType == 1 {
-			messageType = vocab.WotOpPublishProperty
+			messageType = vocab.HTOpUpdateProperty
 		}
 
 		msg := hubclient.NewThingMessage(messageType,
@@ -195,7 +195,7 @@ func TestAddGetEvent(t *testing.T) {
 	addHist := svc.GetAddHistory()
 	dThing1ID := tdd.MakeDigiTwinThingID(agent1ID, thing1ID)
 	ev1_1 := &hubclient.ThingMessage{
-		Operation: vocab.WotOpPublishEvent,
+		Operation: vocab.HTOpPublishEvent,
 		SenderID:  agent1ID, ThingID: dThing1ID, Name: evTemperature,
 		Data: "12.5", Created: fivemago.Format(utils.RFC3339Milli),
 	}
@@ -203,7 +203,7 @@ func TestAddGetEvent(t *testing.T) {
 	assert.NoError(t, err)
 	// add thing1 humidity from 55 minutes ago
 	ev1_2 := &hubclient.ThingMessage{
-		Operation: vocab.WotOpPublishEvent,
+		Operation: vocab.HTOpPublishEvent,
 		SenderID:  agent1ID, ThingID: dThing1ID, Name: evHumidity,
 		Data: "70", Created: fiftyfivemago.Format(utils.RFC3339Milli),
 	}
@@ -213,7 +213,7 @@ func TestAddGetEvent(t *testing.T) {
 	// add thing2 humidity from 5 minutes ago
 	dThing2ID := tdd.MakeDigiTwinThingID(agent1ID, thing2ID)
 	ev2_1 := &hubclient.ThingMessage{
-		Operation: vocab.WotOpPublishEvent,
+		Operation: vocab.HTOpPublishEvent,
 		SenderID:  agent1ID, ThingID: dThing2ID, Name: evHumidity,
 		Data: "50", Created: fivemago.Format(utils.RFC3339Milli),
 	}
@@ -222,7 +222,7 @@ func TestAddGetEvent(t *testing.T) {
 
 	// add thing2 temperature from 55 minutes ago
 	ev2_2 := &hubclient.ThingMessage{
-		Operation: vocab.WotOpPublishEvent,
+		Operation: vocab.HTOpPublishEvent,
 		SenderID:  agent1ID, ThingID: dThing2ID, Name: evTemperature,
 		Data: "17.5", Created: fiftyfivemago.Format(utils.RFC3339Milli),
 	}
@@ -293,33 +293,33 @@ func TestAddProperties(t *testing.T) {
 		ThingID:   dThing1ID,
 		Name:      vocab.ActionSwitchOnOff,
 		Data:      "on",
-		Operation: vocab.WotOpInvokeAction,
+		Operation: vocab.OpInvokeAction,
 	}
 	event1 := &hubclient.ThingMessage{
 		SenderID:  agent1,
 		ThingID:   dThing1ID,
 		Name:      vocab.PropEnvTemperature,
 		Data:      temp1,
-		Operation: vocab.WotOpPublishEvent,
+		Operation: vocab.HTOpPublishEvent,
 	}
 	badEvent1 := &hubclient.ThingMessage{
 		SenderID:  agent1,
 		ThingID:   dThing1ID,
 		Name:      "", // missing name
-		Operation: vocab.WotOpPublishEvent,
+		Operation: vocab.HTOpPublishEvent,
 	}
 	badEvent2 := &hubclient.ThingMessage{
 		SenderID:  "", // missing publisher
 		ThingID:   dThing1ID,
 		Name:      "name",
-		Operation: vocab.WotOpPublishEvent,
+		Operation: vocab.HTOpPublishEvent,
 	}
 	badEvent3 := &hubclient.ThingMessage{
 		SenderID:  agent1,
 		ThingID:   dThing1ID,
 		Name:      "baddate",
 		Created:   "-1",
-		Operation: vocab.WotOpPublishEvent,
+		Operation: vocab.HTOpPublishEvent,
 	}
 	badEvent4 := &hubclient.ThingMessage{
 		SenderID: agent1,
@@ -335,7 +335,7 @@ func TestAddProperties(t *testing.T) {
 		ThingID:   dThing1ID,
 		Name:      "", // property list
 		Data:      propsList,
-		Operation: vocab.WotOpPublishProperties,
+		Operation: vocab.HTOpUpdateProperties,
 	}
 
 	// in total add 5 properties
@@ -367,7 +367,7 @@ func TestAddProperties(t *testing.T) {
 	assert.NotEmpty(t, msg)
 	hasProps := false
 	for valid && err == nil {
-		if msg.Operation == vocab.WotOpPublishProperty {
+		if msg.Operation == vocab.HTOpUpdateProperty {
 			hasProps = true
 			require.NotEmpty(t, msg.Name)
 			require.NotEmpty(t, msg.Data)

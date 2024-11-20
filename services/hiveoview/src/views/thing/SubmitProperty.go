@@ -57,7 +57,7 @@ func SubmitProperty(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if stat.Progress == vocab.RequestCompleted {
+	if stat.Status == vocab.RequestCompleted {
 		notificationText := fmt.Sprintf("Configuration changed.")
 		sess.SendNotify(session.NotifySuccess, notificationText)
 	} else {

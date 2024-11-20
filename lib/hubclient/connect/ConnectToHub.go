@@ -6,8 +6,8 @@ import (
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/discovery"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/httpsse"
-	wssclient "github.com/hiveot/hub/lib/hubclient/httpwss"
+	"github.com/hiveot/hub/lib/hubclient/sseclient"
+	"github.com/hiveot/hub/lib/hubclient/wssclient"
 	"github.com/hiveot/hub/lib/keys"
 	"log/slog"
 	"net/url"
@@ -128,7 +128,7 @@ func NewHubClient(fullURL string, clientID string, caCert *x509.Certificate) (hc
 	} else if clType == "wss" {
 		hc = wssclient.NewWSSClient(fullURL, clientID, nil, caCert, DefaultTimeout)
 	} else if clType == "https" || clType == "tls" {
-		hc = httpsse.NewHttpSSEClient(parts.Host, clientID, nil, caCert, DefaultTimeout)
+		hc = sseclient.NewHttpSSEClient(parts.Host, clientID, nil, caCert, DefaultTimeout)
 	} else if clType == "" {
 		// use NewClient on the embedded server
 		//hc = embedded.NewEmbeddedClient(clientID, nil)

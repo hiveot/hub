@@ -95,7 +95,7 @@ func TestPoll(t *testing.T) {
 	err := cl1.Subscribe("", "")
 	require.NoError(t, err)
 	cl1.SetMessageHandler(func(msg *hubclient.ThingMessage) {
-		slog.Info("received message", "Operation", msg.Operation, "id", msg.Name)
+		slog.Info("received message", "MessageType", msg.Operation, "id", msg.Name)
 		var value interface{}
 		err2 := utils.DecodeAsObject(msg.Data, &value)
 		assert.NoError(t, err2)

@@ -73,7 +73,7 @@ Todo phase 1 - refactor digital twin design
    stages: pending, delivered, completed, aborted, failed
    * digitwin starts with pending, upgrades to delivered when request is passed to agent; agent sends progress update message completed, failed, or in-progress.
    * use 'requestID' to link progress update messages with the action
-   * this requires a RequestProgress message type - non standard?
+   * this requires a ActionStatus message type - non standard?
      * protocol binding detail?
 8b. How to track property write progress?
    * not at the moment. consumer watches for property updates

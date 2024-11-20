@@ -1,4 +1,4 @@
-package httpsse
+package sseclient
 
 import (
 	"context"
@@ -473,7 +473,7 @@ func (cl *HttpSSEClient) PubMessage(methodName string, methodPath string,
 	cl.mux.RLock()
 	defer cl.mux.RUnlock()
 	if cl.tlsClient == nil {
-		stat.Progress = vocab.RequestFailed
+		stat.Status = vocab.RequestFailed
 		stat.Error = "PubMessage. Client connection was closed"
 		slog.Warn(stat.Error, "clientID", cl.GetClientID(), "thingID", thingID, "name", name, "cid", cl.cid)
 		return stat
@@ -495,10 +495,10 @@ func (cl *HttpSSEClient) PubMessage(methodName string, methodPath string,
 		progress = headers.Get(hubclient.StatusHeader)
 	}
 
-	stat.RequestID = respMsgID
+	stat.CorrelationID = respMsgID
 	if err != nil {
 		stat.Error = err.Error()
-		stat.Progress = vocab.RequestFailed
+		stat.Status = vocab.RequestFailed
 		if httpStatus == http.StatusUnauthorized {
 			err = errors.New("no longer authenticated")
 		}
@@ -509,13 +509,13 @@ func (cl *HttpSSEClient) PubMessage(methodName string, methodPath string,
 	} else if reply != nil && len(reply) > 0 {
 		// TODO: unmarshalling the reply here is useless as there is needs conversion to the correct type
 		err = cl.Unmarshal(reply, &stat.Output)
-		stat.Progress = vocab.RequestCompleted
+		stat.Status = vocab.RequestCompleted
 	} else if progress != "" {
 		// progress status without delivery status output
-		stat.Progress = progress
+		stat.Status = progress
 	} else {
 		// not an progress result and no data. assume all went well
-		stat.Progress = vocab.RequestCompleted
+		stat.Status = vocab.RequestCompleted
 	}
 	if err != nil {
 		slog.Error("PubMessage error",
@@ -544,18 +544,18 @@ func (cl *HttpSSEClient) PubMultipleProperties(thingID string, propMap map[strin
 // PubRequestStatus agent publishes a request progress update message to the digital twin
 // The digital twin will update the request status and notify the sender.
 // This returns an error if the connection with the server is broken
-func (cl *HttpSSEClient) PubRequestStatus(stat hubclient.RequestStatus) {
-	slog.Debug("PubRequestStatus",
+func (cl *HttpSSEClient) PubActionStatus(stat hubclient.RequestStatus) {
+	slog.Debug("PubActionStatus",
 		slog.String("agentID", cl.clientID),
 		slog.String("thingID", stat.ThingID),
 		slog.String("name", stat.Name),
-		slog.String("progress", stat.Progress),
-		slog.String("requestID", stat.RequestID))
+		slog.String("progress", stat.Status),
+		slog.String("requestID", stat.CorrelationID))
 
 	stat2 := cl.PubMessage(http.MethodPost, PostAgentPublishProgressPath,
-		"", "", stat, nil, stat.RequestID)
+		"", "", stat, nil, stat.CorrelationID)
 	if stat.Error != "" {
-		slog.Warn("PubRequestStatus failed", "err", stat2.Error)
+		slog.Warn("PubActionStatus failed", "err", stat2.Error)
 	}
 }
 
@@ -654,7 +654,7 @@ func (cl *HttpSSEClient) Rpc(
 		if time.Duration(waitCount)*time.Second > cl.timeout || cl.tlsClient == nil {
 			break
 		}
-		if stat.Progress == vocab.RequestCompleted || stat.Progress == vocab.RequestFailed {
+		if stat.Status == vocab.RequestCompleted || stat.Status == vocab.RequestFailed {
 			break
 		}
 		if waitCount > 0 {
@@ -677,15 +677,15 @@ func (cl *HttpSSEClient) Rpc(
 		slog.String("name", name),
 		slog.String("requestID", requestID),
 		slog.String("cid", cl.cid),
-		slog.String("status", stat.Progress),
+		slog.String("status", stat.Status),
 	)
 
 	// check for errors
 	if err == nil {
 		if stat.Error != "" {
 			err = errors.New(stat.Error)
-		} else if stat.Progress != vocab.RequestCompleted {
-			err = errors.New("Delivery not complete. Progress: " + stat.Progress)
+		} else if stat.Status != vocab.RequestCompleted {
+			err = errors.New("Delivery not complete. Status: " + stat.Status)
 		}
 	}
 	if err != nil {

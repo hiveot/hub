@@ -177,14 +177,14 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 		stat.Completed(msg, reply, nil)
 		assert.Equal(t, cl1.GetClientID(), msg.SenderID)
 		//stat.Failed(msg, fmt.Errorf("failuretest"))
-		slog.Info("TestActionWithDeliveryConfirmation: agent1 delivery complete", "requestID", msg.RequestID)
+		slog.Info("TestActionWithDeliveryConfirmation: agent1 delivery complete", "requestID", msg.CorrelationID)
 		return stat
 	})
 
 	// users receives status updates when sending actions
 	deliveryCtx, deliveryCtxComplete := context.WithTimeout(context.Background(), time.Minute*1)
 	cl1.SetMessageHandler(func(msg *hubclient.ThingMessage) {
-		if msg.Operation == vocab.WotOpPublishActionStatus {
+		if msg.Operation == vocab.HTOpUpdateActionStatus {
 			// delivery updates are only invoked on for non-rpc actions
 			err := utils.DecodeAsObject(msg.Data, &stat3)
 			require.NoError(t, err)
@@ -207,13 +207,13 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 
 	// verify final result
-	require.Equal(t, vocab.RequestCompleted, stat3.Progress)
+	require.Equal(t, vocab.RequestCompleted, stat3.Status)
 	require.Empty(t, stat3.Error)
 	require.NotNil(t, rxMsg)
 	assert.Equal(t, expectedReply, stat3.Output)
 	assert.Equal(t, thingID, rxMsg.ThingID)
 	assert.Equal(t, actionID, rxMsg.Name)
-	assert.Equal(t, vocab.WotOpInvokeAction, rxMsg.Operation)
+	assert.Equal(t, vocab.OpInvokeAction, rxMsg.Operation)
 
 }
 
@@ -247,7 +247,7 @@ func TestServiceReconnect(t *testing.T) {
 		rxMsg.Store(&msg)
 		_ = utils.DecodeAsObject(msg.Data, &req)
 		stat.Completed(msg, req+".reply", nil)
-		slog.Info("agent1 delivery complete", "requestID", msg.RequestID)
+		slog.Info("agent1 delivery complete", "requestID", msg.CorrelationID)
 		return stat
 	})
 

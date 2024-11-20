@@ -7,7 +7,7 @@ import (
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/httpsse"
+	"github.com/hiveot/hub/lib/hubclient/sseclient"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/runtime/api"
@@ -71,7 +71,7 @@ func TestHttpsGetActions(t *testing.T) {
 	// value must match that of the action in step 1 and match its requestID
 	actVal := valueMap[key1]
 	assert.Equal(t, data, actVal.Input)
-	assert.Equal(t, stat.RequestID, actVal.RequestID)
+	assert.Equal(t, stat.CorrelationID, actVal.RequestID)
 }
 
 // Get events from the outbox using the experimental http REST api
@@ -108,7 +108,7 @@ func TestHttpsGetEvents(t *testing.T) {
 
 	// read latest using the http REST API
 	vars := map[string]string{"thingID": dThing1ID}
-	eventPath := utils.Substitute(httpsse.ReadAllEventsPath, vars)
+	eventPath := utils.Substitute(sseclient.ReadAllEventsPath, vars)
 	reply, _, err := tlsClient.Get(eventPath)
 	require.NoError(t, err)
 	require.NotNil(t, reply)
@@ -233,7 +233,7 @@ func TestWriteProperties(t *testing.T) {
 
 	// agents listen for property write requests
 	ag1.SetRequestHandler(func(msg *hubclient.ThingMessage) (stat hubclient.RequestStatus) {
-		if msg.Operation == vocab.WotOpWriteProperty && msg.Name == key1 {
+		if msg.Operation == vocab.OpWriteProperty && msg.Name == key1 {
 			stat.Completed(msg, nil, nil)
 			msgCount.Add(1)
 		}
@@ -254,7 +254,7 @@ func TestWriteProperties(t *testing.T) {
 	dThingID := tdd.MakeDigiTwinThingID(agentID, td1.ID)
 	stat2 := cl1.WriteProperty(dThingID, key1, data1)
 	require.Empty(t, stat2.Error)
-	require.Equal(t, vocab.RequestDelivered, stat2.Progress)
+	require.Equal(t, vocab.RequestDelivered, stat2.Status)
 	time.Sleep(time.Millisecond * 100)
 
 	// write property results in an action status message

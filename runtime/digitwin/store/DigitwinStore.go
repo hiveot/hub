@@ -381,14 +381,14 @@ func (svc *DigitwinStore) UpdateActionStart(
 	return nil
 }
 
-// UpdateRequestProgress updates the progress of the last invoked action or property write
+// UpdateActionStatus updates the progress of the last invoked action or property write
 //
 //	agentID is the ID of the agent sending the update.
 //	thingID is the ID of the original thing as managed by the agent.
 //	name is the name of the action whose progress is updated.
 //	status of the action
 //	output of the action. Only used when status is completed
-func (svc *DigitwinStore) UpdateRequestProgress(
+func (svc *DigitwinStore) UpdateActionStatus(
 	agentID string, thingID string, name string, status string, output any) (
 	actionValue digitwin.ActionValue, err error) {
 
@@ -423,7 +423,7 @@ func (svc *DigitwinStore) UpdateRequestProgress(
 		// property write progress is ignored as the thing should simply update
 		//the property value after applying the write.
 	}
-	return actionValue, fmt.Errorf("UpdateRequestProgress: Action '%s' not found in digital twin '%s'", name, dThingID)
+	return actionValue, fmt.Errorf("UpdateActionStatus: Action '%s' not found in digital twin '%s'", name, dThingID)
 
 }
 

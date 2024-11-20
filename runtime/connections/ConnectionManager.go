@@ -37,14 +37,14 @@ type ConnectionManager struct {
 }
 
 // AddConnection adds a new connection.
-// This requires the connection to have a unique client connection ID (clcid).
-// If an endpoint with this clcid exists both connections are forcibly closed
+// This requires the connection to have a unique client connection ID (connectionID).
+// If an endpoint with this connectionID exists both connections are forcibly closed
 // and an error is returned.
 func (cm *ConnectionManager) AddConnection(c api.IClientConnection) error {
 	cm.mux.Lock()
 	defer cm.mux.Unlock()
 
-	clcid := c.GetCLCID()
+	clcid := c.GetConnectionID()
 	clientID := c.GetClientID()
 
 	// Refuse this if an existing connection with this ID exist
@@ -52,7 +52,7 @@ func (cm *ConnectionManager) AddConnection(c api.IClientConnection) error {
 	if existingConn != nil {
 		err := fmt.Errorf("AddConnection. The connection ID '%s' of client '%s' already exists",
 			clcid, existingConn.GetClientID())
-		slog.Error("AddConnection: duplicate CLCID", "clcid", clcid, "err", err.Error())
+		slog.Error("AddConnection: duplicate ConnectionID", "connectionID", clcid, "err", err.Error())
 		existingConn.Close()
 		c.Close()
 		go cm.RemoveConnection(clcid)
@@ -117,13 +117,13 @@ func (cm *ConnectionManager) ForEachConnection(handler func(c api.IClientConnect
 	}
 }
 
-// GetConnectionByCLCID locates the connection of the client using the client connectionID
-// This returns nil if no connection was found with the given clcid
-func (cm *ConnectionManager) GetConnectionByCLCID(clcid string) (c api.IClientConnection) {
+// GetConnectionByConnectionID locates the connection of the client using the client connectionID
+// This returns nil if no connection was found with the given connectionID
+func (cm *ConnectionManager) GetConnectionByConnectionID(connectionID string) (c api.IClientConnection) {
 
 	cm.mux.Lock()
 	defer cm.mux.Unlock()
-	c = cm.clcidConnections[clcid]
+	c = cm.clcidConnections[connectionID]
 	return c
 }
 
@@ -187,29 +187,29 @@ func (cm *ConnectionManager) PublishProperty(
 // RemoveConnection removes the connection by its connectionID
 // This will close the connnection if it isn't closed already.
 // Call this after the connection is closed or before closing.
-func (cm *ConnectionManager) RemoveConnection(clcid string) {
+func (cm *ConnectionManager) RemoveConnection(connectionID string) {
 	cm.mux.Lock()
 	defer cm.mux.Unlock()
 
 	var clientID = ""
-	existingConn := cm.clcidConnections[clcid]
+	existingConn := cm.clcidConnections[connectionID]
 	// force close the existing connection just in case
 	if existingConn != nil {
 		clientID = existingConn.GetClientID()
 		existingConn.Close()
-		delete(cm.clcidConnections, clcid)
-	}
-
-	// remove the cid from the client connection list
-	if clientID == "" {
-		slog.Error("RemoveConnection: existing connection has no clientID", "clcid", clcid)
+		delete(cm.clcidConnections, connectionID)
+	} else if len(cm.clcidConnections) > 0 {
+		// this is unexpected. Not all connections were closed but this one is gone.
+		slog.Warn("RemoveConnection: connectionID not found",
+			"connectionID", connectionID)
 		return
 	}
+	// remove the cid from the client connection list
 	clientCids := cm.clientConnections[clientID]
-	i := slices.Index(clientCids, clcid)
+	i := slices.Index(clientCids, connectionID)
 	if i < 0 {
-		slog.Error("RemoveConnection: existing connection not in client's cid list but is should have been",
-			"clientID", clientID, "clcid", clcid)
+		slog.Warn("RemoveConnection: existing connection not in the connectionID list but it should have been",
+			"clientID", clientID, "connectionID", connectionID)
 
 		// TODO: considering the impact of this going wrong, is it better to recover?
 		// A: delete the bad entry and try the next connection

@@ -12,12 +12,12 @@ import (
 // and stores it in the digital twin instance. Only the last event value is kept.
 func (svc *DigitwinRouter) HandlePublishEvent(msg *hubclient.ThingMessage) {
 	dThingID, err := svc.dtwStore.UpdateEventValue(
-		msg.SenderID, msg.ThingID, msg.Name, msg.Data, msg.RequestID)
+		msg.SenderID, msg.ThingID, msg.Name, msg.Data, msg.CorrelationID)
 	if err != nil {
 		return
 	}
 	// broadcast the event to subscribers of the digital twin
-	go svc.cm.PublishEvent(dThingID, msg.Name, msg.Data, msg.RequestID, msg.SenderID)
+	go svc.cm.PublishEvent(dThingID, msg.Name, msg.Data, msg.CorrelationID, msg.SenderID)
 	return
 }
 

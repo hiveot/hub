@@ -72,8 +72,8 @@ func (svc *HttpBinding) _handleRequest(op string, w http.ResponseWriter, r *http
 	//                }]
 	//```
 	msg := hubclient.NewThingMessage(op, rp.ThingID, rp.Name, rp.Data, rp.ClientID)
-	msg.RequestID = requestID
-	stat := svc.digitwinRouter.HandleRequest(msg, rp.CLCID)
+	msg.CorrelationID = requestID
+	stat := svc.digitwinRouter.HandleRequest(msg, rp.ConnectionID)
 
 	//
 	replyHeader := w.Header()
@@ -98,9 +98,9 @@ func (svc *HttpBinding) _handleRequest(op string, w http.ResponseWriter, r *http
 		replyHeader.Set(hubclient.StatusHeader, vocab.RequestFailed)
 		svc.writeReply(w, nil, errors.New(stat.Error))
 		return
-	} else if stat.Progress != vocab.RequestCompleted {
+	} else if stat.Status != vocab.RequestCompleted {
 		// if progress isn't completed then also return the delivery progress
-		replyHeader.Set(hubclient.StatusHeader, stat.Progress)
+		replyHeader.Set(hubclient.StatusHeader, stat.Status)
 		replyHeader.Set(hubclient.DataSchemaHeader, "RequestStatus")
 		svc.writeReply(w, stat, nil)
 		return
@@ -109,9 +109,9 @@ func (svc *HttpBinding) _handleRequest(op string, w http.ResponseWriter, r *http
 	svc.writeReply(w, stat.Output, nil)
 }
 
-// HandlePublishRequestProgress sends an action progress update message to the digital twin
-func (svc *HttpBinding) HandlePublishRequestProgress(w http.ResponseWriter, r *http.Request) {
-	svc._handleMessage(vocab.WotOpPublishActionStatus, w, r)
+// HandlePublishActionStatus sends an action progress update message to the digital twin
+func (svc *HttpBinding) HandlePublishActionStatus(w http.ResponseWriter, r *http.Request) {
+	svc._handleMessage(vocab.HTOpUpdateActionStatus, w, r)
 }
 
 // HandleInvokeAction requests an action from the digital twin.
@@ -122,7 +122,7 @@ func (svc *HttpBinding) HandlePublishRequestProgress(w http.ResponseWriter, r *h
 // receive the response.
 func (svc *HttpBinding) HandleInvokeAction(w http.ResponseWriter, r *http.Request) {
 
-	svc._handleRequest(vocab.WotOpInvokeAction, w, r)
+	svc._handleRequest(vocab.OpInvokeAction, w, r)
 }
 
 // HandleLogin handles a login request, posted by a consumer.
@@ -169,19 +169,19 @@ func (svc *HttpBinding) HandleLogout(w http.ResponseWriter, r *http.Request) {
 
 // HandlePublishEvent update digitwin with event published by agent
 func (svc *HttpBinding) HandlePublishEvent(w http.ResponseWriter, r *http.Request) {
-	svc._handleMessage(vocab.WotOpPublishEvent, w, r)
+	svc._handleMessage(vocab.HTOpPublishEvent, w, r)
 }
 
 // HandleQueryAction returns a list of latest action requests of a Thing
 // Parameters: thingID
 func (svc *HttpBinding) HandleQueryAction(w http.ResponseWriter, r *http.Request) {
-	svc._handleRequest(vocab.WotOpQueryAction, w, r)
+	svc._handleRequest(vocab.OpQueryAction, w, r)
 }
 
 // HandleQueryAllActions returns a list of latest action requests of a Thing
 // Parameters: thingID
 func (svc *HttpBinding) HandleQueryAllActions(w http.ResponseWriter, r *http.Request) {
-	svc._handleRequest(vocab.WotOpQueryAllActions, w, r)
+	svc._handleRequest(vocab.OpQueryAllActions, w, r)
 }
 
 // HandleReadAllEvents returns a list of latest event values from a Thing
@@ -192,7 +192,7 @@ func (svc *HttpBinding) HandleReadAllEvents(w http.ResponseWriter, r *http.Reque
 
 // HandleReadAllProperties was added to the top level TD form. Handle it here.
 func (svc *HttpBinding) HandleReadAllProperties(w http.ResponseWriter, r *http.Request) {
-	svc._handleRequest(vocab.WotOpReadAllProperties, w, r)
+	svc._handleRequest(vocab.OpReadAllProperties, w, r)
 }
 
 // HandleReadAllThings returns a list of things in the directory
@@ -237,7 +237,7 @@ func (svc *HttpBinding) HandleReadEvent(w http.ResponseWriter, r *http.Request) 
 }
 
 func (svc *HttpBinding) HandleReadProperty(w http.ResponseWriter, r *http.Request) {
-	svc._handleRequest(vocab.WotOpReadProperty, w, r)
+	svc._handleRequest(vocab.OpReadProperty, w, r)
 }
 
 // HandleReadTD returns the TD of a thing in the directory
@@ -254,12 +254,12 @@ func (svc *HttpBinding) HandleReadAllTDs(w http.ResponseWriter, r *http.Request)
 
 // HandlePublishMultipleProperties agent sends a map with multiple property
 func (svc *HttpBinding) HandlePublishMultipleProperties(w http.ResponseWriter, r *http.Request) {
-	svc._handleMessage(vocab.WotOpPublishProperties, w, r)
+	svc._handleMessage(vocab.HTOpUpdateMultipleProperties, w, r)
 }
 
 // HandlePublishProperty agent sends single or multiple property updates
 func (svc *HttpBinding) HandlePublishProperty(w http.ResponseWriter, r *http.Request) {
-	svc._handleMessage(vocab.WotOpPublishProperty, w, r)
+	svc._handleMessage(vocab.HTOpUpdateProperty, w, r)
 }
 
 // HandlePublishTD agent sends a new TD document
@@ -269,5 +269,5 @@ func (svc *HttpBinding) HandlePublishTD(w http.ResponseWriter, r *http.Request) 
 
 // HandleWriteProperty consumer requests to update a Thing property
 func (svc *HttpBinding) HandleWriteProperty(w http.ResponseWriter, r *http.Request) {
-	svc._handleRequest(vocab.WotOpWriteProperty, w, r)
+	svc._handleRequest(vocab.OpWriteProperty, w, r)
 }

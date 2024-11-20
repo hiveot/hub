@@ -6,7 +6,7 @@ const DigitwinServiceID = "dtw:digitwin:service"
 
 const ProgressEventName = "progress"
 
-// Progress event sent on write property and invoke action
+// Status event sent on write property and invoke action
 type ProgressEvent struct {
 	ID          string `json:"ID"`
 	Name        string `json:"name"`

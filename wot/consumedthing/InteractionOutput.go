@@ -81,7 +81,7 @@ func (io *InteractionOutput) SetSchemaFromTD(td *tdd.TD) (found bool) {
 	// if name is that of an event then use it
 	eventAff, found := td.Events[io.Name]
 	if found {
-		io.MessageType = vocab.WotOpPublishEvent
+		io.MessageType = vocab.HTOpPublishEvent
 		// an event might not have data associated with it
 		if eventAff.Data != nil {
 			io.Schema = *eventAff.Data
@@ -95,7 +95,7 @@ func (io *InteractionOutput) SetSchemaFromTD(td *tdd.TD) (found bool) {
 	// if name is that of a property then use it
 	propAff, found := td.Properties[io.Name]
 	if found {
-		io.MessageType = vocab.WotOpPublishProperty
+		io.MessageType = vocab.HTOpUpdateProperty
 		io.Schema = propAff.DataSchema
 		io.Title = propAff.Title
 		if len(propAff.Forms) > 0 {
@@ -106,7 +106,7 @@ func (io *InteractionOutput) SetSchemaFromTD(td *tdd.TD) (found bool) {
 	// last, if name is that of an action then use its output schema
 	actionAff, found := td.Actions[io.Name]
 	if found {
-		io.MessageType = vocab.WotOpInvokeAction
+		io.MessageType = vocab.OpInvokeAction
 		// an action might not have any output data
 		if actionAff.Output != nil {
 			io.Schema = *actionAff.Output
@@ -135,7 +135,7 @@ func NewInteractionOutputFromValueList(values []digitwin.ThingValue, td *tdd.TD)
 	for _, tv := range values {
 		io := NewInteractionOutputFromValue(&tv, td)
 		// property values only contain completed changes.
-		io.Progress.Progress = vocab.RequestCompleted
+		io.Progress.Status = vocab.RequestCompleted
 		io.SetSchemaFromTD(td)
 		ioMap[tv.Name] = io
 

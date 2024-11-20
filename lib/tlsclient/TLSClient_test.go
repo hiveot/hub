@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/lib/certs"
-	"github.com/hiveot/hub/lib/hubclient/httpsse"
+	"github.com/hiveot/hub/lib/hubclient/sseclient"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/stretchr/testify/require"
@@ -207,7 +207,7 @@ func TestCert404(t *testing.T) {
 }
 
 func TestAuthJWT(t *testing.T) {
-	pathLogin1 := httpsse.PostLoginPath // this doesn't belong here
+	pathLogin1 := sseclient.PostLoginPath // this doesn't belong here
 	pathLogin2 := "/login2"
 	path3 := "/test3"
 	path3Hit := 0
@@ -265,7 +265,7 @@ func TestAuthJWT(t *testing.T) {
 	srv, err := startTestServer(mux)
 	assert.NoError(t, err)
 	//
-	loginURL := fmt.Sprintf("https://%s%s", testAddress, httpsse.PostLoginPath)
+	loginURL := fmt.Sprintf("https://%s%s", testAddress, sseclient.PostLoginPath)
 	loginMessage := authn.UserLoginArgs{
 		ClientID: user1,
 		Password: password1,

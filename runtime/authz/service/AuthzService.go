@@ -41,7 +41,7 @@ type AuthzService struct {
 //
 //// CanPubEvent checks if the given client can publish events
 //func (svc *AuthzService) CanPubEvent(clientID string) bool {
-//	hasPerm := svc.HasPermission(clientID, vocab.WotOpPublishEvent, true)
+//	hasPerm := svc.HasPermission(clientID, vocab.HTOpPublishEvent, true)
 //	return hasPerm
 //}
 //
@@ -53,7 +53,7 @@ type AuthzService struct {
 //
 //// CanSubEvent checks if the given client can subscribe to events
 //func (svc *AuthzService) CanSubEvent(clientID string) bool {
-//	hasPerm := svc.HasPermission(clientID, vocab.WotOpPublishEvent, false)
+//	hasPerm := svc.HasPermission(clientID, vocab.HTOpPublishEvent, false)
 //	return hasPerm
 //}
 

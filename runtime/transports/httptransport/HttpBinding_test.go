@@ -4,14 +4,15 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/httpsse"
-	wssclient "github.com/hiveot/hub/lib/hubclient/httpwss"
+	"github.com/hiveot/hub/lib/hubclient/sseclient"
+	wssclient "github.com/hiveot/hub/lib/hubclient/wssclient"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/runtime/authn/sessions"
 	"github.com/hiveot/hub/runtime/connections"
 	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/runtime/transports"
 	"github.com/hiveot/hub/runtime/transports/httptransport"
+	"github.com/hiveot/hub/wot/tdd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/teris-io/shortid"
@@ -31,82 +32,42 @@ var digitwinStorePath = path.Join(testDirFolder, "digitwin.data")
 var sm *sessions.SessionManager
 var cm *connections.ConnectionManager
 
-var useWSS bool = false // testing using the wss sub-protocol
+var useWSS bool = true // testing using the wss sub-protocol
 
 // ---------
 // Dummy sessionAuth for testing the binding
 // This implements the authn.IAuthenticator interface.
-const testLogin = "testlogin"
-const testPassword = "testpass"
-const userToken = "usertoken"
-const serviceToken = "servicetoken"
+const clientLoginID = "testlogin"
+const clientPassword = "testpass"
+const agentLoginID = "agentlogin"
+const agentPassword = "agentpass"
 const testSessionID = "testsession"
-
-type DummyAuthenticator struct{}
-
-func (d *DummyAuthenticator) CreateSessionToken(
-	clientID, sessionID string, validitySec int) (token string) {
-	if sessionID != "" {
-		return userToken
-	}
-	return serviceToken
-}
-
-func (d *DummyAuthenticator) Login(
-	clientID string, password string) (token string, err error) {
-
-	if password == testPassword && clientID == testLogin {
-		return userToken, nil
-	}
-	return token, fmt.Errorf("Invalid login")
-}
-
-func (d *DummyAuthenticator) Logout(clientID string) {
-}
-
-func (d *DummyAuthenticator) ValidatePassword(clientID string, password string) (err error) {
-	return nil
-}
-
-func (d *DummyAuthenticator) RefreshToken(
-	senderID string, clientID string, oldToken string) (newToken string, err error) {
-	if senderID != testLogin || senderID != clientID ||
-		(oldToken != userToken && oldToken != serviceToken) {
-		err = fmt.Errorf("Invalid token, client or sender")
-	}
-	return oldToken, err
-}
-func (d *DummyAuthenticator) DecodeSessionToken(token string, signedNonce string, nonce string) (clientID string, sessionID string, err error) {
-	return d.ValidateToken(token)
-}
-
-func (d *DummyAuthenticator) ValidateToken(token string) (clientID string, sessionID string, err error) {
-
-	if token == userToken {
-		return testLogin, testSessionID, nil
-	} else if token == serviceToken {
-		return testLogin, testSessionID, nil
-	}
-	err = fmt.Errorf("invalid login")
-	return clientID, testSessionID, err
-}
 
 var dummyAuthenticator = &DummyAuthenticator{}
 
 // create a test client as an agent
 func newAgentClient(clientID string) (cl hubclient.IAgentClient) {
-	wssURL := fmt.Sprintf("wss://%s/wss", hostPort)
 	if useWSS {
-		cl = wssclient.NewWSSClient(wssURL, clientID, nil, certBundle.CaCert, time.Minute)
+		wssURL := fmt.Sprintf("wss://%s/wss", hostPort)
+		cl = wssclient.NewWSSClient(
+			wssURL, clientID, nil, certBundle.CaCert, time.Minute)
 	} else {
-		cl = httpsse.NewHttpSSEClient(hostPort, clientID, nil, certBundle.CaCert, time.Minute)
+		cl = sseclient.NewHttpSSEClient(
+			hostPort, clientID, nil, certBundle.CaCert, time.Minute)
 	}
 	return cl
 }
 
 // create a test client as a consumer
-func newConsumerClient(clientID string) hubclient.IConsumerClient {
-	cl := httpsse.NewHttpSSEClient(hostPort, clientID, nil, certBundle.CaCert, time.Minute)
+func newConsumerClient(clientID string) (cl hubclient.IConsumerClient) {
+	if useWSS {
+		wssURL := fmt.Sprintf("wss://%s/wss", hostPort)
+		cl = wssclient.NewWSSClient(
+			wssURL, clientID, nil, certBundle.CaCert, time.Minute)
+	} else {
+		cl = sseclient.NewHttpSSEClient(
+			hostPort, clientID, nil, certBundle.CaCert, time.Minute)
+	}
 	return cl
 }
 
@@ -181,13 +142,14 @@ func TestLoginRefresh(t *testing.T) {
 	_ = dtwService
 	defer tb.Stop()
 
-	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, nil, certBundle.CaCert, time.Minute)
-	token, err := cl.ConnectWithPassword(testPassword)
+	cl := newConsumerClient(clientLoginID)
+	token, err := cl.ConnectWithPassword(clientPassword)
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
 
 	// refresh should succeed
 	newToken, err := cl.RefreshToken(token)
+	time.Sleep(time.Millisecond * 30)
 	require.NoError(t, err)
 	require.NotEmpty(t, newToken)
 
@@ -216,9 +178,8 @@ func TestBadLogin(t *testing.T) {
 	defer tb.Stop()
 
 	// check if this test still works with a valid login
-	cl := httpsse.NewHttpSSEClient(hostPort, testLogin, nil, certBundle.CaCert, time.Minute)
-	//cl := tlsclient.NewTLSClient(hostPort, certBundle.CaCert, time.Second*120)
-	token, err := cl.ConnectWithPassword(testPassword)
+	cl := newConsumerClient(clientLoginID)
+	token, err := cl.ConnectWithPassword(clientPassword)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, token)
 
@@ -233,8 +194,8 @@ func TestBadLogin(t *testing.T) {
 	cl.Disconnect()
 
 	// bad client ID
-	cl2 := httpsse.NewHttpSSEClient(hostPort, "badID", nil, certBundle.CaCert, time.Minute)
-	token, err = cl2.ConnectWithPassword(testPassword)
+	cl2 := sseclient.NewHttpSSEClient(hostPort, "badID", nil, certBundle.CaCert, time.Minute)
+	token, err = cl2.ConnectWithPassword(clientPassword)
 	assert.Error(t, err)
 	assert.Empty(t, token)
 }
@@ -245,25 +206,25 @@ func TestBadRefresh(t *testing.T) {
 	_ = dtwService
 	defer tb.Stop()
 
-	cl := newConsumerClient(testLogin)
+	cl := newConsumerClient(clientLoginID)
 
 	// set the token
 	token, err := cl.ConnectWithToken("badtoken")
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Empty(t, token)
 	token, err = cl.RefreshToken(token)
 	assert.Error(t, err)
 	assert.Empty(t, token)
 
 	// get a valid token and connect with a bad clientid
-	token, err = cl.ConnectWithPassword(testPassword)
+	token, err = cl.ConnectWithPassword(clientPassword)
 	assert.NoError(t, err)
 	validToken, err := cl.RefreshToken(token)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, validToken)
 	cl.Disconnect()
 	//
-	cl2 := newConsumerClient("badlogin")
+	cl2 := newConsumerClient("badclientidlogin")
 	defer cl2.Disconnect()
 	token, err = cl2.ConnectWithToken(validToken)
 	assert.Error(t, err)
@@ -276,55 +237,68 @@ func TestBadRefresh(t *testing.T) {
 // Test posting an event and action
 func TestPostEventAction(t *testing.T) {
 	t.Log("TestPostEventAction")
+	var rxVal atomic.Value
 	var evVal atomic.Value
 	var actVal atomic.Value
-	var testMsg = "hello world"
-	var agentID = "agent1"
+	var testMsg1 = "hello world 1"
+	var testMsg2 = "hello world 2"
 	var thingID = "thing1"
 	var actionKey = "action1"
 	var eventKey = "event11"
 
 	// 1. start the binding
-	tb, dtwService, handler := startHttpsTransport()
+	tb, dtwService, dtwRouter := startHttpsTransport()
 	_ = dtwService
 	defer tb.Stop()
 
-	// 2a. create a session for connecting a client
+	// 2a. create a session for connecting an agent and client
 	// (normally this happens when a session token is issued on login)
-	sm.NewSession(agentID, "test")
+	sm.NewSession(clientLoginID, "test")
+	sm.NewSession(agentLoginID, "test")
 
-	// 2b. connect as an agent
-	cl := newAgentClient(testLogin)
-	token, err := cl.ConnectWithPassword(testPassword)
+	// 2b. connect as an agent and client
+	cl1 := newConsumerClient(clientLoginID)
+	_, err := cl1.ConnectWithPassword(clientPassword)
+	ag1 := newAgentClient(agentLoginID)
+	token, err := ag1.ConnectWithPassword(agentPassword)
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
 
-	// 3. register the handler for events
-	handler.OnEvent = func(msg *hubclient.ThingMessage) {
+	cl1.SetMessageHandler(func(ev *hubclient.ThingMessage) {
+		// receive result from action
+		rxVal.Store(ev.Data)
+	})
+	cl1.Subscribe("", "")
+
+	// 3. register the dtwRouter for events
+	dtwRouter.OnEvent = func(msg *hubclient.ThingMessage) {
 		evVal.Store(msg.Data)
 	}
-	handler.OnAction = func(msg *hubclient.ThingMessage, replyTo string) (stat hubclient.RequestStatus) {
+	dtwRouter.OnAction = func(msg *hubclient.ThingMessage, replyTo string) (stat hubclient.RequestStatus) {
 		actVal.Store(msg.Data)
 		stat.Completed(msg, msg.Data, nil)
 		return stat
 	}
 	// 3. publish two events
-	err = cl.PubEvent(thingID, eventKey, testMsg, "")
+	err = ag1.PubEvent(thingID, eventKey, testMsg1, "")
 	require.NoError(t, err)
-	err = cl.PubEvent(thingID, eventKey, testMsg, "")
+	err = ag1.PubEvent(thingID, eventKey, testMsg1, "")
 	require.NoError(t, err)
 
-	// 4. verify that the handler received it
+	// 4a. verify that the dtwRouter received it
+	time.Sleep(time.Millisecond * 100)
 	assert.NoError(t, err)
-	assert.Equal(t, testMsg, evVal.Load())
+	assert.Equal(t, testMsg1, evVal.Load())
 
 	// 5. publish an action
-	stat := cl.InvokeAction(thingID, actionKey, testMsg, nil, "")
+	//stat := cl1.InvokeAction(thingID, actionKey, testMsg2, nil, "")
+	var reply any
+	err = cl1.Rpc(thingID, actionKey, testMsg2, &reply)
 	require.NoError(t, err)
-	time.Sleep(time.Millisecond * 100)
-	assert.NotEmpty(t, stat.Output)
-	assert.Equal(t, testMsg, actVal.Load())
-	cl.Disconnect()
+	// response must be seen by router and received
+	assert.Equal(t, testMsg2, actVal.Load())
+	assert.Equal(t, testMsg2, reply)
+	ag1.Disconnect()
 }
 
 // shortIDs are used in various places
@@ -344,44 +318,47 @@ func TestShortID(t *testing.T) {
 	assert.Equal(t, total, len(idCounts))
 }
 
-// Test publish subscribe using sse
-func TestPubSubSSE(t *testing.T) {
-	t.Log("TestPubSubSSE")
+// Test publish subscribe
+func TestPubSub(t *testing.T) {
+	t.Log("TestPubSub")
 	var evVal atomic.Value
 	var testMsg = "hello world"
 	var thingID = "thing1"
 	var eventKey = "event11"
 
 	// 1. start the transport
-	tb, dtwService, handler := startHttpsTransport()
+	tb, dtwService, dtwRouter := startHttpsTransport()
 	_ = dtwService
 
-	//svc.PublishEvent(tv.ThingID, tv.Name, tv.Data, tv.RequestID)
+	//svc.PublishEvent(tv.ThingID, tv.Name, tv.Data, tv.CorrelationID)
 	defer tb.Stop()
 
-	// 2. connect with a client
-	cl := newAgentClient(testLogin)
-	token, err := cl.ConnectWithPassword(testPassword)
+	// 2. connect with a client and agent
+	ag1 := newAgentClient(agentLoginID)
+	_, err := ag1.ConnectWithPassword(agentPassword)
 	require.NoError(t, err)
-	assert.NotEmpty(t, token)
-	defer cl.Disconnect()
+	defer ag1.Disconnect()
+	cl1 := newConsumerClient(clientLoginID)
+	_, err = cl1.ConnectWithPassword(clientPassword)
+	require.NoError(t, err)
+	defer cl1.Disconnect()
 
 	// give the client time to establish a sse connection
 	time.Sleep(time.Millisecond * 3)
 
-	// 3. register the handler for events
-	handler.OnEvent = func(msg *hubclient.ThingMessage) {
+	// 3. register the dtwRouter for events
+	dtwRouter.OnEvent = func(msg *hubclient.ThingMessage) {
 		evVal.Store(msg.Data)
 	}
 
-	err = cl.Subscribe(thingID, "")
+	err = cl1.Subscribe(thingID, "")
 	require.NoError(t, err)
 
-	// 4. publish an event using the hub client, the server will invoke the message handler
-	// which in turn will publish this to the listeners over sse, including this client.
-	err = cl.PubEvent(thingID, eventKey, testMsg, "")
+	// 4. publish an event using the hub client, the server will invoke the message dtwRouter
+	// which in turn will publish this to the listeners, including this client.
+	err = ag1.PubEvent(thingID, eventKey, testMsg, "")
 	assert.NoError(t, err)
-	//time.Sleep(time.Millisecond * 10)
+	time.Sleep(time.Millisecond * 10)
 	//
 	rxMsg2 := evVal.Load()
 	require.NotNil(t, rxMsg2)
@@ -394,60 +371,65 @@ func TestReconnect(t *testing.T) {
 	const thingID = "thing1"
 	const actionKey = "action1"
 	const agentID = "agent1"
-	//var dThingID = tdd.MakeDigiTwinThingID(agentID, thingID)
+	var dThingID = tdd.MakeDigiTwinThingID(agentID, thingID)
 
 	// 1. start the binding. Set the action handler separately
-	svc, dtwService, dummyRouter := startHttpsTransport()
+	svc, dtwService, dtwRouter := startHttpsTransport()
 	defer svc.Stop()
 	_ = dtwService
 	// this test handler receives an action, returns a 'delivered status',
 	// and sends a completed status through the sse return channel (SendToClient)
 
-	// 2. connect a service client. Service auth tokens remain valid between sessions.
-	cl := newAgentClient(testLogin)
-	defer cl.Disconnect()
-	token, err := cl.ConnectWithToken(serviceToken)
-	assert.NoError(t, err)
-	assert.NotEmpty(t, token)
-
-	//  Give some time for the SSE connection to be re-established
-	time.Sleep(time.Second * 1)
-
-	// 3. close connection server side but keep the session.
-	// This should trigger auto-reconnect on the client.
-	t.Log("--- disconnecting all clients ---")
-	cm.CloseAll()
-
-	// reply to requests after a restart
-	dummyRouter.OnEvent = func(msg *hubclient.ThingMessage) {
+	// reply to requests
+	dtwRouter.OnEvent = func(msg *hubclient.ThingMessage) {
 	}
-	dummyRouter.OnAction = func(msg *hubclient.ThingMessage, replyTo string) (stat hubclient.RequestStatus) {
-		// send a delivery status update asynchronously which uses the SSE return channel
+	dtwRouter.OnAction = func(msg *hubclient.ThingMessage, replyTo string) (stat hubclient.RequestStatus) {
+		// send a completed status update asynchronously
 		go func() {
 			stat2 := hubclient.RequestStatus{}
-			c := svc.GetConnectionByCLCID(replyTo)
+			c := svc.GetConnectionByConnectionID(replyTo)
 			require.NotNil(t, c)
-			stat2.Completed(msg, nil, nil)
-			err = c.PublishActionStatus(stat2, agentID)
+			stat2.Completed(msg, msg.Data, nil)
+			// async completion
+			err := c.PublishActionStatus(stat2, agentID)
 			assert.NoError(t, err)
+
 		}()
 		stat.Delivered(msg)
 		return stat
 	}
 
+	// 2. connect a service client. Service auth tokens remain valid between sessions.
+	cl := newConsumerClient(clientLoginID)
+	defer cl.Disconnect()
+	token1 := dummyAuthenticator.CreateSessionToken(clientLoginID, "mysession", 1000)
+	token2, err := cl.ConnectWithToken(token1)
+	require.NoError(t, err)
+	assert.NotEmpty(t, token2)
+
+	//  Give some time for the SSE connection to be established
+	time.Sleep(time.Millisecond * 10)
+
+	// 3. close connection server side but keep the session.
+	// This should trigger auto-reconnect on the client.
+	t.Log("--- force disconnecting all clients ---")
+	tlsServer := svc.GetHttpServer()
+	tlsServer.Stop()
+	cm.CloseAll()
+	time.Sleep(time.Second)
+	tlsServer.Start()
+
 	require.NoError(t, err)
 
 	// give client time to reconnect
 	time.Sleep(time.Second * 3)
-	// publish event to rekindle the SSE connection
-	cl.PubEvent("dummything", "dummyKey", "", "")
 
-	// 4. The SSE return channel should reconnect automatically
+	// 4. invoke an action which should return a value
 	// An RPC call is the ultimate test
-	//var rpcArgs string = "rpc test"
-	//var rpcResp string
-	//err = cl.Rpc(dThingID, actionKey, &rpcArgs, &rpcResp)
-	//assert.NoError(t, err)
-	//assert.Equal(t, rpcArgs, rpcResp)
-
+	var rpcArgs string = "rpc test"
+	var rpcResp string
+	// this rpc receives a response from the router, not from an agent
+	err = cl.Rpc(dThingID, actionKey, &rpcArgs, &rpcResp)
+	require.NoError(t, err)
+	assert.Equal(t, rpcArgs, rpcResp)
 }

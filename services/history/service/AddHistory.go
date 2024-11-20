@@ -44,10 +44,10 @@ func (svc *AddHistory) encodeValue(msg *hubclient.ThingMessage) (storageKey stri
 	// the index uses milliseconds for timestamp
 	timestamp := createdTime.UnixMilli()
 	storageKey = strconv.FormatInt(timestamp, 10) + "/" + msg.Name
-	if msg.Operation == vocab.WotOpInvokeAction {
+	if msg.Operation == vocab.OpInvokeAction {
 		// TODO: actions subscriptions are currently not supported. This would be useful though.
 		storageKey = storageKey + "/a"
-	} else if msg.Operation == vocab.WotOpPublishProperty {
+	} else if msg.Operation == vocab.HTOpUpdateProperty {
 		storageKey = storageKey + "/p"
 	} else {
 		storageKey = storageKey + "/e"
@@ -132,13 +132,13 @@ func (svc *AddHistory) AddEvent(msg *hubclient.ThingMessage) error {
 
 // AddMessage adds an event, action or property message to the history store
 func (svc *AddHistory) AddMessage(msg *hubclient.ThingMessage) error {
-	if msg.Operation == vocab.WotOpInvokeAction {
+	if msg.Operation == vocab.OpInvokeAction {
 		return svc.AddAction(msg)
 	}
-	if msg.Operation == vocab.WotOpPublishProperty || msg.Operation == vocab.WotOpPublishProperties {
+	if msg.Operation == vocab.HTOpUpdateProperty || msg.Operation == vocab.HTOpUpdateProperties {
 		return svc.AddProperty(msg)
 	}
-	if msg.Operation == vocab.WotOpPublishEvent {
+	if msg.Operation == vocab.HTOpPublishEvent {
 		return svc.AddEvent(msg)
 	}
 	// anything else is added as an event
@@ -210,7 +210,7 @@ func (svc *AddHistory) AddProperty(msg *hubclient.ThingMessage) (err error) {
 
 	// turn each property into a ThingMessage object so they can be queried separately
 	for propName, propValue := range propMap {
-		tv := hubclient.NewThingMessage(vocab.WotOpPublishProperty,
+		tv := hubclient.NewThingMessage(vocab.HTOpUpdateProperty,
 			msg.ThingID, propName, propValue, msg.SenderID)
 		tv.Created = msg.Created
 

@@ -67,7 +67,7 @@ func (cts *ConsumedThingsDirectory) handleMessage(msg *hubclient.ThingMessage) {
 	slog.Debug("CTS.handleMessage",
 		slog.String("senderID", msg.SenderID),
 		slog.String("operation", msg.Operation),
-		slog.String("requestID", msg.RequestID),
+		slog.String("requestID", msg.CorrelationID),
 		slog.String("thingID", msg.ThingID),
 		slog.String("name", msg.Name),
 		slog.String("clientID (me)", cts.hc.GetClientID()),
@@ -75,7 +75,7 @@ func (cts *ConsumedThingsDirectory) handleMessage(msg *hubclient.ThingMessage) {
 
 	// if an event is received from an unknown Thing then (re)load its TD
 	// progress updates don't count
-	if msg.Operation != vocab.WotOpPublishActionStatus {
+	if msg.Operation != vocab.HTOpUpdateActionStatus {
 		cts.mux.RLock()
 		_, found := cts.directory[msg.ThingID]
 		cts.mux.RUnlock()
@@ -84,14 +84,14 @@ func (cts *ConsumedThingsDirectory) handleMessage(msg *hubclient.ThingMessage) {
 			_, err := cts.ReadTD(msg.ThingID)
 			if err != nil {
 				slog.Error("Received message with thingID that doesn't exist",
-					"operation", msg.Operation, "requestID", msg.RequestID,
+					"operation", msg.Operation, "requestID", msg.CorrelationID,
 					"thingID", msg.ThingID, "name", msg.Name, "senderID", msg.SenderID)
 			}
 		}
 	}
 	// update the TD of a of consumed things
 	// the directory service publishes TD updates as events
-	if msg.Operation == vocab.WotOpPublishEvent &&
+	if msg.Operation == vocab.HTOpPublishEvent &&
 		msg.ThingID == digitwin.DirectoryDThingID &&
 		msg.Name == digitwin.DirectoryEventThingUpdated {
 		// decode the TD
@@ -111,18 +111,18 @@ func (cts *ConsumedThingsDirectory) handleMessage(msg *hubclient.ThingMessage) {
 			// FIXME: consumed thing interaction output schemas also need updating
 			ct.OnTDUpdate(td)
 		}
-	} else if msg.Operation == vocab.WotOpPublishProperty {
+	} else if msg.Operation == vocab.HTOpUpdateProperty {
 		// update consumed thing, if existing
 		cts.mux.Lock()
 		defer cts.mux.Unlock()
 		ct, found := cts.consumedThings[msg.ThingID]
 		if found {
 			propValue := &digitwin.ThingValue{
-				Name: msg.Name, Data: msg.Data, RequestID: msg.RequestID,
+				Name: msg.Name, Data: msg.Data, RequestID: msg.CorrelationID,
 				SenderID: msg.SenderID, Updated: msg.Created}
 			ct.OnPropertyUpdate(propValue)
 		}
-	} else if msg.Operation == vocab.WotOpPublishActionStatus {
+	} else if msg.Operation == vocab.HTOpUpdateActionStatus {
 		// delivery status updates refer to actions
 		cts.mux.RLock()
 		ct, found := cts.consumedThings[msg.ThingID]
@@ -137,7 +137,7 @@ func (cts *ConsumedThingsDirectory) handleMessage(msg *hubclient.ThingMessage) {
 		cts.mux.RUnlock()
 		if found {
 			tv := &digitwin.ThingValue{
-				Name: msg.Name, RequestID: msg.RequestID, SenderID: msg.SenderID,
+				Name: msg.Name, RequestID: msg.CorrelationID, SenderID: msg.SenderID,
 				Updated: msg.Created, Data: msg.Data}
 			ct.OnEvent(tv)
 		}

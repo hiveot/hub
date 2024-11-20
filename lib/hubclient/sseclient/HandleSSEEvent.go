@@ -1,4 +1,4 @@
-package httpsse
+package sseclient
 
 import (
 	"fmt"
@@ -56,16 +56,16 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 	var msgData any
 	_ = jsoniter.UnmarshalFromString(event.Data, &msgData)
 	rxMsg := &hubclient.ThingMessage{
-		ThingID:   thingID,
-		Name:      name,
-		Operation: operation,
-		SenderID:  senderID,
-		Created:   time.Now().Format(utils.RFC3339Milli), // TODO: get the real timestamp
-		Data:      msgData,
-		RequestID: requestID,
+		ThingID:       thingID,
+		Name:          name,
+		Operation:     operation,
+		SenderID:      senderID,
+		Created:       time.Now().Format(utils.RFC3339Milli), // TODO: get the real timestamp
+		Data:          msgData,
+		CorrelationID: requestID,
 	}
 
-	stat.RequestID = rxMsg.RequestID
+	stat.CorrelationID = rxMsg.CorrelationID
 	slog.Debug("handleSSEEvent",
 		//slog.String("Comment", string(event.Comment)),
 		slog.String("clientID (me)", cl.clientID),
@@ -73,7 +73,7 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 		slog.String("operation", rxMsg.Operation),
 		slog.String("thingID", rxMsg.ThingID),
 		slog.String("name", rxMsg.Name),
-		slog.String("requestID", rxMsg.RequestID),
+		slog.String("requestID", rxMsg.CorrelationID),
 		slog.String("senderID", rxMsg.SenderID),
 	)
 	cl.mux.RLock()
@@ -81,24 +81,24 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 	reqHandler := cl.requestHandler
 	cl.mux.RUnlock()
 	// always handle rpc response
-	if rxMsg.Operation == vocab.WotOpPublishActionStatus {
+	if rxMsg.Operation == vocab.HTOpUpdateActionStatus {
 		// this client is receiving a delivery update from a previously sent action.
 		// The payload is a deliverystatus object
 		err := utils.DecodeAsObject(rxMsg.Data, &stat)
-		if err != nil || stat.RequestID == "" || stat.RequestID == "-" {
+		if err != nil || stat.CorrelationID == "" || stat.CorrelationID == "-" {
 			slog.Error("SSE message of type delivery update is missing requestID or not a RequestStatus ", "err", err)
 			return
 		}
 		rxMsg.Data = stat
 		//err = cl.Decode([]byte(rxMsg.Data), &stat)
 		cl.mux.RLock()
-		rChan, _ := cl.correlData[stat.RequestID]
+		rChan, _ := cl.correlData[stat.CorrelationID]
 		cl.mux.RUnlock()
 		if rChan != nil {
 			rChan <- &stat
 			// if status == DeliveryCompleted || status == Failed {
 			cl.mux.Lock()
-			delete(cl.correlData, rxMsg.RequestID)
+			delete(cl.correlData, rxMsg.CorrelationID)
 			cl.mux.Unlock()
 			return
 		} else if msgHandler != nil {
@@ -115,9 +115,9 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 	}
 
 	// note messages and requests are handled separately
-	if rxMsg.Operation == vocab.WotOpInvokeAction ||
-		rxMsg.Operation == vocab.WotOpWriteProperty ||
-		rxMsg.Operation == vocab.WotOpWriteMultipleProperties {
+	if rxMsg.Operation == vocab.OpInvokeAction ||
+		rxMsg.Operation == vocab.OpWriteProperty ||
+		rxMsg.Operation == vocab.OpWriteMultipleProperties {
 		// agent receives action request
 		if reqHandler == nil {
 			slog.Warn("handleSSEEvent, no request handler registered. Request ignored.",
@@ -128,8 +128,8 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 			return
 		}
 		stat = reqHandler(rxMsg)
-		if stat.RequestID != "" {
-			cl.PubRequestStatus(stat) // send the result to the caller
+		if stat.CorrelationID != "" {
+			cl.PubActionStatus(stat) // send the result to the caller
 		}
 	} else {
 		// pass everything else to the message handler

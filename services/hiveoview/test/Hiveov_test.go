@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/httpsse"
+	"github.com/hiveot/hub/lib/hubclient/sseclient"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/lib/tlsclient"
@@ -39,10 +39,10 @@ func WebLogin(clientID string,
 	onConnection func(bool, error),
 	onMessage func(message *hubclient.ThingMessage),
 	onRequest func(message *hubclient.ThingMessage) hubclient.RequestStatus) (
-	*httpsse.HttpSSEClient, error) {
+	*sseclient.HttpSSEClient, error) {
 
 	hostPort := fmt.Sprintf("localhost:%d", servicePort)
-	sseCl := httpsse.NewHttpSSEClient(hostPort, clientID, nil, ts.Certs.CaCert, time.Minute*10)
+	sseCl := sseclient.NewHttpSSEClient(hostPort, clientID, nil, ts.Certs.CaCert, time.Minute*10)
 	sseCl.SetConnectHandler(onConnection)
 	sseCl.SetMessageHandler(onMessage)
 	sseCl.SetRequestHandler(onRequest)
@@ -134,7 +134,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	const agentID = "agent1"
 	const testConnections = int32(1)
 	const eventName = "event1"
-	var webClients = make([]*httpsse.HttpSSEClient, 0)
+	var webClients = make([]*sseclient.HttpSSEClient, 0)
 	var connectCount atomic.Int32
 	var disConnectCount atomic.Int32
 	var messageCount atomic.Int32

@@ -5,10 +5,10 @@ import {ThingMessage} from "@hivelib/things/ThingMessage";
 import * as tslog from 'tslog';
 import { IAgentClient} from "@hivelib/hubclient/IAgentClient";
 import {getVidValue, ZWAPI} from "@zwavejs/ZWAPI";
-import {WotOpPublishProperty} from "@hivelib/api/vocab/vocab.js";
+import {HTOpUpdateProperty} from "@hivelib/api/vocab/vocab.js";
 import {handleWriteProperty} from "@zwavejs/handleWriteProperty";
 import {setValue} from "@zwavejs/setValue";
-import {RequestProgress} from "@hivelib/hubclient/RequestProgress";
+import {ActionStatus} from "@hivelib/hubclient/ActionStatus";
 
 const log = new tslog.Logger()
 
@@ -18,9 +18,9 @@ const log = new tslog.Logger()
 // Normally this returns the delivery status to the caller.
 // If delivery is in progress then use 'hc' to send further status updates.
 export function  handleInvokeAction(
-    msg: ThingMessage, zwapi: ZWAPI, hc: IAgentClient): RequestProgress {
+    msg: ThingMessage, zwapi: ZWAPI, hc: IAgentClient): ActionStatus {
 
-    let stat = new RequestProgress()
+    let stat = new ActionStatus()
     let errMsg: string = ""
     let actionLower = msg.name.toLowerCase()
     let targetNode: ZWaveNode | undefined
@@ -31,7 +31,7 @@ export function  handleInvokeAction(
         log.error(errMsg)
         return stat
     }
-    if (msg.operation == WotOpPublishProperty) {
+    if (msg.operation == HTOpUpdateProperty) {
         return handleWriteProperty(msg, node, zwapi, hc)
     }
     // unmarshal the payload

@@ -107,10 +107,10 @@ func (ct *ConsumedThing) InvokeAction(name string, params InteractionInput) *Int
 		return nil
 	}
 	// find the form that describes the protocol for invoking an action
-	//actionForm := ct.td.GetForm(vocab.WotOpInvokeAction, name, ct.hc.GetProtocolType())
+	//actionForm := ct.td.GetForm(vocab.OpInvokeAction, name, ct.hc.GetProtocolType())
 
 	//tm := hubclient.NewThingMessage(
-	//	vocab.WotOpInvokeAction, ct.td.ID, name, params, ct.hc.SenderID())
+	//	vocab.OpInvokeAction, ct.td.ID, name, params, ct.hc.SenderID())
 	//
 	////stat := ct.hc.HandleActionFlow(ct.td.ID, name, params)
 	//urlParams := map[string]string{

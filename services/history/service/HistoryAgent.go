@@ -40,9 +40,9 @@ func StartHistoryAgent(svc *HistoryService, hc hubclient.IAgentClient) {
 
 	// receive subscribed updates for events and properties
 	hc.SetMessageHandler(func(msg *hubclient.ThingMessage) {
-		if msg.Operation == vocab.WotOpPublishEvent {
+		if msg.Operation == vocab.HTOpPublishEvent {
 			_ = svc.addHistory.AddEvent(msg)
-		} else if msg.Operation == vocab.WotOpPublishProperty {
+		} else if msg.Operation == vocab.HTOpUpdateProperty {
 			_ = svc.addHistory.AddProperty(msg)
 		} else {
 			//ignore the rest
@@ -51,7 +51,7 @@ func StartHistoryAgent(svc *HistoryService, hc hubclient.IAgentClient) {
 
 	// handle service requests
 	hc.SetRequestHandler(func(msg *hubclient.ThingMessage) (stat hubclient.RequestStatus) {
-		if msg.Operation == vocab.WotOpInvokeAction {
+		if msg.Operation == vocab.OpInvokeAction {
 			if msg.ThingID == historyapi.ReadHistoryServiceID {
 				return rah.HandleRequest(msg)
 			} else if msg.ThingID == historyapi.ManageHistoryServiceID {

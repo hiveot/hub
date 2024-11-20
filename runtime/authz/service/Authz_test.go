@@ -98,12 +98,12 @@ func TestHasPermission(t *testing.T) {
 	err = svc.SetClientRole(operatorID, authz2.AdminSetClientRoleArgs{operatorID, client1Role})
 	assert.NoError(t, err)
 	// consumers have permission to publish actions and write-property requests
-	msg := hubclient.NewThingMessage(vocab.WotOpInvokeAction, thingID, key, "", operatorID)
+	msg := hubclient.NewThingMessage(vocab.OpInvokeAction, thingID, key, "", operatorID)
 	hasPerm := svc.HasPermission(msg.SenderID, msg.Operation, msg.ThingID)
 	assert.True(t, hasPerm)
 
 	// operators cannot publish property values
-	msg = hubclient.NewThingMessage(vocab.WotOpPublishProperty, thingID, key, "", operatorID)
+	msg = hubclient.NewThingMessage(vocab.HTOpUpdateProperty, thingID, key, "", operatorID)
 	hasPerm = svc.HasPermission(msg.SenderID, msg.Operation, msg.ThingID)
 	assert.False(t, hasPerm)
 }

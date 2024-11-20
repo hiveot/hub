@@ -397,37 +397,38 @@ func (tdoc *TD) GetForm(operation string, name string, protocol string) Form {
 
 		switch operation {
 		case
-			vocab.WotOpInvokeAction,
-			vocab.WotOpCancelAction,
-			vocab.WotOpQueryAction,
-			vocab.WotOpQueryAllActions:
+			vocab.OpInvokeAction,
+			vocab.OpCancelAction,
+			vocab.OpQueryAction,
+			vocab.OpQueryAllActions:
 			aff, _ := tdoc.Actions[name]
 			if aff != nil {
 				f = aff.Forms
 			}
 
 		case
-			vocab.WotOpObserveAllProperties,
-			vocab.WotOpObserveProperty,
-			vocab.WotOpReadAllProperties,
-			vocab.WotOpReadProperty,
-			vocab.WotOpReadMultipleProperties,
-			vocab.WotOpUnobserveAllProperties,
-			vocab.WotOpUnobserveProperty,
-			vocab.WotOpWriteProperty,
-			vocab.WotOpWriteAllProperties,
-			vocab.WotOpWriteMultipleProperties:
+			vocab.OpObserveAllProperties,
+			vocab.OpObserveProperty,
+			vocab.OpReadAllProperties,
+			vocab.OpReadMultipleProperties,
+			vocab.OpReadProperty,
+			vocab.OpUnobserveAllProperties,
+			vocab.OpUnobserveProperty,
+			vocab.OpWriteProperty,
+			vocab.OpWriteAllProperties,
+			vocab.OpWriteMultipleProperties:
 			aff, _ := tdoc.Properties[name]
 			if aff != nil {
 				f = aff.Forms
 			}
 
 		case
-			vocab.WotOpSubscribeAllEvents,
-			vocab.WotOpSubscribeEvent,
-			vocab.WotOpUnsubscribeAllEvents,
-			vocab.WotOpUnsubscribeEvent,
-			vocab.HTOpReadAllEvents:
+			vocab.OpSubscribeAllEvents,
+			vocab.OpSubscribeEvent,
+			vocab.OpUnsubscribeAllEvents,
+			vocab.OpUnsubscribeEvent,
+			vocab.HTOpReadAllEvents,
+			vocab.HTOpReadEvent:
 			aff, _ := tdoc.Events[name]
 			if aff != nil {
 				f = aff.Forms

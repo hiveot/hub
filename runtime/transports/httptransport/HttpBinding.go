@@ -38,7 +38,7 @@ type HttpBinding struct {
 	// subprotocol bindings
 	sse   *sse.SseBinding
 	ssesc *ssesc.SseScBinding
-	ws    *wss.WssBinding
+	ws    *wss.HubWssBinding
 
 	// authenticator for logging in and validating session tokens
 	authenticator api.IAuthenticator
@@ -84,9 +84,9 @@ func (svc *HttpBinding) AddPostOp(r chi.Router,
 	r.Post(opURL, handler)
 }
 
-// GetConnectionByCLCID returns the client connection for sending messages to a client
-func (svc *HttpBinding) GetConnectionByCLCID(clcid string) api.IClientConnection {
-	return svc.cm.GetConnectionByCLCID(clcid)
+// GetConnectionByConnectionID returns the client connection for sending messages to a client
+func (svc *HttpBinding) GetConnectionByConnectionID(connectionID string) api.IClientConnection {
+	return svc.cm.GetConnectionByConnectionID(connectionID)
 }
 
 // GetProtocolInfo returns info on the protocol supported by this binding
@@ -102,6 +102,11 @@ func (svc *HttpBinding) GetProtocolInfo() api.ProtocolInfo {
 		Transport: "https",
 	}
 	return inf
+}
+
+// GetHttpServer returns the running tls server. Intended for testing
+func (svc *HttpBinding) GetHttpServer() *tlsserver.TLSServer {
+	return svc.httpServer
 }
 
 // Stop the https server
@@ -170,7 +175,7 @@ func StartHttpTransport(config *HttpTransportConfig,
 		authenticator: authenticator,
 		config:        config,
 
-		ws:    wss.NewWssBinding(cm),
+		ws:    wss.NewWssBinding(cm, digitwinRouter),
 		sse:   sse.NewSseBinding(cm),
 		ssesc: ssesc.NewSseScBinding(cm),
 

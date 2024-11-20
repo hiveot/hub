@@ -9,12 +9,12 @@ import {
 
 import {ThingMessage} from "@hivelib/things/ThingMessage";
 import EventSource from 'eventsource'
-import {RequestProgress} from "@hivelib/hubclient/RequestProgress";
+import {ActionStatus} from "@hivelib/hubclient/ActionStatus";
 import {
-    WotOpInvokeAction,
-    WotOpPublishActionStatus,
-    WotOpPublishEvent,
-    WotOpPublishProperty
+    OpInvokeAction,
+    HTOpUpdateActionStatus,
+    HTOpPublishEvent,
+    HTOpUpdateProperty
 } from "@hivelib/api/vocab/vocab";
 
 const hclog = new tslog.Logger()
@@ -83,19 +83,19 @@ export async function  connectSSE(
             hclog.info("received ping", e)
         })
 
-        source.addEventListener(WotOpPublishActionStatus,(e:any)=>{
-            let stat: RequestProgress = JSON.parse(e.data)
+        source.addEventListener(HTOpUpdateActionStatus,(e:any)=>{
+            let stat: ActionStatus = JSON.parse(e.data)
             onProgress(stat)
         })
-        source.addEventListener(WotOpInvokeAction,(e:MessageEvent)=>{
+        source.addEventListener(OpInvokeAction,(e:MessageEvent)=>{
            let msg = parseSSEEvent(e)
             onMessage(msg)
         })
-        source.addEventListener(WotOpPublishEvent,(e:any)=>{
+        source.addEventListener(HTOpPublishEvent,(e:any)=>{
             let msg = parseSSEEvent(e)
             onMessage(msg)
         })
-        source.addEventListener(WotOpPublishProperty,(e:any)=>{
+        source.addEventListener(HTOpUpdateProperty,(e:any)=>{
             let msg = parseSSEEvent(e)
             onMessage(msg)
         })

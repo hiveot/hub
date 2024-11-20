@@ -19,6 +19,20 @@ type SseScBinding struct {
 	mux sync.RWMutex
 }
 
+// GetSseConnection returns the SSE Connection with the given ID
+// This returns nil if not found or if the connectionID is not
+func (b *SseScBinding) GetSseConnection(connectionID string) *SSEConnection {
+	c := b.cm.GetConnectionByConnectionID(connectionID)
+	if c == nil {
+		return nil
+	}
+	sseConn, isValid := c.(*SSEConnection)
+	if !isValid {
+		return nil
+	}
+	return sseConn
+}
+
 // HandleConnect handles a new sse-sc connection.
 // This doesn't return until the connection is closed by either client or server.
 func (b *SseScBinding) HandleConnect(w http.ResponseWriter, r *http.Request) {
@@ -57,7 +71,7 @@ func (b *SseScBinding) HandleConnect(w http.ResponseWriter, r *http.Request) {
 	c.Serve(w, r)
 
 	// finally cleanup the connection
-	b.cm.RemoveConnection(c.GetCLCID())
+	b.cm.RemoveConnection(c.GetConnectionID())
 }
 
 // HandleObserveProperty handles a property observe request for one or all properties
@@ -73,12 +87,12 @@ func (b *SseScBinding) HandleObserveProperty(w http.ResponseWriter, r *http.Requ
 		slog.String("thingID", rp.ThingID),
 		slog.String("name", rp.Name))
 
-	c := b.cm.GetConnectionByCLCID(rp.CLCID)
+	c := b.GetSseConnection(rp.ConnectionID)
 	if c != nil {
 		c.ObserveProperty(rp.ThingID, rp.Name)
 	} else {
 		slog.Error("HandleObserveProperty: no matching connection found",
-			"clientID", rp.ClientID, "clcid", rp.CLCID)
+			"clientID", rp.ClientID, "clcid", rp.ConnectionID)
 	}
 }
 
@@ -97,16 +111,16 @@ func (b *SseScBinding) HandleSubscribeEvent(w http.ResponseWriter, r *http.Reque
 	}
 	slog.Info("HandleSubscribe",
 		slog.String("clientID", rp.ClientID),
-		slog.String("clcid", rp.CLCID),
+		slog.String("clcid", rp.ConnectionID),
 		slog.String("thingID", rp.ThingID),
 		slog.String("name", rp.Name))
 
-	c := b.cm.GetConnectionByCLCID(rp.CLCID)
+	c := b.GetSseConnection(rp.ConnectionID)
 	if c != nil {
 		c.SubscribeEvent(rp.ThingID, rp.Name)
 	} else {
 		slog.Error("HandleSubscribeEvent: no matching connection found",
-			"clientID", rp.ClientID, "connID", rp.CLCID)
+			"clientID", rp.ClientID, "connID", rp.ConnectionID)
 	}
 }
 
@@ -129,7 +143,7 @@ func (b *SseScBinding) HandleUnobserveProperty(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	c := b.cm.GetConnectionByCLCID(rp.CLCID)
+	c := b.GetSseConnection(rp.ConnectionID)
 	if err == nil {
 		c.UnobserveProperty(rp.ThingID, rp.Name)
 	}
@@ -148,7 +162,7 @@ func (b *SseScBinding) HandleUnsubscribeEvent(w http.ResponseWriter, r *http.Req
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	c := b.cm.GetConnectionByCLCID(rp.CLCID)
+	c := b.GetSseConnection(rp.ConnectionID)
 	if err == nil {
 		c.UnsubscribeEvent(rp.ThingID, rp.Name)
 	}

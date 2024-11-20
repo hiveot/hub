@@ -127,11 +127,11 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 	sess.WritePage(w, buff, err)
 }
 
-// RenderRequestProgress renders the action progress status component.
+// RenderActionStatus renders the action progress status component.
 // TODO
 //
 //	@param thingID this is the URL parameter
-func RenderRequestProgress(w http.ResponseWriter, r *http.Request) {
+func RenderActionStatus(w http.ResponseWriter, r *http.Request) {
 	requestID := chi.URLParam(r, "requestID")
 	//action := thing.ActionAffordance{}
 	_ = requestID

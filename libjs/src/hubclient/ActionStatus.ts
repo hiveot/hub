@@ -3,7 +3,7 @@
 import {ThingMessage} from "@hivelib/things/ThingMessage";
 import {RequestDelivered, RequestFailed, RequestCompleted} from "@hivelib/api/vocab/vocab";
 
-export class RequestProgress extends Object{
+export class ActionStatus extends Object{
     // Thing ID
     thingID: string = ""
     // action name

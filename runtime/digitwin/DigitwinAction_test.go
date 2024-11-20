@@ -47,7 +47,7 @@ func TestActionFlow(t *testing.T) {
 	require.Equal(t, msgID, v.RequestID)
 
 	// complete the action
-	av, err := dtwStore.UpdateRequestProgress(agentID, thingID, actionName,
+	av, err := dtwStore.UpdateActionStatus(agentID, thingID, actionName,
 		vocab.RequestCompleted, actionValue)
 	require.NoError(t, err)
 	require.Equal(t, msgID, av.RequestID)
@@ -126,12 +126,12 @@ func TestInvokeActionErrors(t *testing.T) {
 	assert.Error(t, err)
 
 	// complete the action on wrong thing
-	_, err = dtwStore.UpdateRequestProgress(agentID, "badThingID", actionName,
+	_, err = dtwStore.UpdateActionStatus(agentID, "badThingID", actionName,
 		vocab.RequestPending, actionValue)
 	assert.Error(t, err)
 
 	// complete the action on wrong action name
-	_, err = dtwStore.UpdateRequestProgress(agentID, thingID, "badName",
+	_, err = dtwStore.UpdateActionStatus(agentID, thingID, "badName",
 		vocab.RequestCompleted, actionValue)
 	assert.Error(t, err)
 }
@@ -163,31 +163,31 @@ func TestDigitwinAgentAction(t *testing.T) {
 	// next, invoke the action to read the thing from the directory.
 	ag := service.NewDigitwinAgent(svc)
 	msg := hubclient.NewThingMessage(
-		vocab.WotOpInvokeAction, digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, dThingID, consumerID)
-	msg.RequestID = msgID
+		vocab.OpInvokeAction, digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, dThingID, consumerID)
+	msg.CorrelationID = msgID
 	stat := ag.HandleAction(msg)
 	require.Empty(t, stat.Error)
 	require.NotEmpty(t, stat.Output)
-	require.Equal(t, vocab.RequestCompleted, stat.Progress)
+	require.Equal(t, vocab.RequestCompleted, stat.Status)
 
 	// a non-existing DTD should fail
 	msg = hubclient.NewThingMessage(
-		vocab.WotOpInvokeAction, digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, "badid", consumerID)
-	msg.RequestID = msgID
+		vocab.OpInvokeAction, digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, "badid", consumerID)
+	msg.CorrelationID = msgID
 	stat = ag.HandleAction(msg)
 	require.NotEmpty(t, stat.Error)
 
 	// a non-existing method name should fail
 	msg = hubclient.NewThingMessage(
-		vocab.WotOpInvokeAction, digitwin.DirectoryDThingID, "badMethod", dThingID, consumerID)
-	msg.RequestID = msgID
+		vocab.OpInvokeAction, digitwin.DirectoryDThingID, "badMethod", dThingID, consumerID)
+	msg.CorrelationID = msgID
 	stat = ag.HandleAction(msg)
 	require.NotEmpty(t, stat.Error)
 
 	// a non-existing serviceID should fail
 	msg = hubclient.NewThingMessage(
-		vocab.WotOpInvokeAction, "badservicename", digitwin.DirectoryReadTDMethod, dThingID, consumerID)
-	msg.RequestID = msgID
+		vocab.OpInvokeAction, "badservicename", digitwin.DirectoryReadTDMethod, dThingID, consumerID)
+	msg.CorrelationID = msgID
 	stat = ag.HandleAction(msg)
 	require.NotEmpty(t, stat.Error)
 

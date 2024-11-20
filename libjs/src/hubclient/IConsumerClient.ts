@@ -1,6 +1,6 @@
 import type {IHiveKey} from "@keys/IHiveKey";
 import {ThingMessage} from "@hivelib/things/ThingMessage";
-import {RequestProgress} from "@hivelib/hubclient/RequestProgress";
+import {ActionStatus} from "@hivelib/hubclient/ActionStatus";
 
 
 export enum ConnectionStatus {
@@ -12,11 +12,11 @@ export enum ConnectionStatus {
     Unauthorized = "unauthorized"
 }
 
-export type ActionHandler = (msg:ThingMessage)=>RequestProgress;
+export type ActionHandler = (msg:ThingMessage)=>ActionStatus;
 export type EventHandler = (msg:ThingMessage)=>void;
 export type PropertyHandler = (msg:ThingMessage)=>void;
 export type ConnectionHandler = (status: ConnectionStatus)=>void;
-export type ProgressHandler = (progress:RequestProgress)=>void;
+export type ProgressHandler = (progress:ActionStatus)=>void;
 
 // IAgentClient defines the interface of the hub agent transport.
 export interface IConsumerClient  {
@@ -48,7 +48,7 @@ export interface IConsumerClient  {
     //	@param name is the action or method name of the action to invoke
     //	@param payload to publish in native format as per TD
     //
-    invokeAction(dThingID: string, name: string, requestID: string, payload: any): Promise<RequestProgress>;
+    invokeAction(dThingID: string, name: string, requestID: string, payload: any): Promise<ActionStatus>;
 
     // RefreshToken refreshes the authentication token
     // The resulting token can be used with 'ConnectWithJWT'

@@ -31,7 +31,7 @@ func TestAddRemoveTD(t *testing.T) {
 	defer r.Stop()
 	ag1, _ := ts.AddConnectAgent(agentID)
 	ag1.SetRequestHandler(func(msg *hubclient.ThingMessage) (stat hubclient.RequestStatus) {
-		stat.Progress = vocab.RequestCompleted
+		stat.Status = vocab.RequestCompleted
 		return
 	})
 	defer ag1.Disconnect()
@@ -66,7 +66,7 @@ func TestAddRemoveTD(t *testing.T) {
 	// after removal of the TD, getTD should return an error but delivery is successful
 	stat = cl1.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, string(args4JSON), nil, "")
 	require.NotEmpty(t, stat.Error)
-	require.Equal(t, vocab.RequestFailed, stat.Progress)
+	require.Equal(t, vocab.RequestFailed, stat.Status)
 
 	// expect 2 events to be received
 	require.Equal(t, int32(2), evCount.Load())
@@ -163,7 +163,7 @@ func TestTDEvent(t *testing.T) {
 
 	// wait to directory TD updated events
 	cl1.SetMessageHandler(func(msg *hubclient.ThingMessage) {
-		if msg.Operation == vocab.WotOpPublishEvent &&
+		if msg.Operation == vocab.HTOpPublishEvent &&
 			msg.ThingID == digitwin.DirectoryDThingID &&
 			msg.Name == digitwin.DirectoryEventThingUpdated {
 

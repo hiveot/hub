@@ -1,4 +1,4 @@
-package httpsse
+package sseclient
 
 import (
 	"bytes"
@@ -19,8 +19,7 @@ import (
 // go-sse allows this increase of allocation size on receiving messages
 const maxSSEMessageSize = 1024 * 1024 * 10
 
-// ConnectSSE establishes a sse session using the given HTTPS client.
-// All hub messages are send as type ThingMessage, containing thingID, name, payload and sender
+// ConnectSSE establishes a new sse connection.
 //
 // If the connection is interrupted, the sse connection retries with backoff period.
 // If an authentication error occurs then the onDisconnect handler is invoked with an error.

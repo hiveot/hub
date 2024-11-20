@@ -68,7 +68,7 @@ func HandleTdd2Go(sourceDir string, outDirBase string) error {
 	}
 	fmt.Printf("Source directory: %s\n", sourceDir)
 	//fmt.Printf("Destination base directory: %s\n", outDirBase)
-	fmt.Printf("Source file               Size (KB)  ThingID                     Title                           Output                                    Progress\n")
+	fmt.Printf("Source file               Size (KB)  ThingID                     Title                           Output                                    Status\n")
 	fmt.Printf("------------------------  ---------  --------------------------  ------------------------------  ----------------------------------------  ------\n")
 	for _, fullPath := range sourceFiles {
 		td := tdd.TD{}

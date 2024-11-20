@@ -42,12 +42,14 @@ func (svc *DigitwinRouter) HandleMessage(msg *hubclient.ThingMessage) {
 	svc.hasPermission(msg.SenderID, msg.Operation, msg.ThingID)
 
 	switch msg.Operation {
-	case vocab.WotOpPublishEvent:
+	case vocab.HTOpPublishEvent:
 		svc.HandlePublishEvent(msg)
-	case vocab.WotOpPublishProperty:
-		svc.HandlePublishProperty(msg)
-	case vocab.WotOpPublishActionStatus:
-		svc.HandlePublishRequestProgress(msg)
+	case vocab.HTOpUpdateProperty:
+		svc.HandleUpdateProperty(msg)
+	case vocab.HTOpUpdateMultipleProperties:
+		svc.HandleUpdateMultipleProperties(msg)
+	case vocab.HTOpUpdateActionStatus, vocab.HTOpUpdateActionStatuses:
+		svc.HandleUpdateActionStatus(msg)
 	case vocab.HTOpUpdateTD:
 		svc.HandleUpdateTD(msg)
 	}
@@ -58,14 +60,14 @@ func (svc *DigitwinRouter) HandleMessage(msg *hubclient.ThingMessage) {
 func (svc *DigitwinRouter) HandleRequest(
 	request *hubclient.ThingMessage, replyTo string) (stat hubclient.RequestStatus) {
 	// assign a requestID if none given
-	if request.RequestID == "" {
-		request.RequestID = "action-" + shortid.MustGenerate()
+	if request.CorrelationID == "" {
+		request.CorrelationID = "action-" + shortid.MustGenerate()
 	}
 	// TODO: use a middleware chain
 	svc.hasPermission(request.SenderID, request.Operation, request.ThingID)
 
 	switch request.Operation {
-	case vocab.WotOpInvokeAction:
+	case vocab.OpInvokeAction:
 		stat = svc.HandleInvokeAction(request, replyTo)
 	case vocab.HTOpLogin:
 		stat = svc.HandleLogin(request)
@@ -75,13 +77,13 @@ func (svc *DigitwinRouter) HandleRequest(
 		stat = svc.HandleLoginRefresh(request)
 	case vocab.HTOpReadAllEvents:
 		stat = svc.HandleReadAllEvents(request)
-	case vocab.WotOpReadAllProperties:
+	case vocab.OpReadAllProperties:
 		stat = svc.HandleReadAllProperties(request)
 	case vocab.HTOpReadEvent:
 		stat = svc.HandleReadEvent(request)
-	case vocab.WotOpReadProperty:
+	case vocab.OpReadProperty:
 		stat = svc.HandleReadProperty(request)
-	case vocab.WotOpWriteProperty:
+	case vocab.OpWriteProperty:
 		stat = svc.HandleWriteProperty(request, replyTo)
 	}
 	return stat

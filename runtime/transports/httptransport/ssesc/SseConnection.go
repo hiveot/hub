@@ -66,7 +66,7 @@ func (c *SSEConnection) _send(operation string, thingID, name string,
 	if !c.isClosed.Load() {
 		slog.Debug("_send",
 			slog.String("to", c.clientID),
-			slog.String("Operation", operation),
+			slog.String("MessageType", operation),
 			slog.String("eventID", eventID),
 		)
 		c.sseChan <- msg
@@ -93,7 +93,7 @@ func (c *SSEConnection) GetClientID() string {
 }
 
 // GetCLCID returns the clients connection ID unique within the sessions
-func (c *SSEConnection) GetCLCID() string {
+func (c *SSEConnection) GetConnectionID() string {
 	return c.clcid
 }
 
@@ -107,7 +107,7 @@ func (c *SSEConnection) InvokeAction(
 	thingID, name string, data any, requestID string, senderID string) (
 	status string, output any, err error) {
 
-	status, err = c._send(vocab.WotOpInvokeAction, thingID, name, data, requestID, senderID)
+	status, err = c._send(vocab.OpInvokeAction, thingID, name, data, requestID, senderID)
 	return status, nil, err
 }
 
@@ -137,11 +137,11 @@ func (c *SSEConnection) ObserveProperty(dThingID string, name string) {
 // PublishActionStatus sends an action progress update to the client
 // If an error is provided this sends the error, otherwise the output value
 func (c *SSEConnection) PublishActionStatus(stat hubclient.RequestStatus, agentID string) error {
-	if stat.RequestID == "" {
-		slog.Error("PublishRequestProgress without requestID", "agentID", agentID)
+	if stat.CorrelationID == "" {
+		slog.Error("PublishActionStatus without requestID", "agentID", agentID)
 	}
-	_, err := c._send(vocab.WotOpPublishActionStatus, stat.ThingID, stat.Name,
-		stat, stat.RequestID, agentID)
+	_, err := c._send(vocab.HTOpUpdateActionStatus, stat.ThingID, stat.Name,
+		stat, stat.CorrelationID, agentID)
 	return err
 }
 
@@ -150,7 +150,7 @@ func (c *SSEConnection) PublishEvent(
 	dThingID, name string, data any, requestID string, agentID string) {
 
 	if c.subscriptions.IsSubscribed(dThingID, name) {
-		_, _ = c._send(vocab.WotOpPublishEvent, dThingID, name, data, requestID, agentID)
+		_, _ = c._send(vocab.HTOpPublishEvent, dThingID, name, data, requestID, agentID)
 	}
 }
 
@@ -160,7 +160,7 @@ func (c *SSEConnection) PublishProperty(
 	dThingID, name string, data any, requestID string, agentID string) {
 
 	if c.subscriptions.IsSubscribed(dThingID, name) {
-		_, _ = c._send(vocab.WotOpPublishProperty, dThingID, name, data, requestID, agentID)
+		_, _ = c._send(vocab.HTOpUpdateProperty, dThingID, name, data, requestID, agentID)
 	}
 }
 
@@ -289,7 +289,7 @@ func (c *SSEConnection) UnobserveProperty(dThingID string, name string) {
 func (c *SSEConnection) WriteProperty(
 	thingID, name string, data any, requestID string, senderID string) (status string, err error) {
 
-	status, err = c._send(vocab.WotOpWriteProperty, thingID, name, data, requestID, senderID)
+	status, err = c._send(vocab.OpWriteProperty, thingID, name, data, requestID, senderID)
 	return status, err
 }
 

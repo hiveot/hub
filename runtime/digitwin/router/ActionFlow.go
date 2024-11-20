@@ -77,7 +77,7 @@ func (svc *DigitwinRouter) HandleInvokeAction(
 		slog.Info("HandleInvokeAction (to agent)",
 			slog.String("dThingID", msg.ThingID),
 			slog.String("actionName", msg.Name),
-			slog.String("requestID", msg.RequestID),
+			slog.String("requestID", msg.CorrelationID),
 			slog.String("senderID", msg.SenderID),
 		)
 
@@ -85,14 +85,14 @@ func (svc *DigitwinRouter) HandleInvokeAction(
 		// FIXME: don't store 'safe' actions as their results are meaningless in queryAction
 		// TODO: Maybe this shouldn't be stored at all and use properties instead.
 		_ = svc.dtwStore.UpdateActionStart(
-			msg.ThingID, msg.Name, msg.Data, msg.RequestID, msg.SenderID)
+			msg.ThingID, msg.Name, msg.Data, msg.CorrelationID, msg.SenderID)
 
 		// store a new action progress by message ID to support sending replies to the sender
 		actionRecord := ActionFlowRecord{
 			Operation: msg.Operation,
 			AgentID:   agentID,
 			ThingID:   thingID,
-			RequestID: msg.RequestID,
+			RequestID: msg.CorrelationID,
 			Name:      msg.Name,
 			SenderID:  msg.SenderID,
 			Progress:  vocab.RequestPending,
@@ -100,7 +100,7 @@ func (svc *DigitwinRouter) HandleInvokeAction(
 			ReplyTo:   replyTo,
 		}
 		svc.mux.Lock()
-		svc.activeCache[msg.RequestID] = actionRecord
+		svc.activeCache[msg.CorrelationID] = actionRecord
 		svc.mux.Unlock()
 
 		// forward to external services/things and return its response
@@ -110,9 +110,9 @@ func (svc *DigitwinRouter) HandleInvokeAction(
 		c := svc.cm.GetConnectionByClientID(agentID)
 		if c != nil {
 			found = true
-			status, output, err := c.InvokeAction(thingID, msg.Name, msg.Data, msg.RequestID, msg.SenderID)
+			status, output, err := c.InvokeAction(thingID, msg.Name, msg.Data, msg.CorrelationID, msg.SenderID)
 			stat.Delivered(msg)
-			stat.Progress = status
+			stat.Status = status
 			stat.Output = output
 			if err != nil {
 				stat.Error = err.Error()
@@ -121,8 +121,8 @@ func (svc *DigitwinRouter) HandleInvokeAction(
 
 		// Update the action status
 		svc.mux.Lock()
-		actionRecord.Progress = stat.Progress
-		svc.activeCache[msg.RequestID] = actionRecord
+		actionRecord.Progress = stat.Status
+		svc.activeCache[msg.CorrelationID] = actionRecord
 		svc.mux.Unlock()
 
 		if !found {
@@ -130,36 +130,36 @@ func (svc *DigitwinRouter) HandleInvokeAction(
 			stat.Failed(msg, err)
 		}
 		// update action status
-		_, _ = svc.dtwStore.UpdateRequestProgress(
-			agentID, thingID, msg.Name, stat.Progress, stat.Output)
+		_, _ = svc.dtwStore.UpdateActionStatus(
+			agentID, thingID, msg.Name, stat.Status, stat.Output)
 
 		// remove the action when completed
-		if stat.Progress == vocab.RequestCompleted {
+		if stat.Status == vocab.RequestCompleted {
 			svc.mux.Lock()
-			delete(svc.activeCache, msg.RequestID)
+			delete(svc.activeCache, msg.CorrelationID)
 			svc.mux.Unlock()
 
 			slog.Info("HandleInvokeAction - finished",
 				slog.String("dThingID", msg.ThingID),
 				slog.String("actionName", msg.Name),
-				slog.String("requestID", msg.RequestID),
+				slog.String("requestID", msg.CorrelationID),
 			)
-		} else if stat.Progress == vocab.RequestFailed {
+		} else if stat.Status == vocab.RequestFailed {
 			svc.mux.Lock()
-			delete(svc.activeCache, msg.RequestID)
+			delete(svc.activeCache, msg.CorrelationID)
 			svc.mux.Unlock()
 
 			slog.Warn("HandleInvokeAction - failed",
 				slog.String("dThingID", msg.ThingID),
 				slog.String("actionName", msg.Name),
-				slog.String("requestID", msg.RequestID),
+				slog.String("requestID", msg.CorrelationID),
 				slog.String("err", stat.Error))
 		}
 	}
 	return stat
 }
 
-// HandlePublishRequestProgress agent sends an action progress update.
+// HandleUpdateActionStatus agent sends an action progress update.
 // The message payload contains a RequestStatus object
 //
 // This:
@@ -169,7 +169,7 @@ func (svc *DigitwinRouter) HandleInvokeAction(
 // 4: Updates the status of the active request cache
 //
 // If the message is no longer in the active cache then it is ignored.
-func (svc *DigitwinRouter) HandlePublishRequestProgress(msg *hubclient.ThingMessage) {
+func (svc *DigitwinRouter) HandleUpdateActionStatus(msg *hubclient.ThingMessage) {
 
 	var stat hubclient.RequestStatus
 	var err error
@@ -177,24 +177,24 @@ func (svc *DigitwinRouter) HandlePublishRequestProgress(msg *hubclient.ThingMess
 	agentID := msg.SenderID
 	err = utils.DecodeAsObject(msg.Data, &stat)
 	if err != nil {
-		slog.Warn("HandlePublishRequestProgress. Invalid payload", "err", err.Error())
+		slog.Warn("HandleUpdateActionStatus. Invalid payload", "err", err.Error())
 		return
 	}
 
 	// 1: Validate this is an active action
 	svc.mux.Lock()
-	actionRecord, found := svc.activeCache[stat.RequestID]
+	actionRecord, found := svc.activeCache[stat.CorrelationID]
 	svc.mux.Unlock()
 	if !found {
 		err = fmt.Errorf(
-			"HandlePublishRequestProgress: Message '%s' from agent '%s' not in action cache. It is ignored",
-			stat.RequestID, agentID)
+			"HandleUpdateActionStatus: Message '%s' from agent '%s' not in action cache. It is ignored",
+			stat.CorrelationID, agentID)
 		slog.Warn(err.Error())
 		return
 	}
 	arAgentID := actionRecord.AgentID // this should match the msg.SenderID
 	if arAgentID != agentID {
-		slog.Error("HandlePublishRequestProgress. AgentID's don't match",
+		slog.Error("HandleUpdateActionStatus. AgentID's don't match",
 			"senderID", agentID, "requestRecord agent", arAgentID)
 		return
 	}
@@ -209,42 +209,42 @@ func (svc *DigitwinRouter) HandlePublishRequestProgress(msg *hubclient.ThingMess
 	// the sender (agents) must be the thing agent
 	if agentID != arAgentID {
 		err = fmt.Errorf(
-			"HandlePublishRequestProgress: progress update '%s' of thing '%s' does not come from agent '%s' but from '%s'. Update ignored.",
-			stat.RequestID, thingID, arAgentID, agentID)
+			"HandleUpdateActionStatus: progress update '%s' of thing '%s' does not come from agent '%s' but from '%s'. Update ignored.",
+			stat.CorrelationID, thingID, arAgentID, agentID)
 		slog.Warn(err.Error(), "agentID", agentID)
 		return
 	}
 
 	// 2: Update the action status in the digital twin action record and log errors
 	//   (for use with query actions)
-	_, err = svc.dtwStore.UpdateRequestProgress(agentID, thingID, actionName, stat.Progress, stat.Output)
+	_, err = svc.dtwStore.UpdateActionStatus(agentID, thingID, actionName, stat.Status, stat.Output)
 
 	if stat.Error != "" {
-		slog.Warn("HandlePublishRequestProgress - with error",
+		slog.Warn("HandleUpdateActionStatus - with error",
 			slog.String("AgentID", agentID),
 			slog.String("ThingID", thingID),
 			slog.String("Name", actionName),
-			slog.String("Progress", stat.Progress),
-			slog.String("RequestID", stat.RequestID),
+			slog.String("Status", stat.Status),
+			slog.String("CorrelationID", stat.CorrelationID),
 			slog.String("Error", stat.Error),
 		)
-	} else if stat.Progress == vocab.RequestCompleted {
-		slog.Info("HandlePublishRequestProgress - completed",
+	} else if stat.Status == vocab.RequestCompleted {
+		slog.Info("HandleUpdateActionStatus - completed",
 			slog.String("ThingID", thingID),
 			slog.String("Name", actionName),
-			slog.String("RequestID", stat.RequestID),
+			slog.String("CorrelationID", stat.CorrelationID),
 		)
 	} else {
-		slog.Info("HandlePublishRequestProgress - progress",
+		slog.Info("HandleUpdateActionStatus - progress",
 			slog.String("ThingID", thingID),
 			slog.String("Name", actionName),
-			slog.String("RequestID", stat.RequestID),
-			slog.String("Progress", stat.Progress),
+			slog.String("CorrelationID", stat.CorrelationID),
+			slog.String("Status", stat.Status),
 		)
 	}
 
 	// 3: Forward the progress update to the original sender
-	c := svc.cm.GetConnectionByCLCID(replyTo)
+	c := svc.cm.GetConnectionByConnectionID(replyTo)
 	if c != nil {
 		err = c.PublishActionStatus(stat, agentID)
 	} else {
@@ -254,12 +254,12 @@ func (svc *DigitwinRouter) HandlePublishRequestProgress(msg *hubclient.ThingMess
 	}
 
 	if err != nil {
-		slog.Warn("HandlePublishRequestProgress. Forwarding to sender failed",
+		slog.Warn("HandleUpdateActionStatus. Forwarding to sender failed",
 			slog.String("senderID", senderID),
 			slog.String("thingID", thingID),
 			slog.String("replyTo", replyTo),
 			slog.String("err", err.Error()),
-			slog.String("RequestID", stat.RequestID),
+			slog.String("CorrelationID", stat.CorrelationID),
 		)
 		err = nil
 	}
@@ -267,13 +267,18 @@ func (svc *DigitwinRouter) HandlePublishRequestProgress(msg *hubclient.ThingMess
 	// 4: Update the active action cache and remove the action when completed or failed
 	svc.mux.Lock()
 	defer svc.mux.Unlock()
-	actionRecord.Progress = stat.Progress
-	svc.activeCache[stat.RequestID] = actionRecord
+	actionRecord.Progress = stat.Status
+	svc.activeCache[stat.CorrelationID] = actionRecord
 
-	if stat.Progress == vocab.RequestCompleted || stat.Progress == vocab.RequestFailed {
-		delete(svc.activeCache, stat.RequestID)
+	if stat.Status == vocab.RequestCompleted || stat.Status == vocab.RequestFailed {
+		delete(svc.activeCache, stat.CorrelationID)
 	}
 	return
+}
+
+// TODO
+func (svc *DigitwinRouter) HandleUpdateMultipleActionStatuses(msg *hubclient.ThingMessage) {
+	slog.Error("HandleUpdateMultipleActionStatuses: not yet implemented")
 }
 
 // HandleQueryAction returns the action status

@@ -18,9 +18,9 @@ type IClientConnection interface {
 	// It is allowed to close an already closed connection.
 	Close()
 
-	// GetCLCID returns the client's connection ID belonging to this endpoint
+	// GetConnectionID returns the client's connection ID belonging to this endpoint
 	// this is a combination of the clientid and header cid field
-	GetCLCID() string
+	GetConnectionID() string
 
 	// GetClientID returns the authentication ID of connected agent or consumer
 	GetClientID() string
@@ -34,7 +34,7 @@ type IClientConnection interface {
 		status string, output any, err error)
 
 	// ObserveProperty adds a property subscription for this client. Use "" for wildcard
-	ObserveProperty(dThingID, name string)
+	//ObserveProperty(dThingID, name string)
 
 	// PublishActionStatus sends an action progress update to the consumer.
 	// Intended for receiving RPC results over 1-way bindings such as SSE and to
@@ -59,12 +59,12 @@ type IClientConnection interface {
 	//	requestID if the property update is associated with an action
 	PublishProperty(dThingID string, name string, value any, requestID string, agentID string)
 
-	// SubscribeEvent instructs this connection to add an event subscription. Use "" for wildcard
-	SubscribeEvent(dThingID, name string)
-	// UnsubscribeEvent instructs this connection to removes an event subscription. Use "" for wildcard
-	UnsubscribeEvent(dThingID, name string)
-	// UnobserveProperty instructs this connection to remove a property subscription. Use "" for wildcard
-	UnobserveProperty(dThingID, name string)
+	//// SubscribeEvent instructs this connection to add an event subscription. Use "" for wildcard
+	//SubscribeEvent(dThingID, name string)
+	//// UnsubscribeEvent instructs this connection to removes an event subscription. Use "" for wildcard
+	//UnsubscribeEvent(dThingID, name string)
+	//// UnobserveProperty instructs this connection to remove a property subscription. Use "" for wildcard
+	//UnobserveProperty(dThingID, name string)
 
 	// WriteProperty requests a property value change from the agent.
 	//

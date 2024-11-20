@@ -5,14 +5,14 @@ import {
 import type {IHiveKey} from "@keys/IHiveKey";
 import * as tslog from 'tslog';
 import {
-     WotOpPublishActionStatus,
-    WotOpInvokeAction, WotOpPublishEvent, WotOpPublishProperty,
+     HTOpUpdateActionStatus,
+    OpInvokeAction, HTOpPublishEvent, HTOpUpdateProperty,
 } from "@hivelib/api/vocab/vocab.js";
 import * as http2 from "node:http2";
 import {connectSSE} from "@hivelib/hubclient/httpclient/connectSSE";
 import {ThingMessage} from "@hivelib/things/ThingMessage";
 import * as https from "node:https";
-import {RequestProgress} from "@hivelib/hubclient/RequestProgress";
+import {ActionStatus} from "@hivelib/hubclient/ActionStatus";
 import {
     ActionHandler,
     ConnectionStatus,
@@ -93,7 +93,7 @@ export class HttpSSEClient implements IAgentClient {
     progressHandler: ProgressHandler | null = null;
 
     // map of requestID to delivery status update channel
-    _correlData: Map<string,(stat: RequestProgress)=>void>
+    _correlData: Map<string,(stat: ActionStatus)=>void>
 
     // Instantiate the Hub Client.
     //
@@ -239,7 +239,7 @@ export class HttpSSEClient implements IAgentClient {
             // todo: retry connecting
         }
     }
-    onProgress(stat:RequestProgress):void{
+    onProgress(stat:ActionStatus):void{
         let cb = this._correlData.get(stat.requestID)
         if (cb) {
             cb(stat)
@@ -251,11 +251,11 @@ export class HttpSSEClient implements IAgentClient {
     // Handle incoming event or property messages from the hub and pass them to handler
     onMessage(msg: ThingMessage): void {
         try {
-            if (msg.operation == WotOpInvokeAction && this.actionHandler) {
+            if (msg.operation == OpInvokeAction && this.actionHandler) {
                 this.actionHandler(msg)
-            } else if (msg.operation == WotOpPublishEvent && this.eventHandler) {
+            } else if (msg.operation == HTOpPublishEvent && this.eventHandler) {
                 this.eventHandler(msg)
-            } else if (msg.operation == WotOpPublishProperty && this.propertyHandler) {
+            } else if (msg.operation == HTOpUpdateProperty && this.propertyHandler) {
                  this.propertyHandler(msg)
             } else {
                 hclog.warn(`onMessage unknown message type: ${msg.operation}`)
@@ -263,8 +263,8 @@ export class HttpSSEClient implements IAgentClient {
         } catch (e) {
             let errText = `Error handling hub message sender=${msg.senderID}, messageType=${msg.operation}, thingID=${msg.thingID}, name=${msg.name}, error=${e}`
             hclog.warn(errText)
-            if (msg.operation == WotOpInvokeAction) {
-                let stat = new RequestProgress()
+            if (msg.operation == OpInvokeAction) {
+                let stat = new ActionStatus()
                 stat.failed(msg, errText)
                 this.pubProgressUpdate(stat)
             }
@@ -372,7 +372,7 @@ export class HttpSSEClient implements IAgentClient {
     //
     // This returns the serialized reply data or null in case of no reply data
     async invokeAction(thingID: string, name: string, requestID:string,
-                       payload: any): Promise<RequestProgress> {
+                       payload: any): Promise<ActionStatus> {
 
         hclog.info("pubAction. thingID:", thingID, ", name:", name)
 
@@ -380,7 +380,7 @@ export class HttpSSEClient implements IAgentClient {
         actionPath = actionPath.replace("{name}", name)
 
         let resp = await this.pubMessage("POST",actionPath, requestID, payload)
-        let stat: RequestProgress = JSON.parse(resp)
+        let stat: ActionStatus = JSON.parse(resp)
         return stat
     }
 
@@ -416,7 +416,7 @@ export class HttpSSEClient implements IAgentClient {
     // pubProgressUpdate sends a delivery status update back to the sender of the action
     // @param msg: action message that was received
     // @param stat: status to return
-    pubProgressUpdate(stat: RequestProgress) {
+    pubProgressUpdate(stat: ActionStatus) {
         this.pubMessage(
             "POST",PostAgentPublishProgressPath, stat.requestID, stat)
             .then().catch()
@@ -468,7 +468,7 @@ export class HttpSSEClient implements IAgentClient {
             }, 30000)
 
             // set the handler for progress messages
-            this._correlData.set(requestID, (stat:RequestProgress):void=> {
+            this._correlData.set(requestID, (stat:ActionStatus):void=> {
                 // console.log("delivery progress",stat.progress)
                 // Remove the rpc wait hook and resolve the rpc
                 clearTimeout(t1)
@@ -476,7 +476,7 @@ export class HttpSSEClient implements IAgentClient {
                 resolve(stat.reply)
             })
             this.invokeAction(dThingID, methodName, requestID, args)
-                .then((stat: RequestProgress) => {
+                .then((stat: ActionStatus) => {
                     // complete the request if the result is returned, otherwise wait for
                     // the callback from _correlData
                     if (stat.progress == RequestCompleted || stat.progress == RequestFailed) {
@@ -491,8 +491,8 @@ export class HttpSSEClient implements IAgentClient {
         })
     }
 
-    async waitForResponse(requestID:string): Promise<RequestProgress> {
-        let stat = new RequestProgress()
+    async waitForResponse(requestID:string): Promise<ActionStatus> {
+        let stat = new ActionStatus()
         stat.progress = RequestFailed
         stat.error = "no response"
         return stat

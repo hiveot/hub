@@ -302,9 +302,9 @@ func (sess *WebClientSession) onMessage(msg *hubclient.ThingMessage) {
 		//slog.Any("data", msg.Data),
 		slog.String("senderID", msg.SenderID),
 		slog.String("receiver cid", sess.cid),
-		slog.String("requestID", msg.RequestID),
+		slog.String("requestID", msg.CorrelationID),
 	)
-	if msg.Operation == vocab.WotOpPublishProperty {
+	if msg.Operation == vocab.HTOpUpdateProperty {
 		// Publish a sse event for each property
 		// The UI that displays this event can use this as a trigger to load the
 		// property value:
@@ -315,7 +315,7 @@ func (sess *WebClientSession) onMessage(msg *hubclient.ThingMessage) {
 		sess.SendSSE(thingAddr, propVal)
 		thingAddr = fmt.Sprintf("%s/%s/updated", msg.ThingID, msg.Name)
 		sess.SendSSE(thingAddr, msg.GetUpdated())
-	} else if msg.Operation == vocab.WotOpPublishActionStatus {
+	} else if msg.Operation == vocab.HTOpUpdateActionStatus {
 		// report unhandled delivery updates
 		// for now just pass it to the notification toaster
 		stat := hubclient.RequestStatus{}
@@ -325,12 +325,12 @@ func (sess *WebClientSession) onMessage(msg *hubclient.ThingMessage) {
 		//  is the same (status changes from applied to delivered)
 		if stat.Error != "" {
 			sess.SendNotify(NotifyError, stat.Error)
-		} else if stat.Progress == vocab.RequestCompleted {
+		} else if stat.Status == vocab.RequestCompleted {
 			sess.SendNotify(NotifySuccess, "Action successful")
 		} else {
-			sess.SendNotify(NotifyWarning, "Action delivery: "+stat.Progress)
+			sess.SendNotify(NotifyWarning, "Action delivery: "+stat.Status)
 		}
-		//} else if msg.MessageType == vocab.WotOpPublishEvent &&
+		//} else if msg.MessageType == vocab.HTOpPublishEvent &&
 		//	msg.ThingID == digitwin.DirectoryDThingID &&
 		//	msg.Name == digitwin.DirectoryEventThingUpdated {
 

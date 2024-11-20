@@ -7,12 +7,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/coder/websocket"
+	"github.com/gorilla/websocket"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/httpsse"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/lib/utils"
@@ -26,6 +25,8 @@ import (
 	"time"
 )
 
+const PostLoginPath = "/authn/login"
+
 // WSSClient manages the connection to the hub server using Websockets.
 // This implements the IConsumerClient interface.
 type WSSClient struct {
@@ -36,14 +37,14 @@ type WSSClient struct {
 	wssCancelFn context.CancelFunc
 	caCert      *x509.Certificate
 
-	// tlsClient is the TLS client used for sending and receiving messages
-	timeout time.Duration // request timeout
-	// '_' variables are mux protected
-	mux sync.RWMutex
-	//tlsClient *tlsclient.TLSClient
+	timeout time.Duration // rpc timeout
+	mux     sync.RWMutex
 
-	isConnected atomic.Bool
-	lastError   atomic.Pointer[error]
+	isConnected          atomic.Bool
+	retryOnDisconnect    atomic.Bool
+	lastError            atomic.Pointer[error]
+	maxReconnectAttempts int // 0 for indefinite
+	token                string
 
 	subscriptions  map[string]bool
 	connectHandler func(connected bool, err error)
@@ -53,6 +54,19 @@ type WSSClient struct {
 	requestHandler hubclient.RequestHandler
 	// map of requestID to delivery status update channel
 	correlData map[string]chan *hubclient.RequestStatus
+}
+
+// websocket connection status handler
+func (cl *WSSClient) _onConnect(connected bool, err error) {
+
+	cl.isConnected.Store(connected)
+	if cl.connectHandler != nil {
+		cl.connectHandler(connected, err)
+	}
+	// if retrying is enabled then try on disconnect
+	if !connected && cl.retryOnDisconnect.Load() {
+		cl.Reconnect()
+	}
 }
 
 // ConnectWithLoginForm invokes login using a form - temporary helper
@@ -84,12 +98,91 @@ type WSSClient struct {
 //	return err
 //}
 
+// Send a request and wait for a response.
+//
+// This creates a requestID to link the request to a response and the client timeout
+// settings for maximum wait time.
+//
+// This returns the response (action) status message as returned by the hub, or an error if sending fails.
+func (cl *WSSClient) _request(wssMsg interface{}, correlationID string) (stat hubclient.RequestStatus, err error) {
+
+	if correlationID == "" {
+		correlationID = shortid.MustGenerate()
+	}
+	rChan := make(chan *hubclient.RequestStatus)
+	cl.mux.Lock()
+	cl.correlData[correlationID] = rChan
+	cl.mux.Unlock()
+
+	err = cl._send(wssMsg)
+	stat.CorrelationID = correlationID
+	if err != nil {
+		stat.Status = vocab.RequestFailed
+		stat.Error = err.Error()
+	} else {
+		stat.Status = vocab.RequestPending
+
+		waitCount := 0
+
+		// Intermediate status update such as 'applied' are not errors. Wait longer.
+		for {
+			// if the hub return channel closed then don't bother waiting for a result
+			if !cl.IsConnected() {
+				err = fmt.Errorf("lost connection to the Hub")
+				break
+			}
+
+			// wait at most cl.timeout or until delivery completes or fails
+			// if the connection breaks while waiting then tlsClient will be nil.
+			if time.Duration(waitCount)*time.Second > cl.timeout {
+				break
+			}
+			if stat.Status == vocab.RequestCompleted || stat.Status == vocab.RequestFailed {
+				break
+			}
+			if waitCount > 0 {
+				slog.Info("Rpc (wait)",
+					slog.Int("count", waitCount),
+					slog.String("clientID", cl.clientID),
+					slog.String("correlationID", correlationID),
+				)
+			}
+			stat, err = cl.WaitForProgressUpdate(rChan, correlationID, time.Second)
+			waitCount++
+		}
+	}
+	cl.mux.Lock()
+	delete(cl.correlData, correlationID)
+	cl.mux.Unlock()
+
+	slog.Info("Rpc (result)",
+		slog.String("clientID", cl.clientID),
+		slog.String("requestID", correlationID),
+		slog.String("status", stat.Status),
+	)
+
+	// check for errors
+	if err == nil {
+		if stat.Error != "" {
+			err = errors.New(stat.Error)
+		} else if stat.Status != vocab.RequestCompleted {
+			err = errors.New("Delivery not complete. Status: " + stat.Status)
+		}
+	}
+	if err != nil {
+		slog.Error("RPC failed", "err", err.Error())
+	}
+	return stat, err
+}
+
 // Send a message over the websocket
 func (cl *WSSClient) _send(msg interface{}) error {
-	ctx, cancelFn := context.WithTimeout(context.Background(), cl.timeout)
-	jsonMsg, _ := jsoniter.Marshal(msg)
-	err := cl.wssConn.Write(ctx, websocket.MessageText, jsonMsg)
-	cancelFn()
+	if !cl.IsConnected() {
+		// note, it might be trying to reconnect in the background
+		err := fmt.Errorf("Not connected to the hub")
+		return err
+	}
+	err := cl.wssConn.WriteJSON(msg)
 	return err
 }
 
@@ -106,7 +199,7 @@ func (cl *WSSClient) ConnectWithPassword(password string) (newToken string, err 
 	wssURI, err := url.Parse(cl.wssURL)
 	loginURL := fmt.Sprintf("https://%s%s",
 		wssURI.Host,
-		httpsse.PostLoginPath)
+		PostLoginPath)
 	//cl.mux.Unlock()
 
 	slog.Info("ConnectWithPassword", "clientID", cl.clientID)
@@ -115,6 +208,7 @@ func (cl *WSSClient) ConnectWithPassword(password string) (newToken string, err 
 		Password: password,
 	}
 	// TODO: this is part of the http binding, not the websocket binding
+	// a sacrificial client to get a token
 	tlsClient := tlsclient.NewTLSClient(wssURI.Host, nil, cl.caCert, cl.timeout, "")
 	argsJSON, _ := json.Marshal(loginMessage)
 	resp, _, statusCode, _, err2 := tlsClient.Invoke(
@@ -129,10 +223,16 @@ func (cl *WSSClient) ConnectWithPassword(password string) (newToken string, err 
 		err = fmt.Errorf("ConnectWithPassword: Login to %s has unexpected response message: %s", loginURL, err)
 		return "", err
 	}
+	// with an auth token the connection can be established
 
 	cl.wssCancelFn, cl.wssConn, err = ConnectWSS(
 		cl.clientID, cl.wssURL, token, cl.caCert,
-		cl.connectHandler, cl.handleWSSMessage)
+		cl._onConnect, cl.handleWSSMessage)
+
+	if err == nil {
+		cl.token = token
+		cl.retryOnDisconnect.Store(true)
+	}
 
 	return token, err
 }
@@ -142,27 +242,19 @@ func (cl *WSSClient) ConnectWithPassword(password string) (newToken string, err 
 //
 //	jwtToken is the token previously obtained with login or refresh.
 func (cl *WSSClient) ConnectWithToken(token string) (newToken string, err error) {
-	//cl.mux.Lock()
-	//if cl.tlsClient != nil {
-	//	cl.tlsClient.Close()
-	//}
-	//slog.Info("ConnectWithToken (to hub)", "clientID", cl.clientID, "cid", cl.cid)
-	//cl.tlsClient = tlsclient.NewTLSClient(cl.hostPort, nil, cl.caCert, cl.timeout, cl.cid)
-	////cl._status.HubURL = fmt.Sprintf("https://%s", cl.hostPort)
-	//cl.mux.Unlock()
-	//cl.tlsClient.SetAuthToken(token)
-
-	// Refresh the auth token and verify the connection works.
-	//newToken, err = cl.RefreshToken(token)
-	//if err != nil {
-	//	return "", err
-	//}
-	//cl.tlsClient.SetAuthToken(newToken)
 
 	cl.wssCancelFn, cl.wssConn, err = ConnectWSS(
 		cl.clientID, cl.wssURL, token, cl.caCert,
-		cl.connectHandler, cl.handleWSSMessage)
+		cl._onConnect, cl.handleWSSMessage)
 
+	if err == nil {
+		// Refresh the auth token and verify the connection works.
+		newToken, err = cl.RefreshToken(token)
+	}
+	// once the connection is established enable the retry on disconnect
+	if err == nil {
+		cl.retryOnDisconnect.Store(true)
+	}
 	return newToken, err
 }
 
@@ -177,9 +269,16 @@ func (cl *WSSClient) Disconnect() {
 	slog.Debug("HttpSSEClient.Disconnect",
 		slog.String("clientID", cl.clientID),
 	)
+	// dont try to reconnect
+	cl.retryOnDisconnect.Store(false)
 
 	cl.mux.Lock()
-	cl.wssCancelFn()
+	if cl.wssCancelFn != nil {
+		cl.wssCancelFn()
+	}
+	if len(cl.correlData) != 0 {
+		slog.Error("Client is closed but there are still an unhandled RPC call")
+	}
 	cl.mux.Unlock()
 }
 
@@ -209,31 +308,36 @@ func (cl *WSSClient) GetHubURL() string {
 	return hubURL
 }
 
-// InvokeAction publishes an action message and waits for an answer or until timeout
-// An error is returned if delivery failed or succeeded but the action itself failed
+// InvokeAction publishes an action message.
+// To receive a reply use WaitForProgressUpdate
+// An error is returned if there is no connection.
 func (cl *WSSClient) InvokeAction(
-	dThingID string, name string, input interface{}, output interface{}, requestID string) (
+	dThingID string, name string, input interface{}, output interface{}, correlationID string) (
 	stat hubclient.RequestStatus) {
 
+	if correlationID == "" {
+		correlationID = shortid.MustGenerate()
+	}
 	slog.Info("InvokeAction",
 		slog.String("clientID (me)", cl.clientID),
 		slog.String("dThingID", dThingID),
 		slog.String("name", name),
-		slog.String("requestID", requestID),
+		slog.String("correlationID", correlationID),
 	)
-	msg := InvokeActionMessage{
-		ThingID:   dThingID,
-		Operation: vocab.WotOpInvokeAction,
-		Name:      name,
-		RequestID: requestID,
-		Input:     input,
-		Timestamp: time.Now().Format(utils.RFC3339Milli),
+	msg := ActionMessage{
+		ThingID:       dThingID,
+		MessageType:   MsgTypeInvokeAction,
+		Name:          name,
+		CorrelationID: correlationID,
+		MessageID:     correlationID,
+		Data:          input,
+		Timestamp:     time.Now().Format(utils.RFC3339Milli),
 	}
 	err := cl._send(msg)
-	stat.Progress = vocab.RequestDelivered
+	stat.Status = vocab.RequestPending
 	stat.ThingID = dThingID
 	stat.Name = name
-	stat.RequestID = requestID
+	stat.CorrelationID = correlationID
 	if err != nil {
 		stat.Error = err.Error()
 	}
@@ -275,34 +379,34 @@ func (cl *WSSClient) Observe(thingID string, name string) error {
 	if name == "" {
 		name = "+"
 	}
-	msg := ObservePropertyMessage{
-		ThingID:   thingID,
-		Operation: vocab.WotOpObserveProperty,
-		Name:      name,
+	msg := PropertyMessage{
+		ThingID:     thingID,
+		MessageType: MsgTypeObserveProperty,
+		Name:        name,
 	}
 	err := cl._send(msg)
 	return err
 }
 
-// PubProgressUpdate agent publishes a progress update message to the digital twin
+// PubActionStatus agent publishes an action progress message to the digital twin.
 // The digital twin will update the request status and notify the sender.
 // This returns an error if the connection with the server is broken
-func (cl *WSSClient) PubRequestStatus(stat hubclient.RequestStatus) {
-	slog.Debug("PubRequestStatus",
+func (cl *WSSClient) PubActionStatus(stat hubclient.RequestStatus) {
+	slog.Debug("PubActionStatus",
 		slog.String("agentID", cl.clientID),
 		slog.String("thingID", stat.ThingID),
 		slog.String("name", stat.Name),
-		slog.String("progress", stat.Progress),
-		slog.String("requestID", stat.RequestID))
+		slog.String("progress", stat.Status),
+		slog.String("requestID", stat.CorrelationID))
 
 	msg := ActionStatusMessage{
-		ThingID:   stat.ThingID,
-		Name:      stat.Name,
-		RequestID: stat.RequestID,
-		Progress:  stat.Progress,
-		Error:     stat.Error,
-		Output:    stat.Output,
-		Timestamp: time.Now().Format(utils.RFC3339Milli),
+		ThingID:       stat.ThingID,
+		Name:          stat.Name,
+		CorrelationID: stat.CorrelationID,
+		Status:        stat.Status,
+		Error:         stat.Error,
+		Output:        stat.Output,
+		Timestamp:     time.Now().Format(utils.RFC3339Milli),
 	}
 	_ = cl._send(msg)
 }
@@ -310,7 +414,7 @@ func (cl *WSSClient) PubRequestStatus(stat hubclient.RequestStatus) {
 // PubEvent agent publishes an event message and returns
 // This returns an error if the connection with the server is broken
 func (cl *WSSClient) PubEvent(
-	thingID string, name string, data any, requestID string) error {
+	thingID string, name string, data any, correlationID string) error {
 
 	slog.Debug("PubEvent",
 		slog.String("agentID", cl.clientID),
@@ -320,12 +424,12 @@ func (cl *WSSClient) PubEvent(
 		//slog.String("requestID", requestID),
 	)
 	msg := EventMessage{
-		ThingID:   thingID,
-		Operation: vocab.WotOpPublishEvent,
-		Name:      name,
-		Data:      data,
-		RequestID: requestID,
-		Timestamp: time.Now().Format(utils.RFC3339Milli),
+		ThingID:       thingID,
+		MessageType:   MsgTypePublishEvent,
+		Name:          name,
+		Data:          data,
+		CorrelationID: correlationID,
+		Timestamp:     time.Now().Format(utils.RFC3339Milli),
 	}
 	err := cl._send(msg)
 	return err
@@ -341,8 +445,8 @@ func (cl *WSSClient) PubMultipleProperties(thingID string, propMap map[string]an
 	return nil
 }
 
-// PubProperty agent publishes a property value update.
-// Intended for use by agents to property changes
+// PubProperty agent sends an update of a property value.
+// Intended for use by agents
 func (cl *WSSClient) PubProperty(thingID string, name string, value any) error {
 	slog.Info("PubProperty",
 		slog.String("thingID", thingID),
@@ -350,11 +454,12 @@ func (cl *WSSClient) PubProperty(thingID string, name string, value any) error {
 		slog.Any("value", value))
 
 	msg := PropertyMessage{
-		ThingID:   thingID,
-		Operation: vocab.WotOpPublishProperty,
-		Name:      name,
-		Data:      value,
-		Timestamp: time.Now().Format(utils.RFC3339Milli),
+		ThingID:     thingID,
+		MessageType: MsgTypePropertyReading,
+		Name:        name,
+		Data:        value,
+		Timestamp:   time.Now().Format(utils.RFC3339Milli),
+		MessageID:   shortid.MustGenerate(),
 	}
 	err := cl._send(msg)
 	return err
@@ -371,10 +476,47 @@ func (cl *WSSClient) PubTD(thingID string, tdJSON string) error {
 }
 
 // RefreshToken refreshes the authentication token
-// The resulting token can be used with 'ConnectWithJWT'
+//
+// The resulting token can be used with 'ConnectWithToken'
 func (cl *WSSClient) RefreshToken(oldToken string) (newToken string, err error) {
 	slog.Info("RefreshToken", slog.String("clientID", cl.clientID))
-	return "", fmt.Errorf("not implemented")
+	//stat := cl.InvokeAction(authn.UserDThingID, authn.UserRefreshTokenMethod, oldToken, &newToken, "")
+	data := authn.UserRefreshTokenArgs{OldToken: oldToken, ClientID: cl.clientID}
+	msg := ActionMessage{
+		MessageType:   MsgTypeRefresh,
+		Data:          data,
+		MessageID:     shortid.MustGenerate(),
+		CorrelationID: shortid.MustGenerate(),
+	}
+	stat, err := cl._request(msg, msg.CorrelationID)
+	if err == nil {
+		newToken = utils.DecodeAsString(stat.Output)
+		cl.token = newToken
+	}
+	return newToken, err
+}
+
+// Reconnect attempts to re-establish a dropped connection using the last token
+func (cl *WSSClient) Reconnect() {
+	var err error
+	for i := 0; cl.maxReconnectAttempts == 0 || i < cl.maxReconnectAttempts; i++ {
+		slog.Warn("Reconnecting attempt",
+			slog.String("clientID", cl.clientID),
+			slog.Int("i", i))
+		_, err = cl.ConnectWithToken(cl.token)
+		if err == nil {
+			break
+		}
+		// retry until max repeat is reached or disconnect is called
+		if !cl.retryOnDisconnect.Load() {
+			break
+		}
+		// the connection timeout doesn't seem to work for some reason
+		time.Sleep(time.Second)
+	}
+	if err != nil {
+		slog.Warn("Reconnect failed: ", "err", err.Error())
+	}
 }
 
 // Rpc publishes and action and waits for a completion or failed progress update.
@@ -382,6 +524,8 @@ func (cl *WSSClient) RefreshToken(oldToken string) (newToken string, err error) 
 // that support the 'rpc' capabilities (eg, the agent sends the progress update)
 func (cl *WSSClient) Rpc(
 	thingID string, name string, args interface{}, resp interface{}) (err error) {
+
+	// TODO: share this code with the server _request()
 
 	// a requestID is needed before the action is published in order to match it with the reply
 	requestID := "rpc-" + shortid.MustGenerate()
@@ -392,7 +536,7 @@ func (cl *WSSClient) Rpc(
 		slog.String("name", name),
 		slog.String("requestID", requestID),
 	)
-
+	//cl._request(msg)
 	rChan := make(chan *hubclient.RequestStatus)
 	cl.mux.Lock()
 	cl.correlData[requestID] = rChan
@@ -400,33 +544,42 @@ func (cl *WSSClient) Rpc(
 
 	// invoke with query parameters to provide the message ID
 	stat := cl.InvokeAction(thingID, name, args, resp, requestID)
-	waitCount := 0
+	if stat.Error != "" {
+		slog.Warn("InvokeAction: failed",
+			"thingID", thingID,
+			"name", name,
+			"err", stat.Error)
+	} else {
+		waitCount := 0
 
-	// Intermediate status update such as 'applied' are not errors. Wait longer.
-	for {
-		// if the hub return channel doesnt exists then don't bother waiting for a result
-		if !cl.IsConnected() {
-			break
-		}
+		// Intermediate status update such as 'applied' are not errors. Wait longer.
+		for {
+			// if the hub connection no longer exists then don't wait any longer
+			if !cl.IsConnected() {
+				stat.Error = "Connection lost"
+				stat.Status = ActionStatusFailed
+				break
+			}
 
-		// wait at most cl.timeout or until delivery completes or fails
-		// if the connection breaks while waiting then tlsClient will be nil.
-		if time.Duration(waitCount)*time.Second > cl.timeout {
-			break
+			// wait at most cl.timeout or until delivery completes or fails
+			// if the connection breaks while waiting then tlsClient will be nil.
+			if time.Duration(waitCount)*time.Second > cl.timeout {
+				break
+			}
+			if stat.Status == vocab.RequestCompleted || stat.Status == vocab.RequestFailed {
+				break
+			}
+			if waitCount > 0 {
+				slog.Info("Rpc (wait)",
+					slog.Int("count", waitCount),
+					slog.String("clientID", cl.clientID),
+					slog.String("name", name),
+					slog.String("requestID", requestID),
+				)
+			}
+			stat, err = cl.WaitForProgressUpdate(rChan, requestID, time.Second)
+			waitCount++
 		}
-		if stat.Progress == vocab.RequestCompleted || stat.Progress == vocab.RequestFailed {
-			break
-		}
-		if waitCount > 0 {
-			slog.Info("Rpc (wait)",
-				slog.Int("count", waitCount),
-				slog.String("clientID", cl.clientID),
-				slog.String("name", name),
-				slog.String("requestID", requestID),
-			)
-		}
-		stat, err = cl.WaitForProgressUpdate(rChan, requestID, time.Second)
-		waitCount++
 	}
 	cl.mux.Lock()
 	delete(cl.correlData, requestID)
@@ -436,15 +589,15 @@ func (cl *WSSClient) Rpc(
 		slog.String("thingID", thingID),
 		slog.String("name", name),
 		slog.String("requestID", requestID),
-		slog.String("status", stat.Progress),
+		slog.String("status", stat.Status),
 	)
 
 	// check for errors
 	if err == nil {
 		if stat.Error != "" {
 			err = errors.New(stat.Error)
-		} else if stat.Progress != vocab.RequestCompleted {
-			err = errors.New("Delivery not complete. Progress: " + stat.Progress)
+		} else if stat.Status != vocab.RequestCompleted {
+			err = errors.New("Delivery not complete. Status: " + stat.Status)
 		}
 	}
 	if err != nil {
@@ -463,27 +616,27 @@ func (cl *WSSClient) Rpc(
 func (cl *WSSClient) SendOperation(
 	thingID string, name string, op tdd.Form, data any) (stat hubclient.RequestStatus) {
 
-	requestID := ""
+	correlationID := ""
 	slog.Info("InvokeOperation",
 		slog.String("clientID (me)", cl.clientID),
 		slog.String("thingID", thingID),
 		slog.String("name", name),
-		slog.String("requestID", requestID),
+		slog.String("correlationID", correlationID),
 	)
 	// TODO: pick the message format based on the operation
-	msg := InvokeActionMessage{
-		ThingID:   thingID,
-		Operation: op.GetOperation(),
-		Name:      name,
-		RequestID: requestID,
-		Input:     data,
-		Timestamp: time.Now().Format(utils.RFC3339Milli),
+	msg := ActionMessage{
+		ThingID:       thingID,
+		MessageType:   op.GetOperation(),
+		Name:          name,
+		CorrelationID: correlationID,
+		Data:          data,
+		Timestamp:     time.Now().Format(utils.RFC3339Milli),
 	}
 	err := cl._send(msg)
-	stat.Progress = vocab.RequestDelivered
+	stat.Status = vocab.RequestPending
 	stat.ThingID = thingID
 	stat.Name = name
-	stat.RequestID = requestID
+	stat.CorrelationID = correlationID
 	if err != nil {
 		stat.Error = err.Error()
 	}
@@ -535,10 +688,10 @@ func (cl *WSSClient) Subscribe(thingID string, name string) error {
 	if name == "" {
 		name = "+"
 	}
-	msg := SubscribeMessage{
-		ThingID:   thingID,
-		Operation: vocab.WotOpSubscribeEvent,
-		Name:      name,
+	msg := EventMessage{
+		ThingID:     thingID,
+		MessageType: MsgTypeSubscribeEvent,
+		Name:        name,
 	}
 	err := cl._send(msg)
 	return err
@@ -563,10 +716,10 @@ func (cl *WSSClient) Unobserve(thingID string, name string) error {
 	if name == "" {
 		name = "+"
 	}
-	msg := ObservePropertyMessage{
-		ThingID:   thingID,
-		Operation: vocab.WotOpUnobserveProperty,
-		Name:      name,
+	msg := PropertyMessage{
+		ThingID:     thingID,
+		MessageType: MsgTypeUnobserveProperty,
+		Name:        name,
 	}
 	err := cl._send(msg)
 	return err
@@ -585,10 +738,10 @@ func (cl *WSSClient) Unsubscribe(thingID string, name string) error {
 	if name == "" {
 		name = "+"
 	}
-	msg := SubscribeMessage{
-		ThingID:   thingID,
-		Operation: vocab.WotOpUnsubscribeEvent,
-		Name:      name,
+	msg := EventMessage{
+		ThingID:     thingID,
+		MessageType: MsgTypeUnsubscribeEvent,
+		Name:        name,
 	}
 	err := cl._send(msg)
 	return err
@@ -609,7 +762,6 @@ func (cl *WSSClient) WaitForProgressUpdate(
 	case <-ctx.Done():
 		err = errors.New("Timeout waiting for status update: requestID=" + requestID)
 	}
-
 	return stat, err
 }
 
@@ -622,20 +774,20 @@ func (cl *WSSClient) WriteProperty(thingID string, name string, data any) (
 		slog.String("thingID", thingID),
 		slog.String("name", name),
 	)
-	requestID := shortid.MustGenerate()
+	correlationID := shortid.MustGenerate()
 	msg := PropertyMessage{
-		ThingID:   thingID,
-		Operation: vocab.WotOpWriteProperty,
-		Name:      name,
-		Data:      data,
-		RequestID: requestID,
-		Timestamp: time.Now().Format(utils.RFC3339Milli),
+		ThingID:       thingID,
+		MessageType:   MsgTypeWriteProperty,
+		Name:          name,
+		Data:          data,
+		CorrelationID: correlationID,
+		Timestamp:     time.Now().Format(utils.RFC3339Milli),
 	}
 	err := cl._send(msg)
 	stat.ThingID = thingID
 	stat.Name = name
-	stat.RequestID = requestID
-	stat.Progress = vocab.RequestDelivered
+	stat.CorrelationID = correlationID
+	stat.Status = vocab.RequestPending
 	if err != nil {
 		stat.Error = err.Error()
 	}
@@ -675,7 +827,8 @@ func NewWSSClient(wssURL string, clientID string,
 		caCert:   caCert,
 
 		// max delay 3 seconds before a response is expected
-		timeout: timeout,
+		timeout:              timeout,
+		maxReconnectAttempts: 0, // 1 attempt per second
 
 		correlData: make(map[string]chan *hubclient.RequestStatus),
 		// max message size for bulk reads is 10MB.

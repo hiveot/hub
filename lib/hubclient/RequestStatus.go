@@ -14,9 +14,9 @@ type RequestStatus struct {
 	// The action name
 	Name string `json:"name"`
 	// Request ID
-	RequestID string `json:"requestID"`
+	CorrelationID string `json:"requestID"`
 	// Updated delivery progress
-	Progress string `json:"progress"`
+	Status string `json:"status"`
 	// Error in case delivery or processing has failed
 	Error string `json:"error"`
 	// Native reply data in case delivery and processing has completed
@@ -28,8 +28,8 @@ type RequestStatus struct {
 //
 // msg is the internal thing message containing the request that completed.
 func (stat *RequestStatus) Completed(msg *ThingMessage, reply any, err error) *RequestStatus {
-	stat.Progress = vocab.RequestCompleted
-	stat.RequestID = msg.RequestID
+	stat.Status = vocab.RequestCompleted
+	stat.CorrelationID = msg.CorrelationID
 	stat.Output = reply
 	stat.ThingID = msg.ThingID
 	stat.Name = msg.Name
@@ -53,8 +53,8 @@ func (stat *RequestStatus) Completed(msg *ThingMessage, reply any, err error) *R
 func (stat *RequestStatus) Delivered(msg *ThingMessage) *RequestStatus {
 	stat.ThingID = msg.ThingID
 	stat.Name = msg.Name
-	stat.Progress = vocab.RequestDelivered
-	stat.RequestID = msg.RequestID
+	stat.Status = vocab.RequestDelivered
+	stat.CorrelationID = msg.CorrelationID
 	return stat
 }
 
@@ -66,8 +66,8 @@ func (stat *RequestStatus) Delivered(msg *ThingMessage) *RequestStatus {
 func (stat *RequestStatus) Failed(msg *ThingMessage, err error) *RequestStatus {
 	stat.ThingID = msg.ThingID
 	stat.Name = msg.Name
-	stat.Progress = vocab.RequestFailed
-	stat.RequestID = msg.RequestID
+	stat.Status = vocab.RequestFailed
+	stat.CorrelationID = msg.CorrelationID
 	stat.Error = err.Error()
 	return stat
 }

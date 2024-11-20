@@ -46,7 +46,7 @@ func AddSessionFromToken(userAuthn api.IAuthenticator) func(next http.Handler) h
 				errMsg := "Invalid session token"
 				http.Error(w, errMsg, http.StatusUnauthorized)
 
-				slog.Warn("Invalid session token:",
+				slog.Warn("AddSessionFromToken: Invalid session token:",
 					"err", err, "clientID", clientID)
 				return
 			}

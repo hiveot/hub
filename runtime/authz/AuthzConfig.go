@@ -53,7 +53,7 @@ type RolePermission struct {
 	//AgentID string
 	// thingID or capability, or "" for all
 	ThingID string
-	// WotOpSubscribeEvent,... action, config, or "" for all message types
+	// OpSubscribeEvent,... action, config, or "" for all message types
 	Operations []string
 	// action name or "" for all actions
 	//MsgKey string
@@ -63,11 +63,11 @@ type RolePermission struct {
 // and subscribe to their own actions and config
 var agentPermissions = RolePermission{
 	Operations: []string{
-		vocab.WotOpInvokeAction,
-		vocab.WotOpPublishActionStatus,
-		vocab.WotOpPublishEvent,
-		vocab.WotOpPublishProperties,
-		vocab.WotOpPublishProperty,
+		vocab.OpInvokeAction,
+		vocab.HTOpUpdateActionStatus,
+		vocab.HTOpPublishEvent,
+		vocab.HTOpUpdateProperties,
+		vocab.HTOpUpdateProperty,
 		vocab.HTOpUpdateTD,
 	},
 }
@@ -76,15 +76,15 @@ var agentPermissions = RolePermission{
 var servicePermissions = RolePermission{
 
 	Operations: []string{
-		vocab.WotOpInvokeAction,
-		vocab.WotOpObserveProperty,
-		vocab.WotOpObserveAllProperties,
-		vocab.WotOpPublishActionStatus,
-		vocab.WotOpPublishEvent,
-		vocab.WotOpPublishProperties,
-		vocab.WotOpPublishProperty,
-		vocab.WotOpSubscribeEvent,
-		vocab.WotOpSubscribeAllEvents,
+		vocab.OpInvokeAction,
+		vocab.OpObserveProperty,
+		vocab.OpObserveAllProperties,
+		vocab.HTOpUpdateActionStatus,
+		vocab.HTOpPublishEvent,
+		vocab.HTOpUpdateProperties,
+		vocab.HTOpUpdateProperty,
+		vocab.OpSubscribeEvent,
+		vocab.OpSubscribeAllEvents,
 		vocab.HTOpUpdateTD,
 	},
 }
@@ -92,8 +92,8 @@ var servicePermissions = RolePermission{
 // viewers can subscribe to events from all things
 var viewerPermissions = RolePermission{
 	Operations: []string{
-		vocab.WotOpObserveProperty,
-		vocab.WotOpSubscribeEvent,
+		vocab.OpObserveProperty,
+		vocab.OpSubscribeEvent,
 	},
 }
 
@@ -101,23 +101,23 @@ var viewerPermissions = RolePermission{
 // operators cannot configure things
 var operatorPermissions = RolePermission{
 	Operations: []string{
-		vocab.WotOpInvokeAction,
-		vocab.WotOpObserveProperty,
-		vocab.WotOpObserveAllProperties,
-		vocab.WotOpSubscribeEvent,
-		vocab.WotOpSubscribeAllEvents,
+		vocab.OpInvokeAction,
+		vocab.OpObserveProperty,
+		vocab.OpObserveAllProperties,
+		vocab.OpSubscribeEvent,
+		vocab.OpSubscribeAllEvents,
 	},
 }
 
 // managers can sub all events and pub all actions
 var managerPermissions = RolePermission{
 	Operations: []string{
-		vocab.WotOpInvokeAction,
-		vocab.WotOpObserveProperty,
-		vocab.WotOpObserveAllProperties,
-		vocab.WotOpSubscribeEvent,
-		vocab.WotOpSubscribeAllEvents,
-		vocab.WotOpWriteProperty,
+		vocab.OpInvokeAction,
+		vocab.OpObserveProperty,
+		vocab.OpObserveAllProperties,
+		vocab.OpSubscribeEvent,
+		vocab.OpSubscribeAllEvents,
+		vocab.OpWriteProperty,
 	},
 }
 

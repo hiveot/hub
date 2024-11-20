@@ -62,38 +62,56 @@ WoTVocab:
     WoTPSKSecurityScheme    : "PSKSecurityScheme"
     WoTOAuth2SecurityScheme : "OAuth2SecurityScheme"
 
-    #--- HTTP Protocol binding operations
+    #--- Consumer HTTP Protocol binding operations
     # Properties
-    WotOpObserveAllProperties : "observeallproperties"
-    WotOpObserveProperty        : "observeproperty"
-    WotOpReadAllProperties      : "readallproperties"
-    WotOpReadMultipleProperties : "readmultipleproperties"
-    WotOpReadProperty           : "readproperty"
-    WotOpWriteAllProperties     : "writeallproperties"
-    WotOpWriteMultipleProperties : "writemultipleproperties"
-    WotOpWriteProperty          : "writeproperty"
-    WotOpUnobserveAllProperties : "unobserveallproperties"
-    WotOpUnobserveProperty      : "unobserveroperty"
+    OpObserveAllProperties : "observeallproperties"
+    OpObserveProperty        : "observeproperty"
+    OpReadAllProperties      : "readallproperties"
+    OpReadMultipleProperties : "readmultipleproperties"
+    OpReadProperty           : "readproperty"
+    OpWriteAllProperties     : "writeallproperties"
+    OpWriteMultipleProperties : "writemultipleproperties"
+    OpWriteProperty          : "writeproperty"
+    OpUnobserveAllProperties : "unobserveallproperties"
+    OpUnobserveProperty      : "unobserveroperty"
 
     # Events
-    WotOpSubscribeAllEvents : "subscribeallevents"
-    WotOpSubscribeEvent : "subscribeevent"
-    WotOpUnsubscribeAllEvents : "unsubscribeallevents"
-    WotOpUnsubscribeEvent : "unsubscribeevent"
+    OpSubscribeAllEvents : "subscribeallevents"
+    OpSubscribeEvent : "subscribeevent"
+    OpUnsubscribeAllEvents : "unsubscribeallevents"
+    OpUnsubscribeEvent : "unsubscribeevent"
 
     # Actions
-    WotOpCancelAction : "cancelaction"
-    WotOpInvokeAction : "invokeaction"
-    WotOpQueryAllActions : "queryallactions"
-    WotOpQueryAction : "queryaction"
+    OpCancelAction : "cancelaction"
+    OpInvokeAction : "invokeaction"
+    OpQueryAllActions : "queryallactions"
+    OpQueryAction : "queryaction"
 
-    # additional WSS operations that not in the TD-1.1 spec.
-    # From: https://docs.google.com/document/d/1KWv-aQfMgsqBFg0v4rVqzcVvzzisC7y4X4CMUYGc8rE/edit?tab=t.0
-    WotOpPublishActionStatus : "actionstatus"
-    WotOpPublishActionStatuses : "actionstatuses"
-    WotOpPublishError : "error"
-    WotOpPublishEvent : "event"
-    WotOpPublishProperty : "property"
-    WotOpPublishProperties : "properties"
-    WotOpPing : "ping"
-    WotOpPong : "pong"    # response message
+    #--- non wot-standard operations ---
+
+    # consumer operations not in the TD spec
+    # TODO: look for a standard approach in the auth spec
+    HTOpLogin: "login"
+    HTOpLogout: "logout"
+    HTOpRefresh: "refresh"
+    # TODO: look for a solution the directory service specification
+    HTOpReadAllTDs: "readalltds"
+    # TODO: readevents might not have an alternative
+    HTOpReadAllEvents: "readallevents" # not standard
+    HTOpReadEvent: "readevent"  # not standard
+    # TODO: look in the discovery specification for a compatible approach
+    HTOpReadTD: "readtd"
+
+    # FIXME: figure out how to perform Thing to Hub operations operations in the
+    # protocol binding instead of defining them as Form operations.
+    # Until then define them as HiveOT operations
+    HTOpPublishError : "error"
+    HTOpPublishEvent : "event"
+    HTOpUpdateActionStatus : "actionstatus"
+    HTOpUpdateActionStatuses : "actionstatuses"
+    HTOpUpdateTD: "updatetd"  # Maybe better through a discovery method?
+    HTOpUpdateProperty : "updateproperty"  # belongs in protocol binding - observe
+    HTOpUpdateProperties : "updateproperties" # belongs in protocol binding - observe
+    HTOpUpdateMultipleProperties : "updatemultipleproperties"
+
+

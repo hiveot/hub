@@ -51,9 +51,16 @@ type ThingMessage struct {
 	// Data in the native format as described in the TD affordance dataschema.
 	Data any
 
-	// RequestID of the message. Intended to track progress and detect duplicates.
+	// CorrelationID of the message. Intended to track action progress.
 	// Optional. The hub will generate a unique requestID if omitted.
-	RequestID string
+	CorrelationID string
+
+	// MessageID unique ID of the message. Intended to detect duplicates.
+	// Generated on receiving a message.
+	MessageID string
+
+	// Timestamp in RFC3339 the data was created, or the message if no data is present.
+	Timestamp string
 }
 
 // DataAsText return a text representation of the data that is independent of

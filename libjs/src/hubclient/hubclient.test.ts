@@ -1,9 +1,9 @@
 import process from "node:process";
 import * as tslog from 'tslog';
-import {RequestProgress} from './RequestProgress';
+import {ActionStatus} from './ActionStatus';
 import {ThingMessage} from "../things/ThingMessage";
 import {ConnectToHub} from "@hivelib/hubclient/ConnectToHub";
-import {WotOpPublishActionStatus, WotOpInvokeAction} from "@hivelib/api/vocab/vocab.js";
+import {HTOpUpdateActionStatus, OpInvokeAction} from "@hivelib/api/vocab/vocab.js";
 import {RequestCompleted, RequestDelivered} from "@hivelib/api/vocab/vocab.js";
 
 const log = new tslog.Logger({name: "HCTest"})
@@ -76,9 +76,9 @@ async function test3() {
     try {
         token = await hc.connectWithPassword(testPass)
 
-        hc.setActionHandler((tm: ThingMessage):RequestProgress => {
+        hc.setActionHandler((tm: ThingMessage):ActionStatus => {
             log.info("Received message: type="+tm.operation+"; key=" + tm.name)
-            let stat = new RequestProgress()
+            let stat = new ActionStatus()
             stat.completed(tm)
             return stat
         })
@@ -124,7 +124,7 @@ async function test4() {
     let clToken = ""
     let ev1Count = 0
     let actionCount = 0
-    let actionDelivery: RequestProgress | undefined
+    let actionDelivery: ActionStatus | undefined
 
     // connect a service that sends events
     let hcSvc = await ConnectToHub(baseURL, testSvcID, caCertPEM, true)
@@ -148,16 +148,16 @@ async function test4() {
     try {
         await hcCl.subscribe("dtw:testsvc:thing1", "")
         // await hcCl.subscribe("","")
-        hcCl.setActionHandler((tm: ThingMessage): RequestProgress => {
-            let stat = new RequestProgress()
+        hcCl.setActionHandler((tm: ThingMessage): ActionStatus => {
+            let stat = new ActionStatus()
             if (tm.thingID == "dtw:testsvc:thing1") {
                 log.info("Received event: " + tm.name + "; data=" + tm.data)
                 ev1Count++
-            } else if (tm.operation == WotOpPublishActionStatus) {
+            } else if (tm.operation == HTOpUpdateActionStatus) {
                 // FIXME: why is data base64 encoded? => data type in golang was []byte; changed to string
                 // let data = Buffer.from(tm.data,"base64").toString()
                 actionDelivery = JSON.parse(tm.data)
-            } else if (tm.operation == WotOpInvokeAction) {
+            } else if (tm.operation == OpInvokeAction) {
                 actionCount++
                 stat.reply = "success"
             }
@@ -180,8 +180,8 @@ async function test4() {
     }
     // round 4, send an action to the digitwin thing of the test service
     try {
-        hcSvc.setActionHandler((msg: ThingMessage): RequestProgress => {
-            let stat = new RequestProgress()
+        hcSvc.setActionHandler((msg: ThingMessage): ActionStatus => {
+            let stat = new ActionStatus()
             // agents receive the thingID without prefix
             if (msg.thingID == "thing1") {
                 console.info("success!")

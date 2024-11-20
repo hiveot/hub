@@ -87,7 +87,7 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 	// TODO: map delivery status to language
 
 	// the async reply will contain status update
-	//sess.SendNotify(session.NotifyInfo, "Delivery Progress for '"+actionName+"': "+stat.Progress)
+	//sess.SendNotify(session.NotifyInfo, "Delivery Status for '"+actionName+"': "+stat.Status)
 	unit := ""
 	if actionAff.Output != nil {
 		unit = actionAff.Output.Unit

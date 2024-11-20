@@ -4,9 +4,9 @@ import (
 	"github.com/hiveot/hub/lib/hubclient"
 )
 
-// RequestProgressHandler is the handler for return an action progress to sender.
-// Used by router HandlePublishRequestProgress to send the action result to the sender.
-type RequestProgressHandler func(stat hubclient.RequestStatus, agentID string) error
+// ActionStatusHandler is the handler for return an action progress to sender.
+// Used by router HandleUpdateActionStatus to send the action result to the sender.
+type ActionStatusHandler func(stat hubclient.RequestStatus, agentID string) error
 
 type HandleMessage func(msg *hubclient.ThingMessage)
 

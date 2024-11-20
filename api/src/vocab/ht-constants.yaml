@@ -1,32 +1,10 @@
 # definition of constants used in hiveot
 
-# HiveOT operations
-Operations:
-  version: "0.1"
-  link: "github.com/hiveot/hub/api/vocab/ht-constants.yaml"
-  description: "HiveOT operations"
-  namespace: "ht"
-  vocab:
-    # consumer operations
-    HTOpLogin: "login"
-    HTOpLogout: "logout"
-    HTOpRefresh: "refresh"
-    HTOpReadEvent: "readevent"
-    HTOpReadAllEvents: "readallevents"
-    HTOpReadAllTDs: "readalltds"
-    HTOpReadTD: "readtd"
-    # agent operations
-    HTOpUpdateTD: "updatetd"  # directory operation
-#    HTOpDelivery: "updatedelivery"
-#    HTOpPublishEvent: "publishevent"
-#    HTOpPublishMultipleProperties: "publishmultipleproperties"
-#    HTOpPublishProperty: "publishproperty"
 
 
 
-
-# RequestProgressStatus for action and write property requests
-RequestProgressStatus:
+# ActionStatusStatus for action and write property requests
+ActionStatusStatus:
   version: "0.1"
   link: "github.com/hiveot/hub/api/vocab/ht-constants.yaml"
   description: "Request progress status constants"

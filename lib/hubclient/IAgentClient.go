@@ -37,7 +37,7 @@ type IAgentClient interface {
 	//
 	// Intended for agents that have processed an incoming action request asynchronously
 	// and need to send an update on further progress.
-	PubRequestStatus(stat RequestStatus)
+	PubActionStatus(stat RequestStatus)
 
 	// PubMultipleProperties [agent] publishes a batch of property values to the hub
 	// It returns as soon as delivery to the hub is confirmed.

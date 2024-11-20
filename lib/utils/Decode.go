@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"encoding/json"
 	"fmt"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
@@ -117,9 +116,9 @@ func DecodeAsObject(value any, object interface{}) error {
 		object = nil
 		return nil
 	} else {
-		serObj, err := json.Marshal(value)
+		serObj, err := jsoniter.Marshal(value)
 		if err == nil {
-			err = json.Unmarshal(serObj, object)
+			err = jsoniter.Unmarshal(serObj, object)
 		}
 		return err
 	}

@@ -1,5 +1,5 @@
 import {IAgentClient} from "@hivelib/hubclient/IAgentClient";
-import {RequestProgress} from "@hivelib/hubclient/RequestProgress";
+import {ActionStatus} from "@hivelib/hubclient/ActionStatus";
 
 // duplicated from stateapi.go
 const AgentID = "state"      // the state binding agentID
@@ -64,7 +64,7 @@ export class StateClient {
     }
 
     // Set the value of a key
-    async Set(key: string, data: string):Promise<RequestProgress> {
+    async Set(key: string, data: string):Promise<ActionStatus> {
         let args = {
             key: key,
             value: data
