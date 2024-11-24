@@ -3,13 +3,12 @@ package service
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/hubclient"
 	"log/slog"
 	"time"
 )
 
 // HandleConfigRequest handles requests to configure the service or devices
-func (svc *OWServerBinding) HandleConfigRequest(msg *hubclient.ThingMessage) (stat hubclient.RequestStatus) {
+func (svc *OWServerBinding) HandleConfigRequest(msg *transports.ThingMessage) (stat transports.RequestStatus) {
 	var err error
 	valueStr := msg.DataAsText()
 	slog.Info("HandleConfigRequest",

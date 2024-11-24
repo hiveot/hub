@@ -37,7 +37,7 @@ type HttpBinding struct {
 
 	// subprotocol bindings
 	sse   *sse.SseBinding
-	ssesc *ssesc.SseScBinding
+	ssesc *ssesc.SseScBindingServer
 	ws    *wss.HubWssBinding
 
 	// authenticator for logging in and validating session tokens

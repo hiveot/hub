@@ -2,9 +2,7 @@ package consumedthing
 
 import (
 	"github.com/araddon/dateparse"
-	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 	"time"
@@ -42,7 +40,7 @@ type InteractionOutput struct {
 	RequestID string `json:"message-id,omitempty"`
 
 	// The interaction progress
-	Progress hubclient.RequestStatus `json:"progress"`
+	Progress transports.RequestStatus `json:"progress"`
 
 	// senderID of last update
 	SenderID string
@@ -130,7 +128,7 @@ func (io *InteractionOutput) SetSchemaFromTD(td *tdd.TD) (found bool) {
 //
 //	values is the property or event value map
 //	td Thing Description document with schemas for the value. Use nil if schema is unknown.
-func NewInteractionOutputFromValueList(values []digitwin.ThingValue, td *tdd.TD) InteractionOutputMap {
+func NewInteractionOutputFromValueList(values []transports.ThingMessage, td *tdd.TD) InteractionOutputMap {
 	ioMap := make(map[string]*InteractionOutput)
 	for _, tv := range values {
 		io := NewInteractionOutputFromValue(&tv, td)
@@ -151,13 +149,13 @@ func NewInteractionOutputFromValueList(values []digitwin.ThingValue, td *tdd.TD)
 //
 //	tv contains the thingValue data
 //	td is the associated thing description
-func NewInteractionOutputFromValue(tv *digitwin.ThingValue, td *tdd.TD) *InteractionOutput {
+func NewInteractionOutputFromValue(tv *transports.ThingMessage, td *tdd.TD) *InteractionOutput {
 	io := &InteractionOutput{
 		//ThingID:  td.ID,
-		RequestID: tv.RequestID,
+		RequestID: tv.CorrelationID,
 		Name:      tv.Name,
 		SenderID:  tv.SenderID,
-		Updated:   tv.Updated,
+		Updated:   tv.Created,
 		Value:     NewDataSchemaValue(tv.Data),
 	}
 	if td == nil {

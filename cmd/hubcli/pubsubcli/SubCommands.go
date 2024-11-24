@@ -4,18 +4,18 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot/protocolclients"
 	jsoniter "github.com/json-iterator/go"
 	"time"
 
 	"github.com/araddon/dateparse"
 	"github.com/urfave/cli/v2"
 
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/wot/tdd"
 )
 
 // SubTDCommand shows TD publications
-func SubTDCommand(hc *hubclient.IConsumerClient) *cli.Command {
+func SubTDCommand(hc *clients.IConsumer) *cli.Command {
 	return &cli.Command{
 		Name:     "subtd",
 		Usage:    "SubscribeEvent to TD publications",
@@ -27,7 +27,7 @@ func SubTDCommand(hc *hubclient.IConsumerClient) *cli.Command {
 	}
 }
 
-func SubEventsCommand(hc *hubclient.IConsumerClient) *cli.Command {
+func SubEventsCommand(hc *clients.IConsumer) *cli.Command {
 	return &cli.Command{
 		Name:      "subev",
 		Usage:     "SubscribeEvent to Thing events",
@@ -53,13 +53,13 @@ func SubEventsCommand(hc *hubclient.IConsumerClient) *cli.Command {
 }
 
 // HandleSubTD subscribes and prints TD publications
-func HandleSubTD(hc hubclient.IConsumerClient) error {
+func HandleSubTD(hc clients.IConsumer) error {
 
 	err := hc.Subscribe(digitwin.DirectoryDThingID, digitwin.DirectoryEventThingUpdated)
 	if err != nil {
 		return err
 	}
-	hc.SetMessageHandler(func(msg *hubclient.ThingMessage) {
+	hc.SetMessageHandler(func(msg *transports.ThingMessage) {
 		// only look for TD events, ignore directed events
 		if msg.Name != digitwin.DirectoryEventThingUpdated {
 			return
@@ -85,14 +85,14 @@ func HandleSubTD(hc hubclient.IConsumerClient) error {
 }
 
 // HandleSubEvents subscribes and prints events
-func HandleSubEvents(hc hubclient.IConsumerClient, thingID string, name string) error {
+func HandleSubEvents(hc clients.IConsumer, thingID string, name string) error {
 	fmt.Printf("Subscribing to  thingID: '%s', name: '%s'\n\n", thingID, name)
 
 	fmt.Printf("Time             Agent ID        Thing ID                       Event Name                     Value\n")
 	fmt.Printf("---------------  --------------- -----------------------------  -----------------------------  ---------\n")
 
 	err := hc.Subscribe(thingID, name)
-	hc.SetMessageHandler(func(msg *hubclient.ThingMessage) {
+	hc.SetMessageHandler(func(msg *transports.ThingMessage) {
 		createdTime, _ := dateparse.ParseAny(msg.Created)
 		timeStr := createdTime.Format("15:04:05.000")
 

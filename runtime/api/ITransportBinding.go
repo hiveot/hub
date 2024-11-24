@@ -1,9 +1,11 @@
 package api
 
-import "github.com/hiveot/hub/lib/hubclient"
+import (
+	"github.com/hiveot/hub/wot/transports"
+)
 
 // ActionHandler is the API for service action handling
-type ActionHandler func(msg *hubclient.ThingMessage) (stat hubclient.RequestStatus)
+type ActionHandler func(msg *transports.ThingMessage) (stat transports.RequestStatus)
 
 // PermissionHandler is the handler that authorizes the sender to perform an operation
 //

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/wot/tdd"
+	"github.com/hiveot/hub/wot/transports"
 	"log/slog"
 	"time"
 )
@@ -18,7 +18,7 @@ import (
 // thingID is the ID of the original thing as managed by the agent.
 // propName name of the TD defined property
 // value property value
-func (svc *DigitwinRouter) HandleUpdateProperty(msg *hubclient.ThingMessage) {
+func (svc *DigitwinRouter) HandleUpdateProperty(msg *transports.ThingMessage) {
 
 	// update the property in the digitwin store and notify observers
 	changed, _ := svc.dtwStore.UpdatePropertyValue(
@@ -35,7 +35,7 @@ func (svc *DigitwinRouter) HandleUpdateProperty(msg *hubclient.ThingMessage) {
 // agentID is the ID of the agent sending the update
 // thingID is the ID of the original thing as managed by the agent.
 // propMap map of property key-values
-func (svc *DigitwinRouter) HandleUpdateMultipleProperties(msg *hubclient.ThingMessage) {
+func (svc *DigitwinRouter) HandleUpdateMultipleProperties(msg *transports.ThingMessage) {
 	propMap := make(map[string]any)
 	err := utils.Decode(msg.Data, &propMap)
 	if err != nil {
@@ -55,7 +55,7 @@ func (svc *DigitwinRouter) HandleUpdateMultipleProperties(msg *hubclient.ThingMe
 
 // HandleReadProperty consumer requests a digital twin thing's property value
 func (svc *DigitwinRouter) HandleReadProperty(
-	msg *hubclient.ThingMessage) (stat hubclient.RequestStatus) {
+	msg *transports.ThingMessage) (stat transports.RequestStatus) {
 
 	reply, err := svc.dtwService.ValuesSvc.ReadProperty(msg.SenderID,
 		digitwin.ValuesReadPropertyArgs{ThingID: msg.ThingID, Name: msg.Name})
@@ -66,7 +66,7 @@ func (svc *DigitwinRouter) HandleReadProperty(
 
 // HandleReadAllProperties consumer requests reading all digital twin's property values
 func (svc *DigitwinRouter) HandleReadAllProperties(
-	msg *hubclient.ThingMessage) (stat hubclient.RequestStatus) {
+	msg *transports.ThingMessage) (stat transports.RequestStatus) {
 
 	reply, err := svc.dtwService.ValuesSvc.ReadAllProperties(msg.SenderID, msg.ThingID)
 	stat.Completed(msg, reply, err)
@@ -81,8 +81,8 @@ func (svc *DigitwinRouter) HandleReadAllProperties(
 //	                         -> progress event
 //
 // if name is empty then newValue contains a map of properties
-func (svc *DigitwinRouter) HandleWriteProperty(msg *hubclient.ThingMessage, replyTo string) (
-	stat hubclient.RequestStatus) {
+func (svc *DigitwinRouter) HandleWriteProperty(msg *transports.ThingMessage, replyTo string) (
+	stat transports.RequestStatus) {
 
 	// assign a requestID if none given
 	agentID, thingID := tdd.SplitDigiTwinThingID(msg.ThingID)

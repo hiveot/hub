@@ -3,16 +3,15 @@ package httptransport_test
 import (
 	"fmt"
 	"github.com/hiveot/hub/lib/certs"
-	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/sseclient"
-	wssclient "github.com/hiveot/hub/lib/hubclient/wssclient"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/runtime/authn/sessions"
 	"github.com/hiveot/hub/runtime/connections"
 	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/runtime/transports"
 	"github.com/hiveot/hub/runtime/transports/httptransport"
+	"github.com/hiveot/hub/wot/protocolclients/ssescclient"
 	"github.com/hiveot/hub/wot/tdd"
+	"github.com/hiveot/hub/wot/transport/clients/wssclient"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/teris-io/shortid"
@@ -46,26 +45,26 @@ const testSessionID = "testsession"
 var dummyAuthenticator = &DummyAuthenticator{}
 
 // create a test client as an agent
-func newAgentClient(clientID string) (cl hubclient.IAgentClient) {
+func newAgentClient(clientID string) (cl clients.IAgent) {
 	if useWSS {
 		wssURL := fmt.Sprintf("wss://%s/wss", hostPort)
 		cl = wssclient.NewWSSClient(
 			wssURL, clientID, nil, certBundle.CaCert, time.Minute)
 	} else {
-		cl = sseclient.NewHttpSSEClient(
+		cl = ssescclient.NewHttpSSEClient(
 			hostPort, clientID, nil, certBundle.CaCert, time.Minute)
 	}
 	return cl
 }
 
 // create a test client as a consumer
-func newConsumerClient(clientID string) (cl hubclient.IConsumerClient) {
+func newConsumerClient(clientID string) (cl clients.IConsumer) {
 	if useWSS {
 		wssURL := fmt.Sprintf("wss://%s/wss", hostPort)
 		cl = wssclient.NewWSSClient(
 			wssURL, clientID, nil, certBundle.CaCert, time.Minute)
 	} else {
-		cl = sseclient.NewHttpSSEClient(
+		cl = ssescclient.NewHttpSSEClient(
 			hostPort, clientID, nil, certBundle.CaCert, time.Minute)
 	}
 	return cl
@@ -194,7 +193,7 @@ func TestBadLogin(t *testing.T) {
 	cl.Disconnect()
 
 	// bad client ID
-	cl2 := sseclient.NewHttpSSEClient(hostPort, "badID", nil, certBundle.CaCert, time.Minute)
+	cl2 := ssescclient.NewHttpSSEClient(hostPort, "badID", nil, certBundle.CaCert, time.Minute)
 	token, err = cl2.ConnectWithPassword(clientPassword)
 	assert.Error(t, err)
 	assert.Empty(t, token)
@@ -264,17 +263,17 @@ func TestPostEventAction(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
 
-	cl1.SetMessageHandler(func(ev *hubclient.ThingMessage) {
+	cl1.SetMessageHandler(func(ev *transports.ThingMessage) {
 		// receive result from action
 		rxVal.Store(ev.Data)
 	})
 	cl1.Subscribe("", "")
 
 	// 3. register the dtwRouter for events
-	dtwRouter.OnEvent = func(msg *hubclient.ThingMessage) {
+	dtwRouter.OnEvent = func(msg *transports.ThingMessage) {
 		evVal.Store(msg.Data)
 	}
-	dtwRouter.OnAction = func(msg *hubclient.ThingMessage, replyTo string) (stat hubclient.RequestStatus) {
+	dtwRouter.OnAction = func(msg *transports.ThingMessage, replyTo string) (stat transports.RequestStatus) {
 		actVal.Store(msg.Data)
 		stat.Completed(msg, msg.Data, nil)
 		return stat
@@ -347,7 +346,7 @@ func TestPubSub(t *testing.T) {
 	time.Sleep(time.Millisecond * 3)
 
 	// 3. register the dtwRouter for events
-	dtwRouter.OnEvent = func(msg *hubclient.ThingMessage) {
+	dtwRouter.OnEvent = func(msg *transports.ThingMessage) {
 		evVal.Store(msg.Data)
 	}
 
@@ -381,12 +380,12 @@ func TestReconnect(t *testing.T) {
 	// and sends a completed status through the sse return channel (SendToClient)
 
 	// reply to requests
-	dtwRouter.OnEvent = func(msg *hubclient.ThingMessage) {
+	dtwRouter.OnEvent = func(msg *transports.ThingMessage) {
 	}
-	dtwRouter.OnAction = func(msg *hubclient.ThingMessage, replyTo string) (stat hubclient.RequestStatus) {
+	dtwRouter.OnAction = func(msg *transports.ThingMessage, replyTo string) (stat transports.RequestStatus) {
 		// send a completed status update asynchronously
 		go func() {
-			stat2 := hubclient.RequestStatus{}
+			stat2 := transports.RequestStatus{}
 			c := svc.GetConnectionByConnectionID(replyTo)
 			require.NotNil(t, c)
 			stat2.Completed(msg, msg.Data, nil)

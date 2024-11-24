@@ -1,4 +1,4 @@
-package hubclient
+package transports
 
 import (
 	"encoding/json"

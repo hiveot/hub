@@ -3,7 +3,7 @@ package consumedthing
 import (
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/wot/protocolclients"
 	"github.com/hiveot/hub/wot/tdd"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
@@ -13,12 +13,12 @@ import (
 // ReadDirLimit is the maximum amount of TDs to read in one call
 const ReadDirLimit = 1000
 
-// ConsumedThingsDirectory manages the consumed things of the Hub for a client session
+// ConsumedThingsDirectory manages the consumed things of a servient
 //
 // This maintains a single instance of each ConsumedThing and updates it when
 // an event and action progress updates are received.
 type ConsumedThingsDirectory struct {
-	hc hubclient.IConsumerClient
+	hc clients.IConsumer
 	// Things used by the client
 	consumedThings map[string]*ConsumedThing
 	// directory of TD documents
@@ -26,7 +26,7 @@ type ConsumedThingsDirectory struct {
 	// the full directory has been read in this session
 	fullDirectoryRead bool
 	// additional handler of events for forwarding to other consumers
-	eventHandler func(msg *hubclient.ThingMessage)
+	eventHandler func(msg *transports.ThingMessage)
 	mux          sync.RWMutex
 }
 
@@ -62,7 +62,7 @@ func (cts *ConsumedThingsDirectory) Consume(thingID string) (ct *ConsumedThing, 
 }
 
 // handleMessage updates the consumed things from subscriptions
-func (cts *ConsumedThingsDirectory) handleMessage(msg *hubclient.ThingMessage) {
+func (cts *ConsumedThingsDirectory) handleMessage(msg *transports.ThingMessage) {
 
 	slog.Debug("CTS.handleMessage",
 		slog.String("senderID", msg.SenderID),
@@ -118,7 +118,7 @@ func (cts *ConsumedThingsDirectory) handleMessage(msg *hubclient.ThingMessage) {
 		ct, found := cts.consumedThings[msg.ThingID]
 		if found {
 			propValue := &digitwin.ThingValue{
-				Name: msg.Name, Data: msg.Data, RequestID: msg.CorrelationID,
+				Name: msg.Name, Data: msg.Data, CorrelationID: msg.CorrelationID,
 				SenderID: msg.SenderID, Updated: msg.Created}
 			ct.OnPropertyUpdate(propValue)
 		}
@@ -137,7 +137,7 @@ func (cts *ConsumedThingsDirectory) handleMessage(msg *hubclient.ThingMessage) {
 		cts.mux.RUnlock()
 		if found {
 			tv := &digitwin.ThingValue{
-				Name: msg.Name, RequestID: msg.CorrelationID, SenderID: msg.SenderID,
+				Name: msg.Name, CorrelationID: msg.CorrelationID, SenderID: msg.SenderID,
 				Updated: msg.Created, Data: msg.Data}
 			ct.OnEvent(tv)
 		}
@@ -223,7 +223,7 @@ func (cts *ConsumedThingsDirectory) ReadTD(thingID string) (*tdd.TD, error) {
 // Intended for consumers such that need to pass all messages on, for example to
 // a UI frontend.
 // Currently only a single handler is supported.
-func (cts *ConsumedThingsDirectory) SetEventHandler(handler func(message *hubclient.ThingMessage)) {
+func (cts *ConsumedThingsDirectory) SetEventHandler(handler func(message *transports.ThingMessage)) {
 	cts.mux.Lock()
 	defer cts.mux.Unlock()
 	cts.eventHandler = handler
@@ -258,7 +258,7 @@ func (cts *ConsumedThingsDirectory) UpdateTD(tdJSON string) *ConsumedThing {
 //
 // This will subscribe to events from the Hub using the provided hub client.
 // This will receive any prior event subscriber.
-func NewConsumedThingsSession(hc hubclient.IConsumerClient) *ConsumedThingsDirectory {
+func NewConsumedThingsSession(hc clients.IConsumer) *ConsumedThingsDirectory {
 	ctm := ConsumedThingsDirectory{
 		hc:             hc,
 		consumedThings: make(map[string]*ConsumedThing),

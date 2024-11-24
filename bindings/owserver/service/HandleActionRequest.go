@@ -5,13 +5,12 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
-	"github.com/hiveot/hub/lib/hubclient"
 	"log/slog"
 	"time"
 )
 
 // HandleActionRequest handles requests to activate inputs
-func (svc *OWServerBinding) HandleActionRequest(action *hubclient.ThingMessage) (stat hubclient.RequestStatus) {
+func (svc *OWServerBinding) HandleActionRequest(action *transports.ThingMessage) (stat transports.RequestStatus) {
 	var attr eds.OneWireAttr
 	slog.Info("HandleActionRequest",
 		slog.String("thingID", action.ThingID),

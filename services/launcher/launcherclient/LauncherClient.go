@@ -2,8 +2,8 @@ package launcherclient
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/services/launcher/launcherapi"
+	"github.com/hiveot/hub/wot/protocolclients"
 	"github.com/hiveot/hub/wot/tdd"
 )
 
@@ -13,7 +13,7 @@ type LauncherClient struct {
 	// ID of the launcher service that handles the requests
 	dThingID string // capability
 	//serviceID string
-	hc hubclient.IConsumerClient
+	hc clients.IConsumer
 }
 
 // List services
@@ -78,7 +78,7 @@ func (cl *LauncherClient) StopAllPlugins() error {
 //
 //	launcherID is the optional ID of the launcher to use. Default is 'launcher'
 //	hc is the hub client connection to use.
-func NewLauncherClient(agentID string, hc hubclient.IConsumerClient) *LauncherClient {
+func NewLauncherClient(agentID string, hc clients.IConsumer) *LauncherClient {
 	if agentID == "" {
 		agentID = launcherapi.AgentID
 	}

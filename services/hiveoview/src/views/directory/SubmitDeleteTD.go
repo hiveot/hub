@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/api/go/digitwin"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	session2 "github.com/hiveot/hub/services/hiveoview/src/session"
+	"github.com/hiveot/hub/wot/protocolclients"
 	"github.com/hiveot/hub/wot/tdd"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
@@ -18,7 +18,7 @@ func SubmitDeleteTD(w http.ResponseWriter, r *http.Request) {
 	thingID := chi.URLParam(r, "thingID")
 	tdJSON := ""
 	td := tdd.TD{}
-	var hc hubclient.IConsumerClient
+	var hc clients.IConsumer
 
 	// get the hub client connection and read the existing TD
 	_, sess, err := session2.GetSessionFromContext(r)

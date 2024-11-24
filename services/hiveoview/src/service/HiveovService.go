@@ -9,11 +9,11 @@ import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/api/go/authz"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/tlsserver"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views"
+	"github.com/hiveot/hub/wot/protocolclients"
 	"log/slog"
 	"net/http"
 	"os"
@@ -43,7 +43,7 @@ type HiveovService struct {
 
 	// hc hub client of this service.
 	// This client's CA and URL is also used to establish client sessions.
-	hc hubclient.IAgentClient
+	hc clients.IAgent
 
 	// cookie signing
 	signingKey ed25519.PrivateKey
@@ -61,7 +61,7 @@ func (svc *HiveovService) GetSM() *session.WebSessionManager {
 }
 
 // Start the web server and publish the service's own TD.
-func (svc *HiveovService) Start(hc hubclient.IAgentClient) error {
+func (svc *HiveovService) Start(hc clients.IAgent) error {
 	slog.Info("Starting HiveovService", "clientID", hc.GetClientID())
 	svc.hc = hc
 

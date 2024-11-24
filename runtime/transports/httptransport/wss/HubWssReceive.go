@@ -2,9 +2,9 @@ package wss
 
 import (
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/wssclient"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot/transport/clients/wssclient"
+	"github.com/hiveot/hub/wot/transports"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/teris-io/shortid"
 	"log/slog"
@@ -16,8 +16,8 @@ import (
 // HubWssReceive handles an incoming websocket message
 // This separates it in messages and requests and passes it to the message handler
 // for further processing.
-func (c *HubWssConnection) HubWssReceive(jsonMsg string) {
-	var msg *hubclient.ThingMessage
+func (c *WssConnectionServer) HubWssReceive(jsonMsg string) {
+	var msg *transports.ThingMessage
 	msgAsMap := map[string]any{}
 
 	// the operation is needed to determine whether this is a request or send and forget message
@@ -30,6 +30,7 @@ func (c *HubWssConnection) HubWssReceive(jsonMsg string) {
 		return
 	}
 	messageType := utils.DecodeAsString(msgAsMap["messageType"])
+	op, _ := wssclient.MsgTypeToOp[messageType]
 	slog.Info("HubWssReceive: Received message",
 		"clientID", c.clientID,
 		"messageType", messageType,
@@ -37,22 +38,45 @@ func (c *HubWssConnection) HubWssReceive(jsonMsg string) {
 
 	switch messageType {
 
-	case // action messages
+	case wssclient.MsgTypeActionStatus:
+		// hub receives an action result from an agent
+		// this will be forwarded to the consumer as a message
+		wssMsg := wssclient.ActionStatusMessage{}
+		_ = utils.DecodeAsObject(msgAsMap, &wssMsg)
+
+		// convert the websocket action status message to a hub status
+		// these are similar so maybe overkill?
+		hubRequestStatus := transports.RequestStatus{
+			ThingID:       wssMsg.ThingID,
+			Name:          wssMsg.Name,
+			CorrelationID: wssMsg.CorrelationID,
+			Status:        wssMsg.Status, // FIXME: convert status codes
+			Error:         wssMsg.Error,
+			Output:        wssMsg.Output,
+		}
+
+		msg = clients.NewThingMessage(
+			op, wssMsg.ThingID, wssMsg.Name, hubRequestStatus, c.clientID)
+		msg.CorrelationID = wssMsg.CorrelationID
+		msg.MessageID = wssMsg.MessageID
+		msg.Timestamp = wssMsg.Timestamp
+		c.ForwardAsEvent(msg)
+
+	case // hub receives action messages from a consumer
 		wssclient.MsgTypeInvokeAction,
 		wssclient.MsgTypeQueryAction,
 		wssclient.MsgTypeQueryAllActions:
 		// map the message to a ThingMessage
 		wssMsg := wssclient.ActionMessage{}
 		_ = utils.DecodeAsObject(msgAsMap, &wssMsg)
-		op, _ := wssclient.MsgTypeToOp[wssMsg.MessageType]
-		msg = hubclient.NewThingMessage(
+		msg = clients.NewThingMessage(
 			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, c.clientID)
 		msg.CorrelationID = wssMsg.CorrelationID
 		msg.MessageID = wssMsg.MessageID
 		msg.Timestamp = wssMsg.Timestamp
 		c.ForwardAsRequest(msg)
 
-	case // event action messages
+	case // hub receives event action messages
 		wssclient.MsgTypeReadAllEvents,
 		//wssclient.MsgTypeReadMultipleEvents,
 		wssclient.MsgTypePublishEvent,
@@ -60,8 +84,7 @@ func (c *HubWssConnection) HubWssReceive(jsonMsg string) {
 		// map the message to a ThingMessage
 		wssMsg := wssclient.EventMessage{}
 		_ = utils.DecodeAsObject(msgAsMap, &wssMsg)
-		op, _ := wssclient.MsgTypeToOp[wssMsg.MessageType]
-		msg = hubclient.NewThingMessage(
+		msg = clients.NewThingMessage(
 			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, c.clientID)
 		msg.CorrelationID = wssMsg.CorrelationID
 		msg.MessageID = wssMsg.MessageID
@@ -83,9 +106,8 @@ func (c *HubWssConnection) HubWssReceive(jsonMsg string) {
 		// map the message to a ThingMessage
 		wssMsg := wssclient.PropertyMessage{}
 		_ = utils.DecodeAsObject(msgAsMap, &wssMsg)
-		op, _ := wssclient.MsgTypeToOp[wssMsg.MessageType]
 		// FIXME: readmultiple has an array of names
-		msg = hubclient.NewThingMessage(
+		msg = clients.NewThingMessage(
 			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, c.clientID)
 		msg.CorrelationID = wssMsg.CorrelationID
 		msg.MessageID = wssMsg.MessageID
@@ -100,8 +122,7 @@ func (c *HubWssConnection) HubWssReceive(jsonMsg string) {
 	case wssclient.MsgTypeReadTD:
 		wssMsg := wssclient.TDMessage{}
 		_ = utils.DecodeAsObject(msgAsMap, &wssMsg)
-		op, _ := wssclient.MsgTypeToOp[wssMsg.MessageType]
-		msg = hubclient.NewThingMessage(
+		msg = clients.NewThingMessage(
 			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, c.clientID)
 		msg.CorrelationID = wssMsg.CorrelationID
 		msg.MessageID = wssMsg.MessageID
@@ -111,8 +132,7 @@ func (c *HubWssConnection) HubWssReceive(jsonMsg string) {
 	case wssclient.MsgTypeUpdateTD:
 		wssMsg := wssclient.TDMessage{}
 		_ = utils.DecodeAsObject(msgAsMap, &wssMsg)
-		op, _ := wssclient.MsgTypeToOp[wssMsg.MessageType]
-		msg = hubclient.NewThingMessage(
+		msg = clients.NewThingMessage(
 			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, c.clientID)
 		msg.CorrelationID = wssMsg.CorrelationID
 		msg.MessageID = wssMsg.MessageID
@@ -120,6 +140,18 @@ func (c *HubWssConnection) HubWssReceive(jsonMsg string) {
 		c.ForwardAsEvent(msg)
 
 	// subscriptions are handled inside this binding
+	case wssclient.MsgTypeObserveAllProperties:
+		wssMsg := wssclient.PropertyMessage{}
+		err = jsoniter.UnmarshalFromString(jsonMsg, &wssMsg)
+		c.HandleObserveAllProperties(&wssMsg)
+	//case wssclient.MsgTypeObserveMultipleProperties:
+	//	wssMsg := wssclient.PropertyMessage{}
+	//	err = jsoniter.UnmarshalFromString(jsonMsg, &wssMsg)
+	//	c.HandleObserveMultipleProperties(&wssMsg)
+	case wssclient.MsgTypeObserveProperty:
+		wssMsg := wssclient.PropertyMessage{}
+		err = jsoniter.UnmarshalFromString(jsonMsg, &wssMsg)
+		c.HandleObserveProperty(&wssMsg)
 	case wssclient.MsgTypeSubscribeAllEvents:
 		wssMsg := wssclient.EventMessage{}
 		err = jsoniter.UnmarshalFromString(jsonMsg, &wssMsg)
@@ -161,12 +193,12 @@ func (c *HubWssConnection) HubWssReceive(jsonMsg string) {
 }
 
 // event style messages are pushed to the digitwin router
-func (c *HubWssConnection) ForwardAsEvent(msg *hubclient.ThingMessage) {
+func (c *WssConnectionServer) ForwardAsEvent(msg *transports.ThingMessage) {
 	c.dtwRouter.HandleMessage(msg)
 }
 
 // request style messages are pushed to the digitwin router
-func (c *HubWssConnection) ForwardAsRequest(msg *hubclient.ThingMessage) {
+func (c *WssConnectionServer) ForwardAsRequest(msg *transports.ThingMessage) {
 	stat := c.dtwRouter.HandleRequest(msg, c.connectionID)
 	// FIXME: map status between protocols
 	wssStatus := stat.Status
@@ -186,38 +218,49 @@ func (c *HubWssConnection) ForwardAsRequest(msg *hubclient.ThingMessage) {
 	_, _ = c._send(reply, msg.CorrelationID)
 }
 
-// func (c *HubWssConnection) HandleLogin(msg *hubclient.ThingMessage) {
+// func (c *WssConnectionServer) HandleLogin(msg *transports.ThingMessage) {
 // }
-func (c *HubWssConnection) HandleRefresh(wssMsg *wssclient.ActionMessage) {
+func (c *WssConnectionServer) HandleRefresh(wssMsg *wssclient.ActionMessage) {
 	// convert to a hub request
-	msg := hubclient.NewThingMessage(
+	msg := clients.NewThingMessage(
 		vocab.HTOpRefresh, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, c.clientID)
 	msg.CorrelationID = wssMsg.CorrelationID
 	msg.MessageID = wssMsg.MessageID
 	msg.Timestamp = wssMsg.Timestamp
 	c.ForwardAsRequest(msg)
 }
-func (c *HubWssConnection) HandleObserveAllProperties(wssMsg *wssclient.PropertyMessage) {
+func (c *WssConnectionServer) HandleObserveAllProperties(wssMsg *wssclient.PropertyMessage) {
+	c.observations.SubscribeAll(wssMsg.ThingID)
 }
 
-func (c *HubWssConnection) HandleObserveProperty(wssMsg *wssclient.PropertyMessage) {
+func (c *WssConnectionServer) HandleObserveProperty(wssMsg *wssclient.PropertyMessage) {
+	c.observations.Subscribe(wssMsg.ThingID, wssMsg.Name)
 }
 
-func (c *HubWssConnection) HandlePing(wssMsg *wssclient.BaseMessage) {
+func (c *WssConnectionServer) HandlePing(wssMsg *wssclient.BaseMessage) {
+	// TODO: support pong message
+	var pongMessage interface{}
+	c._send(pongMessage, wssMsg.CorrelationID)
 }
 
-func (c *HubWssConnection) HandleSubscribeAllEvents(wssMsg *wssclient.EventMessage) {
+func (c *WssConnectionServer) HandleSubscribeAllEvents(wssMsg *wssclient.EventMessage) {
+	c.subscriptions.SubscribeAll(wssMsg.ThingID)
 }
 
-func (c *HubWssConnection) HandleSubscribeEvent(wssMsg *wssclient.EventMessage) {
+func (c *WssConnectionServer) HandleSubscribeEvent(wssMsg *wssclient.EventMessage) {
+	c.subscriptions.Subscribe(wssMsg.ThingID, wssMsg.Name)
 }
-func (c *HubWssConnection) HandleUnobserveAllProperties(wssMsg *wssclient.PropertyMessage) {
-}
-
-func (c *HubWssConnection) HandleUnobserveProperty(wssMsg *wssclient.PropertyMessage) {
-}
-func (c *HubWssConnection) HandleUnsubscribeAllEvents(wssMsg *wssclient.EventMessage) {
+func (c *WssConnectionServer) HandleUnobserveAllProperties(wssMsg *wssclient.PropertyMessage) {
+	c.observations.UnsubscribeAll(wssMsg.ThingID)
 }
 
-func (c *HubWssConnection) HandleUnsubscribeEvent(wssMsg *wssclient.EventMessage) {
+func (c *WssConnectionServer) HandleUnobserveProperty(wssMsg *wssclient.PropertyMessage) {
+	c.observations.Unsubscribe(wssMsg.ThingID, wssMsg.Name)
+}
+func (c *WssConnectionServer) HandleUnsubscribeAllEvents(wssMsg *wssclient.EventMessage) {
+	c.subscriptions.UnsubscribeAll(wssMsg.ThingID)
+}
+
+func (c *WssConnectionServer) HandleUnsubscribeEvent(wssMsg *wssclient.EventMessage) {
+	c.subscriptions.Unsubscribe(wssMsg.ThingID, wssMsg.Name)
 }

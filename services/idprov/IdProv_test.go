@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
-	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/connect"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
 	"github.com/hiveot/hub/services/idprov/idprovclient"
 	"github.com/hiveot/hub/services/idprov/service"
+	"github.com/hiveot/hub/wot/protocolclients"
+	"github.com/hiveot/hub/wot/protocolclients/connect"
 	"os"
 	"testing"
 	"time"
@@ -29,7 +29,7 @@ var testPort = 23001
 var ts *testenv.TestServer
 
 // Create a new store, delete if it already exists
-func newIdProvService() (svc *service.IdProvService, hc hubclient.IAgentClient, stopFn func()) {
+func newIdProvService() (svc *service.IdProvService, hc clients.IAgent, stopFn func()) {
 
 	ts = testenv.StartTestServer(true)
 	hc, token1 := ts.AddConnectService(idprovapi.AgentID)
@@ -44,7 +44,7 @@ func newIdProvService() (svc *service.IdProvService, hc hubclient.IAgentClient, 
 	//_ = ag
 
 	// create an end user client for testing
-	hc2, token2 := ts.AddConnectUser("test-client", authz.ClientRoleManager)
+	hc2, token2 := ts.AddConnectConsumer("test-client", authz.ClientRoleManager)
 	_ = token2
 	if err != nil {
 		panic("can't connect operator")

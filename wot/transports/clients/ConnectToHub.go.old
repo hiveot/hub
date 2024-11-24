@@ -1,14 +1,13 @@
-package connect
+package clients
 
 import (
 	"crypto/x509"
 	"fmt"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/discovery"
-	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/sseclient"
-	"github.com/hiveot/hub/lib/hubclient/wssclient"
 	"github.com/hiveot/hub/lib/keys"
+	"github.com/hiveot/hub/wot/protocolclients/ssescclient"
+	"github.com/hiveot/hub/wot/protocolclients/wssclient"
 	"log/slog"
 	"net/url"
 	"os"
@@ -39,7 +38,7 @@ const DefaultTimeout = time.Second * 30 // Default is 3
 //	core optional core selection. Fallback is to auto determine based on URL.
 //	 password optional for a user login
 func ConnectToHub(fullURL string, clientID string, certDir string, password string) (
-	hc hubclient.IAgentClient, err error) {
+	hc clients.IAgent, err error) {
 
 	// 1. determine the actual address
 	if fullURL == "" {
@@ -82,7 +81,7 @@ func ConnectToHub(fullURL string, clientID string, certDir string, password stri
 // from file and connect to the server.
 //
 // keysDir is the directory with the {clientID}.key and {clientID}.token files.
-func ConnectWithTokenFile(hc hubclient.IConsumerClient, keysDir string) error {
+func ConnectWithTokenFile(hc clients.IConsumer, keysDir string) error {
 	var kp keys.IHiveKey
 
 	clientID := hc.GetClientID()
@@ -116,7 +115,7 @@ func ConnectWithTokenFile(hc hubclient.IConsumerClient, keysDir string) error {
 //   - fullURL of server to connect to.
 //   - clientID is the account/login ID of the client that will be connecting
 //   - caCert of server or nil to not verify server cert
-func NewHubClient(fullURL string, clientID string, caCert *x509.Certificate) (hc hubclient.IAgentClient) {
+func NewHubClient(fullURL string, clientID string, caCert *x509.Certificate) (hc clients.IAgent) {
 
 	parts, _ := url.Parse(fullURL)
 	clType := parts.Scheme
@@ -124,11 +123,11 @@ func NewHubClient(fullURL string, clientID string, caCert *x509.Certificate) (hc
 		// FIXME: support mqtt
 		//tp = mqtttclient.NewMqttClient(url, clientID, caCert)
 	} else if clType == "uds" {
-		// FIXME: add support UDS connections for local services
+		// FIXME: add support tpc/uds connections for local services
 	} else if clType == "wss" {
 		hc = wssclient.NewWSSClient(fullURL, clientID, nil, caCert, DefaultTimeout)
 	} else if clType == "https" || clType == "tls" {
-		hc = sseclient.NewHttpSSEClient(parts.Host, clientID, nil, caCert, DefaultTimeout)
+		hc = ssescclient.NewHttpSSEClient(parts.Host, clientID, nil, caCert, DefaultTimeout)
 	} else if clType == "" {
 		// use NewClient on the embedded server
 		//hc = embedded.NewEmbeddedClient(clientID, nil)

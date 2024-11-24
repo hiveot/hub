@@ -19,18 +19,18 @@ const timespanMonth = timespanDay * 31
 const timespanYear = timespanDay * 365
 
 // $go test -bench=BenchmarkAddEvents -benchtime=3s -run ^#
+//                                                                                          --- WOT protocol bindings (reading) ---
+//                                      ---------------  MQTT/NATS BROKER --------------     HTTPSSE runtime          WSS runtime
+//	DBSize #Things                      kvbtree (msec)    pebble (msec)     bbolt (msec)      pebble (msec)           pebble (msec)
+//	 10K      10    add 1K single (*)       2.5             4.7             4600/4600             6.0                    6.0           <- increase of 40% due to internal changes
+//	 10K      10    add 1K batch (*)        1.2             2.4               76/72               3.5                    3.5
+//	 10K      10    get 1K single         330/125         324/130            300/130            890     (!! ouch)      560
+//	 10K      10    get 1K batch          5.5/4.3           7                5.5/4.3             31     (!!)            39
 //
-//                                      ---------------  MQTT/NATS BROKER --------------     HTTPSSE runtime
-//	DBSize #Things                      kvbtree (msec)    pebble (msec)     bbolt (msec)      pebble (msec)
-//	 10K      10    add 1K single (*)       2.5             4.7             4600/4600             6.0
-//	 10K      10    add 1K batch (*)        1.2             2.4               76/72               3.6
-//	 10K      10    get 1K single         330/125         324/130            300/130            890     (!! ouch)
-//	 10K      10    get 1K batch          5.5/4.3           7                5.5/4.3             31     (!!)
-//
-//	100K      10    add 1K single (*)       2.9             4.3             4900/4900             5.6
-//	100K      10    add 1K batch (*)        1.4             2.4               84/82               3.3
-//	100K      10    get 1K single         340/130         320/128            325/130            890     (!! ouch)
-//	100K      10    get 1K batch          6.0/4.2           7                5.2/4.3             32
+//	100K      10    add 1K single (*)       2.9             4.3             4900/4900             5.6                    5.6
+//	100K      10    add 1K batch (*)        1.4             2.4               84/82               3.3                    3.3
+//	100K      10    get 1K single         340/130         320/128            325/130            890     (!! ouch)      550
+//	100K      10    get 1K batch          6.0/4.2           7                5.2/4.3             32                     36
 //
 //	  1M     100    add 1K single (*)       2.9             5.7             5500
 //	  1M     100    add 1K batch (*)        1.4             3.1              580
@@ -72,9 +72,11 @@ func BenchmarkAddEvents(b *testing.B) {
 		time.Sleep(time.Millisecond)
 		// build a dataset in the store
 		addBulkHistory(svc, agentID, tbl.dataSize, 10, timespanSec)
+
 		addHist := svc.GetAddHistory()
 
 		// test adding records one by one
+		// add history directly access the history store. No comms protocol is used.
 		b.Run(fmt.Sprintf("[dbsize:%d] #things:%d add-single:%d", tbl.dataSize, tbl.nrThings, tbl.nrSets),
 			func(b *testing.B) {
 				for n := 0; n < b.N; n++ {
@@ -88,6 +90,7 @@ func BenchmarkAddEvents(b *testing.B) {
 				}
 			})
 		// test adding records using the ThingID batch add for a single ThingID
+		// add history directly access the history store. No comms protocol is used.
 		b.Run(fmt.Sprintf("[dbsize:%d] #things:%d add-batch:%d", tbl.dataSize, tbl.nrThings, tbl.nrSets),
 			func(b *testing.B) {
 				bulk := testData[0:tbl.nrSets]
@@ -98,6 +101,8 @@ func BenchmarkAddEvents(b *testing.B) {
 			})
 
 		// test reading records
+		// readHist uses the hubclient library
+		time.Sleep(time.Millisecond * 10) // let the add settle
 		b.Run(fmt.Sprintf("[dbsize:%d] #things:%d get-single:%d", tbl.dataSize, tbl.nrThings, tbl.nrSets),
 			func(b *testing.B) {
 				for n := 0; n < b.N; n++ {
@@ -113,10 +118,10 @@ func BenchmarkAddEvents(b *testing.B) {
 						assert.NotEmpty(b, v)
 					}
 					releaseFn()
-
 				}
 			})
 		// test reading records
+		// readHist uses the hubclient library
 		b.Run(fmt.Sprintf("[dbsize:%d] #things:%d get-batch:%d", tbl.dataSize, tbl.nrThings, tbl.nrSets),
 			func(b *testing.B) {
 				for n := 0; n < b.N; n++ {

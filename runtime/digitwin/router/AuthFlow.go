@@ -3,11 +3,11 @@ package router
 
 import (
 	"github.com/hiveot/hub/api/go/authn"
-	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/wot/transports"
 )
 
 // HandleLogin converts the login operation into an authn service action
-func (svc *DigitwinRouter) HandleLogin(msg *hubclient.ThingMessage) hubclient.RequestStatus {
+func (svc *DigitwinRouter) HandleLogin(msg *transports.ThingMessage) transports.RequestStatus {
 	authnMsg := *msg
 	authnMsg.ThingID = authn.UserDThingID
 	authnMsg.Name = authn.UserLoginMethod
@@ -17,7 +17,7 @@ func (svc *DigitwinRouter) HandleLogin(msg *hubclient.ThingMessage) hubclient.Re
 }
 
 // HandleLoginRefresh converts the token refresh operation into an authn service action
-func (svc *DigitwinRouter) HandleLoginRefresh(msg *hubclient.ThingMessage) hubclient.RequestStatus {
+func (svc *DigitwinRouter) HandleLoginRefresh(msg *transports.ThingMessage) transports.RequestStatus {
 	authnMsg := *msg
 	authnMsg.ThingID = authn.UserDThingID
 	authnMsg.Name = authn.UserRefreshTokenMethod
@@ -27,7 +27,7 @@ func (svc *DigitwinRouter) HandleLoginRefresh(msg *hubclient.ThingMessage) hubcl
 }
 
 // HandleLogout converts the logout operation into an authn service action
-func (svc *DigitwinRouter) HandleLogout(msg *hubclient.ThingMessage) hubclient.RequestStatus {
+func (svc *DigitwinRouter) HandleLogout(msg *transports.ThingMessage) transports.RequestStatus {
 	authnMsg := *msg
 	authnMsg.ThingID = authn.UserDThingID
 	authnMsg.Name = authn.UserLogoutMethod

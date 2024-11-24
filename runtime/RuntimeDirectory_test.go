@@ -6,7 +6,6 @@ import (
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/wot/tdd"
 	jsoniter "github.com/json-iterator/go"
@@ -30,13 +29,13 @@ func TestAddRemoveTD(t *testing.T) {
 	r := startRuntime()
 	defer r.Stop()
 	ag1, _ := ts.AddConnectAgent(agentID)
-	ag1.SetRequestHandler(func(msg *hubclient.ThingMessage) (stat hubclient.RequestStatus) {
+	ag1.SetRequestHandler(func(msg *transports.ThingMessage) (stat transports.RequestStatus) {
 		stat.Status = vocab.RequestCompleted
 		return
 	})
 	defer ag1.Disconnect()
-	cl1, _ := ts.AddConnectUser(userID, authz.ClientRoleManager)
-	cl1.SetMessageHandler(func(msg *hubclient.ThingMessage) {
+	cl1, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
+	cl1.SetMessageHandler(func(msg *transports.ThingMessage) {
 		// expect 2 events, updated and removed
 		evCount.Add(1)
 	})
@@ -84,7 +83,7 @@ func TestReadTDs(t *testing.T) {
 	defer r.Stop()
 	ag, _ := ts.AddConnectAgent(agentID)
 	defer ag.Disconnect()
-	cl, _ := ts.AddConnectUser(userID, authz.ClientRoleManager)
+	cl, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
 	defer cl.Disconnect()
 
 	// add a whole bunch of things
@@ -122,7 +121,7 @@ func TestReadTDsRest(t *testing.T) {
 	defer r.Stop()
 	ag, _ := ts.AddConnectAgent(agentID)
 	defer ag.Disconnect()
-	cl, token := ts.AddConnectUser(userID, authz.ClientRoleManager)
+	cl, token := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
 	defer cl.Disconnect()
 
 	// add a whole bunch of things
@@ -157,12 +156,12 @@ func TestTDEvent(t *testing.T) {
 	defer r.Stop()
 	ag1, _ := ts.AddConnectAgent(agentID)
 	defer ag1.Disconnect()
-	cl1, token := ts.AddConnectUser(userID, authz.ClientRoleManager)
+	cl1, token := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
 	_ = token
 	defer cl1.Disconnect()
 
 	// wait to directory TD updated events
-	cl1.SetMessageHandler(func(msg *hubclient.ThingMessage) {
+	cl1.SetMessageHandler(func(msg *transports.ThingMessage) {
 		if msg.Operation == vocab.HTOpPublishEvent &&
 			msg.ThingID == digitwin.DirectoryDThingID &&
 			msg.Name == digitwin.DirectoryEventThingUpdated {

@@ -2,7 +2,7 @@ package httpcontext
 
 import (
 	"github.com/go-chi/chi/v5"
-	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/wot/protocolclients"
 	jsoniter "github.com/json-iterator/go"
 	"io"
 	"log/slog"
@@ -45,11 +45,11 @@ func GetRequestParams(r *http.Request) (reqParam RequestParams, err error) {
 	// this is needed to correlate http requests with the sub-protocol connection.
 	// this is intended to solve for unidirectional SSE connections from multiple devices.
 	// if no connectionID is provided then only single device connection is allowed.
-	headerCID := r.Header.Get(hubclient.ConnectionIDHeader)
+	headerCID := r.Header.Get(clients.ConnectionIDHeader)
 
 	// the connection ID is the clientID + provided clcid
 	reqParam.ConnectionID = reqParam.ClientID + "-" + headerCID
-	reqParam.CorrelationID = r.Header.Get(hubclient.RequestIDHeader)
+	reqParam.CorrelationID = r.Header.Get(clients.RequestIDHeader)
 
 	// build a message from the URL and payload
 	// URLParam names are defined by the path variables set in the router.

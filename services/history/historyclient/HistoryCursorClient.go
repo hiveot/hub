@@ -1,9 +1,9 @@
 package historyclient
 
 import (
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/history/historyapi"
+	"github.com/hiveot/hub/wot/protocolclients"
 	"github.com/hiveot/hub/wot/tdd"
 	"time"
 )
@@ -15,12 +15,12 @@ type HistoryCursorClient struct {
 
 	// history cursor service ID
 	dThingID string
-	hc       hubclient.IConsumerClient
+	hc       clients.IConsumer
 }
 
 // First positions the cursor at the first key in the ordered list
 // This returns an error if the cursor has expired or is not found.
-func (cl *HistoryCursorClient) First() (thingValue *hubclient.ThingMessage, valid bool, err error) {
+func (cl *HistoryCursorClient) First() (thingValue *transports.ThingMessage, valid bool, err error) {
 	req := historyapi.CursorArgs{
 		CursorKey: cl.cursorKey,
 	}
@@ -31,7 +31,7 @@ func (cl *HistoryCursorClient) First() (thingValue *hubclient.ThingMessage, vali
 
 // Last positions the cursor at the last key in the ordered list
 // This returns an error if the cursor has expired or is not found.
-func (cl *HistoryCursorClient) Last() (thingValue *hubclient.ThingMessage, valid bool, err error) {
+func (cl *HistoryCursorClient) Last() (thingValue *transports.ThingMessage, valid bool, err error) {
 	req := historyapi.CursorArgs{
 		CursorKey: cl.cursorKey,
 	}
@@ -42,7 +42,7 @@ func (cl *HistoryCursorClient) Last() (thingValue *hubclient.ThingMessage, valid
 
 // Next moves the cursor to the next key from the current cursor
 // This returns an error if the cursor has expired or is not found.
-func (cl *HistoryCursorClient) Next() (thingValue *hubclient.ThingMessage, valid bool, err error) {
+func (cl *HistoryCursorClient) Next() (thingValue *transports.ThingMessage, valid bool, err error) {
 	req := historyapi.CursorArgs{
 		CursorKey: cl.cursorKey,
 	}
@@ -53,7 +53,7 @@ func (cl *HistoryCursorClient) Next() (thingValue *hubclient.ThingMessage, valid
 
 // NextN moves the cursor to the next N steps from the current cursor
 // This returns an error if the cursor has expired or is not found.
-func (cl *HistoryCursorClient) NextN(limit int, until string) (batch []*hubclient.ThingMessage, itemsRemaining bool, err error) {
+func (cl *HistoryCursorClient) NextN(limit int, until string) (batch []*transports.ThingMessage, itemsRemaining bool, err error) {
 	req := historyapi.CursorNArgs{
 		CursorKey: cl.cursorKey,
 		Until:     until,
@@ -66,7 +66,7 @@ func (cl *HistoryCursorClient) NextN(limit int, until string) (batch []*hubclien
 
 // Prev moves the cursor to the previous key from the current cursor
 // This returns an error if the cursor has expired or is not found.
-func (cl *HistoryCursorClient) Prev() (thingValue *hubclient.ThingMessage, valid bool, err error) {
+func (cl *HistoryCursorClient) Prev() (thingValue *transports.ThingMessage, valid bool, err error) {
 	req := historyapi.CursorArgs{
 		CursorKey: cl.cursorKey,
 	}
@@ -77,7 +77,7 @@ func (cl *HistoryCursorClient) Prev() (thingValue *hubclient.ThingMessage, valid
 
 // PrevN moves the cursor to the previous N steps from the current cursor
 // This returns an error if the cursor has expired or is not found.
-func (cl *HistoryCursorClient) PrevN(limit int, until string) (batch []*hubclient.ThingMessage, itemsRemaining bool, err error) {
+func (cl *HistoryCursorClient) PrevN(limit int, until string) (batch []*transports.ThingMessage, itemsRemaining bool, err error) {
 	req := historyapi.CursorNArgs{
 		CursorKey: cl.cursorKey,
 		Until:     until,
@@ -102,7 +102,7 @@ func (cl *HistoryCursorClient) Release() {
 // timeStamp in ISO8106 format
 // This returns an error if the cursor has expired or is not found.
 func (cl *HistoryCursorClient) Seek(timeStamp time.Time) (
-	thingValue *hubclient.ThingMessage, valid bool, err error) {
+	thingValue *transports.ThingMessage, valid bool, err error) {
 	timeStampStr := timeStamp.Format(utils.RFC3339Milli)
 	req := historyapi.CursorSeekArgs{
 		CursorKey: cl.cursorKey,
@@ -119,7 +119,7 @@ func (cl *HistoryCursorClient) Seek(timeStamp time.Time) (
 //	hc connection to the Hub
 //	serviceID of the read capability
 //	cursorKey is the iterator key obtain when requesting the cursor
-func NewHistoryCursorClient(hc hubclient.IConsumerClient, cursorKey string) *HistoryCursorClient {
+func NewHistoryCursorClient(hc clients.IConsumer, cursorKey string) *HistoryCursorClient {
 	agentID := historyapi.AgentID
 	serviceID := historyapi.ReadHistoryServiceID
 	cl := &HistoryCursorClient{

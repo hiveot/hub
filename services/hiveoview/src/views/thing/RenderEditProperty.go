@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/api/go/digitwin"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"github.com/hiveot/hub/wot/consumedthing"
+	"github.com/hiveot/hub/wot/protocolclients"
 	"github.com/hiveot/hub/wot/tdd"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
@@ -29,7 +29,7 @@ type RenderEditPropertyTemplateData struct {
 	SubmitPropertyPath string
 }
 
-func getPropAff(hc hubclient.IConsumerClient, thingID string, name string) (
+func getPropAff(hc clients.IConsumer, thingID string, name string) (
 	td *tdd.TD, propAff *tdd.PropertyAffordance, err error) {
 
 	tdJson, err := digitwin.DirectoryReadTD(hc, thingID)
@@ -50,7 +50,7 @@ func getPropAff(hc hubclient.IConsumerClient, thingID string, name string) (
 // obtain a schema value instance from a thingID and key
 // this pulls the TD from the server (todo: consider using a local cache)
 func getConfigValue(
-	hc hubclient.IConsumerClient, thingID string, name string) (sv RenderEditPropertyTemplateData, err error) {
+	hc clients.IConsumer, thingID string, name string) (sv RenderEditPropertyTemplateData, err error) {
 
 	td, propAff, err := getPropAff(hc, thingID, name)
 	_ = td

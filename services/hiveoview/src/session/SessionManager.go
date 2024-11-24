@@ -3,9 +3,9 @@ package session
 import (
 	"crypto/ed25519"
 	"crypto/x509"
-	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/connect"
 	"github.com/hiveot/hub/services/hiveoview/src"
+	"github.com/hiveot/hub/wot/protocolclients"
+	"github.com/hiveot/hub/wot/protocolclients/connect"
 	"log/slog"
 	"net/http"
 	"sync"
@@ -30,14 +30,14 @@ type WebSessionManager struct {
 	// Hub CA certificate
 	caCert *x509.Certificate
 	// hub client for publishing events
-	hc hubclient.IAgentClient
+	hc clients.IAgent
 	// disable persistence from state service (for testing)
 	noState bool
 }
 
 // add a new session with the given clientID and send a session count event
 func (sm *WebSessionManager) _addSession(
-	r *http.Request, cid string, hc hubclient.IConsumerClient) (
+	r *http.Request, cid string, hc clients.IConsumer) (
 	cs *WebClientSession, err error) {
 
 	// if the browser does not provide a CID until after the first connection,
@@ -246,7 +246,7 @@ func (sm *WebSessionManager) GetSessionFromCookie(r *http.Request) (
 	// sse-connect ignores the hx-header that contains the cid. As a workaround
 	// also check query parameters.
 	// lets face it though, it is time to ditch SSE and switch to websockets :/
-	cid = r.Header.Get(hubclient.ConnectionIDHeader)
+	cid = r.Header.Get(clients.ConnectionIDHeader)
 	if cid == "" {
 		cid = r.URL.Query().Get("cid")
 	}
@@ -262,7 +262,7 @@ func (sm *WebSessionManager) GetSessionFromCookie(r *http.Request) (
 
 func NewWebSessionManager(hubURL string,
 	signingKey ed25519.PrivateKey, caCert *x509.Certificate,
-	hc hubclient.IAgentClient, noState bool) *WebSessionManager {
+	hc clients.IAgent, noState bool) *WebSessionManager {
 	sm := &WebSessionManager{
 		sessions:   make(map[string]*WebClientSession),
 		mux:        sync.RWMutex{},

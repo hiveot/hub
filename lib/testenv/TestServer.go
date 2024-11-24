@@ -7,17 +7,20 @@ import (
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/certs"
-	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/sseclient"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/runtime"
+	"github.com/hiveot/hub/wot/protocolclients/ssescclient"
 	"github.com/hiveot/hub/wot/tdd"
+	"github.com/hiveot/hub/wot/transport/clients/wssclient"
 	"log/slog"
 	"math/rand"
 	"os"
 	"path"
 	"time"
 )
+
+const SSEProtocol = "sse"
+const WSSProtocol = "wss"
 
 // TestDir is the default test directory
 var TestDir = path.Join(os.TempDir(), "hiveot-test")
@@ -52,20 +55,35 @@ var ActionTypes = []string{vocab.ActionDimmer, vocab.ActionSwitch,
 // TestServer for testing application services.
 // Usage: run NewTestServer() followed by Start(clean)
 type TestServer struct {
-	Port    int
-	Certs   certs.TestCertBundle
-	TestDir string
+	Port           int
+	Certs          certs.TestCertBundle
+	TestDir        string
+	ConnectTimeout time.Duration
 	//
 	Config  *runtime.RuntimeConfig
 	AppEnv  plugin.AppEnvironment
 	Runtime *runtime.Runtime
+	// which protocol each client uses
+	AgentProtocol    string
+	ServiceProtocol  string
+	ConsumerProtocol string
 }
 
-// AddConnectUser creates a new test user with the given role,
+func (test *TestServer) GetConnection(clientID string, protocolName string) clients.IAgent {
+	if protocolName == WSSProtocol {
+		wssURL := fmt.Sprintf("wss://localhost:%d/wss", test.Port)
+		return wssclient.NewWSSClient(wssURL, clientID, nil, test.Certs.CaCert, test.ConnectTimeout)
+	} else {
+		hostPort := fmt.Sprintf("localhost:%d", test.Port)
+		return ssescclient.NewHttpSSEClient(hostPort, clientID, nil, test.Certs.CaCert, test.ConnectTimeout)
+	}
+}
+
+// AddConnectConsumer creates a new test user with the given role,
 // and returns a hub client and a new session token.
 // In case of error this panics.
-func (test *TestServer) AddConnectUser(
-	clientID string, clientRole authz.ClientRole) (cl hubclient.IConsumerClient, token string) {
+func (test *TestServer) AddConnectConsumer(
+	clientID string, clientRole authz.ClientRole) (cl clients.IConsumer, token string) {
 
 	password := clientID
 	err := test.Runtime.AuthnSvc.AdminSvc.AddConsumer(clientID,
@@ -78,8 +96,7 @@ func (test *TestServer) AddConnectUser(
 		panic("Failed adding client:" + err.Error())
 	}
 
-	hostPort := fmt.Sprintf("localhost:%d", test.Port)
-	cl = sseclient.NewHttpSSEClient(hostPort, clientID, nil, test.Certs.CaCert, time.Minute)
+	cl = test.GetConnection(clientID, test.ConsumerProtocol)
 	token, err = cl.ConnectWithPassword(password)
 
 	if err != nil {
@@ -91,8 +108,7 @@ func (test *TestServer) AddConnectUser(
 // AddConnectAgent creates a new agent test client.
 // Agents use non-session tokens and survive a server restart.
 // This returns the agent's connection token.
-func (test *TestServer) AddConnectAgent(
-	agentID string) (cl hubclient.IAgentClient, token string) {
+func (test *TestServer) AddConnectAgent(agentID string) (cl clients.IAgent, token string) {
 
 	token, err := test.Runtime.AuthnSvc.AdminSvc.AddAgent(agentID,
 		authn.AdminAddAgentArgs{agentID, "agent name", ""})
@@ -104,15 +120,14 @@ func (test *TestServer) AddConnectAgent(
 	if err != nil {
 		panic("AddConnectAgent: Failed adding client:" + err.Error())
 	}
+	cl = test.GetConnection(agentID, test.AgentProtocol)
 
-	hostPort := fmt.Sprintf("localhost:%d", test.Port)
-	cl = sseclient.NewHttpSSEClient(hostPort, agentID, nil, test.Certs.CaCert, time.Minute)
-	_, err = cl.ConnectWithToken(token)
+	newToken, err := cl.ConnectWithToken(token)
 	if err != nil {
 		panic("AddConnectAgent: Failed connecting using token. SenderID=" + agentID)
 	}
 
-	return cl, token
+	return cl, newToken
 }
 
 // AddConnectService creates a new service test client.
@@ -121,7 +136,7 @@ func (test *TestServer) AddConnectAgent(
 //
 // clientType can be one of ClientTypeAgent or ClientTypeService
 func (test *TestServer) AddConnectService(serviceID string) (
-	cl hubclient.IAgentClient, token string) {
+	cl clients.IAgent, token string) {
 
 	token, err := test.Runtime.AuthnSvc.AdminSvc.AddService(serviceID,
 		authn.AdminAddServiceArgs{serviceID, "service name", ""})
@@ -133,8 +148,14 @@ func (test *TestServer) AddConnectService(serviceID string) (
 		panic("AddConnectService: Failed adding client:" + err.Error())
 	}
 
-	hostPort := fmt.Sprintf("localhost:%d", test.Port)
-	cl = sseclient.NewHttpSSEClient(hostPort, serviceID, nil, test.Certs.CaCert, time.Minute)
+	if test.ServiceProtocol == WSSProtocol {
+		wssURL := fmt.Sprintf("wss://localhost:%d/wss", test.Port)
+		cl = wssclient.NewWSSClient(wssURL, serviceID, nil, test.Certs.CaCert, time.Minute)
+	} else {
+		hostPort := fmt.Sprintf("localhost:%d", test.Port)
+		cl = ssescclient.NewHttpSSEClient(hostPort, serviceID, nil, test.Certs.CaCert, time.Minute)
+	}
+
 	_, err = cl.ConnectWithToken(token)
 	if err != nil {
 		panic("AddConnectService: Failed connecting using token. serviceID=" + serviceID)
@@ -246,6 +267,11 @@ func NewTestServer() *TestServer {
 		TestDir: TestDir,
 		Certs:   certs.CreateTestCertBundle(),
 		Config:  runtime.NewRuntimeConfig(),
+		// change these for running all tests with different protocols
+		AgentProtocol:    WSSProtocol,
+		ServiceProtocol:  SSEProtocol,
+		ConsumerProtocol: SSEProtocol,
+		ConnectTimeout:   time.Second * 30, // testing extra long
 	}
 
 	return &srv

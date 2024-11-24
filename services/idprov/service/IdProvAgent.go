@@ -1,8 +1,8 @@
 package service
 
 import (
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
+	"github.com/hiveot/hub/wot/protocolclients"
 )
 
 // StartIdProvAgent registers the idprov messaging agent for the idprov service.
@@ -13,7 +13,7 @@ import (
 //
 //	svc is the service whose capabilities to expose
 //	hc is the optional message client connected to the server protocol
-func StartIdProvAgent(svc *ManageIdProvService, hc hubclient.IAgentClient) *hubclient.AgentHandler {
+func StartIdProvAgent(svc *ManageIdProvService, hc clients.IAgent) *hubagent.AgentHandler {
 
 	methods := map[string]interface{}{
 		idprovapi.ApproveRequestMethod:    svc.ApproveRequest,
@@ -22,7 +22,7 @@ func StartIdProvAgent(svc *ManageIdProvService, hc hubclient.IAgentClient) *hubc
 		idprovapi.RejectRequestMethod:     svc.RejectRequest,
 		idprovapi.SubmitRequestMethod:     svc.SubmitRequest,
 	}
-	ah := hubclient.NewAgentHandler(idprovapi.ManageServiceID, methods)
+	ah := hubagent.NewAgentHandler(idprovapi.ManageServiceID, methods)
 	hc.SetRequestHandler(ah.HandleRequest)
 
 	return ah

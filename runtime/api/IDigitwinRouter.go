@@ -1,22 +1,22 @@
 package api
 
 import (
-	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/wot/transports"
 )
 
 // ActionStatusHandler is the handler for return an action progress to sender.
 // Used by router HandleUpdateActionStatus to send the action result to the sender.
-type ActionStatusHandler func(stat hubclient.RequestStatus, agentID string) error
+type ActionStatusHandler func(stat transports.RequestStatus, agentID string) error
 
-type HandleMessage func(msg *hubclient.ThingMessage)
+type HandleMessage func(msg *transports.ThingMessage)
 
 // IDigitwinRouter is the interface for routing the action,event and property messages
 // received from consumers and agents. It handles the flow for TD level operations.
 type IDigitwinRouter interface {
 	// HandleMessage handles updates from agents
-	HandleMessage(msg *hubclient.ThingMessage)
+	HandleMessage(msg *transports.ThingMessage)
 
 	// HandleRequest handles action and property write requests from consumers and agents
 	// replyTo is the client connection-id to reply to
-	HandleRequest(request *hubclient.ThingMessage, replyTo string) (stat hubclient.RequestStatus)
+	HandleRequest(request *transports.ThingMessage, replyTo string) (stat transports.RequestStatus)
 }

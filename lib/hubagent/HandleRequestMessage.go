@@ -1,4 +1,4 @@
-package hubclient
+package hubagent
 
 import (
 	"errors"
@@ -14,7 +14,7 @@ import (
 //	SenderID string
 //}
 
-// HandleRequestMessage unmarshal a request message parameters, passes it to the associated method,
+// HandleRequestMessage unmarshal an agent request message parameters, passes it to the associated method,
 // and marshals the result. Intended to remove boilerplate from RPC service request handlers.
 //
 // The first argument can optionally be the senderID of the clientID invoking the request.

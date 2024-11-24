@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/runtime/connections"
 	"log/slog"
 	"net/http"
@@ -42,7 +41,9 @@ type SSEConnection struct {
 	sseChan  chan SSEEvent
 	isClosed atomic.Bool
 
+	// TODO: split properties and events subscriptions
 	subscriptions connections.Subscriptions
+	observations  connections.Subscriptions
 }
 
 // _send sends the action or write request for the thing to the agent
@@ -131,12 +132,12 @@ func (c *SSEConnection) InvokeAction(
 
 // ObserveProperty adds a subscription for a thing property
 func (c *SSEConnection) ObserveProperty(dThingID string, name string) {
-	c.subscriptions.Observe(dThingID, name)
+	c.observations.Subscribe(dThingID, name)
 }
 
 // PublishActionStatus sends an action progress update to the client
 // If an error is provided this sends the error, otherwise the output value
-func (c *SSEConnection) PublishActionStatus(stat hubclient.RequestStatus, agentID string) error {
+func (c *SSEConnection) PublishActionStatus(stat transports.RequestStatus, agentID string) error {
 	if stat.CorrelationID == "" {
 		slog.Error("PublishActionStatus without requestID", "agentID", agentID)
 	}
@@ -159,7 +160,7 @@ func (c *SSEConnection) PublishEvent(
 func (c *SSEConnection) PublishProperty(
 	dThingID, name string, data any, requestID string, agentID string) {
 
-	if c.subscriptions.IsSubscribed(dThingID, name) {
+	if c.observations.IsSubscribed(dThingID, name) {
 		_, _ = c._send(vocab.HTOpUpdateProperty, dThingID, name, data, requestID, agentID)
 	}
 }
@@ -184,7 +185,7 @@ func (c *SSEConnection) Serve(w http.ResponseWriter, r *http.Request) {
 	c.mux.Unlock()
 
 	// Send a ping event as the go-sse client doesn't have a 'connected callback'
-	pingEvent := SSEEvent{EventType: hubclient.PingMessage, ID: "pingID"}
+	pingEvent := SSEEvent{EventType: clients.PingMessage, ID: "pingID"}
 	c.mux.Lock()
 	c.sseChan <- pingEvent
 	c.mux.Unlock()
@@ -282,7 +283,7 @@ func (c *SSEConnection) UnsubscribeEvent(dThingID string, name string) {
 // UnobserveProperty removes a property subscription
 // dThingID and name must match those of ObserveProperty
 func (c *SSEConnection) UnobserveProperty(dThingID string, name string) {
-	c.subscriptions.Unobserve(dThingID, name)
+	c.observations.Unsubscribe(dThingID, name)
 }
 
 // WriteProperty sends the property change request to the agent
@@ -304,6 +305,7 @@ func NewSSEConnection(clientID string, cid string, remoteAddr string) *SSEConnec
 		remoteAddr:    remoteAddr,
 		lastActivity:  time.Time{},
 		mux:           sync.RWMutex{},
+		observations:  connections.Subscriptions{},
 		subscriptions: connections.Subscriptions{},
 	}
 	return c

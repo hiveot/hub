@@ -4,26 +4,25 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/runtime/api"
 )
 
 // DummyRouter for implementing test hooks defined in IHubRouter
 type DummyRouter struct {
-	OnAction func(msg *hubclient.ThingMessage, replyTo string) hubclient.RequestStatus
-	OnEvent  func(msg *hubclient.ThingMessage)
+	OnAction func(msg *transports.ThingMessage, replyTo string) transports.RequestStatus
+	OnEvent  func(msg *transports.ThingMessage)
 
 	authenticator api.IAuthenticator
 }
 
-func (svc *DummyRouter) HandleMessage(msg *hubclient.ThingMessage) {
+func (svc *DummyRouter) HandleMessage(msg *transports.ThingMessage) {
 	switch msg.Operation {
 	case vocab.HTOpPublishEvent:
 		svc.OnEvent(msg)
 	}
 }
-func (svc *DummyRouter) HandleRequest(msg *hubclient.ThingMessage, replyTo string) (stat hubclient.RequestStatus) {
+func (svc *DummyRouter) HandleRequest(msg *transports.ThingMessage, replyTo string) (stat transports.RequestStatus) {
 	stat.Failed(msg, fmt.Errorf("Unknown operation '%s'", msg.Operation))
 	switch msg.Operation {
 	case vocab.HTOpLogin:

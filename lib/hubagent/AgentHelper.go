@@ -1,4 +1,4 @@
-package hubclient
+package hubagent
 
 import (
 	"fmt"
@@ -20,14 +20,14 @@ type AgentHandler struct {
 }
 
 func (agent *AgentHandler) InvokeMethod(
-	method interface{}, msg *ThingMessage) (stat RequestStatus) {
+	method interface{}, msg *transports.ThingMessage) (stat transports.RequestStatus) {
 
 	respData, err := HandleRequestMessage(msg.SenderID, method, msg.Data)
 	stat.Completed(msg, respData, err)
 	return stat
 }
 
-func (agent *AgentHandler) HandleRequest(msg *ThingMessage) (stat RequestStatus) {
+func (agent *AgentHandler) HandleRequest(msg *transports.ThingMessage) (stat transports.RequestStatus) {
 	if msg.ThingID == agent.thingID {
 		method, found := agent.methods[msg.Name]
 		if found {

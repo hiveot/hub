@@ -4,9 +4,9 @@ import (
 	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/history/historyapi"
+	"github.com/hiveot/hub/wot/protocolclients"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"strconv"
@@ -42,7 +42,7 @@ import (
 // This returns the value, or nil if the key is invalid
 // If the json in the store is invalid this returns an error
 func decodeValue(bucketID string, storageKey string, raw []byte) (
-	thingValue *hubclient.ThingMessage, valid bool, err error) {
+	thingValue *transports.ThingMessage, valid bool, err error) {
 
 	// key is constructed as  timestamp/name/{a|e|c}/sender, where sender can be omitted
 	parts := strings.Split(storageKey, "/")
@@ -77,7 +77,7 @@ func decodeValue(bucketID string, storageKey string, raw []byte) (
 			"thingID", bucketID, "name", name, "err", err.Error())
 	}
 
-	thingValue = &hubclient.ThingMessage{
+	thingValue = &transports.ThingMessage{
 		ThingID:       bucketID, // digital twin thingID that includes the agent prefix
 		CorrelationID: requestID,
 		Name:          name,
@@ -158,7 +158,7 @@ func (svc *ReadHistory) Last(senderID string, args historyapi.CursorArgs) (*hist
 //	until is the time not to exceed in the result. Intended to avoid unnecessary iteration in range queries
 func (svc *ReadHistory) next(
 	cursor buckets.IBucketCursor, name string, until time.Time) (
-	thingValue *hubclient.ThingMessage, found bool) {
+	thingValue *transports.ThingMessage, found bool) {
 
 	untilMilli := until.UnixMilli()
 	found = false
@@ -217,9 +217,9 @@ func (svc *ReadHistory) Next(senderID string, args historyapi.CursorArgs) (*hist
 // Read the next number of items until time or count limit is reached
 func (svc *ReadHistory) nextN(
 	cursor buckets.IBucketCursor, filterKey string, endTime time.Time, limit int) (
-	items []*hubclient.ThingMessage, itemsRemaining bool) {
+	items []*transports.ThingMessage, itemsRemaining bool) {
 
-	items = make([]*hubclient.ThingMessage, 0, limit)
+	items = make([]*transports.ThingMessage, 0, limit)
 	itemsRemaining = true
 
 	for i := 0; i < limit; i++ {
@@ -273,7 +273,7 @@ func (svc *ReadHistory) NextN(senderID string, args historyapi.CursorNArgs) (*hi
 //	to avoid unnecessary iteration in range queries
 func (svc *ReadHistory) prev(
 	cursor buckets.IBucketCursor, name string, until time.Time) (
-	thingValue *hubclient.ThingMessage, found bool) {
+	thingValue *transports.ThingMessage, found bool) {
 
 	untilMilli := until.UnixMilli()
 	found = false
@@ -313,9 +313,9 @@ func (svc *ReadHistory) prev(
 // Read the previous number of items until time or count limit is reached
 func (svc *ReadHistory) prevN(
 	cursor buckets.IBucketCursor, filterKey string, endTime time.Time, limit int) (
-	items []*hubclient.ThingMessage, itemsRemaining bool) {
+	items []*transports.ThingMessage, itemsRemaining bool) {
 
-	items = make([]*hubclient.ThingMessage, 0, limit)
+	items = make([]*transports.ThingMessage, 0, limit)
 	itemsRemaining = true
 
 	for i := 0; i < limit; i++ {
@@ -382,7 +382,7 @@ func (svc *ReadHistory) Release(senderID string, args historyapi.CursorReleaseAr
 
 // seek internal function for seeking with a cursor
 func (svc *ReadHistory) seek(cursor buckets.IBucketCursor, ts time.Time, key string) (
-	tm *hubclient.ThingMessage, valid bool) {
+	tm *transports.ThingMessage, valid bool) {
 	until := time.Now()
 
 	// search the first occurrence at or after the given timestamp

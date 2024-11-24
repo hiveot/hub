@@ -14,7 +14,7 @@ const RenderSelectSourceTemplateFile = "RenderSelectSources.gohtml"
 type RenderSelectSourcesTemplateData struct {
 	AgentThings []*directory.AgentThings
 	// map of thing latest event values
-	//Values map[string]hubclient.ThingMessageMap
+	//Values map[string]transports.IConsumerMap
 	// Map of thingID to thing interaction affordances
 	IOValues map[string]consumedthing.InteractionOutputMap
 }
@@ -67,7 +67,7 @@ func RenderSelectSources(w http.ResponseWriter, r *http.Request) {
 	// this gets all values of all things. Maybe more efficient
 	// to establish a shared cache?
 	data := RenderSelectSourcesTemplateData{
-		//Values: make(map[string]hubclient.ThingMessageMap),
+		//Values: make(map[string]transports.IConsumerMap),
 		IOValues: make(map[string]consumedthing.InteractionOutputMap),
 	}
 	data.AgentThings = directory.GroupByAgent(tds)

@@ -1,16 +1,17 @@
-package wssclient
+package wssbinding
 
 import (
-	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/wot/transports"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 )
 
 // handle receiving an action status update
 // this needs a message handler to pass it to.
-func (cl *WSSClient) handleActionStatus(jsonMsg string) {
+func (cl *WssBindingClient) handleActionStatus(jsonMsg string) {
 	var senderID = ""
-	var stat hubclient.RequestStatus
+	var stat transports.RequestStatus
 
 	wssMsg := ActionStatusMessage{}
 	_ = jsoniter.UnmarshalFromString(jsonMsg, &wssMsg)
@@ -31,12 +32,12 @@ func (cl *WSSClient) handleActionStatus(jsonMsg string) {
 		// messages are expected.
 		// Warning: This channel is only 1 deep so if it isn't read this will block
 		// on the next action reply message.
-		// TODO: add timeout to recover from deadlock
+		// TODO: add timeout to recover from deadlock if rChan isn't read
 		rChan <- &stat
 		return
 	} else if cl.messageHandler != nil {
 		// pass the message to the client using its registered message handler
-		msg := hubclient.NewThingMessage(
+		msg := transports.NewThingMessage(
 			op, "", "", wssMsg.Output, senderID)
 
 		// pass event to client as this is an unsolicited push event
@@ -52,18 +53,18 @@ func (cl *WSSClient) handleActionStatus(jsonMsg string) {
 	}
 }
 
-// Agent receives an invoke/query action message.
-// Pass it on to the handler and send back the result.
-func (cl *WSSClient) handleActionMessage(jsonMsg string) {
+// Agent receives an invoke/query action request message.
+// Pass it on to the handler and send the result back to the hub.
+func (cl *WssBindingClient) handleActionMessage(jsonMsg string) {
 
-	var stat hubclient.RequestStatus
+	var stat transports.RequestStatus
 	wssMsg := ActionMessage{}
 	err := jsoniter.UnmarshalFromString(jsonMsg, &wssMsg)
 	op := MsgTypeToOp[wssMsg.MessageType]
 	_ = err
 	// agent receives action request
-	rxMsg := hubclient.NewThingMessage(
-		op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, "")
+	rxMsg := transports.NewThingMessage(
+		op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, wssMsg.SenderID)
 	rxMsg.CorrelationID = wssMsg.CorrelationID
 	rxMsg.MessageID = wssMsg.MessageID
 
@@ -74,8 +75,6 @@ func (cl *WSSClient) handleActionMessage(jsonMsg string) {
 			slog.String("clientID", cl.clientID))
 		return
 	}
-	// FIXME: convert messageType to operation
-	// FIXME: get senderID
 	stat = cl.requestHandler(rxMsg)
 	stat.CorrelationID = rxMsg.CorrelationID
 	if rxMsg.CorrelationID != "" {
@@ -83,71 +82,70 @@ func (cl *WSSClient) handleActionMessage(jsonMsg string) {
 	}
 }
 
-// handle receiving an event (pub/sub) message
-func (cl *WSSClient) handleEventMessage(jsonMsg string) {
+// handler receiving an event message from agent.
+// This does not send a confirmation reply.
+func (cl *WssBindingClient) handleEventMessage(jsonMsg string) {
 
-	var stat hubclient.RequestStatus
 	wssMsg := EventMessage{}
 	err := jsoniter.UnmarshalFromString(jsonMsg, &wssMsg)
 	op := MsgTypeToOp[wssMsg.MessageType]
 	_ = err
 	// agent receives action request
-	rxMsg := hubclient.NewThingMessage(
+	rxMsg := transports.NewThingMessage(
 		op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, "")
 	rxMsg.CorrelationID = wssMsg.CorrelationID
 	rxMsg.MessageID = wssMsg.MessageID
 	rxMsg.Timestamp = wssMsg.Timestamp
-	stat = cl.requestHandler(rxMsg)
-	stat.CorrelationID = rxMsg.CorrelationID
-	if rxMsg.CorrelationID != "" {
-		cl.PubActionStatus(stat) // send the result to the caller
-	}
+	cl.messageHandler(rxMsg)
 }
 
 // handle receiving an property (pub/sub) message
-func (cl *WSSClient) handlePropertyMessage(jsonMsg string) {
+// property-write messages send a action status result if a correlationID is provided
+func (cl *WssBindingClient) handlePropertyMessage(jsonMsg string) {
 
-	var stat hubclient.RequestStatus
+	var stat transports.RequestStatus
 	wssMsg := PropertyMessage{}
 	err := jsoniter.UnmarshalFromString(jsonMsg, &wssMsg)
 	op := MsgTypeToOp[wssMsg.MessageType]
 	_ = err
 	// agent receives action request
-	rxMsg := hubclient.NewThingMessage(
+	rxMsg := transports.NewThingMessage(
 		op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, "")
 	rxMsg.CorrelationID = wssMsg.CorrelationID
 	rxMsg.MessageID = wssMsg.MessageID
 	rxMsg.Timestamp = wssMsg.Timestamp
-	stat = cl.requestHandler(rxMsg)
-	stat.CorrelationID = rxMsg.CorrelationID
-	if rxMsg.CorrelationID != "" {
-		cl.PubActionStatus(stat) // send the result to the caller
+	if op == vocab.OpWriteProperty || op == vocab.OpWriteMultipleProperties {
+		stat = cl.requestHandler(rxMsg)
+		stat.CorrelationID = rxMsg.CorrelationID
+		if rxMsg.CorrelationID != "" {
+			cl.PubActionStatus(stat) // send the result to the caller
+		}
+	} else {
+		// property reading notification is a response to a read or observe request
+		// TODO: match with request
+		cl.messageHandler(rxMsg)
 	}
 }
 
 // handle receiving a TD update message
-func (cl *WSSClient) handleTDMessage(jsonMsg string) {
+// this does not send a status update
+func (cl *WssBindingClient) handleTDMessage(jsonMsg string) {
 
-	var stat hubclient.RequestStatus
 	wssMsg := TDMessage{}
 	err := jsoniter.UnmarshalFromString(jsonMsg, &wssMsg)
 	op := MsgTypeToOp[wssMsg.MessageType]
 	_ = err
 	// agent receives action request
-	rxMsg := hubclient.NewThingMessage(
+	rxMsg := transports.NewThingMessage(
 		op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, "")
 	rxMsg.CorrelationID = wssMsg.CorrelationID
 	rxMsg.MessageID = wssMsg.MessageID
 	rxMsg.Timestamp = wssMsg.Timestamp
-	stat = cl.requestHandler(rxMsg)
-	stat.CorrelationID = rxMsg.CorrelationID
-	if rxMsg.CorrelationID != "" {
-		cl.PubActionStatus(stat) // send the result to the caller
-	}
+	cl.messageHandler(rxMsg)
 }
 
 // handleWSSMessage processes the push-message received from the hub.
-func (cl *WSSClient) handleWSSMessage(jsonMsg string) {
+func (cl *WssBindingClient) handleWSSMessage(jsonMsg string) {
 	baseMsg := BaseMessage{}
 	err := jsoniter.UnmarshalFromString(jsonMsg, &baseMsg)
 	msgType := baseMsg.MessageType
@@ -159,30 +157,31 @@ func (cl *WSSClient) handleWSSMessage(jsonMsg string) {
 	//reqHandler := cl.requestHandler
 	//cl.mux.RUnlock()
 
-	// always handle rpc response
 	switch msgType {
+	// handle an action status update response
 	case MsgTypeActionStatus:
 		cl.handleActionStatus(jsonMsg)
 
-	// messages and requests are handled separately
+	// handle action related messages
 	case MsgTypeInvokeAction, MsgTypeQueryAction, MsgTypeQueryAllActions:
 		cl.handleActionMessage(jsonMsg)
 
-	// messages and requests are handled separately
-	case MsgTypeReadEvent, MsgTypeReadAllEvents:
+	// handle event related messages
+	case MsgTypeReadEvent, MsgTypeReadAllEvents, MsgTypePublishEvent:
 		cl.handleEventMessage(jsonMsg)
 
-	// messages and requests are handled separately
+	// handle property related messages
 	case MsgTypeReadProperty, MsgTypeReadAllProperties, MsgTypeReadMultipleProperties,
-		MsgTypeWriteProperty, MsgTypeWriteMultipleProperties:
+		MsgTypeWriteProperty, MsgTypeWriteMultipleProperties,
+		MsgTypePropertyReading, MsgTypePropertyReadings:
 		cl.handlePropertyMessage(jsonMsg)
 
-	// messages and requests are handled separately
+	// handle TD related messages
 	case MsgTypeReadTD, MsgTypeUpdateTD:
 		cl.handleTDMessage(jsonMsg)
 
 	default:
-
+		slog.Warn("Unknown message type", "msgType", msgType)
 		//// pass everything else to the message handler
 		//// consumer receive event, property and TD updates
 		//if msgHandler == nil {

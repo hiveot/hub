@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/state/stateclient"
 	"github.com/hiveot/hub/wot/consumedthing"
@@ -67,7 +66,7 @@ type WebClientSession struct {
 	lastError    error
 
 	// The associated hub client for pub/sub
-	hc hubclient.IConsumerClient
+	hc clients.IConsumer
 	// session mutex for updating sse and activity
 	mux sync.RWMutex
 
@@ -116,7 +115,7 @@ func (sess *WebClientSession) GetClientData() *ClientDataModel {
 }
 
 // GetHubClient returns the hub client connection for use in pub/sub
-func (sess *WebClientSession) GetHubClient() hubclient.IConsumerClient {
+func (sess *WebClientSession) GetHubClient() clients.IConsumer {
 	return sess.hc
 }
 
@@ -293,7 +292,7 @@ func (sess *WebClientSession) onHubConnectionChange(connected bool, err error) {
 // onMessage notifies SSE clients of incoming messages from the Hub
 // This is intended for notifying the client UI of the update to props, events or actions.
 // The consumed thing itself is already updated.
-func (sess *WebClientSession) onMessage(msg *hubclient.ThingMessage) {
+func (sess *WebClientSession) onMessage(msg *transports.ThingMessage) {
 
 	slog.Debug("received message",
 		slog.String("operation", msg.Operation),
@@ -318,7 +317,7 @@ func (sess *WebClientSession) onMessage(msg *hubclient.ThingMessage) {
 	} else if msg.Operation == vocab.HTOpUpdateActionStatus {
 		// report unhandled delivery updates
 		// for now just pass it to the notification toaster
-		stat := hubclient.RequestStatus{}
+		stat := transports.RequestStatus{}
 		_ = utils.DecodeAsObject(msg.Data, &stat)
 
 		// TODO: figure out a way to replace the existing notification if the requestID
@@ -359,7 +358,7 @@ func (sess *WebClientSession) onMessage(msg *hubclient.ThingMessage) {
 
 // ReplaceConnection replaces the hub connection in this session.
 // This closes the old connection and ignores the callback it gives.
-func (sess *WebClientSession) ReplaceConnection(hc hubclient.IConsumerClient) {
+func (sess *WebClientSession) ReplaceConnection(hc clients.IConsumer) {
 	oldHC := sess.hc
 	sess.hc = hc
 	hc.SetConnectHandler(sess.onHubConnectionChange)
@@ -483,7 +482,7 @@ func (sess *WebClientSession) WritePage(w http.ResponseWriter, buff *bytes.Buffe
 //	remoteAddr is the web client remote address
 //	onClose is the callback to invoke when this session is closed.
 func NewWebClientSession(
-	cid string, hc hubclient.IConsumerClient, remoteAddr string, noState bool,
+	cid string, hc clients.IConsumer, remoteAddr string, noState bool,
 	onClosed func(*WebClientSession)) *WebClientSession {
 	var err error
 

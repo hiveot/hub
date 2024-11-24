@@ -2,9 +2,9 @@ package digitwin_test
 
 import (
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/wot/tdd"
+	"github.com/hiveot/hub/wot/transports"
 )
 
 // dummy transport for testing with the digitwin service
@@ -37,7 +37,7 @@ func (dummy *DummyTransportBinding) PublishProperty(
 	dThingID string, name string, value any, requestID string, agentID string) {
 }
 func (dummy *DummyTransportBinding) PublishProgressUpdate(
-	connectionID string, stat hubclient.RequestStatus, agentID string) (bool, error) {
+	connectionID string, stat transports.RequestStatus, agentID string) (bool, error) {
 	return false, nil
 }
 

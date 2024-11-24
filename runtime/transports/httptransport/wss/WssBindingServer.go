@@ -2,10 +2,10 @@ package wss
 
 import (
 	"github.com/gorilla/websocket"
-	"github.com/hiveot/hub/lib/hubclient/wssclient"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/connections"
 	"github.com/hiveot/hub/runtime/transports/httptransport/httpcontext"
+	"github.com/hiveot/hub/wot/transports/clients/wssbinding"
 	"log/slog"
 	"net/http"
 )
@@ -51,7 +51,7 @@ func (b *HubWssBinding) Serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// don't return until the connection is closed
-	wssclient.WSSReadLoop(r.Context(), wssConn, c.HubWssReceive)
+	wssbinding.WSSReadLoop(r.Context(), wssConn, c.HubWssReceive)
 
 	// if this fails then the connection is already closed (CloseAll)
 	err = wssConn.Close()

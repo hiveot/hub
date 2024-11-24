@@ -2,8 +2,8 @@ package idprovclient
 
 import (
 	"github.com/hiveot/hub/api/go/authn"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
+	"github.com/hiveot/hub/wot/protocolclients"
 	"github.com/hiveot/hub/wot/tdd"
 )
 
@@ -11,7 +11,7 @@ import (
 // service using the message bus.
 // This requires admin permissions.
 type ManageIdProvClient struct {
-	hc hubclient.IConsumerClient
+	hc clients.IConsumer
 	// thingID digital twin service ID of this capability (digitwin version with agent prefix)
 	dThingID string
 }
@@ -80,7 +80,7 @@ func (cl *ManageIdProvClient) SubmitRequest(
 	return &resp.Status, resp.Token, err
 }
 
-func NewIdProvManageClient(hc hubclient.IConsumerClient) *ManageIdProvClient {
+func NewIdProvManageClient(hc clients.IConsumer) *ManageIdProvClient {
 	agentID := idprovapi.AgentID
 	cl := &ManageIdProvClient{
 		hc:       hc,

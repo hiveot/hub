@@ -1,4 +1,4 @@
-package sseclient
+package ssescclient
 
 import (
 	"bytes"
@@ -6,8 +6,8 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/tlsclient"
+	"github.com/hiveot/hub/wot/transports/clients/httpbinding"
 	"github.com/tmaxmax/go-sse"
 	"log/slog"
 	"net/http"
@@ -50,7 +50,7 @@ func ConnectSSE(
 		sseCancelFn()
 		return nil, err
 	}
-	req.Header.Add(hubclient.ConnectionIDHeader, cid)
+	req.Header.Add(httpbinding.ConnectionIDHeader, cid)
 	req.Header.Add("Authorization", "bearer "+bearerToken)
 	parts, _ := url.Parse(sseURL)
 	origin := fmt.Sprintf("%s://%s", parts.Scheme, parts.Host)

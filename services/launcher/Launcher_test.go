@@ -27,6 +27,8 @@ var logDir = "/tmp/test-launcher"
 // the following are set by the testmain
 var testServer *testenv.TestServer
 
+const agentUsesWSS = false
+
 //var testClients = []msgserver.ClientAuthInfo{{
 //	SenderID:   launcher.ServiceName,
 //	ClientType: auth.ClientTypeService,
@@ -43,7 +45,7 @@ func startService() (l *launcherclient.LauncherClient, stopFn func()) {
 
 	testServer = testenv.StartTestServer(true)
 
-	hc1, _ := testServer.AddConnectService(launcherID)
+	hc1, _ := testServer.AddConnectService(launcherID, agentUsesWSS)
 	var launcherConfig = config.NewLauncherConfig()
 	launcherConfig.AttachStderr = true
 	launcherConfig.AttachStdout = false
@@ -63,7 +65,7 @@ func startService() (l *launcherclient.LauncherClient, stopFn func()) {
 	//agent := service.StartLauncherAgent(svc, hc1)
 	//_ = agent
 	//--- connect the launcher user
-	hc2, _ := testServer.AddConnectUser(adminID, authz.ClientRoleAdmin)
+	hc2, _ := testServer.AddConnectConsumer(adminID, authz.ClientRoleAdmin)
 	cl := launcherclient.NewLauncherClient(launcherID, hc2)
 	return cl, func() {
 		hc2.Disconnect()
@@ -103,7 +105,7 @@ func TestList(t *testing.T) {
 	require.NoError(t, err)
 	assert.Greater(t, len(info), 10)
 
-	hc, _ := testServer.AddConnectUser(userID, authz.ClientRoleAdmin)
+	hc, _ := testServer.AddConnectConsumer(userID, authz.ClientRoleAdmin)
 	defer hc.Disconnect()
 	cl := launcherclient.NewLauncherClient("", hc)
 	info2, err := cl.List(false)
@@ -119,7 +121,7 @@ func TestListNoPermission(t *testing.T) {
 	defer cancelFunc()
 	require.NotNil(t, svc)
 
-	hc, _ := testServer.AddConnectUser(userID, authz.ClientRoleNone)
+	hc, _ := testServer.AddConnectConsumer(userID, authz.ClientRoleNone)
 	defer hc.Disconnect()
 	cl := launcherclient.NewLauncherClient("", hc)
 	info2, err := cl.List(false)

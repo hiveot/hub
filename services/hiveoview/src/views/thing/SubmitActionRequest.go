@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/go-chi/chi/v5"
-	"github.com/hiveot/hub/lib/hubclient"
 	session2 "github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
@@ -25,7 +24,7 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 	newValue = valueStr
 	reply := ""
 
-	stat := hubclient.RequestStatus{}
+	stat := transports.RequestStatus{}
 	//
 	_, sess, err := session2.GetSessionFromContext(r)
 	if err != nil {

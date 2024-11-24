@@ -15,6 +15,8 @@ import (
 var tempFolder string
 var ts *testenv.TestServer
 
+const agentUsesWSS = true
+
 // TestMain run test server and use the project test folder as the home folder.
 // All tests are run using the simulation file.
 func TestMain(m *testing.M) {
@@ -43,7 +45,7 @@ func TestStartStop(t *testing.T) {
 	cfg.ScanAsRoot = false
 
 	svc := service.NewIpNetBinding(cfg)
-	ag, _ := ts.AddConnectService("ipnet")
+	ag, _ := ts.AddConnectService("ipnet", agentUsesWSS)
 	defer ag.Disconnect()
 	err := svc.Start(ag)
 

@@ -1,8 +1,20 @@
-package hubclient
+package transports
 
 import (
-	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/utils"
+)
+
+// request delivery status used in the api
+// todo: align this with progress status values from WoT spec (if there is any)
+const (
+	// The request has not yet been delivered
+	RequestPending = "pending"
+	// The request has been delivered but not yet processed
+	RequestDelivered = "delivered"
+	// The request processing was completed
+	RequestCompleted = "completed"
+	// The request processing or delivery failed
+	RequestFailed = "failed"
 )
 
 // RequestStatus holds the progress of action or write property request delivery.
@@ -28,7 +40,7 @@ type RequestStatus struct {
 //
 // msg is the internal thing message containing the request that completed.
 func (stat *RequestStatus) Completed(msg *ThingMessage, reply any, err error) *RequestStatus {
-	stat.Status = vocab.RequestCompleted
+	stat.Status = RequestCompleted
 	stat.CorrelationID = msg.CorrelationID
 	stat.Output = reply
 	stat.ThingID = msg.ThingID
@@ -53,7 +65,7 @@ func (stat *RequestStatus) Completed(msg *ThingMessage, reply any, err error) *R
 func (stat *RequestStatus) Delivered(msg *ThingMessage) *RequestStatus {
 	stat.ThingID = msg.ThingID
 	stat.Name = msg.Name
-	stat.Status = vocab.RequestDelivered
+	stat.Status = RequestDelivered
 	stat.CorrelationID = msg.CorrelationID
 	return stat
 }
@@ -66,7 +78,7 @@ func (stat *RequestStatus) Delivered(msg *ThingMessage) *RequestStatus {
 func (stat *RequestStatus) Failed(msg *ThingMessage, err error) *RequestStatus {
 	stat.ThingID = msg.ThingID
 	stat.Name = msg.Name
-	stat.Status = vocab.RequestFailed
+	stat.Status = RequestFailed
 	stat.CorrelationID = msg.CorrelationID
 	stat.Error = err.Error()
 	return stat

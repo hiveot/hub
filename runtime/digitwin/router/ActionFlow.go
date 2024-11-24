@@ -7,10 +7,10 @@ import (
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/wot/tdd"
+	"github.com/hiveot/hub/wot/transports"
 	"log/slog"
 	"time"
 )
@@ -48,7 +48,7 @@ type ActionFlowRecord struct {
 // SSE, WS, MQTT bindings must use a correlation-id to match request-response messages.
 // this is not well-defined in the WoT specs and up to the protocol binding implementation.
 func (svc *DigitwinRouter) HandleInvokeAction(
-	msg *hubclient.ThingMessage, replyTo string) (stat hubclient.RequestStatus) {
+	msg *transports.ThingMessage, replyTo string) (stat transports.RequestStatus) {
 	//status string, output any, requestID string, err error) {
 
 	// check if consumer or agent has the right permissions
@@ -169,9 +169,9 @@ func (svc *DigitwinRouter) HandleInvokeAction(
 // 4: Updates the status of the active request cache
 //
 // If the message is no longer in the active cache then it is ignored.
-func (svc *DigitwinRouter) HandleUpdateActionStatus(msg *hubclient.ThingMessage) {
+func (svc *DigitwinRouter) HandleUpdateActionStatus(msg *transports.ThingMessage) {
 
-	var stat hubclient.RequestStatus
+	var stat transports.RequestStatus
 	var err error
 
 	agentID := msg.SenderID
@@ -206,6 +206,7 @@ func (svc *DigitwinRouter) HandleUpdateActionStatus(msg *hubclient.ThingMessage)
 	// Update the thingID to notify the sender with progress on the digital twin thing ID
 	stat.ThingID = tdd.MakeDigiTwinThingID(agentID, thingID)
 	stat.Name = actionName
+
 	// the sender (agents) must be the thing agent
 	if agentID != arAgentID {
 		err = fmt.Errorf(
@@ -277,7 +278,7 @@ func (svc *DigitwinRouter) HandleUpdateActionStatus(msg *hubclient.ThingMessage)
 }
 
 // TODO
-func (svc *DigitwinRouter) HandleUpdateMultipleActionStatuses(msg *hubclient.ThingMessage) {
+func (svc *DigitwinRouter) HandleUpdateMultipleActionStatuses(msg *transports.ThingMessage) {
 	slog.Error("HandleUpdateMultipleActionStatuses: not yet implemented")
 }
 

@@ -2,7 +2,7 @@ package service
 
 import (
 	"errors"
-	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/wot/protocolclients"
 	"github.com/hiveot/hub/wot/tdd"
 )
 
@@ -17,7 +17,7 @@ func (it *IsySensorThing) GetPropValues(onlyChanges bool) map[string]any {
 	return propValues
 }
 
-func (it *IsySensorThing) HandleConfigRequest(action *hubclient.ThingMessage) (err error) {
+func (it *IsySensorThing) HandleConfigRequest(action *transports.ThingMessage) (err error) {
 	// TODO: sensor configuration
 	return errors.New("unknown config: " + action.Name)
 }

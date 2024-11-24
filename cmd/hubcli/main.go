@@ -9,11 +9,11 @@ import (
 	"github.com/hiveot/hub/cmd/hubcli/idprovcli"
 	"github.com/hiveot/hub/cmd/hubcli/launchercli"
 	"github.com/hiveot/hub/cmd/hubcli/pubsubcli"
-	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/connect"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot/protocolclients"
+	"github.com/hiveot/hub/wot/protocolclients/connect"
 	"github.com/urfave/cli/v2"
 	"log/slog"
 	"os"
@@ -29,7 +29,7 @@ var nowrap bool
 // commandline:  hubcli command options
 
 func main() {
-	var hc hubclient.IConsumerClient
+	var hc clients.IConsumer
 	var verbose bool
 	var loginID = "admin"
 	var password = ""

@@ -2,11 +2,11 @@ package router
 
 import (
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/connections"
 	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/runtime/digitwin/store"
+	"github.com/hiveot/hub/wot/transports"
 	"github.com/teris-io/shortid"
 	"sync"
 )
@@ -35,7 +35,7 @@ type DigitwinRouter struct {
 }
 
 // HandleMessage routes updates from agents to consumers
-func (svc *DigitwinRouter) HandleMessage(msg *hubclient.ThingMessage) {
+func (svc *DigitwinRouter) HandleMessage(msg *transports.ThingMessage) {
 
 	// middleware: authorize the request.
 	// TODO: use a middleware chain
@@ -58,7 +58,7 @@ func (svc *DigitwinRouter) HandleMessage(msg *hubclient.ThingMessage) {
 // HandleRequest routers requests from consumers to the digital twin and on to agents
 // The clcid is the client connectionID used when sending an asynchronous reply.
 func (svc *DigitwinRouter) HandleRequest(
-	request *hubclient.ThingMessage, replyTo string) (stat hubclient.RequestStatus) {
+	request *transports.ThingMessage, replyTo string) (stat transports.RequestStatus) {
 	// assign a requestID if none given
 	if request.CorrelationID == "" {
 		request.CorrelationID = "action-" + shortid.MustGenerate()

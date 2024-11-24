@@ -7,11 +7,7 @@ import (
 	"sync"
 )
 
-// Subscriptions manages event and property subscriptions of a consumer connection.
-//
-// This intentionally treats observed properties and subscribed events as one
-// subscription. Any interest in property or events with the same name only
-// needs a single subscription.
+// Subscriptions event/property subscriptions of a consumer connection.
 //
 // This uses "+" as wildcards
 type Subscriptions struct {
@@ -52,8 +48,8 @@ func (s *Subscriptions) IsSubscribed(dThingID string, name string) bool {
 	return false
 }
 
-// Observe adds a subscription for a thing property
-func (s *Subscriptions) Observe(dThingID string, name string) {
+// Subscribe adds a subscription for a thing event/property
+func (s *Subscriptions) Subscribe(dThingID string, name string) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 	if dThingID == "" {
@@ -66,13 +62,13 @@ func (s *Subscriptions) Observe(dThingID string, name string) {
 	s.subscriptions = append(s.subscriptions, subKey)
 }
 
-// Subscribe adds a subscription for a thing property
-func (s *Subscriptions) Subscribe(dThingID string, name string) {
-	s.Observe(dThingID, name)
+// SubscribeAll adds a subscription for all thing events/properties
+func (s *Subscriptions) SubscribeAll(dThingID string) {
+	s.Subscribe(dThingID, "")
 }
 
-// Unobserve removes a subscription for a thing event/property
-func (s *Subscriptions) Unobserve(dThingID string, name string) {
+// Unsubscribe removes a subscription for a thing event/property
+func (s *Subscriptions) Unsubscribe(dThingID string, name string) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 	if dThingID == "" {
@@ -90,7 +86,8 @@ func (s *Subscriptions) Unobserve(dThingID string, name string) {
 	}
 }
 
-// Unsubscribe removes a subscription for a thing event/property
-func (s *Subscriptions) Unsubscribe(dThingID string, name string) {
-	s.Unobserve(dThingID, name)
+// UnsubscribeAll removes an 'all' subscription for all thing events/properties
+func (s *Subscriptions) UnsubscribeAll(dThingID string) {
+	// TODO: moreve all individual subscriptions instead of just the 'all'
+	s.Unsubscribe(dThingID, "")
 }

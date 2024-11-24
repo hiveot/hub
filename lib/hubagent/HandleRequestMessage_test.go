@@ -1,8 +1,7 @@
-package hubclient_test
+package hubagent_test
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/lib/hubclient"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -73,7 +72,7 @@ func TestHandleRequestMessage(t *testing.T) {
 		P1: "agent1",
 		P2: 5,
 	}
-	data, err := hubclient.HandleRequestMessage(senderID, Method1Ref, args)
+	data, err := hubagent.HandleRequestMessage(senderID, Method1Ref, args)
 	require.NoError(t, err)
 	m1resp, ok := data.(*M1Res)
 	require.True(t, ok)
@@ -85,7 +84,7 @@ func TestHandleRequestMessage(t *testing.T) {
 		P1: "agent2",
 		P2: 6,
 	}
-	data, err = hubclient.HandleRequestMessage(senderID, Method1Val, args)
+	data, err = hubagent.HandleRequestMessage(senderID, Method1Val, args)
 	require.NoError(t, err)
 	m1resVal, ok := data.(M1Res)
 	require.True(t, ok)
@@ -95,21 +94,21 @@ func TestHandleRequestMessage(t *testing.T) {
 
 func TestHandleRequestNoArgs(t *testing.T) {
 	// pass args by reference
-	data, err := hubclient.HandleRequestMessage(senderID, Method2NoArgs, "")
+	data, err := hubagent.HandleRequestMessage(senderID, Method2NoArgs, "")
 	require.NoError(t, err)
 	assert.Empty(t, data)
 }
 
 func TestErrorResult(t *testing.T) {
 	// pass args by reference
-	data, err := hubclient.HandleRequestMessage(senderID, Method3ErrorResult, "")
+	data, err := hubagent.HandleRequestMessage(senderID, Method3ErrorResult, "")
 	require.Error(t, err)
 	assert.Empty(t, data)
 }
 
 func TestDataAndErrorResult(t *testing.T) {
 	// check this doesnt fail somehow
-	_, err := hubclient.HandleRequestMessage(senderID, Method4DataAndErrorResult, "")
+	_, err := hubagent.HandleRequestMessage(senderID, Method4DataAndErrorResult, "")
 	require.Error(t, err)
 }
 
@@ -117,7 +116,7 @@ func TestStringArgs(t *testing.T) {
 	// check this doesn't fail somehow
 	sargs := "Hello world"
 
-	data, err := hubclient.HandleRequestMessage(senderID, Method5StringArg, sargs)
+	data, err := hubagent.HandleRequestMessage(senderID, Method5StringArg, sargs)
 	require.NoError(t, err)
 	result := data.(string)
 
@@ -128,7 +127,7 @@ func TestStringArgs(t *testing.T) {
 func TestIntArgs(t *testing.T) {
 	// check this doesnt fail somehow
 	sarg := 25
-	data, err := hubclient.HandleRequestMessage(senderID, Method6IntArg, sarg)
+	data, err := hubagent.HandleRequestMessage(senderID, Method6IntArg, sarg)
 	require.NoError(t, err)
 	result := data.(int)
 
@@ -137,7 +136,7 @@ func TestIntArgs(t *testing.T) {
 }
 func TestByteArrayArgs(t *testing.T) {
 	args := []byte{1, 2, 3}
-	data, err := hubclient.HandleRequestMessage(senderID, Method7ByteArrayArg, args)
+	data, err := hubagent.HandleRequestMessage(senderID, Method7ByteArrayArg, args)
 	require.NoError(t, err)
 
 	result := data.([]byte)
@@ -147,14 +146,14 @@ func TestByteArrayArgs(t *testing.T) {
 func TestTwoArgsFail(t *testing.T) {
 	sargJson, _ := jsoniter.Marshal("Hello world")
 	// this method has 2 args, we only pass 1. Does it blow up?
-	data, err := hubclient.HandleRequestMessage(senderID, Method8TwoArgs, string(sargJson))
+	data, err := hubagent.HandleRequestMessage(senderID, Method8TwoArgs, string(sargJson))
 	assert.Error(t, err)
 	assert.Empty(t, data)
 }
 func TestThreeResFail(t *testing.T) {
 	sarg := "Hello world"
 	// this method has 3 results. Does it blow up?
-	data, err := hubclient.HandleRequestMessage(senderID, Method9ThreeRes, sarg)
+	data, err := hubagent.HandleRequestMessage(senderID, Method9ThreeRes, sarg)
 	assert.Error(t, err)
 	assert.Empty(t, data)
 }
@@ -200,7 +199,7 @@ func Benchmark_Overhead(b *testing.B) {
 			for n := 0; n < b.N; n++ {
 				count2++
 				// pass args by reference
-				data, err := hubclient.HandleRequestMessage(senderID, Method1Ref, &m1args)
+				data, err := hubagent.HandleRequestMessage(senderID, Method1Ref, &m1args)
 				_ = err
 				m1res, ok := data.(*M1Res)
 				require.True(b, ok)

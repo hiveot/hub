@@ -2,7 +2,6 @@ package connections_test
 
 import (
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/runtime/connections"
 )
 
@@ -11,6 +10,7 @@ type DummyConnection struct {
 	connectionID  string
 	clientID      string
 	remoteAddr    string
+	observations  connections.Subscriptions
 	subscriptions connections.Subscriptions
 
 	PublishEventHandler func(dThingID string, name string, value any, requestID string, agentID string)
@@ -29,7 +29,7 @@ func (c *DummyConnection) InvokeAction(thingID string, name string, input any, r
 	return vocab.RequestCompleted, nil, nil
 }
 
-func (c *DummyConnection) PublishActionStatus(stat hubclient.RequestStatus, agentID string) error {
+func (c *DummyConnection) PublishActionStatus(stat transports.RequestStatus, agentID string) error {
 	return nil
 }
 
@@ -39,7 +39,7 @@ func (c *DummyConnection) PublishEvent(dThingID string, name string, value any, 
 	}
 }
 func (c *DummyConnection) PublishProperty(dThingID string, name string, value any, requestID string, agentID string) {
-	if c.PublishPropHandler != nil && c.subscriptions.IsSubscribed(dThingID, name) {
+	if c.PublishPropHandler != nil && c.observations.IsSubscribed(dThingID, name) {
 		c.PublishPropHandler(dThingID, name, value, requestID, agentID)
 	}
 }
@@ -47,13 +47,13 @@ func (c *DummyConnection) SubscribeEvent(dThingID, name string) {
 	c.subscriptions.Subscribe(dThingID, name)
 }
 func (c *DummyConnection) ObserveProperty(dThingID, name string) {
-	c.subscriptions.Observe(dThingID, name)
+	c.observations.Subscribe(dThingID, name)
 }
 func (c *DummyConnection) UnsubscribeEvent(dThingID, name string) {
 	c.subscriptions.Unsubscribe(dThingID, name)
 }
 func (c *DummyConnection) UnobserveProperty(dThingID, name string) {
-	c.subscriptions.Unobserve(dThingID, name)
+	c.observations.Unsubscribe(dThingID, name)
 }
 func (c *DummyConnection) WriteProperty(thingID, name string, value any, requestID string, senderID string) (status string, err error) {
 	return "", nil

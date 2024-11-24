@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/hiveot/hub/wot/tdd"
@@ -25,7 +24,7 @@ type InteractionListener func(*InteractionOutput)
 //
 // This keeps a copy of the Thing's property and event values and updates on changes.
 type ConsumedThing struct {
-	hc hubclient.IConsumerClient
+	hc clients.IConsumer
 
 	td *tdd.TD
 	// observer of property value changes by property name
@@ -34,7 +33,7 @@ type ConsumedThing struct {
 	subscribers map[string]InteractionListener
 
 	// action status values
-	actionValues map[string]*hubclient.RequestStatus
+	actionValues map[string]*transports.RequestStatus
 	// prop values
 	propValues map[string]*InteractionOutput
 	// event values
@@ -44,7 +43,7 @@ type ConsumedThing struct {
 }
 
 // build a map of interaction outputs for the given values
-func (ct *ConsumedThing) buildInteractionOutputMap(tvm map[string]*digitwin.ThingValue) map[string]*InteractionOutput {
+func (ct *ConsumedThing) buildInteractionOutputMap(tvm map[string]*transports.ThingMessage) map[string]*InteractionOutput {
 	outMap := make(map[string]*InteractionOutput)
 	for key, tv := range tvm {
 		iout := NewInteractionOutputFromValue(tv, ct.td)
@@ -54,7 +53,7 @@ func (ct *ConsumedThing) buildInteractionOutputMap(tvm map[string]*digitwin.Thin
 }
 
 // Create an interactionOutput for the given thing message
-func (ct *ConsumedThing) buildInteractionOutput(tv *digitwin.ThingValue) *InteractionOutput {
+func (ct *ConsumedThing) buildInteractionOutput(tv *transports.ThingMessage) *InteractionOutput {
 	iout := NewInteractionOutputFromValue(tv, ct.td)
 	return iout
 }
@@ -121,8 +120,8 @@ func (ct *ConsumedThing) InvokeAction(name string, params InteractionInput) *Int
 	//if err != nil {
 	//	slog.Warn("HandleActionFlow", "err", err.Error())
 	//}
-	//stat := ct.hc.SendOperation(href, actionForm, params.value, "")
-	stat := ct.hc.InvokeAction(ct.td.ID, name, params.value, nil, "")
+	//stat := ct.hc.PublishFromForm(href, actionForm, params.value, "")
+	stat := ct.hc.InvokeAction(ct.td.ID, name, params.value, "")
 
 	o := NewInteractionOutput(
 		ct.td.ID, name, params.Schema, params.value, "")
@@ -148,7 +147,7 @@ func (ct *ConsumedThing) ObserveProperty(name string, listener InteractionListen
 //
 //	tm is the event message received from the hub. This isn't standard WoT so
 //	the objective is to remove the need for it.
-func (ct *ConsumedThing) OnDeliveryUpdate(msg *hubclient.ThingMessage) {
+func (ct *ConsumedThing) OnDeliveryUpdate(msg *transports.ThingMessage) {
 	action, found := ct.actionValues[msg.Name]
 	_ = action
 	if !found {
@@ -157,7 +156,7 @@ func (ct *ConsumedThing) OnDeliveryUpdate(msg *hubclient.ThingMessage) {
 			"action", msg.Name)
 		return
 	}
-	stat := hubclient.RequestStatus{}
+	stat := transports.RequestStatus{}
 	err := utils.DecodeAsObject(msg.Data, &stat)
 	if stat.Error != "" {
 		slog.Error("Delivery update invalid payload",
@@ -175,7 +174,7 @@ func (ct *ConsumedThing) OnDeliveryUpdate(msg *hubclient.ThingMessage) {
 //
 //	tm is the event message received from the hub. This isn't standard WoT so
 //	the objective is to remove the need for it.
-func (ct *ConsumedThing) OnEvent(tv *digitwin.ThingValue) {
+func (ct *ConsumedThing) OnEvent(tv *transports.ThingMessage) {
 	io := ct.buildInteractionOutput(tv)
 	ct.eventValues[tv.Name] = io
 	subscr, found := ct.subscribers[tv.Name]
@@ -191,7 +190,7 @@ func (ct *ConsumedThing) OnEvent(tv *digitwin.ThingValue) {
 //
 //	msg is the property message received from the hub. This isn't standard WoT so
 //	the objective is to remove the need for it.
-func (ct *ConsumedThing) OnPropertyUpdate(tv *digitwin.ThingValue) {
+func (ct *ConsumedThing) OnPropertyUpdate(tv *transports.ThingMessage) {
 	io := ct.buildInteractionOutput(tv)
 	ct.propValues[tv.Name] = io
 	observer, found := ct.observers[tv.Name]
@@ -229,7 +228,7 @@ func (ct *ConsumedThing) ReadEvent(name string) *InteractionOutput {
 		}
 		td := ct.GetThingDescription()
 
-		tv, err := digitwin.ValuesReadEvent(ct.hc, name, ct.td.ID)
+		tv, err := ct.hc.ReadEvent(ct.td.ID, name)
 		if err == nil {
 			iout = NewInteractionOutputFromValue(&tv, td)
 		} else {
@@ -248,7 +247,7 @@ func (ct *ConsumedThing) ReadEvent(name string) *InteractionOutput {
 // get the remaining values.
 func (ct *ConsumedThing) ReadHistory(
 	name string, timestamp time.Time, duration time.Duration) (
-	values []*hubclient.ThingMessage, itemsRemaining bool, err error) {
+	values []*transports.ThingMessage, itemsRemaining bool, err error) {
 
 	hist := historyclient.NewReadHistoryClient(ct.hc)
 	// todo: is there a need to read in batches? not for a single day.
@@ -304,7 +303,7 @@ func (ct *ConsumedThing) ReadAllEvents() map[string]*InteractionOutput {
 	// TODO: no need to create interactionoutputs until they are requested
 	for _, v := range evList {
 		io := NewInteractionOutput(ct.td.ID, v.Name, nil, v.Data, v.Updated)
-		io.RequestID = v.RequestID
+		io.RequestID = v.CorrelationID
 		//io.SenderID = v.SenderID  // sender is agent of this thing
 		io.SetSchemaFromTD(ct.td)
 		ct.eventValues[v.Name] = io
@@ -321,7 +320,7 @@ func (ct *ConsumedThing) ReadAllProperties() map[string]*InteractionOutput {
 	}
 	for _, v := range propList {
 		io := NewInteractionOutput(ct.td.ID, v.Name, nil, v.Data, v.Updated)
-		io.RequestID = v.RequestID
+		io.RequestID = v.CorrelationID
 		//io.SenderID = v.SenderID  // sender is agent of this thing
 		io.SetSchemaFromTD(ct.td)
 		ct.propValues[v.Name] = io
@@ -346,7 +345,7 @@ func (ct *ConsumedThing) SubscribeEvent(name string, listener InteractionListene
 // Since writing a property can take some time, especially if the device is
 // asleep, the callback receives the first response containing a requestID.
 // If the request is not yet complete
-func (ct *ConsumedThing) WriteProperty(name string, value InteractionInput) hubclient.RequestStatus {
+func (ct *ConsumedThing) WriteProperty(name string, value InteractionInput) transports.RequestStatus {
 
 	stat := ct.hc.WriteProperty(ct.td.ID, name, value)
 	// TODO: receive updates
@@ -363,13 +362,13 @@ func (ct *ConsumedThing) WriteMultipleProperties(
 
 // NewConsumedThing creates a new instance of a Thing
 // Call Stop() when done
-func NewConsumedThing(td *tdd.TD, hc hubclient.IConsumerClient) *ConsumedThing {
+func NewConsumedThing(td *tdd.TD, hc clients.IConsumer) *ConsumedThing {
 	c := ConsumedThing{
 		td:           td,
 		hc:           hc,
 		observers:    make(map[string]InteractionListener),
 		subscribers:  make(map[string]InteractionListener),
-		actionValues: make(map[string]*hubclient.RequestStatus),
+		actionValues: make(map[string]*transports.RequestStatus),
 		eventValues:  make(map[string]*InteractionOutput),
 		propValues:   make(map[string]*InteractionOutput),
 	}

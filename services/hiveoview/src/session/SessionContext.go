@@ -22,7 +22,7 @@ const SessionManagerContextID = "sm"
 func AddSessionToContext(sm *WebSessionManager) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			//var hc hubclient.IConsumerClient
+			//var hc transports.IConsumer
 
 			// get the current connection object
 			cs, clientID, cid, authToken, err := sm.GetSessionFromCookie(r)

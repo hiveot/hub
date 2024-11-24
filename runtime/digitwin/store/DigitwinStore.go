@@ -116,7 +116,12 @@ func (svc *DigitwinStore) QueryAllActions(dThingID string) (
 		err = fmt.Errorf("QueryAllActions: dThing with ID '%s' not found", dThingID)
 		return v, err
 	}
-	return dtw.ActionValues, err
+	// shallow copy
+	actMap := make(map[string]digitwin.ActionValue)
+	for k, v := range dtw.ActionValues {
+		actMap[k] = v
+	}
+	return actMap, err
 }
 
 // ReadAllEvents returns all last known action invocation status of the given thing
@@ -130,21 +135,33 @@ func (svc *DigitwinStore) ReadAllEvents(dThingID string) (
 		err = fmt.Errorf("ReadAllEvents: dThing with ID '%s' not found", dThingID)
 		return v, err
 	}
-	return dtw.EventValues, err
+
+	// shallow copy
+	evMap := make(map[string]digitwin.ThingValue)
+	for k, v := range dtw.PropValues {
+		evMap[k] = v
+	}
+	return evMap, err
 }
 
-// ReadAllProperties returns all last known property values of the given thing
+// ReadAllProperties returns a shallow copy of all last known property values of the given thing
 func (svc *DigitwinStore) ReadAllProperties(dThingID string) (
 	v map[string]digitwin.ThingValue, err error) {
 
 	svc.cacheMux.RLock()
 	defer svc.cacheMux.RUnlock()
 	dtw, found := svc.dtwCache[dThingID]
+
 	if !found {
 		err = fmt.Errorf("ReadAllProperties: dThing with ID '%s' not found", dThingID)
 		return v, err
 	}
-	return dtw.PropValues, err
+	// shallow copy
+	propMap := make(map[string]digitwin.ThingValue)
+	for k, v := range dtw.PropValues {
+		propMap[k] = v
+	}
+	return propMap, err
 }
 
 // ReadEvent returns the last known event status of the given name
@@ -441,7 +458,7 @@ func (svc *DigitwinStore) UpdateActionStatus(
 //
 // This returns the digital twin's ID where the event is stored.
 func (svc *DigitwinStore) UpdateEventValue(
-	agentID string, thingID string, eventName string, data any, requestID string) (string, error) {
+	agentID string, thingID string, eventName string, data any, messageID string) (string, error) {
 	svc.cacheMux.Lock()
 	defer svc.cacheMux.Unlock()
 
@@ -454,8 +471,8 @@ func (svc *DigitwinStore) UpdateEventValue(
 	}
 	eventValue := digitwin.ThingValue{
 		Data:      data,
-		Updated:   time.Now().Format(utils.RFC3339Milli),
-		RequestID: requestID,
+		Created:   time.Now().Format(utils.RFC3339Milli),
+		MessageID: messageID,
 		Name:      eventName,
 	}
 	dtw.EventValues[eventName] = eventValue
@@ -474,7 +491,7 @@ func (svc *DigitwinStore) UpdateEventValue(
 //
 // This returns a flag indicating whether the property value has changed.
 func (svc *DigitwinStore) UpdatePropertyValue(
-	agentID string, thingID string, propName string, newValue any, requestID string) (
+	agentID string, thingID string, propName string, newValue any, messageID string) (
 	hasChanged bool, err error) {
 
 	svc.cacheMux.Lock()
@@ -501,9 +518,9 @@ func (svc *DigitwinStore) UpdatePropertyValue(
 	hasChanged = oldValue != propValue
 
 	propValue.Data = newValue
-	propValue.RequestID = requestID
+	propValue.MessageID = messageID
 	propValue.Name = propName
-	propValue.Updated = time.Now().Format(utils.RFC3339Milli)
+	propValue.Created = time.Now().Format(utils.RFC3339Milli)
 
 	dtw.PropValues[propName] = propValue
 	svc.changedThings[dThingID] = hasChanged
@@ -549,8 +566,8 @@ func (svc *DigitwinStore) WriteProperty(dThingID string, tv digitwin.ThingValue)
 		err := fmt.Errorf("dThing with ID '%s' not found", dThingID)
 		return err
 	}
-	if tv.Updated == "" {
-		tv.Updated = time.Now().Format(utils.RFC3339Milli)
+	if tv.Created == "" {
+		tv.Created = time.Now().Format(utils.RFC3339Milli)
 	}
 	dtw.PropValues[tv.Name] = tv
 	svc.changedThings[dThingID] = true

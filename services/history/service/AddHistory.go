@@ -5,7 +5,6 @@ import (
 	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/utils"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
@@ -20,7 +19,7 @@ type AddHistory struct {
 	// store with a bucket for each Thing
 	store buckets.IBucketStore
 	// onAddedValue is a callback to invoke after a value is added. Intended for tracking most recent values.
-	//onAddedValue func(ev *hubclient.ThingMessage)
+	//onAddedValue func(ev *transports.IConsumer)
 	//
 	retentionMgr *ManageHistory
 	// Maximum message size in bytes.
@@ -30,7 +29,7 @@ type AddHistory struct {
 // encode a ThingMessage into a single storage key value pair for easy storage and filtering.
 // Encoding generates a key as: timestampMsec/name/a|e|p/sender,
 // where a|e|p indicates message type "action", "event" or "property"
-func (svc *AddHistory) encodeValue(msg *hubclient.ThingMessage) (storageKey string, data []byte) {
+func (svc *AddHistory) encodeValue(msg *transports.ThingMessage) (storageKey string, data []byte) {
 	var err error
 	createdTime := time.Now()
 	if msg.Created != "" {
@@ -60,7 +59,7 @@ func (svc *AddHistory) encodeValue(msg *hubclient.ThingMessage) (storageKey stri
 }
 
 // AddAction adds a Thing action with the given name and value to the action history
-func (svc *AddHistory) AddAction(actionValue *hubclient.ThingMessage) error {
+func (svc *AddHistory) AddAction(actionValue *transports.ThingMessage) error {
 	slog.Info("AddAction",
 		slog.String("senderID", actionValue.SenderID),
 		slog.String("thingID", actionValue.ThingID),
@@ -92,7 +91,7 @@ func (svc *AddHistory) AddAction(actionValue *hubclient.ThingMessage) error {
 // Only events that pass retention rules are stored.
 // If the event has no created time, it will be set to 'now'
 // These events must contain the digitwin thingID
-func (svc *AddHistory) AddEvent(msg *hubclient.ThingMessage) error {
+func (svc *AddHistory) AddEvent(msg *transports.ThingMessage) error {
 
 	retain, err := svc.validateValue(msg)
 	if err != nil {
@@ -131,7 +130,7 @@ func (svc *AddHistory) AddEvent(msg *hubclient.ThingMessage) error {
 }
 
 // AddMessage adds an event, action or property message to the history store
-func (svc *AddHistory) AddMessage(msg *hubclient.ThingMessage) error {
+func (svc *AddHistory) AddMessage(msg *transports.ThingMessage) error {
 	if msg.Operation == vocab.OpInvokeAction {
 		return svc.AddAction(msg)
 	}
@@ -147,7 +146,7 @@ func (svc *AddHistory) AddMessage(msg *hubclient.ThingMessage) error {
 
 // AddMessages provides a bulk-add of event/action messages to the history
 // Events that are invalid are skipped.
-func (svc *AddHistory) AddMessages(msgList []*hubclient.ThingMessage) (err error) {
+func (svc *AddHistory) AddMessages(msgList []*transports.ThingMessage) (err error) {
 	if msgList == nil || len(msgList) == 0 {
 		return nil
 	} else if len(msgList) == 1 {
@@ -191,7 +190,7 @@ func (svc *AddHistory) AddMessages(msgList []*hubclient.ThingMessage) (err error
 //
 // If property name is empty then expect a property key-value map.
 // This splits the property map and adds then as individual name-value pairs
-func (svc *AddHistory) AddProperty(msg *hubclient.ThingMessage) (err error) {
+func (svc *AddHistory) AddProperty(msg *transports.ThingMessage) (err error) {
 
 	propMap := make(map[string]any)
 	if msg.Name == "" {
@@ -210,7 +209,7 @@ func (svc *AddHistory) AddProperty(msg *hubclient.ThingMessage) (err error) {
 
 	// turn each property into a ThingMessage object so they can be queried separately
 	for propName, propValue := range propMap {
-		tv := hubclient.NewThingMessage(vocab.HTOpUpdateProperty,
+		tv := clients.NewThingMessage(vocab.HTOpUpdateProperty,
 			msg.ThingID, propName, propValue, msg.SenderID)
 		tv.Created = msg.Created
 
@@ -233,15 +232,15 @@ func (svc *AddHistory) AddProperty(msg *hubclient.ThingMessage) (err error) {
 // validateValue checks the event has the right things address, adds a timestamp if missing and returns if it is retained
 // an error will be returned if the agentID, thingID or name are empty.
 // retained returns true if the value is valid and passes the retention rules
-func (svc *AddHistory) validateValue(tv *hubclient.ThingMessage) (retained bool, err error) {
+func (svc *AddHistory) validateValue(tv *transports.ThingMessage) (retained bool, err error) {
 	if tv.ThingID == "" {
 		return false, fmt.Errorf("missing thingID in value with value name '%s'", tv.Name)
 	}
 	if tv.Name == "" {
 		return false, fmt.Errorf("missing name for event or action for things '%s'", tv.ThingID)
 	}
-	if tv.SenderID == "" {
-		return false, fmt.Errorf("missing sender for event or action for things '%s'", tv.ThingID)
+	if tv.SenderID == "" && tv.Operation == vocab.OpInvokeAction {
+		return false, fmt.Errorf("missing sender for action on thing '%s'", tv.ThingID)
 	}
 	if tv.Created == "" {
 		tv.Created = time.Now().Format(utils.RFC3339Milli)

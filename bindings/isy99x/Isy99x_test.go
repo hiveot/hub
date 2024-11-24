@@ -25,6 +25,7 @@ var appConfig = &config.Isy99xConfig{}
 var testConfigFolder = "../test"
 var nodesFile = testConfigFolder + "/isy99-nodes.json"
 
+const agentUsesWSS = true
 const agentID = "isy99x"
 
 // set in TestMain
@@ -64,7 +65,7 @@ func TestStartStop(t *testing.T) {
 	os.Remove(nodesFile)
 
 	// appconfig, read from test/isy99.yaml, contains simulated gateway file
-	hc, _ := ts.AddConnectService(agentID)
+	hc, _ := ts.AddConnectService(agentID, agentUsesWSS)
 	defer hc.Disconnect()
 
 	svc := service.NewIsyBinding(appConfig)
@@ -85,7 +86,7 @@ func TestStartStop(t *testing.T) {
 func TestBadAddress(t *testing.T) {
 	os.Remove(nodesFile)
 
-	hc, _ := ts.AddConnectService(agentID)
+	hc, _ := ts.AddConnectService(agentID, agentUsesWSS)
 	defer hc.Disconnect()
 
 	// error case - use real url
@@ -104,7 +105,7 @@ func TestBadAddress(t *testing.T) {
 func TestIsyAppPoll(t *testing.T) {
 	os.Remove(nodesFile)
 	// appconfig, read from test/isy99.yaml, contains simulated gateway file
-	hc, _ := ts.AddConnectService(agentID)
+	hc, _ := ts.AddConnectService(agentID, agentUsesWSS)
 	defer hc.Disconnect()
 
 	svc := service.NewIsyBinding(appConfig)
@@ -124,7 +125,7 @@ func TestSwitch(t *testing.T) {
 
 	os.Remove(nodesFile)
 	// appconfig, read from test/isy99.yaml, contains simulated gateway file
-	hc, _ := ts.AddConnectService(agentID)
+	hc, _ := ts.AddConnectService(agentID, agentUsesWSS)
 	defer hc.Disconnect()
 
 	svc := service.NewIsyBinding(appConfig)

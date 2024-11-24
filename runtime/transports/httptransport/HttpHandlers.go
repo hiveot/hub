@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/runtime/transports/httptransport/httpcontext"
+	"github.com/hiveot/hub/wot/protocolclients"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/teris-io/shortid"
 	"io"
@@ -24,11 +24,11 @@ func (svc *HttpBinding) _handleMessage(op string, w http.ResponseWriter, r *http
 		return
 	}
 	// pass the event to the digitwin service for further processing
-	requestID := r.Header.Get(hubclient.RequestIDHeader)
+	requestID := r.Header.Get(clients.RequestIDHeader)
 	if requestID == "" {
 		requestID = shortid.MustGenerate()
 	}
-	msg := hubclient.NewThingMessage(op, rp.ThingID, rp.Name, rp.Data, rp.ClientID)
+	msg := clients.NewThingMessage(op, rp.ThingID, rp.Name, rp.Data, rp.ClientID)
 	svc.digitwinRouter.HandleMessage(msg)
 	svc.writeReply(w, nil, nil)
 }
@@ -45,14 +45,15 @@ func (svc *HttpBinding) _handleRequest(op string, w http.ResponseWriter, r *http
 	}
 
 	// an action request should have a cid when used with SSE.
-	// for now just warn if its missing
-	if r.Header.Get(hubclient.ConnectionIDHeader) == "" {
-		slog.Warn("InvokeAction request without 'cid' header. This is needed for the SSE subprotocol",
+	if r.Header.Get(clients.ConnectionIDHeader) == "" {
+		slog.Warn("InvokeAction request without 'cid' header. No reply is sent when using the SSE subprotocol",
 			"clientID", rp.ClientID)
+		// if not reply is expected this will still work
+		//svc.writeError(w, err, http.StatusBadRequest)
 	}
 
 	// pass the event to the digitwin service for further processing
-	requestID := r.Header.Get(hubclient.RequestIDHeader)
+	requestID := r.Header.Get(clients.RequestIDHeader)
 	if requestID == "" {
 		requestID = shortid.MustGenerate()
 	}
@@ -71,7 +72,7 @@ func (svc *HttpBinding) _handleRequest(op string, w http.ResponseWriter, r *http
 	//                    "schema": "RequestStatus"
 	//                }]
 	//```
-	msg := hubclient.NewThingMessage(op, rp.ThingID, rp.Name, rp.Data, rp.ClientID)
+	msg := clients.NewThingMessage(op, rp.ThingID, rp.Name, rp.Data, rp.ClientID)
 	msg.CorrelationID = requestID
 	stat := svc.digitwinRouter.HandleRequest(msg, rp.ConnectionID)
 
@@ -84,24 +85,24 @@ func (svc *HttpBinding) _handleRequest(op string, w http.ResponseWriter, r *http
 		svc.writeError(w, err, http.StatusInternalServerError)
 		return
 	}
-	replyHeader.Set(hubclient.RequestIDHeader, requestID)
+	replyHeader.Set(clients.RequestIDHeader, requestID)
 
 	// in case of error include the return data schema
 	// TODO: Use schema name from Forms. The action progress schema is in
 	// the forms definition as an additional response.
 	// right now the only response is an action progress.
 	if err != nil {
-		replyHeader.Set(hubclient.StatusHeader, vocab.RequestFailed)
+		replyHeader.Set(clients.StatusHeader, vocab.RequestFailed)
 		svc.writeReply(w, nil, err)
 		return
 	} else if stat.Error != "" {
-		replyHeader.Set(hubclient.StatusHeader, vocab.RequestFailed)
+		replyHeader.Set(clients.StatusHeader, vocab.RequestFailed)
 		svc.writeReply(w, nil, errors.New(stat.Error))
 		return
 	} else if stat.Status != vocab.RequestCompleted {
 		// if progress isn't completed then also return the delivery progress
-		replyHeader.Set(hubclient.StatusHeader, stat.Status)
-		replyHeader.Set(hubclient.DataSchemaHeader, "RequestStatus")
+		replyHeader.Set(clients.StatusHeader, stat.Status)
+		replyHeader.Set(clients.DataSchemaHeader, "RequestStatus")
 		svc.writeReply(w, stat, nil)
 		return
 	}
@@ -138,7 +139,7 @@ func (svc *HttpBinding) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	if err == nil {
 		//token := svc.authenticator.Login(clientID,password)
-		msg := hubclient.NewThingMessage(vocab.HTOpLogin, "", "", data, "")
+		msg := clients.NewThingMessage(vocab.HTOpLogin, "", "", data, "")
 		stat := svc.digitwinRouter.HandleRequest(msg, "")
 		if stat.Error != "" {
 			err = errors.New(stat.Error)

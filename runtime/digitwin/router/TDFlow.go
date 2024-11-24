@@ -3,12 +3,12 @@ package router
 
 import (
 	"github.com/hiveot/hub/api/go/digitwin"
-	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/wot/transports"
 )
 
 // HandleUpdateTD agent updates a TD.
 // This converts the operation in an action for the directory service.
-func (svc *DigitwinRouter) HandleUpdateTD(msg *hubclient.ThingMessage) {
+func (svc *DigitwinRouter) HandleUpdateTD(msg *transports.ThingMessage) {
 
 	dirMsg := *msg
 	dirMsg.ThingID = digitwin.DirectoryDThingID
@@ -18,7 +18,7 @@ func (svc *DigitwinRouter) HandleUpdateTD(msg *hubclient.ThingMessage) {
 
 // HandleReadTD consumer reads a TD
 // This converts the operation in an action for the directory service.
-func (svc *DigitwinRouter) HandleReadTD(msg *hubclient.ThingMessage) hubclient.RequestStatus {
+func (svc *DigitwinRouter) HandleReadTD(msg *transports.ThingMessage) transports.RequestStatus {
 	dirMsg := *msg
 	dirMsg.ThingID = digitwin.DirectoryDThingID
 	dirMsg.Name = digitwin.DirectoryActionReadTD
@@ -28,7 +28,7 @@ func (svc *DigitwinRouter) HandleReadTD(msg *hubclient.ThingMessage) hubclient.R
 
 // HandleReadAllTDs consumer reads all TDs
 // This converts the operation in an action for the directory service.
-func (svc *DigitwinRouter) HandleReadAllTDs(msg *hubclient.ThingMessage) hubclient.RequestStatus {
+func (svc *DigitwinRouter) HandleReadAllTDs(msg *transports.ThingMessage) transports.RequestStatus {
 	dirMsg := *msg
 	dirMsg.ThingID = digitwin.DirectoryDThingID
 	dirMsg.Name = digitwin.DirectoryActionReadAllTDs

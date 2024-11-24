@@ -1,8 +1,8 @@
 package consumedthing
 
 import (
-	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/hub/wot/protocolclients"
 	"log/slog"
 	"testing"
 
@@ -17,7 +17,7 @@ func TestNilSchema(t *testing.T) {
 	slog.Info("--- TestNilSchema ---")
 	data1 := "text"
 
-	tv := &digitwin.ThingValue{Name: key1ID, Data: data1}
+	tv := &transports.ThingMessage{Name: key1ID, Data: data1}
 	io := NewInteractionOutputFromValue(tv, nil)
 
 	asValue := io.Value.Text()
@@ -27,7 +27,7 @@ func TestNilSchema(t *testing.T) {
 
 func TestArray(t *testing.T) {
 	data1 := []string{"item 1", "item 2"}
-	tv := &digitwin.ThingValue{Name: key1ID, Data: data1}
+	tv := &transports.ThingMessage{Name: key1ID, Data: data1}
 	io := NewInteractionOutputFromValue(tv, nil)
 	asArray := io.Value.Array()
 	assert.Len(t, asArray, 2)
@@ -35,7 +35,7 @@ func TestArray(t *testing.T) {
 
 func TestBool(t *testing.T) {
 	data1 := true
-	tv := &digitwin.ThingValue{Name: key1ID, Data: data1}
+	tv := &transports.ThingMessage{Name: key1ID, Data: data1}
 	io := NewInteractionOutputFromValue(tv, nil)
 	asBool := io.Value.Boolean()
 	assert.Equal(t, true, asBool)
@@ -47,7 +47,7 @@ func TestBool(t *testing.T) {
 
 func TestInt(t *testing.T) {
 	data1 := 42
-	tv := &digitwin.ThingValue{Name: key1ID, Data: data1}
+	tv := &transports.ThingMessage{Name: key1ID, Data: data1}
 	io := NewInteractionOutputFromValue(tv, nil)
 	asInt := io.Value.Integer()
 	assert.Equal(t, 42, asInt)
@@ -57,7 +57,7 @@ func TestInt(t *testing.T) {
 
 func TestString(t *testing.T) {
 	data1 := "Hello world"
-	tv := &digitwin.ThingValue{Name: key1ID, Data: data1}
+	tv := &transports.ThingMessage{Name: key1ID, Data: data1}
 	io := NewInteractionOutputFromValue(tv, nil)
 	asString := io.Value.Text()
 	assert.Equal(t, data1, asString)
@@ -72,7 +72,7 @@ func TestObject(t *testing.T) {
 		LastLoginAt string
 	}
 	data1 := User{Name: "Bob", Age: 10, Active: true, LastLoginAt: "today"}
-	tv := &digitwin.ThingValue{Name: key1ID, Data: data1}
+	tv := &transports.ThingMessage{Name: key1ID, Data: data1}
 	io := NewInteractionOutputFromValue(tv, nil)
 	asMap := io.Value.Map()
 	assert.Equal(t, data1.Name, asMap["Name"])

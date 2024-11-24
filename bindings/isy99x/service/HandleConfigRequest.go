@@ -4,12 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/hubclient"
 	"log/slog"
 )
 
 // handleConfigRequest for handling binding, gateway and node configuration changes
-func (svc *IsyBinding) handleConfigRequest(action *hubclient.ThingMessage) (stat hubclient.RequestStatus) {
+func (svc *IsyBinding) handleConfigRequest(action *transports.ThingMessage) (stat transports.RequestStatus) {
 
 	slog.Info("handleConfigRequest",
 		slog.String("thingID", action.ThingID),

@@ -18,6 +18,8 @@ import (
 
 var ts *testenv.TestServer
 
+const agentUsesWSS = true
+
 // return an API to the state service
 func startStateService(cleanStart bool) (
 	svc *service.StateService, stateCl *stateclient.StateClient, stopFn func()) {
@@ -36,7 +38,7 @@ func startStateService(cleanStart bool) (
 	}
 
 	// connect as a user to the service above
-	hc2, token2 := ts.AddConnectUser("user1", authz.ClientRoleViewer)
+	hc2, token2 := ts.AddConnectConsumer("user1", authz.ClientRoleViewer)
 	_ = token2
 	stateCl = stateclient.NewStateClient(hc2)
 	time.Sleep(time.Millisecond)
@@ -182,29 +184,29 @@ func TestGetDifferentClientBuckets(t *testing.T) {
 	_ = stateCl
 	defer stopFn()
 
-	hc1, token1 := ts.AddConnectAgent(clientID1)
+	ag1, token1 := ts.AddConnectAgent(clientID1, agentUsesWSS)
 	require.NotEmpty(t, token1)
-	defer hc1.Disconnect()
+	defer ag1.Disconnect()
 	hc2, token2 := ts.AddConnectService(clientID2)
 	require.NotEmpty(t, token2)
 	defer hc2.Disconnect()
 
 	// both clients set a key-value
-	cl1 := stateclient.NewStateClient(hc1)
-	cl2 := stateclient.NewStateClient(hc2)
-	err := cl1.Set(key1, val1)
+	st1 := stateclient.NewStateClient(ag1)
+	st2 := stateclient.NewStateClient(hc2)
+	err := st1.Set(key1, val1)
 	assert.NoError(t, err)
-	err = cl2.Set(key2, val2)
+	err = st2.Set(key2, val2)
 	assert.NoError(t, err)
 
 	// clients cannot read the other's value
 	tmp1 := ""
 	tmp2 := ""
-	found2, err := cl1.Get(key2, &tmp1)
+	found2, err := st1.Get(key2, &tmp1)
 	assert.NoError(t, err)
 	assert.False(t, found2)
 
-	found1, err := cl2.Get(key1, &tmp2)
+	found1, err := st2.Get(key1, &tmp2)
 	assert.NoError(t, err)
 	assert.False(t, found1)
 }

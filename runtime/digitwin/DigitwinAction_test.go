@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/wot/tdd"
+	"github.com/hiveot/hub/wot/transports"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -162,7 +162,7 @@ func TestDigitwinAgentAction(t *testing.T) {
 
 	// next, invoke the action to read the thing from the directory.
 	ag := service.NewDigitwinAgent(svc)
-	msg := hubclient.NewThingMessage(
+	msg := transports.NewThingMessage(
 		vocab.OpInvokeAction, digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, dThingID, consumerID)
 	msg.CorrelationID = msgID
 	stat := ag.HandleAction(msg)
@@ -171,21 +171,21 @@ func TestDigitwinAgentAction(t *testing.T) {
 	require.Equal(t, vocab.RequestCompleted, stat.Status)
 
 	// a non-existing DTD should fail
-	msg = hubclient.NewThingMessage(
+	msg = transports.NewThingMessage(
 		vocab.OpInvokeAction, digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, "badid", consumerID)
 	msg.CorrelationID = msgID
 	stat = ag.HandleAction(msg)
 	require.NotEmpty(t, stat.Error)
 
 	// a non-existing method name should fail
-	msg = hubclient.NewThingMessage(
+	msg = transports.NewThingMessage(
 		vocab.OpInvokeAction, digitwin.DirectoryDThingID, "badMethod", dThingID, consumerID)
 	msg.CorrelationID = msgID
 	stat = ag.HandleAction(msg)
 	require.NotEmpty(t, stat.Error)
 
 	// a non-existing serviceID should fail
-	msg = hubclient.NewThingMessage(
+	msg = transports.NewThingMessage(
 		vocab.OpInvokeAction, "badservicename", digitwin.DirectoryReadTDMethod, dThingID, consumerID)
 	msg.CorrelationID = msgID
 	stat = ag.HandleAction(msg)

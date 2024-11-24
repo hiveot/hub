@@ -5,9 +5,9 @@ import (
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/bindings/owserver/config"
 	"github.com/hiveot/hub/bindings/owserver/service"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot/protocolclients"
 	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 	"os"
@@ -29,6 +29,7 @@ var owsConfig config.OWServerConfig
 var owsSimulationFile string // simulation file
 var ts *testenv.TestServer
 
+const agentUsesWSS = false
 const agentID = "owserver"
 const device1ID = "2A000003BB170B28" // <-- from the simulation file
 
@@ -68,7 +69,7 @@ func TestStartStop(t *testing.T) {
 
 	svc := service.NewOWServerBinding(&owsConfig)
 
-	hc, _ := ts.AddConnectAgent(agentID)
+	hc, _ := ts.AddConnectAgent(agentID, agentUsesWSS)
 	connected, _, _ := hc.GetConnectionStatus()
 	require.Equal(t, true, connected)
 	defer hc.Disconnect()
@@ -85,16 +86,17 @@ func TestPoll(t *testing.T) {
 	const userID = "user1"
 
 	t.Log("--- TestPoll (without state service)  ---")
-	ag1, _ := ts.AddConnectAgent(agentID)
+	ag1, _ := ts.AddConnectAgent(agentID, agentUsesWSS)
 	defer ag1.Disconnect()
-	cl1, _ := ts.AddConnectUser(userID, authz.ClientRoleManager)
+	cl1, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
 	defer cl1.Disconnect()
 	svc := service.NewOWServerBinding(&owsConfig)
 
 	// Count the number of received TD events
-	err := cl1.Subscribe("", "")
+	err := cl1.Observe("", "")
+	err = cl1.Subscribe("", "")
 	require.NoError(t, err)
-	cl1.SetMessageHandler(func(msg *hubclient.ThingMessage) {
+	cl1.SetMessageHandler(func(msg *transports.ThingMessage) {
 		slog.Info("received message", "MessageType", msg.Operation, "id", msg.Name)
 		var value interface{}
 		err2 := utils.DecodeAsObject(msg.Data, &value)
@@ -127,7 +129,7 @@ func TestPoll(t *testing.T) {
 func TestPollInvalidEDSAddress(t *testing.T) {
 	t.Log("--- TestPollInvalidEDSAddress ---")
 
-	hc, _ := ts.AddConnectAgent(agentID)
+	hc, _ := ts.AddConnectAgent(agentID, agentUsesWSS)
 	defer hc.Disconnect()
 
 	badConfig := owsConfig // copy
@@ -152,7 +154,7 @@ func TestAction(t *testing.T) {
 	var actionName = "RelayFunction" // the action attribute as defined by the device
 	var actionValue = "1"
 
-	hc, _ := ts.AddConnectAgent(agentID)
+	hc, _ := ts.AddConnectAgent(agentID, agentUsesWSS)
 	defer hc.Disconnect()
 
 	svc := service.NewOWServerBinding(&owsConfig)
@@ -164,7 +166,7 @@ func TestAction(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 
 	// note that the simulation file doesn't support writes so this logs an error
-	hc2, _ := ts.AddConnectUser(user1ID, authz.ClientRoleOperator)
+	hc2, _ := ts.AddConnectConsumer(user1ID, authz.ClientRoleOperator)
 	require.NoError(t, err)
 	defer hc2.Disconnect()
 	err = hc2.Rpc(dThingID, actionName, &actionValue, nil)
@@ -180,7 +182,7 @@ func TestConfig(t *testing.T) {
 	var configName = "LEDFunction"
 	var configValue = ([]byte)("1")
 
-	hc, _ := ts.AddConnectAgent(agentID)
+	hc, _ := ts.AddConnectAgent(agentID, agentUsesWSS)
 	defer hc.Disconnect()
 
 	svc := service.NewOWServerBinding(&owsConfig)
@@ -192,7 +194,7 @@ func TestConfig(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 
 	// note that the simulation file doesn't support writes so this logs an error
-	hc2, _ := ts.AddConnectUser(user1ID, authz.ClientRoleManager)
+	hc2, _ := ts.AddConnectConsumer(user1ID, authz.ClientRoleManager)
 	defer hc2.Disconnect()
 	dThingID := tdd.MakeDigiTwinThingID(agentID, device1ID)
 	err = hc2.Rpc(dThingID, configName, &configValue, nil)

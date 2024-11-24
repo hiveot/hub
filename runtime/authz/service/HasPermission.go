@@ -85,7 +85,7 @@ func (svc *AuthzService) HasPermission(senderID, operation, dThingID string) (ha
 // HasPubPermission returns whether a sender can publish the given message
 //
 // This returns an error if the client doesn't have permission
-//func (svc *AuthzService) HasPubPermission(msg *hubclient.ThingMessage) (*hubclient.ThingMessage, error) {
+//func (svc *AuthzService) HasPubPermission(msg *transports.ThingMessage) (*transports.IConsumer, error) {
 //	var hasPerm bool
 //	//If a thing permission exists then it has priority
 //	_, found := svc.cfg.GetPermissions(msg.ThingID)

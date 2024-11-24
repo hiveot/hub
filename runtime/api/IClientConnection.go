@@ -1,6 +1,8 @@
 package api
 
-import "github.com/hiveot/hub/lib/hubclient"
+import (
+	"github.com/hiveot/hub/wot/transports"
+)
 
 // IClientConnection is the interface of an incoming consumer or agent connection.
 // Transport protocol bindings must implement this interface to interact with
@@ -39,7 +41,7 @@ type IClientConnection interface {
 	// PublishActionStatus sends an action progress update to the consumer.
 	// Intended for receiving RPC results over 1-way bindings such as SSE and to
 	// respond to QueryAction requests.
-	PublishActionStatus(stat hubclient.RequestStatus, agentID string) error
+	PublishActionStatus(stat transports.RequestStatus, agentID string) error
 
 	// PublishEvent publishes an event message to client. If the client is not
 	// subscribed to the event then the connection will ignore the event.

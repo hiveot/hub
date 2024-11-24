@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"github.com/fsnotify/fsnotify"
 	"github.com/hiveot/hub/api/go/authz"
-	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/connect"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/services/launcher/config"
 	"github.com/hiveot/hub/services/launcher/launcherapi"
+	"github.com/hiveot/hub/wot/protocolclients"
+	"github.com/hiveot/hub/wot/protocolclients/connect"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -32,7 +32,7 @@ type LauncherService struct {
 	cmds []*exec.Cmd
 
 	// hub messaging client
-	hc hubclient.IAgentClient
+	hc clients.IAgent
 
 	// mutex to keep things safe
 	mux sync.Mutex
@@ -278,7 +278,7 @@ func (svc *LauncherService) WatchPlugins() error {
 func NewLauncherService(
 	env plugin.AppEnvironment,
 	cfg config.LauncherConfig,
-	hc hubclient.IAgentClient,
+	hc clients.IAgent,
 ) *LauncherService {
 
 	ls := &LauncherService{

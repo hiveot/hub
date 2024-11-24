@@ -1,10 +1,10 @@
-package sseclient
+package ssescclient
 
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot/transports"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/tmaxmax/go-sse"
 	"log/slog"
@@ -14,8 +14,8 @@ import (
 )
 
 // handleSSEEvent processes the push-event received from the hub.
-func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
-	var stat hubclient.RequestStatus
+func (cl *SsescBindingClient) handleSseEvent(event sse.Event) {
+	var stat transports.RequestStatus
 
 	// WORKAROUND since go-sse has no callback for a successful reconnect, simulate one here
 	// as soon as data is received. The server could send a 'ping' event on connect.
@@ -28,7 +28,7 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 		go cl.handleSSEConnect(true, nil)
 	}
 	// no further processing of a ping needed
-	if event.Type == hubclient.PingMessage {
+	if event.Type == PingMessage {
 		return
 	}
 	operation := event.Type        // one of the WotOp... or HTOp... operations
@@ -55,7 +55,7 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 	// SSE payload is json marshalled by the sse client
 	var msgData any
 	_ = jsoniter.UnmarshalFromString(event.Data, &msgData)
-	rxMsg := &hubclient.ThingMessage{
+	rxMsg := &transports.ThingMessage{
 		ThingID:       thingID,
 		Name:          name,
 		Operation:     operation,
@@ -66,10 +66,10 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 	}
 
 	stat.CorrelationID = rxMsg.CorrelationID
-	slog.Debug("handleSSEEvent",
+	slog.Debug("handleSseEvent",
 		//slog.String("Comment", string(event.Comment)),
 		slog.String("clientID (me)", cl.clientID),
-		slog.String("cid", cl.cid),
+		slog.String("cid", cl.GetCID()),
 		slog.String("operation", rxMsg.Operation),
 		slog.String("thingID", rxMsg.ThingID),
 		slog.String("name", rxMsg.Name),
@@ -82,11 +82,11 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 	cl.mux.RUnlock()
 	// always handle rpc response
 	if rxMsg.Operation == vocab.HTOpUpdateActionStatus {
-		// this client is receiving a delivery update from a previously sent action.
+		// this client is receiving a status update from a previously sent action.
 		// The payload is a deliverystatus object
 		err := utils.DecodeAsObject(rxMsg.Data, &stat)
 		if err != nil || stat.CorrelationID == "" || stat.CorrelationID == "-" {
-			slog.Error("SSE message of type delivery update is missing requestID or not a RequestStatus ", "err", err)
+			slog.Error("handleSseEvent: SSE message of type delivery update is missing requestID or not a RequestStatus ", "err", err)
 			return
 		}
 		rxMsg.Data = stat
@@ -107,9 +107,9 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 			msgHandler(rxMsg)
 		} else {
 			// missing rpc or message handler
-			slog.Error("handleSSEEvent, no message handler registered for client",
+			slog.Error("handleSseEvent, no message handler registered for client",
 				"clientID", cl.clientID)
-			stat.Failed(rxMsg, fmt.Errorf("handleSSEEvent no handler is set, delivery update ignored"))
+			stat.Failed(rxMsg, fmt.Errorf("handleSseEvent no handler is set, delivery update ignored"))
 		}
 		return
 	}
@@ -120,7 +120,7 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 		rxMsg.Operation == vocab.OpWriteMultipleProperties {
 		// agent receives action request
 		if reqHandler == nil {
-			slog.Warn("handleSSEEvent, no request handler registered. Request ignored.",
+			slog.Warn("handleSseEvent, no request handler registered. Request ignored.",
 				slog.String("operation", rxMsg.Operation),
 				slog.String("thingID", rxMsg.ThingID),
 				slog.String("name", rxMsg.Name),
@@ -129,13 +129,13 @@ func (cl *HttpSSEClient) handleSSEEvent(event sse.Event) {
 		}
 		stat = reqHandler(rxMsg)
 		if stat.CorrelationID != "" {
-			cl.PubActionStatus(stat) // send the result to the caller
+			cl.httpClient.PubActionStatus(stat) // send the result to the caller
 		}
 	} else {
 		// pass everything else to the message handler
 		// consumer receive event, property and TD updates
 		if msgHandler == nil {
-			slog.Warn("handleSSEEvent, no message handler registered. Message ignored.",
+			slog.Warn("handleSseEvent, no message handler registered. Message ignored.",
 				slog.String("operation", rxMsg.Operation),
 				slog.String("thingID", rxMsg.ThingID),
 				slog.String("name", rxMsg.Name),

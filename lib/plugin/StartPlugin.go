@@ -1,8 +1,8 @@
 package plugin
 
 import (
-	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/connect"
+	"github.com/hiveot/hub/wot/protocolclients"
+	"github.com/hiveot/hub/wot/protocolclients/connect"
 	"log/slog"
 	"os"
 )
@@ -15,7 +15,7 @@ type PluginConfig struct {
 type IPlugin interface {
 	// Start the plugin with the given environment settings and hub connection
 	//	hc is the hub connection for publishing and subscribing
-	Start(hc hubclient.IAgentClient) error
+	Start(hc clients.IAgent) error
 	Stop()
 }
 

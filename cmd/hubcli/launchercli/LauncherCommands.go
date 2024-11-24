@@ -2,13 +2,13 @@ package launchercli
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/launcher/launcherclient"
+	"github.com/hiveot/hub/wot/protocolclients"
 	"github.com/urfave/cli/v2"
 )
 
-func LauncherListCommand(hc *hubclient.IConsumerClient) *cli.Command {
+func LauncherListCommand(hc *clients.IConsumer) *cli.Command {
 
 	return &cli.Command{
 		Name: "ls",
@@ -26,7 +26,7 @@ func LauncherListCommand(hc *hubclient.IConsumerClient) *cli.Command {
 	}
 }
 
-func LauncherStartCommand(hc *hubclient.IConsumerClient) *cli.Command {
+func LauncherStartCommand(hc *clients.IConsumer) *cli.Command {
 
 	return &cli.Command{
 		Name: "start",
@@ -45,7 +45,7 @@ func LauncherStartCommand(hc *hubclient.IConsumerClient) *cli.Command {
 	}
 }
 
-func LauncherStopCommand(hc *hubclient.IConsumerClient) *cli.Command {
+func LauncherStopCommand(hc *clients.IConsumer) *cli.Command {
 
 	return &cli.Command{
 		Name: "stop",
@@ -64,7 +64,7 @@ func LauncherStopCommand(hc *hubclient.IConsumerClient) *cli.Command {
 }
 
 // HandleListServices prints a list of available services
-func HandleListServices(hc hubclient.IConsumerClient) error {
+func HandleListServices(hc clients.IConsumer) error {
 
 	if hc == nil {
 		return fmt.Errorf("no Hub connection")
@@ -111,7 +111,7 @@ func HandleListServices(hc hubclient.IConsumerClient) error {
 }
 
 // HandleStartService starts a service
-func HandleStartService(serviceName string, hc hubclient.IConsumerClient) error {
+func HandleStartService(serviceName string, hc clients.IConsumer) error {
 	var err error
 	if hc == nil {
 		return fmt.Errorf("no Hub connection")
@@ -141,7 +141,7 @@ func HandleStartService(serviceName string, hc hubclient.IConsumerClient) error 
 }
 
 // HandleStopService stops a service
-func HandleStopService(serviceName string, hc hubclient.IConsumerClient) error {
+func HandleStopService(serviceName string, hc clients.IConsumer) error {
 	var err error
 
 	if hc == nil {

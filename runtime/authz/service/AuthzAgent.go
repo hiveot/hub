@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
@@ -15,14 +14,14 @@ import (
 // back to a reply message, if any.
 // The main entry point is the HandleMessage function.
 type AuthzAgent struct {
-	hc           hubclient.IConsumerClient
+	hc           clients.IConsumer
 	svc          *AuthzService
 	adminHandler api.ActionHandler
 	userHandler  api.ActionHandler
 }
 
 // HandleAction authz service action handler
-func (agent *AuthzAgent) HandleAction(msg *hubclient.ThingMessage) (stat hubclient.RequestStatus) {
+func (agent *AuthzAgent) HandleAction(msg *transports.ThingMessage) (stat transports.RequestStatus) {
 
 	// if the message has an authn agent prefix then remove it.
 	// This can happen if invoked directly through an embedded client

@@ -18,12 +18,14 @@ import (
 
 var ts *testenv.TestServer
 
+const agentUsesWSS = true
+
 // Factory for creating service instance. Currently the only implementation is selfsigned.
 func startService() (cl *certsclient.CertsClient, stopFunc func()) {
 	ts = testenv.StartTestServer(true)
 
 	// the service needs a server connection
-	hc1, token1 := ts.AddConnectService(certsapi.CertsAdminAgentID)
+	hc1, token1 := ts.AddConnectService(certsapi.CertsAdminAgentID, agentUsesWSS)
 	_ = token1
 
 	//storeDir := path.Join(ts.TestDir, "test-certs")
@@ -35,7 +37,7 @@ func startService() (cl *certsclient.CertsClient, stopFunc func()) {
 	}
 
 	//--- connect the certs client as admin
-	hc2, _ := ts.AddConnectUser("admin1", authz.ClientRoleAdmin)
+	hc2, _ := ts.AddConnectConsumer("admin1", authz.ClientRoleAdmin)
 	certAdmin := certsclient.NewCertsClient(hc2)
 
 	return certAdmin, func() {

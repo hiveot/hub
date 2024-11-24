@@ -3,11 +3,10 @@ package wss
 import (
 	"fmt"
 	"github.com/gorilla/websocket"
-	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/wssclient"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/connections"
+	"github.com/hiveot/hub/wot/transport/clients/wssclient"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/teris-io/shortid"
 	"log/slog"
@@ -18,10 +17,10 @@ import (
 
 type WSSMessage map[string]any
 
-// HubWssConnection is the Hub connection instance
+// WssConnectionServer is the Hub connection instance
 //
 // This implements the Hub's IClientConnection interface.
-type HubWssConnection struct {
+type WssConnectionServer struct {
 	// connection ID
 	connectionID string
 
@@ -44,15 +43,15 @@ type HubWssConnection struct {
 
 	isClosed atomic.Bool
 
+	// event subscriptions and property observations
+	observations  connections.Subscriptions
 	subscriptions connections.Subscriptions
 }
 
 // _send sends the websocket message to the connected client
-func (c *HubWssConnection) _send(
+func (c *WssConnectionServer) _send(
 	wssMsg interface{}, correlationID string) (status string, err error) {
 
-	c.mux.Lock()
-	defer c.mux.Unlock()
 	if !c.isClosed.Load() {
 		slog.Info("_send",
 			slog.String("to", c.clientID),
@@ -60,6 +59,9 @@ func (c *HubWssConnection) _send(
 		)
 
 		msgJSON, _ := jsoniter.Marshal(wssMsg)
+		// websockets do not allow concurrent write
+		c.mux.Lock()
+		defer c.mux.Unlock()
 		err = c.wssConn.WriteMessage(websocket.TextMessage, msgJSON)
 		if err != nil {
 			slog.Error("_send write error", "err", err.Error())
@@ -72,7 +74,7 @@ func (c *HubWssConnection) _send(
 }
 
 // Close closes the connection and ends the read loop
-func (c *HubWssConnection) Close() {
+func (c *WssConnectionServer) Close() {
 	c.mux.Lock()
 	defer c.mux.Unlock()
 	if !c.isClosed.Load() {
@@ -82,18 +84,18 @@ func (c *HubWssConnection) Close() {
 }
 
 // GetConnectionID returns the client's unique connection ID
-func (c *HubWssConnection) GetConnectionID() string {
+func (c *WssConnectionServer) GetConnectionID() string {
 	return c.connectionID
 }
 
 // GetClientID returns the client's account ID
-func (c *HubWssConnection) GetClientID() string {
+func (c *WssConnectionServer) GetClientID() string {
 	return c.clientID
 }
 
 // InvokeAction sends the action request for the thing to the agent
 // Intended to be used on clients that are things
-func (c *HubWssConnection) InvokeAction(
+func (c *WssConnectionServer) InvokeAction(
 	thingID, name string, input any, correlationID string, senderID string) (
 	status string, output any, err error) {
 	msg := wssclient.ActionMessage{
@@ -102,6 +104,7 @@ func (c *HubWssConnection) InvokeAction(
 		Name:          name,
 		CorrelationID: correlationID,
 		Data:          input,
+		SenderID:      senderID,
 		Timestamp:     time.Now().Format(utils.RFC3339Milli),
 	}
 	status, err = c._send(msg, correlationID)
@@ -110,7 +113,7 @@ func (c *HubWssConnection) InvokeAction(
 
 // PublishActionStatus sends an action status update to the client.
 // If an error is provided this sends the error, otherwise the output value
-func (c *HubWssConnection) PublishActionStatus(stat hubclient.RequestStatus, agentID string) error {
+func (c *WssConnectionServer) PublishActionStatus(stat transports.RequestStatus, agentID string) error {
 	if stat.CorrelationID == "" {
 		err := fmt.Errorf("PublishActionStatus by '%s' without requestID", agentID)
 		return err
@@ -130,7 +133,7 @@ func (c *HubWssConnection) PublishActionStatus(stat hubclient.RequestStatus, age
 }
 
 // PublishEvent send an event to subscribers
-func (c *HubWssConnection) PublishEvent(
+func (c *WssConnectionServer) PublishEvent(
 	dThingID, name string, data any, correlationID string, agentID string) {
 
 	if c.subscriptions.IsSubscribed(dThingID, name) {
@@ -147,10 +150,10 @@ func (c *HubWssConnection) PublishEvent(
 }
 
 // PublishProperty publishes a new property value clients that observe it
-func (c *HubWssConnection) PublishProperty(
+func (c *WssConnectionServer) PublishProperty(
 	dThingID string, name string, data any, correlationID string, agentID string) {
 
-	if c.subscriptions.IsSubscribed(dThingID, name) {
+	if c.observations.IsSubscribed(dThingID, name) {
 		msg := wssclient.PropertyMessage{
 			ThingID:       dThingID,
 			MessageType:   wssclient.MsgTypePropertyReading,
@@ -163,30 +166,20 @@ func (c *HubWssConnection) PublishProperty(
 	}
 }
 
-// SubscribeEvent adds an event subscription for this client. Use "" for wildcard
-//func (c *HubWssConnection) SubscribeEvent(dThingID, name string) {
-//
-//}
-//
-//// ObserveProperty adds a property subscription for this client. Use "" for wildcard
-//func (c *HubWssConnection) ObserveProperty(dThingID, name string) {
-//
-//}
-//
-//// UnsubscribeEvent removes an event subscription for this client. Use "" for wildcard
-//func (c *HubWssConnection) UnsubscribeEvent(dThingID, name string) {
-//
-//}
-//
-//// UnobserveProperty removes a property subscription from this client. Use "" for wildcard
-//func (c *HubWssConnection) UnobserveProperty(dThingID, name string) {
-//
-//}
-
 // WriteProperty requests a property value change from the agent
-func (c *HubWssConnection) WriteProperty(
-	thingID, name string, value any, requestID string, senderID string) (status string, err error) {
-	return wssclient.ActionStatusFailed, fmt.Errorf("not implemented")
+func (c *WssConnectionServer) WriteProperty(
+	thingID, name string, value any, correlationID string, senderID string) (status string, err error) {
+
+	msg := wssclient.PropertyMessage{
+		ThingID:       thingID,
+		MessageType:   wssclient.MsgTypeWriteProperty,
+		Name:          name,
+		CorrelationID: correlationID,
+		Data:          value,
+		Timestamp:     time.Now().Format(utils.RFC3339Milli),
+	}
+	status, err = c._send(msg, correlationID)
+	return status, err
 }
 
 // NewWSSConnection creates a new Websocket connection instance for use by
@@ -194,10 +187,10 @@ func (c *HubWssConnection) WriteProperty(
 // This implements the IClientConnection interface.
 func NewWSSConnection(
 	clientID string, remoteAddr string, wssConn *websocket.Conn,
-	dtwRouter api.IDigitwinRouter) *HubWssConnection {
+	dtwRouter api.IDigitwinRouter) *WssConnectionServer {
 	clcid := "WSS" + shortid.MustGenerate()
 
-	c := &HubWssConnection{
+	c := &WssConnectionServer{
 		wssConn:       wssConn,
 		connectionID:  clcid,
 		clientID:      clientID,
@@ -205,6 +198,7 @@ func NewWSSConnection(
 		remoteAddr:    remoteAddr,
 		lastActivity:  time.Time{},
 		mux:           sync.RWMutex{},
+		observations:  connections.Subscriptions{},
 		subscriptions: connections.Subscriptions{},
 	}
 	return c

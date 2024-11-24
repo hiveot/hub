@@ -7,10 +7,10 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/isy99x/config"
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/wot/exposedthing"
+	"github.com/hiveot/hub/wot/protocolclients"
 	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 	"sync"
@@ -25,7 +25,7 @@ type IsyBinding struct {
 
 	// Configuration of this protocol binding
 	config *config.Isy99xConfig
-	hc     hubclient.IAgentClient
+	hc     clients.IAgent
 
 	thingID      string           // ID of the binding Thing
 	isyAPI       *isy.IsyAPI      // methods for communicating met ISY gateway device
@@ -66,7 +66,7 @@ func (svc *IsyBinding) onIsyEvent(thingID string, evName string, value any, requ
 }
 
 // HandleBindingConfig configures the binding.
-func (svc *IsyBinding) HandleBindingConfig(action *hubclient.ThingMessage) error {
+func (svc *IsyBinding) HandleBindingConfig(action *transports.ThingMessage) error {
 	err := fmt.Errorf("unknown configuration request '%s' from '%s'", action.Name, action.SenderID)
 	// connection settings to connect to the gateway
 	// FIXME: persist this configuration
@@ -142,7 +142,7 @@ func (svc *IsyBinding) MakeBindingTD() *tdd.TD {
 // If no connection can be made the heartbeat will retry periodically until stopped.
 //
 // This publishes a TD for this binding, starts a background polling heartbeat.
-func (svc *IsyBinding) Start(hc hubclient.IAgentClient) (err error) {
+func (svc *IsyBinding) Start(hc clients.IAgent) (err error) {
 	slog.Info("Starting Isy99x binding")
 	svc.hc = hc
 	svc.thingID = hc.GetClientID()

@@ -3,12 +3,11 @@ package test
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/authz"
-	"github.com/hiveot/hub/lib/hubclient"
-	"github.com/hiveot/hub/lib/hubclient/sseclient"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/services/hiveoview/src/service"
+	"github.com/hiveot/hub/wot/protocolclients/ssescclient"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -22,6 +21,7 @@ import (
 
 const serviceID = "hiveoview-test"
 const servicePort = 9999
+const agentUsesWSS = true
 
 // set to true to test without state service
 const noState = true
@@ -37,12 +37,12 @@ var ts *testenv.TestServer
 // This returns a client. Call Close() when done.
 func WebLogin(clientID string,
 	onConnection func(bool, error),
-	onMessage func(message *hubclient.ThingMessage),
-	onRequest func(message *hubclient.ThingMessage) hubclient.RequestStatus) (
-	*sseclient.HttpSSEClient, error) {
+	onMessage func(message *transports.ThingMessage),
+	onRequest func(message *transports.ThingMessage) transports.RequestStatus) (
+	*ssescclient.HttpSSEClient, error) {
 
 	hostPort := fmt.Sprintf("localhost:%d", servicePort)
-	sseCl := sseclient.NewHttpSSEClient(hostPort, clientID, nil, ts.Certs.CaCert, time.Minute*10)
+	sseCl := ssescclient.NewHttpSSEClient(hostPort, clientID, nil, ts.Certs.CaCert, time.Minute*10)
 	sseCl.SetConnectHandler(onConnection)
 	sseCl.SetMessageHandler(onMessage)
 	sseCl.SetRequestHandler(onRequest)
@@ -76,7 +76,7 @@ func TestStartStop(t *testing.T) {
 
 	svc := service.NewHiveovService(servicePort, true, nil, "",
 		ts.Certs.ServerCert, ts.Certs.CaCert, noState)
-	hc1, _ := ts.AddConnectService(serviceID)
+	hc1, _ := ts.AddConnectService(serviceID, agentUsesWSS)
 
 	err := svc.Start(hc1)
 	require.NoError(t, err)
@@ -92,14 +92,14 @@ func TestLogin(t *testing.T) {
 	//    the state service isnt found. ignore it.
 	svc := service.NewHiveovService(servicePort, true,
 		nil, "", ts.Certs.ServerCert, ts.Certs.CaCert, noState)
-	avcAg, _ := ts.AddConnectService(serviceID)
+	avcAg, _ := ts.AddConnectService(serviceID, agentUsesWSS)
 	err := svc.Start(avcAg)
 
 	require.NoError(t, err)
 	defer svc.Stop()
 
 	// make sure the client to login as exists
-	cl1, token1 := ts.AddConnectUser(clientID1, authz.ClientRoleOperator)
+	cl1, token1 := ts.AddConnectConsumer(clientID1, authz.ClientRoleOperator)
 	defer cl1.Disconnect()
 
 	_ = token1
@@ -134,7 +134,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	const agentID = "agent1"
 	const testConnections = int32(1)
 	const eventName = "event1"
-	var webClients = make([]*sseclient.HttpSSEClient, 0)
+	var webClients = make([]*ssescclient.HttpSSEClient, 0)
 	var connectCount atomic.Int32
 	var disConnectCount atomic.Int32
 	var messageCount atomic.Int32
@@ -145,19 +145,19 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	//    the state service isnt found. ignore it.
 	svc := service.NewHiveovService(servicePort, true,
 		nil, "", ts.Certs.ServerCert, ts.Certs.CaCert, noState)
-	avcAg, _ := ts.AddConnectService(serviceID)
+	avcAg, _ := ts.AddConnectService(serviceID, agentUsesWSS)
 	err := svc.Start(avcAg)
 
 	require.NoError(t, err)
 	defer svc.Stop()
 
 	// the agent for publishing events. A TD is needed for them to be accepted.
-	ag1, _ := ts.AddConnectAgent(agentID)
+	ag1, _ := ts.AddConnectAgent(agentID, agentUsesWSS)
 	_ = ag1
 	td1 := ts.AddTD(agentID, nil)
 	_ = td1
 	// create the user account this test is going to connect as.
-	cl1, token1 := ts.AddConnectUser(clientID1, authz.ClientRoleOperator)
+	cl1, token1 := ts.AddConnectConsumer(clientID1, authz.ClientRoleOperator)
 	cl1.Disconnect()
 	time.Sleep(waitamoment)
 
@@ -169,7 +169,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 			disConnectCount.Add(1)
 		}
 	}
-	onMessage := func(msg *hubclient.ThingMessage) {
+	onMessage := func(msg *transports.ThingMessage) {
 		// the UI expects this format for triggering htmx
 		expectedType := fmt.Sprintf("dtw:%s:%s/%s", agentID, td1.ID, eventName)
 		if expectedType == msg.Operation {

@@ -24,9 +24,9 @@ func GenServiceHandler(l *utils.SL, serviceTitle string, td *tdd.TD) {
 	l.Add("// that implements the corresponding interface method.")
 	l.Add("// ")
 	l.Add("// This returns the marshalled response data or an error.")
-	l.Add("func NewHandle%sAction(svc %s)(func(msg *hubclient.ThingMessage) hubclient.RequestStatus) {", serviceTitle, interfaceName)
+	l.Add("func NewHandle%sAction(svc %s)(func(msg *transports.ThingMessage) transports.RequestStatus) {", serviceTitle, interfaceName)
 	l.Indent++
-	l.Add("return func(msg *hubclient.ThingMessage) (stat hubclient.RequestStatus) {")
+	l.Add("return func(msg *transports.ThingMessage) (stat transports.RequestStatus) {")
 
 	l.Indent++
 	l.Add("var err error")

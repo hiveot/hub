@@ -1,4 +1,4 @@
-package wssclient
+package wssbinding
 
 import "github.com/hiveot/hub/api/go/vocab"
 
@@ -30,19 +30,20 @@ const (
 	MsgTypeReadAllProperties       = "readAllProperties"
 	MsgTypeReadAllTDs              = "readAllTDs"
 	MsgTypeReadEvent               = "readEvent"
-	MsgTypeReadMultipleProperties  = "readMultipleproperties"
+	MsgTypeReadMultipleEvents      = "readMultipleEvents"
+	MsgTypeReadMultipleProperties  = "readMultipleProperties"
 	MsgTypeReadProperty            = "readProperty"
 	MsgTypeReadTD                  = "readTD"
 	MsgTypeRefresh                 = "refresh"
 	MsgTypeSubscribeAllEvents      = "subscribeAllEvents"
 	MsgTypeSubscribeEvent          = "subscribeEvent"
 	MsgTypeUnobserveAllProperties  = "unobserveAllProperties"
-	MsgTypeUnobserveProperty       = "unobserverProperty"
+	MsgTypeUnobserveProperty       = "unobserveProperty"
 	MsgTypeUnsubscribeAllEvents    = "unsubscribeAllEvents"
 	MsgTypeUnsubscribeEvent        = "unsubscribeEvent"
 	MsgTypePropertyReadings        = "propertyReadings"
 	MsgTypePropertyReading         = "propertyReading"
-	MsgTypeUpdateTD                = "updatetd"
+	MsgTypeUpdateTD                = "updateTD"
 	MsgTypeWriteAllProperties      = "writeAllProperties"
 	MsgTypeWriteMultipleProperties = "writeMultipleProperties"
 	MsgTypeWriteProperty           = "writeProperty"
@@ -93,36 +94,34 @@ type BaseMessage struct {
 	CorrelationID string `json:"correlationId,omitempty"`
 }
 
-// messagetype for:
-// OpReadProperty, OpReadMultipleProperties, OpReadAllProperties,
-// OpWriteProperty, OpWriteMultipleProperties,
-// OpObserveProperty, OpObserveAllProperties, OpUnobserveProperty, OpUnobserveAllProperties
-// OpUpdateProperty, OpUpdateMultipleProperties
 type PropertyMessage struct {
 	ThingID       string   `json:"thingId"`
 	MessageType   string   `json:"messageType"`
 	Name          string   `json:"property"`
-	Names         []string `json:"properties,omitempty"`          // OpReadMultipleProperties
-	Data          any      `json:"data,omitempty"`                // OpWriteProperty
-	LastTimestamp string   `json:"lastPropertyReading,omitempty"` // OpObserveProperty, OpObserveAllProperties
-	Timestamp     string   `json:"timestamp,omitempty"`           // OpUpdateProperty
+	Names         []string `json:"properties,omitempty"`
+	Data          any      `json:"data,omitempty"`
+	LastTimestamp string   `json:"lastPropertyReading,omitempty"`
+	Timestamp     string   `json:"timestamp,omitempty"`
 	//
 	MessageID     string `json:"messageId,omitempty"`
 	CorrelationID string `json:"correlationId,omitempty"`
 }
 
-// OpInvokeAction, OpQueryAction, OpQueryAllActions, OpCancelAction
 type ActionMessage struct {
 	ThingID     string `json:"thingId"`
 	MessageType string `json:"messageType"`
-	Name        string `json:"action"`          // OpQueryAction, OpInvokeAction, OpCancelAction
-	Data        any    `json:"input,omitempty"` // OpInvokeAction
+	Name        string `json:"action"`
+	Data        any    `json:"input,omitempty"`
+
 	// FIXME: under discussions. href has nothing to do with tracking actions
-	HRef string `json:"href,omitempty"` // queryAction
+	HRef string `json:"href,omitempty"`
 	//
-	Timestamp     string `json:"timestamp"` // timestamp of this update
+	Timestamp     string `json:"timestamp"`
 	MessageID     string `json:"messageId,omitempty"`
 	CorrelationID string `json:"correlationId,omitempty"`
+
+	// hiveot only: SenderID is used for logging and storage (mainly history)
+	SenderID string `json:"senderID"`
 }
 
 // ActionStatusMessage containing progress of an action or property write request
@@ -148,18 +147,13 @@ type ActionStatusMessage struct {
 	CorrelationID string `json:"correlationId,omitempty"`
 }
 
-// OpSubscribeEvent, OpUnsubscribeEvent
-// OpSubscribeMultipleEvents, OpUnsubscribeMultipleEvents,
-// OpSubscribeAllEvents, OpUnsubscribeAllEvents
-// OpPublishEvent
-// OpUpdateTD
-// OpReadEvent, OpReadMultipleEvents, OpReadAllEvents
 type EventMessage struct {
 	ThingID     string `json:"thingId"`
 	MessageType string `json:"messageType"`
 
-	Name string `json:"event"`          // OpPublishEvent,OpSubscribeEvent,OpUnsubscribeEvent
-	Data any    `json:"data,omitempty"` // OpPublishEvent
+	Name  string   `json:"event"`
+	Names []string `json:"events"`
+	Data  any      `json:"data,omitempty"`
 
 	// subscription only
 	LastEvent string `json:"lastEvent,omitempty"` // OpSubscribe...
@@ -169,7 +163,6 @@ type EventMessage struct {
 	CorrelationID string `json:"correlationId,omitempty"`
 }
 
-// OpUpdateTD, opReadTD, opReadAllTDs
 type TDMessage struct {
 	ThingID     string `json:"thingId"`
 	MessageType string `json:"messageType"`

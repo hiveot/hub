@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/hubclient"
+	"github.com/hiveot/hub/wot/protocolclients"
 	"github.com/hiveot/hub/wot/tdd"
 )
 
@@ -43,14 +43,14 @@ func (it *IsyDimmerThing) MakeTD() *tdd.TD {
 	return td
 }
 
-func (it *IsyDimmerThing) HandleConfigRequest(action *hubclient.ThingMessage) (err error) {
+func (it *IsyDimmerThing) HandleConfigRequest(action *transports.ThingMessage) (err error) {
 	return errors.New("unknown config: " + action.Name)
 }
 
 // HandleActionRequest handles request to execute an action on this device
 // actionID string as defined in the action affordance
 // newValue is not used as these actions do not carry a parameter
-func (it *IsyDimmerThing) HandleActionRequest(action *hubclient.ThingMessage) (err error) {
+func (it *IsyDimmerThing) HandleActionRequest(action *transports.ThingMessage) (err error) {
 	var restPath = ""
 	var newValue = ""
 	// FIXME: action keys are node attributes keys, not vocab @types (or are they?)

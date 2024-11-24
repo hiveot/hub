@@ -1,0 +1,317 @@
+package ssescclient
+
+import (
+	"errors"
+	"fmt"
+	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot/tdd"
+	"github.com/teris-io/shortid"
+	"log/slog"
+	"net/http"
+	"net/url"
+	"time"
+)
+
+// InvokeAction publishes an action message and waits for an answer or until timeout
+// An error is returned if delivery failed or succeeded but the action itself failed
+func (cl *HttpBinding) InvokeAction(
+	dThingID string, name string, input interface{}, output interface{}, requestID string) (
+	stat transports.RequestStatus) {
+
+	slog.Info("InvokeAction",
+		slog.String("clientID (me)", cl.clientID),
+		slog.String("dThingID", dThingID),
+		slog.String("name", name),
+		slog.String("requestID", requestID),
+		slog.String("cid", cl.cid),
+	)
+	// FIXME: use TD form for this action
+	// FIXME: track message-ID's using headers instead of message envelope
+	stat = cl.PubMessage(http.MethodPost, PostInvokeActionPath, dThingID, name, input, output, requestID)
+
+	return stat
+}
+
+// InvokeOperation gets the path from the form and makes the call
+func (cl *HttpBinding) InvokeOperation(
+	op tdd.Form, dThingID, name string, input interface{}, output interface{}) error {
+
+	urlPath, _ := op.GetHRef()
+	if urlPath == "" {
+		return fmt.Errorf("InvokeOperation. Missing href in form. dThingID='%s', name='%s'", dThingID, name)
+	}
+	u, err := url.Parse(urlPath)
+	if err != nil {
+		return err
+	}
+	// TODO: how to get result of actions here?
+	methodName, _ := op.GetMethodName()
+	stat := cl.PubMessage(methodName, u.Path, dThingID, name, input, output, "")
+	if stat.Error != "" {
+		err = errors.New(stat.Error)
+	}
+	return err
+}
+
+// Observe subscribes to property updates
+// Use SetEventHandler to receive observed property updates
+// If name is empty then this observes all property changes
+func (cl *HttpBinding) Observe(thingID string, name string) error {
+	slog.Info("Observe",
+		slog.String("clientID", cl.clientID),
+		slog.String("thingID", thingID),
+		slog.String("name", name))
+
+	if thingID == "" {
+		thingID = "+"
+	}
+	if name == "" {
+		name = "+"
+	}
+	vars := map[string]string{"thingID": thingID, "name": name}
+	subscribePath := utils.Substitute(PostObservePropertiesPath, vars)
+	_, _, _, err := cl.tlsClient.Post(subscribePath, nil, "")
+	return err
+}
+
+// InvokeOperation is temporary transition to support using TD forms
+//func (cl *HttpBinding) InvokeOperation(
+//	href string, op tdd.Form, data any) (stat protocoltransports.RequestStatus) {
+//
+//	slog.Info("PublishFromForm", "href", href, "op", op)
+//	panic("Just a placeholder. Dont use this yet. Not implemented")
+//	return stat
+//}
+
+// PubMessage an action, event, property, td or progress message and return the delivery status
+//
+//	methodName is http.MethodPost for actions, http.MethodPost/MethodGet for properties
+//	path used to publish PostActionPath/PostEventPath/... optionally with {thingID} and/or {name}
+//	thingID (optional) to publish as or to: events are published for the thing and actions to publish to the thingID
+//	name (optional) is the event/action/property name being published or modified
+//	input is the native message payload to transfer that will be serialized
+//	output is optional destination for unmarshalling the payload
+//	requestID optional 'message-id' header value
+//
+// This returns the response body and optional a response message with delivery status and requestID with a delivery status
+func (cl *HttpBinding) PubMessage(methodName string, methodPath string,
+	thingID string, name string, input interface{}, output interface{}, requestID string) (
+	stat transports.RequestStatus) {
+
+	progress := ""
+	vars := map[string]string{
+		"thingID": thingID,
+		"name":    name}
+	messagePath := utils.Substitute(methodPath, vars)
+	cl.mux.RLock()
+	defer cl.mux.RUnlock()
+	if cl.tlsClient == nil {
+		stat.Status = vocab.RequestFailed
+		stat.Error = "PubMessage. Client connection was closed"
+		slog.Warn(stat.Error, "clientID", cl.GetClientID(), "thingID", thingID, "name", name, "cid", cl.cid)
+		return stat
+	}
+	//resp, err := cl.tlsClient.Post(messagePath, payload)
+	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, messagePath)
+	serData := cl.Marshal(input)
+
+	reply, respMsgID, httpStatus, headers, err :=
+		cl.tlsClient.Invoke(methodName, serverURL, serData, requestID, nil)
+
+	_ = headers
+	// TODO: detect difference between not connected and unauthenticated
+	dataSchema := ""
+	if headers != nil {
+		// set if an alternative output dataschema is used, eg RequestStatus result
+		dataSchema = headers.Get(DataSchemaHeader)
+		// when progress is returned without a deliverystatus object
+		progress = headers.Get(StatusHeader)
+	}
+
+	stat.CorrelationID = respMsgID
+	if err != nil {
+		stat.Error = err.Error()
+		stat.Status = vocab.RequestFailed
+		if httpStatus == http.StatusUnauthorized {
+			err = errors.New("no longer authenticated")
+		}
+		// FIXME: use actual type
+	} else if dataSchema == "RequestStatus" {
+		// return dataschema contains a progress envelope
+		err = cl.Unmarshal(reply, &stat)
+	} else if reply != nil && len(reply) > 0 {
+		// TODO: unmarshalling the reply here is useless as there is needs conversion to the correct type
+		err = cl.Unmarshal(reply, &stat.Output)
+		stat.Status = vocab.RequestCompleted
+	} else if progress != "" {
+		// progress status without delivery status output
+		stat.Status = progress
+	} else {
+		// not an progress result and no data. assume all went well
+		stat.Status = vocab.RequestCompleted
+	}
+	if err != nil {
+		slog.Error("PubMessage error",
+			"path", messagePath, "err", err.Error())
+		stat.Error = err.Error()
+	}
+	return stat
+}
+
+// Rpc publishes and action and waits for a completion or failed progress update.
+// This uses a requestID to link actions to progress updates. Only use this for actions
+// that support the 'rpc' capabilities (eg, the agent sends the progress update)
+func (cl *HttpBinding) Rpc(
+	thingID string, name string, args interface{}, resp interface{}) (err error) {
+
+	// a requestID is needed before the action is published in order to match it with the reply
+	requestID := "rpc-" + shortid.MustGenerate()
+
+	slog.Info("Rpc (request)",
+		slog.String("clientID", cl.clientID),
+		slog.String("thingID", thingID),
+		slog.String("name", name),
+		slog.String("requestID", requestID),
+		slog.String("cid", cl.cid),
+	)
+
+	rChan := make(chan *transports.RequestStatus)
+	cl.mux.Lock()
+	cl.correlData[requestID] = rChan
+	cl.mux.Unlock()
+
+	// invoke with query parameters to provide the message ID
+	stat := cl.InvokeAction(thingID, name, args, resp, requestID)
+	waitCount := 0
+
+	// Intermediate status update such as 'applied' are not errors. Wait longer.
+	for {
+		// if the hub return channel doesnt exists then don't bother waiting for a result
+		if !cl.IsConnected() {
+			break
+		}
+
+		// wait at most cl.timeout or until delivery completes or fails
+		// if the connection breaks while waiting then tlsClient will be nil.
+		if time.Duration(waitCount)*time.Second > cl.timeout || cl.tlsClient == nil {
+			break
+		}
+		if stat.Status == vocab.RequestCompleted || stat.Status == vocab.RequestFailed {
+			break
+		}
+		if waitCount > 0 {
+			slog.Info("Rpc (wait)",
+				slog.Int("count", waitCount),
+				slog.String("clientID", cl.clientID),
+				slog.String("name", name),
+				slog.String("requestID", requestID),
+			)
+		}
+		stat, err = cl.WaitForProgressUpdate(rChan, requestID, time.Second)
+		waitCount++
+	}
+	cl.mux.Lock()
+	delete(cl.correlData, requestID)
+	cl.mux.Unlock()
+	slog.Info("Rpc (result)",
+		slog.String("clientID", cl.clientID),
+		slog.String("thingID", thingID),
+		slog.String("name", name),
+		slog.String("requestID", requestID),
+		slog.String("cid", cl.cid),
+		slog.String("status", stat.Status),
+	)
+
+	// check for errors
+	if err == nil {
+		if stat.Error != "" {
+			err = errors.New(stat.Error)
+		} else if stat.Status != vocab.RequestCompleted {
+			err = errors.New("Delivery not complete. Status: " + stat.Status)
+		}
+	}
+	if err != nil {
+		slog.Error("RPC failed",
+			"thingID", thingID, "name", name, "err", err.Error())
+	}
+	// only once completed will there be a reply as a result
+	if err == nil && resp != nil {
+		// no choice but to decode
+		err = utils.Decode(stat.Output, resp)
+	}
+	return err
+}
+
+// Subscribe subscribes to a single event of one or more thing.
+// Use SetEventHandler to receive subscribed events or SetRequestHandler for actions
+func (cl *HttpBinding) Subscribe(thingID string, name string) error {
+	slog.Info("Subscribe",
+		slog.String("clientID", cl.clientID),
+		slog.String("cid", cl.cid),
+		slog.String("thingID", thingID),
+		slog.String("name", name))
+
+	if thingID == "" {
+		thingID = "+"
+	}
+	if name == "" {
+		name = "+"
+	}
+	vars := map[string]string{"thingID": thingID, "name": name}
+	subscribePath := utils.Substitute(PostSubscribeEventPath, vars)
+	_, _, _, err := cl.tlsClient.Post(subscribePath, nil, "")
+	return err
+}
+
+// Unobserve thing properties
+func (cl *HttpBinding) Unobserve(thingID string, name string) error {
+	slog.Info("Unobserve",
+		slog.String("clientID", cl.clientID),
+		slog.String("thingID", thingID),
+		slog.String("name", name))
+
+	if thingID == "" {
+		thingID = "+"
+	}
+	if name == "" {
+		name = "+"
+	}
+	vars := map[string]string{"thingID": thingID, "name": name}
+	unsubscribePath := utils.Substitute(PostUnobservePropertyPath, vars)
+	_, _, _, err := cl.tlsClient.Post(unsubscribePath, nil, "")
+	return err
+}
+
+// Unsubscribe from thing event(s)
+func (cl *HttpBinding) Unsubscribe(thingID string, name string) error {
+	slog.Info("Unsubscribe",
+		slog.String("clientID", cl.clientID),
+		slog.String("thingID", thingID),
+		slog.String("name", name))
+
+	if thingID == "" {
+		thingID = "+"
+	}
+	if name == "" {
+		name = "+"
+	}
+	vars := map[string]string{"thingID": thingID, "name": name}
+	unsubscribePath := utils.Substitute(PostUnsubscribeEventPath, vars)
+	_, _, _, err := cl.tlsClient.Post(unsubscribePath, nil, "")
+	return err
+}
+
+// WriteProperty posts a configuration change request
+func (cl *HttpBinding) WriteProperty(thingID string, name string, data any) (
+	stat transports.RequestStatus) {
+
+	slog.Info("WriteProperty",
+		slog.String("me", cl.clientID),
+		slog.String("thingID", thingID),
+		slog.String("name", name),
+	)
+
+	stat = cl.PubMessage(http.MethodPost, PostWritePropertyPath, thingID, name, data, nil, "")
+	return stat
+}

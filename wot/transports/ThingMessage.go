@@ -1,4 +1,4 @@
-package hubclient
+package transports
 
 import (
 	"fmt"
@@ -6,15 +6,6 @@ import (
 	"github.com/hiveot/hub/lib/utils"
 	"time"
 )
-
-// MessageHandler processes a message without expecting a return value
-type MessageHandler func(msg *ThingMessage)
-
-// RequestHandler processes an request and progress status.
-//
-// As actions are targeted to an agent, the delivery status is that of delivery	to the agent.
-// As events are broadcast, the delivery status is that of delivery to at least one subscriber.
-type RequestHandler func(msg *ThingMessage) RequestStatus
 
 // ThingMessage is an internal-use envelope, for an event, action or property message,
 // as received from agents, services or consumers.
@@ -33,7 +24,7 @@ type ThingMessage struct {
 	// This is required.
 	Name string
 
-	// The operation for this message
+	// The operation for this message as defined in TD-1.1
 	Operation string
 
 	// SenderID is the account ID of the agent, service or user sending the message

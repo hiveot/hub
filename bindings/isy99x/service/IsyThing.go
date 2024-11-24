@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
-	"github.com/hiveot/hub/lib/hubclient"
 	"github.com/hiveot/hub/wot/exposedthing"
+	"github.com/hiveot/hub/wot/protocolclients"
 	"github.com/hiveot/hub/wot/tdd"
 	"strings"
 	"sync"
@@ -36,9 +36,9 @@ type IIsyThing interface {
 	// GetPropValues returns the property values of the thing
 	GetPropValues(onlyChanges bool) map[string]any
 	// HandleActionRequest passes incoming actions to the Thing for execution
-	HandleActionRequest(tv *hubclient.ThingMessage) (err error)
+	HandleActionRequest(tv *transports.ThingMessage) (err error)
 	// HandleConfigRequest passes configuration changes to the Thing for execution
-	HandleConfigRequest(tv *hubclient.ThingMessage) (err error)
+	HandleConfigRequest(tv *transports.ThingMessage) (err error)
 	// HandleValueUpdate updates the Thing properties with value obtained via the ISY gateway
 	HandleValueUpdate(propID string, uom string, newValue string) error
 	// Init assigns the ISY connection and node this Thing represents
@@ -95,13 +95,13 @@ func (it *IsyThing) GetPropValues(onlyChanges bool) map[string]any {
 //}
 
 // HandleActionRequest invokes the action handler of the specialized thing
-func (it *IsyThing) HandleActionRequest(tv *hubclient.ThingMessage) (err error) {
+func (it *IsyThing) HandleActionRequest(tv *transports.ThingMessage) (err error) {
 	err = fmt.Errorf("HandleActionRequest not supported for this thing")
 	return err
 }
 
 // HandleConfigRequest invokes the config handler of the specialized thing
-func (it *IsyThing) HandleConfigRequest(action *hubclient.ThingMessage) (err error) {
+func (it *IsyThing) HandleConfigRequest(action *transports.ThingMessage) (err error) {
 	// The title is the friendly name of the node
 	if action.Name == vocab.PropDeviceTitle {
 		newName := action.DataAsText()
@@ -206,7 +206,7 @@ func (it *IsyThing) MakeTD() *tdd.TD {
 }
 
 // PubPropValues gets the thing properties and publish them
-//func (svc *IsyThing) PubPropValues(hc hubclient.IAgentClient, onlyChanges bool) (err error) {
+//func (svc *IsyThing) PubPropValues(hc hubclient.IAgent, onlyChanges bool) (err error) {
 //	props := svc.GetPropValues(onlyChanges)
 //	if len(props) > 0 {
 //		err = hc.PubMultipleProperties(svc.thingID, props)

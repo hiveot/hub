@@ -1,15 +1,19 @@
-package hubclient
+package transports
 
 //// ISubscription interface to underlying subscription mechanism
 //type ISubscription interface {
 //	Unsubscribe() error
 //}
 
-// IAgentClient defines the interface of a Thing agent that connects to a messaging server.
+// RequestHandler processes an request and progress status.
 //
-// TODO split this up in pure transport, consumed thing and exposed thing apis
-type IAgentClient interface {
-	IConsumerClient
+// As actions are targeted to an agent, the delivery status is that of delivery	to the agent.
+// As events are broadcast, the delivery status is that of delivery to at least one subscriber.
+type RequestHandler func(msg *ThingMessage) RequestStatus
+
+// IAgent defines the interface of a Thing agent that connects to a messaging server.
+type IAgent interface {
+	IConsumer
 
 	// PubEvent [agent] publishes a Thing event.
 	// It returns as soon as delivery to the hub is confirmed.
@@ -31,7 +35,7 @@ type IAgentClient interface {
 	// This returns an error if the event cannot not be delivered to the hub
 	PubEvent(thingID string, name string, value any, requestID string) error
 
-	// PubRequestStatus [agent] sends a request progress status update to the hub.
+	// PubActionStatus [agent] sends an action progress status update to the hub.
 	// The hub will update the status of the action in the digital twin and
 	// notify the original sender.
 	//
@@ -65,7 +69,8 @@ type IAgentClient interface {
 	//PubTD(td *tdd.TD) error
 	PubTD(thingID string, tdJSON string) error
 
-	// SetRequestHandler adds a handler for requests from consumers
+	// SetRequestHandler adds a handler for requests from consumers.
+	//
 	// This replaces any previously set handler.
 	// Agents should use SetRequestHandler for receiving action and write property
 	// requests.

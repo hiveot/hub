@@ -3,12 +3,11 @@ package pubsubcli
 import (
 	"errors"
 	"fmt"
+	"github.com/hiveot/hub/wot/protocolclients"
 	"github.com/urfave/cli/v2"
-
-	"github.com/hiveot/hub/lib/hubclient"
 )
 
-func PubActionCommand(hc *hubclient.IConsumerClient) *cli.Command {
+func PubActionCommand(hc *clients.IConsumer) *cli.Command {
 	return &cli.Command{
 		Name:      "pub",
 		Usage:     "Publish action for Thing",
@@ -31,7 +30,7 @@ func PubActionCommand(hc *hubclient.IConsumerClient) *cli.Command {
 	}
 }
 
-func HandlePubActions(hc hubclient.IConsumerClient,
+func HandlePubActions(hc clients.IConsumer,
 	dThingID string, action string, args string) error {
 
 	var reply interface{}
