@@ -4,11 +4,8 @@ import (
 	"bytes"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/hiveot/hub/api/go/authn"
-	"github.com/hiveot/hub/lib/keys"
-	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/hiveot/hub/wot/transports"
@@ -18,7 +15,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -34,30 +30,16 @@ const (
 	// StatusHeader for transports that support headers can include a progress status field
 	StatusHeader = "status"
 
-	// RequestIDHeader for transports that support headers can include a message-ID
-	RequestIDHeader = tlsclient.HTTPRequestIDHeader
+	// CorrelationIDHeader for transports that support headers can include a message-ID
+	CorrelationIDHeader = "correlation-id"
 
 	// ConnectionIDHeader identifies the client's connection in case of multiple
 	// connections in the same session. Used to identify the connection for subscriptions.
-	ConnectionIDHeader = tlsclient.HTTPConnectionIDHeader
+	ConnectionIDHeader = "connection-id"
 
 	// DataSchemaHeader for transports that support headers can include a dataschema
 	// header to indicate an 'additionalresults' dataschema being returned.
 	DataSchemaHeader = "dataschema"
-)
-
-// Paths used by this protocol binding - SYNC with HttpBindingClient.ts
-//
-// THIS WILL BE REMOVED AFTER THE PROTOCOL BINDING PUBLISHES THESE IN THE TDD.
-// The hub client will need the TD (ConsumedThing) to determine the paths.
-const (
-
-	// deprecated authn service - use the generated constants or forms
-	PostLoginPath = "/authn/login"
-	// deprecated authn service - use the generated constants
-	PostLogoutPath = "/authn/logout"
-	// deprecated authn service - use the generated constants
-	PostRefreshPath = "/authn/refresh"
 )
 
 // HttpBindingClient is the http/2 client for performing operations on one or more Things.
@@ -70,7 +52,7 @@ const (
 // will be replaced with a single InvokeForm method.
 //
 // This client has no return channel so it does not support subscribe or observe
-// operations. Use the SseBinding for this.
+// operations. Use the SsescBindingClient or WssBindingClient for this.
 type HttpBindingClient struct {
 	// http server address and port
 	hostPort string
@@ -119,83 +101,11 @@ type HttpBindingClient struct {
 //	return err
 //}
 
-// ConnectWithLoginForm invokes login using a form - temporary helper
-// intended for testing a connection with a web server.
-//
-// This sets the bearer token for further requests
-func (cl *HttpBindingClient) ConnectWithLoginForm(password string) error {
-	formMock := url.Values{}
-	formMock.Add("loginID", cl.clientID)
-	formMock.Add("password", password)
-	fullURL := fmt.Sprintf("https://%s/login", cl.hostPort)
-
-	//PostForm should return a cookie that should be used in the sse connection
-	resp, err := cl.httpClient.PostForm(fullURL, formMock)
-	if err == nil {
-		// get the session token from the cookie
-		cookie := resp.Request.Header.Get("cookie")
-		kvList := strings.Split(cookie, ",")
-
-		for _, kv := range kvList {
-			kvParts := strings.SplitN(kv, "=", 2)
-			if kvParts[0] == "session" {
-				cl.bearerToken = kvParts[1]
-				break
-			}
-		}
-	}
-	return err
-}
-
-// ConnectWithPassword connects to the Hub TLS server using a login ID and password
-// and obtain an auth token for use with ConnectWithToken.
-//
-// This is currently hub specific, until a standard way is fond using the Hub TD
-func (cl *HttpBindingClient) ConnectWithPassword(password string) (newToken string, err error) {
-
-	slog.Info("ConnectWithPassword", "clientID", cl.clientID, "cid", cl.cid)
-
-	// TODO: use TD form auth mechanism
-	loginMessage := authn.UserLoginArgs{
-		ClientID: cl.GetClientID(),
-		Password: password,
-	}
-	argsJSON, _ := json.Marshal(loginMessage)
-	resp, _, err := cl.Invoke(
-		http.MethodPost, PostLoginPath, "", argsJSON, nil)
-	if err != nil {
-		slog.Warn("ConnectWithPassword failed", "err", err.Error())
-		return "", err
-	}
-	token := ""
-	err = jsoniter.Unmarshal(resp, &token)
-	if err != nil {
-		err = fmt.Errorf("ConnectWithPassword: unexpected response: %s", err)
-		return "", err
-	}
-	// store the bearer token further requests
-	cl.mux.Lock()
-	cl.bearerToken = token
-	cl.mux.Unlock()
-	cl.isConnected.Store(true)
-
-	return token, err
-}
-
-// ConnectWithToken sets the bearer token to use with requests.
-func (cl *HttpBindingClient) ConnectWithToken(token string) (newToken string, err error) {
-	cl.mux.Lock()
-	cl.bearerToken = token
-	cl.mux.Unlock()
-	cl.isConnected.Store(true)
-	return token, err
-}
-
 // CreateKeyPair returns a new set of serialized public/private key pair
-func (cl *HttpBindingClient) CreateKeyPair() (cryptoKeys keys.IHiveKey) {
-	k := keys.NewKey(keys.KeyTypeEd25519)
-	return k
-}
+//func (cl *HttpBindingClient) CreateKeyPair() (cryptoKeys keys.IHiveKey) {
+//	k := keys.NewKey(keys.KeyTypeEd25519)
+//	return k
+//}
 
 // Disconnect from the server
 func (cl *HttpBindingClient) Disconnect() {
@@ -232,7 +142,7 @@ func (cl *HttpBindingClient) GetConnectionStatus() (bool, string, error) {
 
 // GetProtocolType returns the type of protocol this client supports
 func (cl *HttpBindingClient) GetProtocolType() string {
-	return transports.ProtocolTypeHTTPS
+	return transports.ProtocolTypeHTTP
 }
 
 // GetServerURL returns the schema://address:port of the server connection
@@ -339,10 +249,31 @@ func (cl *HttpBindingClient) Invoke(method string, reqPath string,
 	return respBody, httpResp.Header, err
 }
 
-// InvokeOperation invokes the operation described in the Form
+// Rpc sends an operation and returns the result.
+//
+// This is the same as SendOperation. If the operation isn't completed it returns
+// an error.
+//
+// Since the http binding doesn't have a return channel, this only works with
+// operations that return their result as http response.
+func (cl *HttpBindingClient) Rpc(
+	form tdd.Form, dThingID, name string, input interface{}, output interface{}) (err error) {
+
+	stat := cl.SendOperation(form, dThingID, name, input, output, "")
+	if stat.Error != "" {
+		return errors.New(stat.Error)
+	}
+	if stat.Status != transports.RequestCompleted {
+		return errors.New("No result for operation")
+	}
+	return nil
+}
+
+// SendOperation sends the operation described in the Form.
 // The form must describe the HTTP protocol.
-func (cl *HttpBindingClient) InvokeOperation(
-	f tdd.Form, dThingID, name string, input interface{}, output interface{}) error {
+func (cl *HttpBindingClient) SendOperation(
+	f tdd.Form, dThingID, name string, input interface{}, output interface{},
+	correlationID string) (stat transports.RequestStatus) {
 
 	var dataJSON []byte
 	operation := f.GetOperation()
@@ -354,16 +285,16 @@ func (cl *HttpBindingClient) InvokeOperation(
 	}
 	href2 := utils.Substitute(href, params)
 
-	slog.Info("InvokeOperation",
+	slog.Info("SendOperation",
 		slog.String("op", operation),
 		slog.String("method", method),
 		slog.String("href", href2),
 	)
 	if method == "" {
-		method = "GET"
+		method = http.MethodGet
 	}
 	if operation == "" || href == "" {
-		slog.Error("InvokeOperation: Form is missing operation, method or href")
+		slog.Error("SendOperation: Form is missing operation or href")
 	}
 	if input != nil {
 		dataJSON, _ = jsoniter.Marshal(input)
@@ -372,53 +303,38 @@ func (cl *HttpBindingClient) InvokeOperation(
 		method, href2, "", dataJSON, nil)
 
 	slog.Warn("")
-
+	stat.Operation = operation
+	stat.ThingID = dThingID
+	stat.Name = name
+	stat.Status = transports.RequestDelivered
+	stat.CorrelationID = correlationID
 	if respBody != nil && err == nil {
 		err = jsoniter.Unmarshal(respBody, output)
+		stat.Status = transports.RequestCompleted
+		stat.Output = output
 	}
-	return err
+	return stat
 }
 
-// Logout from the server and end the session.
-// This is specific to the Hiveot Hub.
-func (cl *HttpBindingClient) Logout() error {
-	// TODO: find a way to derive this from a form
-	slog.Info("Logout", slog.String("clientID", cl.clientID))
-	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, PostLogoutPath)
-	_, _, err := cl.Invoke("POST", serverURL, "", nil, nil)
-	return err
-}
+// SendOperationStatus [agent] sends a operation progress status update to the server.
+//
+// NOTE: this message is not defined in the http binding spec for 2 reasons:
+// 1. HTTP bindings require the use of a sub-protocol to return data.
+// 2. WoT only defines consumer operations and this is an agent operation
+func (cl *HttpBindingClient) SendOperationStatus(stat transports.RequestStatus) {
+	slog.Debug("SendOperationStatus",
+		slog.String("agentID", cl.clientID),
+		slog.String("thingID", stat.ThingID),
+		slog.String("name", stat.Name),
+		slog.String("progress", stat.Status),
+		slog.String("correlationID", stat.CorrelationID))
 
-// RefreshToken refreshes the authentication token
-// The resulting token can be used with 'ConnectWithToken'
-// This is specific to the Hiveot Hub.
-func (cl *HttpBindingClient) RefreshToken(oldToken string) (newToken string, err error) {
-	// TODO: find a way to derive this from a form
+	stat2 := cl.Pub(http.MethodPost, PostAgentPublishProgressPath,
+		"", "", stat, stat.CorrelationID)
 
-	slog.Info("RefreshToken", slog.String("clientID", cl.clientID))
-	refreshURL := fmt.Sprintf("https://%s%s", cl.hostPort, PostRefreshPath)
-
-	args := authn.UserRefreshTokenArgs{
-		ClientID: cl.clientID,
-		OldToken: oldToken,
+	if stat.Error != "" {
+		slog.Warn("PubActionStatus failed", "err", stat2.Error)
 	}
-	data, _ := jsoniter.Marshal(args)
-	// the bearer token holds the old token
-	resp, _, err := cl.Invoke(
-		"POST", refreshURL, "", data, nil)
-
-	// set the new token as the bearer token
-	if err == nil {
-		err = jsoniter.Unmarshal(resp, &newToken)
-
-		if err == nil {
-			// reconnect using the new token
-			cl.mux.Lock()
-			cl.bearerToken = newToken
-			cl.mux.Unlock()
-		}
-	}
-	return newToken, err
 }
 
 // SetConnectHandler sets the notification handler of connection failure
@@ -453,18 +369,18 @@ func (cl *HttpBindingClient) SetRequestHandler(cb transports.RequestHandler) {
 //	clientCert optional client certificate to connect with
 //	caCert of the server to validate the server or nil to not check the server cert
 //	timeout for waiting for response. 0 to use the default.
-func NewHttpBindingClient(fullURL string, clientID string,
-	clientCert *tls.Certificate, caCert *x509.Certificate,
-	timeout time.Duration) (*HttpBindingClient, error) {
+func NewHttpBindingClient(
+	fullURL string, clientID string, clientCert *tls.Certificate, caCert *x509.Certificate,
+	timeout time.Duration) *HttpBindingClient {
 
 	caCertPool := x509.NewCertPool()
 
 	// Use CA certificate for server authentication if it exists
 	if caCert == nil {
-		slog.Info("NewHttpSSEClient: No CA certificate. InsecureSkipVerify used",
+		slog.Info("NewHttpBindingClient: No CA certificate. InsecureSkipVerify used",
 			slog.String("destination", fullURL))
 	} else {
-		slog.Debug("NewHttpSSEClient: CA certificate",
+		slog.Debug("NewHttpBindingClient: CA certificate",
 			slog.String("destination", fullURL),
 			slog.String("caCert CN", caCert.Subject.CommonName))
 		caCertPool.AddCert(caCert)
@@ -472,10 +388,7 @@ func NewHttpBindingClient(fullURL string, clientID string,
 	if timeout == 0 {
 		timeout = time.Second * 3
 	}
-	urlParts, err := url.Parse(fullURL)
-	if err != nil {
-		return nil, err
-	}
+	urlParts, _ := url.Parse(fullURL)
 	cid := shortid.MustGenerate()
 	cl := HttpBindingClient{
 		//_status: hubclient.TransportStatus{
@@ -490,7 +403,7 @@ func NewHttpBindingClient(fullURL string, clientID string,
 		//
 		headers: make(map[string]string),
 	}
-	cl.httpClient = tlsclient.NewHttp2TLSClient(caCert, clientCert, timeout)
+	cl.httpClient = NewHttp2TLSClient(caCert, clientCert, timeout)
 
-	return &cl, nil
+	return &cl
 }

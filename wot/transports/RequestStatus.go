@@ -21,17 +21,19 @@ const (
 // Intended for RPC updates and for asynchronously receiving action progress updates.
 // ThingID and Name are intended for the latter.
 type RequestStatus struct {
-	// ThingID of the thing handles the action.
+	// Operation whose progress is reported
+	Operation string `json:"op"`
+	// ThingID of the thing reports the progress
 	ThingID string `json:"thingID"`
-	// The action name
+	// The name of the thing action or property (write)
 	Name string `json:"name"`
-	// Request ID
+	// The correlation ID to send the response to (reply-to)
 	CorrelationID string `json:"requestID"`
-	// Updated delivery progress
+	// Status of the operation progress as per above constants: RequestPending, ...
 	Status string `json:"status"`
 	// Error in case delivery or processing has failed
 	Error string `json:"error"`
-	// Native reply data in case delivery and processing has completed
+	// Output as per affordance, of the operation in case status is RequestCompleted
 	Output any `json:"reply"`
 }
 

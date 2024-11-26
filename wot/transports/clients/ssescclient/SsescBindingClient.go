@@ -7,9 +7,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/hiveot/hub/wot/transports"
 	"github.com/hiveot/hub/wot/transports/clients/httpbinding"
+	"github.com/teris-io/shortid"
 	"log/slog"
 	"net/url"
 	"sync"
@@ -46,11 +49,6 @@ type SsescBindingClient struct {
 
 	// handler for closing the sse connection
 	sseCancelFn context.CancelFunc
-
-	// sseClient is the TLS client with the SSE connection
-	//sseClient *tlsclient.TLSClient
-	//// tlsClient is the TLS client used for posting events
-	//tlsClient *tlsclient.TLSClient
 
 	// callbacks for connection, events and requests
 	connectHandler func(connected bool, err error)
@@ -184,19 +182,6 @@ func (cl *SsescBindingClient) GetServerURL() string {
 	return cl.fullURL
 }
 
-//
-//func (cl *SsescBindingClient) GetTlsClient() *tlsclient.TLSClient {
-//	cl.mux.RLock()
-//	defer cl.mux.RUnlock()
-//	return cl.tlsClient
-//}
-
-func (cl *SsescBindingClient) InvokeOperation(
-	op tdd.Form, dThingID, name string, input interface{}, output interface{}) error {
-	err := cl.httpClient.InvokeOperation(op, dThingID, name, input, output)
-	return err
-}
-
 // handler when the SSE connection is established or fails.
 // This invokes the connectHandler callback if provided.
 func (cl *SsescBindingClient) handleSSEConnect(connected bool, err error) {
@@ -254,6 +239,105 @@ func (cl *SsescBindingClient) RefreshToken(oldToken string) (newToken string, er
 
 	newToken, err = cl.httpClient.RefreshToken(oldToken)
 	return newToken, err
+}
+
+// Rpc sends an operation and waits for a completed or failed progress update.
+// This uses a correlationID to link actions to progress updates. Only use this
+// for operations that reply using the correlation ID.
+func (cl *SsescBindingClient) Rpc(
+	op tdd.Form, thingID string, name string, args interface{}, resp interface{}) (err error) {
+
+	// a correlationID is needed before the action is published in order to match it with the reply
+	correlationID := "rpc-" + shortid.MustGenerate()
+
+	slog.Info("Rpc (request)",
+		slog.String("clientID", cl.clientID),
+		slog.String("thingID", thingID),
+		slog.String("name", name),
+		slog.String("correlationID", correlationID),
+		slog.String("cid", cl.GetClientID()),
+	)
+
+	rChan := make(chan *transports.RequestStatus)
+	cl.mux.Lock()
+	cl.correlData[correlationID] = rChan
+	cl.mux.Unlock()
+
+	// invoke with query parameters to provide the message ID
+	stat := cl.SendOperation(op, thingID, name, args, resp, correlationID)
+	waitCount := 0
+
+	// Intermediate status update such as 'applied' are not errors. Wait longer.
+	for {
+		// if the hub return channel doesnt exists then don't bother waiting for a result
+		if !cl.IsConnected() {
+			break
+		}
+
+		// wait at most cl.timeout or until delivery completes or fails
+		// if the connection breaks while waiting then tlsClient will be nil.
+		if time.Duration(waitCount)*time.Second > cl.timeout {
+			break
+		}
+		if stat.Status == vocab.RequestCompleted || stat.Status == vocab.RequestFailed {
+			break
+		}
+		if waitCount > 0 {
+			slog.Info("Rpc (wait)",
+				slog.Int("count", waitCount),
+				slog.String("clientID", cl.clientID),
+				slog.String("name", name),
+				slog.String("correlationID", correlationID),
+			)
+		}
+		stat, err = cl.WaitForProgressUpdate(rChan, correlationID, time.Second)
+		waitCount++
+	}
+	cl.mux.Lock()
+	delete(cl.correlData, correlationID)
+	cl.mux.Unlock()
+	slog.Info("Rpc (result)",
+		slog.String("clientID", cl.clientID),
+		slog.String("thingID", thingID),
+		slog.String("name", name),
+		slog.String("correlationID", correlationID),
+		slog.String("cid", cl.GetClientID()),
+		slog.String("status", stat.Status),
+	)
+
+	// check for errors
+	if err == nil {
+		if stat.Error != "" {
+			err = errors.New(stat.Error)
+		} else if stat.Status != vocab.RequestCompleted {
+			err = errors.New("Delivery not complete. Status: " + stat.Status)
+		}
+	}
+	if err != nil {
+		slog.Error("RPC failed",
+			"thingID", thingID, "name", name, "err", err.Error())
+	}
+	// only once completed will there be a reply as a result
+	if err == nil && resp != nil {
+		// no choice but to decode
+		err = utils.Decode(stat.Output, resp)
+	}
+	return err
+}
+
+// SendOperation sends the operation described in the given Form.
+// The form must describe the HTTP/SSE-SC protocol.
+func (cl *SsescBindingClient) SendOperation(
+	op tdd.Form, dThingID, name string, input interface{}, output interface{},
+	correlationID string) (stat transports.RequestStatus) {
+
+	stat = cl.httpClient.SendOperation(op, dThingID, name, input, output, correlationID)
+	return stat
+}
+
+// PubOperationStatus [agent] sends a operation progress status update to the server.
+func (cl *SsescBindingClient) SendOperationStatus(stat transports.RequestStatus) {
+	cl.httpClient.SendOperationStatus(stat)
 }
 
 // SetConnectHandler sets the notification handler of connection failure
@@ -317,7 +401,7 @@ func (cl *SsescBindingClient) WaitForProgressUpdate(
 //	timeout for waiting for response. 0 to use the default.
 func NewSsescBindingClient(fullURL string, clientID string,
 	clientCert *tls.Certificate, caCert *x509.Certificate,
-	timeout time.Duration) (*SsescBindingClient, error) {
+	timeout time.Duration) *SsescBindingClient {
 
 	caCertPool := x509.NewCertPool()
 
@@ -336,10 +420,7 @@ func NewSsescBindingClient(fullURL string, clientID string,
 	}
 
 	// establish the http client instance that handles http commands
-	httpBindingClient, err := httpbinding.NewHttpBindingClient(fullURL, clientID, clientCert, caCert, timeout)
-	if err != nil {
-		return nil, err
-	}
+	httpBindingClient := httpbinding.NewHttpBindingClient(fullURL, clientID, clientCert, caCert, timeout)
 	cl := SsescBindingClient{
 
 		httpClient: httpBindingClient,
@@ -360,5 +441,5 @@ func NewSsescBindingClient(fullURL string, clientID string,
 	//cl.tlsClient = tlsclient.NewTLSClient(
 	//	hostPort, clientCert, caCert, timeout, cid)
 
-	return &cl, nil
+	return &cl
 }

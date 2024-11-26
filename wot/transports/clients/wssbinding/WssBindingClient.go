@@ -4,26 +4,20 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/gorilla/websocket"
-	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/keys"
-	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot/tdd"
 	"github.com/hiveot/hub/wot/transports"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/teris-io/shortid"
 	"log/slog"
-	"net/url"
 	"sync"
 	"sync/atomic"
 	"time"
 )
-
-const PostLoginPath = "/authn/login"
 
 // WssBindingClient manages the connection to the hub server using Websockets.
 // This implements the IConsumer interface.
@@ -189,83 +183,11 @@ func (cl *WssBindingClient) _send(msg interface{}) error {
 	return err
 }
 
-// ConnectWithPassword connects to the Hub TLS server using a login ID and password
-// and obtain an auth token for use with ConnectWithToken.
-func (cl *WssBindingClient) ConnectWithPassword(password string) (newToken string, err error) {
-	//cl.mux.Lock()
-	//// remove existing connection
-	//if cl.tlsClient != nil {
-	//	cl.tlsClient.Close()
-	//}
-	//cl.tlsClient = tlsclient.NewTLSClient(
-	//	cl.hostPort, nil, cl.caCert, cl.timeout, cl.cid)
-	wssURI, err := url.Parse(cl.wssURL)
-	loginURL := fmt.Sprintf("https://%s%s",
-		wssURI.Host,
-		PostLoginPath)
-	//cl.mux.Unlock()
-
-	slog.Info("ConnectWithPassword", "clientID", cl.clientID)
-	loginMessage := authn.UserLoginArgs{
-		ClientID: cl.GetClientID(),
-		Password: password,
-	}
-	// TODO: this is part of the http binding, not the websocket binding
-	// a sacrificial client to get a token
-	tlsClient := tlsclient.NewTLSClient(wssURI.Host, nil, cl.caCert, cl.timeout, "")
-	argsJSON, _ := json.Marshal(loginMessage)
-	resp, _, statusCode, _, err2 := tlsClient.Invoke(
-		"POST", loginURL, argsJSON, "", nil)
-	if err2 != nil {
-		err = fmt.Errorf("%d: Login failed: %s", statusCode, err2)
-		return "", err
-	}
-	token := ""
-	err = cl.Unmarshal(resp, &token)
-	if err != nil {
-		err = fmt.Errorf("ConnectWithPassword: Login to %s has unexpected response message: %s", loginURL, err)
-		return "", err
-	}
-	// with an auth token the connection can be established
-
-	cl.wssCancelFn, cl.wssConn, err = ConnectWSS(
-		cl.clientID, cl.wssURL, token, cl.caCert,
-		cl._onConnect, cl.handleWSSMessage)
-
-	if err == nil {
-		cl.token = token
-		cl.retryOnDisconnect.Store(true)
-	}
-
-	return token, err
-}
-
-// ConnectWithToken connects to the Hub server using a user bearer token
-// and obtain a new token.
-//
-//	jwtToken is the token previously obtained with login or refresh.
-func (cl *WssBindingClient) ConnectWithToken(token string) (newToken string, err error) {
-
-	cl.wssCancelFn, cl.wssConn, err = ConnectWSS(
-		cl.clientID, cl.wssURL, token, cl.caCert,
-		cl._onConnect, cl.handleWSSMessage)
-
-	if err == nil {
-		// Refresh the auth token and verify the connection works.
-		newToken, err = cl.RefreshToken(token)
-	}
-	// once the connection is established enable the retry on disconnect
-	if err == nil {
-		cl.retryOnDisconnect.Store(true)
-	}
-	return newToken, err
-}
-
 // CreateKeyPair returns a new set of serialized public/private key pair
-func (cl *WssBindingClient) CreateKeyPair() (cryptoKeys keys.IHiveKey) {
-	k := keys.NewKey(keys.KeyTypeEd25519)
-	return k
-}
+//func (cl *WssBindingClient) CreateKeyPair() (cryptoKeys keys.IHiveKey) {
+//	k := keys.NewKey(keys.KeyTypeEd25519)
+//	return k
+//}
 
 // Disconnect from the server
 func (cl *WssBindingClient) Disconnect() {
@@ -311,15 +233,25 @@ func (cl *WssBindingClient) GetServerURL() string {
 	return hubURL
 }
 
+func (cl *WssBindingClient) opToMessageType(op string) string {
+	// yeah not very efficient. todo
+	for k, v := range MsgTypeToOp {
+		if v == op {
+			return k
+		}
+	}
+	return ""
+}
+
 // IsConnected return whether the return channel is connection, eg can receive data
 func (cl *WssBindingClient) IsConnected() bool {
 	return cl.isConnected.Load()
 }
 
-// Logout from the server and end the session
-func (cl *WssBindingClient) Logout() error {
-	return fmt.Errorf("not implemented")
-}
+//// Logout from the server and end the session
+//func (cl *WssBindingClient) Logout() error {
+//	return fmt.Errorf("not implemented")
+//}
 
 // Marshal encodes the native data into the wire format
 func (cl *WssBindingClient) Marshal(data any) []byte {
@@ -333,12 +265,10 @@ func (cl *WssBindingClient) Marshal(data any) []byte {
 func (cl *WssBindingClient) RefreshToken(oldToken string) (newToken string, err error) {
 
 	slog.Info("RefreshToken", slog.String("clientID", cl.clientID))
-	//stat := cl.InvokeAction(authn.UserDThingID, authn.UserRefreshTokenMethod, oldToken, &newToken, "")
-	data := authn.UserRefreshTokenArgs{OldToken: oldToken, ClientID: cl.clientID}
 	correlationID := shortid.MustGenerate()
 	msg := ActionMessage{
 		MessageType:   MsgTypeRefresh,
-		Data:          data,
+		Data:          nil,
 		MessageID:     shortid.MustGenerate(),
 		CorrelationID: correlationID,
 		SenderID:      cl.clientID,
@@ -368,6 +298,91 @@ func (cl *WssBindingClient) Reconnect() {
 	if err != nil {
 		slog.Warn("Reconnect failed: ", "err", err.Error())
 	}
+}
+
+// Rpc invokes an action and waits for a completion or failed progress update.
+// This uses a correlationID to link actions to progress updates. Only use this for actions
+// that support the 'rpc' capabilities (eg, the agent sends the progress update)
+func (cl *WssBindingClient) Rpc(form tdd.Form,
+	dThingID string, name string, input interface{}, resp interface{}) (err error) {
+	correlationID := "rpc-" + shortid.MustGenerate()
+	msg := ActionMessage{
+		ThingID:       dThingID,
+		MessageType:   form.GetOperation(),
+		Name:          name,
+		CorrelationID: correlationID,
+		MessageID:     correlationID,
+		Data:          input,
+		SenderID:      cl.clientID,
+		Timestamp:     time.Now().Format(utils.RFC3339Milli),
+	}
+	err = cl._rpc(correlationID, msg, resp)
+	if err != nil {
+		slog.Error("RPC failed",
+			"thingID", dThingID, "name", name, "err", err.Error())
+	}
+	return err
+}
+
+func (cl *WssBindingClient) SendOperation(
+	form tdd.Form, dThingID, name string, input interface{},
+	output interface{}, correlationID string) (stat transports.RequestStatus) {
+
+	op := form.GetOperation()
+
+	// unpack the operation and split it into separate messages for each operation
+	// it would be nice to have a single message envelope instead...
+	msg := make(map[string]any)
+	msg["thingId"] = dThingID
+	msg["name"] = name
+	msg["data"] = input
+	msg["correlationID"] = correlationID
+	msg["messageType"] = cl.opToMessageType(op)
+	msg["timestamp"] = time.Now().Format(utils.RFC3339Milli)
+	// FIXME: how to add the names for read multiple events/properties/actions?
+	switch op {
+	case vocab.HTOpReadEvent:
+		msg["event"] = name
+	case vocab.OpQueryAction, vocab.OpInvokeAction:
+		msg["action"] = name
+		msg["input"] = input // invoke only
+	case vocab.OpObserveProperty, vocab.OpReadProperty:
+		msg["property"] = name
+	}
+	err := cl._send(msg)
+	stat.Status = transports.RequestPending
+	stat.ThingID = dThingID
+	stat.Name = name
+	stat.CorrelationID = correlationID
+	if err != nil {
+		stat.Error = err.Error()
+	}
+	return stat
+}
+
+// SendOperationStatus [agent] sends a operation progress status update to the server.
+func (cl *WssBindingClient) SendOperationStatus(stat transports.RequestStatus) {
+
+	slog.Debug("PubActionStatus",
+		slog.String("agentID", cl.clientID),
+		slog.String("thingID", stat.ThingID),
+		slog.String("name", stat.Name),
+		slog.String("progress", stat.Status),
+		slog.String("requestID", stat.CorrelationID))
+
+	msg := ActionStatusMessage{
+		MessageType:   MsgTypeActionStatus,
+		ThingID:       stat.ThingID,
+		Name:          stat.Name,
+		CorrelationID: stat.CorrelationID,
+		MessageID:     shortid.MustGenerate(),
+		Status:        stat.Status,
+		Error:         stat.Error,
+		Output:        stat.Output,
+		Timestamp:     time.Now().Format(utils.RFC3339Milli),
+	}
+	_ = cl._send(msg)
+
 }
 
 // SetConnectHandler sets the notification handler of connection failure

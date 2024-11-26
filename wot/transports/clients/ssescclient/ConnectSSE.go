@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/lib/tlsclient"
 	"github.com/hiveot/hub/wot/transports/clients/httpbinding"
 	"github.com/tmaxmax/go-sse"
 	"log/slog"
@@ -34,7 +33,7 @@ func ConnectSSE(
 
 	// separate client with a long timeout for sse
 	// use a new http client instance to set an indefinite timeout for the sse connection
-	httpClient := tlsclient.NewHttp2TLSClient(caCert, nil, 0)
+	httpClient := httpbinding.NewHttp2TLSClient(caCert, nil, 0)
 
 	slog.Info("ConnectSSE (to hub) - establish SSE connection to server",
 		slog.String("URL", sseURL),

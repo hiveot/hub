@@ -78,7 +78,7 @@ func (cl *WssBindingClient) handleActionMessage(jsonMsg string) {
 	stat = cl.requestHandler(rxMsg)
 	stat.CorrelationID = rxMsg.CorrelationID
 	if rxMsg.CorrelationID != "" {
-		cl.PubActionStatus(stat) // send the result to the caller
+		cl.SendOperationStatus(stat) // send the result to the caller
 	}
 }
 
@@ -118,7 +118,7 @@ func (cl *WssBindingClient) handlePropertyMessage(jsonMsg string) {
 		stat = cl.requestHandler(rxMsg)
 		stat.CorrelationID = rxMsg.CorrelationID
 		if rxMsg.CorrelationID != "" {
-			cl.PubActionStatus(stat) // send the result to the caller
+			cl.SendOperationStatus(stat) // send the result to the caller
 		}
 	} else {
 		// property reading notification is a response to a read or observe request

@@ -1,0 +1,134 @@
+package httpbinding
+
+import (
+	"encoding/json"
+	"fmt"
+	jsoniter "github.com/json-iterator/go"
+	"log/slog"
+	"net/http"
+	"net/url"
+	"strings"
+)
+
+// Paths used by this protocol binding - SYNC with HttpBindingClient.ts
+//
+// THIS WILL BE REMOVED AFTER THE PROTOCOL BINDING PUBLISHES THESE IN THE TDD.
+// The hub client will need the TD (ConsumedThing) to determine the paths.
+const (
+
+	// deprecated authn service - use the generated constants or forms
+	PostLoginPath = "/authn/login"
+	// deprecated authn service - use the generated constants
+	PostLogoutPath = "/authn/logout"
+	// deprecated authn service - use the generated constants
+	PostRefreshPath = "/authn/refresh"
+)
+
+// ConnectWithLoginForm invokes login using a form - temporary helper
+// intended for testing a connection with a web server.
+//
+// This sets the bearer token for further requests
+func (cl *HttpBindingClient) ConnectWithLoginForm(password string) error {
+	formMock := url.Values{}
+	formMock.Add("loginID", cl.clientID)
+	formMock.Add("password", password)
+	fullURL := fmt.Sprintf("https://%s/login", cl.hostPort)
+
+	//PostForm should return a cookie that should be used in the http connection
+	resp, err := cl.httpClient.PostForm(fullURL, formMock)
+	if err == nil {
+		// get the session token from the cookie
+		cookie := resp.Request.Header.Get("cookie")
+		kvList := strings.Split(cookie, ",")
+
+		for _, kv := range kvList {
+			kvParts := strings.SplitN(kv, "=", 2)
+			if kvParts[0] == "session" {
+				cl.bearerToken = kvParts[1]
+				break
+			}
+		}
+	}
+	return err
+}
+
+// ConnectWithPassword connects to the Hub TLS server using a login ID and password
+// and obtain an auth token for use with ConnectWithToken.
+//
+// This is currently hub specific, until a standard way is fond using the Hub TD
+func (cl *HttpBindingClient) ConnectWithPassword(password string) (newToken string, err error) {
+
+	slog.Info("ConnectWithPassword", "clientID", cl.clientID, "cid", cl.cid)
+
+	// FIXME: figure out how a standard login method is used to obtain an auth token
+	loginMessage := map[string]string{
+		"login":    cl.GetClientID(),
+		"password": password,
+	}
+	argsJSON, _ := json.Marshal(loginMessage)
+	resp, _, err := cl.Invoke(
+		http.MethodPost, PostLoginPath, "", argsJSON, nil)
+	if err != nil {
+		slog.Warn("ConnectWithPassword failed", "err", err.Error())
+		return "", err
+	}
+	token := ""
+	err = jsoniter.Unmarshal(resp, &token)
+	if err != nil {
+		err = fmt.Errorf("ConnectWithPassword: unexpected response: %s", err)
+		return "", err
+	}
+	// store the bearer token further requests
+	cl.mux.Lock()
+	cl.bearerToken = token
+	cl.mux.Unlock()
+	cl.isConnected.Store(true)
+
+	return token, err
+}
+
+// ConnectWithToken sets the authentication bearer token to authenticate http requests.
+func (cl *HttpBindingClient) ConnectWithToken(token string) (newToken string, err error) {
+	cl.mux.Lock()
+	cl.bearerToken = token
+	cl.mux.Unlock()
+	cl.isConnected.Store(true)
+	return token, err
+}
+
+// RefreshToken refreshes the authentication token
+// The resulting token can be used with 'ConnectWithToken'
+// This is specific to the Hiveot Hub.
+func (cl *HttpBindingClient) RefreshToken(oldToken string) (newToken string, err error) {
+
+	// FIXME: what is the standard for refreshing a token using http?
+	slog.Info("RefreshToken", slog.String("clientID", cl.clientID))
+	refreshURL := fmt.Sprintf("https://%s%s", cl.hostPort, PostRefreshPath)
+
+	// the bearer token holds the old token
+	resp, _, err := cl.Invoke(
+		"POST", refreshURL, "", nil, nil)
+
+	// set the new token as the bearer token
+	if err == nil {
+		err = jsoniter.Unmarshal(resp, &newToken)
+
+		if err == nil {
+			// reconnect using the new token
+			cl.mux.Lock()
+			cl.bearerToken = newToken
+			cl.mux.Unlock()
+		}
+	}
+	return newToken, err
+}
+
+// Logout from the server and end the session.
+// This is specific to the Hiveot Hub.
+func (cl *HttpBindingClient) Logout() error {
+	// TODO: find a way to derive this from a form
+	slog.Info("Logout", slog.String("clientID", cl.clientID))
+	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, PostLogoutPath)
+	_, _, err := cl.Invoke("POST", serverURL, "", nil, nil)
+	return err
+}

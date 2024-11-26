@@ -5,6 +5,7 @@ package httpbinding
 
 import (
 	"errors"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/wot/transports"
 	"log/slog"
 	"net/http"
@@ -35,19 +36,9 @@ const (
 // The digital twin will update the request status and notify the sender.
 // This returns an error if the connection with the server is broken
 func (cl *HttpBindingClient) PubActionStatus(stat transports.RequestStatus) {
-	slog.Debug("PubActionStatus",
-		slog.String("agentID", cl.clientID),
-		slog.String("thingID", stat.ThingID),
-		slog.String("name", stat.Name),
-		slog.String("progress", stat.Status),
-		slog.String("correlationID", stat.CorrelationID))
-
-	stat2 := cl.Pub(http.MethodPost, PostAgentPublishProgressPath,
-		"", "", stat, stat.CorrelationID)
-
-	if stat.Error != "" {
-		slog.Warn("PubActionStatus failed", "err", stat2.Error)
-	}
+	// return the status of the invoke-action operation
+	stat.Operation = vocab.OpInvokeAction
+	cl.SendOperationStatus(stat)
 }
 
 // PubEvent publishes an event message and returns

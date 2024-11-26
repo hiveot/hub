@@ -70,3 +70,18 @@ func (cl *HttpBindingClient) Pub(methodName string, methodPath string,
 	}
 	return stat
 }
+
+//
+//// WriteProperty posts a configuration change request
+//func (cl *HttpBindingClient) WriteProperty(thingID string, name string, data any) (
+//	stat transports.RequestStatus) {
+//
+//	slog.Info("WriteProperty",
+//		slog.String("me", cl.clientID),
+//		slog.String("thingID", thingID),
+//		slog.String("name", name),
+//	)
+//
+//	stat = cl.Pub(http.MethodPost, PostWritePropertyPath, thingID, name, data, "")
+//	return stat
+//}

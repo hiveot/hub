@@ -8,9 +8,9 @@ import (
 	"fmt"
 	"github.com/eclipse/paho.golang/autopaho"
 	"github.com/eclipse/paho.golang/paho"
-	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/hiveot/hub/wot/transports"
+	jsoniter "github.com/json-iterator/go"
 	"log"
 	"log/slog"
 	"net/url"
@@ -164,10 +164,10 @@ func (cl *MqttBindingClient) ConnectWithToken(token string) (newToken string, er
 }
 
 // CreateKeyPair returns a new set of serialized public/private key pair
-func (cl *MqttBindingClient) CreateKeyPair() (cryptoKeys keys.IHiveKey) {
-	k := keys.NewKey(keys.KeyTypeECDSA)
-	return k
-}
+//func (cl *MqttBindingClient) CreateKeyPair() (cryptoKeys keys.IHiveKey) {
+//	k := keys.NewKey(keys.KeyTypeECDSA)
+//	return k
+//}
 
 // Disconnect from the MQTT broker and unsubscribe from all topics and set
 // device state to disconnected
@@ -226,13 +226,6 @@ func (cl *MqttBindingClient) GetProtocolType() string {
 // GetServerURL returns the schema://address:port of the server connection
 func (cl *MqttBindingClient) GetServerURL() string {
 	return cl.brokerURL
-}
-
-// InvokeOperation invokes the operation described in the Form
-// The form must describe the HTTP protocol.
-func (cl *MqttBindingClient) InvokeOperation(
-	f tdd.Form, dThingID, name string, input interface{}, output interface{}) error {
-	return fmt.Errorf("not implemented")
 }
 
 // Logout from the server and end the session.
@@ -318,11 +311,36 @@ func (cl *MqttBindingClient) onPahoConnectionError(err error) {
 	}()
 }
 
+func (cl *MqttBindingClient) Rpc(form tdd.Form, dThingID, name string, input interface{},
+	output interface{}) error {
+	return fmt.Errorf("not implemented")
+}
+
 // RefreshToken refreshes the authentication token
 // The resulting token can be used with 'ConnectWithToken'
 // This is specific to the Hiveot Hub.
 func (cl *MqttBindingClient) RefreshToken(oldToken string) (newToken string, err error) {
 	return oldToken, fmt.Errorf("not implemented")
+}
+
+// SendOperation sends the operation described in the Form. (todo)
+// The form must describe the MQTT protocol.
+func (cl *MqttBindingClient) SendOperation(
+	form tdd.Form, dThingID, name string, input interface{}, output interface{},
+	correlationID string) (stat transports.RequestStatus) {
+
+	// FIXME: implement message envelope
+	stat.Error = "not implemented"
+	stat.Status = transports.RequestFailed
+	return stat
+}
+
+// SendOperationStatus [agent] sends a operation progress status update to the server.
+// (todo)
+func (cl *MqttBindingClient) SendOperationStatus(stat transports.RequestStatus) {
+	topic := ""
+	payload, _ := jsoniter.Marshal(stat)
+	cl.PubEvent(topic, payload)
 }
 
 // SetConnectHandler sets the notification handler of connection failure
