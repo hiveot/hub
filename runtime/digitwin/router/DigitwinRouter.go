@@ -2,11 +2,10 @@ package router
 
 import (
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/runtime/api"
-	"github.com/hiveot/hub/runtime/connections"
 	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/runtime/digitwin/store"
 	"github.com/hiveot/hub/wot/transports"
+	"github.com/hiveot/hub/wot/transports/connections"
 	"github.com/teris-io/shortid"
 	"sync"
 )
@@ -20,11 +19,11 @@ type DigitwinRouter struct {
 	dtwStore *store.DigitwinStore
 
 	// internal services are directly invoked
-	digitwinAction api.ActionHandler
+	digitwinAction transports.ActionHandler
 	dtwService     *service.DigitwinService
-	authnAction    api.ActionHandler
-	authzAction    api.ActionHandler
-	hasPermission  api.PermissionHandler
+	authnAction    transports.ActionHandler
+	authzAction    transports.ActionHandler
+	hasPermission  transports.PermissionHandler
 
 	// in-memory cache of active actions lookup by requestID
 	activeCache map[string]ActionFlowRecord
@@ -97,10 +96,10 @@ func (svc *DigitwinRouter) HandleRequest(
 //	tb is the transport binding for forwarding service requests
 func NewDigitwinRouter(
 	dtwService *service.DigitwinService,
-	digitwinAction api.ActionHandler,
-	authnAgent api.ActionHandler,
-	authzAgent api.ActionHandler,
-	permissionHandler api.PermissionHandler,
+	digitwinAction transports.ActionHandler,
+	authnAgent transports.ActionHandler,
+	authzAgent transports.ActionHandler,
+	permissionHandler transports.PermissionHandler,
 	cm *connections.ConnectionManager,
 ) *DigitwinRouter {
 	ar := &DigitwinRouter{

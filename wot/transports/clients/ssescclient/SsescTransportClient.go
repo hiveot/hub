@@ -25,14 +25,14 @@ const PingMessage = "ping"
 
 const SSEPath = "/ssesc"
 
-// SsescBindingClient extends the https binding with the SSE return channel.
+// SsescTransportClient extends the https binding with the SSE return channel.
 //
 // This client creates two http/2 connections, one for posting messages and
 // one for a sse connection to establish a return channel.
 //
 // This clients implements the REST API supported by the digitwin runtime services,
 // specifically the directory, inbox, outbox, authn
-type SsescBindingClient struct {
+type SsescTransportClient struct {
 	// the http binding this extends
 	httpClient *httpbinding.HttpBindingClient
 
@@ -70,7 +70,7 @@ type SsescBindingClient struct {
 
 // helper to establish an sse connection using the given bearer token
 // FIXME: use the http/2 binding connection
-func (cl *SsescBindingClient) connectSSE(token string) (err error) {
+func (cl *SsescTransportClient) connectSSE(token string) (err error) {
 	if cl.ssePath == "" {
 		return fmt.Errorf("Missing SSE path")
 	}
@@ -94,7 +94,7 @@ func (cl *SsescBindingClient) connectSSE(token string) (err error) {
 // and obtain an auth token for use with ConnectWithToken.
 //
 // This is currently hub specific, until a standard way is fond using the Hub TD
-func (cl *SsescBindingClient) ConnectWithPassword(password string) (newToken string, err error) {
+func (cl *SsescTransportClient) ConnectWithPassword(password string) (newToken string, err error) {
 	newToken, err = cl.httpClient.ConnectWithPassword(password)
 	if err != nil {
 		return "", err
@@ -108,10 +108,17 @@ func (cl *SsescBindingClient) ConnectWithPassword(password string) (newToken str
 }
 
 // ConnectWithToken sets the bearer token to use with requests.
-func (cl *SsescBindingClient) ConnectWithToken(token string) (newToken string, err error) {
+func (cl *SsescTransportClient) ConnectWithToken(token string) (newToken string, err error) {
 	newToken, err = cl.httpClient.ConnectWithToken(token)
+	if err != nil {
+		return "", err
+	}
+	err = cl.connectSSE(newToken)
+	if err != nil {
+		return "", err
+	}
 	cl.isConnected.Store(true)
-	return token, err
+	return newToken, err
 }
 
 // ConnectWithClientCert creates a connection with the server using a client certificate for mutual authentication.
@@ -130,7 +137,7 @@ func (cl *SsescBindingClient) ConnectWithToken(token string) (newToken string, e
 //}
 
 // Disconnect from the server
-func (cl *SsescBindingClient) Disconnect() {
+func (cl *SsescTransportClient) Disconnect() {
 	slog.Debug("HttpSSEClient.Disconnect",
 		slog.String("clientID", cl.clientID),
 		slog.String("cid", cl.httpClient.GetCID()),
@@ -153,16 +160,16 @@ func (cl *SsescBindingClient) Disconnect() {
 }
 
 // GetClientID returns the client's account ID
-func (cl *SsescBindingClient) GetClientID() string {
+func (cl *SsescTransportClient) GetClientID() string {
 	return cl.clientID
 }
 
 // GetCID returns the client's connection ID
-func (cl *SsescBindingClient) GetCID() string {
+func (cl *SsescTransportClient) GetCID() string {
 	return cl.httpClient.GetCID()
 }
 
-func (cl *SsescBindingClient) GetConnectionStatus() (bool, string, error) {
+func (cl *SsescTransportClient) GetConnectionStatus() (bool, string, error) {
 	var lastErr error = nil
 	// lastError is stored as pointer because atomic.Value cannot switch between error and nil type
 	if cl.lastError.Load() != nil {
@@ -173,23 +180,25 @@ func (cl *SsescBindingClient) GetConnectionStatus() (bool, string, error) {
 }
 
 // GetProtocolType returns the type of protocol this client supports
-func (cl *SsescBindingClient) GetProtocolType() string {
+func (cl *SsescTransportClient) GetProtocolType() string {
 	return transports.ProtocolTypeSSESC
 }
 
 // GetServerURL returns the schema://address:port of the server connection
-func (cl *SsescBindingClient) GetServerURL() string {
+func (cl *SsescTransportClient) GetServerURL() string {
 	return cl.fullURL
 }
 
 // handler when the SSE connection is established or fails.
 // This invokes the connectHandler callback if provided.
-func (cl *SsescBindingClient) handleSSEConnect(connected bool, err error) {
+func (cl *SsescTransportClient) handleSSEConnect(connected bool, err error) {
 	errMsg := ""
+
+	// if the context is cancelled this is not an error
 	if err != nil {
 		errMsg = err.Error()
 	}
-	slog.Debug("handleSSEConnect",
+	slog.Info("handleSSEConnect",
 		slog.String("clientID", cl.clientID),
 		slog.String("cid", cl.httpClient.GetCID()),
 		slog.Bool("connected", connected),
@@ -215,26 +224,26 @@ func (cl *SsescBindingClient) handleSSEConnect(connected bool, err error) {
 }
 
 // IsConnected return whether the return channel is connection, eg can receive data
-func (cl *SsescBindingClient) IsConnected() bool {
+func (cl *SsescTransportClient) IsConnected() bool {
 	return cl.isConnected.Load()
 }
 
 // Logout from the server and end the session
-func (cl *SsescBindingClient) Logout() error {
+func (cl *SsescTransportClient) Logout() error {
 	err := cl.httpClient.Logout()
 	cl.Disconnect()
 	return err
 }
 
 // Marshal encodes the native data into the wire format
-func (cl *SsescBindingClient) Marshal(data any) []byte {
+func (cl *SsescTransportClient) Marshal(data any) []byte {
 	jsonData, _ := json.Marshal(data)
 	return jsonData
 }
 
 // RefreshToken refreshes the authentication token
 // The resulting token can be used with 'ConnectWithToken'
-func (cl *SsescBindingClient) RefreshToken(oldToken string) (newToken string, err error) {
+func (cl *SsescTransportClient) RefreshToken(oldToken string) (newToken string, err error) {
 	slog.Info("RefreshToken", slog.String("clientID", cl.clientID))
 
 	newToken, err = cl.httpClient.RefreshToken(oldToken)
@@ -244,8 +253,8 @@ func (cl *SsescBindingClient) RefreshToken(oldToken string) (newToken string, er
 // Rpc sends an operation and waits for a completed or failed progress update.
 // This uses a correlationID to link actions to progress updates. Only use this
 // for operations that reply using the correlation ID.
-func (cl *SsescBindingClient) Rpc(
-	op tdd.Form, thingID string, name string, args interface{}, resp interface{}) (err error) {
+func (cl *SsescTransportClient) Rpc(
+	op tdd.Form, thingID string, name string, args interface{}, output interface{}) (err error) {
 
 	// a correlationID is needed before the action is published in order to match it with the reply
 	correlationID := "rpc-" + shortid.MustGenerate()
@@ -264,12 +273,15 @@ func (cl *SsescBindingClient) Rpc(
 	cl.mux.Unlock()
 
 	// invoke with query parameters to provide the message ID
-	stat := cl.SendOperation(op, thingID, name, args, resp, correlationID)
+	status, err := cl.SendOperation(op, thingID, name, args, output, correlationID)
+	if err != nil {
+		return err
+	}
 	waitCount := 0
 
 	// Intermediate status update such as 'applied' are not errors. Wait longer.
 	for {
-		// if the hub return channel doesnt exists then don't bother waiting for a result
+		// if the hub return channel doesn't exists then don't bother waiting for a result
 		if !cl.IsConnected() {
 			break
 		}
@@ -279,7 +291,7 @@ func (cl *SsescBindingClient) Rpc(
 		if time.Duration(waitCount)*time.Second > cl.timeout {
 			break
 		}
-		if stat.Status == vocab.RequestCompleted || stat.Status == vocab.RequestFailed {
+		if status == vocab.RequestCompleted || status == vocab.RequestFailed {
 			break
 		}
 		if waitCount > 0 {
@@ -290,7 +302,17 @@ func (cl *SsescBindingClient) Rpc(
 				slog.String("correlationID", correlationID),
 			)
 		}
+		var stat transports.RequestStatus
 		stat, err = cl.WaitForProgressUpdate(rChan, correlationID, time.Second)
+		status = stat.Status
+		if stat.Error != "" {
+			err = errors.New(stat.Error)
+		} else if status == transports.RequestCompleted {
+			if stat.Output != nil {
+				err = utils.Decode(stat.Output, output)
+				break
+			}
+		}
 		waitCount++
 	}
 	cl.mux.Lock()
@@ -301,48 +323,41 @@ func (cl *SsescBindingClient) Rpc(
 		slog.String("thingID", thingID),
 		slog.String("name", name),
 		slog.String("correlationID", correlationID),
-		slog.String("cid", cl.GetClientID()),
-		slog.String("status", stat.Status),
+		slog.String("cid", cl.GetCID()),
+		slog.String("status", status),
 	)
 
 	// check for errors
-	if err == nil {
-		if stat.Error != "" {
-			err = errors.New(stat.Error)
-		} else if stat.Status != vocab.RequestCompleted {
-			err = errors.New("Delivery not complete. Status: " + stat.Status)
-		}
+	if err == nil && status != vocab.RequestCompleted {
+		err = errors.New("Delivery not complete. Status: " + status)
 	}
 	if err != nil {
 		slog.Error("RPC failed",
 			"thingID", thingID, "name", name, "err", err.Error())
-	}
-	// only once completed will there be a reply as a result
-	if err == nil && resp != nil {
-		// no choice but to decode
-		err = utils.Decode(stat.Output, resp)
 	}
 	return err
 }
 
 // SendOperation sends the operation described in the given Form.
 // The form must describe the HTTP/SSE-SC protocol.
-func (cl *SsescBindingClient) SendOperation(
-	op tdd.Form, dThingID, name string, input interface{}, output interface{},
-	correlationID string) (stat transports.RequestStatus) {
-
-	stat = cl.httpClient.SendOperation(op, dThingID, name, input, output, correlationID)
-	return stat
+// The returning status object describes the result with status and optionally
+// output or an error.
+func (cl *SsescTransportClient) SendOperation(
+	form tdd.Form, dThingID, name string, input interface{}, output interface{},
+	correlationID string) (string, error) {
+	// simply pass it to the http binding
+	status, err := cl.httpClient.SendOperation(form, dThingID, name, input, output, correlationID)
+	return status, err
 }
 
 // PubOperationStatus [agent] sends a operation progress status update to the server.
-func (cl *SsescBindingClient) SendOperationStatus(stat transports.RequestStatus) {
+func (cl *SsescTransportClient) SendOperationStatus(stat transports.RequestStatus) {
 	cl.httpClient.SendOperationStatus(stat)
 }
 
 // SetConnectHandler sets the notification handler of connection failure
 // Intended to notify the client that a reconnect or relogin is needed.
-func (cl *SsescBindingClient) SetConnectHandler(cb func(connected bool, err error)) {
+func (cl *SsescTransportClient) SetConnectHandler(cb func(connected bool, err error)) {
 	cl.mux.Lock()
 	cl.connectHandler = cb
 	cl.mux.Unlock()
@@ -350,7 +365,7 @@ func (cl *SsescBindingClient) SetConnectHandler(cb func(connected bool, err erro
 
 // SetMessageHandler set the handler that receives event type messages send by the server.
 // This requires a sub-protocol with a return channel.
-func (cl *SsescBindingClient) SetMessageHandler(cb transports.MessageHandler) {
+func (cl *SsescTransportClient) SetMessageHandler(cb transports.MessageHandler) {
 	cl.mux.Lock()
 	cl.messageHandler = cb
 	cl.mux.Unlock()
@@ -359,7 +374,7 @@ func (cl *SsescBindingClient) SetMessageHandler(cb transports.MessageHandler) {
 // SetRequestHandler set the handler that receives requests from the server,
 // where a status response is expected.
 // This requires a sub-protocol with a return channel.
-func (cl *SsescBindingClient) SetRequestHandler(cb transports.RequestHandler) {
+func (cl *SsescTransportClient) SetRequestHandler(cb transports.RequestHandler) {
 	cl.mux.Lock()
 	cl.requestHandler = cb
 	cl.mux.Unlock()
@@ -367,7 +382,7 @@ func (cl *SsescBindingClient) SetRequestHandler(cb transports.RequestHandler) {
 
 // SetSSEPath sets the new sse path to use.
 // This allows to change the hub default /ssesc
-func (cl *SsescBindingClient) SetSSEPath(ssePath string) {
+func (cl *SsescTransportClient) SetSSEPath(ssePath string) {
 	cl.mux.Lock()
 	cl.ssePath = ssePath
 	cl.mux.Unlock()
@@ -375,7 +390,7 @@ func (cl *SsescBindingClient) SetSSEPath(ssePath string) {
 
 // WaitForProgressUpdate waits for an async progress update message or until timeout
 // This returns the status or an error if the timeout has passed
-func (cl *SsescBindingClient) WaitForProgressUpdate(
+func (cl *SsescTransportClient) WaitForProgressUpdate(
 	statChan chan *transports.RequestStatus, requestID string, timeout time.Duration) (
 	stat transports.RequestStatus, err error) {
 
@@ -401,7 +416,7 @@ func (cl *SsescBindingClient) WaitForProgressUpdate(
 //	timeout for waiting for response. 0 to use the default.
 func NewSsescBindingClient(fullURL string, clientID string,
 	clientCert *tls.Certificate, caCert *x509.Certificate,
-	timeout time.Duration) *SsescBindingClient {
+	timeout time.Duration) *SsescTransportClient {
 
 	caCertPool := x509.NewCertPool()
 
@@ -420,8 +435,8 @@ func NewSsescBindingClient(fullURL string, clientID string,
 	}
 
 	// establish the http client instance that handles http commands
-	httpBindingClient := httpbinding.NewHttpBindingClient(fullURL, clientID, clientCert, caCert, timeout)
-	cl := SsescBindingClient{
+	httpBindingClient := httpbinding.NewHttpTransportClient(fullURL, clientID, clientCert, caCert, timeout)
+	cl := SsescTransportClient{
 
 		httpClient: httpBindingClient,
 

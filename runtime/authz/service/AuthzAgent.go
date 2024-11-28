@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
-	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/wot/tdd"
+	"github.com/hiveot/hub/wot/transports"
 	"log/slog"
 )
 
@@ -16,8 +16,8 @@ import (
 type AuthzAgent struct {
 	hc           clients.IConsumer
 	svc          *AuthzService
-	adminHandler api.ActionHandler
-	userHandler  api.ActionHandler
+	adminHandler transports.ActionHandler
+	userHandler  transports.ActionHandler
 }
 
 // HandleAction authz service action handler

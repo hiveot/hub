@@ -2,7 +2,6 @@ package digitwin_test
 
 import (
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/hiveot/hub/wot/transports"
 )
@@ -15,11 +14,11 @@ type DummyTransportBinding struct {
 func (dummy *DummyTransportBinding) AddTDForms(td *tdd.TD) error {
 	return nil
 }
-func (dummy *DummyTransportBinding) GetConnectionByCID(cid string) api.IClientConnection {
+func (dummy *DummyTransportBinding) GetConnectionByCID(cid string) transports.IServerConnection {
 	return nil
 }
-func (dummy *DummyTransportBinding) GetProtocolInfo() api.ProtocolInfo {
-	return api.ProtocolInfo{}
+func (dummy *DummyTransportBinding) GetProtocolInfo() transports.ProtocolInfo {
+	return transports.ProtocolInfo{}
 }
 
 func (dummy *DummyTransportBinding) InvokeAction(

@@ -10,8 +10,8 @@ import (
 	"net/http"
 )
 
-// WssBindingServer Websocket subprotocol binding
-type WssBindingServer struct {
+// WssTransportServer Websocket subprotocol binding
+type WssTransportServer struct {
 	cm             *connections.ConnectionManager
 	requestHandler transports.ServerMessageHandler
 }
@@ -21,7 +21,7 @@ type WssBindingServer struct {
 // writing messages.
 //
 // This doesn't return until the connection is closed by either client or server.
-func (b *WssBindingServer) Serve(w http.ResponseWriter, r *http.Request) {
+func (b *WssTransportServer) Serve(w http.ResponseWriter, r *http.Request) {
 	//An active session is required before accepting the request. This is created on
 	//authentication/login. Until then SSE connections are blocked.
 	clientID, err := httpcontext.GetClientIdFromContext(r)
@@ -60,15 +60,15 @@ func (b *WssBindingServer) Serve(w http.ResponseWriter, r *http.Request) {
 	b.cm.RemoveConnection(c.GetConnectionID())
 }
 
-// NewWssBindingServer returns a new websocket sub-protocol binding
+// NewWssTransportServer returns a new websocket sub-protocol binding
 //
 //	cm is the connection registry
 //	requestHandler receives event and request messages
-func NewWssBindingServer(
+func NewWssTransportServer(
 	cm *connections.ConnectionManager,
-	requestHandler transports.ServerMessageHandler) *WssBindingServer {
+	requestHandler transports.ServerMessageHandler) *WssTransportServer {
 
-	wsBinding := &WssBindingServer{
+	wsBinding := &WssTransportServer{
 		cm:             cm,
 		requestHandler: requestHandler,
 	}

@@ -32,7 +32,7 @@ const HiveOTContext = "https://www.hiveot.net/vocab/v0.1"
 //	 }
 type TD struct {
 	// All action-based interaction affordances of the things
-	Actions map[string]*ActionAffordance `json:"actions,omitempty"`
+	Actions map[string]*ActionAffordance `json:"actions"`
 
 	// Roles that are allowed to use this thing. Default (empty) is all roles.
 	Allow []string `json:"allow,omitempty"`
@@ -63,7 +63,7 @@ type TD struct {
 	Descriptions []string `json:"descriptions,omitempty"`
 
 	// All event-based interaction affordances of the things
-	Events map[string]*EventAffordance `json:"events,omitempty"`
+	Events map[string]*EventAffordance `json:"events"`
 
 	// Form hypermedia controls to describe how an operation can be performed. Forms are serializations of
 	// Protocol Bindings. Thing-level forms are used to describe endpoints for a group of interaction affordances.
@@ -88,7 +88,7 @@ type TD struct {
 	Profile any `json:"profile,omitempty"`
 
 	// All properties-based interaction affordances of the things
-	Properties map[string]*PropertyAffordance `json:"properties,omitempty"`
+	Properties map[string]*PropertyAffordance `json:"properties"`
 
 	SchemaDefinitions map[string]DataSchema `json:"schemaDefinitions,omitempty"`
 

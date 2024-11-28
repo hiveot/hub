@@ -19,9 +19,9 @@ import (
 	"time"
 )
 
-// WssBindingClient manages the connection to the hub server using Websockets.
+// WssTransportClient manages the connection to the hub server using Websockets.
 // This implements the IConsumer interface.
-type WssBindingClient struct {
+type WssTransportClient struct {
 	clientID string
 
 	wssURL      string
@@ -49,7 +49,7 @@ type WssBindingClient struct {
 }
 
 // websocket connection status handler
-func (cl *WssBindingClient) _onConnect(connected bool, err error) {
+func (cl *WssTransportClient) _onConnect(connected bool, err error) {
 
 	cl.isConnected.Store(connected)
 	if cl.connectHandler != nil {
@@ -64,7 +64,8 @@ func (cl *WssBindingClient) _onConnect(connected bool, err error) {
 // _rpc publishes and action and waits for a completion or failed progress update.
 // This uses a requestID to link actions to progress updates. Only use this for actions
 // that support the 'rpc' capabilities (eg, the agent sends the progress update)
-func (cl *WssBindingClient) _rpc(correlationID string, request interface{}, output interface{}) (err error) {
+func (cl *WssTransportClient) _rpc(
+	correlationID string, message interface{}, output interface{}) (err error) {
 
 	slog.Info("rpc (request)",
 		slog.String("clientID", cl.clientID),
@@ -76,11 +77,12 @@ func (cl *WssBindingClient) _rpc(correlationID string, request interface{}, outp
 	cl.mux.Unlock()
 
 	// invoke with query parameters to provide the message ID
-	err = cl._send(request)
+	err = cl._send(message)
 	if err != nil {
 		slog.Warn("rpc: failed sending request",
 			"correlationID", correlationID,
 			"err", err.Error())
+		return err
 	}
 	// wait for reply
 	waitCount := 0
@@ -139,9 +141,24 @@ func (cl *WssBindingClient) _rpc(correlationID string, request interface{}, outp
 	return err
 }
 
+// Encode and send a message over the websocket
+func (cl *WssTransportClient) _send(msg interface{}) error {
+	if !cl.IsConnected() {
+		// note, it might be trying to reconnect in the background
+		err := fmt.Errorf("Not connected to the hub")
+		return err
+	}
+	// websockets do not allow concurrent write
+	cl.mux.Lock()
+	// TODO: performance of WriteJSON vs jsoniter?
+	err := cl.wssConn.WriteJSON(msg)
+	cl.mux.Unlock()
+	return err
+}
+
 // ConnectWithLoginForm invokes login using a form - temporary helper
 // intended for testing a connection with a web server
-//func (cl *WssBindingClient) ConnectWithLoginForm(password string) error {
+//func (cl *WssTransportClient) ConnectWithLoginForm(password string) error {
 //	formMock := url.Values{}
 //	formMock.Add("loginID", cl.clientID)
 //	formMock.Add("password", password)
@@ -168,29 +185,14 @@ func (cl *WssBindingClient) _rpc(correlationID string, request interface{}, outp
 //	return err
 //}
 
-// Encode and send a message over the websocket
-func (cl *WssBindingClient) _send(msg interface{}) error {
-	if !cl.IsConnected() {
-		// note, it might be trying to reconnect in the background
-		err := fmt.Errorf("Not connected to the hub")
-		return err
-	}
-	// websockets do not allow concurrent write
-	cl.mux.Lock()
-	// TODO: performance of WriteJSON vs jsoniter?
-	err := cl.wssConn.WriteJSON(msg)
-	cl.mux.Unlock()
-	return err
-}
-
 // CreateKeyPair returns a new set of serialized public/private key pair
-//func (cl *WssBindingClient) CreateKeyPair() (cryptoKeys keys.IHiveKey) {
+//func (cl *WssTransportClient) CreateKeyPair() (cryptoKeys keys.IHiveKey) {
 //	k := keys.NewKey(keys.KeyTypeEd25519)
 //	return k
 //}
 
 // Disconnect from the server
-func (cl *WssBindingClient) Disconnect() {
+func (cl *WssTransportClient) Disconnect() {
 	slog.Debug("HttpSSEClient.Disconnect",
 		slog.String("clientID", cl.clientID),
 	)
@@ -208,11 +210,11 @@ func (cl *WssBindingClient) Disconnect() {
 }
 
 // GetClientID returns the client's account ID
-func (cl *WssBindingClient) GetClientID() string {
+func (cl *WssTransportClient) GetClientID() string {
 	return cl.clientID
 }
 
-func (cl *WssBindingClient) GetConnectionStatus() (bool, string, error) {
+func (cl *WssTransportClient) GetConnectionStatus() (bool, string, error) {
 	var lastErr error = nil
 	// lastError is stored as pointer because atomic.Value cannot switch between error and nil type
 	if cl.lastError.Load() != nil {
@@ -223,17 +225,17 @@ func (cl *WssBindingClient) GetConnectionStatus() (bool, string, error) {
 }
 
 // GetProtocolType returns the type of protocol this client supports
-func (cl *WssBindingClient) GetProtocolType() string {
+func (cl *WssTransportClient) GetProtocolType() string {
 	return "https"
 }
 
 // GetServerURL returns the schema://address:port of the hub connection
-func (cl *WssBindingClient) GetServerURL() string {
+func (cl *WssTransportClient) GetServerURL() string {
 	hubURL := fmt.Sprintf("https://%s", cl.wssURL)
 	return hubURL
 }
 
-func (cl *WssBindingClient) opToMessageType(op string) string {
+func (cl *WssTransportClient) opToMessageType(op string) string {
 	// yeah not very efficient. todo
 	for k, v := range MsgTypeToOp {
 		if v == op {
@@ -244,17 +246,17 @@ func (cl *WssBindingClient) opToMessageType(op string) string {
 }
 
 // IsConnected return whether the return channel is connection, eg can receive data
-func (cl *WssBindingClient) IsConnected() bool {
+func (cl *WssTransportClient) IsConnected() bool {
 	return cl.isConnected.Load()
 }
 
 //// Logout from the server and end the session
-//func (cl *WssBindingClient) Logout() error {
+//func (cl *WssTransportClient) Logout() error {
 //	return fmt.Errorf("not implemented")
 //}
 
 // Marshal encodes the native data into the wire format
-func (cl *WssBindingClient) Marshal(data any) []byte {
+func (cl *WssTransportClient) Marshal(data any) []byte {
 	jsonData, _ := jsoniter.Marshal(data)
 	return jsonData
 }
@@ -262,7 +264,7 @@ func (cl *WssBindingClient) Marshal(data any) []byte {
 // RefreshToken refreshes the authentication token
 //
 // The resulting token can be used with 'ConnectWithToken'
-func (cl *WssBindingClient) RefreshToken(oldToken string) (newToken string, err error) {
+func (cl *WssTransportClient) RefreshToken(oldToken string) (newToken string, err error) {
 
 	slog.Info("RefreshToken", slog.String("clientID", cl.clientID))
 	correlationID := shortid.MustGenerate()
@@ -278,7 +280,7 @@ func (cl *WssBindingClient) RefreshToken(oldToken string) (newToken string, err 
 }
 
 // Reconnect attempts to re-establish a dropped connection using the last token
-func (cl *WssBindingClient) Reconnect() {
+func (cl *WssTransportClient) Reconnect() {
 	var err error
 	for i := 0; cl.maxReconnectAttempts == 0 || i < cl.maxReconnectAttempts; i++ {
 		slog.Warn("Reconnecting attempt",
@@ -303,7 +305,7 @@ func (cl *WssBindingClient) Reconnect() {
 // Rpc invokes an action and waits for a completion or failed progress update.
 // This uses a correlationID to link actions to progress updates. Only use this for actions
 // that support the 'rpc' capabilities (eg, the agent sends the progress update)
-func (cl *WssBindingClient) Rpc(form tdd.Form,
+func (cl *WssTransportClient) Rpc(form tdd.Form,
 	dThingID string, name string, input interface{}, resp interface{}) (err error) {
 	correlationID := "rpc-" + shortid.MustGenerate()
 	msg := ActionMessage{
@@ -324,9 +326,9 @@ func (cl *WssBindingClient) Rpc(form tdd.Form,
 	return err
 }
 
-func (cl *WssBindingClient) SendOperation(
+func (cl *WssTransportClient) SendOperation(
 	form tdd.Form, dThingID, name string, input interface{},
-	output interface{}, correlationID string) (stat transports.RequestStatus) {
+	output interface{}, correlationID string) (status string, err error) {
 
 	op := form.GetOperation()
 
@@ -349,19 +351,13 @@ func (cl *WssBindingClient) SendOperation(
 	case vocab.OpObserveProperty, vocab.OpReadProperty:
 		msg["property"] = name
 	}
-	err := cl._send(msg)
-	stat.Status = transports.RequestPending
-	stat.ThingID = dThingID
-	stat.Name = name
-	stat.CorrelationID = correlationID
-	if err != nil {
-		stat.Error = err.Error()
-	}
-	return stat
+	err = cl._send(msg)
+	status = transports.RequestPending
+	return status, err
 }
 
 // SendOperationStatus [agent] sends a operation progress status update to the server.
-func (cl *WssBindingClient) SendOperationStatus(stat transports.RequestStatus) {
+func (cl *WssTransportClient) SendOperationStatus(stat transports.RequestStatus) {
 
 	slog.Debug("PubActionStatus",
 		slog.String("agentID", cl.clientID),
@@ -387,7 +383,7 @@ func (cl *WssBindingClient) SendOperationStatus(stat transports.RequestStatus) {
 
 // SetConnectHandler sets the notification handler of connection failure
 // Intended to notify the client that a reconnect or relogin is needed.
-func (cl *WssBindingClient) SetConnectHandler(cb func(connected bool, err error)) {
+func (cl *WssTransportClient) SetConnectHandler(cb func(connected bool, err error)) {
 	cl.mux.Lock()
 	cl.connectHandler = cb
 	cl.mux.Unlock()
@@ -395,7 +391,7 @@ func (cl *WssBindingClient) SetConnectHandler(cb func(connected bool, err error)
 
 // SetMessageHandler set the handler that receives all consumer facing messages
 // from the hub. (events, property updates)
-func (cl *WssBindingClient) SetMessageHandler(cb transports.MessageHandler) {
+func (cl *WssTransportClient) SetMessageHandler(cb transports.MessageHandler) {
 	cl.mux.Lock()
 	cl.messageHandler = cb
 	cl.mux.Unlock()
@@ -403,28 +399,28 @@ func (cl *WssBindingClient) SetMessageHandler(cb transports.MessageHandler) {
 
 // SetRequestHandler set the handler that receives all agent facing messages
 // from the hub. (write property and invoke action)
-func (cl *WssBindingClient) SetRequestHandler(cb transports.RequestHandler) {
+func (cl *WssTransportClient) SetRequestHandler(cb transports.RequestHandler) {
 	cl.mux.Lock()
 	cl.requestHandler = cb
 	cl.mux.Unlock()
 }
 
 // SetWSSURL updates sets the new websocket URL to use.
-func (cl *WssBindingClient) SetWSSURL(wssURL string) {
+func (cl *WssTransportClient) SetWSSURL(wssURL string) {
 	cl.mux.Lock()
 	cl.wssURL = wssURL
 	cl.mux.Unlock()
 }
 
 // Unmarshal decodes the wire format to native data
-func (cl *WssBindingClient) Unmarshal(raw []byte, reply interface{}) error {
+func (cl *WssTransportClient) Unmarshal(raw []byte, reply interface{}) error {
 	err := jsoniter.Unmarshal(raw, reply)
 	return err
 }
 
 // WaitForProgressUpdate waits for an async progress update message or until timeout
 // This returns the status or an error if the timeout has passed
-func (cl *WssBindingClient) WaitForProgressUpdate(
+func (cl *WssTransportClient) WaitForProgressUpdate(
 	statChan chan *transports.RequestStatus, requestID string, timeout time.Duration) (
 	status string, data any, err error) {
 
@@ -441,16 +437,16 @@ func (cl *WssBindingClient) WaitForProgressUpdate(
 	return stat.Status, stat.Output, err
 }
 
-// NewWssBindingClient creates a new instance of the websocket hub client.
+// NewWssTransportClient creates a new instance of the websocket hub client.
 //
 //	hostPort of broker to connect to, without the scheme
 //	clientID to connect as
 //	clientCert optional client certificate to connect with
 //	caCert of the server to validate the server or nil to not check the server cert
 //	timeout for waiting for response. 0 to use the default.
-func NewWssBindingClient(wssURL string, clientID string,
+func NewWssTransportClient(wssURL string, clientID string,
 	clientCert *tls.Certificate, caCert *x509.Certificate,
-	timeout time.Duration) *WssBindingClient {
+	timeout time.Duration) *WssTransportClient {
 
 	caCertPool := x509.NewCertPool()
 
@@ -467,7 +463,7 @@ func NewWssBindingClient(wssURL string, clientID string,
 	if timeout == 0 {
 		timeout = time.Second * 3
 	}
-	cl := WssBindingClient{
+	cl := WssTransportClient{
 		clientID: clientID,
 		wssURL:   wssURL,
 		caCert:   caCert,

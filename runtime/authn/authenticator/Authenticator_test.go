@@ -5,6 +5,7 @@ import (
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authn/authenticator"
+	"github.com/hiveot/hub/wot/transports"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -12,7 +13,7 @@ import (
 
 var authnStore api.IAuthnStore
 
-func NewAuthenticator() api.IAuthenticator {
+func NewAuthenticator() transports.IAuthenticator {
 	//signingKey := keys.NewEcdsaKey()
 	//svc := authenticator.NewJWTAuthenticator(authnStore, signingKey)
 	signingKey := keys.NewEd25519Key().PrivateKey().(ed25519.PrivateKey)

@@ -3,14 +3,14 @@ package service
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
-	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/wot/tdd"
+	"github.com/hiveot/hub/wot/transports"
 )
 
 // AuthnAgent agent for the authentication services:
 type AuthnAgent struct {
-	adminHandler api.ActionHandler
-	userHandler  api.ActionHandler
+	adminHandler transports.ActionHandler
+	userHandler  transports.ActionHandler
 }
 
 // HandleAction authn services action request

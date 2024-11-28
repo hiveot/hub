@@ -3,6 +3,7 @@ package httpserver
 import (
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/wot/tdd"
+	"log/slog"
 )
 
 // AddTDForms add WoT forms to the given TD containing protocol information to
@@ -34,12 +35,29 @@ import (
 //	}
 //
 // ```
-func (svc *HttpBindingServer) AddTDForms(td *tdd.TD) error {
+func (svc *HttpTransportServer) AddTDForms(td *tdd.TD) error {
 	svc.AddThingLevelForms(td)
 	//svc.AddPropertiesForms(td)
 	//svc.AddEventsForms(td)
 	//svc.AddActionForms(td)
 	return nil
+}
+
+// GetForm returns a new form for the given operation
+// Intended for Thing level operations
+func (svc *HttpTransportServer) GetForm(op string) (form tdd.Form) {
+	// all operations use URI variables for selecting things
+	for _, httpOp := range svc.operations {
+		if httpOp.op == op {
+			form = tdd.NewForm(op, httpOp.url)
+			form["htv:methodName"] = httpOp.method
+			return form
+		}
+	}
+	slog.Warn("GetForm. No form found for operation",
+		"op", op,
+		"protocol", svc.GetProtocolInfo().Schema)
+	return form
 }
 
 // AddActionForms add forms Thing action affordance
@@ -108,23 +126,21 @@ func (svc *HttpBindingServer) AddTDForms(td *tdd.TD) error {
 
 // AddThingLevelForms adds forms with protocol info to the TD, and its properties, events and actions
 // HiveOT mostly uses top level forms.
-func (svc *HttpBindingServer) AddThingLevelForms(td *tdd.TD) {
+func (svc *HttpTransportServer) AddThingLevelForms(td *tdd.TD) {
 	// iterate the thing level operations
 	params := map[string]string{"thingID": td.ID}
 	for _, opInfo := range svc.operations {
-		if opInfo.isThingLevel {
-			methodPath := utils.Substitute(opInfo.url, params)
-			f := tdd.Form{
-				"op":             opInfo.op, // not a WoT operation
-				"href":           methodPath,
-				"contentType":    "application/json",
-				"htv:methodName": opInfo.method,
-			}
-			if opInfo.subprotocol != "" {
-				f["subprotocol"] = opInfo.subprotocol
-			}
-			td.Forms = append(td.Forms, f)
+		methodPath := utils.Substitute(opInfo.url, params)
+		f := tdd.Form{
+			"op":             opInfo.op, // not a WoT operation
+			"href":           methodPath,
+			"contentType":    "application/json",
+			"htv:methodName": opInfo.method,
 		}
+		if opInfo.subprotocol != "" {
+			f["subprotocol"] = opInfo.subprotocol
+		}
+		td.Forms = append(td.Forms, f)
 	}
 	// this binding uses the BearerSecurityScheme
 	td.Security = "bearer"

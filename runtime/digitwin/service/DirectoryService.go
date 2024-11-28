@@ -2,9 +2,9 @@ package service
 
 import (
 	"github.com/hiveot/hub/api/go/digitwin"
-	"github.com/hiveot/hub/runtime/connections"
 	"github.com/hiveot/hub/runtime/digitwin/store"
 	"github.com/hiveot/hub/wot/tdd"
+	"github.com/hiveot/hub/wot/transports/connections"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 )

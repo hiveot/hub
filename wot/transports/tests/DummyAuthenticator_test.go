@@ -27,7 +27,10 @@ func (d *DummyAuthenticator) CreateSessionToken(
 	if sessionID == "" {
 		sessionID = shortid.MustGenerate()
 	}
-	return fmt.Sprintf("%s/%s", clientID, sessionID)
+	token = fmt.Sprintf("%s/%s", clientID, sessionID)
+	// simulate a session with the tokens map
+	d.tokens[clientID] = token
+	return token
 }
 
 func (d *DummyAuthenticator) Login(
@@ -79,6 +82,11 @@ func (d *DummyAuthenticator) ValidateToken(token string) (clientID string, sessi
 	}
 	clientID = parts[0]
 	sessionID = parts[1]
+	// simulate a session by checking if a recent token was issued
+	_, found := d.tokens[clientID]
+	if !found {
+		err = errors.New("no active session")
+	}
 
 	return clientID, sessionID, err
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/wot/transports"
 	"github.com/hiveot/hub/wot/transports/clients/httpbinding"
 	"github.com/hiveot/hub/wot/transports/servers/httpserver/httpcontext"
@@ -16,8 +17,7 @@ import (
 )
 
 // Http binding with form handler methods
-
-func (svc *HttpBindingServer) _handleEventMessage(op string, w http.ResponseWriter, r *http.Request) {
+func (svc *HttpTransportServer) _handleEventMessage(op string, w http.ResponseWriter, r *http.Request) {
 	rp, err := httpcontext.GetRequestParams(r)
 	if err != nil {
 		slog.Error(err.Error())
@@ -30,6 +30,8 @@ func (svc *HttpBindingServer) _handleEventMessage(op string, w http.ResponseWrit
 		requestID = shortid.MustGenerate()
 	}
 	msg := transports.NewThingMessage(op, rp.ThingID, rp.Name, rp.Data, rp.ClientID)
+	// event style messages does not return data
+	// should there be a separate handler for messages vs requests?
 	svc.messageHandler(msg, nil)
 	svc.writeReply(w, nil, nil)
 }
@@ -37,7 +39,7 @@ func (svc *HttpBindingServer) _handleEventMessage(op string, w http.ResponseWrit
 // _handleRequestMessage provides the boilerplate code for reading headers,
 // unmarshalling the arguments and returning a response. If no immediate
 // result is available this returns an alternative RequestStatus result object.
-func (svc *HttpBindingServer) _handleRequestMessage(op string, w http.ResponseWriter, r *http.Request) {
+func (svc *HttpTransportServer) _handleRequestMessage(op string, w http.ResponseWriter, r *http.Request) {
 	rp, err := httpcontext.GetRequestParams(r)
 	if err != nil {
 		slog.Error(err.Error())
@@ -45,12 +47,15 @@ func (svc *HttpBindingServer) _handleRequestMessage(op string, w http.ResponseWr
 		return
 	}
 
+	if op == "" {
+		op = rp.Op
+	}
+
 	// an action request should have a cid when used with SSE.
+	// without a connection-id this request can not receive an async reply
 	if r.Header.Get(httpbinding.ConnectionIDHeader) == "" {
-		slog.Warn("InvokeAction request without 'cid' header. No reply is sent when using the SSE subprotocol",
-			"clientID", rp.ClientID)
-		// if not reply is expected this will still work
-		//svc.writeError(w, err, http.StatusBadRequest)
+		slog.Info("_handleRequestMessage request has no 'cid' header.",
+			"clientID", rp.ClientID, "op", op)
 	}
 
 	// pass the event to the digitwin service for further processing
@@ -114,7 +119,7 @@ func (svc *HttpBindingServer) _handleRequestMessage(op string, w http.ResponseWr
 }
 
 // HandlePublishActionStatus sends an action progress update message to the digital twin
-func (svc *HttpBindingServer) HandlePublishActionStatus(w http.ResponseWriter, r *http.Request) {
+func (svc *HttpTransportServer) HandlePublishActionStatus(w http.ResponseWriter, r *http.Request) {
 	svc._handleEventMessage(vocab.HTOpUpdateActionStatus, w, r)
 }
 
@@ -124,7 +129,7 @@ func (svc *HttpBindingServer) HandlePublishActionStatus(w http.ResponseWriter, r
 //
 // The sender must include the connection-id header of the connection it wants to
 // receive the response.
-func (svc *HttpBindingServer) HandleInvokeAction(w http.ResponseWriter, r *http.Request) {
+func (svc *HttpTransportServer) HandleInvokeAction(w http.ResponseWriter, r *http.Request) {
 
 	svc._handleRequestMessage(vocab.OpInvokeAction, w, r)
 }
@@ -132,24 +137,21 @@ func (svc *HttpBindingServer) HandleInvokeAction(w http.ResponseWriter, r *http.
 // HandleLogin handles a login request, posted by a consumer.
 //
 // This uses the configured session authenticator.
-func (svc *HttpBindingServer) HandleLogin(w http.ResponseWriter, r *http.Request) {
+func (svc *HttpTransportServer) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	var reply any
-	var data interface{}
+	var args map[string]string
 
 	payload, err := io.ReadAll(r.Body)
 	if err == nil {
-		err = jsoniter.Unmarshal(payload, &data)
+		err = jsoniter.Unmarshal(payload, &args)
 	}
 	if err == nil {
-		//token := svc.authenticator.Login(clientID,password)
-		msg := transports.NewThingMessage(vocab.HTOpLogin, "", "", data, "")
 		// the login is handled in-house and has an immediate return
 		// TODO: use-case for 3rd party login? oauth2 process support? tbd
-		stat := svc.messageHandler(msg, nil)
-		if stat.Error != "" {
-			err = errors.New(stat.Error)
-		}
-		reply = stat.Output
+		// FIXME: hard-coded keys!? ugh
+		clientID := args["login"]
+		password := args["password"]
+		reply, err = svc.authenticator.Login(clientID, password)
 	}
 	if err != nil {
 		slog.Warn("HandleLogin failed:", "err", err.Error())
@@ -164,40 +166,60 @@ func (svc *HttpBindingServer) HandleLogin(w http.ResponseWriter, r *http.Request
 // HandleLoginRefresh refreshes the auth token using the session authenticator.
 // The session authenticator is that of the authn service. This allows testing with a dummy
 // authenticator without having to run the authn service.
-func (svc *HttpBindingServer) HandleLoginRefresh(w http.ResponseWriter, r *http.Request) {
-	svc._handleRequestMessage(vocab.HTOpRefresh, w, r)
+func (svc *HttpTransportServer) HandleLoginRefresh(w http.ResponseWriter, r *http.Request) {
+	//svc._handleRequestMessage(vocab.HTOpRefresh, w, r)
+	var newToken string
+	var oldToken string
+	rp, err := httpcontext.GetRequestParams(r)
+	if err == nil {
+		err = utils.Decode(rp.Data, &oldToken)
+	}
+	if err == nil {
+		newToken, err = svc.authenticator.RefreshToken(rp.ClientID, rp.ClientID, oldToken)
+	}
+	if err != nil {
+		slog.Warn("HandleLoginRefresh failed:", "err", err.Error())
+		svc.writeError(w, err, 0)
+		return
+	}
+	svc.writeReply(w, newToken, nil)
 }
 
 // HandleLogout ends the session and closes all client connections
-func (svc *HttpBindingServer) HandleLogout(w http.ResponseWriter, r *http.Request) {
-	svc._handleEventMessage(vocab.HTOpLogout, w, r)
+func (svc *HttpTransportServer) HandleLogout(w http.ResponseWriter, r *http.Request) {
+	// use the authenticator
+	rp, err := httpcontext.GetRequestParams(r)
+	if err == nil {
+		svc.authenticator.Logout(rp.ClientID)
+	}
+	svc.writeReply(w, nil, err)
 }
 
 // HandlePublishEvent update digitwin with event published by agent
-func (svc *HttpBindingServer) HandlePublishEvent(w http.ResponseWriter, r *http.Request) {
+func (svc *HttpTransportServer) HandlePublishEvent(w http.ResponseWriter, r *http.Request) {
 	svc._handleEventMessage(vocab.HTOpPublishEvent, w, r)
 }
 
 // HandleQueryAction returns a list of latest action requests of a Thing
 // Parameters: thingID
-func (svc *HttpBindingServer) HandleQueryAction(w http.ResponseWriter, r *http.Request) {
+func (svc *HttpTransportServer) HandleQueryAction(w http.ResponseWriter, r *http.Request) {
 	svc._handleRequestMessage(vocab.OpQueryAction, w, r)
 }
 
 // HandleQueryAllActions returns a list of latest action requests of a Thing
 // Parameters: thingID
-func (svc *HttpBindingServer) HandleQueryAllActions(w http.ResponseWriter, r *http.Request) {
+func (svc *HttpTransportServer) HandleQueryAllActions(w http.ResponseWriter, r *http.Request) {
 	svc._handleRequestMessage(vocab.OpQueryAllActions, w, r)
 }
 
 // HandleReadAllEvents returns a list of latest event values from a Thing
 // Parameters: thingID
-func (svc *HttpBindingServer) HandleReadAllEvents(w http.ResponseWriter, r *http.Request) {
+func (svc *HttpTransportServer) HandleReadAllEvents(w http.ResponseWriter, r *http.Request) {
 	svc._handleRequestMessage(vocab.HTOpReadAllEvents, w, r)
 }
 
 // HandleReadAllProperties was added to the top level TD form. Handle it here.
-func (svc *HttpBindingServer) HandleReadAllProperties(w http.ResponseWriter, r *http.Request) {
+func (svc *HttpTransportServer) HandleReadAllProperties(w http.ResponseWriter, r *http.Request) {
 	svc._handleRequestMessage(vocab.OpReadAllProperties, w, r)
 }
 
@@ -238,42 +260,42 @@ func (svc *HttpBindingServer) HandleReadAllProperties(w http.ResponseWriter, r *
 
 // HandleReadEvent returns the latest event value from a Thing
 // Parameters: {thingID}, {name}
-func (svc *HttpBindingServer) HandleReadEvent(w http.ResponseWriter, r *http.Request) {
+func (svc *HttpTransportServer) HandleReadEvent(w http.ResponseWriter, r *http.Request) {
 	svc._handleRequestMessage(vocab.HTOpReadEvent, w, r)
 }
 
-func (svc *HttpBindingServer) HandleReadProperty(w http.ResponseWriter, r *http.Request) {
+func (svc *HttpTransportServer) HandleReadProperty(w http.ResponseWriter, r *http.Request) {
 	svc._handleRequestMessage(vocab.OpReadProperty, w, r)
 }
 
 // HandleReadTD returns the TD of a thing in the directory
 // URL parameter {thingID}
-func (svc *HttpBindingServer) HandleReadTD(w http.ResponseWriter, r *http.Request) {
+func (svc *HttpTransportServer) HandleReadTD(w http.ResponseWriter, r *http.Request) {
 	svc._handleRequestMessage(vocab.HTOpReadTD, w, r)
 }
 
 // HandleReadAllTDs returns the list of digital twin TDs in the directory.
 // this is a REST api for convenience. Consider using directory action instead.
-func (svc *HttpBindingServer) HandleReadAllTDs(w http.ResponseWriter, r *http.Request) {
+func (svc *HttpTransportServer) HandleReadAllTDs(w http.ResponseWriter, r *http.Request) {
 	svc._handleRequestMessage(vocab.HTOpReadAllTDs, w, r)
 }
 
 // HandlePublishMultipleProperties agent sends a map with multiple property
-func (svc *HttpBindingServer) HandlePublishMultipleProperties(w http.ResponseWriter, r *http.Request) {
+func (svc *HttpTransportServer) HandlePublishMultipleProperties(w http.ResponseWriter, r *http.Request) {
 	svc._handleEventMessage(vocab.HTOpUpdateMultipleProperties, w, r)
 }
 
 // HandlePublishProperty agent sends single or multiple property updates
-func (svc *HttpBindingServer) HandlePublishProperty(w http.ResponseWriter, r *http.Request) {
+func (svc *HttpTransportServer) HandlePublishProperty(w http.ResponseWriter, r *http.Request) {
 	svc._handleEventMessage(vocab.HTOpUpdateProperty, w, r)
 }
 
 // HandlePublishTD agent sends a new TD document
-func (svc *HttpBindingServer) HandlePublishTD(w http.ResponseWriter, r *http.Request) {
+func (svc *HttpTransportServer) HandlePublishTD(w http.ResponseWriter, r *http.Request) {
 	svc._handleEventMessage(vocab.HTOpUpdateTD, w, r)
 }
 
 // HandleWriteProperty consumer requests to update a Thing property
-func (svc *HttpBindingServer) HandleWriteProperty(w http.ResponseWriter, r *http.Request) {
+func (svc *HttpTransportServer) HandleWriteProperty(w http.ResponseWriter, r *http.Request) {
 	svc._handleRequestMessage(vocab.OpWriteProperty, w, r)
 }

@@ -1,9 +1,21 @@
 package transports
 
+// ReplyToHandler is a server-side handler for sending replies to requests that
+// expect one. E.g: InvokeAction and WriteProperty (tbd)
+// The server side transport protocol implements the most efficient way to send that reply
+// back to the client, either as an immediate result or asynchronously after the
+// request has returned.
+//
+//	status is the progress status: RequestDelivered,RequestFailed,RequestCompleted
+//	output is the result if status is RequestCompleted. Can be nil.
+//	err is the error in case status is RequestFailed
+type ReplyToHandler func(status string, output any, err error)
+
 // ServerMessageHandler processes a request and optionally returns a progress status.
 //
-// If a replyTo is provided and a request is not complete then asynchronously
-// send a status message to the client using the provided connection.
+// If a replyTo is provided then a result is expected. That result can be return
+// with the RequestStatus immediately (status failer or completed), or returned
+// asynchronously through the replyTo interface.
 //
 //	msg is the envelope that contains the request to process
 //	replyTo is the connection to send an actionProgress result to.

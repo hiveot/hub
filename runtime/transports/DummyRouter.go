@@ -5,7 +5,7 @@ import (
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/wot/transports"
 )
 
 // DummyRouter for implementing test hooks defined in IHubRouter
@@ -13,7 +13,7 @@ type DummyRouter struct {
 	OnAction func(msg *transports.ThingMessage, replyTo string) transports.RequestStatus
 	OnEvent  func(msg *transports.ThingMessage)
 
-	authenticator api.IAuthenticator
+	authenticator transports.IAuthenticator
 }
 
 func (svc *DummyRouter) HandleMessage(msg *transports.ThingMessage) {
@@ -47,7 +47,7 @@ func (svc *DummyRouter) HandleRequest(msg *transports.ThingMessage, replyTo stri
 	return stat
 }
 
-func NewDummyRouter(authenticator api.IAuthenticator) *DummyRouter {
+func NewDummyRouter(authenticator transports.IAuthenticator) *DummyRouter {
 	return &DummyRouter{
 		authenticator: authenticator,
 	}

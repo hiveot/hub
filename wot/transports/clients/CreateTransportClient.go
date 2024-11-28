@@ -11,16 +11,16 @@ import (
 	"time"
 )
 
-const DefaultTimeout = time.Second * 30 // Default is 3, 30 for testing
+var DefaultTimeout = time.Second * 300 // Default is 3, 300 for testing
 
-// CreateBindingClient returns a new protocol binding client instance
-func CreateBindingClient(
+// CreateTransportClient returns a new protocol binding client instance
+func CreateTransportClient(
 	protocolType string, fullURL string, clientID string, caCert *x509.Certificate) (
-	bc transports.ITransportClient, err error) {
+	bc transports.IClientConnection, err error) {
 
 	switch protocolType {
 	case transports.ProtocolTypeHTTP:
-		bc = httpbinding.NewHttpBindingClient(
+		bc = httpbinding.NewHttpTransportClient(
 			fullURL, clientID, nil, caCert, DefaultTimeout)
 
 	case transports.ProtocolTypeMQTT:
@@ -35,7 +35,7 @@ func CreateBindingClient(
 		bc = ssescclient.NewSsescBindingClient(fullURL, clientID, nil, caCert, DefaultTimeout)
 
 	case transports.ProtocolTypeWSS:
-		bc = wssbinding.NewWssBindingClient(fullURL, clientID, nil, caCert, DefaultTimeout)
+		bc = wssbinding.NewWssTransportClient(fullURL, clientID, nil, caCert, DefaultTimeout)
 
 	default:
 		// use NewClient on the embedded server

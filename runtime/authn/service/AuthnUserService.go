@@ -5,6 +5,7 @@ import (
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authn/config"
+	"github.com/hiveot/hub/wot/transports"
 	"log/slog"
 )
 
@@ -16,7 +17,7 @@ type AuthnUserService struct {
 	cfg *config.AuthnConfig
 
 	// the authenticator for jwt tokens
-	sessionAuth api.IAuthenticator
+	sessionAuth transports.IAuthenticator
 }
 
 // GetProfile returns a client's profile
@@ -131,7 +132,7 @@ func (svc *AuthnUserService) UpdatePubKey(senderID string, pubKeyPEM string) err
 func NewAuthnUserService(
 	cfg *config.AuthnConfig,
 	authnStore api.IAuthnStore,
-	authenticator api.IAuthenticator) *AuthnUserService {
+	authenticator transports.IAuthenticator) *AuthnUserService {
 
 	authnSvc := &AuthnUserService{
 		cfg:         cfg,

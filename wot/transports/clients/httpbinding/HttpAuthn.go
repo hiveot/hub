@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/teris-io/shortid"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -66,8 +67,9 @@ func (cl *HttpBindingClient) ConnectWithPassword(password string) (newToken stri
 		"password": password,
 	}
 	argsJSON, _ := json.Marshal(loginMessage)
-	resp, _, err := cl.Invoke(
-		http.MethodPost, PostLoginPath, "", argsJSON, nil)
+	correlationID := shortid.MustGenerate()
+	resp, _, err := cl._send(
+		http.MethodPost, PostLoginPath, "", "", "", argsJSON, correlationID)
 	if err != nil {
 		slog.Warn("ConnectWithPassword failed", "err", err.Error())
 		return "", err
@@ -93,7 +95,9 @@ func (cl *HttpBindingClient) ConnectWithToken(token string) (newToken string, er
 	cl.bearerToken = token
 	cl.mux.Unlock()
 	cl.isConnected.Store(true)
-	return token, err
+
+	newToken, err = cl.RefreshToken(token)
+	return newToken, err
 }
 
 // RefreshToken refreshes the authentication token
@@ -103,11 +107,11 @@ func (cl *HttpBindingClient) RefreshToken(oldToken string) (newToken string, err
 
 	// FIXME: what is the standard for refreshing a token using http?
 	slog.Info("RefreshToken", slog.String("clientID", cl.clientID))
-	refreshURL := fmt.Sprintf("https://%s%s", cl.hostPort, PostRefreshPath)
 
 	// the bearer token holds the old token
-	resp, _, err := cl.Invoke(
-		"POST", refreshURL, "", nil, nil)
+	payload, _ := jsoniter.Marshal(oldToken)
+	resp, _, err := cl._send(
+		"POST", PostRefreshPath, "", "", "", payload, "")
 
 	// set the new token as the bearer token
 	if err == nil {
@@ -126,9 +130,8 @@ func (cl *HttpBindingClient) RefreshToken(oldToken string) (newToken string, err
 // Logout from the server and end the session.
 // This is specific to the Hiveot Hub.
 func (cl *HttpBindingClient) Logout() error {
-	// TODO: find a way to derive this from a form
+	// TODO: can this be derived from a form?
 	slog.Info("Logout", slog.String("clientID", cl.clientID))
-	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, PostLogoutPath)
-	_, _, err := cl.Invoke("POST", serverURL, "", nil, nil)
+	_, _, err := cl._send("POST", PostLogoutPath, "", "", "", nil, "")
 	return err
 }

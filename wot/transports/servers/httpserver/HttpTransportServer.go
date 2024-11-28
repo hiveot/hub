@@ -16,19 +16,19 @@ import (
 )
 
 type HttpOperation struct {
-	op           string
-	method       string
-	subprotocol  string
-	url          string
-	handler      http.HandlerFunc
-	isThingLevel bool
+	op          string
+	method      string
+	subprotocol string
+	url         string
+	handler     http.HandlerFunc
+	//isThingLevel bool
 }
 
-// HttpBindingServer is the transport binding server for HTTPS
+// HttpTransportServer is the transport binding server for HTTPS
 // This wraps the library's https server and add routes and middleware for use in the binding
-type HttpBindingServer struct {
+type HttpTransportServer struct {
 	// port and path configuration
-	config *HttpBindingConfig
+	config *HttpTransportConfig
 
 	// registered handler of received events or requests (which return a reply)
 	messageHandler transports.ServerMessageHandler
@@ -39,8 +39,8 @@ type HttpBindingServer struct {
 
 	// subprotocol bindings
 	//sse   *sse.SseBindingServer
-	ssesc *ssescserver.SseScBindingServer
-	ws    *wssserver.WssBindingServer
+	ssesc *ssescserver.SseScTransportServer
+	ws    *wssserver.WssTransportServer
 
 	// authenticator for logging in and validating session tokens
 	authenticator transports.IAuthenticator
@@ -55,15 +55,15 @@ type HttpBindingServer struct {
 // AddGetOp adds protocol binding operation with a URL and handler
 //
 // This is used to add Forms to the digitwin TDs
-func (svc *HttpBindingServer) AddGetOp(r chi.Router,
-	op string, thingLevel bool, opURL string, handler http.HandlerFunc) {
+func (svc *HttpTransportServer) AddGetOp(r chi.Router,
+	op string, opURL string, handler http.HandlerFunc) {
 
 	svc.operations = append(svc.operations, HttpOperation{
-		op:           op,
-		method:       http.MethodGet,
-		url:          opURL,
-		handler:      handler,
-		isThingLevel: thingLevel,
+		op:      op,
+		method:  http.MethodGet,
+		url:     opURL,
+		handler: handler,
+		//isThingLevel: thingLevel,
 	})
 	r.Get(opURL, handler)
 }
@@ -71,25 +71,25 @@ func (svc *HttpBindingServer) AddGetOp(r chi.Router,
 // AddPostOp adds protocol binding operation with a URL and handler
 //
 // This is used to add Forms to the digitwin TDs
-func (svc *HttpBindingServer) AddPostOp(r chi.Router,
-	op string, isThingLevel bool, opURL string, handler http.HandlerFunc) {
+func (svc *HttpTransportServer) AddPostOp(r chi.Router,
+	op string, opURL string, handler http.HandlerFunc) {
 	svc.operations = append(svc.operations, HttpOperation{
-		op:           op,
-		method:       http.MethodPost,
-		url:          opURL,
-		handler:      handler,
-		isThingLevel: isThingLevel,
+		op:      op,
+		method:  http.MethodPost,
+		url:     opURL,
+		handler: handler,
+		//isThingLevel: isThingLevel,
 	})
 	r.Post(opURL, handler)
 }
 
 // GetConnectionByConnectionID returns the client connection for sending messages to a client
-func (svc *HttpBindingServer) GetConnectionByConnectionID(connectionID string) transports.IServerConnection {
+func (svc *HttpTransportServer) GetConnectionByConnectionID(connectionID string) transports.IServerConnection {
 	return svc.cm.GetConnectionByConnectionID(connectionID)
 }
 
 // GetProtocolInfo returns info on the protocol supported by this binding
-func (svc *HttpBindingServer) GetProtocolInfo() transports.ProtocolInfo {
+func (svc *HttpTransportServer) GetProtocolInfo() transports.ProtocolInfo {
 	hostName := svc.config.Host
 	if hostName == "" {
 		hostName = "localhost"
@@ -104,13 +104,13 @@ func (svc *HttpBindingServer) GetProtocolInfo() transports.ProtocolInfo {
 }
 
 // GetHttpServer returns the running tls server. Intended for testing
-func (svc *HttpBindingServer) GetHttpServer() *tlsserver.TLSServer {
-	return svc.httpServer
-}
+//func (svc *HttpTransportServer) GetHttpServer() *tlsserver.TLSServer {
+//	return svc.httpServer
+//}
 
 // Stop the https server
-func (svc *HttpBindingServer) Stop() {
-	slog.Info("Stopping HttpBindingServer")
+func (svc *HttpTransportServer) Stop() {
+	slog.Info("Stopping HttpTransportServer")
 
 	// Shutdown remaining sessions to avoid hanging.
 	// (closing the TLS server does not shut down active connections)
@@ -121,7 +121,7 @@ func (svc *HttpBindingServer) Stop() {
 
 // writeError is a convenience function that logs and writes an error
 // If the reply has an error then write a bad request with the error as payload
-func (svc *HttpBindingServer) writeError(w http.ResponseWriter, err error, code int) {
+func (svc *HttpTransportServer) writeError(w http.ResponseWriter, err error, code int) {
 	if code == 0 {
 		code = http.StatusBadRequest
 	}
@@ -135,7 +135,7 @@ func (svc *HttpBindingServer) writeError(w http.ResponseWriter, err error, code 
 
 // writeReply is a convenience function that serializes the data and writes it as a response,
 // optionally reporting an error with code BadRequest.
-func (svc *HttpBindingServer) writeReply(w http.ResponseWriter, data any, err error) {
+func (svc *HttpTransportServer) writeReply(w http.ResponseWriter, data any, err error) {
 	if err != nil {
 		slog.Warn("Request error: ", "err", err.Error())
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -149,7 +149,7 @@ func (svc *HttpBindingServer) writeReply(w http.ResponseWriter, data any, err er
 	}
 }
 
-// StartHttpBindingServer creates and starts a new instance of the HTTPS Server
+// StartHttpTransportServer creates and starts a new instance of the HTTPS Server
 // with JWT authentication and SSE/SSE-SC/WS sub-protocol bindings.
 //
 // Call stop to end the transport server.
@@ -159,24 +159,25 @@ func (svc *HttpBindingServer) writeReply(w http.ResponseWriter, data any, err er
 //	caCert
 //	sessionAuth for creating and validating authentication tokens
 //	dtwService that handles digital thing requests
-func StartHttpBindingServer(config *HttpBindingConfig,
+func StartHttpTransportServer(config *HttpTransportConfig,
 	serverCert *tls.Certificate,
 	caCert *x509.Certificate,
 	authenticator transports.IAuthenticator,
 	messageHandler transports.ServerMessageHandler,
 	cm *connections.ConnectionManager,
-) (*HttpBindingServer, error) {
+) (*HttpTransportServer, error) {
 
 	httpServer, httpRouter := tlsserver.NewTLSServer(
 		config.Host, config.Port, serverCert, caCert)
 
-	svc := HttpBindingServer{
-		authenticator: authenticator,
-		config:        config,
+	svc := HttpTransportServer{
+		authenticator:  authenticator,
+		config:         config,
+		messageHandler: messageHandler,
 
-		ws: wssserver.NewWssBindingServer(cm, messageHandler),
-		//sse:   ssescserver.NewSseScBindingServer(cm),
-		ssesc: ssescserver.NewSseScBindingServer(cm),
+		ws: wssserver.NewWssTransportServer(cm, messageHandler),
+		//sse:   ssescserver.NewSseScTransportServer(cm),
+		ssesc: ssescserver.NewSseScTransportServer(cm),
 
 		httpServer: httpServer,
 		router:     httpRouter,

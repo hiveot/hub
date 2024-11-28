@@ -51,22 +51,6 @@ func AddSessionFromToken(userAuthn transports.IAuthenticator) func(next http.Han
 				return
 			}
 
-			if err != nil {
-				// If no session is found then the session token is invalid. This can
-				// happen after the user logs out.
-				slog.Warn("Session is not valid:", "sid", sid, "err", err)
-				w.WriteHeader(http.StatusUnauthorized)
-				return
-			}
-			//// the session must belong to the client
-			//if cs.GetClientID() != clientID {
-			//	slog.Error("AddSessionToContext: SenderID in session does not match jwt clientID",
-			//		"jwt clientID", clientID,
-			//		"session clientID", cs.GetClientID())
-			//	w.WriteHeader(http.StatusUnauthorized)
-			//	time.Sleep(time.Second)
-			//	return
-			//}
 			// make session available in context
 			//ctx := context.WithValue(r.Context(), subprotocols.SessionContextID, cs)
 			ctx := context.WithValue(r.Context(), SessionContextID, sid)
@@ -75,16 +59,3 @@ func AddSessionFromToken(userAuthn transports.IAuthenticator) func(next http.Han
 		})
 	}
 }
-
-//
-//// GetSessionIdFromContext returns the session and clientID for the given request
-////
-//// This should not be used in an SSE session.
-//func GetSessionIdFromContext(r *http.Request) (sessionID string, clientID string, err error) {
-//	ctxSession := r.Context().Value(SessionContextID)
-//	if ctxSession == nil {
-//		return "", "", errors.New("no session in context")
-//	}
-//	cs := ctxSession.(*sessions2.ClientSession)
-//	return cs.GetSessionID(), cs.GetClientID(), nil
-//}

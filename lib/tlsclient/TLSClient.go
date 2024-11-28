@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"github.com/hiveot/hub/wot/transports/clients/httpbinding"
 	"golang.org/x/net/publicsuffix"
 	"io"
 	"log/slog"
@@ -106,10 +107,10 @@ func (cl *TLSClient) Invoke(method string, requrl string, body []byte, requestID
 	contentType := "application/json"
 
 	if cl == nil || cl.httpClient == nil {
-		err = fmt.Errorf("Invoke: '%s'. Client is not started", requrl)
+		err = fmt.Errorf("_send: '%s'. Client is not started", requrl)
 		return nil, "", http.StatusInternalServerError, nil, err
 	}
-	slog.Debug("TLSClient.Invoke", "method", method, "requrl", requrl)
+	slog.Debug("TLSClient._send", "method", method, "requrl", requrl)
 
 	// Caution! a double // in the path causes a 301 and changes post to get
 	req, err = NewRequest(method, requrl, cl.bearerToken, body)
@@ -136,7 +137,7 @@ func (cl *TLSClient) Invoke(method string, requrl string, body []byte, requestID
 
 	httpResp, err := cl.httpClient.Do(req)
 	if err != nil {
-		err = fmt.Errorf("Invoke: %s %s: %w", method, requrl, err)
+		err = fmt.Errorf("_send: %s %s: %w", method, requrl, err)
 		slog.Error(err.Error())
 		return nil, "", 500, nil, err
 	}
@@ -155,9 +156,9 @@ func (cl *TLSClient) Invoke(method string, requrl string, body []byte, requestID
 		}
 	} else if httpStatus >= 500 {
 		err = fmt.Errorf("Error %d (%s): %s", httpStatus, httpResp.Status, respBody)
-		slog.Error("Invoke returned internal server error", "requrl", requrl, "err", err.Error())
+		slog.Error("_send returned internal server error", "requrl", requrl, "err", err.Error())
 	} else if err != nil {
-		err = fmt.Errorf("Invoke: Error %s %s: %w", method, requrl, err)
+		err = fmt.Errorf("_send: Error %s %s: %w", method, requrl, err)
 	}
 	return respBody, respRequestID, httpStatus, httpResp.Header, err
 }
@@ -165,7 +166,7 @@ func (cl *TLSClient) Invoke(method string, requrl string, body []byte, requestID
 //// Logout from the server and end the session
 //func (cl *TLSClient) Logout() error {
 //	serverURL := fmt.Sprintf("https://%s%s", cl.hostPort, vocab.PostLogoutPath)
-//	_, err := cl.Invoke("POST", serverURL, http.NoBody, nil)
+//	_, err := cl._send("POST", serverURL, http.NoBody, nil)
 //	return err
 //}
 
@@ -286,7 +287,7 @@ func NewTLSClient(hostPort string, clientCert *tls.Certificate, caCert *x509.Cer
 		}
 	}
 	// create the client
-	httpClient := NewHttp2TLSClient(caCert, clientCert, timeout)
+	httpClient := httpbinding.NewHttp2TLSClient(caCert, clientCert, timeout)
 
 	// add a cookie jar for storing cookies
 	// FIXME:

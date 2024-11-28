@@ -25,7 +25,7 @@ type SSEEvent struct {
 // This implements the IServerConnection interface
 type SseScServerConnection struct {
 	// connection ID (from header, without clientID prefix)
-	clcid string
+	connectionID string
 
 	// clientID is the account ID of the agent or consumer
 	clientID string
@@ -96,7 +96,7 @@ func (c *SseScServerConnection) GetClientID() string {
 
 // GetConnectionID returns the clients connection ID unique within the sessions
 func (c *SseScServerConnection) GetConnectionID() string {
-	return c.clcid
+	return c.connectionID
 }
 
 // GetProtocol returns the protocol used in this connection
@@ -190,7 +190,7 @@ func (c *SseScServerConnection) Serve(w http.ResponseWriter, r *http.Request) {
 	c.sseChan = make(chan SSEEvent, 1)
 	c.mux.Unlock()
 
-	// Send a ping event as the go-sse client doesn't have a 'connected callback'
+	// _send a ping event as the go-sse client doesn't have a 'connected callback'
 	pingEvent := SSEEvent{EventType: ssescclient.PingMessage, ID: "pingID"}
 	c.mux.Lock()
 	c.sseChan <- pingEvent
@@ -198,7 +198,7 @@ func (c *SseScServerConnection) Serve(w http.ResponseWriter, r *http.Request) {
 
 	slog.Debug("SseConnection.Serve new SSE connection",
 		slog.String("clientID", c.clientID),
-		slog.String("clcid", c.clcid),
+		slog.String("connectionID", c.connectionID),
 		slog.String("protocol", r.Proto),
 		slog.String("remoteAddr", c.remoteAddr),
 	)
@@ -232,7 +232,7 @@ func (c *SseScServerConnection) Serve(w http.ResponseWriter, r *http.Request) {
 			slog.Debug("SseConnection: sending sse event to client",
 				//slog.String("sessionID", c.sessionID),
 				slog.String("clientID", c.clientID),
-				slog.String("clcid", c.clcid),
+				slog.String("connectionID", c.connectionID),
 				slog.String("sseMsg", sseMsg.ID),
 				slog.String("sse eventType", sseMsg.EventType),
 			)
@@ -271,7 +271,7 @@ func (c *SseScServerConnection) Serve(w http.ResponseWriter, r *http.Request) {
 	slog.Debug("SseConnection.Serve: sse connection closed",
 		slog.String("remote", r.RemoteAddr),
 		slog.String("clientID", c.clientID),
-		slog.String("clcid", c.clcid),
+		slog.String("connectionID", c.connectionID),
 	)
 }
 
@@ -301,12 +301,12 @@ func (c *SseScServerConnection) WriteProperty(
 }
 
 // NewSSEConnection creates a new SSE connection instance.
-// This implements the IClientConnection interface.
+// This implements the IServerConnection interface.
 func NewSSEConnection(clientID string, cid string, remoteAddr string) *SseScServerConnection {
-	clcid := clientID + "-" + cid // -> must match subscribe/observe requests
+	connectionID := clientID + "-" + cid // -> must match subscribe/observe requests
 
 	c := &SseScServerConnection{
-		clcid:         clcid,
+		connectionID:  connectionID,
 		clientID:      clientID,
 		remoteAddr:    remoteAddr,
 		lastActivity:  time.Time{},

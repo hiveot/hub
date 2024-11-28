@@ -23,7 +23,7 @@ import (
 // PingMessage can be used by the server to ping the client that the connection is ready
 const PingMessage = "ping"
 
-const HTTPMessageIDHeader = "message-id"
+//const HTTPMessageIDHeader = "message-id"
 
 // HTTP Headers
 const (
@@ -41,6 +41,9 @@ const (
 	// header to indicate an 'additionalresults' dataschema being returned.
 	DataSchemaHeader = "dataschema"
 )
+
+// paths not available through forms
+const PostAgentPublishProgressPath = "/agent/progress"
 
 // HttpBindingClient is the http/2 client for performing operations on one or more Things.
 // This implements the IBindingClient interface.
@@ -84,6 +87,103 @@ type HttpBindingClient struct {
 
 	isConnected atomic.Bool
 	lastError   atomic.Pointer[error]
+}
+
+// _send a HTTPS method and read response.
+//
+// If token authentication is enabled then add the bearer token to the header
+//
+//	method: GET, PUT, POST, ...
+//	reqPath: path to invoke
+//	contentType of the payload or "" for default (application/json)
+//	thingID optional path URI variable
+//	name optional path URI variable containing affordance name
+//	body contains the serialized request body
+//	correlationID: optional correlationID header value
+//
+// This returns the serialized response data, a response message ID, return status code or an error
+func (cl *HttpBindingClient) _send(method string, methodPath string,
+	contentType string, thingID string, name string,
+	body []byte, correlationID string) (
+	resp []byte, headers http.Header, err error) {
+
+	if cl.httpClient == nil {
+		err = fmt.Errorf("_send: '%s'. Client is not started", methodPath)
+		return nil, nil, err
+	}
+	// use + as wildcard for thingID to avoid a 404
+	// while it not recommended, it is allowed to subscribe/observe all things
+	if thingID == "" {
+		thingID = "+"
+	}
+	// use + as wildcard for affordance name to avoid a 404
+	// this should not happen very often but it is allowed
+	if name == "" {
+		name = "+"
+	}
+
+	// substitute URI variables in the path
+	vars := map[string]string{
+		"thingID": thingID,
+		"name":    name}
+	reqPath := utils.Substitute(methodPath, vars)
+
+	// Caution! a double // in the path causes a 301 and changes post to get
+	bodyReader := bytes.NewReader(body)
+	fullURL := cl.GetServerURL() + reqPath
+	req, err := http.NewRequest(method, fullURL, bodyReader)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// set the origin header to the intended destination without the path
+	parts, err := url.Parse(fullURL)
+	origin := fmt.Sprintf("%s://%s", parts.Scheme, parts.Host)
+	req.Header.Set("Origin", origin)
+
+	// set the authorization header
+	if cl.bearerToken != "" {
+		req.Header.Add("Authorization", "bearer "+cl.bearerToken)
+	}
+
+	// set other headers
+	if contentType == "" {
+		contentType = "application/json"
+	}
+	req.Header.Set("Content-Type", contentType)
+	req.Header.Set(ConnectionIDHeader, cl.cid)
+	if correlationID != "" {
+		req.Header.Set(CorrelationIDHeader, correlationID)
+	}
+	for k, v := range cl.headers {
+		req.Header.Set(k, v)
+	}
+
+	httpResp, err := cl.httpClient.Do(req)
+	if err != nil {
+		slog.Error(err.Error())
+		return nil, nil, err
+	}
+	respBody, err := io.ReadAll(httpResp.Body)
+	//respRequestID = httpResp.Header.Get(HTTPMessageIDHeader)
+	// response body MUST be closed
+	_ = httpResp.Body.Close()
+	httpStatus := httpResp.StatusCode
+
+	if httpStatus == 401 {
+		err = fmt.Errorf("%s", httpResp.Status)
+	} else if httpStatus >= 400 && httpStatus < 500 {
+		err = fmt.Errorf("%s: %s", httpResp.Status, respBody)
+		if httpResp.Status == "" {
+			err = fmt.Errorf("%d (%s): %s", httpResp.StatusCode, httpResp.Status, respBody)
+		}
+	} else if httpStatus >= 500 {
+		err = fmt.Errorf("Error %d (%s): %s", httpStatus, httpResp.Status, respBody)
+		slog.Error("_send returned internal server error", "reqPath", reqPath, "err", err.Error())
+	} else if err != nil {
+		err = fmt.Errorf("_send: Error %s %s: %w", method, reqPath, err)
+	}
+	return respBody, httpResp.Header, err
 }
 
 // ConnectWithClientCert creates a connection with the server using a client certificate for mutual authentication.
@@ -162,93 +262,6 @@ func (cl *HttpBindingClient) IsConnected() bool {
 	return cl.isConnected.Load()
 }
 
-// Invoke a HTTPS method and read response.
-//
-// If token authentication is enabled then add the bearer token to the header
-//
-//	method: GET, PUT, POST, ...
-//	reqPath: path to invoke
-//	contentType of the payload or "" for default (application/json)
-//	body contains the serialized request body
-//	qParams: optional map with query parameters
-//
-// This returns the serialized response data, a response message ID, return status code or an error
-func (cl *HttpBindingClient) Invoke(method string, reqPath string,
-	contentType string, body []byte, qParams map[string]string) (
-	resp []byte, headers http.Header, err error) {
-
-	if cl.httpClient == nil {
-		err = fmt.Errorf("Invoke: '%s'. Client is not started", reqPath)
-		return nil, nil, err
-	}
-
-	// Caution! a double // in the path causes a 301 and changes post to get
-	bodyReader := bytes.NewReader(body)
-	fullURL := cl.GetServerURL() + reqPath
-	req, err := http.NewRequest(method, fullURL, bodyReader)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// set the origin header to the intended destination without the path
-	parts, err := url.Parse(fullURL)
-	origin := fmt.Sprintf("%s://%s", parts.Scheme, parts.Host)
-	req.Header.Set("Origin", origin)
-
-	// set the authorization header
-	if cl.bearerToken != "" {
-		req.Header.Add("Authorization", "bearer "+cl.bearerToken)
-	}
-
-	// optional query parameters
-	if qParams != nil {
-		qValues := req.URL.Query()
-		for k, v := range qParams {
-			qValues.Add(k, v)
-		}
-		req.URL.RawQuery = qValues.Encode()
-	}
-
-	// set headers
-	if contentType == "" {
-		contentType = "application/json"
-	}
-	req.Header.Set("Content-Type", contentType)
-	requestID := shortid.MustGenerate()
-	if requestID != "" {
-		req.Header.Set(HTTPMessageIDHeader, requestID)
-	}
-	for k, v := range cl.headers {
-		req.Header.Set(k, v)
-	}
-
-	httpResp, err := cl.httpClient.Do(req)
-	if err != nil {
-		slog.Error(err.Error())
-		return nil, nil, err
-	}
-	respBody, err := io.ReadAll(httpResp.Body)
-	//respRequestID = httpResp.Header.Get(HTTPMessageIDHeader)
-	// response body MUST be closed
-	_ = httpResp.Body.Close()
-	httpStatus := httpResp.StatusCode
-
-	if httpStatus == 401 {
-		err = fmt.Errorf("%s", httpResp.Status)
-	} else if httpStatus >= 400 && httpStatus < 500 {
-		err = fmt.Errorf("%s: %s", httpResp.Status, respBody)
-		if httpResp.Status == "" {
-			err = fmt.Errorf("%d (%s): %s", httpResp.StatusCode, httpResp.Status, respBody)
-		}
-	} else if httpStatus >= 500 {
-		err = fmt.Errorf("Error %d (%s): %s", httpStatus, httpResp.Status, respBody)
-		slog.Error("Invoke returned internal server error", "reqPath", reqPath, "err", err.Error())
-	} else if err != nil {
-		err = fmt.Errorf("Invoke: Error %s %s: %w", method, reqPath, err)
-	}
-	return respBody, httpResp.Header, err
-}
-
 // Rpc sends an operation and returns the result.
 //
 // This is the same as SendOperation. If the operation isn't completed it returns
@@ -257,38 +270,29 @@ func (cl *HttpBindingClient) Invoke(method string, reqPath string,
 // Since the http binding doesn't have a return channel, this only works with
 // operations that return their result as http response.
 func (cl *HttpBindingClient) Rpc(
-	form tdd.Form, dThingID, name string, input interface{}, output interface{}) (err error) {
+	form tdd.Form, dThingID, name string, input interface{}, output interface{}) error {
 
-	stat := cl.SendOperation(form, dThingID, name, input, output, "")
-	if stat.Error != "" {
-		return errors.New(stat.Error)
-	}
-	if stat.Status != transports.RequestCompleted {
-		return errors.New("No result for operation")
-	}
-	return nil
+	status, err := cl.SendOperation(form, dThingID, name, input, output, "")
+	_ = status
+	// there is no return channel receiving result is it.
+	return err
 }
 
 // SendOperation sends the operation described in the Form.
 // The form must describe the HTTP protocol.
 func (cl *HttpBindingClient) SendOperation(
 	f tdd.Form, dThingID, name string, input interface{}, output interface{},
-	correlationID string) (stat transports.RequestStatus) {
+	correlationID string) (status string, err error) {
 
 	var dataJSON []byte
 	operation := f.GetOperation()
 	method, _ := f.GetMethodName()
 	href, _ := f.GetHRef()
-	params := map[string]string{
-		"thingID": dThingID,
-		"name":    name,
-	}
-	href2 := utils.Substitute(href, params)
 
 	slog.Info("SendOperation",
 		slog.String("op", operation),
 		slog.String("method", method),
-		slog.String("href", href2),
+		slog.String("href", href),
 	)
 	if method == "" {
 		method = http.MethodGet
@@ -299,21 +303,33 @@ func (cl *HttpBindingClient) SendOperation(
 	if input != nil {
 		dataJSON, _ = jsoniter.Marshal(input)
 	}
-	respBody, _, err := cl.Invoke(
-		method, href2, "", dataJSON, nil)
+	respBody, headers, err := cl._send(
+		method, href, "", dThingID, name, dataJSON, correlationID)
+	// TODO: the datatype header describes the alternative outputs if provided
+	// what to do with this?
+	dataSchema := headers.Get(DataSchemaHeader)
+	_ = dataSchema
 
-	slog.Warn("")
-	stat.Operation = operation
-	stat.ThingID = dThingID
-	stat.Name = name
-	stat.Status = transports.RequestDelivered
-	stat.CorrelationID = correlationID
-	if respBody != nil && err == nil {
-		err = jsoniter.Unmarshal(respBody, output)
-		stat.Status = transports.RequestCompleted
-		stat.Output = output
+	if err != nil {
+		return transports.RequestFailed, err
 	}
-	return stat
+	// an alternative result is received. For now only RequestStatus is supported.
+	if dataSchema == "RequestStatus" {
+		stat := transports.RequestStatus{}
+		err = jsoniter.Unmarshal(respBody, &stat)
+		if stat.Error != "" {
+			return transports.RequestFailed, errors.New(stat.Error)
+		}
+		if stat.Output != nil && output != nil {
+			err = jsoniter.Unmarshal(respBody, output)
+		}
+		return stat.Status, err
+	}
+	if respBody != nil && output != nil {
+		err = jsoniter.Unmarshal(respBody, output)
+		return transports.RequestCompleted, err
+	}
+	return transports.RequestPending, nil
 }
 
 // SendOperationStatus [agent] sends a operation progress status update to the server.
@@ -329,11 +345,16 @@ func (cl *HttpBindingClient) SendOperationStatus(stat transports.RequestStatus) 
 		slog.String("progress", stat.Status),
 		slog.String("correlationID", stat.CorrelationID))
 
-	stat2 := cl.Pub(http.MethodPost, PostAgentPublishProgressPath,
-		"", "", stat, stat.CorrelationID)
+	//stat2 := cl.Pub(http.MethodPost, PostAgentPublishProgressPath,
+	//	"", "", stat, stat.CorrelationID)
+	//
+	dataJSON, _ := jsoniter.Marshal(stat)
+	_, _, err := cl._send(
+		http.MethodPost, PostAgentPublishProgressPath, "",
+		"", "", dataJSON, stat.CorrelationID)
 
-	if stat.Error != "" {
-		slog.Warn("PubActionStatus failed", "err", stat2.Error)
+	if err != nil {
+		slog.Warn("SendOperationStatus failed", "err", err.Error())
 	}
 }
 
@@ -362,14 +383,17 @@ func (cl *HttpBindingClient) SetRequestHandler(cb transports.RequestHandler) {
 	//cl.mux.Unlock()
 }
 
-// NewHttpBindingClient creates a new instance of the http binding client
+// NewHttpTransportClient creates a new instance of the http binding client
 //
 //	fullURL of server to connect to, including the schema
-//	clientID to connect as
+//	clientID to connect as; for logging and ConnectWithPassword. It is
+//
+// ignored if auth token is used.
+//
 //	clientCert optional client certificate to connect with
 //	caCert of the server to validate the server or nil to not check the server cert
 //	timeout for waiting for response. 0 to use the default.
-func NewHttpBindingClient(
+func NewHttpTransportClient(
 	fullURL string, clientID string, clientCert *tls.Certificate, caCert *x509.Certificate,
 	timeout time.Duration) *HttpBindingClient {
 
@@ -377,10 +401,10 @@ func NewHttpBindingClient(
 
 	// Use CA certificate for server authentication if it exists
 	if caCert == nil {
-		slog.Info("NewHttpBindingClient: No CA certificate. InsecureSkipVerify used",
+		slog.Info("NewHttpTransportClient: No CA certificate. InsecureSkipVerify used",
 			slog.String("destination", fullURL))
 	} else {
-		slog.Debug("NewHttpBindingClient: CA certificate",
+		slog.Debug("NewHttpTransportClient: CA certificate",
 			slog.String("destination", fullURL),
 			slog.String("caCert CN", caCert.Subject.CommonName))
 		caCertPool.AddCert(caCert)

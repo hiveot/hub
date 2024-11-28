@@ -14,11 +14,11 @@ import (
 )
 
 // handleSSEEvent processes the push-event received from the hub.
-func (cl *SsescBindingClient) handleSseEvent(event sse.Event) {
+func (cl *SsescTransportClient) handleSseEvent(event sse.Event) {
 	var stat transports.RequestStatus
 
-	// WORKAROUND since go-sse has no callback for a successful reconnect, simulate one here
-	// as soon as data is received. The server could send a 'ping' event on connect.
+	// WORKAROUND since go-sse has no callback for a successful reconnect, simulate one here.
+	// As soon as a connection is established the server could send a 'ping' event.
 	if !cl.isConnected.Load() {
 		// success!
 		slog.Info("handleSSEEvent: connection (re)established")
@@ -31,8 +31,8 @@ func (cl *SsescBindingClient) handleSseEvent(event sse.Event) {
 	if event.Type == PingMessage {
 		return
 	}
-	operation := event.Type        // one of the WotOp... or HTOp... operations
-	requestID := event.LastEventID // this is the ID provided by the server
+	operation := event.Type            // one of the WotOp... or HTOp... operations
+	correlationID := event.LastEventID // this is the ID provided by the server
 	thingID := ""
 	senderID := ""
 	name := ""
@@ -46,11 +46,11 @@ func (cl *SsescBindingClient) handleSseEvent(event sse.Event) {
 			senderID = parts[2]
 		}
 		if len(parts) > 3 {
-			requestID = parts[3]
+			correlationID = parts[3]
 		}
 	}
 
-	// ThingMessage is needed to pass requestID, messageType, thingID, name, and sender,
+	// ThingMessage is needed to pass correlationID, messageType, thingID, name, and sender,
 	// as there is no facility in SSE to include metadata.
 	// SSE payload is json marshalled by the sse client
 	var msgData any
@@ -62,18 +62,18 @@ func (cl *SsescBindingClient) handleSseEvent(event sse.Event) {
 		SenderID:      senderID,
 		Created:       time.Now().Format(utils.RFC3339Milli), // TODO: get the real timestamp
 		Data:          msgData,
-		CorrelationID: requestID,
+		CorrelationID: correlationID,
 	}
 
 	stat.CorrelationID = rxMsg.CorrelationID
-	slog.Debug("handleSseEvent",
+	slog.Info("handleSseEvent",
 		//slog.String("Comment", string(event.Comment)),
 		slog.String("clientID (me)", cl.clientID),
 		slog.String("cid", cl.GetCID()),
 		slog.String("operation", rxMsg.Operation),
 		slog.String("thingID", rxMsg.ThingID),
 		slog.String("name", rxMsg.Name),
-		slog.String("requestID", rxMsg.CorrelationID),
+		slog.String("correlationID", rxMsg.CorrelationID),
 		slog.String("senderID", rxMsg.SenderID),
 	)
 	cl.mux.RLock()
@@ -108,17 +108,18 @@ func (cl *SsescBindingClient) handleSseEvent(event sse.Event) {
 		} else {
 			// missing rpc or message handler
 			slog.Error("handleSseEvent, no message handler registered for client",
-				"clientID", cl.clientID)
+				"clientID", cl.clientID,
+				"op", rxMsg.Operation)
 			stat.Failed(rxMsg, fmt.Errorf("handleSseEvent no handler is set, delivery update ignored"))
 		}
 		return
 	}
 
-	// note messages and requests are handled separately
+	// messages (no reply) and requests (with reply) are handled separately
 	if rxMsg.Operation == vocab.OpInvokeAction ||
 		rxMsg.Operation == vocab.OpWriteProperty ||
 		rxMsg.Operation == vocab.OpWriteMultipleProperties {
-		// agent receives action request
+		// agent receives action request and sends a reply
 		if reqHandler == nil {
 			slog.Warn("handleSseEvent, no request handler registered. Request ignored.",
 				slog.String("operation", rxMsg.Operation),
@@ -129,11 +130,11 @@ func (cl *SsescBindingClient) handleSseEvent(event sse.Event) {
 		}
 		stat = reqHandler(rxMsg)
 		if stat.CorrelationID != "" {
-			cl.httpClient.PubActionStatus(stat) // send the result to the caller
+			cl.httpClient.SendOperationStatus(stat) // send the result to the caller
 		}
 	} else {
-		// pass everything else to the message handler
-		// consumer receive event, property and TD updates
+		// pass everything else to the message handler. No reply is sent.
+		// Eg" consumer receive event, property and TD updates
 		if msgHandler == nil {
 			slog.Warn("handleSseEvent, no message handler registered. Message ignored.",
 				slog.String("operation", rxMsg.Operation),

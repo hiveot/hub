@@ -9,7 +9,7 @@ import (
 
 // handle receiving an action status update
 // this needs a message handler to pass it to.
-func (cl *WssBindingClient) handleActionStatus(jsonMsg string) {
+func (cl *WssTransportClient) handleActionStatus(jsonMsg string) {
 	var senderID = ""
 	var stat transports.RequestStatus
 
@@ -55,7 +55,7 @@ func (cl *WssBindingClient) handleActionStatus(jsonMsg string) {
 
 // Agent receives an invoke/query action request message.
 // Pass it on to the handler and send the result back to the hub.
-func (cl *WssBindingClient) handleActionMessage(jsonMsg string) {
+func (cl *WssTransportClient) handleActionMessage(jsonMsg string) {
 
 	var stat transports.RequestStatus
 	wssMsg := ActionMessage{}
@@ -84,7 +84,7 @@ func (cl *WssBindingClient) handleActionMessage(jsonMsg string) {
 
 // handler receiving an event message from agent.
 // This does not send a confirmation reply.
-func (cl *WssBindingClient) handleEventMessage(jsonMsg string) {
+func (cl *WssTransportClient) handleEventMessage(jsonMsg string) {
 
 	wssMsg := EventMessage{}
 	err := jsoniter.UnmarshalFromString(jsonMsg, &wssMsg)
@@ -101,7 +101,7 @@ func (cl *WssBindingClient) handleEventMessage(jsonMsg string) {
 
 // handle receiving an property (pub/sub) message
 // property-write messages send a action status result if a correlationID is provided
-func (cl *WssBindingClient) handlePropertyMessage(jsonMsg string) {
+func (cl *WssTransportClient) handlePropertyMessage(jsonMsg string) {
 
 	var stat transports.RequestStatus
 	wssMsg := PropertyMessage{}
@@ -129,7 +129,7 @@ func (cl *WssBindingClient) handlePropertyMessage(jsonMsg string) {
 
 // handle receiving a TD update message
 // this does not send a status update
-func (cl *WssBindingClient) handleTDMessage(jsonMsg string) {
+func (cl *WssTransportClient) handleTDMessage(jsonMsg string) {
 
 	wssMsg := TDMessage{}
 	err := jsoniter.UnmarshalFromString(jsonMsg, &wssMsg)
@@ -145,7 +145,7 @@ func (cl *WssBindingClient) handleTDMessage(jsonMsg string) {
 }
 
 // handleWSSMessage processes the push-message received from the hub.
-func (cl *WssBindingClient) handleWSSMessage(jsonMsg string) {
+func (cl *WssTransportClient) handleWSSMessage(jsonMsg string) {
 	baseMsg := BaseMessage{}
 	err := jsoniter.UnmarshalFromString(jsonMsg, &baseMsg)
 	msgType := baseMsg.MessageType

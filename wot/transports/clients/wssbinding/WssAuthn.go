@@ -24,7 +24,7 @@ const (
 
 // ConnectWithPassword connects to the Hub TLS server using a login ID and password
 // and obtain an auth token for use with ConnectWithToken.
-func (cl *WssBindingClient) ConnectWithPassword(password string) (newToken string, err error) {
+func (cl *WssTransportClient) ConnectWithPassword(password string) (newToken string, err error) {
 	//cl.mux.Lock()
 	//// remove existing connection
 	//if cl.tlsClient != nil {
@@ -79,7 +79,7 @@ func (cl *WssBindingClient) ConnectWithPassword(password string) (newToken strin
 // and obtain a new token.
 //
 //	token is the token previously obtained with login or refresh.
-func (cl *WssBindingClient) ConnectWithToken(token string) (newToken string, err error) {
+func (cl *WssTransportClient) ConnectWithToken(token string) (newToken string, err error) {
 
 	cl.wssCancelFn, cl.wssConn, err = ConnectWSS(
 		cl.clientID, cl.wssURL, token, cl.caCert,
@@ -99,14 +99,14 @@ func (cl *WssBindingClient) ConnectWithToken(token string) (newToken string, err
 // RefreshToken refreshes the authentication token
 // The resulting token can be used with 'ConnectWithToken'
 // This is specific to the Hiveot Hub.
-//func (cl *WssBindingClient) RefreshToken(oldToken string) (newToken string, err error) {
+//func (cl *WssTransportClient) RefreshToken(oldToken string) (newToken string, err error) {
 //
 //	// FIXME: what is the standard for refreshing a token using http?
 //	slog.Info("RefreshToken", slog.String("clientID", cl.clientID))
 //	refreshURL := fmt.Sprintf("https://%s%s", cl.hostPort, PostRefreshPath)
 //
 //	// the bearer token holds the old token
-//	resp, _, err := cl.Invoke(
+//	resp, _, err := cl._send(
 //		"POST", refreshURL, "", nil, nil)
 //
 //	// set the new token as the bearer token
@@ -125,7 +125,7 @@ func (cl *WssBindingClient) ConnectWithToken(token string) (newToken string, err
 
 // Logout from the server and end the session.
 // This is specific to the Hiveot Hub.
-func (cl *WssBindingClient) Logout() error {
+func (cl *WssTransportClient) Logout() error {
 
 	// TODO: find a way to derive this from a form
 	slog.Info("Logout", slog.String("clientID", cl.clientID))

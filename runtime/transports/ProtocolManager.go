@@ -4,10 +4,10 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"github.com/hiveot/hub/runtime/api"
-	"github.com/hiveot/hub/runtime/connections"
 	"github.com/hiveot/hub/runtime/transports/discotransport"
-	"github.com/hiveot/hub/runtime/transports/httptransport"
 	"github.com/hiveot/hub/wot/tdd"
+	"github.com/hiveot/hub/wot/transports"
+	"github.com/hiveot/hub/wot/transports/connections"
 	"log/slog"
 )
 
@@ -21,7 +21,7 @@ type ProtocolManager struct {
 	// The embedded binding can be used directly with embedded services
 	discoveryTransport *discotransport.DiscoveryTransport
 	//embeddedTransport  *embedded.EmbeddedTransport
-	httpTransport *httptransport.HttpBinding
+	//httpTransport *httptransport.HttpBinding
 	//mqttTransport api.ITransportBinding
 	//grpcTransport     api.ITransportBinding
 	//dtwService *service.DigitwinService
@@ -55,7 +55,7 @@ func (svc *ProtocolManager) GetConnectURL() (baseURL string) {
 }
 
 // GetProtocolInfo returns information on the default protocol
-func (svc *ProtocolManager) GetProtocolInfo() (pi api.ProtocolInfo) {
+func (svc *ProtocolManager) GetProtocolInfo() (pi transports.ProtocolInfo) {
 	if svc.httpTransport != nil {
 		return svc.httpTransport.GetProtocolInfo()
 	}
@@ -88,7 +88,7 @@ func (svc *ProtocolManager) Stop() {
 func StartProtocolManager(cfg *ProtocolsConfig,
 	serverCert *tls.Certificate,
 	caCert *x509.Certificate,
-	authenticator api.IAuthenticator,
+	authenticator transports.IAuthenticator,
 	digitwinRouter api.IDigitwinRouter,
 	cm *connections.ConnectionManager,
 ) (svc *ProtocolManager, err error) {

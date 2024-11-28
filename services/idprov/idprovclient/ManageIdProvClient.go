@@ -3,7 +3,6 @@ package idprovclient
 import (
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
-	"github.com/hiveot/hub/wot/protocolclients"
 	"github.com/hiveot/hub/wot/tdd"
 )
 
@@ -16,7 +15,7 @@ type ManageIdProvClient struct {
 	dThingID string
 }
 
-// Invoke the IDProv method
+// _send the IDProv method
 // This returns an error if anything goes wrong: not delivered, delivery incomplete or processing error
 func (cl *ManageIdProvClient) call(method string, args interface{}, resp interface{}) error {
 	err := cl.hc.Rpc(cl.dThingID, method, args, resp)

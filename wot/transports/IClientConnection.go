@@ -42,8 +42,8 @@ type RequestHandler func(msg *ThingMessage) RequestStatus
 //	SupportsTokenAuth    bool
 //}
 
-// ITransportClient defines the client interface of a transport protocol binding
-type ITransportClient interface {
+// IClientConnection defines the client interface of a transport protocol binding
+type IClientConnection interface {
 	// ConnectWithClientCert connects to the server using a client certificate.
 	// This authentication method is optional
 	//ConnectWithClientCert(kp keys.IHiveKey, cert *tls.Certificate) (err error)
@@ -93,6 +93,9 @@ type ITransportClient interface {
 	// GetServerURL returns the schema://address:port of the server
 	GetServerURL() string
 
+	// IsConnected returns true when the connection is active
+	IsConnected() bool
+
 	// Logout of the hub and invalidate its session.
 	// This will disconnect all existing connections from the hub and invalidate
 	// all authentication tokens.
@@ -118,11 +121,12 @@ type ITransportClient interface {
 	// protocol binding. It is provided by the Thing's TD.
 	// dThingID and name are injected in the form href, if used. (uri variables)
 	// input contains the input data as per affordance.
+	// output is the operation's output
 	//
-	// This returns nil if the operation was successfully completed or an error
-	// if the operation failed to complete, including timeout.
+	// This returns a progress status value object (pending, failed or completed),
+	// or an error if the operation failed to complete, including timeout.
 	SendOperation(form tdd.Form, dThingID, name string, input interface{},
-		output interface{}, correlationID string) RequestStatus
+		output interface{}, correlationID string) (status string, err error)
 
 	// SendOperationStatus [agent] sends a operation progress status update
 	// to the server.

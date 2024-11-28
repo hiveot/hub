@@ -44,27 +44,27 @@ func (cm *ConnectionManager) AddConnection(c transports.IServerConnection) error
 	cm.mux.Lock()
 	defer cm.mux.Unlock()
 
-	clcid := c.GetConnectionID()
+	connectionID := c.GetConnectionID()
 	clientID := c.GetClientID()
 
 	// Refuse this if an existing connection with this ID exist
-	existingConn, _ := cm.connectionsByConnectionID[clcid]
+	existingConn, _ := cm.connectionsByConnectionID[connectionID]
 	if existingConn != nil {
 		err := fmt.Errorf("AddConnection. The connection ID '%s' of client '%s' already exists",
-			clcid, existingConn.GetClientID())
-		slog.Error("AddConnection: duplicate ConnectionID", "connectionID", clcid, "err", err.Error())
+			connectionID, existingConn.GetClientID())
+		slog.Error("AddConnection: duplicate ConnectionID", "connectionID", connectionID, "err", err.Error())
 		existingConn.Close()
 		c.Close()
-		go cm.RemoveConnection(clcid)
+		go cm.RemoveConnection(connectionID)
 		return err
 	}
-	cm.connectionsByConnectionID[clcid] = c
+	cm.connectionsByConnectionID[connectionID] = c
 	// update the client index
 	clientList := cm.connectionsByClientID[clientID]
 	if clientList == nil {
-		clientList = []string{clcid}
+		clientList = []string{connectionID}
 	} else {
-		clientList = append(clientList, clcid)
+		clientList = append(clientList, connectionID)
 	}
 	cm.connectionsByClientID[clientID] = clientList
 	return nil
@@ -208,7 +208,7 @@ func (cm *ConnectionManager) RemoveConnection(connectionID string) {
 	clientCids := cm.connectionsByClientID[clientID]
 	i := slices.Index(clientCids, connectionID)
 	if i < 0 {
-		slog.Warn("RemoveConnection: existing connection not in the connectionID list but it should have been",
+		slog.Warn("RemoveConnection: existing connection not in the connectionID list. Was it forcefully removed?",
 			"clientID", clientID, "connectionID", connectionID)
 
 		// TODO: considering the impact of this going wrong, is it better to recover?

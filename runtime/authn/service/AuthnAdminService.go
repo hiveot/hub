@@ -8,6 +8,7 @@ import (
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authn/config"
 	"github.com/hiveot/hub/wot/protocolclients/connect"
+	"github.com/hiveot/hub/wot/transports"
 	"log/slog"
 	"os"
 	"path"
@@ -23,7 +24,7 @@ type AuthnAdminService struct {
 	signingKey keys.IHiveKey
 
 	// the authenticator for jwt tokens
-	sessionAuth api.IAuthenticator
+	sessionAuth transports.IAuthenticator
 }
 
 // AddConsumer adds a consumer account to the service without a role.
@@ -283,7 +284,7 @@ func (svc *AuthnAdminService) Stop() {
 func NewAuthnAdminService(
 	authConfig *config.AuthnConfig,
 	authnStore api.IAuthnStore,
-	sessionAuth api.IAuthenticator) *AuthnAdminService {
+	sessionAuth transports.IAuthenticator) *AuthnAdminService {
 
 	authnSvc := &AuthnAdminService{
 		cfg:         authConfig,

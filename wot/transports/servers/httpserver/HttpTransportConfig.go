@@ -2,9 +2,9 @@ package httpserver
 
 const DefaultHttpsPort = 8444
 
-// HttpBindingConfig contains the configuration of the HTTPS server binding,
+// HttpTransportConfig contains the configuration of the HTTPS server binding,
 // including the websocket and the sse configuration.
-type HttpBindingConfig struct {
+type HttpTransportConfig struct {
 	// enable websocket support.
 	EnableWS bool `yaml:"enableWS,omitempty"`
 
@@ -28,8 +28,8 @@ type HttpBindingConfig struct {
 
 // NewHttpBindingConfig creates a new instance of the https binding configuration
 // with default values
-func NewHttpBindingConfig() HttpBindingConfig {
-	cfg := HttpBindingConfig{
+func NewHttpBindingConfig() HttpTransportConfig {
+	cfg := HttpTransportConfig{
 		Host:        "",
 		Port:        DefaultHttpsPort,
 		EnableSSE:   false,

@@ -228,6 +228,11 @@ func (cl *MqttBindingClient) GetServerURL() string {
 	return cl.brokerURL
 }
 
+// IsConnected return whether the return channel is connection, eg can receive data
+func (cl *MqttBindingClient) IsConnected() bool {
+	return cl.isConnected.Load()
+}
+
 // Logout from the server and end the session.
 // This is specific to the Hiveot Hub.
 func (cl *MqttBindingClient) Logout() error {
@@ -311,11 +316,6 @@ func (cl *MqttBindingClient) onPahoConnectionError(err error) {
 	}()
 }
 
-func (cl *MqttBindingClient) Rpc(form tdd.Form, dThingID, name string, input interface{},
-	output interface{}) error {
-	return fmt.Errorf("not implemented")
-}
-
 // RefreshToken refreshes the authentication token
 // The resulting token can be used with 'ConnectWithToken'
 // This is specific to the Hiveot Hub.
@@ -323,16 +323,21 @@ func (cl *MqttBindingClient) RefreshToken(oldToken string) (newToken string, err
 	return oldToken, fmt.Errorf("not implemented")
 }
 
+func (cl *MqttBindingClient) Rpc(form tdd.Form, dThingID, name string, input interface{},
+	output interface{}) error {
+	return fmt.Errorf("not implemented")
+}
+
 // SendOperation sends the operation described in the Form. (todo)
 // The form must describe the MQTT protocol.
 func (cl *MqttBindingClient) SendOperation(
 	form tdd.Form, dThingID, name string, input interface{}, output interface{},
-	correlationID string) (stat transports.RequestStatus) {
+	correlationID string) (status string, err error) {
 
 	// FIXME: implement message envelope
-	stat.Error = "not implemented"
-	stat.Status = transports.RequestFailed
-	return stat
+	err = errors.New("not implemented")
+	status = transports.RequestFailed
+	return status, err
 }
 
 // SendOperationStatus [agent] sends a operation progress status update to the server.

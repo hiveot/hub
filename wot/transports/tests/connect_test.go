@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/logging"
@@ -11,9 +12,9 @@ import (
 	"github.com/hiveot/hub/wot/transports/servers/httpserver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/teris-io/shortid"
 	"log/slog"
 	"os"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -22,21 +23,26 @@ const testAgentID1 = "agent1"
 const testAgentPassword1 = "agent1pass"
 const testClientID1 = "client1"
 const testClientPassword1 = "client1pass"
-const testServerHttpURL = "https://localhost:9445"
 const testServerHttpPort = 9445
+const testServerHttpURL = "https://localhost:9445"
+const testServerSsescURL = "https://localhost:9445/ssesc"
+const testServerWssURL = "wss://localhost:9445/wss"
+const testServerMqttURL = "mqtts://localhost:9446"
 
-var defaultProtocol = transports.ProtocolTypeHTTP
+// var defaultProtocol = transports.ProtocolTypeSSESC
+var defaultProtocol = transports.ProtocolTypeWSS
+
 var transportServer transports.ITransportServer
-
+var authenticator *DummyAuthenticator
 var certBundle = certs.CreateTestCertBundle()
 
 // NewClient creates a new unconnected agent client with the given ID
 // This panics if a client cannot be created
-func NewAgentClient(clientID string) transports.ITransportClient {
+func NewAgentClient(clientID string) transports.IClientConnection {
 	protocol := defaultProtocol
 	fullURL := testServerHttpURL
 	caCert := certBundle.CaCert
-	bc, err := clients.CreateBindingClient(protocol, fullURL, clientID, caCert)
+	bc, err := clients.CreateTransportClient(protocol, fullURL, clientID, caCert)
 	if err != nil {
 		panic("NewClient failed:" + err.Error())
 	}
@@ -46,11 +52,23 @@ func NewAgentClient(clientID string) transports.ITransportClient {
 
 // NewConsumerClient creates a new unconnected consumer client with the given ID
 // This panics if a client cannot be created
-func NewConsumerClient(clientID string) transports.ITransportClient {
+// ClientID is only used for logging
+func NewConsumerClient(clientID string) transports.IClientConnection {
 	protocol := defaultProtocol
 	fullURL := testServerHttpURL
+
+	switch defaultProtocol {
+	case transports.ProtocolTypeHTTP:
+		fullURL = testServerHttpURL
+	case transports.ProtocolTypeSSESC:
+		fullURL = testServerSsescURL
+	case transports.ProtocolTypeWSS:
+		fullURL = testServerWssURL
+	case transports.ProtocolTypeMQTT:
+		fullURL = testServerMqttURL
+	}
 	caCert := certBundle.CaCert
-	bc, err := clients.CreateBindingClient(protocol, fullURL, clientID, caCert)
+	bc, err := clients.CreateTransportClient(protocol, fullURL, clientID, caCert)
 	if err != nil {
 		panic("NewClient failed:" + err.Error())
 	}
@@ -70,32 +88,33 @@ func NewForm(op string) tdd.Form {
 func StartTransportServer(messageHandler transports.ServerMessageHandler) (
 	cancelFunc func(), cm *connections.ConnectionManager) {
 
-	switch defaultProtocol {
-	case transports.ProtocolTypeHTTP:
-	}
 	caCert := certBundle.CaCert
 	serverCert := certBundle.ServerCert
 	cm = connections.NewConnectionManager()
-	dummyAuthenticator := NewDummyAuthenticator()
-	dummyAuthenticator.AddClient(testAgentID1, testAgentPassword1)
-	dummyAuthenticator.AddClient(testClientID1, testClientPassword1)
+	authenticator = NewDummyAuthenticator()
+	authenticator.AddClient(testAgentID1, testAgentPassword1)
+	authenticator.AddClient(testClientID1, testClientPassword1)
 
-	// Start the HTTP binding with SSE-SC and WS sub-protocols
-	config := httpserver.NewHttpBindingConfig()
-	config.Port = testServerHttpPort
-	protocolServer, err := httpserver.StartHttpBindingServer(
-		&config, serverCert, caCert, dummyAuthenticator, messageHandler, cm)
-	if err != nil {
-		panic("Unable to create protocol server")
+	switch defaultProtocol {
+	case transports.ProtocolTypeHTTP, transports.ProtocolTypeSSESC, transports.ProtocolTypeWSS:
+		// Start the HTTP binding with SSE-SC and WS sub-protocols
+		config := httpserver.NewHttpBindingConfig()
+		config.Port = testServerHttpPort
+		var err error
+		transportServer, err = httpserver.StartHttpTransportServer(
+			&config, serverCert, caCert, authenticator, messageHandler, cm)
+		if err != nil {
+			panic("Unable to create protocol server: " + err.Error())
+		}
 	}
 	return func() {
-		protocolServer.Stop()
+		transportServer.Stop()
 	}, cm
 }
 
 func DummyMessageHandler(msg *transports.ThingMessage,
 	replyTo transports.IServerConnection) (stat transports.RequestStatus) {
-	slog.Info("Received message", "op", msg.Operation)
+	slog.Info("DummyMessageHandler: Received message", "op", msg.Operation)
 	return stat
 }
 
@@ -126,13 +145,18 @@ func TestLoginRefresh(t *testing.T) {
 	cl1 := NewConsumerClient(testClientID1)
 	defer cl1.Disconnect()
 
+	isConnected := cl1.IsConnected()
+	assert.False(t, isConnected)
+
 	token, err := cl1.ConnectWithPassword(testClientPassword1)
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
 
+	isConnected = cl1.IsConnected()
+	assert.True(t, isConnected)
+
 	// refresh should succeed
 	newToken, err := cl1.RefreshToken(token)
-	time.Sleep(time.Millisecond * 30)
 	require.NoError(t, err)
 	require.NotEmpty(t, newToken)
 
@@ -151,11 +175,10 @@ func TestLoginRefresh(t *testing.T) {
 
 	// end the session
 	cl1.Disconnect()
-	time.Sleep(time.Millisecond)
 }
 
-func TestBadLogin(t *testing.T) {
-	t.Log("TestBadLogin")
+func TestLogout(t *testing.T) {
+	t.Log("TestLogout")
 	cancelFn, _ := StartTransportServer(DummyMessageHandler)
 	defer cancelFn()
 
@@ -165,13 +188,46 @@ func TestBadLogin(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEmpty(t, token)
 
+	// logout
+	err = cl1.Logout()
+	assert.NoError(t, err)
+
+	// refresh should not work
+	token1, err := cl1.RefreshToken(token)
+	assert.Error(t, err)
+	assert.Empty(t, token1)
+}
+
+func TestBadLogin(t *testing.T) {
+	t.Log("TestBadLogin")
+	cancelFn, _ := StartTransportServer(DummyMessageHandler)
+	defer cancelFn()
+
+	cl1 := NewConsumerClient(testClientID1)
+
+	// check no login
+	form := NewForm(vocab.OpReadAllProperties)
+	_, err := cl1.SendOperation(form, "thing1", "", nil, nil, "")
+	assert.Error(t, err)
+
+	// check if this test still works with a valid login
+	token, err := cl1.ConnectWithPassword(testClientPassword1)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, token)
+
 	// failed logins
 	token, err = cl1.ConnectWithPassword("badpass")
+	assert.Error(t, err)
+	assert.Empty(t, token)
+
+	// bad token should fail
+	token, err = cl1.ConnectWithToken("badtoken")
 	assert.Error(t, err)
 	assert.Empty(t, token)
 	token2, err := cl1.RefreshToken(token)
 	assert.Error(t, err)
 	assert.Empty(t, token2)
+
 	// close should always succeed
 	cl1.Disconnect()
 
@@ -204,16 +260,18 @@ func TestBadRefresh(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEmpty(t, validToken)
 	cl1.Disconnect()
-	//
-	cl2 := NewConsumerClient("badclientidlogin")
 
-	defer cl2.Disconnect()
-	token, err = cl2.ConnectWithToken(validToken)
-	assert.Error(t, err)
-	assert.Empty(t, token)
-	token, err = cl2.RefreshToken(token)
-	assert.Error(t, err)
-	assert.Empty(t, token)
+	// this next test depends on whether the clientID is sent along or if the server
+	// uses only the token to determine/view the clientID.
+	// In that case, providing the clientID here is just for logging
+	//cl2 := NewConsumerClient("badclientidlogin")
+	//defer cl2.Disconnect()
+	//token, err = cl2.ConnectWithToken(validToken)
+	//assert.Error(t, err)
+	//assert.Empty(t, token)
+	//token, err = cl2.RefreshToken(token)
+	//assert.Error(t, err)
+	//assert.Empty(t, token)
 }
 
 // Auto-reconnect using hub client and server
@@ -223,23 +281,25 @@ func TestReconnect(t *testing.T) {
 	const thingID = "thing1"
 	const actionKey = "action1"
 	const agentID = "agent1"
+	var reconnectedCallback atomic.Bool
 	var dThingID = tdd.MakeDigiTwinThingID(agentID, thingID)
 
-	// this test handler receives an action, returns a 'delivered status',
-	// and sends a completed status through the sse return channel (SendToClient)
-
+	// this test handler receives an action and returns a 'delivered status',
+	// it is intended to prove reconnect works.
 	handleMessage := func(msg *transports.ThingMessage, replyTo transports.IServerConnection) (
 		stat transports.RequestStatus) {
 		slog.Info("Received message", "op", msg.Operation)
-
+		// prove that the return channel is connected
 		if msg.Operation == vocab.OpInvokeAction {
-			require.NotNil(t, replyTo)
-			// send a delayed completion message
-			stat2 := transports.RequestStatus{}
-			stat2.Completed(msg, msg.Data, nil)
-			err := replyTo.PublishActionStatus(stat2, agentID)
-			assert.NoError(t, err)
-
+			go func() {
+				// send a completed update a fraction after returning 'delivered'
+				time.Sleep(time.Millisecond)
+				require.NotNil(t, replyTo)
+				stat2 := transports.RequestStatus{}
+				stat2.Completed(msg, msg.Data, nil)
+				err := replyTo.PublishActionStatus(stat2, agentID)
+				require.NoError(t, err)
+			}()
 		}
 		stat.Delivered(msg)
 		return stat
@@ -247,37 +307,50 @@ func TestReconnect(t *testing.T) {
 	// start the servers and connect as a client
 	cancelFn, cm := StartTransportServer(handleMessage)
 	defer cancelFn()
+
+	// connect as client
 	cl1 := NewConsumerClient(testClientID1)
+	token := authenticator.CreateSessionToken(testClientID1, "", 0)
+	_, err := cl1.ConnectWithToken(token)
+	require.NoError(t, err)
 	defer cl1.Disconnect()
 
-	//// 2. connect a service client. Service auth tokens remain valid between sessions.
-	//cl2 := NewClient(testClientID1, "")
-	//defer cl1.Disconnect()
-	//token1 := dummyAuthenticator.CreateSessionToken(clientLoginID, "mysession", 1000)
-	//token2, err := cl2.ConnectWithToken(token1)
-	//require.NoError(t, err)
-	//assert.NotEmpty(t, token2)
-
-	//  Give some time for the connection to be established
-	time.Sleep(time.Millisecond * 10)
+	//  wait until the connection is established
 
 	// 3. close connection server side but keep the session.
 	// This should trigger auto-reconnect on the client.
 	t.Log("--- force disconnecting all clients ---")
 	cm.CloseAll()
-	time.Sleep(time.Second)
 
 	// give client time to reconnect
-	time.Sleep(time.Second * 3)
+	ctx1, cancelFn1 := context.WithTimeout(context.Background(), time.Second)
+	defer cancelFn1()
+	cl1.SetConnectHandler(func(connected bool, err error) {
+		if connected {
+			cancelFn1()
+			reconnectedCallback.Store(true)
+		}
+	})
+	<-ctx1.Done()
 
 	// 4. invoke an action which should return a value
 	// An RPC call is the ultimate test
 	var rpcArgs string = "rpc test"
 	var rpcResp string
 	// this client call receives the response from the handler above
-	corrID := shortid.MustGenerate()
 	form := NewForm(vocab.OpInvokeAction)
-	stat := cl1.SendOperation(form, dThingID, actionKey, &rpcArgs, &rpcResp, corrID)
-	require.Empty(t, stat.Error)
+	err = cl1.Rpc(form, dThingID, actionKey, &rpcArgs, &rpcResp)
+	require.NoError(t, err)
 	assert.Equal(t, rpcArgs, rpcResp)
+
+	// expect the re-connected callback to be invoked
+	assert.True(t, reconnectedCallback.Load())
+}
+
+// Test getting form for unknown operation
+func TestBadForm(t *testing.T) {
+	t.Log("TestBadForm")
+
+	form := NewForm("badoperation")
+	assert.Nil(t, form)
 }

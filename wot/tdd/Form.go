@@ -1,6 +1,8 @@
 // Package things with API interface definitions for forms
 package tdd
 
+import "log/slog"
+
 // Form can be viewed as a statement of "To perform an operation type operation on form context, make a
 // request method request to submission target" where the optional form fields may further describe the required
 // request. In Thing Descriptions, the form context is the surrounding Object, such as Properties, Actions, and
@@ -10,19 +12,36 @@ type Form map[string]any
 // GetHRef returns the form's href field
 func (f Form) GetHRef() (string, bool) {
 	val, found := f["href"]
-	return val.(string), found
+	if val != nil {
+		return val.(string), found
+	}
+	return "", found
 }
 
 // GetOperation returns the form's operation name
 func (f Form) GetOperation() string {
 	val, _ := f["op"]
+	if val == nil {
+		slog.Error("Form operation is not set")
+		return ""
+	}
 	return val.(string)
 }
 
 // GetMethodName returns the form's HTTP "htv:methodName" field
 func (f Form) GetMethodName() (string, bool) {
 	val, found := f["htv:methodName"]
-	return val.(string), found
+	if val != nil {
+		return val.(string), found
+	}
+	return "", found
+}
+
+func NewForm(operation string, href string) Form {
+	return Form{
+		"op":   operation,
+		"href": href,
+	}
 }
 
 //Href        string `json:"href"`

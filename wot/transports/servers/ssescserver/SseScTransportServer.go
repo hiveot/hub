@@ -10,8 +10,8 @@ import (
 	"sync"
 )
 
-// SseScBindingServer is a subprotocol binding server of http
-type SseScBindingServer struct {
+// SseScTransportServer is a subprotocol binding server of http
+type SseScTransportServer struct {
 	// connection manager to add/remove connections
 	cm *connections.ConnectionManager
 
@@ -21,8 +21,8 @@ type SseScBindingServer struct {
 
 // GetSseConnection returns the SSE Connection with the given ID
 // This returns nil if not found or if the connectionID is not
-func (b *SseScBindingServer) GetSseConnection(connectionID string) *SseScServerConnection {
-	c := b.cm.GetConnectionByConnectionID(connectionID)
+func (svc *SseScTransportServer) GetSseConnection(connectionID string) *SseScServerConnection {
+	c := svc.cm.GetConnectionByConnectionID(connectionID)
 	if c == nil {
 		return nil
 	}
@@ -35,7 +35,7 @@ func (b *SseScBindingServer) GetSseConnection(connectionID string) *SseScServerC
 
 // HandleConnect handles a new sse-sc connection.
 // This doesn't return until the connection is closed by either client or server.
-func (b *SseScBindingServer) HandleConnect(w http.ResponseWriter, r *http.Request) {
+func (svc *SseScTransportServer) HandleConnect(w http.ResponseWriter, r *http.Request) {
 
 	//An active session is required before accepting the request. This is created on
 	//authentication/login. Until then SSE connections are blocked.
@@ -62,7 +62,7 @@ func (b *SseScBindingServer) HandleConnect(w http.ResponseWriter, r *http.Reques
 	// add the new sse connection
 	c := NewSSEConnection(clientID, cid, r.RemoteAddr)
 
-	err = b.cm.AddConnection(c)
+	err = svc.cm.AddConnection(c)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
@@ -71,11 +71,16 @@ func (b *SseScBindingServer) HandleConnect(w http.ResponseWriter, r *http.Reques
 	c.Serve(w, r)
 
 	// finally cleanup the connection
-	b.cm.RemoveConnection(c.GetConnectionID())
+	svc.cm.RemoveConnection(c.GetConnectionID())
+}
+
+// HandleObserveAllProperties adds a property subscription
+func (svc *SseScTransportServer) HandleObserveAllProperties(w http.ResponseWriter, r *http.Request) {
+	svc.HandleObserveProperty(w, r)
 }
 
 // HandleObserveProperty handles a property observe request for one or all properties
-func (b *SseScBindingServer) HandleObserveProperty(w http.ResponseWriter, r *http.Request) {
+func (svc *SseScTransportServer) HandleObserveProperty(w http.ResponseWriter, r *http.Request) {
 	rp, err := httpcontext.GetRequestParams(r)
 	if err != nil {
 		slog.Warn("HandleObserveProperty", "err", err.Error())
@@ -87,22 +92,22 @@ func (b *SseScBindingServer) HandleObserveProperty(w http.ResponseWriter, r *htt
 		slog.String("thingID", rp.ThingID),
 		slog.String("name", rp.Name))
 
-	c := b.GetSseConnection(rp.ConnectionID)
+	c := svc.GetSseConnection(rp.ConnectionID)
 	if c != nil {
 		c.ObserveProperty(rp.ThingID, rp.Name)
 	} else {
 		slog.Error("HandleObserveProperty: no matching connection found",
-			"clientID", rp.ClientID, "clcid", rp.ConnectionID)
+			"clientID", rp.ClientID, "connectionID", rp.ConnectionID)
 	}
 }
 
-// HandleObserveAllProperties adds a property subscription
-func (b *SseScBindingServer) HandleObserveAllProperties(w http.ResponseWriter, r *http.Request) {
-	b.HandleObserveProperty(w, r)
+// HandleSubscribeAllEvents adds a subscription to all events
+func (svc *SseScTransportServer) HandleSubscribeAllEvents(w http.ResponseWriter, r *http.Request) {
+	svc.HandleSubscribeEvent(w, r)
 }
 
 // HandleSubscribeEvent handles a subscription request for one or all events
-func (b *SseScBindingServer) HandleSubscribeEvent(w http.ResponseWriter, r *http.Request) {
+func (svc *SseScTransportServer) HandleSubscribeEvent(w http.ResponseWriter, r *http.Request) {
 	rp, err := httpcontext.GetRequestParams(r)
 	if err != nil {
 		slog.Warn("HandleSubscribe", "err", err.Error())
@@ -111,11 +116,11 @@ func (b *SseScBindingServer) HandleSubscribeEvent(w http.ResponseWriter, r *http
 	}
 	slog.Info("HandleSubscribe",
 		slog.String("clientID", rp.ClientID),
-		slog.String("clcid", rp.ConnectionID),
+		slog.String("connectionID", rp.ConnectionID),
 		slog.String("thingID", rp.ThingID),
 		slog.String("name", rp.Name))
 
-	c := b.GetSseConnection(rp.ConnectionID)
+	c := svc.GetSseConnection(rp.ConnectionID)
 	if c != nil {
 		c.SubscribeEvent(rp.ThingID, rp.Name)
 	} else {
@@ -124,18 +129,13 @@ func (b *SseScBindingServer) HandleSubscribeEvent(w http.ResponseWriter, r *http
 	}
 }
 
-// HandleSubscribeAllEvents adds a subscription to all events
-func (b *SseScBindingServer) HandleSubscribeAllEvents(w http.ResponseWriter, r *http.Request) {
-	b.HandleSubscribeEvent(w, r)
-}
-
 // HandleUnobserveAllProperties handles removal of all property observe subscriptions
-func (b *SseScBindingServer) HandleUnobserveAllProperties(w http.ResponseWriter, r *http.Request) {
-	b.HandleUnobserveProperty(w, r)
+func (svc *SseScTransportServer) HandleUnobserveAllProperties(w http.ResponseWriter, r *http.Request) {
+	svc.HandleUnobserveProperty(w, r)
 }
 
 // HandleUnobserveProperty handles removal of one property observe subscriptions
-func (b *SseScBindingServer) HandleUnobserveProperty(w http.ResponseWriter, r *http.Request) {
+func (svc *SseScTransportServer) HandleUnobserveProperty(w http.ResponseWriter, r *http.Request) {
 	slog.Info("HandleUnobserveProperty")
 	rp, err := httpcontext.GetRequestParams(r)
 	if err != nil {
@@ -143,34 +143,34 @@ func (b *SseScBindingServer) HandleUnobserveProperty(w http.ResponseWriter, r *h
 		return
 	}
 
-	c := b.GetSseConnection(rp.ConnectionID)
+	c := svc.GetSseConnection(rp.ConnectionID)
 	if err == nil {
 		c.UnobserveProperty(rp.ThingID, rp.Name)
 	}
 }
 
 // HandleUnsubscribeAllEvents removes the subscription
-func (b *SseScBindingServer) HandleUnsubscribeAllEvents(w http.ResponseWriter, r *http.Request) {
-	b.HandleUnsubscribeEvent(w, r)
+func (svc *SseScTransportServer) HandleUnsubscribeAllEvents(w http.ResponseWriter, r *http.Request) {
+	svc.HandleUnsubscribeEvent(w, r)
 }
 
 // HandleUnsubscribeEvent handles removal of one or all event subscriptions
-func (b *SseScBindingServer) HandleUnsubscribeEvent(w http.ResponseWriter, r *http.Request) {
+func (svc *SseScTransportServer) HandleUnsubscribeEvent(w http.ResponseWriter, r *http.Request) {
 	slog.Info("HandleUnsubscribeEvent")
 	rp, err := httpcontext.GetRequestParams(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	c := b.GetSseConnection(rp.ConnectionID)
+	c := svc.GetSseConnection(rp.ConnectionID)
 	if err == nil {
 		c.UnsubscribeEvent(rp.ThingID, rp.Name)
 	}
 }
 
-// NewSseScBindingServer returns a new SSE-SC sub-protocol binding
-func NewSseScBindingServer(cm *connections.ConnectionManager) *SseScBindingServer {
-	b := &SseScBindingServer{
+// NewSseScTransportServer returns a new SSE-SC sub-protocol binding
+func NewSseScTransportServer(cm *connections.ConnectionManager) *SseScTransportServer {
+	b := &SseScTransportServer{
 		cm: cm,
 	}
 	return b

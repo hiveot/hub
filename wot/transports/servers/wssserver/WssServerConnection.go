@@ -189,7 +189,7 @@ func (c *WssServerConnection) WriteProperty(
 
 // NewWSSConnection creates a new Websocket connection instance for use by
 // agents and consumers.
-// This implements the IClientConnection interface.
+// This implements the IServerConnection interface.
 func NewWSSConnection(
 	clientID string, remoteAddr string, wssConn *websocket.Conn,
 	requestHandler transports.ServerMessageHandler,

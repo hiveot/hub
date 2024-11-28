@@ -1,17 +1,17 @@
-package httptransport_test
+package runtime_test
 
 import (
 	"fmt"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/runtime/authn/sessions"
-	"github.com/hiveot/hub/runtime/connections"
 	"github.com/hiveot/hub/runtime/digitwin/service"
-	"github.com/hiveot/hub/runtime/transports"
-	"github.com/hiveot/hub/runtime/transports/httptransport"
-	"github.com/hiveot/hub/wot/protocolclients/ssescclient"
 	"github.com/hiveot/hub/wot/tdd"
-	"github.com/hiveot/hub/wot/transport/clients/wssclient"
+	transports2 "github.com/hiveot/hub/wot/transports"
+	"github.com/hiveot/hub/wot/transports/clients/ssescclient"
+	"github.com/hiveot/hub/wot/transports/clients/wssbinding"
+	"github.com/hiveot/hub/wot/transports/connections"
+	"github.com/hiveot/hub/wot/transports/servers/httpserver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/teris-io/shortid"
@@ -45,26 +45,26 @@ const testSessionID = "testsession"
 var dummyAuthenticator = &DummyAuthenticator{}
 
 // create a test client as an agent
-func newAgentClient(clientID string) (cl clients.IAgent) {
+func newAgentClient(clientID string) (cl transports2.IAgent) {
 	if useWSS {
 		wssURL := fmt.Sprintf("wss://%s/wss", hostPort)
-		cl = wssclient.NewWSSClient(
+		cl = wssbinding.NewWssTransportClient(
 			wssURL, clientID, nil, certBundle.CaCert, time.Minute)
 	} else {
-		cl = ssescclient.NewHttpSSEClient(
+		cl = ssescclient.NewSsescBindingClient(
 			hostPort, clientID, nil, certBundle.CaCert, time.Minute)
 	}
 	return cl
 }
 
 // create a test client as a consumer
-func newConsumerClient(clientID string) (cl clients.IConsumer) {
+func newConsumerClient(clientID string) (cl transports2.IConsumer) {
 	if useWSS {
 		wssURL := fmt.Sprintf("wss://%s/wss", hostPort)
-		cl = wssclient.NewWSSClient(
+		cl = wssbinding.NewWssTransportClient(
 			wssURL, clientID, nil, certBundle.CaCert, time.Minute)
 	} else {
-		cl = ssescclient.NewHttpSSEClient(
+		cl = ssescclient.NewSsescBindingClient(
 			hostPort, clientID, nil, certBundle.CaCert, time.Minute)
 	}
 	return cl
@@ -73,15 +73,15 @@ func newConsumerClient(clientID string) (cl clients.IConsumer) {
 // ---------
 // startHttpsTransport starts the binding service
 // intended to handle the boilerplate
-func startHttpsTransport() (
-	*httptransport.HttpBinding, *service.DigitwinService, *transports.DummyRouter) {
+func startHttpsTransport(messageHandler transports2.ServerMessageHandler) (
+	*httpserver.HttpTransportServer, *service.DigitwinService) {
 
 	// globals in testing
 	sm = sessions.NewSessionmanager()
 	cm = connections.NewConnectionManager()
 
-	var digitwinRouter = transports.NewDummyRouter(dummyAuthenticator)
-	config := httptransport.NewHttpTransportConfig()
+	//var digitwinRouter = transports.NewDummyRouter(dummyAuthenticator)
+	config := httpserver.NewHttpBindingConfig()
 	config.Port = testPort
 
 	// start sub-protocol servers
@@ -89,13 +89,14 @@ func startHttpsTransport() (
 	if err != nil {
 		panic("Failed starting digitwin service:" + err.Error())
 	}
-	svc, err := httptransport.StartHttpTransport(&config,
+	svc, err := httpserver.StartHttpTransportServer(&config,
 		certBundle.ServerCert, certBundle.CaCert,
-		dummyAuthenticator, digitwinRouter, cm)
+		dummyAuthenticator, messageHandler, cm)
 	if err != nil {
 		panic("failed to start binding: " + err.Error())
 	}
 	dtwService.SetFormsHook(svc.AddTDForms)
+
 	return svc, dtwService, digitwinRouter
 }
 
@@ -127,7 +128,7 @@ func TestMain(m *testing.M) {
 
 func TestStartStop(t *testing.T) {
 	t.Log("TestStartStop")
-	config := httptransport.NewHttpTransportConfig()
+	config := httpserver.NewHttpBindingConfig()
 	config.Port = testPort
 	tb, dtwService, _ := startHttpsTransport()
 	assert.NotNil(t, tb)
@@ -193,7 +194,7 @@ func TestBadLogin(t *testing.T) {
 	cl.Disconnect()
 
 	// bad client ID
-	cl2 := ssescclient.NewHttpSSEClient(hostPort, "badID", nil, certBundle.CaCert, time.Minute)
+	cl2 := ssescclient.NewSsescBindingClient(hostPort, "badID", nil, certBundle.CaCert, time.Minute)
 	token, err = cl2.ConnectWithPassword(clientPassword)
 	assert.Error(t, err)
 	assert.Empty(t, token)
@@ -263,17 +264,17 @@ func TestPostEventAction(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
 
-	cl1.SetMessageHandler(func(ev *transports.ThingMessage) {
+	cl1.SetMessageHandler(func(ev *transports2.ThingMessage) {
 		// receive result from action
 		rxVal.Store(ev.Data)
 	})
 	cl1.Subscribe("", "")
 
 	// 3. register the dtwRouter for events
-	dtwRouter.OnEvent = func(msg *transports.ThingMessage) {
+	dtwRouter.OnEvent = func(msg *transports2.ThingMessage) {
 		evVal.Store(msg.Data)
 	}
-	dtwRouter.OnAction = func(msg *transports.ThingMessage, replyTo string) (stat transports.RequestStatus) {
+	dtwRouter.OnAction = func(msg *transports2.ThingMessage, replyTo string) (stat transports2.RequestStatus) {
 		actVal.Store(msg.Data)
 		stat.Completed(msg, msg.Data, nil)
 		return stat
@@ -346,7 +347,7 @@ func TestPubSub(t *testing.T) {
 	time.Sleep(time.Millisecond * 3)
 
 	// 3. register the dtwRouter for events
-	dtwRouter.OnEvent = func(msg *transports.ThingMessage) {
+	dtwRouter.OnEvent = func(msg *transports2.ThingMessage) {
 		evVal.Store(msg.Data)
 	}
 
@@ -380,12 +381,12 @@ func TestReconnect(t *testing.T) {
 	// and sends a completed status through the sse return channel (SendToClient)
 
 	// reply to requests
-	dtwRouter.OnEvent = func(msg *transports.ThingMessage) {
+	dtwRouter.OnEvent = func(msg *transports2.ThingMessage) {
 	}
-	dtwRouter.OnAction = func(msg *transports.ThingMessage, replyTo string) (stat transports.RequestStatus) {
+	dtwRouter.OnAction = func(msg *transports2.ThingMessage, replyTo string) (stat transports2.RequestStatus) {
 		// send a completed status update asynchronously
 		go func() {
-			stat2 := transports.RequestStatus{}
+			stat2 := transports2.RequestStatus{}
 			c := svc.GetConnectionByConnectionID(replyTo)
 			require.NotNil(t, c)
 			stat2.Completed(msg, msg.Data, nil)

@@ -12,11 +12,12 @@ import (
 // RequestParams contains the parameters read from the HTTP request
 type RequestParams struct {
 	ClientID      string
-	ThingID       string
+	ThingID       string // the thing ID if defined in the URL as {thingID}
 	CorrelationID string
-	Name          string
+	Name          string // the affordance name if defined in the URL as {name}
 	Data          any
 	ConnectionID  string
+	Op            string // the operation if defined in the URL as {op}
 }
 
 // GetRequestParams reads the client session, URL parameters and body payload from the
@@ -26,11 +27,12 @@ type RequestParams struct {
 // this returns an error. Note that the session middleware handler will block any request
 // that requires a session.
 //
-// This protocol binding determines two variables, {thingID} and {name} from the path.
+// This protocol binding determines three variables, {thingID}, {name} and {op} from the path.
 // It unmarshals the request body if given.
 //
-//	{thingID} is the agent or digital twin thing ID
-//	{name} is the property, event or action name. '+' means 'all'
+//		{thingID} is the agent or digital twin thing ID
+//		{name} is the property, event or action name. '+' means 'all'
+//	 {operation} is the operation, optional
 func GetRequestParams(r *http.Request) (reqParam RequestParams, err error) {
 
 	// get the required client session of this agent
@@ -55,6 +57,7 @@ func GetRequestParams(r *http.Request) (reqParam RequestParams, err error) {
 	// URLParam names are defined by the path variables set in the router.
 	reqParam.ThingID = chi.URLParam(r, "thingID")
 	reqParam.Name = chi.URLParam(r, "name")
+	reqParam.Op = chi.URLParam(r, "op")
 	if r.Body != nil {
 		payload, _ := io.ReadAll(r.Body)
 		if payload != nil && len(payload) > 0 {

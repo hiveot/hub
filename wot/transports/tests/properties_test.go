@@ -1,3 +1,4 @@
+// test property messages between the protocol client and server
 package tests
 
 import (
@@ -11,17 +12,17 @@ import (
 	"time"
 )
 
-// test event messages between agent, server and client
+// test property messages between agent, server and client
 // this uses the client and server helpers defined in connect_test.go
 
-// Test subscribing and receiving all events by consumer
-func TestSubscribeAllByConsumer(t *testing.T) {
-	t.Log("TestSubscribeAllByConsumer")
+// Test observing and receiving all properties by consumer
+func TestObserveAllByConsumer(t *testing.T) {
+	t.Log("TestObserveAllByConsumer")
 	var rxVal atomic.Value
-	var testMsg1 = "hello world 1"
-	var testMsg2 = "hello world 2"
 	var thingID = "thing1"
-	var eventKey = "event11"
+	var propertyKey1 = "property1"
+	var propValue1 = "value1"
+	var propValue2 = "value2"
 
 	// 1. start the servers
 	cancelFn, cm := StartTransportServer(DummyMessageHandler)
@@ -33,53 +34,55 @@ func TestSubscribeAllByConsumer(t *testing.T) {
 	require.NoError(t, err)
 	defer cl1.Disconnect()
 
-	// set the handler for events and subscribe
-	ctx, cancelFn := context.WithTimeout(context.Background(), time.Minute)
-	defer cancelFn()
+	// set the handler for properties and subscribe
+	ctx1, cancelFn1 := context.WithTimeout(context.Background(), time.Minute)
+	defer cancelFn1()
 
 	cl1.SetMessageHandler(func(ev *transports.ThingMessage) {
-		// receive event
+		t.Log("Received event: " + ev.Operation)
+		// receive property update
 		rxVal.Store(ev.Data)
-		cancelFn()
+		cancelFn1()
 	})
 
-	// Subscribe to events
-	form := NewForm(vocab.OpSubscribeAllEvents)
+	// Subscribe to property updates
+	form := NewForm(vocab.OpObserveAllProperties)
 	_, err = cl1.SendOperation(form, "", "", nil, nil, "")
 	require.NoError(t, err)
 	// No result is expected
 
-	// 3. Server sends event to consumers
-	cm.PublishEvent(thingID, eventKey, testMsg1, "", testAgentID1)
+	// 3. Server sends a property update to consumers
+	cm.PublishProperty(thingID, propertyKey1, propValue1, "", testAgentID1)
 
-	// 4. subscriber should have received them
-	<-ctx.Done()
-	assert.Equal(t, testMsg1, rxVal.Load())
+	// 4. observer should have received them
+	<-ctx1.Done()
+	assert.Equal(t, propValue1, rxVal.Load())
 
-	// Unsubscribe from events
-	form = NewForm(vocab.OpUnsubscribeAllEvents)
+	// 5. unobserve properties
+	form = NewForm(vocab.OpUnobserveAllProperties)
 	_, err = cl1.SendOperation(form, "", "", nil, nil, "")
+	require.NoError(t, err)
 
-	// 5. Server sends another event to consumers
-	cm.PublishEvent(thingID, eventKey, testMsg2, "", testAgentID1)
+	// 3. Server sends a property update to consumers
+	cm.PublishProperty(thingID, propertyKey1, propValue2, "", testAgentID1)
+
+	// 4. property should not have been received
 	time.Sleep(time.Millisecond * 10)
-	// update not received
-	assert.Equal(t, testMsg1, rxVal.Load())
+	assert.Equal(t, propValue1, rxVal.Load())
 
-	//
 }
 
-// Agent sends events to server
+// Agent sends property updates to server
 // This is used if the Thing agent is connected as a client, and does not
 // run a server itself.
-func TestPublishEventsByAgent(t *testing.T) {
-	t.Log("TestPublishEventsByAgent")
+func TestPublishPropertyByAgent(t *testing.T) {
+	t.Log("TestPublishPropertyByAgent")
 	var evVal atomic.Value
-	var testMsg = "hello world"
 	var thingID = "thing1"
-	var eventKey = "event11"
+	var propKey1 = "property1"
+	var propValue1 = "value1"
 
-	// handler of events on the server
+	// handler of property updates on the server
 	handler1 := func(msg *transports.ThingMessage, replyTo transports.IServerConnection) (
 		stat transports.RequestStatus) {
 		// event handlers do not reply
@@ -98,17 +101,17 @@ func TestPublishEventsByAgent(t *testing.T) {
 	require.NoError(t, err)
 	defer ag1.Disconnect()
 
-	// 3. agent publishes an event
-	form := NewForm(vocab.HTOpPublishEvent)
+	// 3. agent publishes a property update
+	form := NewForm(vocab.HTOpUpdateProperty)
 	require.NotNil(t, form)
-	status, err := ag1.SendOperation(form, thingID, eventKey, testMsg, nil, "")
+	status, err := ag1.SendOperation(form, thingID, propKey1, propValue1, nil, "")
 	require.NoError(t, err)
 
 	// no reply is expected
 	require.Equal(t, transports.RequestPending, status)
 
-	// event received by server
+	// property received by server
 	rxMsg2 := evVal.Load()
 	require.NotNil(t, rxMsg2)
-	assert.Equal(t, testMsg, rxMsg2)
+	assert.Equal(t, propValue1, rxMsg2)
 }

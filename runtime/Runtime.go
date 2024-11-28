@@ -9,10 +9,10 @@ import (
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authn/service"
 	service2 "github.com/hiveot/hub/runtime/authz/service"
-	"github.com/hiveot/hub/runtime/connections"
 	"github.com/hiveot/hub/runtime/digitwin/router"
 	service4 "github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/runtime/transports"
+	"github.com/hiveot/hub/wot/transports/connections"
 	"log/slog"
 )
 
