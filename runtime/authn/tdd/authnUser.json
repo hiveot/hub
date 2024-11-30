@@ -80,7 +80,7 @@
   },
   "actions": {
     "getProfile": {
-      "@type": "ht:function",
+      "@type": "hiveot:function",
       "title": "Get Client Profile",
       "safe": true,
       "output": {
@@ -90,7 +90,7 @@
     },
 
     "login": {
-      "@type": "ht:function",
+      "@type": "hiveot:function",
       "title": "Login",
       "description": "Login with password",
       "idempotent": false,
@@ -116,7 +116,7 @@
     },
 
     "logout": {
-      "@type": "ht:function",
+      "@type": "hiveot:function",
       "title": "Logout",
       "description": "Logout from all devices",
       "idempotent": true,
@@ -124,7 +124,7 @@
     },
 
     "refreshToken": {
-      "@type": "ht:function",
+      "@type": "hiveot:function",
       "title": "Request a new auth token for the current client",
       "idempotent": false,
       "safe": false,
@@ -148,7 +148,7 @@
     },
 
     "updateName": {
-      "@type": "ht:function",
+      "@type": "hiveot:function",
       "title": "Request changing the display name of the current client",
       "idempotent": true,
       "safe": false,
@@ -159,7 +159,7 @@
     },
 
     "updatePassword": {
-      "@type": "ht:function",
+      "@type": "hiveot:function",
       "title": "Update Password",
       "description": "Request changing the password of the current client",
       "idempotent": true,
@@ -171,7 +171,7 @@
     },
 
     "updatePubKey": {
-      "@type": "ht:function",
+      "@type": "hiveot:function",
       "title": "Update Public Key",
       "description": "Request changing the public key on file of the current client.",
       "idempotent": true,

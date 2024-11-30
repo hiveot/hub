@@ -120,7 +120,7 @@
   "actions": {
 
     "setPermissions": {
-      "@type": "ht:function",
+      "@type": "hiveot:function",
       "title": "Set Permissions",
       "description": "Set the roles that can use a Thing or service",
       "idempotent": true,

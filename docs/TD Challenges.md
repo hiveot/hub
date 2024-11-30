@@ -18,7 +18,7 @@
 4. How to identify the actual "meaning" of a property/event/action? [ambiguous, unsolved]
 > How does the consumer know a property or event holds a temperature?
 > How to standardize this between multiple device manufacturers?
-*  Current solution: define a "ht:" namespace for the project in the context and use @type to specify the vocabulary, eg: "ht:temperature"
+*  Current solution: define a "hiveot:" namespace for the project in the context and use @type to specify the vocabulary, eg: "hiveot:temperature"
 * This doesn't allow multiple manufacturers though and isn't really standard.
 * Ideal solution: WoT defines an IoT vocabulary using ISO standards, that manufacturers follow. Better to have an 80% standardized vocabulary than none at all. This still needs the use of @type or something similar for identification.
 

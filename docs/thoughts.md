@@ -122,7 +122,7 @@ While the WoT TD covers a lot of use-cases, there are few workarounds needed:
 2. No best practices with examples for various use-cases. 
    This is being addressed and a [developer resources website](https://www.w3.org/WoT/developers/) has been added. 
 3. No IoT vocabulary, everyone has to roll their own.
-   This remains an issue. The workaround is to establish a hiveot vocabulary using the "ht:" context prefix. Some better alternatives might be available but this need further investigation.  
+   This remains an issue. The workaround is to establish a hiveot vocabulary using the "hiveot:" context prefix. Some better alternatives might be available but this need further investigation.  
 4. Interaction affordances are difficult to implement in strongly typed languages like golang. The inheritance model cannot be implemented. For example, a PropertyAffordance inherits from dataschema but each data type has its own dataschema. 
     The workaround is to define a 'flat' dataschema that contains all properties of all dataschemas. Ugly but it works with a minor naming collision.
 5. Multiple types for same property (single item vs list)

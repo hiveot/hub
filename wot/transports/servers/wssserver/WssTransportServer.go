@@ -5,15 +5,31 @@ import (
 	"github.com/hiveot/hub/wot/transports"
 	"github.com/hiveot/hub/wot/transports/clients/wssbinding"
 	"github.com/hiveot/hub/wot/transports/connections"
+	"github.com/hiveot/hub/wot/transports/servers/httpserver"
 	"github.com/hiveot/hub/wot/transports/servers/httpserver/httpcontext"
 	"log/slog"
 	"net/http"
 )
 
+const DefaultWssPath = "/wss"
+
 // WssTransportServer Websocket subprotocol binding
 type WssTransportServer struct {
-	cm             *connections.ConnectionManager
 	requestHandler transports.ServerMessageHandler
+	wssPath        string
+	httpTransport  *httpserver.HttpTransportServer
+	cm             *connections.ConnectionManager
+
+	// convert operation to message type (for building forms)
+	op2MsgType map[string]string
+	// opList to include in TDs
+	opList []string
+}
+
+// GetProtocolInfo returns info on the protocol supported by this binding
+func (svc *WssTransportServer) GetProtocolInfo() transports.ProtocolInfo {
+	// todo: wss protocol info?
+	return svc.httpTransport.GetProtocolInfo()
 }
 
 // Serve a new websocket connection.
@@ -43,7 +59,7 @@ func (b *WssTransportServer) Serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c := NewWSSConnection(clientID, r.RemoteAddr, wssConn, b.requestHandler)
+	c := NewWSSConnection(clientID, r, wssConn, b.requestHandler)
 
 	err = b.cm.AddConnection(c)
 	if err != nil {
@@ -60,17 +76,43 @@ func (b *WssTransportServer) Serve(w http.ResponseWriter, r *http.Request) {
 	b.cm.RemoveConnection(c.GetConnectionID())
 }
 
-// NewWssTransportServer returns a new websocket sub-protocol binding
-//
-//	cm is the connection registry
-//	requestHandler receives event and request messages
-func NewWssTransportServer(
-	cm *connections.ConnectionManager,
-	requestHandler transports.ServerMessageHandler) *WssTransportServer {
+func (svc *WssTransportServer) Stop() {
+	// nothing to do here as this runs on top of the http server
+}
 
-	wsBinding := &WssTransportServer{
+// StartWssTransportServer starts a new websocket sub-protocol binding
+// and attaches it to the http binding.
+//
+//	requestHandler receives event and request messages
+//	cm is the connection registry for sending messages to clients
+//	wssPath to use, without the host
+//	httpTransport to attach to
+func StartWssTransportServer(
+	wssPath string,
+	requestHandler transports.ServerMessageHandler,
+	cm *connections.ConnectionManager,
+	httpTransport *httpserver.HttpTransportServer,
+) *WssTransportServer {
+	if wssPath == "" {
+		wssPath = DefaultWssPath
+	}
+	// initialize the message type to operation conversion
+	op2MsgType := make(map[string]string)
+	opList := make([]string, 0, len(wssbinding.MsgTypeToOp))
+	for msgType, op := range wssbinding.MsgTypeToOp {
+		op2MsgType[op] = msgType
+		opList = append(opList, op)
+	}
+	b := &WssTransportServer{
 		cm:             cm,
 		requestHandler: requestHandler,
+		httpTransport:  httpTransport,
+		wssPath:        wssPath,
+		op2MsgType:     op2MsgType,
+		opList:         opList,
 	}
-	return wsBinding
+	// add the WSS routes
+	httpTransport.AddGetOp("ws-connect", wssPath, b.Serve)
+
+	return b
 }

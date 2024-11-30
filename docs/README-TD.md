@@ -243,7 +243,7 @@ For example, the schema of an action to control an onoff switch might be defined
   "actions": {
     "onoff-1": {
       "title": "Control Switch 1",
-      "@type": "ht:actuator:switch",
+      "@type": "hiveot:actuator:switch",
       "input": {
         "type": "boolean",
         "title": "turn the switch on or off"
@@ -256,7 +256,7 @@ For example, the schema of an action to control an onoff switch might be defined
   }
   "properties": {
     "onoff-1": {
-       "@type": "ht:actuator:switch",
+       "@type": "hiveot:actuator:switch",
        "title": "Switch 1 Status",
        "type": "boolean" 
     }
@@ -292,7 +292,7 @@ Observation: this approach blurs the line between properties and events somewhat
 
 HiveOT protocol bindings will have a property defined for each internal state of a Thing that can be affected by an action.
 
-For example, a media player has a property of @type 'ht:prop:media:muted'. This can be used directly as a property name. When the device internal muted state changes to true, a property update is send to observers with the new state value. However, the action to mute the player could use a different ID: "ht:action:media:mute", since the action is only a request and does not represent the state of the device.
+For example, a media player has a property of @type 'ht:prop:media:muted'. This can be used directly as a property name. When the device internal muted state changes to true, a property update is send to observers with the new state value. However, the action to mute the player could use a different ID: "hiveot:action:media:mute", since the action is only a request and does not represent the state of the device.
 
 ### How to distinguish between important properties and auxiliary properties?
 

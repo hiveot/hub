@@ -27,7 +27,7 @@
   },
   "actions": {
     "getClientRole": {
-      "@type": "ht:function",
+      "@type": "hiveot:function",
       "title": "Get Client Role",
       "description": "Read the role of a client",
       "safe": true,
@@ -44,7 +44,7 @@
       }
     },
     "setClientRole": {
-      "@type": "ht:function",
+      "@type": "hiveot:function",
       "title": "Set Client Role",
       "description": "Update the role of a consumer",
       "idempotent": true,

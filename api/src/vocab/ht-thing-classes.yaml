@@ -18,457 +18,457 @@ ThingClasses:
   vocab:
     # ht:thing:actuator devices
     ThingActuator:
-      class: "ht:thing:actuator"
+      class: "hiveot:thing:actuator"
       title: "Actuator"
       description: "Generic actuator"
     ThingActuatorAlarm:
-      class: "ht:thing:actuator:alarm"
+      class: "hiveot:thing:actuator:alarm"
       title: "Alarm"
       description: "Siren or light alarm"
     ThingActuatorBeacon:
-      class: "ht:thing:actuator:beacon"
+      class: "hiveot:thing:actuator:beacon"
       title: "Beacon"
       description: "Location beacon"
     ThingActuatorDimmer:
-      class: "ht:thing:actuator:dimmer"
+      class: "hiveot:thing:actuator:dimmer"
       title: "Dimmer"
       description: "Light dimmer"
     ThingActuatorLock:
-      class: "ht:thing:actuator:lock"
+      class: "hiveot:thing:actuator:lock"
       title: "Lock"
       description: "Electronic door lock"
     ThingActuatorLight:
-      class: "ht:thing:actuator:light"
+      class: "hiveot:thing:actuator:light"
       title: "Light"
       description: "Smart LED or other light"
     ThingActuatorMotor:
-      class: "ht:thing:actuator:motor"
+      class: "hiveot:thing:actuator:motor"
       title: "Motor"
       description: "Motor driven actuator, such as garage door, blinds, tv lifts"
     ThingActuatorOutput:
-      class: "ht:thing:actuator:output"
+      class: "hiveot:thing:actuator:output"
       title: "Output"
       description: "General purpose electrical output signal"
     ThingActuatorRanged:
-      class: "ht:thing:actuator:ranged"
+      class: "hiveot:thing:actuator:ranged"
       title: "Ranged actuator"
       description: "Generic ranged actuator with a set point"
     ThingActuatorRelay:
-      class: "ht:thing:actuator:relay"
+      class: "hiveot:thing:actuator:relay"
       title: "Relay"
       description: "Generic relay electrical switch"
     ThingActuatorSwitch:
-      class: "ht:thing:actuator:switch"
+      class: "hiveot:thing:actuator:switch"
       title: "Switch"
       description: "An electric powered on/off switch for powering circuits"
     ThingActuatorValve:
-      class: "ht:thing:actuator:valve"
+      class: "hiveot:thing:actuator:valve"
       title: "Valve"
       description: "Electric powered valve for fluids or gas"
     ThingActuatorValveWater:
-      class: "ht:thing:actuator:valve:water"
+      class: "hiveot:thing:actuator:valve:water"
       title: "Water valve"
       description: "Electric powered water valve"
     ThingActuatorValveFuel:
-      class: "ht:thing:actuator:valve:fuel"
+      class: "hiveot:thing:actuator:valve:fuel"
       title: "Fuel valve"
       description: "Electric powered fuel valve"
 
     # ht:thing:appliance devices
     ThingAppliance:
-      class: "ht:thing:appliance"
+      class: "hiveot:thing:appliance"
       title: "Appliance"
       description: "Appliance to accomplish a particular task for occupant use"
     ThingApplianceDishwasher:
-      class: "ht:thing:appliance:dishwasher"
+      class: "hiveot:thing:appliance:dishwasher"
       title: "Dishwasher"
       description: "Dishwasher"
     ThingApplianceDryer:
-      class: "ht:thing:appliance:dryer"
+      class: "hiveot:thing:appliance:dryer"
       title: "Dryer"
       description: "Clothing dryer"
     ThingApplianceFreezer:
-      class: "ht:thing:appliance:freezer"
+      class: "hiveot:thing:appliance:freezer"
       title: "Freezer"
       description: "Refrigerator freezer"
     ThingApplianceFridge:
-      class: "ht:thing:appliance:fridge"
+      class: "hiveot:thing:appliance:fridge"
       title: "Fridge"
       description: "Refrigerator appliance"
     ThingApplianceWasher:
-      class: "ht:thing:appliance:washer"
+      class: "hiveot:thing:appliance:washer"
       title: "Washer"
       description: "Clothing washer"
 
 
     # ht:thing:computer devices including phones
     ThingComputer:
-      class: "ht:thing:computer"
+      class: "hiveot:thing:computer"
       title: "Computing Device"
       description: "General purpose computing device"
     ThingComputerCellphone:
-      class: "ht:thing:computer:cellphone"
+      class: "hiveot:thing:computer:cellphone"
       title: "Cell Phone"
       description: "Cellular phone"
     ThingComputerEmbedded:
-      class: "ht:thing:computer:embedded"
+      class: "hiveot:thing:computer:embedded"
       title: "Embedded System"
       description: "Embedded computing device"
     ThingComputerMemory:
-      class: "ht:thing:computer:memory"
+      class: "hiveot:thing:computer:memory"
       title: "Memory"
       description: "Stand-alone memory device such as eeprom or iButtons"
     ThingComputerPC:
-      class: "ht:thing:computer:pc"
+      class: "hiveot:thing:computer:pc"
       title: "PC/Laptop"
       description: "Personal computer/laptop"
     ThingComputerPotsPhone:
-      class: "ht:thing:computer:potsphone"
+      class: "hiveot:thing:computer:potsphone"
       title: "Land Line"
       description: "Plain Old Telephone System, aka landline"
     ThingComputerSatPhone:
-      class: "ht:thing:computer:satphone"
+      class: "hiveot:thing:computer:satphone"
       title: "Satellite phone"
       description:
     ThingComputerTablet:
-      class: "ht:thing:computer:tablet"
+      class: "hiveot:thing:computer:tablet"
       title: "Tablet"
       description: "Tablet computer"
     ThingComputerVoipPhone:
-      class: "ht:thing:computer:voipphone"
+      class: "hiveot:thing:computer:voipphone"
       title: "VoIP Phone"
       description: "Voice over IP phone"
 
     # ht:thing:control input devices for capturing input commands.
     # controls that directly drive outputs belong in the actuator section.
     ThingControl:
-      class: "ht:thing:control"
+      class: "hiveot:thing:control"
       title: "Input controller"
       description: "Generic input controller"
     ThingControlClimate:
-      class: "ht:thing:control:climate"
+      class: "hiveot:thing:control:climate"
       title: "Climate control"
       description: "Device for controlling climate of a space"
     ThingControlDimmer:
-      class: "ht:thing:control:dimmer"
+      class: "hiveot:thing:control:dimmer"
       title: "Dimmer"
       description: "Light dimmer input device"
     ThingControlIrrigation:
-      class: "ht:thing:control:irrigation"
+      class: "hiveot:thing:control:irrigation"
       title: "Irrigation control"
       description: "Device for control of an irrigation system"
     ThingControlJoystick:
-      class: "ht:thing:control:joystick"
+      class: "hiveot:thing:control:joystick"
       title: "Joystick"
       description: "Flight control stick"
     ThingControlKeypad:
-      class: "ht:thing:control:keypad"
+      class: "hiveot:thing:control:keypad"
       title: "Keypad"
       description: "Multi-key pad for command input"
     ThingControlPool:
-      class: "ht:thing:control:pool"
+      class: "hiveot:thing:control:pool"
       title: "Pool control"
       description: "Device for controlling pool settings"
     ThingControlPushbutton:
-      class: "ht:thing:control:pushbutton"
+      class: "hiveot:thing:control:pushbutton"
       title: "Momentary switch"
       description: "Momentary push button control input"
     ThingControlSwitch:
-      class: "ht:thing:control:switch"
+      class: "hiveot:thing:control:switch"
       title: "Input switch"
       description: "On or off switch input control"
     ThingControlThermostat:
-      class: "ht:thing:control:thermostat"
+      class: "hiveot:thing:control:thermostat"
       title: "Thermostat"
       description: "Thermostat HVAC control"
     ThingControlToggle:
-      class: "ht:thing:control:toggle"
+      class: "hiveot:thing:control:toggle"
       title: "Toggle switch"
       description: "Toggle switch input control"
 
     ThingDevice:
-      class: "ht:thing:device"
+      class: "hiveot:thing:device"
       title: "Device"
       description: "Device of unknown purpose"
     ThingDeviceBatteryMonitor:
-      class: "ht:thing:device:battery:monitor"
+      class: "hiveot:thing:device:battery:monitor"
       title: "Battery Monitor"
       description: "Battery monitor and charge controller"
     ThingDeviceTime:
-      class: "ht:thing:device:time"
+      class: "hiveot:thing:device:time"
       title: "Clock"
       description: "Time tracking device such as clocks and time chips"
     ThingDeviceIndicator:
-      class: "ht:thing:device:indicator"
+      class: "hiveot:thing:device:indicator"
       title: "Indicator"
       description: "Visual or audio indicator device"
 
     # ht:thing:media - devices for consuming or producing audio/visual media content
     ThingMedia:
-      class: "ht:thing:media"
+      class: "hiveot:thing:media"
       title: "A/V media"
       description: "Generic device for audio/video media record or playback"
     ThingMediaAmplifier:
-      class: "ht:thing:media:amplifier"
+      class: "hiveot:thing:media:amplifier"
       title: "Audio amplifier"
       description: "Audio amplifier with volume controls"
     ThingMediaCamera:
-      class: "ht:thing:media:camera"
+      class: "hiveot:thing:media:camera"
       title: "Camera"
       description: "Video camera"
     ThingMediaMicrophone:
-      class: "ht:thing:media:microphone"
+      class: "hiveot:thing:media:microphone"
       title: "Microphone"
       description: "Microphone for capturing audio"
     ThingMediaPlayer:
-      class: "ht:thing:media:player"
+      class: "hiveot:thing:media:player"
       title: "Media player"
       description: "CD/DVD/Blueray/USB player of recorded media"
     ThingMediaRadio:
-      class: "ht:thing:media:radio"
+      class: "hiveot:thing:media:radio"
       title: "Radio"
       description: "AM or FM radio receiver"
     ThingMediaReceiver:
-      class: "ht:thing:media:receiver"
+      class: "hiveot:thing:media:receiver"
       title: "Receiver"
       description: "Audio/video receiver and player"
     ThingMediaSpeaker:
-      class: "ht:thing:media:speaker"
+      class: "hiveot:thing:media:speaker"
       title: "Connected speakers"
       description: "Network connected speakers"
     ThingMediaTV:
-      class: "ht:thing:media:tv"
+      class: "hiveot:thing:media:tv"
       title: "TV"
       description: "Network connected television"
 
     # ht:thing:meter - metering devices for electricity, water, fuel
     ThingMeter:
-      class: "ht:thing:meter"
+      class: "hiveot:thing:meter"
       title: "Meter"
       description: "General metering device"
     ThingMeterElectric:
-      class: "ht:thing:meter:electric"
+      class: "hiveot:thing:meter:electric"
     ThingMeterElectricCurrent:
-      class: "ht:thing:meter:electric:current"
+      class: "hiveot:thing:meter:electric:current"
       title: "Electric current"
       description: "Electrical current meter"
     ThingMeterElectricEnergy:
-      class: "ht:thing:meter:electric:energy"
+      class: "hiveot:thing:meter:electric:energy"
       title: "Electric energy"
       description: "Electrical energy meter"
     ThingMeterElectricPower:
-      class: "ht:thing:meter:electric:power"
+      class: "hiveot:thing:meter:electric:power"
       title: "Electrical Power"
       description: "Electrical power meter"
     ThingMeterElectricVoltage:
-      class: "ht:thing:meter:electric:voltage"
+      class: "hiveot:thing:meter:electric:voltage"
       title: "Voltage"
       description: "Electrical voltage meter"
     ThingMeterFuel:
-      class: "ht:thing:meter:fuel"
+      class: "hiveot:thing:meter:fuel"
       title: "Fuel metering device"
       description: "General fuel metering device"
     ThingMeterFuelFlow:
-      class: "ht:thing:meter:fuel:flow"
+      class: "hiveot:thing:meter:fuel:flow"
       title: "Fuel flow rate"
       description: "Dedicated fuel flow rate metering device"
     ThingMeterFuelLevel:
-      class: "ht:thing:meter:fuel:level"
+      class: "hiveot:thing:meter:fuel:level"
       title: "Fuel level"
       description: "Dedicated fuel level metering device"
     ThingMeterWater:
-      class: "ht:thing:meter:water"
+      class: "hiveot:thing:meter:water"
       title: "Water metering device"
       description: "General water metering device"
     ThingMeterWaterConsumption:
-      class: "ht:thing:meter:water:consumption"
+      class: "hiveot:thing:meter:water:consumption"
       title: "Water consumption meter"
       description: "Water consumption meter"
     ThingMeterWaterFlow:
-      class: "ht:thing:meter:water:flow"
+      class: "hiveot:thing:meter:water:flow"
       title: "Water flow"
       description: "Dedicated water flow-rate meter"
     ThingMeterWaterLevel:
-      class: "ht:thing:meter:water:level"
+      class: "hiveot:thing:meter:water:level"
       title: "Water level"
       description: "Dedicated water level meter"
     ThingMeterWind:
-      class: "ht:thing:meter:wind"
+      class: "hiveot:thing:meter:wind"
       title: "Wind"
       description: "Dedicated wind meter"
 
     # ht:thing:net - devices to facilitate network machine communication
     ThingNet:
-      class: "ht:thing:net"
+      class: "hiveot:thing:net"
       title: "Network device"
       description: "Generic network device"
     ThingNetBluetooth:
-      class: "ht:thing:net:bluetooth"
+      class: "hiveot:thing:net:bluetooth"
       title: "Bluetooth"
       description: "Bluetooth radio"
     ThingNetGateway:
-      class: "ht:thing:net:gateway"
+      class: "hiveot:thing:net:gateway"
       title: "Gateway"
       description: "Generic gateway device providing access to other devices"
     ThingNetGatewayCoap:
-      class: "ht:thing:net:gateway:coap"
+      class: "hiveot:thing:net:gateway:coap"
       title: "CoAP gateway"
       description: "Gateway providing access to CoAP devices"
     ThingNetGatewayInsteon:
-      class: "ht:thing:net:gateway:insteon"
+      class: "hiveot:thing:net:gateway:insteon"
       title: "Insteon gateway"
       description: "Gateway providing access to Insteon devices"
     ThingNetGatewayOnewire:
-      class: "ht:thing:net:gateway:onewire"
+      class: "hiveot:thing:net:gateway:onewire"
       title: "1-Wire gateway"
       description: "Gateway providing access to 1-wire devices"
     ThingNetGatewayZwave:
-      class: "ht:thing:net:gateway:zwave"
+      class: "hiveot:thing:net:gateway:zwave"
       title: "ZWave gateway"
       description: "Gateway providing access to ZWave devices"
     ThingNetGatewayZigbee:
-      class: "ht:thing:net:gateway:zigbee"
+      class: "hiveot:thing:net:gateway:zigbee"
       title: "Zigbee gateway"
       description: "Gateway providing access to Zigbee devices"
     ThingNetRouter:
-      class: "ht:thing:net:router"
+      class: "hiveot:thing:net:router"
       title: "Network router"
       description: "IP ThingNetwork router providing access to other IP networks"
     ThingNetSwitch:
-      class: "ht:thing:net:switch"
+      class: "hiveot:thing:net:switch"
       title: "Network switch"
       description: "Network switch to connect computer devices to the network"
     ThingNetWifi:
-      class: "ht:thing:net:wifi"
+      class: "hiveot:thing:net:wifi"
       title: "Wifi device"
       description: "Generic wifi device"
     ThingNetWifiAp:
-      class: "ht:thing:net:wifi:ap"
+      class: "hiveot:thing:net:wifi:ap"
       title: "Wifi access point"
       description: "Wireless access point for IP networks"
     ThingNetLora:
-      class: "ht:thing:net:lora"
+      class: "hiveot:thing:net:lora"
       title: "LoRa network device"
       description: "Generic Long Range network protocol device"
     ThingNetLoraGateway:
-      class: "ht:thing:net:lora:gw"
+      class: "hiveot:thing:net:lora:gw"
       title: "LoRaWAN gateway"
       description: "Gateway providing access to LoRa devices"
     ThingNetLoraP2P:
-      class: "ht:thing:net:lora:p2p"
+      class: "hiveot:thing:net:lora:p2p"
       title: "LoRa P2P"
       description: "LoRa Peer-to-peer network device"
 
     # ht:thing:sensor - devices designed to observe features of interest
     ThingSensor:
-      class: "ht:thing:sensor"
+      class: "hiveot:thing:sensor"
       title: "Sensor"
       description: "Generic sensor device"
     ThingSensorEnvironment:
-      class: "ht:thing:sensor:environment"
+      class: "hiveot:thing:sensor:environment"
       title: "Environmental sensor"
       description: "Environmental sensor with one or more features such as temperature, humidity, etc"
     ThingSensorInput:
-      class: "ht:thing:sensor:input"
+      class: "hiveot:thing:sensor:input"
       title: "Input sensor"
       description: "General purpose electrical input sensor"
     ThingSensorMulti:
-      class: "ht:thing:sensor:multi"
+      class: "hiveot:thing:sensor:multi"
       title: "Multi sensor"
       description: "Sense multiple inputs"
     ThingSensorSecurity:
-      class: "ht:thing:sensor:security"
+      class: "hiveot:thing:sensor:security"
       title: "Security"
       description: "Generic security sensor"
     ThingSensorSecurityGlass:
-      class: "ht:thing:sensor:security:glass"
+      class: "hiveot:thing:sensor:security:glass"
       title: "Glass sensor"
       description: "Dedicated sensor for detecting breaking of glass"
     ThingSensorSecurityMotion:
-      class: "ht:thing:sensor:security:motion"
+      class: "hiveot:thing:sensor:security:motion"
       title: "Motion sensor"
       description: "Dedicated security sensor detecting motion"
     ThingSensorSecurityDoorWindow:
-      class: "ht:thing:sensor:security:doorwindow"
+      class: "hiveot:thing:sensor:security:doorwindow"
       title: "Door/Window sensor"
       description: "Dedicated door/window opening security sensor"
     ThingSensorSmoke:
-      class: "ht:thing:sensor:smoke"
+      class: "hiveot:thing:sensor:smoke"
       title: "Smoke detector"
       description: ""
     ThingSensorSound:
-      class: "ht:thing:sensor:sound"
+      class: "hiveot:thing:sensor:sound"
       title: "Sound detector"
       description: ""
     ThingSensorThermometer:
-      class: "ht:thing:sensor:thermometer"
+      class: "hiveot:thing:sensor:thermometer"
       title: "Thermometer"
       description: "Environmental thermometer"
     ThingSensorWaterLeak:
-      class: "ht:thing:sensor:water:leak"
+      class: "hiveot:thing:sensor:water:leak"
       title: "Water leak detector"
       description: "Dedicated water leak detector"
     ThingSensorScale:
-      class: "ht:thing:sensor:scale"
+      class: "hiveot:thing:sensor:scale"
       title: "Scale"
       description: "Electronic weigh scale"
 
     # ht:thing:service - Software that processes data and offers features of interest
     # TBD
     ThingService:
-      class: "ht:thing:service"
+      class: "hiveot:thing:service"
       title: "Service"
       description: "General service for processing data and offering features of interest"
 #    ThingServiceAdapter:
-#      class: "ht:thing:service:adapter"
+#      class: "hiveot:thing:service:adapter"
 #      title: "Protocol adapter"
 #      description: "Protocol adapter/binding for integration with another protocol"
 #    ThingServiceAuth:
-#      class: "ht:thing:service:auth"
+#      class: "hiveot:thing:service:auth"
 #      title: "Authentication service"
 #      description: ""
 #    ThingServiceAutomation:
-#      class: "ht:thing:service:automation"
+#      class: "hiveot:thing:service:automation"
 #      title: "Automation service"
 #      description: ""
 #    ThingServiceDirectory:
-#      class: "ht:thing:service:directory"
+#      class: "hiveot:thing:service:directory"
 #      title: "Directory service"
 #      description: ""
 #    ThingServiceHistory:
-#      class: "ht:thing:service:history"
+#      class: "hiveot:thing:service:history"
 #      title: "History service"
 #      description: ""
 #    ThingServiceImage:
-#      class: "ht:thing:service:image"
+#      class: "hiveot:thing:service:image"
 #      title: "Image classification"
 #      description: ""
 #    ThingServiceTTS:
-#      class: "ht:thing:service:tts"
+#      class: "hiveot:thing:service:tts"
 #      title: "Text to speech"
 #      description: ""
 #    ThingServiceSTT:
-#      class: "ht:thing:service:stt"
+#      class: "hiveot:thing:service:stt"
 #      title: "Speech to text"
 #      description: ""
 #    ThingServiceTranslation:
-#      class: "ht:thing:service:translation"
+#      class: "hiveot:thing:service:translation"
 #      title: "Language translation service"
 #      description: ""
 #    ThingServiceStore:
-#      class: "ht:thing:service:store"
+#      class: "hiveot:thing:service:store"
 #      title: "Data storage"
 #      description: ""
 #    ThingServiceWeather:
-#      class: "ht:thing:service:weather"
+#      class: "hiveot:thing:service:weather"
 #      title: "Weather service"
 #      description: "General weather service"
 #    ThingServiceWeatherCurrent:
-#      class: "ht:thing:service:weather:current"
+#      class: "hiveot:thing:service:weather:current"
 #      title: "Current weather"
 #      description: ""
 #    ThingServiceWeatherForecast:
-#      class: "ht:thing:service:weather:forecast"
+#      class: "hiveot:thing:service:weather:forecast"
 #      title: "Weather forecast"
 #      description: ""
 #

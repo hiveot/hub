@@ -4,7 +4,17 @@ import (
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
+	"net/http"
 )
+
+type HttpOperation struct {
+	op          string
+	method      string
+	subprotocol string
+	url         string
+	handler     http.HandlerFunc
+	//isThingLevel bool
+}
 
 // AddTDForms add WoT forms to the given TD containing protocol information to
 // access the digital twin things.
@@ -43,21 +53,24 @@ func (svc *HttpTransportServer) AddTDForms(td *tdd.TD) error {
 	return nil
 }
 
-// GetForm returns a new form for the given operation
+// GetForm returns a new HTTP form for the given operation
 // Intended for Thing level operations
-func (svc *HttpTransportServer) GetForm(op string) (form tdd.Form) {
+func (svc *HttpTransportServer) GetForm(op string) tdd.Form {
+
 	// all operations use URI variables for selecting things
+	// HTTP operations
 	for _, httpOp := range svc.operations {
 		if httpOp.op == op {
-			form = tdd.NewForm(op, httpOp.url)
+			form := tdd.NewForm(op, httpOp.url)
 			form["htv:methodName"] = httpOp.method
 			return form
 		}
 	}
+
 	slog.Warn("GetForm. No form found for operation",
 		"op", op,
 		"protocol", svc.GetProtocolInfo().Schema)
-	return form
+	return nil
 }
 
 // AddActionForms add forms Thing action affordance

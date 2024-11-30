@@ -11,7 +11,9 @@ import (
 	"strings"
 )
 
-// Paths used by this protocol binding - SYNC with HttpBindingClient.ts
+// HiveoT authentication methods supported by the binding.
+//
+// Paths used by this protocol binding - keep in sync with the server paths.
 //
 // THIS WILL BE REMOVED AFTER THE PROTOCOL BINDING PUBLISHES THESE IN THE TDD.
 // The hub client will need the TD (ConsumedThing) to determine the paths.

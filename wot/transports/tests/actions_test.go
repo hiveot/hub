@@ -26,6 +26,8 @@ func TestInvokeActionFromConsumerToServer(t *testing.T) {
 	var thingID = "thing1"
 	var actionName = "action1"
 
+	ctx1, release1 := context.WithTimeout(context.Background(), time.Minute)
+	defer release1()
 	// the server will receive the action request and return with completed
 	serverHandler := func(msg *transports.ThingMessage, replyTo transports.IServerConnection) (
 		stat transports.RequestStatus) {
@@ -44,7 +46,7 @@ func TestInvokeActionFromConsumerToServer(t *testing.T) {
 	defer cancelFn()
 
 	// 2. connect a client
-	cl1 := NewConsumerClient(testClientID1)
+	cl1 := NewClient(testClientID1)
 	token, err := cl1.ConnectWithPassword(testClientPassword1)
 	defer cl1.Disconnect()
 	require.NoError(t, err)
@@ -55,15 +57,18 @@ func TestInvokeActionFromConsumerToServer(t *testing.T) {
 		slog.Info("testOutput was updated asynchronously via the message handler")
 		err = utils.Decode(ev.Data, &testOutput)
 		assert.NoError(t, err)
+		release1()
 	})
 	// 3. invoke the action
 	form := NewForm(vocab.OpInvokeAction)
 	require.NotNil(t, form)
-
 	// testOutput can be updated as an immediate result or via the callback message handler
 	status, err := cl1.SendOperation(form, thingID, actionName, testMsg1, &testOutput, "")
 	require.NoError(t, err)
-	require.Equal(t, transports.RequestCompleted, status)
+	<-ctx1.Done()
+	//time.Sleep(time.Millisecond * 10)
+	// whether receiving completed or delivered depends on the binding
+	require.NotEqual(t, transports.RequestFailed, status)
 	require.Equal(t, testMsg1, testOutput)
 
 	// 4. verify that the server received it and send a reply
@@ -118,7 +123,7 @@ func TestInvokeActionFromServerToAgent(t *testing.T) {
 	defer cancelFn()
 
 	// 2a. connect as an agent
-	ag1client := NewAgentClient(testAgentID1)
+	ag1client := NewClient(testAgentID1)
 	token, err := ag1client.ConnectWithPassword(testAgentPassword1)
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
@@ -197,7 +202,7 @@ func TestQueryActions(t *testing.T) {
 	defer cancelFn()
 
 	// 2. connect as a consumer
-	cl1 := NewConsumerClient(testClientID1)
+	cl1 := NewClient(testClientID1)
 	_, err := cl1.ConnectWithPassword(testClientPassword1)
 	require.NoError(t, err)
 	defer cl1.Disconnect()
@@ -205,17 +210,16 @@ func TestQueryActions(t *testing.T) {
 	// 3. Query action status
 	form := NewForm(vocab.OpQueryAction)
 	var output transports.RequestStatus
-	status, err := cl1.SendOperation(form, thingID, actionKey, nil, &output, "")
+	//status, err := cl1.SendOperation(form, thingID, actionKey, nil, &output, "")
+	err = cl1.Rpc(form, thingID, actionKey, nil, &output)
 	require.NoError(t, err)
-	require.Equal(t, transports.RequestCompleted, status)
 	require.Equal(t, thingID, output.ThingID)
 	require.Equal(t, actionKey, output.Name)
 
 	// 4. Query all actions
 	form = NewForm(vocab.OpQueryAllActions)
 	var output2 []transports.RequestStatus
-	status, err = cl1.SendOperation(form, thingID, actionKey, nil, &output2, "")
+	err = cl1.Rpc(form, thingID, actionKey, nil, &output2)
 	require.NoError(t, err)
-	require.Equal(t, transports.RequestCompleted, status)
 	require.Equal(t, 2, len(output2))
 }

@@ -52,7 +52,7 @@
 
   "actions": {
     "addAgent": {
-      "@type": "ht:function",
+      "@type": "hiveot:function",
       "title": "Add Agent",
       "description": "Create an account for IoT device agents",
       "idempotent": true,
@@ -83,7 +83,7 @@
     },
 
     "addConsumer": {
-      "@type": "ht:function",
+      "@type": "hiveot:function",
       "title": "Add Consumer",
       "description": "Add an end-user client",
       "idempotent": true,
@@ -109,7 +109,7 @@
     },
 
     "addService": {
-      "@type": "ht:function",
+      "@type": "hiveot:function",
       "title": "Add Service",
       "description": "Add a service account",
       "idempotent": true,
@@ -140,7 +140,7 @@
     },
 
     "getClientProfile": {
-      "@type": "ht:function",
+      "@type": "hiveot:function",
       "title": "Get Client Profile",
       "description": "Get the profile information describing a client",
       "idempotent": true,
@@ -156,7 +156,7 @@
     },
 
     "getProfiles": {
-      "@type": "ht:function",
+      "@type": "hiveot:function",
       "title": "Get Profiles",
       "description": "Get a list of all client profiles",
       "idempotent": true,
@@ -172,7 +172,7 @@
     },
 
     "newAgentToken": {
-      "@type": "ht:function",
+      "@type": "hiveot:function",
       "title": "New Agent Token",
       "description": "Obtain a new authentication token for an agent or service",
       "idempotent": false,
@@ -188,7 +188,7 @@
     },
 
     "removeClient": {
-      "@type": "ht:function",
+      "@type": "hiveot:function",
       "title": "Remove Client",
       "description": "Remove a client account",
       "idempotent": false,
@@ -199,7 +199,7 @@
     },
 
     "setClientPassword": {
-      "@type": "ht:function",
+      "@type": "hiveot:function",
       "title": "Set Client Password",
       "description": "Update the password of a consumer",
       "idempotent": false,
@@ -221,7 +221,7 @@
     },
 
     "updateClientProfile": {
-      "@type": "ht:function",
+      "@type": "hiveot:function",
       "title": "Update Client Profile",
       "description": "Update the details of a client",
       "idempotent": false,

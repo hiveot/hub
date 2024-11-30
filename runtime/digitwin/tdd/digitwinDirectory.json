@@ -48,7 +48,7 @@
 	},
 	"actions": {
 		"readTD": {
-			"@type": "ht:function",
+			"@type": "hiveot:function",
 			"title": "Read TD",
 			"description": "Return a JSON encoded TD document",
 			"safe": true,
@@ -65,7 +65,7 @@
 			}
 		},
 		"readAllTDs": {
-			"@type": "ht:function",
+			"@type": "hiveot:function",
 			"title": "Read all TDs",
 			"description": "Read a batch of TD documents",
 			"safe": true,
@@ -99,7 +99,7 @@
 			}
 		},
 		"removeTD": {
-			"@type": "ht:function",
+			"@type": "hiveot:function",
 			"title": "Remove TD",
 			"description": "Remove a digital twin from the directory",
 			"safe": false,
@@ -114,7 +114,7 @@
 		},
 
 		"updateTD": {
-			"@type": "ht:function",
+			"@type": "hiveot:function",
 			"title": "Update TD",
 			"description": "Update the Thing TD in the directory. For use by agents only.",
 			"idempotent": true,

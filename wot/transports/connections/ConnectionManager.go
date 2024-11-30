@@ -208,7 +208,7 @@ func (cm *ConnectionManager) RemoveConnection(connectionID string) {
 	clientCids := cm.connectionsByClientID[clientID]
 	i := slices.Index(clientCids, connectionID)
 	if i < 0 {
-		slog.Warn("RemoveConnection: existing connection not in the connectionID list. Was it forcefully removed?",
+		slog.Info("RemoveConnection: existing connection not in the connectionID list. Was it forcefully removed?",
 			"clientID", clientID, "connectionID", connectionID)
 
 		// TODO: considering the impact of this going wrong, is it better to recover?

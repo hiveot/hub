@@ -78,7 +78,8 @@ func ConnectSSE(
 	go func() {
 		// connect and wait until the connection ends
 		// and report an error if connection ends due to reason other than context cancelled
-		onConnect(true, nil)
+		// onConnect will be called on receiving the first (ping) message
+		//onConnect(true, nil)
 		err := conn.Connect()
 		onConnect(false, err)
 
@@ -99,11 +100,10 @@ func ConnectSSE(
 		//req.Close()
 		//
 	}()
-	// FIXME: wait for the SSE connection to be established
+
+	// wait for the SSE connection to be established
 	// If an RPC action is sent too early then no reply will be received.
 	time.Sleep(time.Millisecond * 10)
-
-	// the connection closer
 
 	closeSSEFn := func() {
 		// any other cleanup?

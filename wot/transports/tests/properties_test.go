@@ -29,7 +29,7 @@ func TestObserveAllByConsumer(t *testing.T) {
 	defer cancelFn()
 
 	// 2. connect as a consumer
-	cl1 := NewConsumerClient(testClientID1)
+	cl1 := NewClient(testClientID1)
 	_, err := cl1.ConnectWithPassword(testClientPassword1)
 	require.NoError(t, err)
 	defer cl1.Disconnect()
@@ -48,8 +48,9 @@ func TestObserveAllByConsumer(t *testing.T) {
 	// Subscribe to property updates
 	form := NewForm(vocab.OpObserveAllProperties)
 	_, err = cl1.SendOperation(form, "", "", nil, nil, "")
-	require.NoError(t, err)
 	// No result is expected
+	require.NoError(t, err)
+	time.Sleep(time.Millisecond) // time to take effect
 
 	// 3. Server sends a property update to consumers
 	cm.PublishProperty(thingID, propertyKey1, propValue1, "", testAgentID1)
@@ -62,11 +63,12 @@ func TestObserveAllByConsumer(t *testing.T) {
 	form = NewForm(vocab.OpUnobserveAllProperties)
 	_, err = cl1.SendOperation(form, "", "", nil, nil, "")
 	require.NoError(t, err)
+	time.Sleep(time.Millisecond) // time to take effect
 
-	// 3. Server sends a property update to consumers
+	// 6. Server sends a property update to consumers
 	cm.PublishProperty(thingID, propertyKey1, propValue2, "", testAgentID1)
 
-	// 4. property should not have been received
+	// 7. property should not have been received
 	time.Sleep(time.Millisecond * 10)
 	assert.Equal(t, propValue1, rxVal.Load())
 
@@ -96,7 +98,7 @@ func TestPublishPropertyByAgent(t *testing.T) {
 	defer cancelFn()
 
 	// 2. connect as an agent
-	ag1 := NewAgentClient(testAgentID1)
+	ag1 := NewClient(testAgentID1)
 	_, err := ag1.ConnectWithPassword(testAgentPassword1)
 	require.NoError(t, err)
 	defer ag1.Disconnect()
@@ -106,6 +108,7 @@ func TestPublishPropertyByAgent(t *testing.T) {
 	require.NotNil(t, form)
 	status, err := ag1.SendOperation(form, thingID, propKey1, propValue1, nil, "")
 	require.NoError(t, err)
+	time.Sleep(time.Millisecond) // time to take effect
 
 	// no reply is expected
 	require.Equal(t, transports.RequestPending, status)

@@ -4,6 +4,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/wot/transports/clients/httpbinding"
 	"github.com/hiveot/hub/wot/transports/servers/httpserver/httpcontext"
 	"net/http"
 )
@@ -47,9 +48,7 @@ func (svc *HttpTransportServer) createRoutes(router chi.Router) http.Handler {
 
 		//r.Get("/static/*", staticFileServer.ServeHTTP)
 		// build-in REST API for easy login to obtain a token
-		//r.Post(PostLoginPath, svc.HandleLogin)
-		svc.AddPostOp(r, vocab.HTOpLogin,
-			"/authn/login", svc.HandleLogin)
+		r.Post(httpbinding.PostLoginPath, svc.HandleLogin)
 	})
 
 	//--- private routes that requires authentication (as published in the TD)
@@ -60,55 +59,29 @@ func (svc *HttpTransportServer) createRoutes(router chi.Router) http.Handler {
 		// client sessions authenticate the sender
 		r.Use(httpcontext.AddSessionFromToken(svc.authenticator))
 
+		// the following are protected http routes
+		svc.protectedRoutes = r
+
 		//- direct methods for digital twins
-		svc.AddGetOp(r, vocab.OpReadAllProperties,
+		svc.AddGetOp(vocab.OpReadAllProperties,
 			"/digitwin/properties/{thingID}", svc.HandleReadAllProperties)
-		svc.AddGetOp(r, vocab.OpReadProperty,
+		svc.AddGetOp(vocab.OpReadProperty,
 			"/digitwin/properties/{thingID}/{name}", svc.HandleReadProperty)
-		svc.AddPostOp(r, vocab.OpWriteProperty,
+		svc.AddPostOp(vocab.OpWriteProperty,
 			"/digitwin/properties/{thingID}/{name}", svc.HandleWriteProperty)
 
-		svc.AddGetOp(r, "readallevents",
+		svc.AddGetOp("readallevents",
 			"/digitwin/events/{thingID}", svc.HandleReadAllEvents)
-		svc.AddGetOp(r, "readevent",
+		svc.AddGetOp("readevent",
 			"/digitwin/events/{thingID}/{eventID}", svc.HandleReadEvent)
 
-		svc.AddGetOp(r, vocab.OpQueryAllActions,
+		svc.AddGetOp(vocab.OpQueryAllActions,
 			"/digitwin/actions/{thingID}", svc.HandleQueryAllActions)
-		svc.AddGetOp(r, vocab.OpQueryAction,
+		svc.AddGetOp(vocab.OpQueryAction,
 			"/digitwin/actions/{thingID}/{name}", svc.HandleQueryAction)
-		svc.AddPostOp(r, vocab.OpInvokeAction,
+		svc.AddPostOp(vocab.OpInvokeAction,
 			"/digitwin/actions/{thingID}/{name}", svc.HandleInvokeAction)
 
-		// sse-sc subprotocol routes
-		if svc.ssesc != nil {
-			svc.AddGetOp(r, "connect",
-				"/ssesc", svc.ssesc.HandleConnect)
-			svc.AddPostOp(r, vocab.OpObserveAllProperties,
-				"/ssesc/digitwin/observe/{thingID}", svc.ssesc.HandleObserveAllProperties)
-			svc.AddPostOp(r, vocab.OpSubscribeAllEvents,
-				"/ssesc/digitwin/subscribe/{thingID}", svc.ssesc.HandleSubscribeAllEvents)
-			svc.AddPostOp(r, vocab.OpSubscribeEvent,
-				"/ssesc/digitwin/subscribe/{thingID}/{name}", svc.ssesc.HandleSubscribeEvent)
-			svc.AddPostOp(r, vocab.OpObserveProperty,
-				"/ssesc/digitwin/observe/{thingID}/{name}", svc.ssesc.HandleObserveProperty)
-			svc.AddPostOp(r, vocab.OpUnobserveAllProperties,
-				"/ssesc/digitwin/unobserve/{thingID}", svc.ssesc.HandleUnobserveAllProperties)
-			svc.AddPostOp(r, vocab.OpUnobserveProperty,
-				"/ssesc/digitwin/unobserve/{thingID}/{name}", svc.ssesc.HandleUnobserveProperty)
-			svc.AddPostOp(r, vocab.OpUnsubscribeAllEvents,
-				"/ssesc/digitwin/unsubscribe/{thingID}", svc.ssesc.HandleUnsubscribeAllEvents)
-			svc.AddPostOp(r, vocab.OpUnsubscribeEvent,
-				"/ssesc/digitwin/unsubscribe/{thingID}/{name}", svc.ssesc.HandleUnsubscribeEvent)
-		}
-
-		// ws subprotocol routes
-		// note that websocket connections require a valid auth token
-		if svc.ws != nil {
-			svc.AddGetOp(r, "ws-connect",
-				"/wss", svc.ws.Serve)
-			//r.HandleFunc("/wss", svc.ws.HandleConnect)
-		}
 		//if svc.sse != nil {
 		//// sse subprotocol routes
 		//svc.AddPostOp(r, vocab.OpSubscribeAllEvents, true,
@@ -117,31 +90,31 @@ func (svc *HttpTransportServer) createRoutes(router chi.Router) http.Handler {
 		//	"/sse/digitwin/observe/{thingID}", svc.sse.HandleObserveAllProperties)
 		//}
 		// digitwin directory actions. These are just for convenience as actions are normally used
-		svc.AddGetOp(r, vocab.HTOpReadTD,
+		svc.AddGetOp(vocab.HTOpReadTD,
 			"/digitwin/directory/{thingID}", svc.HandleReadTD)
-		svc.AddGetOp(r, vocab.HTOpReadAllTDs,
+		svc.AddGetOp(vocab.HTOpReadAllTDs,
 			"/digitwin/directory", svc.HandleReadAllTDs) // query params: offset,limit
 
 		// handlers for other services. Operations to invoke actions.
 		// TODO: these probably belong with the digitwin service TD
 
 		// authn/authz service actions
-		svc.AddPostOp(r, vocab.HTOpRefresh,
+		svc.AddPostOp(vocab.HTOpRefresh,
 			"/authn/refresh", svc.HandleLoginRefresh)
-		svc.AddPostOp(r, vocab.HTOpLogout,
+		svc.AddPostOp(vocab.HTOpLogout,
 			"/authn/logout", svc.HandleLogout)
 
 		// handlers for requests by agents
 		// TODO: These should be included in the digitwin TD forms
-		svc.AddPostOp(r, vocab.HTOpUpdateTD,
+		svc.AddPostOp(vocab.HTOpUpdateTD,
 			"/agent/tdd/{thingID}", svc.HandlePublishTD)
-		svc.AddPostOp(r, vocab.HTOpPublishEvent,
+		svc.AddPostOp(vocab.HTOpPublishEvent,
 			"/agent/event/{thingID}/{name}", svc.HandlePublishEvent)
-		svc.AddPostOp(r, vocab.HTOpUpdateProperty,
+		svc.AddPostOp(vocab.HTOpUpdateProperty,
 			"/agent/property/{thingID}/{name}", svc.HandlePublishProperty)
-		svc.AddPostOp(r, vocab.HTOpUpdateMultipleProperties,
+		svc.AddPostOp(vocab.HTOpUpdateMultipleProperties,
 			"/agent/properties/{thingID}", svc.HandlePublishMultipleProperties)
-		svc.AddPostOp(r, "",
+		svc.AddPostOp("",
 			"/agent/progress", svc.HandlePublishActionStatus)
 	})
 

@@ -8,7 +8,7 @@ ActionStatusStatus:
   version: "0.1"
   link: "github.com/hiveot/hub/api/vocab/ht-constants.yaml"
   description: "Request progress status constants"
-  namespace: "ht"
+  namespace: "hiveot"
   vocab:
     # Request is pending delivery to the Thing
     RequestPending: "pending"

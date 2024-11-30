@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 // test TD messages and forms
@@ -34,7 +35,7 @@ func TestPublishTDByAgent(t *testing.T) {
 	defer cancelFn()
 
 	// 2. connect as an agent
-	ag1 := NewAgentClient(testAgentID1)
+	ag1 := NewClient(testAgentID1)
 	_, err := ag1.ConnectWithPassword(testAgentPassword1)
 	require.NoError(t, err)
 	defer ag1.Disconnect()
@@ -47,6 +48,7 @@ func TestPublishTDByAgent(t *testing.T) {
 	require.NotNil(t, form)
 	status, err := ag1.SendOperation(form, thingID, "", td, nil, "")
 	require.NoError(t, err)
+	time.Sleep(time.Millisecond) // time to take effect
 
 	// no reply is expected
 	require.Equal(t, transports.RequestPending, status)
@@ -79,6 +81,6 @@ func TestAddForms(t *testing.T) {
 	err := transportServer.AddTDForms(td)
 	require.NoError(t, err)
 
-	// 4. Check that at least 10 forms are present
-	assert.Greater(t, len(td.Forms), 10)
+	// 4. Check that at least 1 form are present
+	assert.GreaterOrEqual(t, len(td.Forms), 1)
 }

@@ -136,7 +136,7 @@ func (cl *WssTransportClient) _rpc(
 	// only after completion will there be a reply as a result
 	if err == nil && output != nil && reply != nil {
 		// no choice but to decode
-		err = utils.Decode(reply, reply)
+		err = utils.Decode(reply, output)
 	}
 	return err
 }
@@ -262,22 +262,22 @@ func (cl *WssTransportClient) Marshal(data any) []byte {
 }
 
 // RefreshToken refreshes the authentication token
-//
+// This is not supported over websocket. Using the parent http binding.
 // The resulting token can be used with 'ConnectWithToken'
-func (cl *WssTransportClient) RefreshToken(oldToken string) (newToken string, err error) {
-
-	slog.Info("RefreshToken", slog.String("clientID", cl.clientID))
-	correlationID := shortid.MustGenerate()
-	msg := ActionMessage{
-		MessageType:   MsgTypeRefresh,
-		Data:          nil,
-		MessageID:     shortid.MustGenerate(),
-		CorrelationID: correlationID,
-		SenderID:      cl.clientID,
-	}
-	err = cl._rpc(correlationID, msg, &newToken)
-	return newToken, err
-}
+//func (cl *WssTransportClient) RefreshToken(oldToken string) (newToken string, err error) {
+//
+//	slog.Info("RefreshToken", slog.String("clientID", cl.clientID))
+//	correlationID := shortid.MustGenerate()
+//	msg := ActionMessage{
+//		MessageType:   MsgTypeRefresh,
+//		Data:          oldToken,
+//		MessageID:     shortid.MustGenerate(),
+//		CorrelationID: correlationID,
+//		SenderID:      cl.clientID,
+//	}
+//	err = cl._rpc(correlationID, msg, &newToken)
+//	return newToken, err
+//}
 
 // Reconnect attempts to re-establish a dropped connection using the last token
 func (cl *WssTransportClient) Reconnect() {
@@ -310,7 +310,7 @@ func (cl *WssTransportClient) Rpc(form tdd.Form,
 	correlationID := "rpc-" + shortid.MustGenerate()
 	msg := ActionMessage{
 		ThingID:       dThingID,
-		MessageType:   form.GetOperation(),
+		MessageType:   "unknown",
 		Name:          name,
 		CorrelationID: correlationID,
 		MessageID:     correlationID,
@@ -318,6 +318,12 @@ func (cl *WssTransportClient) Rpc(form tdd.Form,
 		SenderID:      cl.clientID,
 		Timestamp:     time.Now().Format(utils.RFC3339Milli),
 	}
+	formMessageType := form["messageType"]
+	if formMessageType == nil {
+		return fmt.Errorf("RPC: Form has no messagetype")
+	}
+	msg.MessageType = formMessageType.(string)
+
 	err = cl._rpc(correlationID, msg, resp)
 	if err != nil {
 		slog.Error("RPC failed",
@@ -331,7 +337,11 @@ func (cl *WssTransportClient) SendOperation(
 	output interface{}, correlationID string) (status string, err error) {
 
 	op := form.GetOperation()
-
+	formMessageType := form["messageType"]
+	if formMessageType == nil {
+		return transports.RequestFailed, fmt.Errorf("RPC: Form has no messagetype")
+	}
+	messageType := formMessageType.(string)
 	// unpack the operation and split it into separate messages for each operation
 	// it would be nice to have a single message envelope instead...
 	msg := make(map[string]any)
@@ -339,7 +349,7 @@ func (cl *WssTransportClient) SendOperation(
 	msg["name"] = name
 	msg["data"] = input
 	msg["correlationID"] = correlationID
-	msg["messageType"] = cl.opToMessageType(op)
+	msg["messageType"] = messageType
 	msg["timestamp"] = time.Now().Format(utils.RFC3339Milli)
 	// FIXME: how to add the names for read multiple events/properties/actions?
 	switch op {

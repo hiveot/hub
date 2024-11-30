@@ -34,7 +34,6 @@ const (
 	MsgTypeReadMultipleProperties  = "readMultipleProperties"
 	MsgTypeReadProperty            = "readProperty"
 	MsgTypeReadTD                  = "readTD"
-	MsgTypeRefresh                 = "refresh"
 	MsgTypeSubscribeAllEvents      = "subscribeAllEvents"
 	MsgTypeSubscribeEvent          = "subscribeEvent"
 	MsgTypeUnobserveAllProperties  = "unobserveAllProperties"
@@ -70,7 +69,6 @@ var MsgTypeToOp = map[string]string{
 	MsgTypeReadMultipleProperties:  vocab.OpReadMultipleProperties,
 	MsgTypeReadProperty:            vocab.OpReadProperty,
 	MsgTypeReadTD:                  vocab.HTOpReadTD,
-	MsgTypeRefresh:                 vocab.HTOpRefresh,
 	MsgTypeSubscribeAllEvents:      vocab.OpSubscribeAllEvents,
 	MsgTypeSubscribeEvent:          vocab.OpSubscribeEvent,
 	MsgTypeUnobserveAllProperties:  vocab.OpUnobserveAllProperties,
@@ -144,6 +142,20 @@ type ActionStatusMessage struct {
 	//
 	Timestamp     string `json:"timestamp"` // timestamp of this update
 	MessageID     string `json:"messageId,omitempty"`
+	CorrelationID string `json:"correlationId,omitempty"`
+}
+
+// See also https://www.rfc-editor.org/rfc/rfc9457
+type ErrorMessage struct {
+	ThingID     string `json:"thingId"`
+	MessageType string `json:"messageType"`
+	// Error message short text
+	Title string `json:"title"`
+	// Detailed error description if available
+	Detail string `json:"detail"`
+	// Error code, eg 404, 405, 500, ... (yes http codes)
+	Status string `json:"status"`
+	// Link to request that is in error
 	CorrelationID string `json:"correlationId,omitempty"`
 }
 

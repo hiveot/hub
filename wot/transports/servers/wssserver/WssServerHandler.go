@@ -1,7 +1,6 @@
 package wssserver
 
 import (
-	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/wot/transports"
 	"github.com/hiveot/hub/wot/transports/clients/wssbinding"
@@ -178,10 +177,6 @@ func (c *WssServerConnection) WssServerHandleMessage(jsonMsg string) {
 		c.HandleUnsubscribeEvent(&wssMsg)
 
 	// other messages handled inside this binding
-	case wssbinding.MsgTypeRefresh:
-		wssMsg := wssbinding.ActionMessage{}
-		err = utils.DecodeAsObject(msgAsMap, &wssMsg)
-		c.HandleRefresh(&wssMsg)
 	case wssbinding.MsgTypePing:
 		wssMsg := wssbinding.BaseMessage{}
 		_ = jsoniter.UnmarshalFromString(jsonMsg, &wssMsg)
@@ -216,20 +211,9 @@ func (c *WssServerConnection) ForwardAsRequest(msg *transports.ThingMessage) {
 	if stat.Error != "" {
 		reply.Error = stat.Error
 	}
-	_, _ = c._send(reply, msg.CorrelationID)
+	_, _ = c._send(reply)
 }
 
-// func (c *WssServerConnection) HandleLogin(msg *transports.ThingMessage) {
-// }
-func (c *WssServerConnection) HandleRefresh(wssMsg *wssbinding.ActionMessage) {
-	// convert to a hub request
-	msg := transports.NewThingMessage(
-		vocab.HTOpRefresh, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, c.clientID)
-	msg.CorrelationID = wssMsg.CorrelationID
-	msg.MessageID = wssMsg.MessageID
-	msg.Timestamp = wssMsg.Timestamp
-	c.ForwardAsRequest(msg)
-}
 func (c *WssServerConnection) HandleObserveAllProperties(wssMsg *wssbinding.PropertyMessage) {
 	c.observations.SubscribeAll(wssMsg.ThingID)
 }
@@ -239,9 +223,9 @@ func (c *WssServerConnection) HandleObserveProperty(wssMsg *wssbinding.PropertyM
 }
 
 func (c *WssServerConnection) HandlePing(wssMsg *wssbinding.BaseMessage) {
-	// TODO: support pong message
-	var pongMessage interface{}
-	c._send(pongMessage, wssMsg.CorrelationID)
+	pongMessage := *wssMsg
+	pongMessage.MessageType = wssbinding.MsgTypePong
+	_, _ = c._send(pongMessage)
 }
 
 func (c *WssServerConnection) HandleSubscribeAllEvents(wssMsg *wssbinding.EventMessage) {

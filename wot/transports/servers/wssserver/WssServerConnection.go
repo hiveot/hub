@@ -10,6 +10,8 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/teris-io/shortid"
 	"log/slog"
+	"net/http"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -27,8 +29,9 @@ type WssServerConnection struct {
 	// clientID is the account ID of the agent or consumer
 	clientID string
 
-	// connection remote address
-	remoteAddr string
+	// connection request remote address
+	r *http.Request
+
 	// gorilla websocket connection
 	wssConn *websocket.Conn
 
@@ -48,14 +51,24 @@ type WssServerConnection struct {
 	subscriptions connections.Subscriptions
 }
 
+// _error sends a websocket error message to the connected client
+func (c *WssServerConnection) _error(err error, code int, correlationID string) {
+	wssMsg := wssbinding.ErrorMessage{
+		MessageType:   wssbinding.MsgTypePublishError,
+		Title:         err.Error(),
+		CorrelationID: correlationID,
+		Status:        strconv.Itoa(code),
+	}
+	c._send(wssMsg)
+}
+
 // _send sends the websocket message to the connected client
-func (c *WssServerConnection) _send(
-	wssMsg interface{}, correlationID string) (status string, err error) {
+func (c *WssServerConnection) _send(wssMsg interface{}) (
+	status string, err error) {
 
 	if !c.isClosed.Load() {
 		slog.Info("_send",
 			slog.String("to", c.clientID),
-			slog.String("correlationID", correlationID),
 		)
 
 		msgJSON, _ := jsoniter.Marshal(wssMsg)
@@ -112,13 +125,15 @@ func (c *WssServerConnection) InvokeAction(
 		SenderID:      senderID,
 		Timestamp:     time.Now().Format(utils.RFC3339Milli),
 	}
-	status, err = c._send(msg, correlationID)
+	status, err = c._send(msg)
 	return status, nil, err
 }
 
 // PublishActionStatus sends an action status update to the client.
 // If an error is provided this sends the error, otherwise the output value
-func (c *WssServerConnection) PublishActionStatus(stat transports.RequestStatus, agentID string) error {
+func (c *WssServerConnection) PublishActionStatus(
+	stat transports.RequestStatus, agentID string) error {
+
 	if stat.CorrelationID == "" {
 		err := fmt.Errorf("PublishActionStatus by '%s' without requestID", agentID)
 		return err
@@ -133,7 +148,7 @@ func (c *WssServerConnection) PublishActionStatus(stat transports.RequestStatus,
 		Output:        stat.Output,
 		Timestamp:     time.Now().Format(utils.RFC3339Milli),
 	}
-	_, err := c._send(msg, stat.CorrelationID)
+	_, err := c._send(msg)
 	return err
 }
 
@@ -150,7 +165,7 @@ func (c *WssServerConnection) PublishEvent(
 			Data:          data,
 			Timestamp:     time.Now().Format(utils.RFC3339Milli),
 		}
-		_, _ = c._send(msg, correlationID)
+		_, _ = c._send(msg)
 	}
 }
 
@@ -167,7 +182,7 @@ func (c *WssServerConnection) PublishProperty(
 			Data:          data,
 			Timestamp:     time.Now().Format(utils.RFC3339Milli),
 		}
-		_, _ = c._send(msg, correlationID)
+		_, _ = c._send(msg)
 	}
 }
 
@@ -183,7 +198,7 @@ func (c *WssServerConnection) WriteProperty(
 		Data:          value,
 		Timestamp:     time.Now().Format(utils.RFC3339Milli),
 	}
-	status, err = c._send(msg, correlationID)
+	status, err = c._send(msg)
 	return status, err
 }
 
@@ -191,7 +206,7 @@ func (c *WssServerConnection) WriteProperty(
 // agents and consumers.
 // This implements the IServerConnection interface.
 func NewWSSConnection(
-	clientID string, remoteAddr string, wssConn *websocket.Conn,
+	clientID string, r *http.Request, wssConn *websocket.Conn,
 	requestHandler transports.ServerMessageHandler,
 ) *WssServerConnection {
 
@@ -202,7 +217,7 @@ func NewWSSConnection(
 		connectionID:   clcid,
 		clientID:       clientID,
 		requestHandler: requestHandler,
-		remoteAddr:     remoteAddr,
+		r:              r,
 		lastActivity:   time.Time{},
 		mux:            sync.RWMutex{},
 		observations:   connections.Subscriptions{},

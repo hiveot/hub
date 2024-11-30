@@ -28,7 +28,7 @@ func TestSubscribeAllByConsumer(t *testing.T) {
 	defer cancelFn()
 
 	// 2. connect as a consumer
-	cl1 := NewConsumerClient(testClientID1)
+	cl1 := NewClient(testClientID1)
 	_, err := cl1.ConnectWithPassword(testClientPassword1)
 	require.NoError(t, err)
 	defer cl1.Disconnect()
@@ -50,6 +50,7 @@ func TestSubscribeAllByConsumer(t *testing.T) {
 	// No result is expected
 
 	// 3. Server sends event to consumers
+	time.Sleep(time.Millisecond)
 	cm.PublishEvent(thingID, eventKey, testMsg1, "", testAgentID1)
 
 	// 4. subscriber should have received them
@@ -59,12 +60,12 @@ func TestSubscribeAllByConsumer(t *testing.T) {
 	// Unsubscribe from events
 	form = NewForm(vocab.OpUnsubscribeAllEvents)
 	_, err = cl1.SendOperation(form, "", "", nil, nil, "")
+	time.Sleep(time.Millisecond * 1) // async take time
 
 	// 5. Server sends another event to consumers
 	cm.PublishEvent(thingID, eventKey, testMsg2, "", testAgentID1)
-	time.Sleep(time.Millisecond * 10)
 	// update not received
-	assert.Equal(t, testMsg1, rxVal.Load())
+	assert.Equal(t, testMsg1, rxVal.Load(), "Unsubscribe didnt work")
 
 	//
 }
@@ -93,7 +94,7 @@ func TestPublishEventsByAgent(t *testing.T) {
 	defer cancelFn()
 
 	// 2. connect as an agent
-	ag1 := NewAgentClient(testAgentID1)
+	ag1 := NewClient(testAgentID1)
 	_, err := ag1.ConnectWithPassword(testAgentPassword1)
 	require.NoError(t, err)
 	defer ag1.Disconnect()
@@ -102,6 +103,7 @@ func TestPublishEventsByAgent(t *testing.T) {
 	form := NewForm(vocab.HTOpPublishEvent)
 	require.NotNil(t, form)
 	status, err := ag1.SendOperation(form, thingID, eventKey, testMsg, nil, "")
+	time.Sleep(time.Millisecond) // time to take effect
 	require.NoError(t, err)
 
 	// no reply is expected

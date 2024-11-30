@@ -88,6 +88,6 @@ func (s *Subscriptions) Unsubscribe(dThingID string, name string) {
 
 // UnsubscribeAll removes an 'all' subscription for all thing events/properties
 func (s *Subscriptions) UnsubscribeAll(dThingID string) {
-	// TODO: moreve all individual subscriptions instead of just the 'all'
+	// TODO: remove all individual subscriptions instead of just the 'all'
 	s.Unsubscribe(dThingID, "")
 }

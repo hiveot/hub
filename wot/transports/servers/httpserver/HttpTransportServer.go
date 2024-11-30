@@ -8,54 +8,52 @@ import (
 	"github.com/hiveot/hub/lib/tlsserver"
 	"github.com/hiveot/hub/wot/transports"
 	"github.com/hiveot/hub/wot/transports/connections"
-	"github.com/hiveot/hub/wot/transports/servers/ssescserver"
-	"github.com/hiveot/hub/wot/transports/servers/wssserver"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"net/http"
 )
 
-type HttpOperation struct {
-	op          string
-	method      string
-	subprotocol string
-	url         string
-	handler     http.HandlerFunc
-	//isThingLevel bool
-}
+const DefaultHttpsPort = 8444
 
 // HttpTransportServer is the transport binding server for HTTPS
 // This wraps the library's https server and add routes and middleware for use in the binding
 type HttpTransportServer struct {
-	// port and path configuration
-	config *HttpTransportConfig
 
 	// registered handler of received events or requests (which return a reply)
 	messageHandler transports.ServerMessageHandler
 
 	// TLS server and router
 	httpServer *tlsserver.TLSServer
-	router     *chi.Mux
+	// host and https port the server listens on
+	hostName string
+	port     int
+
+	router *chi.Mux
+	// The routes that require authentication. These can be added to
+	// for sub-protocol bindings such as sse and wss.
+	protectedRoutes chi.Router
 
 	// subprotocol bindings
 	//sse   *sse.SseBindingServer
-	ssesc *ssescserver.SseScTransportServer
-	ws    *wssserver.WssTransportServer
+	//ssesc *ssescserver.SseScTransportServer
+	//ws    *wssserver.WssTransportServer
 
 	// authenticator for logging in and validating session tokens
 	authenticator transports.IAuthenticator
 
-	// Thing level operations
+	// Thing level operations added by the http router
 	operations []HttpOperation
 
 	// connection manager for adding/removing binding connections
 	cm *connections.ConnectionManager
 }
 
-// AddGetOp adds protocol binding operation with a URL and handler
+// AddGetOp adds a protocol binding operation with a path and handler
+// This will be added as a protected route that requires authentication.
+// Intended for adding operations for http routes and for sub-protocol bindings.
 //
 // This is used to add Forms to the digitwin TDs
-func (svc *HttpTransportServer) AddGetOp(r chi.Router,
+func (svc *HttpTransportServer) AddGetOp(
 	op string, opURL string, handler http.HandlerFunc) {
 
 	svc.operations = append(svc.operations, HttpOperation{
@@ -65,13 +63,15 @@ func (svc *HttpTransportServer) AddGetOp(r chi.Router,
 		handler: handler,
 		//isThingLevel: thingLevel,
 	})
-	r.Get(opURL, handler)
+	svc.protectedRoutes.Get(opURL, handler)
 }
 
 // AddPostOp adds protocol binding operation with a URL and handler
+// This will be added as a protected route that requires authentication.
+// Intended for adding operations for http routes and for sub-protocol bindings.
 //
 // This is used to add Forms to the digitwin TDs
-func (svc *HttpTransportServer) AddPostOp(r chi.Router,
+func (svc *HttpTransportServer) AddPostOp(
 	op string, opURL string, handler http.HandlerFunc) {
 	svc.operations = append(svc.operations, HttpOperation{
 		op:      op,
@@ -80,7 +80,7 @@ func (svc *HttpTransportServer) AddPostOp(r chi.Router,
 		handler: handler,
 		//isThingLevel: isThingLevel,
 	})
-	r.Post(opURL, handler)
+	svc.protectedRoutes.Post(opURL, handler)
 }
 
 // GetConnectionByConnectionID returns the client connection for sending messages to a client
@@ -90,11 +90,11 @@ func (svc *HttpTransportServer) GetConnectionByConnectionID(connectionID string)
 
 // GetProtocolInfo returns info on the protocol supported by this binding
 func (svc *HttpTransportServer) GetProtocolInfo() transports.ProtocolInfo {
-	hostName := svc.config.Host
-	if hostName == "" {
-		hostName = "localhost"
-	}
-	baseURL := fmt.Sprintf("https://%s:%d", hostName, svc.config.Port)
+	//hostName := svc.config.Host
+	//if hostName == "" {
+	//	hostName = "localhost"
+	//}
+	baseURL := fmt.Sprintf("https://%s:%d", svc.hostName, svc.port)
 	inf := transports.ProtocolInfo{
 		BaseURL:   baseURL,
 		Schema:    "https",
@@ -159,7 +159,7 @@ func (svc *HttpTransportServer) writeReply(w http.ResponseWriter, data any, err 
 //	caCert
 //	sessionAuth for creating and validating authentication tokens
 //	dtwService that handles digital thing requests
-func StartHttpTransportServer(config *HttpTransportConfig,
+func StartHttpTransportServer(host string, port int,
 	serverCert *tls.Certificate,
 	caCert *x509.Certificate,
 	authenticator transports.IAuthenticator,
@@ -168,17 +168,19 @@ func StartHttpTransportServer(config *HttpTransportConfig,
 ) (*HttpTransportServer, error) {
 
 	httpServer, httpRouter := tlsserver.NewTLSServer(
-		config.Host, config.Port, serverCert, caCert)
+		host, port, serverCert, caCert)
 
+	//wssURL := fmt.Sprintf("wss://%s:%d", config.Host, config.Port)
 	svc := HttpTransportServer{
 		authenticator:  authenticator,
-		config:         config,
 		messageHandler: messageHandler,
 
-		ws: wssserver.NewWssTransportServer(cm, messageHandler),
+		//ws: wssserver.NewWssTransportServer(cm, messageHandler, wssURL),
 		//sse:   ssescserver.NewSseScTransportServer(cm),
-		ssesc: ssescserver.NewSseScTransportServer(cm),
+		//ssesc: ssescserver.NewSseScTransportServer(cm),
 
+		hostName:   host,
+		port:       port,
 		httpServer: httpServer,
 		router:     httpRouter,
 		cm:         cm,
