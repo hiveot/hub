@@ -2,8 +2,8 @@ package service
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/state/stateapi"
+	"github.com/hiveot/hub/wot/transports/utils"
 )
 
 // StateAgent agent for the state storage services

@@ -7,10 +7,10 @@ import (
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/hiveot/hub/wot/transports"
+	"github.com/hiveot/hub/wot/transports/utils"
 	"log/slog"
 	"time"
 )

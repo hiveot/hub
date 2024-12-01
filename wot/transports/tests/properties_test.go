@@ -63,7 +63,7 @@ func TestObserveAllByConsumer(t *testing.T) {
 	form = NewForm(vocab.OpUnobserveAllProperties)
 	_, err = cl1.SendOperation(form, "", "", nil, nil, "")
 	require.NoError(t, err)
-	time.Sleep(time.Millisecond) // time to take effect
+	time.Sleep(time.Millisecond * 10) // time to take effect
 
 	// 6. Server sends a property update to consumers
 	cm.PublishProperty(thingID, propertyKey1, propValue2, "", testAgentID1)

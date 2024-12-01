@@ -3,7 +3,7 @@ package transports
 import (
 	"fmt"
 	"github.com/araddon/dateparse"
-	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot"
 	"time"
 )
 
@@ -102,7 +102,7 @@ func (tm *ThingMessage) GetUpdated(format ...string) (updated string) {
 //	senderID is the accountID of the creator of the value
 func NewThingMessage(operation string, thingID, name string, data any, senderID string) *ThingMessage {
 	return &ThingMessage{
-		Created:   time.Now().Format(utils.RFC3339Milli),
+		Created:   time.Now().Format(wot.RFC3339Milli),
 		Data:      data,
 		Name:      name,
 		Operation: operation,

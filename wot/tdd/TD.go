@@ -3,8 +3,8 @@ package tdd
 import (
 	"fmt"
 	"github.com/araddon/dateparse"
-	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot"
+	"github.com/hiveot/hub/wot/transports/utils"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"net/url"
@@ -145,28 +145,28 @@ func (tdoc *TD) AddAction(name string, title string, description string,
 // This includes a data schema for integers
 //
 //	name is the name of the action, unique within the Thing
-func (tdoc *TD) AddDimmerAction(name string) *ActionAffordance {
-	act := tdoc.AddAction(name, "", "",
-		&DataSchema{
-			Type: vocab.WoTDataTypeInteger,
-		})
-	act.SetAtType(vocab.ActionDimmer)
-	return act
-}
+//func (tdoc *TD) AddDimmerAction(name string) *ActionAffordance {
+//	act := tdoc.AddAction(name, "", "",
+//		&DataSchema{
+//			Type: wot.WoTDataTypeInteger,
+//		})
+//	act.SetAtType(vocab.ActionDimmer)
+//	return act
+//}
 
 // AddDimmerEvent is short for adding an event for a dimmer change event
 // This includes a data schema for integers
 //
 //	eventID is the instance ID of the event, unique within the Thing
-func (tdoc *TD) AddDimmerEvent(eventID string) *EventAffordance {
-	aff := tdoc.AddEvent(eventID, "", "",
-		&DataSchema{
-			AtType: vocab.PropSwitchDimmer,
-			Type:   vocab.WoTDataTypeInteger,
-		})
-	aff.SetAtType(vocab.PropSwitchDimmer)
-	return aff
-}
+//func (tdoc *TD) AddDimmerEvent(eventID string) *EventAffordance {
+//	aff := tdoc.AddEvent(eventID, "", "",
+//		&DataSchema{
+//			AtType: vocab.PropSwitchDimmer,
+//			Type:   wot.WoTDataTypeInteger,
+//		})
+//	aff.SetAtType(vocab.PropSwitchDimmer)
+//	return aff
+//}
 
 // AddEvent provides a simple way to add an event to the TD.
 // This returns the event affordance that can be augmented/modified directly.
@@ -231,7 +231,7 @@ func (tdoc *TD) AddProperty(propName string, title string, description string, d
 func (tdoc *TD) AddPropertyAsString(
 	propName string, title string, description string) *PropertyAffordance {
 
-	return tdoc.AddProperty(propName, title, description, vocab.WoTDataTypeString)
+	return tdoc.AddProperty(propName, title, description, wot.WoTDataTypeString)
 }
 
 // AddPropertyAsBool is short for adding a read-only boolean property
@@ -240,7 +240,7 @@ func (tdoc *TD) AddPropertyAsString(
 func (tdoc *TD) AddPropertyAsBool(
 	propName string, title string, description string) *PropertyAffordance {
 
-	return tdoc.AddProperty(propName, title, description, vocab.WoTDataTypeBool)
+	return tdoc.AddProperty(propName, title, description, wot.WoTDataTypeBool)
 }
 
 // AddPropertyAsInt is short for adding a read-only integer property
@@ -249,42 +249,42 @@ func (tdoc *TD) AddPropertyAsBool(
 func (tdoc *TD) AddPropertyAsInt(
 	propName string, title string, description string) *PropertyAffordance {
 
-	return tdoc.AddProperty(propName, title, description, vocab.WoTDataTypeInteger)
+	return tdoc.AddProperty(propName, title, description, wot.WoTDataTypeInteger)
 }
 
 // AddSwitchAction is short for adding an action to control an on/off switch
-func (tdoc *TD) AddSwitchAction(actionName string, title string, description string) *ActionAffordance {
-	act := tdoc.AddAction(actionName, title, description,
-		&DataSchema{
-			AtType: vocab.ActionSwitchOnOff,
-			Type:   vocab.WoTDataTypeBool,
-			Enum:   []interface{}{"on", "off"},
-		}).SetAtType(vocab.ActionSwitchOnOff)
-	return act
-}
+//func (tdoc *TD) AddSwitchAction(actionName string, title string, description string) *ActionAffordance {
+//	act := tdoc.AddAction(actionName, title, description,
+//		&DataSchema{
+//			AtType: vocab.ActionSwitchOnOff,
+//			Type:   wot.WoTDataTypeBool,
+//			Enum:   []interface{}{"on", "off"},
+//		}).SetAtType(vocab.ActionSwitchOnOff)
+//	return act
+//}
 
 // AddSwitchEvent is short for adding an event for a switch
-func (tdoc *TD) AddSwitchEvent(eventName string, title string, description string) *EventAffordance {
-	aff := tdoc.AddEvent(eventName, title, description,
-		&DataSchema{
-			AtType: vocab.PropSwitchOnOff,
-			Type:   vocab.WoTDataTypeBool,
-			Enum:   []interface{}{"on", "off"},
-		})
-	aff.SetAtType(vocab.PropSwitchOnOff)
-	return aff
-}
+//func (tdoc *TD) AddSwitchEvent(eventName string, title string, description string) *EventAffordance {
+//	aff := tdoc.AddEvent(eventName, title, description,
+//		&DataSchema{
+//			AtType: vocab.PropSwitchOnOff,
+//			Type:   wot.WoTDataTypeBool,
+//			Enum:   []interface{}{"on", "off"},
+//		})
+//	aff.SetAtType(vocab.PropSwitchOnOff)
+//	return aff
+//}
 
 // AddSensorEvent is short for adding an event for a generic sensor
-func (tdoc *TD) AddSensorEvent(eventName string, title string, description string) *EventAffordance {
-	aff := tdoc.AddEvent(eventName, title, description,
-		&DataSchema{
-			AtType: vocab.PropEnv,
-			Type:   vocab.WoTDataTypeNumber,
-		})
-	aff.SetAtType(vocab.PropEnv)
-	return aff
-}
+//func (tdoc *TD) AddSensorEvent(eventName string, title string, description string) *EventAffordance {
+//	aff := tdoc.AddEvent(eventName, title, description,
+//		&DataSchema{
+//			AtType: vocab.PropEnv,
+//			Type:   wot.WoTDataTypeNumber,
+//		})
+//	aff.SetAtType(vocab.PropEnv)
+//	return aff
+//}
 
 // AsMap returns the TD document as a key-value map
 func (tdoc *TD) AsMap() map[string]interface{} {
@@ -397,38 +397,38 @@ func (tdoc *TD) GetForm(operation string, name string, protocol string) Form {
 
 		switch operation {
 		case
-			vocab.OpInvokeAction,
-			vocab.OpCancelAction,
-			vocab.OpQueryAction,
-			vocab.OpQueryAllActions:
+			wot.OpInvokeAction,
+			wot.OpCancelAction,
+			wot.OpQueryAction,
+			wot.OpQueryAllActions:
 			aff, _ := tdoc.Actions[name]
 			if aff != nil {
 				f = aff.Forms
 			}
 
 		case
-			vocab.OpObserveAllProperties,
-			vocab.OpObserveProperty,
-			vocab.OpReadAllProperties,
-			vocab.OpReadMultipleProperties,
-			vocab.OpReadProperty,
-			vocab.OpUnobserveAllProperties,
-			vocab.OpUnobserveProperty,
-			vocab.OpWriteProperty,
-			vocab.OpWriteAllProperties,
-			vocab.OpWriteMultipleProperties:
+			wot.OpObserveAllProperties,
+			wot.OpObserveProperty,
+			wot.OpReadAllProperties,
+			wot.OpReadMultipleProperties,
+			wot.OpReadProperty,
+			wot.OpUnobserveAllProperties,
+			wot.OpUnobserveProperty,
+			wot.OpWriteProperty,
+			wot.OpWriteAllProperties,
+			wot.OpWriteMultipleProperties:
 			aff, _ := tdoc.Properties[name]
 			if aff != nil {
 				f = aff.Forms
 			}
 
 		case
-			vocab.OpSubscribeAllEvents,
-			vocab.OpSubscribeEvent,
-			vocab.OpUnsubscribeAllEvents,
-			vocab.OpUnsubscribeEvent,
-			vocab.HTOpReadAllEvents,
-			vocab.HTOpReadEvent:
+			wot.OpSubscribeAllEvents,
+			wot.OpSubscribeEvent,
+			wot.OpUnsubscribeAllEvents,
+			wot.OpUnsubscribeEvent,
+			wot.HTOpReadAllEvents,
+			wot.HTOpReadEvent:
 			aff, _ := tdoc.Events[name]
 			if aff != nil {
 				f = aff.Forms
@@ -644,7 +644,7 @@ func NewTD(thingID string, title string, deviceType string) *TD {
 
 		// security schemas are optional for devices themselves but will be added by the Hub services
 		// that provide the TDD.
-		Security:            vocab.WoTNoSecurityScheme,
+		Security:            wot.WoTNoSecurityScheme,
 		SecurityDefinitions: make(map[string]SecurityScheme),
 		Title:               title,
 		//updateMutex:         sync.RWMutex{},

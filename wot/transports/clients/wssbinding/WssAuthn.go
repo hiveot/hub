@@ -3,7 +3,7 @@ package wssbinding
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/hiveot/hub/lib/tlsclient"
+	"github.com/hiveot/hub/wot/transports/utils/tlsclient"
 	"log/slog"
 	"net/url"
 )

@@ -1,7 +1,6 @@
 package connections_test
 
 import (
-	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/wot/transports"
 	"github.com/hiveot/hub/wot/transports/connections"
 )
@@ -23,11 +22,13 @@ func (c *DummyConnection) Close() {}
 func (c *DummyConnection) GetConnectionID() string { return c.connectionID }
 func (c *DummyConnection) GetClientID() string     { return c.clientID }
 
+func (c *DummyConnection) GetProtocol() string { return "dummy" }
+
 //func (c *DummyConnection) GetSessionID() string    { return c.sessID }
 
 func (c *DummyConnection) InvokeAction(thingID string, name string, input any, requestID string, senderID string) (
 	status string, output any, err error) {
-	return vocab.RequestCompleted, nil, nil
+	return transports.RequestCompleted, nil, nil
 }
 
 func (c *DummyConnection) PublishActionStatus(stat transports.RequestStatus, agentID string) error {

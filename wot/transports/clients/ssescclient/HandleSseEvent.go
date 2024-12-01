@@ -2,9 +2,9 @@ package ssescclient
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/transports"
+	"github.com/hiveot/hub/wot/transports/utils"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/tmaxmax/go-sse"
 	"log/slog"
@@ -60,7 +60,7 @@ func (cl *SsescTransportClient) handleSseEvent(event sse.Event) {
 		Name:          name,
 		Operation:     operation,
 		SenderID:      senderID,
-		Created:       time.Now().Format(utils.RFC3339Milli), // TODO: get the real timestamp
+		Created:       time.Now().Format(wot.RFC3339Milli), // TODO: get the real timestamp
 		Data:          msgData,
 		CorrelationID: correlationID,
 	}
@@ -81,7 +81,7 @@ func (cl *SsescTransportClient) handleSseEvent(event sse.Event) {
 	reqHandler := cl.requestHandler
 	cl.mux.RUnlock()
 	// always handle rpc response
-	if rxMsg.Operation == vocab.HTOpUpdateActionStatus {
+	if rxMsg.Operation == wot.HTOpUpdateActionStatus {
 		// this client is receiving a status update from a previously sent action.
 		// The payload is a deliverystatus object
 		err := utils.DecodeAsObject(rxMsg.Data, &stat)
@@ -116,9 +116,9 @@ func (cl *SsescTransportClient) handleSseEvent(event sse.Event) {
 	}
 
 	// messages (no reply) and requests (with reply) are handled separately
-	if rxMsg.Operation == vocab.OpInvokeAction ||
-		rxMsg.Operation == vocab.OpWriteProperty ||
-		rxMsg.Operation == vocab.OpWriteMultipleProperties {
+	if rxMsg.Operation == wot.OpInvokeAction ||
+		rxMsg.Operation == wot.OpWriteProperty ||
+		rxMsg.Operation == wot.OpWriteMultipleProperties {
 		// agent receives action request and sends a reply
 		if reqHandler == nil {
 			slog.Warn("handleSseEvent, no request handler registered. Request ignored.",

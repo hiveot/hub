@@ -1,7 +1,7 @@
 package wssbinding
 
 import (
-	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/transports"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
@@ -114,7 +114,7 @@ func (cl *WssTransportClient) handlePropertyMessage(jsonMsg string) {
 	rxMsg.CorrelationID = wssMsg.CorrelationID
 	rxMsg.MessageID = wssMsg.MessageID
 	rxMsg.Timestamp = wssMsg.Timestamp
-	if op == vocab.OpWriteProperty || op == vocab.OpWriteMultipleProperties {
+	if op == wot.OpWriteProperty || op == wot.OpWriteMultipleProperties {
 		stat = cl.requestHandler(rxMsg)
 		stat.CorrelationID = rxMsg.CorrelationID
 		if rxMsg.CorrelationID != "" {

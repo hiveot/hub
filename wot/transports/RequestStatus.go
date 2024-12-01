@@ -1,7 +1,7 @@
 package transports
 
 import (
-	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot/transports/utils"
 )
 
 // request delivery status used in the api

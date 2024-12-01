@@ -2,8 +2,8 @@ package consumedthing
 
 import (
 	"github.com/araddon/dateparse"
-	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/wot/tdd"
+	"github.com/hiveot/hub/wot/transports"
 	"log/slog"
 	"time"
 )
@@ -12,37 +12,37 @@ type InteractionOutputMap map[string]*InteractionOutput
 
 // InteractionOutput to expose the data returned from WoT Interactions to applications.
 // Use NewInteractionOutput to initialize
+//
+// TODO: this seems like a whole lot of processing just to get a value...
+// might want to do some performance and resource benchmarking. What is the cost
+// and efficiency of using this io in an application vs getting raw data from a server?
 type InteractionOutput struct {
 	// ID of the Thing whose output is exposed
-	ThingID string `json:"thing-id,omitempty"`
-	// The property, event or action name
-	Name string `json:"name,omitempty"`
+	ThingID string
+	// The property, event or action affordance name
+	Name string
 	// Title with the human name provided by the interaction affordance
-	Title string `json:"title,omitempty"`
+	Title string
 
 	// Schema describing the data from property, event or action affordance
 	// This is an empty schema without type, if none is known
-	Schema tdd.DataSchema `json:"schema"`
+	Schema tdd.DataSchema
 
 	// decoded data in its native format as described by the schema
 	// eg string, int, array, object
-	Value DataSchemaValue `json:"value"`
+	Value DataSchemaValue
 
 	// RFC822 timestamp this was last updated.
 	// Use GetUpdated(format) to format.
-	Updated string `json:"updated,omitempty"`
+	Updated string
 
-	//--- non-WoT fields ---
-	// Type of output: WotOpPublishEvent/Action/Property/TD
-	MessageType string `json:"messageType"`
+	// Type of affordance: "property", "action", "event"
+	AffordanceType string
 
-	// ID of the interaction flow of this output
-	RequestID string `json:"message-id,omitempty"`
+	// Error value in case reading the value failed
+	Err error
 
-	// The interaction progress
-	Progress transports.RequestStatus `json:"progress"`
-
-	// senderID of last update
+	// senderID of last update (action, write property)
 	SenderID string
 }
 
@@ -73,13 +73,14 @@ func (iout *InteractionOutput) GetUpdated(format ...string) (updated string) {
 	return updated
 }
 
-// SetSchemaFromTD updates the dataschema fields in this interaction output
+// SetSchemaFromTD updates the dataschema fields in this interaction output.
 // This first looks for events, then property then action output
 func (io *InteractionOutput) SetSchemaFromTD(td *tdd.TD) (found bool) {
 	// if name is that of an event then use it
 	eventAff, found := td.Events[io.Name]
 	if found {
-		io.MessageType = vocab.HTOpPublishEvent
+		//io.Operation = wot.HTOpPublishEvent
+		io.AffordanceType = "event"
 		// an event might not have data associated with it
 		if eventAff.Data != nil {
 			io.Schema = *eventAff.Data
@@ -93,7 +94,8 @@ func (io *InteractionOutput) SetSchemaFromTD(td *tdd.TD) (found bool) {
 	// if name is that of a property then use it
 	propAff, found := td.Properties[io.Name]
 	if found {
-		io.MessageType = vocab.HTOpUpdateProperty
+		//io.Operation = wot.HTOpUpdateProperty
+		io.AffordanceType = "property"
 		io.Schema = propAff.DataSchema
 		io.Title = propAff.Title
 		if len(propAff.Forms) > 0 {
@@ -104,7 +106,8 @@ func (io *InteractionOutput) SetSchemaFromTD(td *tdd.TD) (found bool) {
 	// last, if name is that of an action then use its output schema
 	actionAff, found := td.Actions[io.Name]
 	if found {
-		io.MessageType = vocab.OpInvokeAction
+		//io.Operation = wot.OpInvokeAction
+		io.AffordanceType = "action"
 		// an action might not have any output data
 		if actionAff.Output != nil {
 			io.Schema = *actionAff.Output
@@ -133,7 +136,7 @@ func NewInteractionOutputFromValueList(values []transports.ThingMessage, td *tdd
 	for _, tv := range values {
 		io := NewInteractionOutputFromValue(&tv, td)
 		// property values only contain completed changes.
-		io.Progress.Status = vocab.RequestCompleted
+		io.Err = nil
 		io.SetSchemaFromTD(td)
 		ioMap[tv.Name] = io
 
@@ -151,12 +154,12 @@ func NewInteractionOutputFromValueList(values []transports.ThingMessage, td *tdd
 //	td is the associated thing description
 func NewInteractionOutputFromValue(tv *transports.ThingMessage, td *tdd.TD) *InteractionOutput {
 	io := &InteractionOutput{
-		//ThingID:  td.ID,
-		RequestID: tv.CorrelationID,
-		Name:      tv.Name,
-		SenderID:  tv.SenderID,
-		Updated:   tv.Created,
-		Value:     NewDataSchemaValue(tv.Data),
+		ThingID:  td.ID,
+		Name:     tv.Name,
+		SenderID: tv.SenderID,
+		Updated:  tv.Created,
+		Value:    NewDataSchemaValue(tv.Data),
+		Err:      nil,
 	}
 	if td == nil {
 		return io
@@ -172,25 +175,44 @@ func NewInteractionOutputFromValue(tv *transports.ThingMessage, td *tdd.TD) *Int
 // As events are used to update property values, this uses the message Name to
 // determine whether this is a property, event or action IO.
 //
-//	name is the interaction affordance name the output belongs to
-//	schema is the schema info for data, or nil if not known
-//	raw is the raw data
-//	created is the timestamp the data is created
-func NewInteractionOutput(thingID string, key string, schema *tdd.DataSchema, raw any, created string) *InteractionOutput {
+//	 thingID whose value is contained
+//		name is the interaction affordance name the output belongs to
+//		schema is the schema info for data, or nil if not known
+//		raw is the raw data
+//		created is the timestamp the data is created
+func NewInteractionOutput(td *tdd.TD, affType string, name string, raw any, created string) *InteractionOutput {
+	var schema *tdd.DataSchema
+	switch affType {
+	case AffordanceTypeAction:
+		aff := td.Actions[name]
+		if aff == nil {
+			break
+		}
+		schema = aff.Output
+	case AffordanceTypeEvent:
+		aff := td.Events[name]
+		if aff == nil {
+			break
+		}
+		schema = aff.Data
+	case AffordanceTypeProperty:
+		aff := td.Properties[name]
+		if aff == nil {
+			break
+		}
+		schema = &aff.DataSchema
+	}
 	if schema == nil {
 		schema = &tdd.DataSchema{
 			Title: "unknown schema",
 		}
 	}
 	io := &InteractionOutput{
-		ThingID: thingID,
-		Name:    key,
+		ThingID: td.ID,
+		Name:    name,
 		Updated: created,
-		//Schema:  schema,
-		Value: NewDataSchemaValue(raw),
-	}
-	if schema != nil {
-		io.Schema = *schema
+		Schema:  *schema,
+		Value:   NewDataSchemaValue(raw),
 	}
 	return io
 }

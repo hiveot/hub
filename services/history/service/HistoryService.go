@@ -4,7 +4,7 @@ import (
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/services/history/historyapi"
-	"github.com/hiveot/hub/wot/protocolclients"
+	"github.com/hiveot/hub/wot/transports"
 	"log/slog"
 )
 
@@ -24,7 +24,7 @@ type HistoryService struct {
 
 	agentID string
 	// the pubsub service to subscribe to event
-	hc clients.IAgent
+	hc transports.IClientConnection
 	// optional handling of pubsub events. nil if not used
 	//subEventHandler *PubSubEventHandler
 	// handler that adds history to the store
@@ -38,7 +38,7 @@ func (svc *HistoryService) GetAddHistory() *AddHistory {
 }
 
 // Start using the history service
-func (svc *HistoryService) Start(hc clients.IAgent) (err error) {
+func (svc *HistoryService) Start(hc transports.IClientConnection) (err error) {
 	slog.Info("Starting HistoryService", "clientID", hc.GetClientID())
 
 	// setup

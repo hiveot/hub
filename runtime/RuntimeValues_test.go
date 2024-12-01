@@ -6,7 +6,9 @@ import (
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/tdd"
+	"github.com/hiveot/hub/wot/transports"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -38,14 +40,19 @@ func TestQueryActions(t *testing.T) {
 		stat.Completed(msg, data, nil)
 		return stat
 	})
-	err := ag1.PubTD(td1.ID, string(td1JSON))
+	//err := ag1.PubTD(td1.ID, string(td1JSON))
+	f1 := ts.GetForm(wot.HTOpUpdateTD, ag1.GetProtocolType())
+	_, err := ag1.SendOperation(f1, td1.ID, "", td1JSON, nil, "")
 	require.NoError(t, err)
 
 	// step 2: consumer publish an action to the agent
 	cl1.SetMessageHandler(func(msg *transports.ThingMessage) {
 	})
-	stat := cl1.InvokeAction(dThing1ID, key1, data, nil, "")
-	require.Empty(t, stat.Error)
+	f2 := ts.GetForm(wot.OpInvokeAction, ag1.GetProtocolType())
+	status, err := ag1.SendOperation(f2, dThing1ID, key1, data, nil, "")
+	//stat := cl1.InvokeAction(dThing1ID, key1, data, nil, "")
+	require.NoError(t, err)
+	require.NotEqual(t, transports.RequestFailed, status)
 
 	// step 3: read the latest actions from the digital twin
 	// first gets its TD

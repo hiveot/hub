@@ -2,8 +2,8 @@ package httpcontext
 
 import (
 	"context"
-	"github.com/hiveot/hub/lib/tlsserver"
 	"github.com/hiveot/hub/wot/transports"
+	"github.com/hiveot/hub/wot/transports/utils/tlsserver"
 	"log/slog"
 	"net/http"
 )

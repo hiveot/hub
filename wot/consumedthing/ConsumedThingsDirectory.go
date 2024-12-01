@@ -2,9 +2,9 @@ package consumedthing
 
 import (
 	"github.com/hiveot/hub/api/go/digitwin"
-	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/wot/protocolclients"
+	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/tdd"
+	"github.com/hiveot/hub/wot/transports"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"sync"
@@ -18,7 +18,7 @@ const ReadDirLimit = 1000
 // This maintains a single instance of each ConsumedThing and updates it when
 // an event and action progress updates are received.
 type ConsumedThingsDirectory struct {
-	hc clients.IConsumer
+	cc transports.IClientConnection
 	// Things used by the client
 	consumedThings map[string]*ConsumedThing
 	// directory of TD documents
@@ -51,7 +51,7 @@ func (cts *ConsumedThingsDirectory) Consume(thingID string) (ct *ConsumedThing, 
 				return nil, err
 			}
 		}
-		ct = NewConsumedThing(td, cts.hc)
+		ct = NewConsumedThing(td, cts.cc)
 		ct.ReadAllEvents()
 		ct.ReadAllProperties()
 		cts.mux.Lock()
@@ -70,12 +70,12 @@ func (cts *ConsumedThingsDirectory) handleMessage(msg *transports.ThingMessage) 
 		slog.String("requestID", msg.CorrelationID),
 		slog.String("thingID", msg.ThingID),
 		slog.String("name", msg.Name),
-		slog.String("clientID (me)", cts.hc.GetClientID()),
+		slog.String("clientID (me)", cts.cc.GetClientID()),
 	)
 
 	// if an event is received from an unknown Thing then (re)load its TD
 	// progress updates don't count
-	if msg.Operation != vocab.HTOpUpdateActionStatus {
+	if msg.Operation != wot.HTOpUpdateActionStatus {
 		cts.mux.RLock()
 		_, found := cts.directory[msg.ThingID]
 		cts.mux.RUnlock()
@@ -89,9 +89,10 @@ func (cts *ConsumedThingsDirectory) handleMessage(msg *transports.ThingMessage) 
 			}
 		}
 	}
-	// update the TD of a of consumed things
+	// update the TD of consumed things
 	// the directory service publishes TD updates as events
-	if msg.Operation == vocab.HTOpPublishEvent &&
+	// FIXME: use the WoT discovery/directory definition instead of using a digitwin dependency
+	if msg.Operation == wot.HTOpPublishEvent &&
 		msg.ThingID == digitwin.DirectoryDThingID &&
 		msg.Name == digitwin.DirectoryEventThingUpdated {
 		// decode the TD
@@ -111,18 +112,15 @@ func (cts *ConsumedThingsDirectory) handleMessage(msg *transports.ThingMessage) 
 			// FIXME: consumed thing interaction output schemas also need updating
 			ct.OnTDUpdate(td)
 		}
-	} else if msg.Operation == vocab.HTOpUpdateProperty {
+	} else if msg.Operation == wot.HTOpUpdateProperty {
 		// update consumed thing, if existing
 		cts.mux.Lock()
 		defer cts.mux.Unlock()
 		ct, found := cts.consumedThings[msg.ThingID]
 		if found {
-			propValue := &digitwin.ThingValue{
-				Name: msg.Name, Data: msg.Data, CorrelationID: msg.CorrelationID,
-				SenderID: msg.SenderID, Updated: msg.Created}
-			ct.OnPropertyUpdate(propValue)
+			ct.OnPropertyUpdate(msg)
 		}
-	} else if msg.Operation == vocab.HTOpUpdateActionStatus {
+	} else if msg.Operation == wot.HTOpUpdateActionStatus {
 		// delivery status updates refer to actions
 		cts.mux.RLock()
 		ct, found := cts.consumedThings[msg.ThingID]
@@ -136,10 +134,7 @@ func (cts *ConsumedThingsDirectory) handleMessage(msg *transports.ThingMessage) 
 		ct, found := cts.consumedThings[msg.ThingID]
 		cts.mux.RUnlock()
 		if found {
-			tv := &digitwin.ThingValue{
-				Name: msg.Name, CorrelationID: msg.CorrelationID, SenderID: msg.SenderID,
-				Updated: msg.Created, Data: msg.Data}
-			ct.OnEvent(tv)
+			ct.OnEvent(msg)
 		}
 
 	}
@@ -151,7 +146,7 @@ func (cts *ConsumedThingsDirectory) handleMessage(msg *transports.ThingMessage) 
 
 // IsActive returns whether the session has a connection to the Hub or is in the process of connecting.
 //func (cs *ConsumedThingsDirectory) IsActive() bool {
-//	status := cs.hc.GetStatus()
+//	status := cs.cc.GetStatus()
 //	return status.ConnectionStatus == hubclient.Connected ||
 //		status.ConnectionStatus == hubclient.Connecting
 //}
@@ -183,7 +178,8 @@ func (cts *ConsumedThingsDirectory) ReadDirectory(force bool) (map[string]*tdd.T
 	newDir := make(map[string]*tdd.TD)
 
 	// TODO: support for reading in pages
-	thingsList, err := digitwin.DirectoryReadAllTDs(cts.hc, ReadDirLimit, 0)
+	// FIXME: use a WoT discovery/directory API instead of a digitwin api
+	thingsList, err := digitwin.DirectoryReadAllTDs(cts.cc, ReadDirLimit, 0)
 	if err != nil {
 		return newDir, err
 	}
@@ -205,7 +201,7 @@ func (cts *ConsumedThingsDirectory) ReadDirectory(force bool) (map[string]*tdd.T
 func (cts *ConsumedThingsDirectory) ReadTD(thingID string) (*tdd.TD, error) {
 	// request the TD from the Hub
 	td := &tdd.TD{}
-	tdJson, err := digitwin.DirectoryReadTD(cts.hc, thingID)
+	tdJson, err := digitwin.DirectoryReadTD(cts.cc, thingID)
 	if err == nil {
 		err = jsoniter.UnmarshalFromString(tdJson, &td)
 	}
@@ -258,12 +254,12 @@ func (cts *ConsumedThingsDirectory) UpdateTD(tdJSON string) *ConsumedThing {
 //
 // This will subscribe to events from the Hub using the provided hub client.
 // This will receive any prior event subscriber.
-func NewConsumedThingsSession(hc clients.IConsumer) *ConsumedThingsDirectory {
+func NewConsumedThingsSession(cc transports.IClientConnection) *ConsumedThingsDirectory {
 	ctm := ConsumedThingsDirectory{
-		hc:             hc,
+		cc:             cc,
 		consumedThings: make(map[string]*ConsumedThing),
 		directory:      make(map[string]*tdd.TD),
 	}
-	hc.SetMessageHandler(ctm.handleMessage)
+	cc.SetMessageHandler(ctm.handleMessage)
 	return &ctm
 }

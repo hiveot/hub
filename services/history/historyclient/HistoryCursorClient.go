@@ -1,10 +1,11 @@
 package historyclient
 
+import "C"
 import (
-	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/history/historyapi"
-	"github.com/hiveot/hub/wot/protocolclients"
+	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/tdd"
+	"github.com/hiveot/hub/wot/transports"
 	"time"
 )
 
@@ -15,7 +16,9 @@ type HistoryCursorClient struct {
 
 	// history cursor service ID
 	dThingID string
-	hc       clients.IConsumer
+	cc       transports.IClientConnection
+	// invokeAction is the form from the service TD for invoking an action on the service
+	invokeAction tdd.Form
 }
 
 // First positions the cursor at the first key in the ordered list
@@ -25,7 +28,8 @@ func (cl *HistoryCursorClient) First() (thingValue *transports.ThingMessage, val
 		CursorKey: cl.cursorKey,
 	}
 	resp := historyapi.CursorSingleResp{}
-	err = cl.hc.Rpc(cl.dThingID, historyapi.CursorFirstMethod, &req, &resp)
+	err = cl.cc.Rpc(cl.invokeAction, cl.dThingID, historyapi.CursorFirstMethod, &req, &resp)
+	//err = cl.cc.Rpc(cl.dThingID, historyapi.CursorFirstMethod, &req, &resp)
 	return resp.Value, resp.Valid, err
 }
 
@@ -36,7 +40,7 @@ func (cl *HistoryCursorClient) Last() (thingValue *transports.ThingMessage, vali
 		CursorKey: cl.cursorKey,
 	}
 	resp := historyapi.CursorSingleResp{}
-	err = cl.hc.Rpc(cl.dThingID, historyapi.CursorLastMethod, &req, &resp)
+	err = cl.cc.Rpc(cl.invokeAction, cl.dThingID, historyapi.CursorLastMethod, &req, &resp)
 	return resp.Value, resp.Valid, err
 }
 
@@ -47,7 +51,7 @@ func (cl *HistoryCursorClient) Next() (thingValue *transports.ThingMessage, vali
 		CursorKey: cl.cursorKey,
 	}
 	resp := historyapi.CursorSingleResp{}
-	err = cl.hc.Rpc(cl.dThingID, historyapi.CursorNextMethod, &req, &resp)
+	err = cl.cc.Rpc(cl.invokeAction, cl.dThingID, historyapi.CursorNextMethod, &req, &resp)
 	return resp.Value, resp.Valid, err
 }
 
@@ -60,7 +64,7 @@ func (cl *HistoryCursorClient) NextN(limit int, until string) (batch []*transpor
 		Limit:     limit,
 	}
 	resp := historyapi.CursorNResp{}
-	err = cl.hc.Rpc(cl.dThingID, historyapi.CursorNextNMethod, &req, &resp)
+	err = cl.cc.Rpc(cl.invokeAction, cl.dThingID, historyapi.CursorNextNMethod, &req, &resp)
 	return resp.Values, resp.ItemsRemaining, err
 }
 
@@ -71,7 +75,7 @@ func (cl *HistoryCursorClient) Prev() (thingValue *transports.ThingMessage, vali
 		CursorKey: cl.cursorKey,
 	}
 	resp := historyapi.CursorSingleResp{}
-	err = cl.hc.Rpc(cl.dThingID, historyapi.CursorPrevMethod, &req, &resp)
+	err = cl.cc.Rpc(cl.invokeAction, cl.dThingID, historyapi.CursorPrevMethod, &req, &resp)
 	return resp.Value, resp.Valid, err
 }
 
@@ -84,7 +88,7 @@ func (cl *HistoryCursorClient) PrevN(limit int, until string) (batch []*transpor
 		Limit:     limit,
 	}
 	resp := historyapi.CursorNResp{}
-	err = cl.hc.Rpc(cl.dThingID, historyapi.CursorPrevNMethod, &req, &resp)
+	err = cl.cc.Rpc(cl.invokeAction, cl.dThingID, historyapi.CursorPrevNMethod, &req, &resp)
 	return resp.Values, resp.ItemsRemaining, err
 }
 
@@ -93,7 +97,7 @@ func (cl *HistoryCursorClient) Release() {
 	req := historyapi.CursorReleaseArgs{
 		CursorKey: cl.cursorKey,
 	}
-	err := cl.hc.Rpc(cl.dThingID, historyapi.CursorReleaseMethod, &req, nil)
+	err := cl.cc.Rpc(cl.invokeAction, cl.dThingID, historyapi.CursorReleaseMethod, &req, nil)
 	_ = err
 	return
 }
@@ -103,30 +107,32 @@ func (cl *HistoryCursorClient) Release() {
 // This returns an error if the cursor has expired or is not found.
 func (cl *HistoryCursorClient) Seek(timeStamp time.Time) (
 	thingValue *transports.ThingMessage, valid bool, err error) {
-	timeStampStr := timeStamp.Format(utils.RFC3339Milli)
+	timeStampStr := timeStamp.Format(wot.RFC3339Milli)
 	req := historyapi.CursorSeekArgs{
 		CursorKey: cl.cursorKey,
 		TimeStamp: timeStampStr,
 	}
 	resp := historyapi.CursorSingleResp{}
-	err = cl.hc.Rpc(cl.dThingID, historyapi.CursorSeekMethod, &req, &resp)
+	err = cl.cc.Rpc(cl.invokeAction, cl.dThingID, historyapi.CursorSeekMethod, &req, &resp)
 	return resp.Value, resp.Valid, err
 }
 
 // NewHistoryCursorClient returns a read cursor client
 // Intended for internal use.
 //
-//	hc connection to the Hub
+//	invokeAction is the invokeAction from the service TD with the invoke-action operation
+//	cc client connection to the Hub
 //	serviceID of the read capability
 //	cursorKey is the iterator key obtain when requesting the cursor
-func NewHistoryCursorClient(hc clients.IConsumer, cursorKey string) *HistoryCursorClient {
+func NewHistoryCursorClient(form tdd.Form, cc transports.IClientConnection, cursorKey string) *HistoryCursorClient {
 	agentID := historyapi.AgentID
 	serviceID := historyapi.ReadHistoryServiceID
 	cl := &HistoryCursorClient{
 		cursorKey: cursorKey,
 		// history cursor serviceID
-		dThingID: tdd.MakeDigiTwinThingID(agentID, serviceID),
-		hc:       hc,
+		dThingID:     tdd.MakeDigiTwinThingID(agentID, serviceID),
+		cc:           cc,
+		invokeAction: form,
 	}
 	return cl
 }

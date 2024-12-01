@@ -6,8 +6,10 @@ import (
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/tlsclient"
+	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/tdd"
+	"github.com/hiveot/hub/wot/transports"
+	"github.com/hiveot/hub/wot/transports/utils/tlsclient"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -40,12 +42,18 @@ func TestAddRemoveTD(t *testing.T) {
 		evCount.Add(1)
 	})
 	defer cl1.Disconnect()
-	err := cl1.Subscribe("", "")
+	f1 := ts.GetForm(wot.OpSubscribeAllEvents, cl1.GetProtocolType())
+	_, err := cl1.SendOperation(f1, "", "", nil, nil, "")
+	require.NoError(t, err)
 
 	// Add the TD by sending it as an event
 	td1 := tdd.NewTD(agThing1ID, "Title", vocab.ThingSensorMulti)
 	td1JSON, _ := json.Marshal(td1)
-	err = ag1.PubTD(agThing1ID, string(td1JSON))
+	//err = ag1.PubTD(agThing1ID, string(td1JSON))
+	f2 := ts.GetForm(wot.HTOpUpdateTD, cl1.GetProtocolType())
+	// the hub will intercept this operation and update the digitwin directory
+	// todo: changes this to follow the directory specification once it is available (assuming it fits)
+	_, err = ag1.SendOperation(f2, "", "", td1JSON, nil, "")
 	assert.NoError(t, err)
 
 	// Get returns a serialized TD object
@@ -59,13 +67,16 @@ func TestAddRemoveTD(t *testing.T) {
 
 	//stat = cl1.Rpc(nil, directory.ThingID, directory.RemoveTDMethod, &args, nil)
 	args4JSON, _ := jsoniter.Marshal(dtThing1ID)
-	stat := cl1.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryRemoveTDMethod, string(args4JSON), nil, "")
-	require.Empty(t, stat.Error)
+	// RemoveTD from the directory
+	f3 := ts.GetForm(wot.OpInvokeAction, cl1.GetProtocolType())
+	status, err := cl1.SendOperation(f3, digitwin.DirectoryDThingID, digitwin.DirectoryRemoveTDMethod, string(args4JSON), nil, "")
+	require.NoError(t, err)
+	require.Equal(t, transports.RequestCompleted, status)
 
 	// after removal of the TD, getTD should return an error but delivery is successful
-	stat = cl1.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, string(args4JSON), nil, "")
-	require.NotEmpty(t, stat.Error)
-	require.Equal(t, vocab.RequestFailed, stat.Status)
+	status, err = cl1.SendOperation(f3, digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, string(args4JSON), nil, "")
+	require.Error(t, err)
+	require.Equal(t, vocab.RequestFailed, status)
 
 	// expect 2 events to be received
 	require.Equal(t, int32(2), evCount.Load())
@@ -81,10 +92,10 @@ func TestReadTDs(t *testing.T) {
 
 	r := startRuntime()
 	defer r.Stop()
-	ag, _ := ts.AddConnectAgent(agentID)
-	defer ag.Disconnect()
-	cl, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
-	defer cl.Disconnect()
+	ag1, _ := ts.AddConnectAgent(agentID)
+	defer ag1.Disconnect()
+	cl1, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
+	defer cl1.Disconnect()
 
 	// add a whole bunch of things
 	ts.AddTDs(agentID, 1200)
@@ -96,17 +107,15 @@ func TestReadTDs(t *testing.T) {
 	// GetThings returns a serialized TD object
 	// 1. Use actions
 	args := digitwin.DirectoryReadAllTDsArgs{Limit: 10}
-	stat := cl.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadAllTDsMethod, args, nil, "")
-	require.Empty(t, stat.Error)
-	assert.NotNil(t, stat.Output)
+	f1 := ts.GetForm(wot.OpInvokeAction, cl1.GetProtocolType())
 	tdList1 := []string{}
-	err, hasData := stat.Decode(&tdList1)
+	status, err := cl1.SendOperation(f1, digitwin.DirectoryDThingID, digitwin.DirectoryReadAllTDsMethod, args, &tdList1, "")
 	require.NoError(t, err)
-	require.True(t, hasData)
+	assert.Equal(t, transports.RequestCompleted, status)
 	require.True(t, len(tdList1) > 0)
 
-	// 2. Try it the easy way
-	tdList2, err := digitwin.DirectoryReadAllTDs(cl, 333, 02)
+	// 2. Try it the easy way using the generated client code
+	tdList2, err := digitwin.DirectoryReadAllTDs(cl1, 333, 02)
 	require.NoError(t, err)
 	require.True(t, len(tdList2) > 0)
 }
@@ -174,7 +183,11 @@ func TestTDEvent(t *testing.T) {
 			tdCount.Add(1)
 		}
 	})
-	err := cl1.Subscribe("", "")
+	//err := cl1.Subscribe("", "")
+	f1 := ts.GetForm(wot.OpSubscribeAllEvents, cl1.GetProtocolType())
+	_, err := cl1.SendOperation(f1, "", "", nil, nil, "")
+	require.NoError(t, err)
+
 	time.Sleep(time.Millisecond * 100)
 	require.NoError(t, err)
 

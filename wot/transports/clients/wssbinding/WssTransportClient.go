@@ -7,10 +7,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gorilla/websocket"
-	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/hiveot/hub/wot/transports"
+	"github.com/hiveot/hub/wot/transports/utils"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/teris-io/shortid"
 	"log/slog"
@@ -86,7 +86,7 @@ func (cl *WssTransportClient) _rpc(
 	}
 	// wait for reply
 	waitCount := 0
-	status := vocab.RequestPending // (yeah any rpc)
+	status := transports.RequestPending // (yeah any rpc)
 	var reply any
 
 	// Intermediate status update such as 'applied' are not errors. Wait longer.
@@ -102,7 +102,7 @@ func (cl *WssTransportClient) _rpc(
 		if time.Duration(waitCount)*time.Second > cl.timeout {
 			break
 		}
-		if status == vocab.RequestCompleted || status == vocab.RequestFailed {
+		if status == transports.RequestCompleted || status == transports.RequestFailed {
 			break
 		}
 		if waitCount > 0 {
@@ -127,7 +127,7 @@ func (cl *WssTransportClient) _rpc(
 	)
 
 	// check for errors
-	if err == nil && status != vocab.RequestCompleted {
+	if err == nil && status != transports.RequestCompleted {
 		err = errors.New("Delivery not complete. Status: " + status)
 	}
 	if err != nil {
@@ -316,7 +316,7 @@ func (cl *WssTransportClient) Rpc(form tdd.Form,
 		MessageID:     correlationID,
 		Data:          input,
 		SenderID:      cl.clientID,
-		Timestamp:     time.Now().Format(utils.RFC3339Milli),
+		Timestamp:     time.Now().Format(wot.RFC3339Milli),
 	}
 	formMessageType := form["messageType"]
 	if formMessageType == nil {
@@ -350,15 +350,15 @@ func (cl *WssTransportClient) SendOperation(
 	msg["data"] = input
 	msg["correlationID"] = correlationID
 	msg["messageType"] = messageType
-	msg["timestamp"] = time.Now().Format(utils.RFC3339Milli)
+	msg["timestamp"] = time.Now().Format(wot.RFC3339Milli)
 	// FIXME: how to add the names for read multiple events/properties/actions?
 	switch op {
-	case vocab.HTOpReadEvent:
+	case wot.HTOpReadEvent:
 		msg["event"] = name
-	case vocab.OpQueryAction, vocab.OpInvokeAction:
+	case wot.OpQueryAction, wot.OpInvokeAction:
 		msg["action"] = name
 		msg["input"] = input // invoke only
-	case vocab.OpObserveProperty, vocab.OpReadProperty:
+	case wot.OpObserveProperty, wot.OpReadProperty:
 		msg["property"] = name
 	}
 	err = cl._send(msg)
@@ -385,7 +385,7 @@ func (cl *WssTransportClient) SendOperationStatus(stat transports.RequestStatus)
 		Status:        stat.Status,
 		Error:         stat.Error,
 		Output:        stat.Output,
-		Timestamp:     time.Now().Format(utils.RFC3339Milli),
+		Timestamp:     time.Now().Format(wot.RFC3339Milli),
 	}
 	_ = cl._send(msg)
 

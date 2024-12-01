@@ -3,9 +3,8 @@ package tlsserver_test
 import (
 	"fmt"
 	"github.com/hiveot/hub/lib/certs"
-	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/lib/tlsclient"
-	tlsserver2 "github.com/hiveot/hub/lib/tlsserver"
+	"github.com/hiveot/hub/wot/transports/utils/tlsclient"
+	"github.com/hiveot/hub/wot/transports/utils/tlsserver"
 	"log/slog"
 	"net/http"
 	"os"
@@ -24,7 +23,7 @@ var testCerts certs.TestCertBundle
 // TestMain runs a http server
 // Used for all test cases in this package
 func TestMain(m *testing.M) {
-	logging.SetLogging("info", "")
+	//logging.SetLogging("info", "")
 	slog.Info("------ TestMain of TLSServer_test.go ------")
 	// serverAddress = hubnet.GetOutboundIP("").String()
 	// use the localhost interface for testing
@@ -41,7 +40,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestStartStop(t *testing.T) {
-	srv, router := tlsserver2.NewTLSServer(serverAddress, serverPort,
+	srv, router := tlsserver.NewTLSServer(serverAddress, serverPort,
 		testCerts.ServerCert, testCerts.CaCert)
 	_ = router
 	err := srv.Start()
@@ -50,7 +49,7 @@ func TestStartStop(t *testing.T) {
 }
 
 func TestNoServerCert(t *testing.T) {
-	srv, router := tlsserver2.NewTLSServer(serverAddress, serverPort,
+	srv, router := tlsserver.NewTLSServer(serverAddress, serverPort,
 		nil, testCerts.CaCert)
 	_ = router
 	err := srv.Start()
@@ -62,11 +61,11 @@ func TestNoServerCert(t *testing.T) {
 func TestNoAuth(t *testing.T) {
 	path1 := "/hello"
 	path1Hit := 0
-	srv, router := tlsserver2.NewTLSServer(serverAddress, serverPort,
+	srv, router := tlsserver.NewTLSServer(serverAddress, serverPort,
 		testCerts.ServerCert, testCerts.CaCert)
 	router.Get(path1, func(w http.ResponseWriter, req *http.Request) {
 		// expect no bearer token
-		bearerToken, err := tlsserver2.GetBearerToken(req)
+		bearerToken, err := tlsserver.GetBearerToken(req)
 		assert.Error(t, err)
 		assert.Empty(t, bearerToken)
 		slog.Info("TestNoAuth: path1 hit")
@@ -95,7 +94,7 @@ func TestTokenAuth(t *testing.T) {
 	badToken := "badtoken"
 
 	// setup server and client environment
-	srv, router := tlsserver2.NewTLSServer(serverAddress, serverPort,
+	srv, router := tlsserver.NewTLSServer(serverAddress, serverPort,
 		testCerts.ServerCert, testCerts.CaCert)
 	//srv.EnableBasicAuth(func(userID, password string) bool {
 	//	path1Hit++
@@ -103,7 +102,7 @@ func TestTokenAuth(t *testing.T) {
 	//})
 	router.Get(path1, func(w http.ResponseWriter, req *http.Request) {
 		// expect a bearer token
-		bearerToken, err := tlsserver2.GetBearerToken(req)
+		bearerToken, err := tlsserver.GetBearerToken(req)
 		assert.NoError(t, err)
 		if bearerToken == token1 {
 			w.WriteHeader(http.StatusOK)
@@ -206,7 +205,7 @@ func TestWriteResponse(t *testing.T) {
 	path2 := "/hello"
 	message := "hello world"
 	path2Hit := 0
-	srv, router := tlsserver2.NewTLSServer(serverAddress, serverPort,
+	srv, router := tlsserver.NewTLSServer(serverAddress, serverPort,
 		testCerts.ServerCert, testCerts.CaCert)
 	err := srv.Start()
 	assert.NoError(t, err)
@@ -234,7 +233,7 @@ func TestWriteResponse(t *testing.T) {
 }
 
 func TestBadPort(t *testing.T) {
-	srv, router := tlsserver2.NewTLSServer(serverAddress, 1, // bad port
+	srv, router := tlsserver.NewTLSServer(serverAddress, 1, // bad port
 		testCerts.ServerCert, testCerts.CaCert)
 	_ = router
 	err := srv.Start()

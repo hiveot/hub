@@ -10,8 +10,8 @@ import (
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"github.com/hiveot/hub/wot/consumedthing"
-	"github.com/hiveot/hub/wot/protocolclients"
 	"github.com/hiveot/hub/wot/tdd"
+	utils2 "github.com/hiveot/hub/wot/transports/utils"
 	jsoniter "github.com/json-iterator/go"
 	"net/http"
 	"time"
@@ -116,7 +116,7 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 		//data.PrevValue = &lastActionRecord
 		updatedTime, _ := dateparse.ParseAny(data.LastActionRecord.Updated)
 		data.LastActionTime = updatedTime.Format(time.RFC1123)
-		data.LastActionAge = utils.Age(updatedTime)
+		data.LastActionAge = utils2.Age(updatedTime)
 		data.LastActionInput = consumedthing.NewDataSchemaValue(data.LastActionRecord.Input)
 	}
 

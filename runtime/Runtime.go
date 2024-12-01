@@ -12,6 +12,7 @@ import (
 	"github.com/hiveot/hub/runtime/digitwin/router"
 	service4 "github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/runtime/transports"
+	"github.com/hiveot/hub/wot/tdd"
 	"github.com/hiveot/hub/wot/transports/connections"
 	"log/slog"
 )
@@ -21,7 +22,6 @@ import (
 type Runtime struct {
 	cfg *RuntimeConfig
 
-	//AuthnStore api.IAuthnStore
 	AuthnSvc       *service.AuthnService
 	AuthzSvc       *service2.AuthzService
 	AuthnAgent     *service.AuthnAgent
@@ -29,8 +29,14 @@ type Runtime struct {
 	DigitwinSvc    *service4.DigitwinService
 	DigitwinRouter api.IDigitwinRouter
 	CM             *connections.ConnectionManager
-	//sm            *sessions.SessionManager
-	TransportsMgr *transports.ProtocolManager
+	TransportsMgr  *transports.ProtocolManager
+}
+
+// GetForm returns the form for an operation using a transport protocol binding
+// These forms point to the use of a digital twin via the hub runtime.
+// If the protocol is not found this returns a nil and might cause a panic
+func (r *Runtime) GetForm(op string, protocol string) (f tdd.Form) {
+	return r.TransportsMgr.GetForm(op, protocol)
 }
 
 // Start the Hub runtime

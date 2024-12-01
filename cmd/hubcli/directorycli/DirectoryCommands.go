@@ -8,8 +8,8 @@ import (
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/runtime/api"
-	"github.com/hiveot/hub/wot/protocolclients"
 	"github.com/hiveot/hub/wot/tdd"
+	utils2 "github.com/hiveot/hub/wot/transports/utils"
 	"github.com/urfave/cli/v2"
 	"log/slog"
 	"time"
@@ -109,7 +109,7 @@ func HandleListThing(hc clients.IConsumer, thingID string) error {
 		prop, found := tdDoc.Properties[key]
 		if found && prop.ReadOnly {
 			value := propValueMap[key]
-			valueStr := utils.DecodeAsString(value.Data)
+			valueStr := utils2.DecodeAsString(value.Data)
 			fmt.Printf(" %-30s %-40.40s %s%-15.15s%s %-.80s\n",
 				key, prop.Title, utils.COGreen, valueStr, utils.COReset, prop.Description)
 		}
@@ -122,7 +122,7 @@ func HandleListThing(hc clients.IConsumer, thingID string) error {
 		prop, found := tdDoc.Properties[key]
 		if found && !prop.ReadOnly {
 			value := propValueMap[key]
-			valueStr := utils.DecodeAsString(value.Data)
+			valueStr := utils2.DecodeAsString(value.Data)
 			fmt.Printf(" %-30s %-40.40s %-10.10s %s%-15.15s%s %-.80s\n",
 				key, prop.Title, prop.Type, utils.COBlue, valueStr, utils.COReset, prop.Description)
 		}
@@ -141,7 +141,7 @@ func HandleListThing(hc clients.IConsumer, thingID string) error {
 			dataType = ev.Data.Type
 		}
 		value := eventValueMap[key]
-		valueStr := utils.DecodeAsString(value.Data)
+		valueStr := utils2.DecodeAsString(value.Data)
 		if ev.Data.Type != "" {
 			//initialValue = ev.Data.InitialValue
 		}
@@ -159,7 +159,7 @@ func HandleListThing(hc clients.IConsumer, thingID string) error {
 		action := tdDoc.Actions[key]
 		dataType := "(n/a)"
 		value := actionValueMap[key]
-		valueStr := utils.DecodeAsString(value.Data)
+		valueStr := utils2.DecodeAsString(value.Data)
 		if action.Input != nil {
 			dataType = action.Input.Type
 			//initialValue = action.Input.InitialValue

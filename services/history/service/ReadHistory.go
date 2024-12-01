@@ -5,7 +5,7 @@ import (
 	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/services/history/historyapi"
-	"github.com/hiveot/hub/wot/protocolclients"
+	"github.com/hiveot/hub/wot/transports"
 	"log/slog"
 	"time"
 )

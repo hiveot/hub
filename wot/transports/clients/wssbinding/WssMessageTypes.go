@@ -1,6 +1,8 @@
 package wssbinding
 
-import "github.com/hiveot/hub/api/go/vocab"
+import (
+	"github.com/hiveot/hub/wot"
+)
 
 // Action status message values
 const (
@@ -50,37 +52,37 @@ const (
 
 // MsgTypeToOp converts websocket message types to a WoT operation
 var MsgTypeToOp = map[string]string{
-	MsgTypeActionStatus:            vocab.HTOpUpdateActionStatus,
-	MsgTypeActionStatuses:          vocab.HTOpUpdateActionStatuses,
-	MsgTypeCancelAction:            vocab.OpCancelAction,
-	MsgTypeInvokeAction:            vocab.OpInvokeAction,
-	MsgTypeLogin:                   vocab.HTOpLogin,
-	MsgTypeLogout:                  vocab.HTOpLogout,
-	MsgTypeObserveAllProperties:    vocab.OpObserveAllProperties,
-	MsgTypeObserveProperty:         vocab.OpObserveProperty,
-	MsgTypePublishError:            vocab.HTOpPublishError,
-	MsgTypePublishEvent:            vocab.HTOpPublishEvent,
-	MsgTypeQueryAction:             vocab.OpQueryAction,
-	MsgTypeQueryAllActions:         vocab.OpQueryAllActions,
-	MsgTypeReadAllEvents:           vocab.HTOpReadAllEvents,
-	MsgTypeReadAllProperties:       vocab.OpReadAllProperties,
-	MsgTypeReadAllTDs:              vocab.HTOpReadAllTDs,
-	MsgTypeReadEvent:               vocab.HTOpReadEvent,
-	MsgTypeReadMultipleProperties:  vocab.OpReadMultipleProperties,
-	MsgTypeReadProperty:            vocab.OpReadProperty,
-	MsgTypeReadTD:                  vocab.HTOpReadTD,
-	MsgTypeSubscribeAllEvents:      vocab.OpSubscribeAllEvents,
-	MsgTypeSubscribeEvent:          vocab.OpSubscribeEvent,
-	MsgTypeUnobserveAllProperties:  vocab.OpUnobserveAllProperties,
-	MsgTypeUnobserveProperty:       vocab.OpUnobserveProperty,
-	MsgTypeUnsubscribeAllEvents:    vocab.OpUnsubscribeAllEvents,
-	MsgTypeUnsubscribeEvent:        vocab.OpUnsubscribeEvent,
-	MsgTypePropertyReadings:        vocab.HTOpUpdateMultipleProperties,
-	MsgTypePropertyReading:         vocab.HTOpUpdateProperty,
-	MsgTypeUpdateTD:                vocab.HTOpUpdateTD,
-	MsgTypeWriteAllProperties:      vocab.OpWriteAllProperties,
-	MsgTypeWriteMultipleProperties: vocab.OpWriteMultipleProperties,
-	MsgTypeWriteProperty:           vocab.OpWriteProperty,
+	MsgTypeActionStatus:            wot.HTOpUpdateActionStatus,
+	MsgTypeActionStatuses:          wot.HTOpUpdateActionStatuses,
+	MsgTypeCancelAction:            wot.OpCancelAction,
+	MsgTypeInvokeAction:            wot.OpInvokeAction,
+	MsgTypeLogin:                   wot.HTOpLogin,
+	MsgTypeLogout:                  wot.HTOpLogout,
+	MsgTypeObserveAllProperties:    wot.OpObserveAllProperties,
+	MsgTypeObserveProperty:         wot.OpObserveProperty,
+	MsgTypePublishError:            wot.HTOpPublishError,
+	MsgTypePublishEvent:            wot.HTOpPublishEvent,
+	MsgTypeQueryAction:             wot.OpQueryAction,
+	MsgTypeQueryAllActions:         wot.OpQueryAllActions,
+	MsgTypeReadAllEvents:           wot.HTOpReadAllEvents,
+	MsgTypeReadAllProperties:       wot.OpReadAllProperties,
+	MsgTypeReadAllTDs:              wot.HTOpReadAllTDs,
+	MsgTypeReadEvent:               wot.HTOpReadEvent,
+	MsgTypeReadMultipleProperties:  wot.OpReadMultipleProperties,
+	MsgTypeReadProperty:            wot.OpReadProperty,
+	MsgTypeReadTD:                  wot.HTOpReadTD,
+	MsgTypeSubscribeAllEvents:      wot.OpSubscribeAllEvents,
+	MsgTypeSubscribeEvent:          wot.OpSubscribeEvent,
+	MsgTypeUnobserveAllProperties:  wot.OpUnobserveAllProperties,
+	MsgTypeUnobserveProperty:       wot.OpUnobserveProperty,
+	MsgTypeUnsubscribeAllEvents:    wot.OpUnsubscribeAllEvents,
+	MsgTypeUnsubscribeEvent:        wot.OpUnsubscribeEvent,
+	MsgTypePropertyReadings:        wot.HTOpUpdateMultipleProperties,
+	MsgTypePropertyReading:         wot.HTOpUpdateProperty,
+	MsgTypeUpdateTD:                wot.HTOpUpdateTD,
+	MsgTypeWriteAllProperties:      wot.OpWriteAllProperties,
+	MsgTypeWriteMultipleProperties: wot.OpWriteMultipleProperties,
+	MsgTypeWriteProperty:           wot.OpWriteProperty,
 }
 
 // Base message struct for common field. Used to partially parse the message

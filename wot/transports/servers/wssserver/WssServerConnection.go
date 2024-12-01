@@ -3,7 +3,7 @@ package wssserver
 import (
 	"fmt"
 	"github.com/gorilla/websocket"
-	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/transports"
 	"github.com/hiveot/hub/wot/transports/clients/wssbinding"
 	"github.com/hiveot/hub/wot/transports/connections"
@@ -123,7 +123,7 @@ func (c *WssServerConnection) InvokeAction(
 		CorrelationID: correlationID,
 		Data:          input,
 		SenderID:      senderID,
-		Timestamp:     time.Now().Format(utils.RFC3339Milli),
+		Timestamp:     time.Now().Format(wot.RFC3339Milli),
 	}
 	status, err = c._send(msg)
 	return status, nil, err
@@ -146,7 +146,7 @@ func (c *WssServerConnection) PublishActionStatus(
 		Status:        stat.Status,
 		CorrelationID: stat.CorrelationID,
 		Output:        stat.Output,
-		Timestamp:     time.Now().Format(utils.RFC3339Milli),
+		Timestamp:     time.Now().Format(wot.RFC3339Milli),
 	}
 	_, err := c._send(msg)
 	return err
@@ -163,7 +163,7 @@ func (c *WssServerConnection) PublishEvent(
 			Name:          name,
 			CorrelationID: correlationID,
 			Data:          data,
-			Timestamp:     time.Now().Format(utils.RFC3339Milli),
+			Timestamp:     time.Now().Format(wot.RFC3339Milli),
 		}
 		_, _ = c._send(msg)
 	}
@@ -180,7 +180,7 @@ func (c *WssServerConnection) PublishProperty(
 			Name:          name,
 			CorrelationID: correlationID,
 			Data:          data,
-			Timestamp:     time.Now().Format(utils.RFC3339Milli),
+			Timestamp:     time.Now().Format(wot.RFC3339Milli),
 		}
 		_, _ = c._send(msg)
 	}
@@ -196,7 +196,7 @@ func (c *WssServerConnection) WriteProperty(
 		Name:          name,
 		CorrelationID: correlationID,
 		Data:          value,
-		Timestamp:     time.Now().Format(utils.RFC3339Milli),
+		Timestamp:     time.Now().Format(wot.RFC3339Milli),
 	}
 	status, err = c._send(msg)
 	return status, err

@@ -4,8 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/wot/protocolclients"
+	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/tdd"
+	"github.com/hiveot/hub/wot/transports"
 )
 
 // IsyDimmerThing is a general-purpose dimmer switch
@@ -26,7 +27,11 @@ func (it *IsyDimmerThing) MakeTD() *tdd.TD {
 	// TODO: add dimmer change events
 	//td.AddDimmerEvent(vocab.PropSwitchDimmer)
 
-	a := td.AddDimmerAction(vocab.ActionDimmerSet)
+	a := td.AddAction(vocab.ActionDimmerSet, "Set Dimmer", "",
+		&tdd.DataSchema{Type: wot.WoTDataTypeInteger},
+	)
+	a.SetAtType(vocab.ActionDimmer)
+
 	a.Input.Unit = vocab.UnitPercent
 	a.Input.Minimum = 0
 	a.Input.Maximum = 100

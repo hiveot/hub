@@ -3,8 +3,8 @@ package tests
 import (
 	"context"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/wot/transports"
+	"github.com/hiveot/hub/wot/transports/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"log/slog"

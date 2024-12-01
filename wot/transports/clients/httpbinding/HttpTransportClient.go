@@ -6,9 +6,10 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/hiveot/hub/wot/transports"
+	"github.com/hiveot/hub/wot/transports/utils"
+	"github.com/hiveot/hub/wot/transports/utils/tlsclient"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/teris-io/shortid"
 	"io"
@@ -427,7 +428,7 @@ func NewHttpTransportClient(
 		//
 		headers: make(map[string]string),
 	}
-	cl.httpClient = NewHttp2TLSClient(caCert, clientCert, timeout)
+	cl.httpClient = tlsclient.NewHttp2TLSClient(caCert, clientCert, timeout)
 
 	return &cl
 }

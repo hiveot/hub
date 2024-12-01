@@ -1,8 +1,8 @@
 package httpserver
 
 import (
-	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/wot/tdd"
+	"github.com/hiveot/hub/wot/transports/utils"
 	"log/slog"
 	"net/http"
 )

@@ -32,7 +32,7 @@ func CreateTransportClient(
 	//	bc, err = sse.NewSseBindingClient(fullURL, clientID, nil, caCert, DefaultTimeout)
 
 	case transports.ProtocolTypeSSESC:
-		bc = ssescclient.NewSsescBindingClient(fullURL, clientID, nil, caCert, DefaultTimeout)
+		bc = ssescclient.NewSsescTransportClient(fullURL, clientID, nil, caCert, DefaultTimeout)
 
 	case transports.ProtocolTypeWSS:
 		bc = wssbinding.NewWssTransportClient(fullURL, clientID, nil, caCert, DefaultTimeout)

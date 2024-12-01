@@ -7,11 +7,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/hiveot/hub/wot/transports"
 	"github.com/hiveot/hub/wot/transports/clients/httpbinding"
+	"github.com/hiveot/hub/wot/transports/utils"
 	"github.com/teris-io/shortid"
 	"log/slog"
 	"net/url"
@@ -291,7 +290,7 @@ func (cl *SsescTransportClient) Rpc(
 		if time.Duration(waitCount)*time.Second > cl.timeout {
 			break
 		}
-		if status == vocab.RequestCompleted || status == vocab.RequestFailed {
+		if status == transports.RequestCompleted || status == transports.RequestFailed {
 			break
 		}
 		if waitCount > 0 {
@@ -328,7 +327,7 @@ func (cl *SsescTransportClient) Rpc(
 	)
 
 	// check for errors
-	if err == nil && status != vocab.RequestCompleted {
+	if err == nil && status != transports.RequestCompleted {
 		err = errors.New("Delivery not complete. Status: " + status)
 	}
 	if err != nil {
@@ -407,14 +406,14 @@ func (cl *SsescTransportClient) WaitForProgressUpdate(
 	return stat, err
 }
 
-// NewSsescBindingClient creates a new instance of the http client with SSE-SC return-channel.
+// NewSsescTransportClient creates a new instance of the http client with SSE-SC return-channel.
 //
 //	hostPort of broker to connect to, without the scheme
 //	clientID to connect as
 //	clientCert optional client certificate to connect with
 //	caCert of the server to validate the server or nil to not check the server cert
 //	timeout for waiting for response. 0 to use the default.
-func NewSsescBindingClient(fullURL string, clientID string,
+func NewSsescTransportClient(fullURL string, clientID string,
 	clientCert *tls.Certificate, caCert *x509.Certificate,
 	timeout time.Duration) *SsescTransportClient {
 

@@ -5,7 +5,9 @@ import (
 	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
-	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot"
+	"github.com/hiveot/hub/wot/transports"
+	utils2 "github.com/hiveot/hub/wot/transports/utils"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"strconv"
@@ -194,7 +196,7 @@ func (svc *AddHistory) AddProperty(msg *transports.ThingMessage) (err error) {
 
 	propMap := make(map[string]any)
 	if msg.Name == "" {
-		err = utils.DecodeAsObject(msg.Data, &propMap)
+		err = utils2.DecodeAsObject(msg.Data, &propMap)
 		if err != nil {
 			return err
 		}
@@ -202,14 +204,14 @@ func (svc *AddHistory) AddProperty(msg *transports.ThingMessage) (err error) {
 		propMap[msg.Name] = msg.Data
 	}
 	if msg.Created == "" {
-		msg.Created = time.Now().Format(utils.RFC3339Milli)
+		msg.Created = time.Now().Format(wot.RFC3339Milli)
 	}
 	thingAddr := msg.ThingID // the digitwin ID with the agent prefix
 	bucket := svc.store.GetBucket(thingAddr)
 
 	// turn each property into a ThingMessage object so they can be queried separately
 	for propName, propValue := range propMap {
-		tv := clients.NewThingMessage(vocab.HTOpUpdateProperty,
+		tv := transports.NewThingMessage(vocab.HTOpUpdateProperty,
 			msg.ThingID, propName, propValue, msg.SenderID)
 		tv.Created = msg.Created
 
@@ -243,7 +245,7 @@ func (svc *AddHistory) validateValue(tv *transports.ThingMessage) (retained bool
 		return false, fmt.Errorf("missing sender for action on thing '%s'", tv.ThingID)
 	}
 	if tv.Created == "" {
-		tv.Created = time.Now().Format(utils.RFC3339Milli)
+		tv.Created = time.Now().Format(wot.RFC3339Milli)
 	}
 	if svc.retentionMgr != nil {
 		retain, rule := svc.retentionMgr._IsRetained(tv)

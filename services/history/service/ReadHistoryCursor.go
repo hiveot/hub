@@ -2,11 +2,10 @@ package service
 
 import (
 	"github.com/araddon/dateparse"
-	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
-	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/history/historyapi"
-	"github.com/hiveot/hub/wot/protocolclients"
+	"github.com/hiveot/hub/wot"
+	"github.com/hiveot/hub/wot/transports"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"strconv"
@@ -54,12 +53,12 @@ func decodeValue(bucketID string, storageKey string, raw []byte) (
 	createdTime := time.UnixMilli(createdMsec)
 	name := parts[1]
 	senderID := ""
-	operation := vocab.HTOpPublishEvent
+	operation := wot.HTOpPublishEvent
 	if len(parts) >= 2 {
 		if parts[2] == "a" {
-			operation = vocab.OpInvokeAction
+			operation = wot.OpInvokeAction
 		} else if parts[2] == "p" {
-			operation = vocab.HTOpUpdateProperty
+			operation = wot.HTOpUpdateProperty
 		}
 	}
 	if len(parts) > 3 {
@@ -82,7 +81,7 @@ func decodeValue(bucketID string, storageKey string, raw []byte) (
 		CorrelationID: requestID,
 		Name:          name,
 		Data:          data,
-		Created:       createdTime.Format(utils.RFC3339Milli),
+		Created:       createdTime.Format(wot.RFC3339Milli),
 		Operation:     operation,
 		SenderID:      senderID,
 	}

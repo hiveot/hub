@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"github.com/hiveot/hub/wot/transports/clients/httpbinding"
 	"golang.org/x/net/publicsuffix"
 	"io"
 	"log/slog"
@@ -287,7 +286,7 @@ func NewTLSClient(hostPort string, clientCert *tls.Certificate, caCert *x509.Cer
 		}
 	}
 	// create the client
-	httpClient := httpbinding.NewHttp2TLSClient(caCert, clientCert, timeout)
+	httpClient := NewHttp2TLSClient(caCert, clientCert, timeout)
 
 	// add a cookie jar for storing cookies
 	// FIXME:

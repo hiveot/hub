@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/wot/protocolclients"
+	utils2 "github.com/hiveot/hub/wot/transports/utils"
 	jsoniter "github.com/json-iterator/go"
 	"time"
 
@@ -67,7 +67,7 @@ func HandleSubTD(hc clients.IConsumer) error {
 
 		var td tdd.TD
 		//fmt.Printf("%s\n", event.ValueJSON)
-		err := utils.DecodeAsObject(msg.Data, &td)
+		err := utils2.DecodeAsObject(msg.Data, &td)
 
 		if err == nil {
 			modifiedTime, _ := dateparse.ParseAny(td.Modified) // can be in any TZ

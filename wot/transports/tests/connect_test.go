@@ -2,9 +2,9 @@ package tests
 
 import (
 	"context"
-	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/hiveot/hub/wot/transports"
 	"github.com/hiveot/hub/wot/transports/clients"
@@ -12,6 +12,7 @@ import (
 	"github.com/hiveot/hub/wot/transports/servers/httpserver"
 	"github.com/hiveot/hub/wot/transports/servers/ssescserver"
 	"github.com/hiveot/hub/wot/transports/servers/wssserver"
+	"github.com/hiveot/hub/wot/transports/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"log/slog"
@@ -36,7 +37,7 @@ const testServerMqttURL = "mqtts://localhost:9446"
 var defaultProtocol = transports.ProtocolTypeWSS
 
 var transportServer transports.ITransportServer
-var authenticator *DummyAuthenticator
+var authenticator *utils.DummyAuthenticator
 var certBundle = certs.CreateTestCertBundle()
 
 //// NewClient creates a new unconnected agent client with the given ID
@@ -94,7 +95,7 @@ func StartTransportServer(messageHandler transports.ServerMessageHandler) (
 	caCert := certBundle.CaCert
 	serverCert := certBundle.ServerCert
 	cm = connections.NewConnectionManager()
-	authenticator = NewDummyAuthenticator()
+	authenticator = utils.NewDummyAuthenticator()
 	authenticator.AddClient(testAgentID1, testAgentPassword1)
 	authenticator.AddClient(testClientID1, testClientPassword1)
 	var httpTransportServer *httpserver.HttpTransportServer
@@ -221,7 +222,7 @@ func TestBadLogin(t *testing.T) {
 	cl1 := NewClient(testClientID1)
 
 	// check no login
-	form := NewForm(vocab.OpReadAllProperties)
+	form := NewForm(wot.OpReadAllProperties)
 	_, err := cl1.SendOperation(form, "thing1", "", nil, nil, "")
 	assert.Error(t, err)
 
@@ -305,7 +306,7 @@ func TestReconnect(t *testing.T) {
 		stat transports.RequestStatus) {
 		slog.Info("Received message", "op", msg.Operation)
 		// prove that the return channel is connected
-		if msg.Operation == vocab.OpInvokeAction {
+		if msg.Operation == wot.OpInvokeAction {
 			go func() {
 				// send a completed update a fraction after returning 'delivered'
 				time.Sleep(time.Millisecond)
@@ -353,7 +354,7 @@ func TestReconnect(t *testing.T) {
 	var rpcArgs string = "rpc test"
 	var rpcResp string
 	// this client call receives the response from the handler above
-	form := NewForm(vocab.OpInvokeAction)
+	form := NewForm(wot.OpInvokeAction)
 	require.NotNil(t, form, "no form for invoke action")
 	err = cl1.Rpc(form, dThingID, actionKey, &rpcArgs, &rpcResp)
 	require.NoError(t, err)

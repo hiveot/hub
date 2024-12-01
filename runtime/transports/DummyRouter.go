@@ -3,9 +3,9 @@ package transports
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
-	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/transports"
+	"github.com/hiveot/hub/wot/transports/utils"
 )
 
 // DummyRouter for implementing test hooks defined in IHubRouter
@@ -18,27 +18,27 @@ type DummyRouter struct {
 
 func (svc *DummyRouter) HandleMessage(msg *transports.ThingMessage) {
 	switch msg.Operation {
-	case vocab.HTOpPublishEvent:
+	case wot.HTOpPublishEvent:
 		svc.OnEvent(msg)
 	}
 }
 func (svc *DummyRouter) HandleRequest(msg *transports.ThingMessage, replyTo string) (stat transports.RequestStatus) {
 	stat.Failed(msg, fmt.Errorf("Unknown operation '%s'", msg.Operation))
 	switch msg.Operation {
-	case vocab.HTOpLogin:
+	case wot.HTOpLogin:
 		var args authn.UserLoginArgs
 		utils.Decode(msg.Data, &args)
 		token, err := svc.authenticator.Login(args.ClientID, args.Password)
 		stat.Completed(msg, token, err)
-	case vocab.HTOpRefresh:
+	case wot.HTOpRefresh:
 		var args authn.UserRefreshTokenArgs
 		utils.Decode(msg.Data, &args)
 		newToken, err := svc.authenticator.RefreshToken(msg.SenderID, args.ClientID, args.OldToken)
 		stat.Completed(msg, newToken, err)
-	case vocab.HTOpLogout:
+	case wot.HTOpLogout:
 		svc.authenticator.Logout(msg.SenderID)
 		stat.Completed(msg, nil, nil)
-	case vocab.OpInvokeAction:
+	case wot.OpInvokeAction:
 		// if a hook is provided, call it first
 		if svc.OnAction != nil {
 			stat = svc.OnAction(msg, replyTo)

@@ -1,9 +1,10 @@
 package wssserver
 
 import (
-	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/transports"
 	"github.com/hiveot/hub/wot/transports/clients/wssbinding"
+	"github.com/hiveot/hub/wot/transports/utils"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/teris-io/shortid"
 	"log/slog"
@@ -203,8 +204,8 @@ func (c *WssServerConnection) ForwardAsRequest(msg *transports.ThingMessage) {
 		Status:        wssStatus,
 		Output:        stat.Output,
 		TimeRequested: msg.Created,
-		TimeEnded:     time.Now().Format(utils.RFC3339Milli),
-		Timestamp:     time.Now().Format(utils.RFC3339Milli),
+		TimeEnded:     time.Now().Format(wot.RFC3339Milli),
+		Timestamp:     time.Now().Format(wot.RFC3339Milli),
 		MessageID:     shortid.MustGenerate(),
 		CorrelationID: msg.CorrelationID,
 	}

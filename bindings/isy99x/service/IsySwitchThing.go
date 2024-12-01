@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
-	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/wot/protocolclients"
+	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/tdd"
+	"github.com/hiveot/hub/wot/transports"
+	"github.com/hiveot/hub/wot/transports/utils"
 )
 
 // IsySwitchThing is a general-purpose on/off switch
@@ -93,8 +94,13 @@ func (it *IsySwitchThing) MakeTD() *tdd.TD {
 	//	&tdd.DataSchema{Type: vocab.WoTDataTypeBool}).
 	//	SetAtType(vocab.ActionSwitchOnOff)
 
-	td.AddSwitchAction("ST", "Switch on/off", "").
-		SetAtType(vocab.ActionSwitchOnOff)
+	td.AddAction("ST", "Switch on/off", "",
+		&tdd.DataSchema{
+			AtType: vocab.ActionSwitchOnOff,
+			Type:   wot.WoTDataTypeBool,
+			Enum:   []interface{}{"on", "off"},
+		}).SetAtType(vocab.ActionSwitchOnOff)
+
 	//td.AddSwitchAction(vocab.ActionSwitchOff, "Switch off")
 	//td.AddSwitchAction(vocab.ActionSwitchToggle, "Toggle switch")
 

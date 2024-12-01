@@ -2,7 +2,6 @@ package digitwin_test
 
 import (
 	"encoding/json"
-	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/wot/tdd"
 	"github.com/stretchr/testify/assert"

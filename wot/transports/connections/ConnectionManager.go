@@ -2,7 +2,6 @@ package connections
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/wot/transports"
 	"log/slog"
 	"slices"
@@ -216,7 +215,8 @@ func (cm *ConnectionManager) RemoveConnection(connectionID string) {
 		// B: close all client connections
 
 	} else {
-		clientCids = utils.Remove(clientCids, i)
+		clientCids = slices.Delete(clientCids, i, i)
+		//clientCids = utils.Remove(clientCids, i)
 		cm.connectionsByClientID[clientID] = clientCids
 	}
 }

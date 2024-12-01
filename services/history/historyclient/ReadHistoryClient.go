@@ -2,8 +2,8 @@ package historyclient
 
 import (
 	"github.com/hiveot/hub/services/history/historyapi"
-	"github.com/hiveot/hub/wot/protocolclients"
 	"github.com/hiveot/hub/wot/tdd"
+	"github.com/hiveot/hub/wot/transports"
 	"time"
 )
 
@@ -11,7 +11,9 @@ import (
 type ReadHistoryClient struct {
 	// ThingID of the service providing the read history capability
 	dThingID string
-	hc       clients.IConsumer
+	cc       transports.IClientConnection
+	// invokeAction is the invokeAction from the service TD with the invoke-action operation
+	invokeAction tdd.Form
 }
 
 // GetCursor returns an iterator for ThingMessage objects containing historical events,tds or actions
@@ -27,8 +29,8 @@ func (cl *ReadHistoryClient) GetCursor(thingID string, filterOnName string) (
 		FilterOnName: filterOnName,
 	}
 	resp := historyapi.GetCursorResp{}
-	err = cl.hc.Rpc(cl.dThingID, historyapi.GetCursorMethod, &args, &resp)
-	cursor = NewHistoryCursorClient(cl.hc, resp.CursorKey)
+	err = cl.cc.Rpc(cl.invokeAction, cl.dThingID, historyapi.GetCursorMethod, &args, &resp)
+	cursor = NewHistoryCursorClient(cl.invokeAction, cl.cc, resp.CursorKey)
 	return cursor, cursor.Release, err
 }
 
@@ -55,16 +57,19 @@ func (cl *ReadHistoryClient) ReadHistory(thingID string, filterOnName string,
 		Limit:        limit,
 	}
 	resp := historyapi.ReadHistoryResp{}
-	err = cl.hc.Rpc(cl.dThingID, historyapi.ReadHistoryMethod, &args, &resp)
+	err = cl.cc.Rpc(cl.invokeAction, cl.dThingID, historyapi.ReadHistoryMethod, &args, &resp)
 	return resp.Values, resp.ItemsRemaining, err
 }
 
 // NewReadHistoryClient returns an instance of the read history client using the given connection
-func NewReadHistoryClient(hc clients.IConsumer) *ReadHistoryClient {
+//
+//	invokeAction is the TD invokeAction for the invoke-action operation of the history service
+func NewReadHistoryClient(invokeAction tdd.Form, cc transports.IClientConnection) *ReadHistoryClient {
 	agentID := historyapi.AgentID
 	histCl := ReadHistoryClient{
-		hc:       hc,
-		dThingID: tdd.MakeDigiTwinThingID(agentID, historyapi.ReadHistoryServiceID),
+		cc:           cc,
+		invokeAction: invokeAction,
+		dThingID:     tdd.MakeDigiTwinThingID(agentID, historyapi.ReadHistoryServiceID),
 	}
 	return &histCl
 }

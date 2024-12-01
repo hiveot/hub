@@ -8,11 +8,13 @@ import (
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/bucketstore"
 	"github.com/hiveot/hub/lib/testenv"
-	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/history/historyapi"
 	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/hiveot/hub/services/history/service"
+	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/tdd"
+	"github.com/hiveot/hub/wot/transports"
+	utils2 "github.com/hiveot/hub/wot/transports/utils"
 	"log/slog"
 	"math/rand"
 	"os"
@@ -46,6 +48,7 @@ func startHistoryService(clean bool) (
 	stopFn func()) {
 
 	ts = testenv.StartTestServer(clean)
+
 	//svcConfig := config.NewHistoryConfig(ts.TestDir)
 	histStore, err := bucketstore.NewBucketStore(
 		ts.TestDir, "hist", historyStoreBackend)
@@ -57,7 +60,7 @@ func startHistoryService(clean bool) (
 	}
 
 	// the service needs a server connection
-	hc, _ := ts.AddConnectService(historyapi.AgentID, serviceUsesWSS)
+	hc, _ := ts.AddConnectService(historyapi.AgentID)
 	svc = service.NewHistoryService(histStore)
 	if err == nil {
 		err = svc.Start(hc)
@@ -71,7 +74,8 @@ func startHistoryService(clean bool) (
 	if err != nil {
 		panic("can't connect operator")
 	}
-	histCl := historyclient.NewReadHistoryClient(cl1)
+	invokeActionForm := ts.GetForm(wot.OpInvokeAction)
+	histCl := historyclient.NewReadHistoryClient(invokeActionForm, cl1)
 
 	return svc, histCl, func() {
 		cl1.Disconnect()
@@ -111,12 +115,12 @@ func makeValueBatch(agentID string, nrValues, nrThings, timespanSec int) (
 			messageType = vocab.HTOpUpdateProperty
 		}
 
-		msg := clients.NewThingMessage(messageType,
+		msg := transports.NewThingMessage(messageType,
 			dThingID, names[randomName],
 			fmt.Sprintf("%2.3f", randomValue), "",
 		)
 		msg.SenderID = agentID
-		msg.Created = randomTime.Format(utils.RFC3339Milli)
+		msg.Created = randomTime.Format(wot.RFC3339Milli)
 
 		// track the actual most recent event for the name for things 3
 		if randomID == 0 {
@@ -194,7 +198,7 @@ func TestAddGetEvent(t *testing.T) {
 	ev1_1 := &transports.ThingMessage{
 		Operation: vocab.HTOpPublishEvent,
 		SenderID:  agent1ID, ThingID: dThing1ID, Name: evTemperature,
-		Data: "12.5", Created: fivemago.Format(utils.RFC3339Milli),
+		Data: "12.5", Created: fivemago.Format(wot.RFC3339Milli),
 	}
 	err := addHist.AddEvent(ev1_1)
 	assert.NoError(t, err)
@@ -202,7 +206,7 @@ func TestAddGetEvent(t *testing.T) {
 	ev1_2 := &transports.ThingMessage{
 		Operation: vocab.HTOpPublishEvent,
 		SenderID:  agent1ID, ThingID: dThing1ID, Name: evHumidity,
-		Data: "70", Created: fiftyfivemago.Format(utils.RFC3339Milli),
+		Data: "70", Created: fiftyfivemago.Format(wot.RFC3339Milli),
 	}
 	err = addHist.AddEvent(ev1_2)
 	assert.NoError(t, err)
@@ -212,7 +216,7 @@ func TestAddGetEvent(t *testing.T) {
 	ev2_1 := &transports.ThingMessage{
 		Operation: vocab.HTOpPublishEvent,
 		SenderID:  agent1ID, ThingID: dThing2ID, Name: evHumidity,
-		Data: "50", Created: fivemago.Format(utils.RFC3339Milli),
+		Data: "50", Created: fivemago.Format(wot.RFC3339Milli),
 	}
 	err = addHist.AddEvent(ev2_1)
 	assert.NoError(t, err)
@@ -221,7 +225,7 @@ func TestAddGetEvent(t *testing.T) {
 	ev2_2 := &transports.ThingMessage{
 		Operation: vocab.HTOpPublishEvent,
 		SenderID:  agent1ID, ThingID: dThing2ID, Name: evTemperature,
-		Data: "17.5", Created: fiftyfivemago.Format(utils.RFC3339Milli),
+		Data: "17.5", Created: fiftyfivemago.Format(wot.RFC3339Milli),
 	}
 	err = addHist.AddEvent(ev2_2)
 	assert.NoError(t, err)
@@ -252,7 +256,7 @@ func TestAddGetEvent(t *testing.T) {
 	if assert.True(t, valid) {
 		assert.Equal(t, dThing1ID, tv3.ThingID)  // must match the filtered id1
 		assert.Equal(t, evTemperature, tv3.Name) // must match evTemperature from 5 minutes ago
-		assert.Equal(t, fivemago.Format(utils.RFC3339Milli), tv3.Created)
+		assert.Equal(t, fivemago.Format(wot.RFC3339Milli), tv3.Created)
 	}
 	c1Release()
 	// Stop the service before phase 2
@@ -376,7 +380,7 @@ func TestAddProperties(t *testing.T) {
 			//err = utils.DecodeAsObject(msg.Data, &props)
 			//require.NoError(t, err)
 		} else if msg.Name == vocab.PropEnvTemperature {
-			dataInt := utils.DecodeAsInt(msg.Data)
+			dataInt := utils2.DecodeAsInt(msg.Data)
 			require.Equal(t, temp1, dataInt)
 		}
 		msg, valid, err = c.Next()
@@ -609,7 +613,7 @@ func TestPubEvents(t *testing.T) {
 
 	_, readHist, stopFn := startHistoryService(true)
 	defer stopFn()
-	ag1, _ := ts.AddConnectService(agent1ID, serviceUsesWSS)
+	ag1, _ := ts.AddConnectService(agent1ID)
 	defer ag1.Disconnect()
 
 	// Add the thing who is publishing events
@@ -674,7 +678,7 @@ func TestManageRetention(t *testing.T) {
 
 	// connect as an admin user
 	cl1, _ := ts.AddConnectConsumer(client1ID, authz.ClientRoleAdmin)
-	mngHist := historyclient.NewManageHistoryClient(cl1)
+	mngHist := historyclient.NewManageHistoryClient(invokeActionForm, cl1)
 
 	// should be able to read the current retention rules. Expect the default rules.
 	rules1, err := mngHist.GetRetentionRules()
@@ -701,7 +705,7 @@ func TestManageRetention(t *testing.T) {
 	}
 
 	// connect as agent-1 and publish two events for thing0, one to be retained
-	ag1, _ := ts.AddConnectService(agentID, serviceUsesWSS)
+	ag1, _ := ts.AddConnectService(agentID)
 	require.NoError(t, err)
 	defer ag1.Disconnect()
 	err = ag1.PubEvent(td0.ID, event1Name, "event one", "")

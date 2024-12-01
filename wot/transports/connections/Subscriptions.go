@@ -1,7 +1,6 @@
 package connections
 
 import (
-	"github.com/hiveot/hub/lib/utils"
 	"golang.org/x/exp/slices"
 	"log/slog"
 	"sync"
@@ -80,7 +79,7 @@ func (s *Subscriptions) Unsubscribe(dThingID string, name string) {
 	subKey := dThingID + "." + name
 	i := slices.Index(s.subscriptions, subKey)
 	if i >= 0 {
-		s.subscriptions = utils.Remove(s.subscriptions, i)
+		s.subscriptions = slices.Delete(s.subscriptions, i, i)
 	} else {
 		slog.Info("Unobserve/unsubscribe. Subscription not found", "subKey", subKey)
 	}

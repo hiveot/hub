@@ -50,7 +50,7 @@ func TestSubscribeAllByConsumer(t *testing.T) {
 	// No result is expected
 
 	// 3. Server sends event to consumers
-	time.Sleep(time.Millisecond)
+	time.Sleep(time.Millisecond * 10)
 	cm.PublishEvent(thingID, eventKey, testMsg1, "", testAgentID1)
 
 	// 4. subscriber should have received them
@@ -60,7 +60,7 @@ func TestSubscribeAllByConsumer(t *testing.T) {
 	// Unsubscribe from events
 	form = NewForm(vocab.OpUnsubscribeAllEvents)
 	_, err = cl1.SendOperation(form, "", "", nil, nil, "")
-	time.Sleep(time.Millisecond * 1) // async take time
+	time.Sleep(time.Millisecond * 10) // async take time
 
 	// 5. Server sends another event to consumers
 	cm.PublishEvent(thingID, eventKey, testMsg2, "", testAgentID1)

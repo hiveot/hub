@@ -2,7 +2,7 @@ package consumedthing
 
 import (
 	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/wot/protocolclients"
+	"github.com/hiveot/hub/wot/transports"
 	"log/slog"
 	"testing"
 

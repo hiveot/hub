@@ -9,9 +9,10 @@ import (
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/runtime"
-	"github.com/hiveot/hub/wot/protocolclients/ssescclient"
 	"github.com/hiveot/hub/wot/tdd"
-	"github.com/hiveot/hub/wot/transport/clients/wssclient"
+	"github.com/hiveot/hub/wot/transports"
+	"github.com/hiveot/hub/wot/transports/clients/ssescclient"
+	"github.com/hiveot/hub/wot/transports/clients/wssbinding"
 	"log/slog"
 	"math/rand"
 	"os"
@@ -69,13 +70,13 @@ type TestServer struct {
 	ConsumerProtocol string
 }
 
-func (test *TestServer) GetConnection(clientID string, protocolName string) clients.IAgent {
+func (test *TestServer) GetConnection(clientID string, protocolName string) transports.IClientConnection {
 	if protocolName == WSSProtocol {
 		wssURL := fmt.Sprintf("wss://localhost:%d/wss", test.Port)
-		return wssclient.NewWSSClient(wssURL, clientID, nil, test.Certs.CaCert, test.ConnectTimeout)
+		return wssbinding.NewWssTransportClient(wssURL, clientID, nil, test.Certs.CaCert, test.ConnectTimeout)
 	} else {
 		hostPort := fmt.Sprintf("localhost:%d", test.Port)
-		return ssescclient.NewHttpSSEClient(hostPort, clientID, nil, test.Certs.CaCert, test.ConnectTimeout)
+		return ssescclient.NewSsescTransportClient(hostPort, clientID, nil, test.Certs.CaCert, test.ConnectTimeout)
 	}
 }
 
@@ -83,7 +84,7 @@ func (test *TestServer) GetConnection(clientID string, protocolName string) clie
 // and returns a hub client and a new session token.
 // In case of error this panics.
 func (test *TestServer) AddConnectConsumer(
-	clientID string, clientRole authz.ClientRole) (cl clients.IConsumer, token string) {
+	clientID string, clientRole authz.ClientRole) (cl transports.IClientConnection, token string) {
 
 	password := clientID
 	err := test.Runtime.AuthnSvc.AdminSvc.AddConsumer(clientID,
@@ -108,7 +109,7 @@ func (test *TestServer) AddConnectConsumer(
 // AddConnectAgent creates a new agent test client.
 // Agents use non-session tokens and survive a server restart.
 // This returns the agent's connection token.
-func (test *TestServer) AddConnectAgent(agentID string) (cl clients.IAgent, token string) {
+func (test *TestServer) AddConnectAgent(agentID string) (cl transports.IClientConnection, token string) {
 
 	token, err := test.Runtime.AuthnSvc.AdminSvc.AddAgent(agentID,
 		authn.AdminAddAgentArgs{agentID, "agent name", ""})
@@ -136,7 +137,7 @@ func (test *TestServer) AddConnectAgent(agentID string) (cl clients.IAgent, toke
 //
 // clientType can be one of ClientTypeAgent or ClientTypeService
 func (test *TestServer) AddConnectService(serviceID string) (
-	cl clients.IAgent, token string) {
+	cl transports.IClientConnection, token string) {
 
 	token, err := test.Runtime.AuthnSvc.AdminSvc.AddService(serviceID,
 		authn.AdminAddServiceArgs{serviceID, "service name", ""})
@@ -150,10 +151,10 @@ func (test *TestServer) AddConnectService(serviceID string) (
 
 	if test.ServiceProtocol == WSSProtocol {
 		wssURL := fmt.Sprintf("wss://localhost:%d/wss", test.Port)
-		cl = wssclient.NewWSSClient(wssURL, serviceID, nil, test.Certs.CaCert, time.Minute)
+		cl = wssbinding.NewWssTransportClient(wssURL, serviceID, nil, test.Certs.CaCert, time.Minute)
 	} else {
 		hostPort := fmt.Sprintf("localhost:%d", test.Port)
-		cl = ssescclient.NewHttpSSEClient(hostPort, serviceID, nil, test.Certs.CaCert, time.Minute)
+		cl = ssescclient.NewSsescTransportClient(hostPort, serviceID, nil, test.Certs.CaCert, time.Minute)
 	}
 
 	_, err = cl.ConnectWithToken(token)
@@ -230,6 +231,11 @@ func (test *TestServer) CreateTestTD(i int) (td *tdd.TD) {
 	return td
 }
 
+// GetForm returns the form for the given operation and transport protocol binding
+func (test *TestServer) GetForm(op string, protocol string) tdd.Form {
+	return test.Runtime.GetForm(op, protocol)
+}
+
 // Start the test server.
 // This panics if something goes wrong.
 func (test *TestServer) Start(clean bool) {
@@ -240,7 +246,7 @@ func (test *TestServer) Start(clean bool) {
 	}
 	test.AppEnv = plugin.GetAppEnvironment(test.TestDir, false)
 	//
-	test.Config.Transports.HttpsTransport.Port = test.Port
+	test.Config.Transports.HttpsPort = test.Port
 	test.Config.CaCert = test.Certs.CaCert
 	test.Config.CaKey = test.Certs.CaKey
 	test.Config.ServerKey = test.Certs.ServerKey
