@@ -3,6 +3,7 @@ package tests
 import (
 	"context"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/transports"
 	"github.com/hiveot/hub/wot/transports/utils"
 	"github.com/stretchr/testify/assert"
@@ -26,49 +27,44 @@ func TestInvokeActionFromConsumerToServer(t *testing.T) {
 	var thingID = "thing1"
 	var actionName = "action1"
 
-	ctx1, release1 := context.WithTimeout(context.Background(), time.Minute)
-	defer release1()
-	// the server will receive the action request and return with completed
-	serverHandler := func(msg *transports.ThingMessage, replyTo transports.IServerConnection) (
-		stat transports.RequestStatus) {
+	// the server will receive the action request and send a result message
+	serverHandler := func(msg *transports.ThingMessage, replyTo transports.IServerConnection) {
 		if msg.Operation == vocab.OpInvokeAction {
-			require.NotNil(t, replyTo)
 			inputVal.Store(msg.Data)
-			// return the input as output
-			stat.Completed(msg, msg.Data, nil)
+			output := msg.Data
+			replyTo.SendResponse(msg.ThingID, msg.Name, output, msg.RequestID)
 		} else {
 			assert.Fail(t, "Not expecting this")
 		}
-		return stat
 	}
 	// 1. start the servers
-	cancelFn, _ := StartTransportServer(serverHandler)
+	srv, cancelFn, _ := StartTransportServer(serverHandler)
 	defer cancelFn()
 
 	// 2. connect a client
-	cl1 := NewClient(testClientID1)
+	cl1 := NewClient(testClientID1, srv.GetForm)
 	token, err := cl1.ConnectWithPassword(testClientPassword1)
 	defer cl1.Disconnect()
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
-	// expect the client to receive an action/request status message
-	cl1.SetMessageHandler(func(ev *transports.ThingMessage) {
+	ctx1, release1 := context.WithTimeout(context.Background(), time.Minute)
+	defer release1()
+	// expect the client to receive an action/request status message as a notification
+	cl1.SetNotificationHandler(func(ev *transports.ThingMessage) {
 		// this depends on the transport protocol
 		slog.Info("testOutput was updated asynchronously via the message handler")
 		err = utils.Decode(ev.Data, &testOutput)
 		assert.NoError(t, err)
 		release1()
 	})
-	// 3. invoke the action
-	form := NewForm(vocab.OpInvokeAction)
-	require.NotNil(t, form)
+	// 3. invoke the action as a notification, (not a rpc request)
 	// testOutput can be updated as an immediate result or via the callback message handler
-	status, err := cl1.SendOperation(form, thingID, actionName, testMsg1, &testOutput, "")
-	require.NoError(t, err)
+	err = cl1.SendNotification(vocab.OpInvokeAction, thingID, actionName, testMsg1)
+	assert.NoError(t, err)
 	<-ctx1.Done()
+
 	//time.Sleep(time.Millisecond * 10)
 	// whether receiving completed or delivered depends on the binding
-	require.NotEqual(t, transports.RequestFailed, status)
 	require.Equal(t, testMsg1, testOutput)
 
 	// 4. verify that the server received it and send a reply
@@ -82,7 +78,7 @@ func TestInvokeActionFromConsumerToServer(t *testing.T) {
 // The server in this case passes on a message received from a consumer, which is also a client.
 func TestInvokeActionFromServerToAgent(t *testing.T) {
 	t.Log("TestPostAction")
-	var rxVal atomic.Value
+	var reqVal atomic.Value
 	var replyVal atomic.Value
 	var testMsg1 = "hello world 1"
 	var testMsg2 = "hello world 2"
@@ -96,9 +92,8 @@ func TestInvokeActionFromServerToAgent(t *testing.T) {
 
 	ctx1, cancelFn1 := context.WithTimeout(context.Background(), time.Minute)
 	defer cancelFn1()
-	replyHandler := func(
-		msg *transports.ThingMessage, replyTo transports.IServerConnection) (
-		stat transports.RequestStatus) {
+	serverHandler := func(
+		msg *transports.ThingMessage, replyTo transports.IServerConnection) {
 
 		// The server receives an action status reply message from the agent
 		// (which normally is forwarded to the remote consumer; but not in this test)
@@ -106,60 +101,43 @@ func TestInvokeActionFromServerToAgent(t *testing.T) {
 		assert.Equal(t, testAgentID1, msg.SenderID)
 		require.Equal(t, vocab.HTOpUpdateActionStatus, msg.Operation)
 
-		// the reply is a RequestStatus instance, sent by the agent
-		var rxStat transports.RequestStatus
-		err := utils.Decode(msg.Data, &rxStat)
-		require.NoError(t, err)
-
-		slog.Info("replyHandler: Received reply message from agent",
+		slog.Info("serverHandler: Received reply message from agent",
 			"op", msg.Operation,
 			"data", msg.DataAsText(),
 			"senderID", msg.SenderID)
-		replyVal.Store(rxStat.Output)
+		replyVal.Store(msg.Data)
 		cancelFn1()
-		return stat
 	}
-	cancelFn, cm := StartTransportServer(replyHandler)
+	srv, cancelFn, cm := StartTransportServer(serverHandler)
 	defer cancelFn()
 
 	// 2a. connect as an agent
-	ag1client := NewClient(testAgentID1)
+	ag1client := NewClient(testAgentID1, srv.GetForm)
 	token, err := ag1client.ConnectWithPassword(testAgentPassword1)
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
+	defer ag1client.Disconnect()
 
-	ag1client.SetRequestHandler(func(msg *transports.ThingMessage) (stat transports.RequestStatus) {
-		// agent receives action request
+	// an agent receives requests from the server
+	ag1client.SetRequestHandler(func(msg *transports.ThingMessage) (output any, err error) {
+		// agent receives action request and returns a result
 		slog.Info("Agent receives message", "op", msg.Operation)
-		rxVal.Store(msg.Data)
-		// then returns its own output
-		stat.Completed(msg, testMsg2, nil)
-		return stat
+		reqVal.Store(msg.Data)
+		return testMsg2, nil
 	})
 
 	// send the action from the server to the agent (the agent is connected as a client)
 	// and expect result using the request status message sent by the agent.
 	ag1Server := cm.GetConnectionByClientID(testAgentID1)
 	require.NotNil(t, ag1Server)
-	status, output, err := ag1Server.InvokeAction(thingID, actionKey, testMsg1, corrID, testClientID1)
-	require.NoError(t, err)
+	ag1Server.SendRequest(wot.OpInvokeAction, thingID, actionKey, testMsg1, corrID)
 
-	// wait until a reply is received
+	// wait until the agent has sent a reply
 	<-ctx1.Done()
 
-	assert.Equal(t, testMsg1, rxVal.Load())
+	// if all went well the agent received the request and the server its response
+	assert.Equal(t, testMsg1, reqVal.Load())
 	assert.Equal(t, testMsg2, replyVal.Load())
-
-	// In protocol bindings the return channel is asynchronous from the request, so
-	// the server receives the reply from the agent as a separate message.
-	// This means that status is delivered and output is empty.
-	// If however, there is a synchronous binding then this test will have to be updated.
-
-	//assert.Equal(t, testMsg2, output)
-	//assert.Equal(t, transports.RequestCompleted, status)
-	assert.Equal(t, nil, output)
-	assert.Equal(t, transports.RequestDelivered, status)
-	ag1client.Disconnect()
 }
 
 // TestQueryActions consumer queries the server for actions
@@ -172,54 +150,55 @@ func TestQueryActions(t *testing.T) {
 	// 1. start the server. register a message handler for receiving an action status
 	// reply from the agent after the server sends an invoke action.
 	// Note that WoT doesn't cover this use-case so this uses hiveot vocabulary operation.
-	queryHandler := func(
-		msg *transports.ThingMessage, replyTo transports.IServerConnection) (
-		stat transports.RequestStatus) {
+	serverHandler := func(
+		msg *transports.ThingMessage, replyTo transports.IServerConnection) {
 
 		require.NotNil(t, replyTo)
-		if msg.Operation == vocab.OpQueryAction {
+		// FIXME: what is the format of a action query result
+		if msg.Operation == wot.OpQueryAction {
 			// the reply is an action status instance
-			var actStat transports.RequestStatus
-			actStat.ThingID = thingID
-			actStat.Name = actionKey
-			actStat.Output = testMsg1
-			stat.Completed(msg, actStat, nil)
-		} else if msg.Operation == vocab.OpQueryAllActions {
-			var actStat = make([]transports.RequestStatus, 2)
+			output := transports.RequestStatus{
+				ThingID:       msg.ThingID,
+				Name:          msg.Name,
+				RequestID:     msg.RequestID,
+				Status:        transports.StatusCompleted,
+				Output:        testMsg1,
+				TimeRequested: msg.Timestamp,
+				TimeEnded:     time.Now().Format(wot.RFC3339Milli),
+			}
+			replyTo.SendResponse(msg.ThingID, msg.Name, output, msg.RequestID)
+		} else if msg.Operation == wot.OpQueryAllActions {
+			actStat := make([]transports.RequestStatus, 2)
 			actStat[0].ThingID = thingID
 			actStat[0].Name = actionKey
 			actStat[0].Output = testMsg1
 			actStat[1].ThingID = thingID
 			actStat[1].Name = actionKey
 			actStat[1].Output = testMsg1
-			stat.Completed(msg, actStat, nil)
+			replyTo.SendResponse(msg.ThingID, msg.Name, actStat, msg.RequestID)
 		}
-		return stat
 	}
 
 	// 1. start the servers
-	cancelFn, _ := StartTransportServer(queryHandler)
+	srv, cancelFn, _ := StartTransportServer(serverHandler)
 	defer cancelFn()
 
 	// 2. connect as a consumer
-	cl1 := NewClient(testClientID1)
+	cl1 := NewClient(testClientID1, srv.GetForm)
 	_, err := cl1.ConnectWithPassword(testClientPassword1)
 	require.NoError(t, err)
 	defer cl1.Disconnect()
 
 	// 3. Query action status
-	form := NewForm(vocab.OpQueryAction)
 	var output transports.RequestStatus
-	//status, err := cl1.SendOperation(form, thingID, actionKey, nil, &output, "")
-	err = cl1.Rpc(form, thingID, actionKey, nil, &output)
+	err = cl1.SendRequest(vocab.OpQueryAction, thingID, actionKey, nil, &output)
 	require.NoError(t, err)
 	require.Equal(t, thingID, output.ThingID)
 	require.Equal(t, actionKey, output.Name)
 
 	// 4. Query all actions
-	form = NewForm(vocab.OpQueryAllActions)
 	var output2 []transports.RequestStatus
-	err = cl1.Rpc(form, thingID, actionKey, nil, &output2)
+	err = cl1.SendRequest(vocab.OpQueryAllActions, thingID, actionKey, nil, &output2)
 	require.NoError(t, err)
 	require.Equal(t, 2, len(output2))
 }

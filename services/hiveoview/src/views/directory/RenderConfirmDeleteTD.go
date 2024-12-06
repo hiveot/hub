@@ -7,7 +7,6 @@ import (
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
-	"github.com/hiveot/hub/wot/tdd"
 	jsoniter "github.com/json-iterator/go"
 	"net/http"
 )
@@ -16,13 +15,13 @@ const RenderConfirmDeleteTDTemplate = "RenderConfirmDeleteTD.gohtml"
 
 type ConfirmDeleteTDTemplateData struct {
 	ThingID            string
-	TD                 *tdd.TD
+	TD                 *td.TD
 	SubmitDeleteTDPath string
 }
 
 func RenderConfirmDeleteTD(w http.ResponseWriter, r *http.Request) {
 	thingID := chi.URLParam(r, "thingID")
-	td := tdd.TD{}
+	td := td.TD{}
 	tdJson := ""
 
 	// Read the TD being displayed and its latest values

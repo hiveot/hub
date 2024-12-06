@@ -2,6 +2,7 @@ package connections
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/transports"
 	"log/slog"
 	"slices"
@@ -52,8 +53,8 @@ func (cm *ConnectionManager) AddConnection(c transports.IServerConnection) error
 		err := fmt.Errorf("AddConnection. The connection ID '%s' of client '%s' already exists",
 			connectionID, existingConn.GetClientID())
 		slog.Error("AddConnection: duplicate ConnectionID", "connectionID", connectionID, "err", err.Error())
-		existingConn.Close()
-		c.Close()
+		existingConn.Disconnect()
+		c.Disconnect()
 		go cm.RemoveConnection(connectionID)
 		return err
 	}
@@ -80,7 +81,7 @@ func (cm *ConnectionManager) CloseAllClientConnections(clientID string) {
 		c := cm.connectionsByConnectionID[cid]
 		if c != nil {
 			delete(cm.connectionsByConnectionID, cid)
-			c.Close()
+			c.Disconnect()
 		}
 	}
 	delete(cm.connectionsByClientID, clientID)
@@ -94,7 +95,7 @@ func (cm *ConnectionManager) CloseAll() {
 	slog.Info("RemoveAll. Closing remaining connections", "count", len(cm.connectionsByConnectionID))
 	for cid, c := range cm.connectionsByConnectionID {
 		_ = cid
-		c.Close()
+		c.Disconnect()
 	}
 	cm.connectionsByConnectionID = make(map[string]transports.IServerConnection)
 	cm.connectionsByClientID = make(map[string][]string)
@@ -163,8 +164,10 @@ func (cm *ConnectionManager) PublishEvent(
 		slog.Any("value", value),
 		slog.String("agentID", agentID),
 	)
+	// FIXME: invoke the servers instead as the subscription mechanism
+	// is determined by the server (like MQTT)
 	cm.ForEachConnection(func(c transports.IServerConnection) {
-		c.PublishEvent(dThingID, name, value, requestID, agentID)
+		c.SendNotification(wot.HTOpPublishEvent, dThingID, name, value)
 	})
 }
 
@@ -179,7 +182,7 @@ func (cm *ConnectionManager) PublishProperty(
 		slog.String("agentID", agentID),
 	)
 	cm.ForEachConnection(func(c transports.IServerConnection) {
-		c.PublishProperty(dThingID, name, value, requestID, agentID)
+		c.SendNotification(wot.HTOpUpdateProperty, dThingID, name, value)
 	})
 }
 
@@ -195,7 +198,7 @@ func (cm *ConnectionManager) RemoveConnection(connectionID string) {
 	// force close the existing connection just in case
 	if existingConn != nil {
 		clientID = existingConn.GetClientID()
-		existingConn.Close()
+		existingConn.Disconnect()
 		delete(cm.connectionsByConnectionID, connectionID)
 	} else if len(cm.connectionsByConnectionID) > 0 {
 		// this is unexpected. Not all connections were closed but this one is gone.
@@ -215,7 +218,7 @@ func (cm *ConnectionManager) RemoveConnection(connectionID string) {
 		// B: close all client connections
 
 	} else {
-		clientCids = slices.Delete(clientCids, i, i)
+		clientCids = slices.Delete(clientCids, i, i+1)
 		//clientCids = utils.Remove(clientCids, i)
 		cm.connectionsByClientID[clientID] = clientCids
 	}

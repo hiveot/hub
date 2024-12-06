@@ -8,7 +8,7 @@ import (
 	"github.com/hiveot/hub/runtime/authn/authnstore"
 	"github.com/hiveot/hub/runtime/authz"
 	"github.com/hiveot/hub/runtime/authz/service"
-	"github.com/hiveot/hub/wot/protocolclients"
+	"github.com/hiveot/hub/wot/transports"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"os"
@@ -98,12 +98,12 @@ func TestHasPermission(t *testing.T) {
 	err = svc.SetClientRole(operatorID, authz2.AdminSetClientRoleArgs{operatorID, client1Role})
 	assert.NoError(t, err)
 	// consumers have permission to publish actions and write-property requests
-	msg := clients.NewThingMessage(vocab.OpInvokeAction, thingID, key, "", operatorID)
+	msg := transports.NewThingMessage(vocab.OpInvokeAction, thingID, key, "", operatorID)
 	hasPerm := svc.HasPermission(msg.SenderID, msg.Operation, msg.ThingID)
 	assert.True(t, hasPerm)
 
 	// operators cannot publish property values
-	msg = clients.NewThingMessage(vocab.HTOpUpdateProperty, thingID, key, "", operatorID)
+	msg = transports.NewThingMessage(vocab.HTOpUpdateProperty, thingID, key, "", operatorID)
 	hasPerm = svc.HasPermission(msg.SenderID, msg.Operation, msg.ThingID)
 	assert.False(t, hasPerm)
 }

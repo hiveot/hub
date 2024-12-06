@@ -79,9 +79,9 @@ func (s *Subscriptions) Unsubscribe(dThingID string, name string) {
 	subKey := dThingID + "." + name
 	i := slices.Index(s.subscriptions, subKey)
 	if i >= 0 {
-		s.subscriptions = slices.Delete(s.subscriptions, i, i)
+		s.subscriptions = slices.Delete(s.subscriptions, i, i+1)
 	} else {
-		slog.Info("Unobserve/unsubscribe. Subscription not found", "subKey", subKey)
+		slog.Info("UnobserveProperty/unsubscribe. Subscription not found", "subKey", subKey)
 	}
 }
 

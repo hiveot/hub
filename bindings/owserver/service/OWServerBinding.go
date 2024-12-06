@@ -8,8 +8,6 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/services/state/stateclient"
-	"github.com/hiveot/hub/wot/protocolclients"
-	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 	"sync"
 	"time"
@@ -40,7 +38,7 @@ type OWServerBinding struct {
 
 	// The discovered and publishable things, containing instructions on
 	// if and how properties and events are published
-	things map[string]*tdd.TD
+	things map[string]*td.TD
 
 	// track the last value for change detection
 	// map of [node/device ID] [attribute Title] value
@@ -60,10 +58,10 @@ type OWServerBinding struct {
 }
 
 // CreateBindingTD generates a TD document for this binding. Its thingID is the same as its agentID
-func (svc *OWServerBinding) CreateBindingTD() *tdd.TD {
+func (svc *OWServerBinding) CreateBindingTD() *td.TD {
 	// This binding exposes the TD of itself.
 	// Currently its configuration comes from file.
-	td := tdd.NewTD(svc.agentID, "OWServer binding", vocab.ThingService)
+	td := td.NewTD(svc.agentID, "OWServer binding", vocab.ThingService)
 	td.Description = "Driver for the OWServer V2 Gateway 1-wire interface"
 
 	prop := td.AddProperty(bindingMake, "Developed By", "", vocab.WoTDataTypeString).
@@ -225,7 +223,7 @@ func NewOWServerBinding(config *config.OWServerConfig) *OWServerBinding {
 		config:       config,
 		values:       make(map[string]map[string]NodeValueStamp),
 		nodes:        make(map[string]*eds.OneWireNode),
-		things:       make(map[string]*tdd.TD),
+		things:       make(map[string]*td.TD),
 		customTitles: make(map[string]string),
 	}
 	return svc

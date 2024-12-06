@@ -3,7 +3,6 @@ package service
 import (
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/runtime/digitwin/store"
-	"github.com/hiveot/hub/wot/tdd"
 	"github.com/hiveot/hub/wot/transports/connections"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
@@ -17,12 +16,12 @@ type DirectoryService struct {
 	// to include in digital twin TDs.
 	//tb api.ITransportBinding
 	cm              *connections.ConnectionManager
-	addFormsHandler func(*tdd.TD) error
+	addFormsHandler func(*td.TD) error
 }
 
 // MakeDigitalTwinTD returns the digital twin from a agent provided TD
 func (svc *DirectoryService) MakeDigitalTwinTD(
-	agentID string, tdJSON string) (thingTD *tdd.TD, dtwTD *tdd.TD, err error) {
+	agentID string, tdJSON string) (thingTD *td.TD, dtwTD *td.TD, err error) {
 
 	err = jsoniter.UnmarshalFromString(tdJSON, &thingTD)
 	if err != nil {
@@ -32,20 +31,20 @@ func (svc *DirectoryService) MakeDigitalTwinTD(
 	// make a deep copy for the digital twin
 	_ = jsoniter.UnmarshalFromString(tdJSON, &dtwTD)
 
-	dtwTD.ID = tdd.MakeDigiTwinThingID(agentID, thingTD.ID)
+	dtwTD.ID = td.MakeDigiTwinThingID(agentID, thingTD.ID)
 
 	// remove all existing forms and auth info
-	dtwTD.Forms = make([]tdd.Form, 0)
+	dtwTD.Forms = make([]td.Form, 0)
 	dtwTD.Security = ""
-	dtwTD.SecurityDefinitions = make(map[string]tdd.SecurityScheme)
+	dtwTD.SecurityDefinitions = make(map[string]td.SecurityScheme)
 	for _, aff := range dtwTD.Properties {
-		aff.Forms = make([]tdd.Form, 0)
+		aff.Forms = make([]td.Form, 0)
 	}
 	for _, aff := range dtwTD.Events {
-		aff.Forms = make([]tdd.Form, 0)
+		aff.Forms = make([]td.Form, 0)
 	}
 	for _, aff := range dtwTD.Actions {
-		aff.Forms = make([]tdd.Form, 0)
+		aff.Forms = make([]td.Form, 0)
 	}
 
 	if svc.addFormsHandler != nil {

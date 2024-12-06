@@ -4,7 +4,6 @@ import (
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
 	"github.com/hiveot/hub/runtime/digitwin/store"
-	"github.com/hiveot/hub/wot/tdd"
 	"github.com/hiveot/hub/wot/transports/connections"
 	"log/slog"
 	"os"
@@ -31,7 +30,7 @@ type DigitwinService struct {
 
 // ReadAllTDs returns a list digitwin TDs
 func (svc *DigitwinService) ReadAllTDs(
-	consumerID string, offset int, limit int) ([]*tdd.TD, error) {
+	consumerID string, offset int, limit int) ([]*td.TD, error) {
 	dtlist, err := svc.DtwStore.ReadTDs(offset, limit)
 	return dtlist, err
 }
@@ -45,7 +44,7 @@ func (svc *DigitwinService) ReadAllTDs(
 
 // SetFormsHook sets the transport hook for reading forms and publishing
 // service events.
-func (svc *DigitwinService) SetFormsHook(addFormsHandler func(*tdd.TD) error) {
+func (svc *DigitwinService) SetFormsHook(addFormsHandler func(*td.TD) error) {
 	svc.DirSvc.addFormsHandler = addFormsHandler
 }
 

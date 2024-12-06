@@ -2,7 +2,6 @@
 package tests
 
 import (
-	"context"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/wot/transports"
 	"github.com/stretchr/testify/assert"
@@ -16,61 +15,73 @@ import (
 // this uses the client and server helpers defined in connect_test.go
 
 // Test observing and receiving all properties by consumer
-func TestObserveAllByConsumer(t *testing.T) {
-	t.Log("TestObserveAllByConsumer")
-	var rxVal atomic.Value
+func TestObservePropertyByConsumer(t *testing.T) {
+	t.Log("TestObservePropertyByConsumer")
+	var rxVal1 atomic.Value
+	var rxVal2 atomic.Value
 	var thingID = "thing1"
 	var propertyKey1 = "property1"
+	var propertyKey2 = "property2"
 	var propValue1 = "value1"
 	var propValue2 = "value2"
 
-	// 1. start the servers
-	cancelFn, cm := StartTransportServer(DummyMessageHandler)
+	// 1. start the server
+	srv, cancelFn, cm := StartTransportServer(DummyMessageHandler)
 	defer cancelFn()
 
-	// 2. connect as a consumer
-	cl1 := NewClient(testClientID1)
+	// 2. connect with two consumers
+	cl1 := NewClient(testClientID1, srv.GetForm)
 	_, err := cl1.ConnectWithPassword(testClientPassword1)
 	require.NoError(t, err)
 	defer cl1.Disconnect()
+	cl2 := NewClient(testClientID1, srv.GetForm)
+	_, err = cl2.ConnectWithPassword(testClientPassword1)
+	require.NoError(t, err)
+	defer cl2.Disconnect()
 
-	// set the handler for properties and subscribe
-	ctx1, cancelFn1 := context.WithTimeout(context.Background(), time.Minute)
-	defer cancelFn1()
-
-	cl1.SetMessageHandler(func(ev *transports.ThingMessage) {
-		t.Log("Received event: " + ev.Operation)
-		// receive property update
-		rxVal.Store(ev.Data)
-		cancelFn1()
+	// set the handler for property updates and subscribe
+	cl1.SetNotificationHandler(func(ev *transports.ThingMessage) {
+		rxVal1.Store(ev.Data)
+	})
+	cl2.SetNotificationHandler(func(ev *transports.ThingMessage) {
+		rxVal2.Store(ev.Data)
 	})
 
-	// Subscribe to property updates
-	form := NewForm(vocab.OpObserveAllProperties)
-	_, err = cl1.SendOperation(form, "", "", nil, nil, "")
-	// No result is expected
+	// Client1 subscribes to one, client 2 to all property updates
+	err = cl1.ObserveProperty(thingID, propertyKey1)
+	require.NoError(t, err)
+	err = cl2.ObserveProperty("", "")
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond) // time to take effect
 
 	// 3. Server sends a property update to consumers
 	cm.PublishProperty(thingID, propertyKey1, propValue1, "", testAgentID1)
 
-	// 4. observer should have received them
-	<-ctx1.Done()
-	assert.Equal(t, propValue1, rxVal.Load())
+	// 4. both observers should have received it
+	time.Sleep(time.Millisecond)
+	assert.Equal(t, propValue1, rxVal1.Load())
+	assert.Equal(t, propValue1, rxVal2.Load())
 
-	// 5. unobserve properties
-	form = NewForm(vocab.OpUnobserveAllProperties)
-	_, err = cl1.SendOperation(form, "", "", nil, nil, "")
+	// 5. client 1 unobserves
+	err = cl1.UnobserveProperty(thingID, propertyKey1)
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond * 10) // time to take effect
 
 	// 6. Server sends a property update to consumers
 	cm.PublishProperty(thingID, propertyKey1, propValue2, "", testAgentID1)
+	cm.PublishProperty(thingID, propertyKey2, propValue2, "", testAgentID1)
 
 	// 7. property should not have been received
 	time.Sleep(time.Millisecond * 10)
-	assert.Equal(t, propValue1, rxVal.Load())
+	assert.Equal(t, propValue1, rxVal1.Load())
+	assert.Equal(t, propValue2, rxVal2.Load())
+
+	// 8. client 2 unobserves
+	err = cl2.UnobserveProperty("", "")
+	time.Sleep(time.Millisecond * 10)
+	cm.PublishProperty(thingID, propertyKey2, propValue1, "", testAgentID1)
+	// no change is expected
+	assert.Equal(t, propValue2, rxVal2.Load())
 
 }
 
@@ -85,33 +96,26 @@ func TestPublishPropertyByAgent(t *testing.T) {
 	var propValue1 = "value1"
 
 	// handler of property updates on the server
-	handler1 := func(msg *transports.ThingMessage, replyTo transports.IServerConnection) (
-		stat transports.RequestStatus) {
+	handler1 := func(msg *transports.ThingMessage, replyTo transports.IServerConnection) {
 		// event handlers do not reply
 		require.Nil(t, replyTo)
 		evVal.Store(msg.Data)
-		return stat
 	}
 
 	// 1. start the transport
-	cancelFn, _ := StartTransportServer(handler1)
+	srv, cancelFn, _ := StartTransportServer(handler1)
 	defer cancelFn()
 
 	// 2. connect as an agent
-	ag1 := NewClient(testAgentID1)
+	ag1 := NewClient(testAgentID1, srv.GetForm)
 	_, err := ag1.ConnectWithPassword(testAgentPassword1)
 	require.NoError(t, err)
 	defer ag1.Disconnect()
 
 	// 3. agent publishes a property update
-	form := NewForm(vocab.HTOpUpdateProperty)
-	require.NotNil(t, form)
-	status, err := ag1.SendOperation(form, thingID, propKey1, propValue1, nil, "")
+	err = ag1.SendNotification(vocab.HTOpUpdateProperty, thingID, propKey1, propValue1)
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond) // time to take effect
-
-	// no reply is expected
-	require.Equal(t, transports.RequestPending, status)
 
 	// property received by server
 	rxMsg2 := evVal.Load()

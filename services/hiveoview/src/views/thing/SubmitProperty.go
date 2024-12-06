@@ -6,7 +6,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
-	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 	"net/http"
 )
@@ -16,8 +15,8 @@ import (
 // TODO: use the form method from the TD - once forms are added
 func SubmitProperty(w http.ResponseWriter, r *http.Request) {
 	var newValue any
-	var td *tdd.TD
-	var propAff *tdd.PropertyAffordance
+	var td *td.TD
+	var propAff *td.PropertyAffordance
 	stat := transports.RequestStatus{}
 	thingID := chi.URLParam(r, "thingID")
 	propName := chi.URLParam(r, "name")
@@ -35,7 +34,7 @@ func SubmitProperty(w http.ResponseWriter, r *http.Request) {
 
 	// form values are strings. Convert to their native type before posting
 	if err == nil {
-		newValue, err = tdd.ConvertToNative(valueStr, &propAff.DataSchema)
+		newValue, err = td.ConvertToNative(valueStr, &propAff.DataSchema)
 
 		stat = sess.GetHubClient().WriteProperty(thingID, propName, newValue)
 		if stat.Error != "" {

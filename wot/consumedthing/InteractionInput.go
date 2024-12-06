@@ -1,7 +1,6 @@
 package consumedthing
 
 import (
-	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 )
 
@@ -13,7 +12,7 @@ type InteractionInput struct {
 	// Title with the human name provided by the interaction affordance
 	Title string
 	// Schema describing the data from property, event or action affordance
-	Schema *tdd.DataSchema
+	Schema *td.DataSchema
 	// decoded data in its native format as described by the schema
 	// eg string, int, array, object
 	value DataSchemaValue
@@ -29,7 +28,7 @@ func (iin *InteractionInput) Value() DataSchemaValue {
 //
 //	td Thing Description document with schemas for the value. Use nil if schema is unknown.
 //	name of the input property or action
-func NewInteractionInput(td *tdd.TD, key string, defaultValue any) *InteractionInput {
+func NewInteractionInput(td *td.TD, key string, defaultValue any) *InteractionInput {
 	io := &InteractionInput{
 		name:  key,
 		value: NewDataSchemaValue(defaultValue),

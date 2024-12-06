@@ -8,14 +8,15 @@ import (
 	"fmt"
 	"github.com/eclipse/paho.golang/autopaho"
 	"github.com/eclipse/paho.golang/paho"
-	"github.com/hiveot/hub/wot/tdd"
+	"github.com/hiveot/hub/wot/td"
 	"github.com/hiveot/hub/wot/transports"
-	jsoniter "github.com/json-iterator/go"
+	"github.com/hiveot/hub/wot/transports/clients/base"
+	"github.com/hiveot/hub/wot/transports/utils"
+	"github.com/teris-io/shortid"
 	"log"
 	"log/slog"
 	"net/url"
 	"os"
-	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -42,39 +43,28 @@ const keepAliveInterval = 30 // seconds
 const withQos = 1
 
 // MqttBindingClient provides WoT protocol binding for the MQTT protocol
+// This implements the IClientConnection interface.
 type MqttBindingClient struct {
+	base.TransportClient
+
 	// mqtt broker url
 	brokerURL string
-	// the CA certificate to validate the server TLS connection
-	caCert *x509.Certificate
-	// The client ID of the user of this binding
-	clientID string
 	// paho mqtt client
 	pahoClient *autopaho.ConnectionManager
 	// enable debug logging in the paho client
 	logDebug bool
-	// timeout for packet transfer
-	timeout time.Duration
+	// handler to obtain a form for the operation
+	getForm func(op string) td.Form
 	// authentication token
 	authToken string
 	//
 	inboxTopic       string // set on first request, cleared on disconnect
 	connectID        string // unique connection ID
-	isConnected      atomic.Bool
 	connectionStatus string
 	lastError        atomic.Pointer[error]
 	//
 	correlData    map[string]chan *paho.Publish
 	subscriptions map[string]bool
-
-	//
-	mux sync.RWMutex
-	// callbacks for connection, events and requests
-	connectHandler func(connected bool, err error)
-	// client side handler that receives messages for consumers
-	messageHandler transports.MessageHandler
-	// map of requestID to delivery status update channel
-	requestHandler transports.RequestHandler
 }
 
 // ConnectWithPassword connects to the Hub server using a login ID and password.
@@ -88,22 +78,22 @@ func (cl *MqttBindingClient) ConnectWithPassword(password string) (newToken stri
 func (cl *MqttBindingClient) ConnectWithToken(token string) (newToken string, err error) {
 	// setup TLS
 	caCertPool := x509.NewCertPool()
-	if cl.caCert == nil {
+	if cl.BaseCaCert == nil {
 		slog.Info("NewTLSClient: No CA certificate. InsecureSkipVerify used",
 			slog.String("destination", cl.brokerURL))
 	} else {
-		caCertPool.AddCert(cl.caCert)
+		caCertPool.AddCert(cl.BaseCaCert)
 	}
 	tlsCfg := &tls.Config{
 		RootCAs: caCertPool,
 		//Certificates:       clientCertList,
-		InsecureSkipVerify: cl.caCert == nil,
+		InsecureSkipVerify: cl.BaseCaCert == nil,
 	}
 
 	//safeConn := packets.NewThreadSafeConn(conn)
 	// Setup the Paho client configuration
 	hostName, _ := os.Hostname()
-	connectID := fmt.Sprintf("%s-%s-%s", cl.clientID, hostName, time.Now().Format("20060102150405.000"))
+	connectID := fmt.Sprintf("%s-%s-%s", cl.BaseClientID, hostName, time.Now().Format("20060102150405.000"))
 	logger := log.Default()
 	u, err := url.Parse(cl.brokerURL)
 	autoCfg := autopaho.ClientConfig{
@@ -112,7 +102,7 @@ func (cl *MqttBindingClient) ConnectWithToken(token string) (newToken string, er
 		ClientConfig: paho.ClientConfig{
 			ClientID: connectID, // instance ID, not the clientID
 			//Conn:          safeConn,    // autopaho ignores this :(
-			PacketTimeout: cl.timeout,
+			PacketTimeout: cl.BaseTimeout,
 			Router: paho.NewSingleHandlerRouter(func(m *paho.Publish) {
 				cl.handlePahoMessage(m)
 			}),
@@ -123,14 +113,14 @@ func (cl *MqttBindingClient) ConnectWithToken(token string) (newToken string, er
 		//CleanStartOnInitialConnection: true,
 		KeepAlive: 20, // Keepalive message should be sent every 20 seconds
 	}
-	autoCfg.ConnectUsername = cl.clientID
+	autoCfg.ConnectUsername = cl.BaseClientID
 	autoCfg.ConnectPassword = []byte(cl.authToken)
 	autoCfg.OnConnectError = cl.onPahoConnectionError
 	autoCfg.OnConnectionUp = cl.onPahoConnect
 	autoCfg.OnServerDisconnect = func(disconnect *paho.Disconnect) {
-		cl.isConnected.Store(false)
-		if cl.connectHandler != nil {
-			cl.connectHandler(false, nil)
+		cl.BaseIsConnected.Store(false)
+		if cl.BaseConnectHandler != nil {
+			cl.BaseConnectHandler(false, nil)
 		}
 	}
 
@@ -144,10 +134,10 @@ func (cl *MqttBindingClient) ConnectWithToken(token string) (newToken string, er
 
 	pcl, err := autopaho.NewConnection(ctx, autoCfg)
 
-	cl.mux.Lock()
+	cl.BaseMux.Lock()
 	cl.connectID = connectID
 	cl.pahoClient = pcl
-	cl.mux.Unlock()
+	cl.BaseMux.Unlock()
 
 	// Wait for the connection to come up
 	ctx, cancelFn := context.WithTimeout(ctx, time.Second*1)
@@ -155,10 +145,10 @@ func (cl *MqttBindingClient) ConnectWithToken(token string) (newToken string, er
 	cancelFn()
 	if err != nil {
 		// provide a more meaningful error, the actual error is not returned by paho
-		cl.mux.RLock()
+		cl.BaseMux.RLock()
 		errptr := cl.lastError.Load()
 		err = *errptr
-		cl.mux.RUnlock()
+		cl.BaseMux.RUnlock()
 	}
 	return token, err
 }
@@ -172,17 +162,17 @@ func (cl *MqttBindingClient) ConnectWithToken(token string) (newToken string, er
 // Disconnect from the MQTT broker and unsubscribe from all topics and set
 // device state to disconnected
 func (cl *MqttBindingClient) Disconnect() {
-	cl.mux.Lock()
+	cl.BaseMux.Lock()
 	pcl := cl.pahoClient
 	connectID := cl.connectID
 
 	cl.pahoClient = nil
 	cl.inboxTopic = ""
 	cl.connectID = ""
-	cl.isConnected.Store(false)
+	cl.BaseIsConnected.Store(false)
 	err := errors.New("disconnected by user")
 	cl.lastError.Store(&err)
-	cl.mux.Unlock()
+	cl.BaseMux.Unlock()
 
 	slog.Info("Disconnecting", "cid", connectID)
 	if pcl != nil {
@@ -194,6 +184,11 @@ func (cl *MqttBindingClient) Disconnect() {
 	}
 }
 
+// GetServerURL returns the schema://address:port of the server connection
+func (cl *MqttBindingClient) GetServerURL() string {
+	return cl.brokerURL
+}
+
 // handlePahoMessage handles incoming mqtt messages
 func (cl *MqttBindingClient) handlePahoMessage(m *paho.Publish) {
 	slog.Debug("handlePahoMessage", slog.String("topic", m.Topic))
@@ -203,36 +198,6 @@ func (cl *MqttBindingClient) handlePahoMessage(m *paho.Publish) {
 	}()
 }
 
-// GetClientID returns the client's account ID
-func (cl *MqttBindingClient) GetClientID() string {
-	return cl.clientID
-}
-
-func (cl *MqttBindingClient) GetConnectionStatus() (bool, string, error) {
-	var lastErr error = nil
-	// lastError is stored as pointer because atomic.Value cannot switch between error and nil type
-	if cl.lastError.Load() != nil {
-		lastErrPtr := cl.lastError.Load()
-		lastErr = *lastErrPtr
-	}
-	return cl.isConnected.Load(), cl.connectID, lastErr
-}
-
-// GetProtocolType returns the type of protocol this client supports
-func (cl *MqttBindingClient) GetProtocolType() string {
-	return transports.ProtocolTypeMQTT
-}
-
-// GetServerURL returns the schema://address:port of the server connection
-func (cl *MqttBindingClient) GetServerURL() string {
-	return cl.brokerURL
-}
-
-// IsConnected return whether the return channel is connection, eg can receive data
-func (cl *MqttBindingClient) IsConnected() bool {
-	return cl.isConnected.Load()
-}
-
 // Logout from the server and end the session.
 // This is specific to the Hiveot Hub.
 func (cl *MqttBindingClient) Logout() error {
@@ -240,16 +205,16 @@ func (cl *MqttBindingClient) Logout() error {
 	return err
 }
 func (cl *MqttBindingClient) onPahoConnect(cm *autopaho.ConnectionManager, connAck *paho.Connack) {
-	cl.mux.Lock()
-	defer cl.mux.Unlock()
+	cl.BaseMux.Lock()
+	defer cl.BaseMux.Unlock()
 
-	cl.isConnected.Store(true)
+	cl.BaseIsConnected.Store(true)
 	cl.lastError.Store(nil)
 	subList := make([]string, 0, len(cl.subscriptions))
 	for topic := range cl.subscriptions {
 		subList = append(subList, topic)
 	}
-	connectHandler := cl.connectHandler
+	connectHandler := cl.BaseConnectHandler
 
 	go func() {
 		// (re)subscribe all subscriptions
@@ -284,36 +249,58 @@ func (cl *MqttBindingClient) onPahoConnectionError(err error) {
 			} else {
 				connStatus = ConnStatConnecting
 				connErr = fmt.Errorf("%s: %w", et.Reason, err)
-				//connErr = fmt.Errorf("disconnected user '%s': %s", cl.clientID, err.Error())
+				//connErr = fmt.Errorf("disconnected user '%s': %s", cl.BaseClientID, err.Error())
 			}
 		default:
 			connStatus = ConnStatConnecting
 			connErr = fmt.Errorf("disconnected: %w", err)
-			slog.Error("connection error", "clientID", cl.clientID, "err", err)
+			slog.Error("connection error", "clientID", cl.BaseClientID, "err", err)
 		}
 		// notify on change
-		cl.mux.RLock()
+		cl.BaseMux.RLock()
 		oldStatus := cl.connectionStatus
 		oldErrPtr := cl.lastError.Load()
-		cl.mux.RUnlock()
+		cl.BaseMux.RUnlock()
 		if connStatus != oldStatus || connErr != *oldErrPtr {
-			cl.mux.Lock()
+			cl.BaseMux.Lock()
 			cl.connectionStatus = connStatus
 			cl.lastError.Store(&connErr)
-			cl.isConnected.Store(false)
-			connHandler := cl.connectHandler
-			cl.mux.Unlock()
+			cl.BaseIsConnected.Store(false)
+			connHandler := cl.BaseConnectHandler
+			cl.BaseMux.Unlock()
 			connHandler(false, connErr)
 		}
 		slog.Info("onPahoConnectionError", "err", connErr.Error())
 		// don't retry on authentication error
-		cl.mux.RLock()
+		cl.BaseMux.RLock()
 		pcl := cl.pahoClient
-		cl.mux.RUnlock()
+		cl.BaseMux.RUnlock()
 		if connStatus == ConnStatUnauthorized && pcl != nil {
 			_ = pcl.Disconnect(context.Background())
 		}
 	}()
+}
+
+// PubEvent publishes a message and returns
+func (cl *MqttBindingClient) PubEvent(topic string, payload []byte) (err error) {
+	slog.Debug("PubEvent", "topic", topic)
+	ctx, cancelFn := context.WithTimeout(context.Background(), cl.BaseTimeout)
+	defer cancelFn()
+	pubMsg := &paho.Publish{
+		QoS:     0, //withQos,
+		Retain:  false,
+		Topic:   topic,
+		Payload: payload,
+	}
+	cl.BaseMux.RLock()
+	pcl := cl.pahoClient
+	cl.BaseMux.RUnlock()
+	if pcl != nil {
+		_, err = pcl.Publish(ctx, pubMsg)
+	} else {
+		err = errors.New("no connection with the hub")
+	}
+	return err
 }
 
 // RefreshToken refreshes the authentication token
@@ -323,55 +310,44 @@ func (cl *MqttBindingClient) RefreshToken(oldToken string) (newToken string, err
 	return oldToken, fmt.Errorf("not implemented")
 }
 
-func (cl *MqttBindingClient) Rpc(form tdd.Form, dThingID, name string, input interface{},
-	output interface{}) error {
+// SendError sends an error result to a remote consumer.
+func (cl *MqttBindingClient) SendError(
+	thingID, name string, err error, requestID string) {
+	slog.Error("SendError: not implemented")
+}
+
+// SendRequest sends a request and waits for a result
+// The operation is used to retrieve the form of the Thing whose operation to
+// send and determine the endpoint. If no form can be retrieved this falls
+// back to the hub known endpoint.
+func (cl *MqttBindingClient) SendRequest(
+	operation string, thingID, name string, input interface{}, output interface{}) error {
 	return fmt.Errorf("not implemented")
 }
 
-// SendOperation sends the operation described in the Form. (todo)
-// The form must describe the MQTT protocol.
-func (cl *MqttBindingClient) SendOperation(
-	form tdd.Form, dThingID, name string, input interface{}, output interface{},
-	correlationID string) (status string, err error) {
+// SendResponse sends the action response message
+func (cl *MqttBindingClient) SendResponse(
+	dThingID, name string, output any, requestID string) {
+	// FIXME: implement
+}
+
+// SendNotification sends the operation as a notification and returns immediately.
+func (cl *MqttBindingClient) SendNotification(
+	operation string, thingID, name string, input interface{}) error {
 
 	// FIXME: implement message envelope
-	err = errors.New("not implemented")
-	status = transports.RequestFailed
-	return status, err
+	err := errors.New("not implemented")
+	return err
 }
 
-// SendOperationStatus [agent] sends a operation progress status update to the server.
-// (todo)
-func (cl *MqttBindingClient) SendOperationStatus(stat transports.RequestStatus) {
-	topic := ""
-	payload, _ := jsoniter.Marshal(stat)
-	cl.PubEvent(topic, payload)
-}
-
-// SetConnectHandler sets the notification handler of connection failure
-// Intended to notify the client that a reconnect or relogin is needed.
-func (cl *MqttBindingClient) SetConnectHandler(cb func(connected bool, err error)) {
-	cl.mux.Lock()
-	cl.connectHandler = cb
-	cl.mux.Unlock()
-}
-
-// SetMessageHandler set the handler that receives event type messages send by the server.
-// This requires a sub-protocol with a return channel.
-func (cl *MqttBindingClient) SetMessageHandler(cb transports.MessageHandler) {
-	cl.mux.Lock()
-	cl.messageHandler = cb
-	cl.mux.Unlock()
-}
-
-// SetRequestHandler set the handler that receives requests from the server,
-// where a status response is expected.
-// This requires a sub-protocol with a return channel.
-func (cl *MqttBindingClient) SetRequestHandler(cb transports.RequestHandler) {
-	cl.mux.Lock()
-	cl.requestHandler = cb
-	cl.mux.Unlock()
-}
+//
+//// SendResponse [agent] sends a operation response to the server.
+//// (todo)
+//func (cl *MqttBindingClient) SendResponse(requestID string, data any) {
+//	topic := ""
+//	payload, _ := jsoniter.Marshal(data)
+//	cl._send(topic, payload)
+//}
 
 // sub builds a subscribe packet and submits it
 func (cl *MqttBindingClient) sub(topic string) error {
@@ -384,9 +360,9 @@ func (cl *MqttBindingClient) sub(topic string) error {
 			},
 		},
 	}
-	cl.mux.RLock()
+	cl.BaseMux.RLock()
 	pcl := cl.pahoClient
-	cl.mux.RUnlock()
+	cl.BaseMux.RUnlock()
 	suback, err := pcl.Subscribe(context.Background(), packet)
 	_ = suback
 	return err
@@ -398,9 +374,11 @@ func (cl *MqttBindingClient) sub(topic string) error {
 //	clientID to connect as
 //	clientCert optional client certificate to connect with
 //	caCert of the server to validate the server or nil to not check the server cert
+//	getForm is the handler that provides a form for the given operation
 //	timeout for waiting for response. 0 to use the default.
 func NewMqttBindingClient(fullURL string, clientID string,
 	clientCert *tls.Certificate, caCert *x509.Certificate,
+	getForm func(op string) td.Form,
 	timeout time.Duration) *MqttBindingClient {
 
 	caCertPool := x509.NewCertPool()
@@ -420,22 +398,27 @@ func NewMqttBindingClient(fullURL string, clientID string,
 	}
 
 	cl := MqttBindingClient{
-		//_status: hubclient.TransportStatus{
-		//	HubURL:               fmt.Sprintf("https://%s", hostPort),
-		caCert:   caCert,
-		clientID: clientID,
+		TransportClient: base.TransportClient{
+			BaseCaCert:       caCert,
+			BaseClientID:     clientID,
+			BaseConnectionID: clientID + "." + shortid.MustGenerate(),
+			BaseTimeout:      timeout,
+			BaseProtocolType: transports.ProtocolTypeMQTT,
+			BaseFullURL:      fullURL,
+			BaseRnrChan:      utils.NewRnRChan(),
+		},
 
 		// max delay 3 seconds before a response is expected
 		brokerURL:     fullURL,
-		timeout:       timeout,
+		getForm:       getForm,
 		correlData:    make(map[string]chan *paho.Publish),
 		subscriptions: make(map[string]bool),
-		connectHandler: func(connected bool, err error) {
-			slog.Info("connection status change",
-				"newStatus", connected,
-				"lastError", err,
-				"clientID", clientID)
-		},
+	}
+	cl.BaseConnectHandler = func(connected bool, err error) {
+		slog.Info("connection status change",
+			"newStatus", connected,
+			"lastError", err,
+			"clientID", clientID)
 	}
 	//err = cl.pahoConnect()
 

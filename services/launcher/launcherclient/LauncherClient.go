@@ -3,8 +3,6 @@ package launcherclient
 import (
 	"fmt"
 	"github.com/hiveot/hub/services/launcher/launcherapi"
-	"github.com/hiveot/hub/wot/protocolclients"
-	"github.com/hiveot/hub/wot/tdd"
 )
 
 // LauncherClient is a marshaller for service messages using a provided hub connection.
@@ -84,7 +82,7 @@ func NewLauncherClient(agentID string, hc clients.IConsumer) *LauncherClient {
 	}
 	cl := LauncherClient{
 		hc:       hc,
-		dThingID: tdd.MakeDigiTwinThingID(agentID, launcherapi.ManageServiceID),
+		dThingID: td.MakeDigiTwinThingID(agentID, launcherapi.ManageServiceID),
 	}
 	return &cl
 }

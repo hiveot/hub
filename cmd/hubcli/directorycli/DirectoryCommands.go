@@ -8,14 +8,15 @@ import (
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/runtime/api"
-	"github.com/hiveot/hub/wot/tdd"
+	"github.com/hiveot/hub/wot/td"
+	"github.com/hiveot/hub/wot/transports"
 	utils2 "github.com/hiveot/hub/wot/transports/utils"
 	"github.com/urfave/cli/v2"
 	"log/slog"
 	"time"
 )
 
-func DirectoryListCommand(hc *clients.IConsumer) *cli.Command {
+func DirectoryListCommand(hc transports.IClientConnection) *cli.Command {
 	var verbose = false
 	return &cli.Command{
 		Name:      "ld",
@@ -33,12 +34,12 @@ func DirectoryListCommand(hc *clients.IConsumer) *cli.Command {
 		Action: func(cCtx *cli.Context) error {
 			var err = fmt.Errorf("expected 0 or 1 parameters")
 			if cCtx.NArg() == 0 {
-				err = HandleListDirectory(*hc)
+				err = HandleListDirectory(hc)
 			} else if cCtx.NArg() == 1 {
 				if !verbose {
-					err = HandleListThing(*hc, cCtx.Args().First())
+					err = HandleListThing(hc, cCtx.Args().First())
 				} else {
-					err = HandleListThingVerbose(*hc, cCtx.Args().First())
+					err = HandleListThingVerbose(hc, cCtx.Args().First())
 				}
 			}
 			return err
@@ -47,10 +48,10 @@ func DirectoryListCommand(hc *clients.IConsumer) *cli.Command {
 }
 
 // HandleListDirectory lists the directory content
-func HandleListDirectory(hc clients.IConsumer) (err error) {
+func HandleListDirectory(hc transports.IClientConnection) (err error) {
 	// todo: iterate with offset and limit
 	tdListJson, err := digitwin.DirectoryReadAllTDs(hc, 300, 0)
-	tdList, err2 := tdd.UnmarshalTDList(tdListJson)
+	tdList, err2 := td.UnmarshalTDList(tdListJson)
 
 	if err != nil || err2 != nil {
 		return err
@@ -82,13 +83,14 @@ func HandleListDirectory(hc clients.IConsumer) (err error) {
 }
 
 // HandleListThing lists details of a Thing in the directory
-func HandleListThing(hc clients.IConsumer, thingID string) error {
-	tdDocJson, err := digitwin.DirectoryReadTD(hc, thingID)
-	tdDoc, err2 := tdd.UnmarshalTD(tdDocJson)
+func HandleListThing(hc transports.IClientConnection, thingID string) error {
+
+	tdDocJson, err := digitwin.DirectoryReadTD(directoryTD, hc, thingID)
+	tdDoc, err2 := td.UnmarshalTD(tdDocJson)
 	if err != nil || err2 != nil {
 		return err
 	}
-	propValueList, err := digitwin.ValuesReadAllProperties(hc, thingID)
+	propValueList, err := digitwin.ValuesReadAllProperties(td1, hc, thingID)
 	propValueMap := api.ValueListToMap(propValueList)
 
 	if err != nil {
@@ -172,7 +174,7 @@ func HandleListThing(hc clients.IConsumer, thingID string) error {
 }
 
 // HandleListThingVerbose lists a Thing full TD
-func HandleListThingVerbose(hc clients.IConsumer, thingID string) error {
+func HandleListThingVerbose(hc transports.IClientConnection, thingID string) error {
 	tdJSON, err := digitwin.DirectoryReadTD(hc, thingID)
 
 	if err != nil {

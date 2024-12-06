@@ -3,7 +3,6 @@ package digitwin_test
 import (
 	"encoding/json"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/wot/tdd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -21,7 +20,7 @@ func TestAddReadEvent(t *testing.T) {
 	// add a TD with an event
 	tdDoc1 := createTDDoc(thing1ID, 5, 3, 1)
 	tdDoc1.AddEvent(eventName, "event1", "Descr 1",
-		&tdd.DataSchema{
+		&td.DataSchema{
 			Title: "type1",
 			Type:  vocab.WoTDataTypeInteger,
 		})
@@ -47,7 +46,7 @@ func TestAddReadEvent(t *testing.T) {
 func TestEventReadFail(t *testing.T) {
 	const agentID = "agent1"
 	const thingID = "thing1"
-	var dThingID = tdd.MakeDigiTwinThingID(agentID, thingID)
+	var dThingID = td.MakeDigiTwinThingID(agentID, thingID)
 
 	svc, _, stopFunc := startService(true)
 	defer stopFunc()
@@ -86,7 +85,7 @@ func TestEventUpdateFail(t *testing.T) {
 
 	tdDoc1 := createTDDoc(thingID, 4, 2, 1)
 	tdDoc1.AddEvent(EventName, "event1", "Descr 1",
-		&tdd.DataSchema{
+		&td.DataSchema{
 			Title: "type1",
 			Type:  vocab.WoTDataTypeInteger,
 		})

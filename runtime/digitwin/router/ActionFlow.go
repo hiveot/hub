@@ -8,7 +8,6 @@ import (
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/runtime/api"
-	"github.com/hiveot/hub/wot/tdd"
 	"github.com/hiveot/hub/wot/transports"
 	"github.com/hiveot/hub/wot/transports/utils"
 	"log/slog"
@@ -61,7 +60,7 @@ func (svc *DigitwinRouter) HandleInvokeAction(
 	}
 
 	// Forward the action to the built-in services
-	agentID, thingID := tdd.SplitDigiTwinThingID(msg.ThingID)
+	agentID, thingID := td.SplitDigiTwinThingID(msg.ThingID)
 	// TODO: Consider injecting the internal services instead of having direct dependencies
 	switch agentID {
 	case digitwin.DirectoryAgentID:
@@ -77,7 +76,7 @@ func (svc *DigitwinRouter) HandleInvokeAction(
 		slog.Info("HandleInvokeAction (to agent)",
 			slog.String("dThingID", msg.ThingID),
 			slog.String("actionName", msg.Name),
-			slog.String("requestID", msg.CorrelationID),
+			slog.String("requestID", msg.RequestID),
 			slog.String("senderID", msg.SenderID),
 		)
 
@@ -85,14 +84,14 @@ func (svc *DigitwinRouter) HandleInvokeAction(
 		// FIXME: don't store 'safe' actions as their results are meaningless in queryAction
 		// TODO: Maybe this shouldn't be stored at all and use properties instead.
 		_ = svc.dtwStore.UpdateActionStart(
-			msg.ThingID, msg.Name, msg.Data, msg.CorrelationID, msg.SenderID)
+			msg.ThingID, msg.Name, msg.Data, msg.RequestID, msg.SenderID)
 
 		// store a new action progress by message ID to support sending replies to the sender
 		actionRecord := ActionFlowRecord{
 			Operation: msg.Operation,
 			AgentID:   agentID,
 			ThingID:   thingID,
-			RequestID: msg.CorrelationID,
+			RequestID: msg.RequestID,
 			Name:      msg.Name,
 			SenderID:  msg.SenderID,
 			Progress:  vocab.RequestPending,
@@ -100,7 +99,7 @@ func (svc *DigitwinRouter) HandleInvokeAction(
 			ReplyTo:   replyTo,
 		}
 		svc.mux.Lock()
-		svc.activeCache[msg.CorrelationID] = actionRecord
+		svc.activeCache[msg.RequestID] = actionRecord
 		svc.mux.Unlock()
 
 		// forward to external services/things and return its response
@@ -110,7 +109,7 @@ func (svc *DigitwinRouter) HandleInvokeAction(
 		c := svc.cm.GetConnectionByClientID(agentID)
 		if c != nil {
 			found = true
-			status, output, err := c.InvokeAction(thingID, msg.Name, msg.Data, msg.CorrelationID, msg.SenderID)
+			status, output, err := c.InvokeAction(thingID, msg.Name, msg.Data, msg.RequestID, msg.SenderID)
 			stat.Delivered(msg)
 			stat.Status = status
 			stat.Output = output
@@ -122,7 +121,7 @@ func (svc *DigitwinRouter) HandleInvokeAction(
 		// Update the action status
 		svc.mux.Lock()
 		actionRecord.Progress = stat.Status
-		svc.activeCache[msg.CorrelationID] = actionRecord
+		svc.activeCache[msg.RequestID] = actionRecord
 		svc.mux.Unlock()
 
 		if !found {
@@ -136,23 +135,23 @@ func (svc *DigitwinRouter) HandleInvokeAction(
 		// remove the action when completed
 		if stat.Status == vocab.RequestCompleted {
 			svc.mux.Lock()
-			delete(svc.activeCache, msg.CorrelationID)
+			delete(svc.activeCache, msg.RequestID)
 			svc.mux.Unlock()
 
 			slog.Info("HandleInvokeAction - finished",
 				slog.String("dThingID", msg.ThingID),
 				slog.String("actionName", msg.Name),
-				slog.String("requestID", msg.CorrelationID),
+				slog.String("requestID", msg.RequestID),
 			)
 		} else if stat.Status == vocab.RequestFailed {
 			svc.mux.Lock()
-			delete(svc.activeCache, msg.CorrelationID)
+			delete(svc.activeCache, msg.RequestID)
 			svc.mux.Unlock()
 
 			slog.Warn("HandleInvokeAction - failed",
 				slog.String("dThingID", msg.ThingID),
 				slog.String("actionName", msg.Name),
-				slog.String("requestID", msg.CorrelationID),
+				slog.String("requestID", msg.RequestID),
 				slog.String("err", stat.Error))
 		}
 	}
@@ -204,7 +203,7 @@ func (svc *DigitwinRouter) HandleUpdateActionStatus(msg *transports.ThingMessage
 	senderID := actionRecord.SenderID
 
 	// Update the thingID to notify the sender with progress on the digital twin thing ID
-	stat.ThingID = tdd.MakeDigiTwinThingID(agentID, thingID)
+	stat.ThingID = td.MakeDigiTwinThingID(agentID, thingID)
 	stat.Name = actionName
 
 	// the sender (agents) must be the thing agent
@@ -226,20 +225,20 @@ func (svc *DigitwinRouter) HandleUpdateActionStatus(msg *transports.ThingMessage
 			slog.String("ThingID", thingID),
 			slog.String("Name", actionName),
 			slog.String("Status", stat.Status),
-			slog.String("CorrelationID", stat.CorrelationID),
+			slog.String("RequestID", stat.CorrelationID),
 			slog.String("Error", stat.Error),
 		)
 	} else if stat.Status == vocab.RequestCompleted {
 		slog.Info("HandleUpdateActionStatus - completed",
 			slog.String("ThingID", thingID),
 			slog.String("Name", actionName),
-			slog.String("CorrelationID", stat.CorrelationID),
+			slog.String("RequestID", stat.CorrelationID),
 		)
 	} else {
 		slog.Info("HandleUpdateActionStatus - progress",
 			slog.String("ThingID", thingID),
 			slog.String("Name", actionName),
-			slog.String("CorrelationID", stat.CorrelationID),
+			slog.String("RequestID", stat.CorrelationID),
 			slog.String("Status", stat.Status),
 		)
 	}
@@ -260,7 +259,7 @@ func (svc *DigitwinRouter) HandleUpdateActionStatus(msg *transports.ThingMessage
 			slog.String("thingID", thingID),
 			slog.String("replyTo", replyTo),
 			slog.String("err", err.Error()),
-			slog.String("CorrelationID", stat.CorrelationID),
+			slog.String("RequestID", stat.CorrelationID),
 		)
 		err = nil
 	}

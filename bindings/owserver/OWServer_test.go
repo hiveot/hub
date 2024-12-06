@@ -6,7 +6,6 @@ import (
 	"github.com/hiveot/hub/bindings/owserver/config"
 	"github.com/hiveot/hub/bindings/owserver/service"
 	"github.com/hiveot/hub/lib/testenv"
-	"github.com/hiveot/hub/wot/tdd"
 	"github.com/hiveot/hub/wot/transports/utils"
 	"log/slog"
 	"os"
@@ -92,10 +91,10 @@ func TestPoll(t *testing.T) {
 	svc := service.NewOWServerBinding(&owsConfig)
 
 	// Count the number of received TD events
-	err := cl1.Observe("", "")
+	err := cl1.ObserveProperty("", "")
 	err = cl1.Subscribe("", "")
 	require.NoError(t, err)
-	cl1.SetMessageHandler(func(msg *transports.ThingMessage) {
+	cl1.SetNotificationHandler(func(msg *transports.ThingMessage) {
 		slog.Info("received message", "MessageType", msg.Operation, "id", msg.Name)
 		var value interface{}
 		err2 := utils.DecodeAsObject(msg.Data, &value)
@@ -118,7 +117,7 @@ func TestPoll(t *testing.T) {
 	assert.GreaterOrEqual(t, tdCount.Load(), int32(4))
 
 	// get events from the digitwin
-	dThingID := tdd.MakeDigiTwinThingID(agentID, device1ID)
+	dThingID := td.MakeDigiTwinThingID(agentID, device1ID)
 	events, err := digitwin.ValuesReadAllEvents(cl1, dThingID)
 	require.NoError(t, err)
 	// only 1 event (temperature) is expected
@@ -149,7 +148,7 @@ func TestAction(t *testing.T) {
 	t.Log("--- TestAction (without state service)  ---")
 	const user1ID = "operator1"
 	// node in test data
-	var dThingID = tdd.MakeDigiTwinThingID(agentID, device1ID)
+	var dThingID = td.MakeDigiTwinThingID(agentID, device1ID)
 	var actionName = "RelayFunction" // the action attribute as defined by the device
 	var actionValue = "1"
 
@@ -168,7 +167,7 @@ func TestAction(t *testing.T) {
 	hc2, _ := ts.AddConnectConsumer(user1ID, authz.ClientRoleOperator)
 	require.NoError(t, err)
 	defer hc2.Disconnect()
-	err = hc2.Rpc(dThingID, actionName, &actionValue, nil)
+	err = hc2.SendRequest(dThingID, actionName, &actionValue, nil)
 	// can't write to a simulation
 	assert.Error(t, err)
 
@@ -195,8 +194,8 @@ func TestConfig(t *testing.T) {
 	// note that the simulation file doesn't support writes so this logs an error
 	hc2, _ := ts.AddConnectConsumer(user1ID, authz.ClientRoleManager)
 	defer hc2.Disconnect()
-	dThingID := tdd.MakeDigiTwinThingID(agentID, device1ID)
-	err = hc2.Rpc(dThingID, configName, &configValue, nil)
+	dThingID := td.MakeDigiTwinThingID(agentID, device1ID)
+	err = hc2.SendRequest(dThingID, configName, &configValue, nil)
 	// can't write to a simulation. How to test for real?
 	assert.Error(t, err)
 

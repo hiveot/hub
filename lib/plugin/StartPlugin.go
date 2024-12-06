@@ -1,10 +1,12 @@
 package plugin
 
 import (
-	"github.com/hiveot/hub/wot/protocolclients"
-	"github.com/hiveot/hub/wot/protocolclients/connect"
+	"github.com/hiveot/hub/lib/certs"
+	"github.com/hiveot/hub/wot/transports"
+	"github.com/hiveot/hub/wot/transports/clients"
 	"log/slog"
 	"os"
+	"path"
 )
 
 type PluginConfig struct {
@@ -15,7 +17,7 @@ type PluginConfig struct {
 type IPlugin interface {
 	// Start the plugin with the given environment settings and hub connection
 	//	hc is the hub connection for publishing and subscribing
-	Start(hc clients.IAgent) error
+	Start(hc transports.IClientConnection) error
 	Stop()
 }
 
@@ -34,7 +36,9 @@ type IPlugin interface {
 func StartPlugin(plugin IPlugin, clientID string, certsDir string) {
 
 	// locate the hub, load CA certificate, load service key and token and connect
-	hc, err := connect.ConnectToHub("", clientID, certsDir, "")
+	caCertFile := path.Join(certsDir, certs.DefaultCaCertFile)
+	caCert, err := certs.LoadX509CertFromPEM(caCertFile)
+	hc, err := clients.CreateTransportClient("", clientID, certsDir, caCert)
 	if err != nil {
 		slog.Error("Failed connecting to the Hub", "err", err)
 		os.Exit(1)

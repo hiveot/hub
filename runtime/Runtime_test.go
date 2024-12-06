@@ -9,7 +9,8 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/runtime"
-	"github.com/hiveot/hub/wot/tdd"
+	"github.com/hiveot/hub/wot"
+	"github.com/hiveot/hub/wot/td"
 	"github.com/hiveot/hub/wot/transports"
 	"github.com/hiveot/hub/wot/transports/utils"
 	"github.com/stretchr/testify/assert"
@@ -68,7 +69,7 @@ func TestMultiConnectSingleClient(t *testing.T) {
 	const agentID = "agent1"
 	const testConnections = int32(100)
 	const eventName = "event1"
-	var clients = make([]clients.IConsumer, 0)
+	var clients = make([]transports.IClientConnection, 0)
 	var connectCount atomic.Int32
 	var disConnectCount atomic.Int32
 	var messageCount atomic.Int32
@@ -92,16 +93,18 @@ func TestMultiConnectSingleClient(t *testing.T) {
 	}
 	// 2: connect and subscribe clients and verify
 	for range testConnections {
-		serverURL := fmt.Sprintf("https://localhost:%d", ts.Port)
-		cl := connect.NewHubClient(serverURL, clientID1, ts.Certs.CaCert)
+		cl := ts.GetConnection(clientID1, ts.ConsumerProtocol)
 		cl.SetConnectHandler(onConnection)
-		cl.SetMessageHandler(onMessage)
+		cl.SetNotificationHandler(onMessage)
 		token, err := cl.ConnectWithToken(token1)
 		require.NoError(t, err)
 		// allow server to register its connection
 		time.Sleep(waitafterconnect)
-		err = cl.Subscribe("", "")
-		assert.NoError(t, err)
+		//err = cl.Subscribe("", "")
+		f1 := ts.GetForm(wot.OpSubscribeAllEvents, cl.GetProtocolType())
+		status, err := cl.SendNotification(f1, "", "", nil, nil, "")
+		require.NoError(t, err)
+		require.NotEqual(t, transports.RequestFailed, status)
 		_ = token
 		clients = append(clients, cl)
 	}
@@ -110,8 +113,11 @@ func TestMultiConnectSingleClient(t *testing.T) {
 	require.Equal(t, testConnections, connectCount.Load(), "connect count mismatch")
 
 	// 3: agent publishes an event, which should be received N times
-	err := ag1.PubEvent(td1.ID, eventName, "a value", "message1")
+	f2 := ts.GetForm(wot.HTOpPublishEvent, ag1.GetProtocolType())
+	status, err := ag1.SendNotification(f2, td1.ID, eventName, "a value", nil, "")
+	//err := ag1.PubEvent(td1.ID, eventName, "a value", "message1")
 	require.NoError(t, err)
+	require.NotEqual(t, transports.RequestFailed, status)
 
 	// event should have been received N times
 	time.Sleep(time.Millisecond * 100)
@@ -128,7 +134,8 @@ func TestMultiConnectSingleClient(t *testing.T) {
 
 	// 5: no more messages should be received after disconnecting
 	messageCount.Store(0)
-	err = ag1.PubEvent(td1.ID, eventName, "a value", "message2")
+	//err = ag1.PubEvent(td1.ID, eventName, "a value", "message2")
+	status, err = ag1.SendNotification(f2, td1.ID, eventName, "a value", nil, "")
 	require.NoError(t, err)
 	ag1.Disconnect()
 
@@ -179,13 +186,13 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 		// option2: extend the websocket InvokeAction message format with a SenderID
 		//assert.Equal(t, cl1.GetClientID(), msg.SenderID)
 		//stat.Failed(msg, fmt.Errorf("failuretest"))
-		slog.Info("TestActionWithDeliveryConfirmation: agent1 delivery complete", "requestID", msg.CorrelationID)
+		slog.Info("TestActionWithDeliveryConfirmation: agent1 delivery complete", "requestID", msg.RequestID)
 		return stat
 	})
 
 	// users receives status updates when sending actions
 	deliveryCtx, deliveryCtxComplete := context.WithTimeout(context.Background(), time.Minute*1)
-	cl1.SetMessageHandler(func(msg *transports.ThingMessage) {
+	cl1.SetNotificationHandler(func(msg *transports.ThingMessage) {
 		if msg.Operation == vocab.HTOpUpdateActionStatus {
 			// delivery updates are only invoked on for non-rpc actions
 			err := utils.DecodeAsObject(msg.Data, &stat3)
@@ -198,9 +205,14 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 	// client sends action to agent and expect a 'delivered' result
 	// The RPC method returns an error if no reply is received
-	dThingID := tdd.MakeDigiTwinThingID(agentID, thingID)
-	stat2 := cl1.InvokeAction(dThingID, actionID, actionPayload, nil, "testmsgid")
-	require.Empty(t, stat2.Error)
+	dThingID := td.MakeDigiTwinThingID(agentID, thingID)
+
+	f1 := ts.GetForm(wot.OpInvokeAction, cl1.GetProtocolType())
+	status, err := cl1.SendNotification(f1, dThingID, actionID, actionPayload, nil, "testmsgid")
+	require.NoError(t, err)
+	require.NotEqual(t, transports.RequestFailed, status)
+	//stat2 := cl1.InvokeAction(dThingID, actionID, actionPayload, nil, "testmsgid")
+	//require.Empty(t, stat2.Error)
 
 	// wait for delivery completion
 	select {
@@ -249,7 +261,7 @@ func TestServiceReconnect(t *testing.T) {
 		rxMsg.Store(&msg)
 		_ = utils.DecodeAsObject(msg.Data, &req)
 		stat.Completed(msg, req+".reply", nil)
-		slog.Info("agent1 delivery complete", "requestID", msg.CorrelationID)
+		slog.Info("agent1 delivery complete", "requestID", msg.RequestID)
 		return stat
 	})
 
@@ -270,9 +282,11 @@ func TestServiceReconnect(t *testing.T) {
 	time.Sleep(time.Second * 3)
 
 	// this rpc call succeeds after agent1 has automatically reconnected
-	dThingID := tdd.MakeDigiTwinThingID(agentID, thingID)
+	dThingID := td.MakeDigiTwinThingID(agentID, thingID)
 	var reply string
-	err = cl2.Rpc(dThingID, actionID, &actionPayload, &reply)
+	f1 := ts.GetForm(wot.OpInvokeAction, cl2.GetProtocolType())
+	err = cl2.SendRequest(f1, dThingID, actionID, &actionPayload, &reply)
+	require.NoError(t, err)
 
 	require.NoError(t, err, "auto-reconnect didn't take place")
 	rx2 := rxMsg.Load()
@@ -292,13 +306,17 @@ func TestAccess(t *testing.T) {
 	defer hc.Disconnect()
 	_ = token
 
+	//f := r.GetForm(wot.OpInvokeAction, hc.GetProtocolType())
+	authnAdminTD := r.GetTD(authn.AdminDThingID)
+
 	// regulars users should not have authn and authz admin access
-	prof, err := authn.AdminGetProfiles(hc)
+	clientProfiles, err := authn.AdminGetProfiles(authnAdminTD, hc)
+
 	require.Error(t, err, "regular users should not have access to authn.Admin")
-	require.Empty(t, prof)
+	require.Empty(t, clientProfiles)
 	//time.Sleep(time.Millisecond * 100)
 
-	role, err := authz.AdminGetClientRole(hc, clientID)
+	role, err := authz.AdminGetClientRole(authnAdminTD, hc, clientID)
 	require.Error(t, err, "regular users should not have access to authz.Admin")
 	require.Empty(t, role)
 	//time.Sleep(time.Millisecond * 100)

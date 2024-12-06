@@ -1,21 +1,21 @@
 package wssserver
 
 import (
-	"github.com/hiveot/hub/wot/tdd"
+	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 )
 
-func (svc *WssTransportServer) AddTDForms(td *tdd.TD) error {
-	svc.AddThingLevelForms(td)
-	//svc.AddPropertiesForms(td)
-	//svc.AddEventsForms(td)
-	//svc.AddActionForms(td)
+func (svc *WssTransportServer) AddTDForms(tdi *td.TD) error {
+	svc.AddThingLevelForms(tdi)
+	//svc.AddPropertiesForms(tdi)
+	//svc.AddEventsForms(tdi)
+	//svc.AddActionForms(tdi)
 	return nil
 }
 
 // GetForm returns a new form for a websocket supported operation
 // Intended for Thing level operations
-func (svc *WssTransportServer) GetForm(op string) tdd.Form {
+func (svc *WssTransportServer) GetForm(op string) td.Form {
 	// map operations to message type
 
 	msgType, found := svc.op2MsgType[op]
@@ -24,7 +24,7 @@ func (svc *WssTransportServer) GetForm(op string) tdd.Form {
 			"op", op)
 		return nil
 	}
-	form := tdd.Form{}
+	form := td.Form{}
 	form["op"] = op
 	form["subprotocol"] = "websocket"
 	form["contentType"] = "application/json"
@@ -36,9 +36,9 @@ func (svc *WssTransportServer) GetForm(op string) tdd.Form {
 
 // AddThingLevelForms adds forms with protocol info to the TD, and its properties, events and actions
 // HiveOT mostly uses top level forms.
-func (svc *WssTransportServer) AddThingLevelForms(td *tdd.TD) {
+func (svc *WssTransportServer) AddThingLevelForms(tdi *td.TD) {
 	// iterate the thing level operations
-	//params := map[string]string{"thingID": td.ID}
+	//params := map[string]string{"thingID": tdi.ID}
 
 	// supported message type and operations
 	//for msgType, op := range wssbinding.MsgTypeToOp {
@@ -49,11 +49,11 @@ func (svc *WssTransportServer) AddThingLevelForms(td *tdd.TD) {
 
 	// apparently you can just add 1 form containing all operations...
 	// still struggling with this stuff.
-	form := tdd.Form{}
+	form := td.Form{}
 	form["op"] = svc.opList
 	form["subprotocol"] = "websocket"
 	form["contentType"] = "application/json"
 	form["href"] = svc.wssPath
-	td.Forms = append(td.Forms, form)
+	tdi.Forms = append(tdi.Forms, form)
 
 }

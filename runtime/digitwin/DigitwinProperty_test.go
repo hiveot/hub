@@ -3,7 +3,6 @@ package digitwin_test
 import (
 	"encoding/json"
 	"github.com/hiveot/hub/api/go/digitwin"
-	"github.com/hiveot/hub/wot/tdd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -36,7 +35,7 @@ func TestUpdateReadProperty(t *testing.T) {
 	assert.True(t, changed)
 
 	// Read the property value and all values
-	dThingID := tdd.MakeDigiTwinThingID(agent1ID, thing1ID)
+	dThingID := td.MakeDigiTwinThingID(agent1ID, thing1ID)
 	v2, err := svc.ValuesSvc.ReadProperty(user1ID, digitwin.ValuesReadPropertyArgs{
 		ThingID: dThingID,
 		Name:    propName})
@@ -107,7 +106,7 @@ func TestPropertyUpdateFail(t *testing.T) {
 	assert.True(t, changed)
 
 	//can't write a property that doesn't exist
-	dThingID := tdd.MakeDigiTwinThingID(agentID, thingID)
+	dThingID := td.MakeDigiTwinThingID(agentID, thingID)
 	err = dtwStore.WriteProperty(dThingID, digitwin.ThingValue{
 		Name:     "unknownprop",
 		Data:     123,

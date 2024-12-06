@@ -6,7 +6,6 @@ import (
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/runtime/digitwin/store"
-	"github.com/hiveot/hub/wot/tdd"
 	"github.com/hiveot/hub/wot/transports/connections"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -48,9 +47,9 @@ func startService(clean bool) (
 }
 
 // generate a TD document with properties, events and actions
-func createTDDoc(thingID string, nrProps, nrEvents, nrActions int) *tdd.TD {
+func createTDDoc(thingID string, nrProps, nrEvents, nrActions int) *td.TD {
 	title := utils.CreateRandomName("title-", 0)
-	td := tdd.NewTD(thingID, title, vocab.ThingDevice)
+	td := td.NewTD(thingID, title, vocab.ThingDevice)
 	for range nrProps {
 		name := utils.CreateRandomName("prop-", 0)
 		td.AddProperty(name, "", name, vocab.WoTDataTypeInteger)
@@ -58,14 +57,14 @@ func createTDDoc(thingID string, nrProps, nrEvents, nrActions int) *tdd.TD {
 	for range nrEvents {
 		name := utils.CreateRandomName("ev-", 0)
 		td.AddEvent(name, name, "",
-			&tdd.DataSchema{
+			&td.DataSchema{
 				Type: vocab.WoTDataTypeInteger,
 			})
 	}
 	for range nrActions {
 		name := utils.CreateRandomName("act-", 0)
 		td.AddAction(name, name, "",
-			&tdd.DataSchema{
+			&td.DataSchema{
 				Type: vocab.WoTDataTypeBool,
 			})
 	}

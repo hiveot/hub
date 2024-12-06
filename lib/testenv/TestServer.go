@@ -9,10 +9,9 @@ import (
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/runtime"
-	"github.com/hiveot/hub/wot/tdd"
+	"github.com/hiveot/hub/wot/td"
 	"github.com/hiveot/hub/wot/transports"
 	"github.com/hiveot/hub/wot/transports/clients/ssescclient"
-	"github.com/hiveot/hub/wot/transports/clients/wssbinding"
 	"log/slog"
 	"math/rand"
 	"os"
@@ -73,7 +72,7 @@ type TestServer struct {
 func (test *TestServer) GetConnection(clientID string, protocolName string) transports.IClientConnection {
 	if protocolName == WSSProtocol {
 		wssURL := fmt.Sprintf("wss://localhost:%d/wss", test.Port)
-		return wssbinding.NewWssTransportClient(wssURL, clientID, nil, test.Certs.CaCert, test.ConnectTimeout)
+		return wssclient.NewWssTransportClient(wssURL, clientID, nil, test.Certs.CaCert, test.ConnectTimeout)
 	} else {
 		hostPort := fmt.Sprintf("localhost:%d", test.Port)
 		return ssescclient.NewSsescTransportClient(hostPort, clientID, nil, test.Certs.CaCert, test.ConnectTimeout)
@@ -151,7 +150,7 @@ func (test *TestServer) AddConnectService(serviceID string) (
 
 	if test.ServiceProtocol == WSSProtocol {
 		wssURL := fmt.Sprintf("wss://localhost:%d/wss", test.Port)
-		cl = wssbinding.NewWssTransportClient(wssURL, serviceID, nil, test.Certs.CaCert, time.Minute)
+		cl = wssclient.NewWssTransportClient(wssURL, serviceID, nil, test.Certs.CaCert, time.Minute)
 	} else {
 		hostPort := fmt.Sprintf("localhost:%d", test.Port)
 		cl = ssescclient.NewSsescTransportClient(hostPort, serviceID, nil, test.Certs.CaCert, time.Minute)
@@ -167,7 +166,7 @@ func (test *TestServer) AddConnectService(serviceID string) (
 
 // AddTD adds a test TD document to the runtime
 // if td is nil then a random TD will be added
-func (test *TestServer) AddTD(agentID string, td *tdd.TD) *tdd.TD {
+func (test *TestServer) AddTD(agentID string, td *td.TD) *td.TD {
 	if td == nil {
 		i := rand.Intn(99882)
 		td = test.CreateTestTD(i)
@@ -198,41 +197,41 @@ func (test *TestServer) AddTDs(agentID string, count int) {
 //
 // The first 10 are predefined and always the same. A higher number generates at random.
 // i is the index.
-func (test *TestServer) CreateTestTD(i int) (td *tdd.TD) {
-	tdi := testTDs[0]
+func (test *TestServer) CreateTestTD(i int) (tdi *td.TD) {
+	ttd := testTDs[0]
 	if i < len(testTDs) {
-		tdi = testTDs[i]
+		ttd = testTDs[i]
 	} else {
-		tdi.ID = fmt.Sprintf("thing-%d", rand.Intn(99823))
+		ttd.ID = fmt.Sprintf("thing-%d", rand.Intn(99823))
 	}
 
-	td = tdd.NewTD(tdi.ID, tdi.Title, tdi.DeviceType)
+	tdi = td.NewTD(ttd.ID, ttd.Title, ttd.DeviceType)
 	// add random properties
-	for n := 0; n < tdi.NrProps; n++ {
+	for n := 0; n < ttd.NrProps; n++ {
 		propName := fmt.Sprintf("prop-%d", n)
-		td.AddProperty(propName, "title-"+PropTypes[n], "", vocab.WoTDataTypeString).
+		tdi.AddProperty(propName, "title-"+PropTypes[n], "", vocab.WoTDataTypeString).
 			SetAtType(PropTypes[n])
 	}
 	// add random events
-	for n := 0; n < tdi.NrEvents; n++ {
+	for n := 0; n < ttd.NrEvents; n++ {
 		evName := fmt.Sprintf("event-%d", n)
-		td.AddEvent(evName, "title-"+EventTypes[n], "",
-			&tdd.DataSchema{Type: vocab.WoTDataTypeString}).
+		tdi.AddEvent(evName, "title-"+EventTypes[n], "",
+			&td.DataSchema{Type: vocab.WoTDataTypeString}).
 			SetAtType(EventTypes[n])
 	}
 	// add random actions
-	for n := 0; n < tdi.NrActions; n++ {
+	for n := 0; n < ttd.NrActions; n++ {
 		actionName := fmt.Sprintf("action-%d", n)
-		td.AddAction(actionName, "title-"+ActionTypes[n], "",
-			&tdd.DataSchema{Type: vocab.WoTDataTypeString},
+		tdi.AddAction(actionName, "title-"+ActionTypes[n], "",
+			&td.DataSchema{Type: vocab.WoTDataTypeString},
 		).SetAtType(ActionTypes[n])
 	}
 
-	return td
+	return tdi
 }
 
 // GetForm returns the form for the given operation and transport protocol binding
-func (test *TestServer) GetForm(op string, protocol string) tdd.Form {
+func (test *TestServer) GetForm(op string, protocol string) td.Form {
 	return test.Runtime.GetForm(op, protocol)
 }
 

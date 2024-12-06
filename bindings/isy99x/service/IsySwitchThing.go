@@ -5,7 +5,6 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
 	"github.com/hiveot/hub/wot"
-	"github.com/hiveot/hub/wot/tdd"
 	"github.com/hiveot/hub/wot/transports"
 	"github.com/hiveot/hub/wot/transports/utils"
 )
@@ -86,7 +85,7 @@ func (it *IsySwitchThing) Init(ic *isy.IsyAPI, thingID string, node *isy.IsyNode
 	it.IsyThing.Init(ic, thingID, node, prodInfo, hwVersion)
 }
 
-func (it *IsySwitchThing) MakeTD() *tdd.TD {
+func (it *IsySwitchThing) MakeTD() *td.TD {
 	td := it.IsyThing.MakeTD()
 	// value of switch property ID "ST" is "0" or "255"
 	// TODO: support for switch events
@@ -95,7 +94,7 @@ func (it *IsySwitchThing) MakeTD() *tdd.TD {
 	//	SetAtType(vocab.ActionSwitchOnOff)
 
 	td.AddAction("ST", "Switch on/off", "",
-		&tdd.DataSchema{
+		&td.DataSchema{
 			AtType: vocab.ActionSwitchOnOff,
 			Type:   wot.WoTDataTypeBool,
 			Enum:   []interface{}{"on", "off"},

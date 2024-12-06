@@ -5,15 +5,14 @@ import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	session2 "github.com/hiveot/hub/services/hiveoview/src/session"
-	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 	"net/http"
 )
 
 // SubmitActionRequest posts the request to start an action
 func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
-	var td *tdd.TD
-	var actionAff *tdd.ActionAffordance
+	var td *td.TD
+	var actionAff *td.ActionAffordance
 	var newValue any
 	actionTitle := ""
 
@@ -39,7 +38,7 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if actionAff.Input != nil {
-		newValue, err = tdd.ConvertToNative(valueStr, actionAff.Input)
+		newValue, err = td.ConvertToNative(valueStr, actionAff.Input)
 	}
 	if err == nil {
 		slog.Info("SubmitActionRequest starting",

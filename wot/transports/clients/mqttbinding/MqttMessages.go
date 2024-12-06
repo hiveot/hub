@@ -22,15 +22,15 @@ func (cl *MqttBindingClient) handleMessage(m *paho.Publish) {
 		if strings.HasPrefix(m.Topic, INBOX_PREFIX) && m.Properties.CorrelationData != nil {
 			// Pass replies to their waiting channel
 			cID := string(m.Properties.CorrelationData)
-			cl.mux.RLock()
+			cl.BaseMux.RLock()
 			rChan, _ := cl.correlData[cID]
-			cl.mux.RUnlock()
+			cl.BaseMux.RUnlock()
 			if rChan == nil {
 				slog.Warn("Received reply without matching correlation ID", "corrID", cID)
 			} else {
-				cl.mux.Lock()
+				cl.BaseMux.Lock()
 				delete(cl.correlData, cID)
-				cl.mux.Unlock()
+				cl.BaseMux.Unlock()
 
 				rChan <- m
 			}
@@ -44,9 +44,9 @@ func (cl *MqttBindingClient) handleMessage(m *paho.Publish) {
 			var err error
 			var donotreply bool
 			// get a reply from the single request handler
-			cl.mux.RLock()
-			reqHandler := cl.requestHandler
-			cl.mux.RUnlock()
+			cl.BaseMux.RLock()
+			reqHandler := cl.BaseRequestHandler
+			cl.BaseMux.RUnlock()
 
 			if reqHandler != nil {
 				//reply, err, donotreply = reqHandler(m.Topic, m.Payload)
@@ -57,7 +57,7 @@ func (cl *MqttBindingClient) handleMessage(m *paho.Publish) {
 				}
 			} else {
 				slog.Error("Received request message but no request handler is set.",
-					slog.String("clientID", cl.clientID),
+					slog.String("clientID", cl.BaseClientID),
 					slog.String("topic", m.Topic),
 					slog.String("replyTo", replyTo))
 				err = errors.New("Cannot handle request. No handler is set")
@@ -71,9 +71,9 @@ func (cl *MqttBindingClient) handleMessage(m *paho.Publish) {
 			}
 		} else {
 			// this is en event message
-			cl.mux.RLock()
-			evHandler := cl.messageHandler
-			cl.mux.RUnlock()
+			cl.BaseMux.RLock()
+			evHandler := cl.BaseNotificationHandler
+			cl.BaseMux.RUnlock()
 			if evHandler != nil {
 				//evHandler(m.Topic, m.Payload)
 				op := ""
@@ -93,39 +93,18 @@ func (cl *MqttBindingClient) ParseResponse(data []byte, resp interface{}) error 
 	var err error
 	if data == nil || len(data) == 0 {
 		if resp != nil {
-			err = fmt.Errorf("ParseResponse: client '%s', expected a response but none received", cl.clientID)
+			err = fmt.Errorf("ParseResponse: client '%s', expected a response but none received",
+				cl.BaseClientID)
 		} else {
 			err = nil // all good
 		}
 	} else {
 		if resp == nil {
 			err = fmt.Errorf("ParseResponse: client '%s', received response but none was expected. data=%s",
-				cl.clientID, data)
+				cl.BaseClientID, data)
 		} else {
 			err = jsoniter.Unmarshal(data, resp)
 		}
-	}
-	return err
-}
-
-// PubEvent publishes a message and returns
-func (cl *MqttBindingClient) PubEvent(topic string, payload []byte) (err error) {
-	slog.Debug("PubEvent", "topic", topic)
-	ctx, cancelFn := context.WithTimeout(context.Background(), cl.timeout)
-	defer cancelFn()
-	pubMsg := &paho.Publish{
-		QoS:     0, //withQos,
-		Retain:  false,
-		Topic:   topic,
-		Payload: payload,
-	}
-	cl.mux.RLock()
-	pcl := cl.pahoClient
-	cl.mux.RUnlock()
-	if pcl != nil {
-		_, err = pcl.Publish(ctx, pubMsg)
-	} else {
-		err = errors.New("no connection with the hub")
 	}
 	return err
 }
@@ -135,15 +114,15 @@ func (cl *MqttBindingClient) PubEvent(topic string, payload []byte) (err error) 
 func (cl *MqttBindingClient) PubRequest(topic string, payload []byte) (resp []byte, err error) {
 	slog.Debug("PubRequest", "topic", topic)
 
-	ctx, cancelFn := context.WithTimeout(context.Background(), cl.timeout)
+	ctx, cancelFn := context.WithTimeout(context.Background(), cl.BaseTimeout)
 	defer cancelFn()
 
 	// FIXME! a deadlock can occur here
-	cl.mux.RLock()
+	cl.BaseMux.RLock()
 	pcl := cl.pahoClient
 	inboxTopic := cl.inboxTopic
 	connectID := cl.connectID
-	cl.mux.RUnlock()
+	cl.BaseMux.RUnlock()
 
 	if pcl == nil {
 		return nil, fmt.Errorf("connection lost")
@@ -155,10 +134,10 @@ func (cl *MqttBindingClient) PubRequest(topic string, payload []byte) (resp []by
 			slog.Error(err.Error())
 			return nil, err
 		}
-		cl.mux.Lock()
+		cl.BaseMux.Lock()
 		cl.inboxTopic = inboxTopic
-		cl.mux.Unlock()
-		err = cl.Subscribe(inboxTopic)
+		cl.BaseMux.Unlock()
+		err = cl.SubscribeToTopic(inboxTopic)
 		if err != nil {
 			slog.Error("Failed inbox subscription",
 				"err", err, "inboxTopic", inboxTopic)
@@ -168,9 +147,9 @@ func (cl *MqttBindingClient) PubRequest(topic string, payload []byte) (resp []by
 	// from paho rpc.go:
 	cid := fmt.Sprintf("%d", time.Now().UnixNano())
 	rChan := make(chan *paho.Publish)
-	cl.mux.Lock()
+	cl.BaseMux.Lock()
 	cl.correlData[cid] = rChan
-	cl.mux.Unlock()
+	cl.BaseMux.Unlock()
 
 	pubMsg := &paho.Publish{
 		QoS:     withQos,
@@ -254,9 +233,9 @@ func (cl *MqttBindingClient) sendReply(req *paho.Publish, payload []byte, errRes
 		// for testing, somehow properties.user is not transferred
 		replyMsg.Payload = []byte(errResp.Error())
 	}
-	cl.mux.RLock()
+	cl.BaseMux.RLock()
 	pcl := cl.pahoClient
-	cl.mux.RUnlock()
+	cl.BaseMux.RUnlock()
 	if pcl == nil {
 		err = errors.New("connection lost")
 	} else {
@@ -272,27 +251,27 @@ func (cl *MqttBindingClient) sendReply(req *paho.Publish, payload []byte, errRes
 	return err
 }
 
-// Subscribe subscribes to a topic.
+// SubscribeToTopic subscribes to a topic.
 // Incoming messages are passed to the event or request handler, depending on whether
 // a reply-to address and correlation-ID is set.
-func (cl *MqttBindingClient) Subscribe(topic string) error {
-	slog.Debug("Subscribe", "topic", topic)
+func (cl *MqttBindingClient) SubscribeToTopic(topic string) error {
+	slog.Debug("SubscribeToTopic", "topic", topic)
 	err := cl.sub(topic)
 	if err != nil {
 		return err
 	}
-	cl.mux.Lock()
+	cl.BaseMux.Lock()
 	cl.subscriptions[topic] = true
-	cl.mux.Unlock()
+	cl.BaseMux.Unlock()
 	return err
 }
-func (cl *MqttBindingClient) Unsubscribe(topic string) {
+func (cl *MqttBindingClient) UnsubscribeFromTopic(topic string) {
 	packet := &paho.Unsubscribe{
 		Topics: []string{topic},
 	}
-	cl.mux.RLock()
+	cl.BaseMux.RLock()
 	pcl := cl.pahoClient
-	cl.mux.RUnlock()
+	cl.BaseMux.RUnlock()
 
 	ack, err := pcl.Unsubscribe(context.Background(), packet)
 	_ = ack
@@ -300,7 +279,7 @@ func (cl *MqttBindingClient) Unsubscribe(topic string) {
 		slog.Error("Unable to unsubscribe from topic", "topic", topic)
 		return
 	}
-	cl.mux.Lock()
+	cl.BaseMux.Lock()
 	delete(cl.subscriptions, topic)
-	cl.mux.Unlock()
+	cl.BaseMux.Unlock()
 }

@@ -1,17 +1,14 @@
 package wssserver
 
 import (
-	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/transports"
-	"github.com/hiveot/hub/wot/transports/clients/wssbinding"
+	"github.com/hiveot/hub/wot/transports/clients/wssclient"
 	"github.com/hiveot/hub/wot/transports/connections"
-	jsoniter "github.com/json-iterator/go"
 	"github.com/teris-io/shortid"
 	"log/slog"
 	"net/http"
-	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -19,9 +16,9 @@ import (
 
 type WSSMessage map[string]any
 
-// WssServerConnection is the Hub connection instance
-//
-// This implements the Hub's IServerConnection interface.
+// WssServerConnection is a the server side instance of a connection by a client.
+// This implements the IServerConnection interface for sending messages to
+// agent or consumers.
 type WssServerConnection struct {
 	// connection ID
 	connectionID string
@@ -30,7 +27,7 @@ type WssServerConnection struct {
 	clientID string
 
 	// connection request remote address
-	r *http.Request
+	req *http.Request
 
 	// gorilla websocket connection
 	wssConn *websocket.Conn
@@ -41,53 +38,53 @@ type WssServerConnection struct {
 	// mutex for controlling writing and closing
 	mux sync.RWMutex
 
-	// handlers of incoming events and requests
-	requestHandler transports.ServerMessageHandler
+	// handler for passing request to a single destination
+	// a reply is expected (asynchronously)
+	messageHandler transports.ServerMessageHandler
 
 	isClosed atomic.Bool
 
-	// event subscriptions and property observations
+	// event subscriptions and property observations by consumers
 	observations  connections.Subscriptions
 	subscriptions connections.Subscriptions
 }
 
 // _error sends a websocket error message to the connected client
-func (c *WssServerConnection) _error(err error, code int, correlationID string) {
-	wssMsg := wssbinding.ErrorMessage{
-		MessageType:   wssbinding.MsgTypePublishError,
-		Title:         err.Error(),
-		CorrelationID: correlationID,
-		Status:        strconv.Itoa(code),
-	}
-	c._send(wssMsg)
-}
+//func (c *WssServerConnection) _error(err error, code int, requestID string) {
+//	wssMsg := wssclient.ErrorMessage{
+//		MessageType: wssclient.MsgTypeError,
+//		Title:       err.Error(),
+//		RequestID:   requestID,
+//		Status:      strconv.Itoa(code),
+//	}
+//	c._send(wssMsg)
+//}
 
 // _send sends the websocket message to the connected client
-func (c *WssServerConnection) _send(wssMsg interface{}) (
-	status string, err error) {
+func (c *WssServerConnection) _send(wssMsg interface{}) {
 
-	if !c.isClosed.Load() {
+	if c.isClosed.Load() {
+		slog.Error("_send: connection with client is now closed",
+			slog.String("to", c.clientID),
+		)
+	} else {
 		slog.Info("_send",
 			slog.String("to", c.clientID),
 		)
 
-		msgJSON, _ := jsoniter.Marshal(wssMsg)
+		msgJSON := c.Marshal(wssMsg)
 		// websockets do not allow concurrent write
 		c.mux.Lock()
 		defer c.mux.Unlock()
-		err = c.wssConn.WriteMessage(websocket.TextMessage, msgJSON)
+		err := c.wssConn.WriteMessage(websocket.TextMessage, msgJSON)
 		if err != nil {
 			slog.Error("_send write error", "err", err.Error())
 		}
 	}
-	// as long as the channel exists, delivery will take place
-	// FIXME: guarantee delivery
-	// todo: detect race conditions; or accept the small risk of delivery to a closing connection?
-	return wssbinding.ActionStatusDelivered, nil
 }
 
-// Close closes the connection and ends the read loop
-func (c *WssServerConnection) Close() {
+// Disconnect closes the connection and ends the read loop
+func (c *WssServerConnection) Disconnect() {
 	c.mux.Lock()
 	defer c.mux.Unlock()
 	if !c.isClosed.Load() {
@@ -106,108 +103,131 @@ func (c *WssServerConnection) GetClientID() string {
 	return c.clientID
 }
 
-// GetProtocol returns the protocol used in this connection
-func (c *WssServerConnection) GetProtocol() string {
+// GetProtocolType returns the type of protocol used in this connection
+func (c *WssServerConnection) GetProtocolType() string {
 	return transports.ProtocolTypeWSS
 }
 
-// InvokeAction sends the action request for the thing to the agent
-// Intended to be used on clients that are things
-func (c *WssServerConnection) InvokeAction(
-	thingID, name string, input any, correlationID string, senderID string) (
-	status string, output any, err error) {
-	msg := wssbinding.ActionMessage{
-		ThingID:       thingID,
-		MessageType:   wssbinding.MsgTypeInvokeAction,
-		Name:          name,
-		CorrelationID: correlationID,
-		Data:          input,
-		SenderID:      senderID,
-		Timestamp:     time.Now().Format(wot.RFC3339Milli),
+// SendNotification send an event or property update to subscribers
+// This returns an error if the notification could not be delivered to the client.
+func (c *WssServerConnection) SendNotification(
+	operation string, dThingID, name string, data any) {
+
+	msg, err := wssclient.OpToMessage(operation,
+		dThingID, name, nil, data, "")
+
+	if err != nil {
+		slog.Error("SendNotification: Unknown operation. Ignored.", "op", operation)
+		return
 	}
-	status, err = c._send(msg)
-	return status, nil, err
-}
 
-// PublishActionStatus sends an action status update to the client.
-// If an error is provided this sends the error, otherwise the output value
-func (c *WssServerConnection) PublishActionStatus(
-	stat transports.RequestStatus, agentID string) error {
-
-	if stat.CorrelationID == "" {
-		err := fmt.Errorf("PublishActionStatus by '%s' without requestID", agentID)
-		return err
-	}
-	// FIXME: convert from WoT to WSS acction status vocab
-	msg := wssbinding.ActionStatusMessage{
-		ThingID:       stat.ThingID,
-		MessageType:   wssbinding.MsgTypeActionStatus,
-		Name:          stat.Name,
-		Status:        stat.Status,
-		CorrelationID: stat.CorrelationID,
-		Output:        stat.Output,
-		Timestamp:     time.Now().Format(wot.RFC3339Milli),
-	}
-	_, err := c._send(msg)
-	return err
-}
-
-// PublishEvent send an event to subscribers
-func (c *WssServerConnection) PublishEvent(
-	dThingID, name string, data any, correlationID string, agentID string) {
-
-	if c.subscriptions.IsSubscribed(dThingID, name) {
-		msg := wssbinding.EventMessage{
-			ThingID:       dThingID,
-			MessageType:   wssbinding.MsgTypePublishEvent,
-			Name:          name,
-			CorrelationID: correlationID,
-			Data:          data,
-			Timestamp:     time.Now().Format(wot.RFC3339Milli),
+	switch operation {
+	case wot.HTOpPublishEvent:
+		if c.subscriptions.IsSubscribed(dThingID, name) {
+			c._send(msg)
 		}
-		_, _ = c._send(msg)
+	case wot.HTOpUpdateProperty, wot.HTOpMultipleProperties:
+		if c.observations.IsSubscribed(dThingID, name) {
+			c._send(msg)
+		}
+	default:
+		slog.Error("SendNotification: Unknown notification operation",
+			"op", operation,
+			"thingID", dThingID,
+			"to", c.clientID)
 	}
+}
+
+// SendError sends an error response to the client.
+func (c *WssServerConnection) SendError(
+	thingID, name string, errResponse string, requestID string) {
+
+	if requestID == "" {
+		slog.Error("SendError without requestID", "clientID", c.clientID)
+	}
+	msg := wssclient.ErrorMessage{
+		ThingID:     thingID,
+		MessageType: wssclient.MsgTypeError,
+		Title:       name + " error",
+		RequestID:   requestID,
+		Detail:      errResponse,
+		//Timestamp:   time.Now().Format(wot.RFC3339Milli),
+	}
+	c._send(msg)
+}
+
+// SendRequest sends the request to the client (agent).
+// Intended to be used on clients that are agents for Things.
+// If this returns an error then no request will was sent.
+func (c *WssServerConnection) SendRequest(
+	operation string, thingID, name string, input any, requestID string) {
+	msg, err := wssclient.OpToMessage(operation, thingID, name, nil, input, requestID)
+	if err != nil {
+		return
+	}
+	c._send(msg)
+}
+
+// SendResponse sends an action status update to the client.
+// If the status is RequestFailed then output is an error, otherwise the output value
+// If this returns an error then no request will was sent.
+func (c *WssServerConnection) SendResponse(
+	thingID, name string, output any, requestID string) {
+
+	if requestID == "" {
+		slog.Error("SendResponse to '%s' without requestID",
+			"to", c.clientID)
+	}
+	msg := wssclient.ActionStatusMessage{
+		ThingID:     thingID,
+		MessageType: wssclient.MsgTypeActionStatus,
+		Name:        name,
+		RequestID:   requestID,
+		Output:      output,
+		Timestamp:   time.Now().Format(wot.RFC3339Milli),
+	}
+	c._send(msg)
 }
 
 // PublishProperty publishes a new property value clients that observe it
-func (c *WssServerConnection) PublishProperty(
-	dThingID string, name string, data any, correlationID string, agentID string) {
+//func (c *WssServerConnection) PublishProperty(
+//	dThingID string, name string, data any, requestID string) {
+//
+//	if c.observations.IsSubscribed(dThingID, name) {
+//		msg := wssbinding.PropertyMessage{
+//			ThingID:     dThingID,
+//			MessageType: wssbinding.MsgTypePropertyReading,
+//			Name:        name,
+//			RequestID:   requestID,
+//			Data:        data,
+//			Timestamp:   time.Now().Format(wot.RFC3339Milli),
+//		}
+//		_ = c._send(msg)
+//	}
+//}
 
-	if c.observations.IsSubscribed(dThingID, name) {
-		msg := wssbinding.PropertyMessage{
-			ThingID:       dThingID,
-			MessageType:   wssbinding.MsgTypePropertyReading,
-			Name:          name,
-			CorrelationID: correlationID,
-			Data:          data,
-			Timestamp:     time.Now().Format(wot.RFC3339Milli),
-		}
-		_, _ = c._send(msg)
-	}
-}
-
-// WriteProperty requests a property value change from the agent
-func (c *WssServerConnection) WriteProperty(
-	thingID, name string, value any, correlationID string, senderID string) (status string, err error) {
-
-	msg := wssbinding.PropertyMessage{
-		ThingID:       thingID,
-		MessageType:   wssbinding.MsgTypeWriteProperty,
-		Name:          name,
-		CorrelationID: correlationID,
-		Data:          value,
-		Timestamp:     time.Now().Format(wot.RFC3339Milli),
-	}
-	status, err = c._send(msg)
-	return status, err
-}
+//// WriteProperty requests a property value change from the agent
+//func (c *WssServerConnection) WriteProperty(
+//	thingID, name string, value any, requestID string) (err error) {
+//
+//	msg := wssbinding.PropertyMessage{
+//		ThingID:     thingID,
+//		MessageType: wssbinding.MsgTypeWriteProperty,
+//		Name:        name,
+//		RequestID:   requestID,
+//		Data:        value,
+//		Timestamp:   time.Now().Format(wot.RFC3339Milli),
+//	}
+//	err = c._send(msg)
+//	return err
+//}
 
 // NewWSSConnection creates a new Websocket connection instance for use by
 // agents and consumers.
 // This implements the IServerConnection interface.
 func NewWSSConnection(
 	clientID string, r *http.Request, wssConn *websocket.Conn,
-	requestHandler transports.ServerMessageHandler,
+	messageHandler transports.ServerMessageHandler,
 ) *WssServerConnection {
 
 	clcid := "WSS" + shortid.MustGenerate()
@@ -216,8 +236,8 @@ func NewWSSConnection(
 		wssConn:        wssConn,
 		connectionID:   clcid,
 		clientID:       clientID,
-		requestHandler: requestHandler,
-		r:              r,
+		messageHandler: messageHandler,
+		req:            r,
 		lastActivity:   time.Time{},
 		mux:            sync.RWMutex{},
 		observations:   connections.Subscriptions{},

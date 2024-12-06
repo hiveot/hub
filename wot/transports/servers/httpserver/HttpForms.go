@@ -1,7 +1,7 @@
 package httpserver
 
 import (
-	"github.com/hiveot/hub/wot/tdd"
+	"github.com/hiveot/hub/wot/td"
 	"github.com/hiveot/hub/wot/transports/utils"
 	"log/slog"
 	"net/http"
@@ -45,7 +45,7 @@ type HttpOperation struct {
 //	}
 //
 // ```
-func (svc *HttpTransportServer) AddTDForms(td *tdd.TD) error {
+func (svc *HttpTransportServer) AddTDForms(td *td.TD) error {
 	svc.AddThingLevelForms(td)
 	//svc.AddPropertiesForms(td)
 	//svc.AddEventsForms(td)
@@ -55,21 +55,20 @@ func (svc *HttpTransportServer) AddTDForms(td *tdd.TD) error {
 
 // GetForm returns a new HTTP form for the given operation
 // Intended for Thing level operations
-func (svc *HttpTransportServer) GetForm(op string) tdd.Form {
+func (svc *HttpTransportServer) GetForm(op string) td.Form {
 
 	// all operations use URI variables for selecting things
 	// HTTP operations
 	for _, httpOp := range svc.operations {
 		if httpOp.op == op {
-			form := tdd.NewForm(op, httpOp.url)
+			form := td.NewForm(op, httpOp.url)
 			form["htv:methodName"] = httpOp.method
 			return form
 		}
 	}
 
 	slog.Warn("GetForm. No form found for operation",
-		"op", op,
-		"protocol", svc.GetProtocolInfo().Schema)
+		"op", op)
 	return nil
 }
 
@@ -139,12 +138,12 @@ func (svc *HttpTransportServer) GetForm(op string) tdd.Form {
 
 // AddThingLevelForms adds forms with protocol info to the TD, and its properties, events and actions
 // HiveOT mostly uses top level forms.
-func (svc *HttpTransportServer) AddThingLevelForms(td *tdd.TD) {
+func (svc *HttpTransportServer) AddThingLevelForms(tdi *td.TD) {
 	// iterate the thing level operations
-	params := map[string]string{"thingID": td.ID}
+	params := map[string]string{"thingID": tdi.ID}
 	for _, opInfo := range svc.operations {
 		methodPath := utils.Substitute(opInfo.url, params)
-		f := tdd.Form{
+		f := td.Form{
 			"op":             opInfo.op, // not a WoT operation
 			"href":           methodPath,
 			"contentType":    "application/json",
@@ -153,10 +152,10 @@ func (svc *HttpTransportServer) AddThingLevelForms(td *tdd.TD) {
 		if opInfo.subprotocol != "" {
 			f["subprotocol"] = opInfo.subprotocol
 		}
-		td.Forms = append(td.Forms, f)
+		tdi.Forms = append(tdi.Forms, f)
 	}
 	// this binding uses the BearerSecurityScheme
-	td.Security = "bearer"
-	td.SecurityDefinitions = map[string]tdd.SecurityScheme{
+	tdi.Security = "bearer"
+	tdi.SecurityDefinitions = map[string]td.SecurityScheme{
 		"bearer": {Scheme: "bearer", Alg: "ES256", Format: "jwt", In: "header"}}
 }

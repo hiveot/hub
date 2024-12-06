@@ -5,8 +5,6 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
 	"github.com/hiveot/hub/wot/exposedthing"
-	"github.com/hiveot/hub/wot/protocolclients"
-	"github.com/hiveot/hub/wot/tdd"
 	"strings"
 	"sync"
 )
@@ -44,7 +42,7 @@ type IIsyThing interface {
 	// Init assigns the ISY connection and node this Thing represents
 	Init(ic *isy.IsyAPI, thingID string, node *isy.IsyNode, prodInfo InsteonProduct, hwVersion string)
 	// MakeTD returns the generated TD document describing the Thing
-	MakeTD() *tdd.TD
+	MakeTD() *td.TD
 }
 
 // IsyThing is the generic base of Things constructed out of ISY Insteon nodes.
@@ -162,14 +160,14 @@ func (it *IsyThing) Init(ic *isy.IsyAPI, thingID string, node *isy.IsyNode, prod
 
 // MakeTD return a basic TD document that describes the Thing represented here.
 // The parent should add properties, events and actions specific to their capabilities.
-func (it *IsyThing) MakeTD() *tdd.TD {
+func (it *IsyThing) MakeTD() *td.TD {
 	title := it.productInfo.ProductName
 	titleProp, _ := it.propValues.GetValue(vocab.PropDeviceTitle)
 	if titleProp != nil {
 		title, _ = titleProp.(string)
 	}
 	it.mux.RLock()
-	td := tdd.NewTD(it.thingID, title, it.deviceType)
+	td := td.NewTD(it.thingID, title, it.deviceType)
 	it.mux.RUnlock()
 
 	//--- read-only properties

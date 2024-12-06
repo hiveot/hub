@@ -6,8 +6,6 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
 	"github.com/hiveot/hub/wot/exposedthing"
-	"github.com/hiveot/hub/wot/protocolclients"
-	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -282,12 +280,12 @@ func (igw *IsyGatewayThing) Init(ic *isy.IsyAPI) {
 
 // MakeTD returns the Gateway TD document
 // This returns nil if the gateway wasn't initialized
-func (igw *IsyGatewayThing) MakeTD() *tdd.TD {
+func (igw *IsyGatewayThing) MakeTD() *td.TD {
 	if igw.ic == nil {
 		return nil
 	}
 
-	td := tdd.NewTD(igw.thingID, igw.Configuration.DeviceSpecs.Model, vocab.ThingNetGateway)
+	td := td.NewTD(igw.thingID, igw.Configuration.DeviceSpecs.Model, vocab.ThingNetGateway)
 	td.Description = igw.Configuration.DeviceSpecs.Make + "-" + igw.Configuration.DeviceSpecs.Model
 
 	//--- device read-only attributes

@@ -9,8 +9,6 @@ import (
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"github.com/hiveot/hub/wot/consumedthing"
-	"github.com/hiveot/hub/wot/protocolclients"
-	"github.com/hiveot/hub/wot/tdd"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"net/http"
@@ -22,7 +20,7 @@ const RenderEditPropertyTemplate = "RenderEditProperty.gohtml"
 type RenderEditPropertyTemplateData struct {
 	ThingID    string
 	Name       string
-	DataSchema *tdd.DataSchema
+	DataSchema *td.DataSchema
 	Value      string
 	// The last known value of the property to edit
 	PropertyValue      consumedthing.InteractionOutput
@@ -30,7 +28,7 @@ type RenderEditPropertyTemplateData struct {
 }
 
 func getPropAff(hc clients.IConsumer, thingID string, name string) (
-	td *tdd.TD, propAff *tdd.PropertyAffordance, err error) {
+	td *td.TD, propAff *td.PropertyAffordance, err error) {
 
 	tdJson, err := digitwin.DirectoryReadTD(hc, thingID)
 	if err != nil {

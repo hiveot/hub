@@ -3,14 +3,13 @@ package service
 import (
 	"encoding/json"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 )
 
 // MakeBindingTD generates a TD document for this binding
 // containing configuration properties, event and action definitions
-func (svc *IPNetBinding) MakeBindingTD() *tdd.TD {
-	td := tdd.NewTD(svc.config.AgentID, "IPNet binding", vocab.ThingService)
+func (svc *IPNetBinding) MakeBindingTD() *td.TD {
+	td := td.NewTD(svc.config.AgentID, "IPNet binding", vocab.ThingService)
 
 	// these are configured through the configuration file.
 	prop := td.AddPropertyAsInt(vocab.PropDevicePollinterval, "Poll Interval", "")
@@ -23,10 +22,10 @@ func (svc *IPNetBinding) MakeBindingTD() *tdd.TD {
 }
 
 // MakeDeviceTD generates a TD document for discovered devices
-func (svc *IPNetBinding) MakeDeviceTD(deviceInfo *IPDeviceInfo) *tdd.TD {
+func (svc *IPNetBinding) MakeDeviceTD(deviceInfo *IPDeviceInfo) *td.TD {
 	thingID := "urn:" + deviceInfo.MAC
 	deviceName := deviceInfo.GetDefaultName()
-	td := tdd.NewTD(thingID, deviceName, vocab.ThingNet)
+	td := td.NewTD(thingID, deviceName, vocab.ThingNet)
 
 	// these are configured through the configuration file.
 	prop := td.AddPropertyAsString(vocab.PropDeviceTitle, "Device name", "").

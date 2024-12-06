@@ -6,19 +6,17 @@ import (
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/wot/consumedthing"
-	"github.com/hiveot/hub/wot/protocolclients"
-	"github.com/hiveot/hub/wot/tdd"
 	"strconv"
 	"time"
 )
 
 // HistoryTemplateData holds the data for rendering a history table or graph
 type HistoryTemplateData struct {
-	TD         *tdd.TD
+	TD         *td.TD
 	ThingID    string
 	Title      string // allow override to data description
 	Name       string
-	DataSchema tdd.DataSchema // dataschema of event/property key
+	DataSchema td.DataSchema // dataschema of event/property key
 
 	// history information
 	Timestamp      time.Time

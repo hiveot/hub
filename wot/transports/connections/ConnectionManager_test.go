@@ -1,7 +1,6 @@
 package connections_test
 
 import (
-	"github.com/hiveot/hub/wot/tdd"
 	"github.com/hiveot/hub/wot/transports"
 	"github.com/hiveot/hub/wot/transports/connections"
 	"github.com/stretchr/testify/assert"
@@ -144,7 +143,7 @@ func TestPublishEventProp(t *testing.T) {
 	const session1ID = "sess1"
 	const agent1ID = "agent1"
 	const thing1ID = "thing1"
-	var dThingID = tdd.MakeDigiTwinThingID(agent1ID, thing1ID)
+	var dThingID = td.MakeDigiTwinThingID(agent1ID, thing1ID)
 	const evName = "event1"
 	const propName = "prop1"
 	var evCount = 0

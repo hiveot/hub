@@ -4,7 +4,6 @@ import (
 	"github.com/grandcat/zeroconf"
 	"github.com/hiveot/hub/lib/discovery"
 	"github.com/hiveot/hub/lib/net"
-	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 	"net/url"
 	"strconv"
@@ -18,7 +17,7 @@ type DiscoveryTransport struct {
 }
 
 // AddTDForms does not apply to the discovery service
-func (svc *DiscoveryTransport) AddTDForms(td *tdd.TD) {
+func (svc *DiscoveryTransport) AddTDForms(td *td.TD) {
 	// nothing to do here
 }
 

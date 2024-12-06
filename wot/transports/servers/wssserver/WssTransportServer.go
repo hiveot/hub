@@ -3,7 +3,7 @@ package wssserver
 import (
 	"github.com/gorilla/websocket"
 	"github.com/hiveot/hub/wot/transports"
-	"github.com/hiveot/hub/wot/transports/clients/wssbinding"
+	"github.com/hiveot/hub/wot/transports/clients/wssclient"
 	"github.com/hiveot/hub/wot/transports/connections"
 	"github.com/hiveot/hub/wot/transports/servers/httpserver"
 	"github.com/hiveot/hub/wot/transports/servers/httpserver/httpcontext"
@@ -15,7 +15,7 @@ const DefaultWssPath = "/wss"
 
 // WssTransportServer Websocket subprotocol binding
 type WssTransportServer struct {
-	requestHandler transports.ServerMessageHandler
+	messageHandler transports.ServerMessageHandler
 	wssPath        string
 	httpTransport  *httpserver.HttpTransportServer
 	cm             *connections.ConnectionManager
@@ -26,10 +26,17 @@ type WssTransportServer struct {
 	opList []string
 }
 
-// GetProtocolInfo returns info on the protocol supported by this binding
-func (svc *WssTransportServer) GetProtocolInfo() transports.ProtocolInfo {
-	// todo: wss protocol info?
-	return svc.httpTransport.GetProtocolInfo()
+//// GetProtocolInfo returns info on the protocol supported by this binding
+//func (svc *WssTransportServer) GetProtocolInfo() transports.ProtocolInfo {
+//	// todo: wss protocol info?
+//	return svc.httpTransport.GetProtocolInfo()
+//}
+
+// SendNotification broadcast an event or property change to subscribers clients
+func (svc *WssTransportServer) SendNotification(operation string, dThingID, name string, data any) {
+	// this is needed so mqtt can broadcast once via the message bus instead all individual connections
+	// tbd. An embedded mqtt server can still send per connection?
+	slog.Error("todo: implement")
 }
 
 // Serve a new websocket connection.
@@ -59,7 +66,7 @@ func (b *WssTransportServer) Serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c := NewWSSConnection(clientID, r, wssConn, b.requestHandler)
+	c := NewWSSConnection(clientID, r, wssConn, b.messageHandler)
 
 	err = b.cm.AddConnection(c)
 	if err != nil {
@@ -67,7 +74,7 @@ func (b *WssTransportServer) Serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// don't return until the connection is closed
-	wssbinding.WSSReadLoop(r.Context(), wssConn, c.WssServerHandleMessage)
+	wssclient.WSSReadLoop(r.Context(), wssConn, c.WssServerHandleMessage)
 
 	// if this fails then the connection is already closed (CloseAll)
 	err = wssConn.Close()
@@ -89,7 +96,7 @@ func (svc *WssTransportServer) Stop() {
 //	httpTransport to attach to
 func StartWssTransportServer(
 	wssPath string,
-	requestHandler transports.ServerMessageHandler,
+	messageHandler transports.ServerMessageHandler,
 	cm *connections.ConnectionManager,
 	httpTransport *httpserver.HttpTransportServer,
 ) *WssTransportServer {
@@ -98,14 +105,14 @@ func StartWssTransportServer(
 	}
 	// initialize the message type to operation conversion
 	op2MsgType := make(map[string]string)
-	opList := make([]string, 0, len(wssbinding.MsgTypeToOp))
-	for msgType, op := range wssbinding.MsgTypeToOp {
+	opList := make([]string, 0, len(wssclient.MsgTypeToOp))
+	for msgType, op := range wssclient.MsgTypeToOp {
 		op2MsgType[op] = msgType
 		opList = append(opList, op)
 	}
 	b := &WssTransportServer{
 		cm:             cm,
-		requestHandler: requestHandler,
+		messageHandler: messageHandler,
 		httpTransport:  httpTransport,
 		wssPath:        wssPath,
 		op2MsgType:     op2MsgType,

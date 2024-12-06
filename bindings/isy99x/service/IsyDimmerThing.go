@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/wot"
-	"github.com/hiveot/hub/wot/tdd"
 	"github.com/hiveot/hub/wot/transports"
 )
 
@@ -21,14 +20,14 @@ func (it *IsyDimmerThing) GetValues(onlyChanges bool) map[string]any {
 	return propValues
 }
 
-func (it *IsyDimmerThing) MakeTD() *tdd.TD {
+func (it *IsyDimmerThing) MakeTD() *td.TD {
 	td := it.IsyThing.MakeTD()
 	// AddSwitchEvent is short for adding an event for a switch
 	// TODO: add dimmer change events
 	//td.AddDimmerEvent(vocab.PropSwitchDimmer)
 
 	a := td.AddAction(vocab.ActionDimmerSet, "Set Dimmer", "",
-		&tdd.DataSchema{Type: wot.WoTDataTypeInteger},
+		&td.DataSchema{Type: wot.WoTDataTypeInteger},
 	)
 	a.SetAtType(vocab.ActionDimmer)
 

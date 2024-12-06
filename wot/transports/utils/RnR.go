@@ -1,0 +1,106 @@
+package utils
+
+import (
+	"context"
+	"sync"
+	"time"
+)
+
+// RnRChan is a helper for request/response message handling using channels.
+// Intended to link responses in asynchronous request-response communication.
+//
+// Usage:
+//  1. create a request ID: shortid.MustGenerate()
+//  2. register the request ID: c := Open(requestID)
+//  3. Send the request message in the client, passing the requestID
+//  4. Wait for a response: completed, data := WaitForResponse(c, timeout)
+//  5. Handle response message (in client callback): HandleResponse(requestID,data)
+type RnRChan struct {
+	mux sync.RWMutex
+
+	// map of requestID to delivery status update channel
+	correlData map[string]chan any
+}
+
+// Close removes the request channel
+func (rnr *RnRChan) Close(requestID string) {
+	rnr.mux.Lock()
+	defer rnr.mux.Unlock()
+	rChan, found := rnr.correlData[requestID]
+	if found {
+		delete(rnr.correlData, requestID)
+		close(rChan)
+	}
+}
+
+// CloseAll force closes all channels, ending all waits for RPC responses.
+func (rnr *RnRChan) CloseAll() {
+	rnr.mux.Lock()
+	defer rnr.mux.Unlock()
+	for _, rChan := range rnr.correlData {
+		close(rChan)
+	}
+	rnr.correlData = make(map[string]chan any)
+
+}
+
+// HandleResponse writes a reply to the request channel
+// This returns true on success or false if requestID is unknown (no-one is waiting)
+// This does not close the channel as more responses can be handled.
+func (rnr *RnRChan) HandleResponse(requestID string, reply any) bool {
+	rnr.mux.RLock()
+	defer rnr.mux.RUnlock()
+	rChan, isRPC := rnr.correlData[requestID]
+	if isRPC {
+		rChan <- reply
+	}
+	return isRPC
+}
+
+func (rnr *RnRChan) Len() int {
+	rnr.mux.Lock()
+	defer rnr.mux.Unlock()
+	return len(rnr.correlData)
+}
+
+// Open a new channel for receiving response to a request
+// Call Close when done.
+//
+// This returns a reply channel on which the data is received. Use
+// WaitForResponse(rChan)
+func (rnr *RnRChan) Open(requestID string) chan any {
+	rChan := make(chan any)
+	rnr.mux.Lock()
+	rnr.correlData[requestID] = rChan
+	rnr.mux.Unlock()
+	return rChan
+}
+
+// WaitForResponse waits for an answer received on the reply channel
+// After timeout without response this returns with completed is false.
+// This does not close the channel as more responses can be handled.
+// Handlers must call Close(requestID) when done receiving.
+//
+// If the channel was closed this returns completed with no reply
+func (rnr *RnRChan) WaitForResponse(
+	replyChan chan any, timeout time.Duration) (completed bool, reply any) {
+
+	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
+	defer cancelFunc()
+	select {
+	case rData := <-replyChan:
+		reply = rData
+		completed = true
+		break
+	case <-ctx.Done():
+		completed = false
+	}
+	return completed, reply
+}
+
+func NewRnRChan() *RnRChan {
+	r := &RnRChan{
+		correlData: make(map[string]chan any),
+	}
+	return r
+}

@@ -2,7 +2,6 @@ package digitwin_test
 
 import (
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/wot/tdd"
 	"github.com/hiveot/hub/wot/transports"
 )
 
@@ -11,7 +10,7 @@ import (
 type DummyTransportBinding struct {
 }
 
-func (dummy *DummyTransportBinding) AddTDForms(td *tdd.TD) error {
+func (dummy *DummyTransportBinding) AddTDForms(td *td.TD) error {
 	return nil
 }
 func (dummy *DummyTransportBinding) GetConnectionByCID(cid string) transports.IServerConnection {

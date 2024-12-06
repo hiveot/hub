@@ -24,30 +24,34 @@ func TestSubscribeAllByConsumer(t *testing.T) {
 	var eventKey = "event11"
 
 	// 1. start the servers
-	cancelFn, cm := StartTransportServer(DummyMessageHandler)
+	srv, cancelFn, cm := StartTransportServer(DummyMessageHandler)
 	defer cancelFn()
 
-	// 2. connect as a consumer
-	cl1 := NewClient(testClientID1)
+	// 2. connect as consumers
+	cl1 := NewClient(testClientID1, srv.GetForm)
 	_, err := cl1.ConnectWithPassword(testClientPassword1)
 	require.NoError(t, err)
 	defer cl1.Disconnect()
+	cl2 := NewClient(testClientID1, srv.GetForm)
+	_, err = cl2.ConnectWithPassword(testClientPassword1)
+	require.NoError(t, err)
+	defer cl2.Disconnect()
 
 	// set the handler for events and subscribe
 	ctx, cancelFn := context.WithTimeout(context.Background(), time.Minute)
 	defer cancelFn()
 
-	cl1.SetMessageHandler(func(ev *transports.ThingMessage) {
+	cl1.SetNotificationHandler(func(ev *transports.ThingMessage) {
 		// receive event
 		rxVal.Store(ev.Data)
 		cancelFn()
 	})
 
-	// Subscribe to events
-	form := NewForm(vocab.OpSubscribeAllEvents)
-	_, err = cl1.SendOperation(form, "", "", nil, nil, "")
-	require.NoError(t, err)
-	// No result is expected
+	// Subscribe to events. Each binding implements this as per its spec
+	err = cl1.Subscribe("", "")
+	assert.NoError(t, err)
+	err = cl2.Subscribe(thingID, eventKey)
+	assert.NoError(t, err)
 
 	// 3. Server sends event to consumers
 	time.Sleep(time.Millisecond * 10)
@@ -58,9 +62,11 @@ func TestSubscribeAllByConsumer(t *testing.T) {
 	assert.Equal(t, testMsg1, rxVal.Load())
 
 	// Unsubscribe from events
-	form = NewForm(vocab.OpUnsubscribeAllEvents)
-	_, err = cl1.SendOperation(form, "", "", nil, nil, "")
+	err = cl1.Unsubscribe("", "")
+	assert.NoError(t, err)
 	time.Sleep(time.Millisecond * 10) // async take time
+
+	err = cl2.Unsubscribe(thingID, eventKey)
 
 	// 5. Server sends another event to consumers
 	cm.PublishEvent(thingID, eventKey, testMsg2, "", testAgentID1)
@@ -81,33 +87,26 @@ func TestPublishEventsByAgent(t *testing.T) {
 	var eventKey = "event11"
 
 	// handler of events on the server
-	handler1 := func(msg *transports.ThingMessage, replyTo transports.IServerConnection) (
-		stat transports.RequestStatus) {
+	handler1 := func(msg *transports.ThingMessage, replyTo transports.IServerConnection) {
 		// event handlers do not reply
 		require.Nil(t, replyTo)
 		evVal.Store(msg.Data)
-		return stat
 	}
 
 	// 1. start the transport
-	cancelFn, _ := StartTransportServer(handler1)
+	srv, cancelFn, _ := StartTransportServer(handler1)
 	defer cancelFn()
 
 	// 2. connect as an agent
-	ag1 := NewClient(testAgentID1)
+	ag1 := NewClient(testAgentID1, srv.GetForm)
 	_, err := ag1.ConnectWithPassword(testAgentPassword1)
 	require.NoError(t, err)
 	defer ag1.Disconnect()
 
 	// 3. agent publishes an event
-	form := NewForm(vocab.HTOpPublishEvent)
-	require.NotNil(t, form)
-	status, err := ag1.SendOperation(form, thingID, eventKey, testMsg, nil, "")
+	err = ag1.SendNotification(vocab.HTOpPublishEvent, thingID, eventKey, testMsg)
 	time.Sleep(time.Millisecond) // time to take effect
 	require.NoError(t, err)
-
-	// no reply is expected
-	require.Equal(t, transports.RequestPending, status)
 
 	// event received by server
 	rxMsg2 := evVal.Load()

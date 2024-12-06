@@ -3,7 +3,6 @@ package digitwin_test
 import (
 	"encoding/json"
 	"github.com/hiveot/hub/api/go/digitwin"
-	"github.com/hiveot/hub/wot/tdd"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -14,7 +13,7 @@ func TestAddRemoveTD(t *testing.T) {
 	const thing1ID = "thing1"
 	const title1 = "title1"
 	const consumerID = "user1"
-	var dThing1ID = tdd.MakeDigiTwinThingID(agentID, thing1ID)
+	var dThing1ID = td.MakeDigiTwinThingID(agentID, thing1ID)
 
 	svc, _, stopFunc := startService(true)
 	defer stopFunc()
@@ -27,7 +26,7 @@ func TestAddRemoveTD(t *testing.T) {
 	err := dirSvc.UpdateTD(agentID, string(tdd1JSON))
 	require.NoError(t, err)
 
-	dThingID := tdd.MakeDigiTwinThingID(agentID, thing1ID)
+	dThingID := td.MakeDigiTwinThingID(agentID, thing1ID)
 	tdd2JSON, err := dirSvc.ReadTD(consumerID, dThingID)
 	require.NoError(t, err)
 	require.NotEmpty(t, tdd2JSON)

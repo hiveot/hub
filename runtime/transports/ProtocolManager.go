@@ -5,7 +5,6 @@ import (
 	"crypto/x509"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/transports/discotransport"
-	"github.com/hiveot/hub/wot/tdd"
 	"github.com/hiveot/hub/wot/transports"
 	"github.com/hiveot/hub/wot/transports/connections"
 	"github.com/hiveot/hub/wot/transports/servers/httpserver"
@@ -37,7 +36,7 @@ type ProtocolManager struct {
 }
 
 // AddTDForms adds forms for all active transports
-func (svc *ProtocolManager) AddTDForms(td *tdd.TD) (err error) {
+func (svc *ProtocolManager) AddTDForms(td *td.TD) (err error) {
 	if svc.httpTransport != nil {
 		err = svc.httpTransport.AddTDForms(td)
 	}
@@ -49,7 +48,7 @@ func (svc *ProtocolManager) AddTDForms(td *tdd.TD) (err error) {
 
 // GetForm returns the form for an operation using a transport protocol binding.
 // If the protocol is not found this returns a nil and might cause a panic
-func (svc *ProtocolManager) GetForm(op string, protocol string) (form tdd.Form) {
+func (svc *ProtocolManager) GetForm(op string, protocol string) (form td.Form) {
 	switch protocol {
 	case transports.ProtocolTypeHTTP, transports.ProtocolTypeSSESC, transports.ProtocolTypeSSE:
 		form = svc.httpTransport.GetForm(op)

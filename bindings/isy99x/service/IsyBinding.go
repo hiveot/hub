@@ -10,8 +10,6 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/wot/exposedthing"
-	"github.com/hiveot/hub/wot/protocolclients"
-	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 	"sync"
 	"time"
@@ -95,8 +93,8 @@ func (svc *IsyBinding) HandleBindingConfig(action *transports.ThingMessage) erro
 
 // MakeBindingTD generates a TD document for this binding containing properties,
 // event and action definitions.
-func (svc *IsyBinding) MakeBindingTD() *tdd.TD {
-	td := tdd.NewTD(svc.thingID, "ISY99x binding", vocab.ThingService)
+func (svc *IsyBinding) MakeBindingTD() *td.TD {
+	td := td.NewTD(svc.thingID, "ISY99x binding", vocab.ThingService)
 
 	// binding attributes
 	prop := td.AddProperty(vocab.PropNetConnection, "Connected", "Device is connected", vocab.WoTDataTypeBool).
@@ -130,7 +128,7 @@ func (svc *IsyBinding) MakeBindingTD() *tdd.TD {
 	// binding events
 	td.AddEvent(vocab.PropNetConnection,
 		"Connection changed", "Connection with ISY gateway has changed",
-		&tdd.DataSchema{Type: vocab.WoTDataTypeBool},
+		&td.DataSchema{Type: vocab.WoTDataTypeBool},
 	).SetAtType(vocab.PropNetConnection)
 
 	// no binding actions

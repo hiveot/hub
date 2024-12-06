@@ -3,7 +3,6 @@ package consumedthing
 import (
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/wot"
-	"github.com/hiveot/hub/wot/tdd"
 	"github.com/hiveot/hub/wot/transports"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
@@ -22,7 +21,7 @@ type ConsumedThingsDirectory struct {
 	// Things used by the client
 	consumedThings map[string]*ConsumedThing
 	// directory of TD documents
-	directory map[string]*tdd.TD
+	directory map[string]*td.TD
 	// the full directory has been read in this session
 	fullDirectoryRead bool
 	// additional handler of events for forwarding to other consumers
@@ -67,7 +66,7 @@ func (cts *ConsumedThingsDirectory) handleMessage(msg *transports.ThingMessage) 
 	slog.Debug("CTS.handleMessage",
 		slog.String("senderID", msg.SenderID),
 		slog.String("operation", msg.Operation),
-		slog.String("requestID", msg.CorrelationID),
+		slog.String("requestID", msg.RequestID),
 		slog.String("thingID", msg.ThingID),
 		slog.String("name", msg.Name),
 		slog.String("clientID (me)", cts.cc.GetClientID()),
@@ -75,7 +74,7 @@ func (cts *ConsumedThingsDirectory) handleMessage(msg *transports.ThingMessage) 
 
 	// if an event is received from an unknown Thing then (re)load its TD
 	// progress updates don't count
-	if msg.Operation != wot.HTOpUpdateActionStatus {
+	if msg.Operation != wot.HTOpActionStatus {
 		cts.mux.RLock()
 		_, found := cts.directory[msg.ThingID]
 		cts.mux.RUnlock()
@@ -84,7 +83,7 @@ func (cts *ConsumedThingsDirectory) handleMessage(msg *transports.ThingMessage) 
 			_, err := cts.ReadTD(msg.ThingID)
 			if err != nil {
 				slog.Error("Received message with thingID that doesn't exist",
-					"operation", msg.Operation, "requestID", msg.CorrelationID,
+					"operation", msg.Operation, "requestID", msg.RequestID,
 					"thingID", msg.ThingID, "name", msg.Name, "senderID", msg.SenderID)
 			}
 		}
@@ -96,7 +95,7 @@ func (cts *ConsumedThingsDirectory) handleMessage(msg *transports.ThingMessage) 
 		msg.ThingID == digitwin.DirectoryDThingID &&
 		msg.Name == digitwin.DirectoryEventThingUpdated {
 		// decode the TD
-		td := &tdd.TD{}
+		td := &td.TD{}
 		err := jsoniter.UnmarshalFromString(msg.DataAsText(), &td)
 		if err != nil {
 			slog.Error("invalid payload for TD event. Ignored",
@@ -120,7 +119,7 @@ func (cts *ConsumedThingsDirectory) handleMessage(msg *transports.ThingMessage) 
 		if found {
 			ct.OnPropertyUpdate(msg)
 		}
-	} else if msg.Operation == wot.HTOpUpdateActionStatus {
+	} else if msg.Operation == wot.HTOpActionStatus {
 		// delivery status updates refer to actions
 		cts.mux.RLock()
 		ct, found := cts.consumedThings[msg.ThingID]
@@ -152,7 +151,7 @@ func (cts *ConsumedThingsDirectory) handleMessage(msg *transports.ThingMessage) 
 //}
 
 // GetTD returns the TD in the session or nil if thingID isn't found
-func (cts *ConsumedThingsDirectory) GetTD(thingID string) *tdd.TD {
+func (cts *ConsumedThingsDirectory) GetTD(thingID string) *td.TD {
 	cts.mux.RLock()
 	defer cts.mux.RUnlock()
 	td := cts.directory[thingID]
@@ -165,7 +164,7 @@ func (cts *ConsumedThingsDirectory) GetTD(thingID string) *tdd.TD {
 //
 // Set force to force a reload of the directory instead of using any cached TD documents.
 // TODO: reload when things were added or removed
-func (cts *ConsumedThingsDirectory) ReadDirectory(force bool) (map[string]*tdd.TD, error) {
+func (cts *ConsumedThingsDirectory) ReadDirectory(force bool) (map[string]*td.TD, error) {
 	cts.mux.RLock()
 	fullDirectoryRead := cts.fullDirectoryRead
 	currentDir := cts.directory
@@ -175,7 +174,7 @@ func (cts *ConsumedThingsDirectory) ReadDirectory(force bool) (map[string]*tdd.T
 	if !force && fullDirectoryRead {
 		return currentDir, nil
 	}
-	newDir := make(map[string]*tdd.TD)
+	newDir := make(map[string]*td.TD)
 
 	// TODO: support for reading in pages
 	// FIXME: use a WoT discovery/directory API instead of a digitwin api
@@ -184,7 +183,7 @@ func (cts *ConsumedThingsDirectory) ReadDirectory(force bool) (map[string]*tdd.T
 		return newDir, err
 	}
 	for _, tdJson := range thingsList {
-		td := tdd.TD{}
+		td := td.TD{}
 		err = jsoniter.UnmarshalFromString(tdJson, &td)
 		if err == nil {
 			newDir[td.ID] = &td
@@ -198,9 +197,9 @@ func (cts *ConsumedThingsDirectory) ReadDirectory(force bool) (map[string]*tdd.T
 }
 
 // ReadTD reads a TD from the directory service and updates the directory cache.
-func (cts *ConsumedThingsDirectory) ReadTD(thingID string) (*tdd.TD, error) {
+func (cts *ConsumedThingsDirectory) ReadTD(thingID string) (*td.TD, error) {
 	// request the TD from the Hub
-	td := &tdd.TD{}
+	td := &td.TD{}
 	tdJson, err := digitwin.DirectoryReadTD(cts.cc, thingID)
 	if err == nil {
 		err = jsoniter.UnmarshalFromString(tdJson, &td)
@@ -233,7 +232,7 @@ func (cts *ConsumedThingsDirectory) SetEventHandler(handler func(message *transp
 //	tdjson is the TD document in JSON format
 func (cts *ConsumedThingsDirectory) UpdateTD(tdJSON string) *ConsumedThing {
 	// convert the TD
-	var td tdd.TD
+	var td td.TD
 	err := jsoniter.UnmarshalFromString(tdJSON, &td)
 	if err != nil {
 		return nil
@@ -258,8 +257,8 @@ func NewConsumedThingsSession(cc transports.IClientConnection) *ConsumedThingsDi
 	ctm := ConsumedThingsDirectory{
 		cc:             cc,
 		consumedThings: make(map[string]*ConsumedThing),
-		directory:      make(map[string]*tdd.TD),
+		directory:      make(map[string]*td.TD),
 	}
-	cc.SetMessageHandler(ctm.handleMessage)
+	cc.SetNotificationHandler(ctm.handleMessage)
 	return &ctm
 }

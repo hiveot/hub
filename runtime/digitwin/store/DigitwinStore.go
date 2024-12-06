@@ -6,7 +6,6 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/wot/tdd"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"sync"
@@ -231,7 +230,7 @@ func (svc *DigitwinStore) ReadProperty(
 //}
 
 // ReadDThing returns the Digitwin TD document in the store.
-func (svc *DigitwinStore) ReadDThing(dThingID string) (dtd *tdd.TD, err error) {
+func (svc *DigitwinStore) ReadDThing(dThingID string) (dtd *td.TD, err error) {
 
 	svc.cacheMux.RLock()
 	defer svc.cacheMux.RUnlock()
@@ -247,7 +246,7 @@ func (svc *DigitwinStore) ReadDThing(dThingID string) (dtd *tdd.TD, err error) {
 //
 // limit is the maximum number of records to return
 // offset is the offset of the first record to return
-func (svc *DigitwinStore) ReadTDs(offset int, limit int) (resp []*tdd.TD, err error) {
+func (svc *DigitwinStore) ReadTDs(offset int, limit int) (resp []*td.TD, err error) {
 
 	svc.cacheMux.RLock()
 	defer svc.cacheMux.RUnlock()
@@ -261,7 +260,7 @@ func (svc *DigitwinStore) ReadTDs(offset int, limit int) (resp []*tdd.TD, err er
 		limit = len(svc.thingKeys) - offset
 	}
 	tdKeys := svc.thingKeys[offset:limit]
-	resp = make([]*tdd.TD, 0, len(tdKeys))
+	resp = make([]*td.TD, 0, len(tdKeys))
 
 	// add the documents
 	for _, k := range tdKeys {
@@ -334,7 +333,7 @@ func (svc *DigitwinStore) SaveChanges() error {
 // stored digital twin record.
 // If no digital twin exists yet, it is created.
 func (svc *DigitwinStore) UpdateTD(
-	agentID string, thingTD *tdd.TD, digitwinTD *tdd.TD) {
+	agentID string, thingTD *td.TD, digitwinTD *td.TD) {
 
 	slog.Debug("UpdateDTD",
 		slog.String("agentID", agentID),
@@ -412,7 +411,7 @@ func (svc *DigitwinStore) UpdateActionStatus(
 	svc.cacheMux.Lock()
 	defer svc.cacheMux.Unlock()
 
-	dThingID := tdd.MakeDigiTwinThingID(agentID, thingID)
+	dThingID := td.MakeDigiTwinThingID(agentID, thingID)
 	dtw, found := svc.dtwCache[dThingID]
 	if !found {
 		err := fmt.Errorf("dThing with ID '%s' not found", dThingID)
@@ -462,7 +461,7 @@ func (svc *DigitwinStore) UpdateEventValue(
 	svc.cacheMux.Lock()
 	defer svc.cacheMux.Unlock()
 
-	dThingID := tdd.MakeDigiTwinThingID(agentID, thingID)
+	dThingID := td.MakeDigiTwinThingID(agentID, thingID)
 	dtw, found := svc.dtwCache[dThingID]
 	if !found {
 		err := fmt.Errorf("dThing with ID '%s' not found", dThingID)
@@ -497,7 +496,7 @@ func (svc *DigitwinStore) UpdatePropertyValue(
 	svc.cacheMux.Lock()
 	defer svc.cacheMux.Unlock()
 
-	dThingID := tdd.MakeDigiTwinThingID(agentID, thingID)
+	dThingID := td.MakeDigiTwinThingID(agentID, thingID)
 	dtw, found := svc.dtwCache[dThingID]
 	if !found {
 		err := fmt.Errorf("dThing with ID '%s' not found", dThingID)

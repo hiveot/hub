@@ -4,19 +4,18 @@ import (
 	"bytes"
 	"crypto/tls"
 	"crypto/x509"
-	"errors"
 	"fmt"
-	"github.com/hiveot/hub/wot/tdd"
+	"github.com/hiveot/hub/wot"
+	"github.com/hiveot/hub/wot/td"
 	"github.com/hiveot/hub/wot/transports"
+	"github.com/hiveot/hub/wot/transports/clients/base"
 	"github.com/hiveot/hub/wot/transports/utils"
 	"github.com/hiveot/hub/wot/transports/utils/tlsclient"
-	jsoniter "github.com/json-iterator/go"
 	"github.com/teris-io/shortid"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
-	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -46,7 +45,7 @@ const (
 // paths not available through forms
 const PostAgentPublishProgressPath = "/agent/progress"
 
-// HttpBindingClient is the http/2 client for performing operations on one or more Things.
+// HttpTransportClient is the http/2 client for performing operations on one or more Things.
 // This implements the IBindingClient interface.
 //
 // NOTE: this binding implementation is intended to connect to the hiveOT Hub,
@@ -57,27 +56,11 @@ const PostAgentPublishProgressPath = "/agent/progress"
 //
 // This client has no return channel so it does not support subscribe or observe
 // operations. Use the SsescBindingClient or WssBindingClient for this.
-type HttpBindingClient struct {
-	// http server address and port
-	hostPort string
-	// the CA certificate to validate the server TLS connection
-	caCert *x509.Certificate
-	// The client ID of the user of this binding
-	clientID string
-	// The client connection-id of this instance
-	cid string
-	// request timeout
-	timeout time.Duration
+type HttpTransportClient struct {
+	base.TransportClient
 
-	// callbacks for connection, events and requests
-	connectHandler func(connected bool, err error)
-	// client side handler that receives messages for consumers
-	//messageHandler transports.MessageHandler
-	// map of requestID to delivery status update channel
-	//requestHandler transports.RequestHandler
-
-	//
-	mux sync.RWMutex
+	// getForm obtains the form for sending a request or notification
+	getForm func(op string) td.Form
 
 	// http2 client for posting messages
 	httpClient *http.Client
@@ -86,8 +69,7 @@ type HttpBindingClient struct {
 	// custom headers to include in each request
 	headers map[string]string
 
-	isConnected atomic.Bool
-	lastError   atomic.Pointer[error]
+	lastError atomic.Pointer[error]
 }
 
 // _send a HTTPS method and read response.
@@ -100,12 +82,12 @@ type HttpBindingClient struct {
 //	thingID optional path URI variable
 //	name optional path URI variable containing affordance name
 //	body contains the serialized request body
-//	correlationID: optional correlationID header value
+//	requestID: optional requestID header value
 //
 // This returns the serialized response data, a response message ID, return status code or an error
-func (cl *HttpBindingClient) _send(method string, methodPath string,
+func (cl *HttpTransportClient) _send(method string, methodPath string,
 	contentType string, thingID string, name string,
-	body []byte, correlationID string) (
+	body []byte, requestID string) (
 	resp []byte, headers http.Header, err error) {
 
 	if cl.httpClient == nil {
@@ -152,9 +134,9 @@ func (cl *HttpBindingClient) _send(method string, methodPath string,
 		contentType = "application/json"
 	}
 	req.Header.Set("Content-Type", contentType)
-	req.Header.Set(ConnectionIDHeader, cl.cid)
-	if correlationID != "" {
-		req.Header.Set(CorrelationIDHeader, correlationID)
+	req.Header.Set(ConnectionIDHeader, cl.GetConnectionID())
+	if requestID != "" {
+		req.Header.Set(CorrelationIDHeader, requestID)
 	}
 	for k, v := range cl.headers {
 		req.Header.Set(k, v)
@@ -194,7 +176,7 @@ func (cl *HttpBindingClient) _send(method string, methodPath string,
 //	clientCert client tls certificate containing x509 cert and private key
 //
 // Returns nil if successful, or an error if connection failed
-//func (cl *HttpBindingClient) ConnectWithClientCert(kp keys.IHiveKey, clientCert *tls.Certificate) (err error) {
+//func (cl *HttpTransportClient) ConnectWithClientCert(kp keys.IHiveKey, clientCert *tls.Certificate) (err error) {
 //	cl.mux.RLock()
 //	defer cl.mux.RUnlock()
 //	_ = kp
@@ -203,200 +185,130 @@ func (cl *HttpBindingClient) _send(method string, methodPath string,
 //}
 
 // CreateKeyPair returns a new set of serialized public/private key pair
-//func (cl *HttpBindingClient) CreateKeyPair() (cryptoKeys keys.IHiveKey) {
+//func (cl *HttpTransportClient) CreateKeyPair() (cryptoKeys keys.IHiveKey) {
 //	k := keys.NewKey(keys.KeyTypeEd25519)
 //	return k
 //}
 
 // Disconnect from the server
-func (cl *HttpBindingClient) Disconnect() {
-	slog.Debug("HttpBindingClient.Disconnect",
-		slog.String("clientID", cl.clientID),
+func (cl *HttpTransportClient) Disconnect() {
+	slog.Debug("HttpTransportClient.Disconnect",
+		slog.String("clientID", cl.GetClientID()),
 	)
 
-	cl.mux.Lock()
-	if cl.isConnected.Load() {
+	cl.BaseMux.Lock()
+	defer cl.BaseMux.Unlock()
+	if cl.BaseIsConnected.Load() {
 		cl.httpClient.CloseIdleConnections()
 	}
-	cl.mux.Unlock()
 }
 
-// GetClientID returns the client's account ID
-func (cl *HttpBindingClient) GetClientID() string {
-	return cl.clientID
-}
-
-// GetCID returns the client's connection ID
-func (cl *HttpBindingClient) GetCID() string {
-	return cl.cid
-}
-
-func (cl *HttpBindingClient) GetConnectionStatus() (bool, string, error) {
-	var lastErr error = nil
-	// lastError is stored as pointer because atomic.Value cannot switch between error and nil type
-	if cl.lastError.Load() != nil {
-		lastErrPtr := cl.lastError.Load()
-		lastErr = *lastErrPtr
-	}
-	return cl.isConnected.Load(), cl.cid, lastErr
-}
-
-// GetProtocolType returns the type of protocol this client supports
-func (cl *HttpBindingClient) GetProtocolType() string {
-	return transports.ProtocolTypeHTTP
-}
-
-// GetServerURL returns the schema://address:port of the server connection
-func (cl *HttpBindingClient) GetServerURL() string {
-	hubURL := fmt.Sprintf("https://%s", cl.hostPort)
-	return hubURL
-}
-
-func (cl *HttpBindingClient) GetTlsClient() *http.Client {
-	cl.mux.RLock()
-	defer cl.mux.RUnlock()
+func (cl *HttpTransportClient) GetTlsClient() *http.Client {
+	cl.BaseMux.RLock()
+	defer cl.BaseMux.RUnlock()
 	return cl.httpClient
 }
 
-// IsConnected return whether the return channel is connection, eg can receive data
-func (cl *HttpBindingClient) IsConnected() bool {
-	return cl.isConnected.Load()
+// SendError sends the notification without a reply.
+func (cl *HttpTransportClient) SendError(
+	dThingID, name string, err error, requestID string) {
+
+	stat := transports.RequestStatus{
+		ThingID:       dThingID,
+		Name:          name,
+		RequestID:     requestID,
+		Status:        transports.StatusCompleted,
+		Error:         err.Error(),
+		TimeRequested: "",
+		TimeEnded:     time.Now().Format(wot.RFC3339Milli),
+	}
+	_, _, _ = cl.SendOperation(
+		wot.HTOpPublishError, dThingID, name, stat, requestID)
 }
 
-// Rpc sends an operation and returns the result.
+// SendOperation sends an operation and returns the result
 //
-// This is the same as SendOperation. If the operation isn't completed it returns
-// an error.
-//
-// Since the http binding doesn't have a return channel, this only works with
-// operations that return their result as http response.
-func (cl *HttpBindingClient) Rpc(
-	form tdd.Form, dThingID, name string, input interface{}, output interface{}) error {
-
-	status, err := cl.SendOperation(form, dThingID, name, input, output, "")
-	_ = status
-	// there is no return channel receiving result is it.
-	return err
-}
-
-// SendOperation sends the operation described in the Form.
-// The form must describe the HTTP protocol.
-func (cl *HttpBindingClient) SendOperation(
-	f tdd.Form, dThingID, name string, input interface{}, output interface{},
-	correlationID string) (status string, err error) {
+// This locates the form for the operation and uses it
+// Intended as the base for all sends
+func (cl *HttpTransportClient) SendOperation(operation string,
+	dThingID, name string, data any, requestID string) ([]byte, http.Header, error) {
 
 	var dataJSON []byte
-	operation := f.GetOperation()
-	method, _ := f.GetMethodName()
-	href, _ := f.GetHRef()
-
-	slog.Info("SendOperation",
-		slog.String("op", operation),
-		slog.String("method", method),
-		slog.String("href", href),
-	)
+	var method string
+	var href string
+	f := cl.getForm(operation)
+	if f != nil {
+		method, _ = f.GetMethodName()
+		href, _ = f.GetHRef()
+	}
 	if method == "" {
 		method = http.MethodGet
 	}
-	if operation == "" || href == "" {
-		slog.Error("SendOperation: Form is missing operation or href")
-	}
-	if input != nil {
-		dataJSON, _ = jsoniter.Marshal(input)
-	}
-	respBody, headers, err := cl._send(
-		method, href, "", dThingID, name, dataJSON, correlationID)
-	// TODO: the datatype header describes the alternative outputs if provided
-	// what to do with this?
-	dataSchema := headers.Get(DataSchemaHeader)
-	_ = dataSchema
 
-	if err != nil {
-		return transports.RequestFailed, err
+	if operation == "" {
+		err := fmt.Errorf("SendOperation: missing operation")
+		slog.Error(err.Error())
+		return nil, nil, err
+	} else if href == "" {
+		err := fmt.Errorf("SendNotification: Form is missing operation '%s' or href", operation)
+		slog.Error(err.Error())
+		return nil, nil, err
 	}
-	// an alternative result is received. For now only RequestStatus is supported.
-	if dataSchema == "RequestStatus" {
-		stat := transports.RequestStatus{}
-		err = jsoniter.Unmarshal(respBody, &stat)
-		if stat.Error != "" {
-			return transports.RequestFailed, errors.New(stat.Error)
-		}
-		if stat.Output != nil && output != nil {
-			err = jsoniter.Unmarshal(respBody, output)
-		}
-		return stat.Status, err
+	if data != nil {
+		dataJSON = cl.Marshal(data)
 	}
-	if respBody != nil && output != nil {
-		err = jsoniter.Unmarshal(respBody, output)
-		return transports.RequestCompleted, err
-	}
-	return transports.RequestPending, nil
+	output, headers, err := cl._send(
+		method, href, "", dThingID, name, dataJSON, requestID)
+	return output, headers, err
 }
 
-// SendOperationStatus [agent] sends a operation progress status update to the server.
+// SendNotification sends the notification without a reply.
+func (cl *HttpTransportClient) SendNotification(
+	operation string, dThingID, name string, data any) error {
+
+	_, _, err := cl.SendOperation(operation, dThingID, name, data, "")
+	return err
+}
+
+// SendRequest sends an operation and returns the result.
 //
-// NOTE: this message is not defined in the http binding spec for 2 reasons:
-// 1. HTTP bindings require the use of a sub-protocol to return data.
-// 2. WoT only defines consumer operations and this is an agent operation
-func (cl *HttpBindingClient) SendOperationStatus(stat transports.RequestStatus) {
-	slog.Debug("SendOperationStatus",
-		slog.String("agentID", cl.clientID),
-		slog.String("thingID", stat.ThingID),
-		slog.String("name", stat.Name),
-		slog.String("progress", stat.Status),
-		slog.String("correlationID", stat.CorrelationID))
+// Since the http binding doesn't have a return channel, this only works with
+// operations that return their result as http response.
+func (cl *HttpTransportClient) SendRequest(operation string,
+	dThingID, name string, input interface{}, output interface{}) error {
 
-	//stat2 := cl.Pub(http.MethodPost, PostAgentPublishProgressPath,
-	//	"", "", stat, stat.CorrelationID)
-	//
-	dataJSON, _ := jsoniter.Marshal(stat)
-	_, _, err := cl._send(
-		http.MethodPost, PostAgentPublishProgressPath, "",
-		"", "", dataJSON, stat.CorrelationID)
+	// Without a return channel there is no waiting for a result
+	raw, _, err := cl.SendOperation(operation, dThingID, name, input, "")
 
-	if err != nil {
-		slog.Warn("SendOperationStatus failed", "err", err.Error())
+	// in case an immediate result is received then unmarshal it and
+	// call it done.
+	if raw != nil && output != nil {
+		err = cl.Unmarshal(raw, output)
 	}
+	return err
 }
 
-// SetConnectHandler sets the notification handler of connection failure
-// Intended to notify the client that a reconnect or relogin is needed.
-func (cl *HttpBindingClient) SetConnectHandler(cb func(connected bool, err error)) {
-	cl.mux.Lock()
-	cl.connectHandler = cb
-	cl.mux.Unlock()
+// SendResponse sends the action response message
+func (cl *HttpTransportClient) SendResponse(
+	dThingID, name string, output any, requestID string) {
+
+	stat := transports.RequestStatus{
+		ThingID:       dThingID,
+		Name:          name,
+		RequestID:     requestID,
+		Status:        transports.StatusCompleted,
+		Output:        output,
+		TimeRequested: "",
+		TimeEnded:     time.Now().Format(wot.RFC3339Milli),
+	}
+	_, _, err := cl.SendOperation(wot.HTOpActionStatus, dThingID, name, stat, requestID)
+	_ = err
 }
 
-// SetMessageHandler set the handler that receives event type messages send by the server.
-// This requires a sub-protocol with a return channel.
-func (cl *HttpBindingClient) SetMessageHandler(cb transports.MessageHandler) {
-	//cl.mux.Lock()
-	//cl.messageHandler = cb
-	//cl.mux.Unlock()
-}
-
-// SetRequestHandler set the handler that receives requests from the server,
-// where a status response is expected.
-// This requires a sub-protocol with a return channel.
-func (cl *HttpBindingClient) SetRequestHandler(cb transports.RequestHandler) {
-	//cl.mux.Lock()
-	//cl.requestHandler = cb
-	//cl.mux.Unlock()
-}
-
-// NewHttpTransportClient creates a new instance of the http binding client
-//
-//	fullURL of server to connect to, including the schema
-//	clientID to connect as; for logging and ConnectWithPassword. It is
-//
-// ignored if auth token is used.
-//
-//	clientCert optional client certificate to connect with
-//	caCert of the server to validate the server or nil to not check the server cert
-//	timeout for waiting for response. 0 to use the default.
-func NewHttpTransportClient(
+func (cl *HttpTransportClient) Init(
 	fullURL string, clientID string, clientCert *tls.Certificate, caCert *x509.Certificate,
-	timeout time.Duration) *HttpBindingClient {
+	getForm func(op string) td.Form,
+	timeout time.Duration) {
 
 	caCertPool := x509.NewCertPool()
 
@@ -414,21 +326,39 @@ func NewHttpTransportClient(
 		timeout = time.Second * 3
 	}
 	urlParts, _ := url.Parse(fullURL)
-	cid := shortid.MustGenerate()
-	cl := HttpBindingClient{
-		//_status: hubclient.TransportStatus{
-		//	HubURL:               fmt.Sprintf("https://%s", hostPort),
-		caCert:   caCert,
-		clientID: clientID,
-		cid:      cid,
-
-		// max delay 3 seconds before a response is expected
-		timeout:  timeout,
-		hostPort: urlParts.Host,
-		//
-		headers: make(map[string]string),
+	cl.TransportClient = base.TransportClient{
+		BaseCaCert:       caCert,
+		BaseClientID:     clientID,
+		BaseConnectionID: clientID + "." + shortid.MustGenerate(),
+		BaseProtocolType: transports.ProtocolTypeHTTP,
+		BaseFullURL:      fullURL,
+		BaseHostPort:     urlParts.Host,
+		BaseTimeout:      timeout,
+		BaseRnrChan:      utils.NewRnRChan(),
 	}
+	//
+	cl.getForm = getForm
+	cl.headers = make(map[string]string)
 	cl.httpClient = tlsclient.NewHttp2TLSClient(caCert, clientCert, timeout)
+	cl.BaseSendNotification = cl.SendNotification
+}
 
+// NewHttpTransportClient creates a new instance of the http binding client
+//
+// This uses TD forms to perform an operation.
+//
+//	fullURL of server to connect to, including the schema
+//	clientID to connect as; for logging and ConnectWithPassword. It is ignored if auth token is used.
+//	clientCert optional client certificate to connect with
+//	caCert of the server to validate the server or nil to not check the server cert
+//	getForm is the handler for return a form for invoking an operation
+//	timeout for waiting for response. 0 to use the default.
+func NewHttpTransportClient(
+	fullURL string, clientID string, clientCert *tls.Certificate, caCert *x509.Certificate,
+	getForm func(op string) td.Form,
+	timeout time.Duration) *HttpTransportClient {
+
+	cl := HttpTransportClient{}
+	cl.Init(fullURL, clientID, clientCert, caCert, getForm, timeout)
 	return &cl
 }

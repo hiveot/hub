@@ -2,7 +2,7 @@ package src
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/wot/tdd"
+	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/urfave/cli/v2"
 	"os"
@@ -40,7 +40,7 @@ func HandleListTDs(sourceDir string) error {
 	fmt.Printf("Filename              Size (KB)  Title                 @Type                 properties  events  actions\n")
 	fmt.Printf("--------------------  ---------  --------------------  ---------------------        ---     ---      ---\n")
 	for _, entry := range entries {
-		td := tdd.TD{}
+		td := td.TD{}
 		fullpath := filepath.Join(sourceDir, entry.Name())
 		tdJSON, err := os.ReadFile(fullpath)
 		finfo, _ := entry.Info()

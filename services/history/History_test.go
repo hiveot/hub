@@ -12,7 +12,7 @@ import (
 	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/hiveot/hub/services/history/service"
 	"github.com/hiveot/hub/wot"
-	"github.com/hiveot/hub/wot/tdd"
+	"github.com/hiveot/hub/wot/td"
 	"github.com/hiveot/hub/wot/transports"
 	utils2 "github.com/hiveot/hub/wot/transports/utils"
 	"log/slog"
@@ -74,7 +74,7 @@ func startHistoryService(clean bool) (
 	if err != nil {
 		panic("can't connect operator")
 	}
-	invokeActionForm := ts.GetForm(wot.OpInvokeAction)
+	invokeActionForm := ts.GetForm(wot.OpInvokeAction, cl1.GetProtocolType())
 	histCl := historyclient.NewReadHistoryClient(invokeActionForm, cl1)
 
 	return svc, histCl, func() {
@@ -107,7 +107,7 @@ func makeValueBatch(agentID string, nrValues, nrThings, timespanSec int) (
 		randomTime := time.Now().Add(-randomSeconds)
 		//
 		thingID := thingIDPrefix + strconv.Itoa(randomID)
-		dThingID := tdd.MakeDigiTwinThingID(agentID, thingID)
+		dThingID := td.MakeDigiTwinThingID(agentID, thingID)
 
 		randomMsgType := rand.Intn(2)
 		messageType := vocab.HTOpPublishEvent
@@ -194,7 +194,7 @@ func TestAddGetEvent(t *testing.T) {
 
 	// add thing1 temperature from 5 minutes ago
 	addHist := svc.GetAddHistory()
-	dThing1ID := tdd.MakeDigiTwinThingID(agent1ID, thing1ID)
+	dThing1ID := td.MakeDigiTwinThingID(agent1ID, thing1ID)
 	ev1_1 := &transports.ThingMessage{
 		Operation: vocab.HTOpPublishEvent,
 		SenderID:  agent1ID, ThingID: dThing1ID, Name: evTemperature,
@@ -212,7 +212,7 @@ func TestAddGetEvent(t *testing.T) {
 	assert.NoError(t, err)
 
 	// add thing2 humidity from 5 minutes ago
-	dThing2ID := tdd.MakeDigiTwinThingID(agent1ID, thing2ID)
+	dThing2ID := td.MakeDigiTwinThingID(agent1ID, thing2ID)
 	ev2_1 := &transports.ThingMessage{
 		Operation: vocab.HTOpPublishEvent,
 		SenderID:  agent1ID, ThingID: dThing2ID, Name: evHumidity,
@@ -288,7 +288,7 @@ func TestAddProperties(t *testing.T) {
 	svc, readHist, closeFn := startHistoryService(true)
 	defer closeFn()
 
-	dThing1ID := tdd.MakeDigiTwinThingID(agent1, thing1ID)
+	dThing1ID := td.MakeDigiTwinThingID(agent1, thing1ID)
 	action1 := &transports.ThingMessage{
 		SenderID:  agent1,
 		ThingID:   dThing1ID,
@@ -415,7 +415,7 @@ func TestPrevNext(t *testing.T) {
 	const count = 1000
 	const agentID = "agent1"
 	const thing0ID = thingIDPrefix + "0" // matches a percentage of the random things
-	var dThing0ID = tdd.MakeDigiTwinThingID(agentID, thing0ID)
+	var dThing0ID = td.MakeDigiTwinThingID(agentID, thing0ID)
 
 	store, readHist, closeFn := startHistoryService(true)
 	defer closeFn()
@@ -474,7 +474,7 @@ func TestPrevNextFiltered(t *testing.T) {
 	const count = 1000
 	const agentID = "agent1"
 	const thing0ID = thingIDPrefix + "0" // matches a percentage of the random things
-	var dThing0ID = tdd.MakeDigiTwinThingID(agentID, thing0ID)
+	var dThing0ID = td.MakeDigiTwinThingID(agentID, thing0ID)
 
 	svc, readHist, closeFn := startHistoryService(true)
 	defer closeFn()
@@ -538,7 +538,7 @@ func TestNextPrevUntil(t *testing.T) {
 	const count = 1000
 	const agentID = "agent1"
 	const thing0ID = thingIDPrefix + "0" // matches a percentage of the random things
-	var dThing0ID = tdd.MakeDigiTwinThingID(agentID, thing0ID)
+	var dThing0ID = td.MakeDigiTwinThingID(agentID, thing0ID)
 
 	store, readHist, closeFn := startHistoryService(true)
 	defer closeFn()
@@ -578,7 +578,7 @@ func TestReadHistory(t *testing.T) {
 	const count = 1000
 	const agentID = "device1"
 	const thing0ID = thingIDPrefix + "0" // matches a percentage of the random things
-	var dThing0ID = tdd.MakeDigiTwinThingID(agentID, thing0ID)
+	var dThing0ID = td.MakeDigiTwinThingID(agentID, thing0ID)
 
 	store, readHist, closeFn := startHistoryService(true)
 	defer closeFn()
@@ -620,7 +620,7 @@ func TestPubEvents(t *testing.T) {
 	td1 := ts.CreateTestTD(0)
 	ts.AddTD(agent1ID, td1)
 	thing0ID := td1.ID
-	dThing0ID := tdd.MakeDigiTwinThingID(agent1ID, thing0ID)
+	dThing0ID := td.MakeDigiTwinThingID(agent1ID, thing0ID)
 
 	// publish events
 	names := []string{
@@ -635,7 +635,10 @@ func TestPubEvents(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		val := strconv.Itoa(i + 1)
 		// events are published by the agent using their native thingID
-		err := ag1.PubEvent(thing0ID, names[i], val, "")
+		name := names[i]
+		f1 := td1.GetForm(wot.HTOpPublishEvent, name, ag1.GetProtocolType())
+		_, err := ag1.SendNotification(f1, thing0ID, name, val, nil, "")
+		//err := ag1.PubEvent(f1, thing0ID, name, val, "")
 		assert.NoError(t, err)
 		// make sure timestamp differs
 		time.Sleep(time.Millisecond * 3)
@@ -674,10 +677,11 @@ func TestManageRetention(t *testing.T) {
 	// make sure the TD whose retention rules are added exist
 	td0 := ts.CreateTestTD(0)
 	ts.AddTD(agentID, td0)
-	dThing0ID := tdd.MakeDigiTwinThingID(agentID, td0.ID)
+	dThing0ID := td.MakeDigiTwinThingID(agentID, td0.ID)
 
 	// connect as an admin user
 	cl1, _ := ts.AddConnectConsumer(client1ID, authz.ClientRoleAdmin)
+	invokeActionForm := ts.GetForm(wot.OpInvokeAction, cl1.GetProtocolType())
 	mngHist := historyclient.NewManageHistoryClient(invokeActionForm, cl1)
 
 	// should be able to read the current retention rules. Expect the default rules.
@@ -708,9 +712,10 @@ func TestManageRetention(t *testing.T) {
 	ag1, _ := ts.AddConnectService(agentID)
 	require.NoError(t, err)
 	defer ag1.Disconnect()
-	err = ag1.PubEvent(td0.ID, event1Name, "event one", "")
+	f1 := ts.GetForm(wot.HTOpPublishEvent, cl1.GetProtocolType())
+	_, err = ag1.SendNotification(f1, td0.ID, event1Name, "event one", nil, "")
 	assert.NoError(t, err)
-	err = ag1.PubEvent(td0.ID, event2Name, "event two", "")
+	_, err = ag1.SendNotification(f1, td0.ID, event2Name, "event two", nil, "")
 	assert.NoError(t, err)
 	// give it some time to persist the bucket
 	time.Sleep(time.Millisecond * 100)

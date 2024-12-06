@@ -5,7 +5,6 @@ import (
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/runtime/digitwin/service"
-	"github.com/hiveot/hub/wot/tdd"
 	"github.com/hiveot/hub/wot/transports"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,14 +19,14 @@ func TestActionFlow(t *testing.T) {
 	const actionName = "action1"
 	const actionValue = 25
 	const msgID = "msg1"
-	dThingID := tdd.MakeDigiTwinThingID(agentID, thingID)
+	dThingID := td.MakeDigiTwinThingID(agentID, thingID)
 
 	svc, dtwStore, stopFunc := startService(true)
 	defer stopFunc()
 
 	// Create the native TD for invoking an action to
 	tdDoc1 := createTDDoc(thingID, 5, 4, 3)
-	actionSchema := &tdd.DataSchema{Type: vocab.WoTDataTypeInteger, Title: "Position"}
+	actionSchema := &td.DataSchema{Type: vocab.WoTDataTypeInteger, Title: "Position"}
 	tdDoc1.AddAction(actionName, "action 1", "", actionSchema)
 	tddjson, _ := json.Marshal(tdDoc1)
 	err := svc.DirSvc.UpdateTD(agentID, string(tddjson))
@@ -70,7 +69,7 @@ func TestActionFlow(t *testing.T) {
 func TestActionReadFail(t *testing.T) {
 	const agentID = "agent1"
 	const thingID = "thing1"
-	var dThingID = tdd.MakeDigiTwinThingID(agentID, thingID)
+	var dThingID = td.MakeDigiTwinThingID(agentID, thingID)
 
 	svc, _, stopFunc := startService(true)
 	defer stopFunc()
@@ -102,14 +101,14 @@ func TestInvokeActionErrors(t *testing.T) {
 	const actionName = "action1"
 	const actionValue = 25
 	const msgID = "mid1"
-	dThingID := tdd.MakeDigiTwinThingID(agentID, thingID)
+	dThingID := td.MakeDigiTwinThingID(agentID, thingID)
 
 	svc, dtwStore, stopFunc := startService(true)
 	defer stopFunc()
 
 	// Create the native TD for invoking an action to
 	tdDoc1 := createTDDoc(thingID, 5, 4, 3)
-	actionSchema := &tdd.DataSchema{Type: vocab.WoTDataTypeInteger, Title: "Position"}
+	actionSchema := &td.DataSchema{Type: vocab.WoTDataTypeInteger, Title: "Position"}
 	tdDoc1.AddAction(actionName, "action 1", "", actionSchema)
 	tddjson, _ := json.Marshal(tdDoc1)
 	err := svc.DirSvc.UpdateTD(agentID, string(tddjson))
@@ -144,14 +143,14 @@ func TestDigitwinAgentAction(t *testing.T) {
 	const actionName = "action1"
 	const actionValue = 25
 	const msgID = "mid1"
-	dThingID := tdd.MakeDigiTwinThingID(agentID, thingID)
+	dThingID := td.MakeDigiTwinThingID(agentID, thingID)
 
 	svc, _, stopFunc := startService(true)
 	defer stopFunc()
 
 	// Create the native TD for invoking an action to
 	tdDoc1 := createTDDoc(thingID, 5, 4, 3)
-	actionSchema := &tdd.DataSchema{Type: vocab.WoTDataTypeInteger, Title: "Position"}
+	actionSchema := &td.DataSchema{Type: vocab.WoTDataTypeInteger, Title: "Position"}
 	tdDoc1.AddAction(actionName, "action 1", "", actionSchema)
 	tddJSON1, _ := json.Marshal(tdDoc1)
 	err := svc.DirSvc.UpdateTD(agentID, string(tddJSON1))
@@ -164,7 +163,7 @@ func TestDigitwinAgentAction(t *testing.T) {
 	ag := service.NewDigitwinAgent(svc)
 	msg := transports.NewThingMessage(
 		vocab.OpInvokeAction, digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, dThingID, consumerID)
-	msg.CorrelationID = msgID
+	msg.RequestID = msgID
 	stat := ag.HandleAction(msg)
 	require.Empty(t, stat.Error)
 	require.NotEmpty(t, stat.Output)
@@ -173,21 +172,21 @@ func TestDigitwinAgentAction(t *testing.T) {
 	// a non-existing DTD should fail
 	msg = transports.NewThingMessage(
 		vocab.OpInvokeAction, digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, "badid", consumerID)
-	msg.CorrelationID = msgID
+	msg.RequestID = msgID
 	stat = ag.HandleAction(msg)
 	require.NotEmpty(t, stat.Error)
 
 	// a non-existing method name should fail
 	msg = transports.NewThingMessage(
 		vocab.OpInvokeAction, digitwin.DirectoryDThingID, "badMethod", dThingID, consumerID)
-	msg.CorrelationID = msgID
+	msg.RequestID = msgID
 	stat = ag.HandleAction(msg)
 	require.NotEmpty(t, stat.Error)
 
 	// a non-existing serviceID should fail
 	msg = transports.NewThingMessage(
 		vocab.OpInvokeAction, "badservicename", digitwin.DirectoryReadTDMethod, dThingID, consumerID)
-	msg.CorrelationID = msgID
+	msg.RequestID = msgID
 	stat = ag.HandleAction(msg)
 	require.NotEmpty(t, stat.Error)
 

@@ -37,21 +37,18 @@ type ThingMessage struct {
 
 	// Timestamp the data was created using RFC3339milli
 	// Optional. This will be set to 'now' if omitted.
-	Created string
+	Timestamp string
 
 	// Data in the native format as described in the TD affordance dataschema.
 	Data any
 
-	// CorrelationID of the message. Intended to track action progress.
+	// RequestID of the message. Intended to track action progress.
 	// Optional. The hub will generate a unique requestID if omitted.
-	CorrelationID string
+	RequestID string
 
 	// MessageID unique ID of the message. Intended to detect duplicates.
 	// Generated on receiving a message.
 	MessageID string
-
-	// Timestamp in RFC3339 the data was created, or the message if no data is present.
-	Timestamp string
 }
 
 // DataAsText return a text representation of the data that is independent of
@@ -69,10 +66,10 @@ func (tm *ThingMessage) DataAsText() string {
 // Optionally "WT" is weekday, time (Mon, 14:31:01 PDT) when less than a week old
 // or, provide the time format directly, eg: "02 Jan 06 15:04 MST" for rfc822
 func (tm *ThingMessage) GetUpdated(format ...string) (updated string) {
-	if tm.Created == "" {
+	if tm.Timestamp == "" {
 		return ""
 	}
-	createdTime, _ := dateparse.ParseAny(tm.Created)
+	createdTime, _ := dateparse.ParseAny(tm.Timestamp)
 	if format != nil && len(format) == 1 {
 		if format[0] == "WT" {
 			// Format weekday, time if less than a week old
@@ -102,7 +99,7 @@ func (tm *ThingMessage) GetUpdated(format ...string) (updated string) {
 //	senderID is the accountID of the creator of the value
 func NewThingMessage(operation string, thingID, name string, data any, senderID string) *ThingMessage {
 	return &ThingMessage{
-		Created:   time.Now().Format(wot.RFC3339Milli),
+		Timestamp: time.Now().Format(wot.RFC3339Milli),
 		Data:      data,
 		Name:      name,
 		Operation: operation,

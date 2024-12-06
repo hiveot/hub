@@ -2,8 +2,6 @@ package certsclient
 
 import (
 	"github.com/hiveot/hub/services/certs/certsapi"
-	"github.com/hiveot/hub/wot/protocolclients"
-	"github.com/hiveot/hub/wot/tdd"
 )
 
 // CertsClient is a marshaller for cert service messages using a provided hub connection.
@@ -100,7 +98,7 @@ func NewCertsClient(hc clients.IConsumer) *CertsClient {
 
 	cl := CertsClient{
 		hc:       hc,
-		dThingID: tdd.MakeDigiTwinThingID(agentID, certsapi.CertsAdminThingID),
+		dThingID: td.MakeDigiTwinThingID(agentID, certsapi.CertsAdminThingID),
 	}
 	return &cl
 }

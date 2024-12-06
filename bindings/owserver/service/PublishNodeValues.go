@@ -2,7 +2,6 @@ package service
 
 import (
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 	"math"
 	"strconv"
@@ -106,7 +105,7 @@ func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode, force bo
 // GetValueChange parses the attribute value and track changes to the
 // value.
 func (svc *OWServerBinding) GetValueChange(
-	attrName string, attrValue string, info AttrConversion, td *tdd.TD) (
+	attrName string, attrValue string, info AttrConversion, td *td.TD) (
 	value any, changed bool) {
 
 	var err error

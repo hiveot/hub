@@ -9,7 +9,6 @@ import (
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"github.com/hiveot/hub/services/hiveoview/src/views/history"
 	"github.com/hiveot/hub/wot/consumedthing"
-	"github.com/hiveot/hub/wot/tdd"
 	"golang.org/x/exp/maps"
 	"log/slog"
 	"net/http"
@@ -25,7 +24,7 @@ type ThingDetailsTemplateData struct {
 	ThingID    string
 	MakeModel  string
 	DeviceType string
-	TD         *tdd.TD
+	TD         *td.TD
 	// split the properties in attributes and config for presentation
 	AttrNames   []string
 	ConfigNames []string
@@ -65,7 +64,7 @@ func (dt *ThingDetailsTemplateData) GetRenderActionPath(name string) string {
 // @param thingID to view
 func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 	thingID := chi.URLParam(r, "thingID")
-	agentID, _ := tdd.SplitDigiTwinThingID(thingID)
+	agentID, _ := td.SplitDigiTwinThingID(thingID)
 	var ct *consumedthing.ConsumedThing
 
 	pathParams := map[string]string{"thingID": thingID}

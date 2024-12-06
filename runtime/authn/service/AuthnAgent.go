@@ -3,20 +3,20 @@ package service
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
-	"github.com/hiveot/hub/wot/tdd"
+	"github.com/hiveot/hub/wot/td"
 	"github.com/hiveot/hub/wot/transports"
 )
 
 // AuthnAgent agent for the authentication services:
 type AuthnAgent struct {
-	adminHandler transports.ActionHandler
-	userHandler  transports.ActionHandler
+	adminHandler transports.RequestHandler
+	userHandler  transports.RequestHandler
 }
 
 // HandleAction authn services action request
 func (agent *AuthnAgent) HandleAction(msg *transports.ThingMessage) (stat transports.RequestStatus) {
 
-	_, thingID := tdd.SplitDigiTwinThingID(msg.ThingID)
+	_, thingID := td.SplitDigiTwinThingID(msg.ThingID)
 	if thingID == authn.AdminServiceID {
 		stat = agent.adminHandler(msg)
 	} else if thingID == authn.UserServiceID {

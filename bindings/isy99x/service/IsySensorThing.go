@@ -2,8 +2,6 @@ package service
 
 import (
 	"errors"
-	"github.com/hiveot/hub/wot/protocolclients"
-	"github.com/hiveot/hub/wot/tdd"
 )
 
 // IsySensorThing is a general-purpose sensor
@@ -23,7 +21,7 @@ func (it *IsySensorThing) HandleConfigRequest(action *transports.ThingMessage) (
 }
 
 // MakeTD returns the TD document representing the node
-func (it *IsySensorThing) MakeTD() *tdd.TD {
+func (it *IsySensorThing) MakeTD() *td.TD {
 	td := it.IsyThing.MakeTD()
 	// TODO: add sensor properties and events
 	return td

@@ -2,7 +2,7 @@ package history_test
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/wot/tdd"
+	"github.com/hiveot/hub/wot/td"
 	"testing"
 	"time"
 
@@ -62,7 +62,7 @@ func BenchmarkAddEvents(b *testing.B) {
 	const agentID = "agent1"
 	const thing0ID = thingIDPrefix + "0"
 	const timespanSec = 3600 * 24 * 10
-	var dThing0ID = tdd.MakeDigiTwinThingID(agentID, thing0ID)
+	var dThing0ID = td.MakeDigiTwinThingID(agentID, thing0ID)
 
 	logging.SetLogging("error", "")
 

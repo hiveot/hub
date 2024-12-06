@@ -1,8 +1,6 @@
 // Package transports with the interface of a client transport connection
 package transports
 
-import "github.com/hiveot/hub/wot/tdd"
-
 // Supported transport protocol bindings types
 const (
 	ProtocolTypeHTTP  = "https"
@@ -12,13 +10,13 @@ const (
 	ProtocolTypeMQTT  = "mqtt"
 )
 
-// MessageHandler processes a message without expecting a return value
-type MessageHandler func(msg *ThingMessage)
+// NotificationHandler processes a message without a response
+type NotificationHandler func(msg *ThingMessage)
 
-// RequestHandler processes a request and returns a progress status.
+// RequestHandler processes a request and returns a response.
 //
 //	msg is the envelope that contains the request to process
-type RequestHandler func(msg *ThingMessage) RequestStatus
+type RequestHandler func(msg *ThingMessage) (output any, err error)
 
 // TransportStatus connection status of a hub client transport
 //type TransportStatus struct {
@@ -81,9 +79,8 @@ type IClientConnection interface {
 	// GetClientID returns the agent or user clientID for this hub client
 	GetClientID() string
 
-	// GetConnectionStatus returns the current two-way connection status
-	// If disconnected, the last error is included.
-	GetConnectionStatus() (connected bool, cid string, err error)
+	// GetConnectionID returns the client's connection ID belonging to this endpoint
+	GetConnectionID() string
 
 	// GetProtocolType returns the (sub)protocol type implemented by this client
 	// See the  ProtocolType constants defined above.
@@ -106,38 +103,36 @@ type IClientConnection interface {
 	// The resulting token can be used with 'ConnectWithToken'
 	RefreshToken(oldToken string) (newToken string, err error)
 
-	// Rpc sends an operation and waits for a status response or until timeout.
-	// It is similar to SendOperation but waits until the response is either
-	// StatusCompleted, StatusFailed, or until a timeout occurs.
-	// If the operation has no result and no response status is expected then
-	// use SendOperation instead.
-	Rpc(form tdd.Form, dThingID, name string, input interface{},
-		output interface{}) error
+	// SendError returns an error to the client, send by an agent
+	// Intended to send an error to the client instead of a response.
+	SendError(thingID, name string, errResponse error, requestID string)
 
-	// SendOperation sends the operation described in the given Form.
-	// This can be any of the predefined operations that are supported on the server.
+	// SendNotification sends a notification to the server.
+	// Notifications do not receive a response.
 	//
-	// form is the Thing TD form that describes the transport parameters needed by this
-	// protocol binding. It is provided by the Thing's TD.
-	// dThingID and name are injected in the form href, if used. (uri variables)
-	// input contains the input data as per affordance.
-	// output is the operation's output
+	// operation is the operation to invoke
+	// thingID of the thing the operation applies to
+	// name of the affordance the operation applies to
+	// data contains the notification data as described in the TD affordance.
 	//
-	// This returns a progress status value object (pending, failed or completed),
-	// or an error if the operation failed to complete, including timeout.
-	SendOperation(form tdd.Form, dThingID, name string, input interface{},
-		output interface{}, correlationID string) (status string, err error)
+	// This returns an error if the notification could not be delivered to the server.
+	SendNotification(operation string, thingID, name string, data any) error
 
-	// SendOperationStatus [agent] sends a operation progress status update
-	// to the server.
-	//
-	// Intended for agents that have processed an incoming action request
-	// asynchronously and need to send an update on further progress.
-	SendOperationStatus(stat RequestStatus)
+	// SendRequest sends an operation and waits for a response or until timeout.
+	SendRequest(operation string, thingID, name string, input any, output any) error
 
-	// SetMessageHandler sets the handler for event style operations received from the server.
+	// SendResponse agent sends a response to a request.
+	//
+	// Intended for agents to send the response to a request.
+	//	thingID of the thing the operation applies to
+	//	name of the affordance the operation applies to
+	//	output is the response data
+	//	requestID contains the requestID provided in the request.
+	SendResponse(thingID, name string, output any, requestID string)
+
+	// SetNotificationHandler sets the handler for notification message from the server.
 	// This replaces any previously set handler.
-	SetMessageHandler(cb MessageHandler)
+	SetNotificationHandler(cb NotificationHandler)
 
 	// SetRequestHandler sets the handler for operations that return a response.
 	// This replaces any previously set handler.
@@ -145,4 +140,19 @@ type IClientConnection interface {
 
 	// SetConnectHandler sets the notification handler of connection status changes
 	SetConnectHandler(cb func(connected bool, err error))
+
+	// ObserveProperty changes to a property.
+	//
+	// The protocol binding handles this as per its specification
+	// This is a convenience method and short for
+	//  SendNotification(wot.ObserveProperty,thingID,name,nil)
+	// name is the property to subscribe to or "" for all properties
+	ObserveProperty(thingID string, name string) error
+	// UnobserveProperty removes a previous observe of a property
+	UnobserveProperty(thingID string, name string) error
+	// Subscribe to one or all events of a thing
+	// name is the event to subscribe to or "" for all events
+	Subscribe(thingID string, name string) error
+	// Unsubscribe from previous subscription
+	Unsubscribe(thingID string, name string) error
 }

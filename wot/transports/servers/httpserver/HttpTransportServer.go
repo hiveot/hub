@@ -3,7 +3,6 @@ package httpserver
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/wot/transports"
 	"github.com/hiveot/hub/wot/transports/connections"
@@ -89,24 +88,26 @@ func (svc *HttpTransportServer) GetConnectionByConnectionID(connectionID string)
 }
 
 // GetProtocolInfo returns info on the protocol supported by this binding
-func (svc *HttpTransportServer) GetProtocolInfo() transports.ProtocolInfo {
-	//hostName := svc.config.Host
-	//if hostName == "" {
-	//	hostName = "localhost"
-	//}
-	baseURL := fmt.Sprintf("https://%s:%d", svc.hostName, svc.port)
-	inf := transports.ProtocolInfo{
-		BaseURL:   baseURL,
-		Schema:    "https",
-		Transport: "https",
-	}
-	return inf
-}
-
-// GetHttpServer returns the running tls server. Intended for testing
-//func (svc *HttpTransportServer) GetHttpServer() *tlsserver.TLSServer {
-//	return svc.httpServer
+//func (svc *HttpTransportServer) GetProtocolInfo() transports.ProtocolInfo {
+//	//hostName := svc.config.Host
+//	//if hostName == "" {
+//	//	hostName = "localhost"
+//	//}
+//	baseURL := fmt.Sprintf("https://%s:%d", svc.hostName, svc.port)
+//	inf := transports.ProtocolInfo{
+//		BaseURL:   baseURL,
+//		Schema:    "https",
+//		Transport: "https",
+//	}
+//	return inf
 //}
+
+// SendNotification broadcast an event or property change to subscribers clients
+func (svc *HttpTransportServer) SendNotification(operation string, dThingID, name string, data any) {
+	// this is needed so mqtt can broadcast once via the message bus instead all individual connections
+	// tbd. An embedded mqtt server can still send per connection?
+	slog.Error("not supported in http")
+}
 
 // Stop the https server
 func (svc *HttpTransportServer) Stop() {
@@ -175,7 +176,7 @@ func StartHttpTransportServer(host string, port int,
 		authenticator:  authenticator,
 		messageHandler: messageHandler,
 
-		//ws: wssserver.NewWssTransportServer(cm, messageHandler, wssURL),
+		//ws: wssserver.NewWssTransportServer(cm, requestHandler, wssURL),
 		//sse:   ssescserver.NewSseScTransportServer(cm),
 		//ssesc: ssescserver.NewSseScTransportServer(cm),
 

@@ -7,8 +7,8 @@ import (
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authn/config"
-	"github.com/hiveot/hub/wot/protocolclients/connect"
 	"github.com/hiveot/hub/wot/transports"
+	"github.com/hiveot/hub/wot/transports/clients"
 	"log/slog"
 	"os"
 	"path"
@@ -154,7 +154,7 @@ func (svc *AuthnAdminService) AddService(senderID string,
 			args.ClientID, args.ClientID, svc.cfg.ServiceTokenValiditySec)
 
 		// remove the readonly token file if it exists, to be able to overwrite
-		tokenFile := path.Join(svc.cfg.KeysDir, args.ClientID+connect.TokenFileExt)
+		tokenFile := path.Join(svc.cfg.KeysDir, args.ClientID+clients.TokenFileExt)
 		_ = os.Remove(tokenFile)
 		err = os.WriteFile(tokenFile, []byte(token), 0400)
 	}

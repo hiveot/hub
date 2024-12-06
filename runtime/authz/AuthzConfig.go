@@ -3,7 +3,6 @@ package authz
 import (
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/wot/tdd"
 	"path"
 	"sync"
 )
@@ -163,7 +162,7 @@ func (cfg *AuthzConfig) GetPermissions(dThingID string) (authz.ThingPermissions,
 func (cfg *AuthzConfig) SetPermissions(perms authz.ThingPermissions) {
 	cfg.mux.Lock()
 	defer cfg.mux.Unlock()
-	dThingID := tdd.MakeDigiTwinThingID(perms.AgentID, perms.ThingID)
+	dThingID := td.MakeDigiTwinThingID(perms.AgentID, perms.ThingID)
 	cfg.ThingPermissions[dThingID] = perms
 }
 

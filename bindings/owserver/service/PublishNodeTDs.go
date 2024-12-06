@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
-	"github.com/hiveot/hub/wot/tdd"
 )
 
 // CreateTDFromNode converts the 1-wire node into a TD that describes the node.
@@ -12,7 +11,7 @@ import (
 // - Writable non-sensors attributes are marked as writable configuration
 // - Sensors are also added as events.
 // - Writable sensors are also added as actions.
-func (svc *OWServerBinding) CreateTDFromNode(node *eds.OneWireNode) (tdoc *tdd.TD) {
+func (svc *OWServerBinding) CreateTDFromNode(node *eds.OneWireNode) (tdoc *td.TD) {
 
 	// Should we bother with the URI? In HiveOT things have pubsub addresses that include the ID. The ID is not the address.
 	//thingID := things.CreateThingID(svc.config.ID, node.NodeID, node.DeviceType)
@@ -31,7 +30,7 @@ func (svc *OWServerBinding) CreateTDFromNode(node *eds.OneWireNode) (tdoc *tdd.T
 	if customTitle != "" {
 		thingTitle = customTitle
 	}
-	tdoc = tdd.NewTD(thingID, thingTitle, deviceType)
+	tdoc = td.NewTD(thingID, thingTitle, deviceType)
 	tdoc.UpdateTitleDescription(thingTitle, node.Description)
 
 	// Add a writable 'title' property so consumer can edit the device's title.
@@ -71,11 +70,11 @@ func (svc *OWServerBinding) CreateTDFromNode(node *eds.OneWireNode) (tdoc *tdd.T
 			}
 		}
 		if attrInfo.IsEvent {
-			var evSchema *tdd.DataSchema
+			var evSchema *td.DataSchema
 			// only add data schema if the event carries a value
 			if attrInfo.DataType != vocab.WoTDataTypeNone {
 				unit, _ := UnitNameVocab[attr.Unit]
-				evSchema = &tdd.DataSchema{
+				evSchema = &td.DataSchema{
 					Type:     attrInfo.DataType,
 					Unit:     unit,
 					ReadOnly: true,
@@ -86,11 +85,11 @@ func (svc *OWServerBinding) CreateTDFromNode(node *eds.OneWireNode) (tdoc *tdd.T
 				SetAtType(attrInfo.VocabType)
 		}
 		if attrInfo.IsActuator {
-			var inputSchema *tdd.DataSchema
+			var inputSchema *td.DataSchema
 			// only add data schema if the action accepts parameters
 			if attrInfo.DataType != vocab.WoTDataTypeNone {
 				unit, _ := UnitNameVocab[attr.Unit]
-				inputSchema = &tdd.DataSchema{
+				inputSchema = &td.DataSchema{
 					Type:      attrInfo.DataType,
 					Unit:      unit,
 					ReadOnly:  false,

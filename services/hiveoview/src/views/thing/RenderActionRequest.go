@@ -10,7 +10,6 @@ import (
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"github.com/hiveot/hub/wot/consumedthing"
-	"github.com/hiveot/hub/wot/tdd"
 	utils2 "github.com/hiveot/hub/wot/transports/utils"
 	jsoniter "github.com/json-iterator/go"
 	"net/http"
@@ -30,7 +29,7 @@ type ActionRequestTemplateData struct {
 	CT *consumedthing.ConsumedThing
 
 	// Affordance of the action to issue containing the input dataschema
-	Action *tdd.ActionAffordance
+	Action *td.ActionAffordance
 
 	// input value to edit
 	// This defaults to the last action input
@@ -51,7 +50,7 @@ type ActionRequestTemplateData struct {
 
 // Return the action affordance
 func getActionAff(hc clients.IConsumer, thingID string, name string) (
-	td *tdd.TD, actionAff *tdd.ActionAffordance, err error) {
+	td *td.TD, actionAff *td.ActionAffordance, err error) {
 
 	tdJson, err := digitwin.DirectoryReadTD(hc, thingID)
 	if err != nil {

@@ -6,7 +6,6 @@ import (
 	vocab2 "github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/bucketstore"
-	"github.com/hiveot/hub/wot/tdd"
 	"log/slog"
 	"math/rand"
 	"os"
@@ -62,24 +61,24 @@ func openNewStore() (store buckets.IBucketStore, err error) {
 }
 
 // Create a TD document
-func createTD(id string) *tdd.TD {
-	td := &tdd.TD{
+func createTD(id string) *td.TD {
+	td := &td.TD{
 		ID:         id,
 		Title:      fmt.Sprintf("test TD %s", id),
 		AtType:     vocab2.ThingSensor,
-		Properties: make(map[string]*tdd.PropertyAffordance),
-		Events:     make(map[string]*tdd.EventAffordance),
+		Properties: make(map[string]*td.PropertyAffordance),
+		Events:     make(map[string]*td.EventAffordance),
 	}
-	td.Properties[vocab2.PropDeviceTitle] = &tdd.PropertyAffordance{
-		DataSchema: tdd.DataSchema{
+	td.Properties[vocab2.PropDeviceTitle] = &td.PropertyAffordance{
+		DataSchema: td.DataSchema{
 			Title:       "Sensor title",
 			Description: "This is a smart sensor",
 			Type:        vocab2.WoTDataTypeString,
 			Default:     "Default value",
 		},
 	}
-	td.Properties[vocab2.PropDeviceSoftwareVersion] = &tdd.PropertyAffordance{
-		DataSchema: tdd.DataSchema{
+	td.Properties[vocab2.PropDeviceSoftwareVersion] = &td.PropertyAffordance{
+		DataSchema: td.DataSchema{
 			Title:       "Version",
 			Description: "Embedded firmware",
 			Type:        vocab2.WoTDataTypeString,
@@ -87,18 +86,18 @@ func createTD(id string) *tdd.TD {
 			Const:       "v1.0",
 		},
 	}
-	td.Events[vocab2.PropEnvTemperature] = &tdd.EventAffordance{
+	td.Events[vocab2.PropEnvTemperature] = &td.EventAffordance{
 		Title:       "Event 1",
 		Description: "ID of this event",
-		Data: &tdd.DataSchema{
+		Data: &td.DataSchema{
 			Type:        vocab2.WoTDataTypeString,
 			Const:       "123",
 			Title:       "Event name data",
 			Description: "String with friendly name of the event"},
 	}
-	td.Events[vocab2.PropDeviceBattery] = &tdd.EventAffordance{
+	td.Events[vocab2.PropDeviceBattery] = &td.EventAffordance{
 		Title: "Event 2",
-		Data: &tdd.DataSchema{
+		Data: &td.DataSchema{
 			Type:        vocab2.WoTDataTypeInteger,
 			Title:       "Battery level",
 			Unit:        vocab2.UnitPercent,

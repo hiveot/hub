@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
-	"github.com/hiveot/hub/wot/tdd"
 	"github.com/hiveot/hub/wot/transports"
 	"log/slog"
 )
@@ -25,7 +24,7 @@ func (agent *AuthzAgent) HandleAction(msg *transports.ThingMessage) (stat transp
 
 	// if the message has an authn agent prefix then remove it.
 	// This can happen if invoked directly through an embedded client
-	_, thingID := tdd.SplitDigiTwinThingID(msg.ThingID)
+	_, thingID := td.SplitDigiTwinThingID(msg.ThingID)
 	if thingID == authz.AdminServiceID {
 		stat = agent.adminHandler(msg)
 	} else if thingID == authz.UserServiceID {

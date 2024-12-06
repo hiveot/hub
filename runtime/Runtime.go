@@ -12,8 +12,9 @@ import (
 	"github.com/hiveot/hub/runtime/digitwin/router"
 	service4 "github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/runtime/transports"
-	"github.com/hiveot/hub/wot/tdd"
+	"github.com/hiveot/hub/wot/td"
 	"github.com/hiveot/hub/wot/transports/connections"
+	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 )
 
@@ -35,8 +36,20 @@ type Runtime struct {
 // GetForm returns the form for an operation using a transport protocol binding
 // These forms point to the use of a digital twin via the hub runtime.
 // If the protocol is not found this returns a nil and might cause a panic
-func (r *Runtime) GetForm(op string, protocol string) (f tdd.Form) {
+func (r *Runtime) GetForm(op string, protocol string) (f td.Form) {
 	return r.TransportsMgr.GetForm(op, protocol)
+}
+
+// GetTD returns the TD with the given digitwin ID.
+// This passes the request to the digitwin directory store.
+// Intended for testing to get a TD.
+func (r *Runtime) GetTD(dThingID string) (td *td.TD) {
+	tdJSON, err := r.DigitwinSvc.DirSvc.ReadTD("", dThingID)
+	if err != nil {
+		return nil
+	}
+	_ = jsoniter.UnmarshalFromString(tdJSON, &td)
+	return td
 }
 
 // Start the Hub runtime

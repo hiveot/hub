@@ -7,7 +7,6 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/wot"
-	"github.com/hiveot/hub/wot/tdd"
 	"github.com/hiveot/hub/wot/transports"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
@@ -35,21 +34,21 @@ func TestQueryActions(t *testing.T) {
 	td1 := ts.CreateTestTD(0)
 	key1 := "action-0" // must match TD
 	td1JSON, _ := json.Marshal(td1)
-	var dThing1ID = tdd.MakeDigiTwinThingID(agentID, td1.ID)
+	var dThing1ID = td.MakeDigiTwinThingID(agentID, td1.ID)
 	ag1.SetRequestHandler(func(msg *transports.ThingMessage) (stat transports.RequestStatus) {
 		stat.Completed(msg, data, nil)
 		return stat
 	})
 	//err := ag1.PubTD(td1.ID, string(td1JSON))
 	f1 := ts.GetForm(wot.HTOpUpdateTD, ag1.GetProtocolType())
-	_, err := ag1.SendOperation(f1, td1.ID, "", td1JSON, nil, "")
+	_, err := ag1.SendNotification(f1, td1.ID, "", td1JSON, nil, "")
 	require.NoError(t, err)
 
 	// step 2: consumer publish an action to the agent
-	cl1.SetMessageHandler(func(msg *transports.ThingMessage) {
+	cl1.SetNotificationHandler(func(msg *transports.ThingMessage) {
 	})
 	f2 := ts.GetForm(wot.OpInvokeAction, ag1.GetProtocolType())
-	status, err := ag1.SendOperation(f2, dThing1ID, key1, data, nil, "")
+	status, err := ag1.SendNotification(f2, dThing1ID, key1, data, nil, "")
 	//stat := cl1.InvokeAction(dThing1ID, key1, data, nil, "")
 	require.NoError(t, err)
 	require.NotEqual(t, transports.RequestFailed, status)
@@ -57,10 +56,11 @@ func TestQueryActions(t *testing.T) {
 	// step 3: read the latest actions from the digital twin
 	// first gets its TD
 	var tdJSON = ""
-	var td tdd.TD
+	var td td.TD
 
-	stat2 := cl1.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, dThing1ID, nil, "")
-	err, _ = stat2.Decode(&tdJSON)
+	//stat2 := cl1.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, dThing1ID, nil, "")
+	err = ag1.SendRequest(f2, digitwin.DirectoryDThingID,
+		digitwin.DirectoryReadTDMethod, dThing1ID, &tdJSON)
 	err = jsoniter.UnmarshalFromString(tdJSON, &td)
 	require.NoError(t, err)
 
@@ -73,7 +73,6 @@ func TestQueryActions(t *testing.T) {
 	// value must match that of the action in step 1 and match its requestID
 	actVal := valueMap[key1]
 	assert.Equal(t, data, actVal.Input)
-	assert.Equal(t, stat.CorrelationID, actVal.RequestID)
 }
 
 // Get events from the outbox using the experimental http REST api
@@ -90,22 +89,33 @@ func TestReadEvents(t *testing.T) {
 	ag1, _ := ts.AddConnectAgent(agentID)
 	defer ag1.Disconnect()
 	// consumer for reading events
-	hc1, token := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
+	hc1, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
 	defer hc1.Disconnect()
 
 	// step 1: agent publishes a TD first: dtw:agent1:thing-1
 	td1 := ts.CreateTestTD(0)
 	td1JSON, _ := json.Marshal(td1)
-	var dThing1ID = tdd.MakeDigiTwinThingID(agentID, td1.ID)
-	err := ag1.PubTD(td1.ID, string(td1JSON))
+	var dThing1ID = td.MakeDigiTwinThingID(agentID, td1.ID)
+	// is requested. hiveot uses it to determine if a response is required.
+	f1 := ts.GetForm(wot.HTOpUpdateTD, ag1.GetProtocolType())
+	_, err := ag1.SendNotification(f1, td1.ID, "", string(td1JSON), nil, "")
 	require.NoError(t, err)
 
-	err = ag1.PubEvent(td1.ID, key1, data, "")
+	//err = ag1.PubEvent(td1.ID, key1, data, "")
+	f2 := ts.GetForm(wot.HTOpPublishEvent, ag1.GetProtocolType())
+	_, err = ag1.SendNotification(f2, td1.ID, key1, data, nil, "")
 	require.NoError(t, err)
 
 	dtwValues := make([]digitwin.ThingValue, 0)
-	stat := hc1.ReadAllEvents(dThing1ID, &dtwValues, "")
+	//stat := hc1.ReadAllEvents(dThing1ID, &dtwValues, "")
+	// FIXME: the format of this operation is not defined by WoT or the
+	// protocol binding spec. In this case the digitwin determines the output
+	// format. (a list of ThingValue objects)
+	//var eventList []any
+	f3 := ts.GetForm(wot.HTOpReadAllEvents, ag1.GetProtocolType())
+	err = hc1.SendRequest(f3, td1.ID, "", nil, &dtwValues)
 	require.NoError(t, err)
+	//require.NotZero(t, len(dtwValues))
 	require.NotZero(t, len(dtwValues))
 
 	// read latest using the generated client api
@@ -139,12 +149,17 @@ func TestHttpsGetProps(t *testing.T) {
 	// step 1: agent publishes a TD first: dtw:agent1:thing-1
 	td1 := ts.CreateTestTD(0)
 	td1JSON, _ := json.Marshal(td1)
-	var dThingID = tdd.MakeDigiTwinThingID(agentID, td1.ID)
-	err := ag1.PubTD(td1.ID, string(td1JSON))
+	var dThingID = td.MakeDigiTwinThingID(agentID, td1.ID)
+	f1 := ts.GetForm(wot.HTOpUpdateTD, ag1.GetProtocolType())
+	_, err := ag1.SendNotification(f1, td1.ID, "", string(td1JSON), nil, "")
 	require.NoError(t, err)
 
-	err = ag1.PubProperty(td1.ID, key1, data1)
-	err = ag1.PubProperty(td1.ID, key2, data2)
+	f2 := ts.GetForm(wot.HTOpUpdateProperty, ag1.GetProtocolType())
+	//err = ag1.PubProperty(td1.ID, key1, data1)
+	//err = ag1.PubProperty(td1.ID, key2, data2)
+	_, err = ag1.SendNotification(f2, td1.ID, key1, data1, nil, "")
+	_, err = ag1.SendNotification(f2, td1.ID, key2, data2, nil, "")
+
 	require.NoError(t, err)
 	//
 	time.Sleep(time.Millisecond)
@@ -179,12 +194,17 @@ func TestSubscribeValues(t *testing.T) {
 	td1 := ts.CreateTestTD(0)
 	td1JSON, _ := json.Marshal(td1)
 	//var dThingID = tdd.MakeDigiTwinThingID(agentID, td1.ID)
-	err := ag1.PubTD(td1.ID, string(td1JSON))
+	f1 := ts.GetForm(wot.HTOpUpdateTD, ag1.GetProtocolType())
+	_, err := ag1.SendNotification(f1, td1.ID, "", string(td1JSON), nil, "")
 
 	// consumer subscribes to events/properties
-	err = cl1.Subscribe("", "")
+	//err = cl1.Subscribe("", "")
+	f2 := ts.GetForm(wot.OpSubscribeAllEvents, cl1.GetProtocolType())
+	status, err := cl1.SendNotification(f2, "", "", nil, nil, "")
 	require.NoError(t, err)
-	cl1.SetMessageHandler(func(msg *transports.ThingMessage) {
+	require.NotEqual(t, transports.RequestFailed, status)
+
+	cl1.SetNotificationHandler(func(msg *transports.ThingMessage) {
 		msgCount.Add(1)
 	})
 	time.Sleep(time.Millisecond * 100)
@@ -194,11 +214,16 @@ func TestSubscribeValues(t *testing.T) {
 	propMap[key2] = data2
 	// FIXME: this is agent->consumer
 	// consumer SSE client should not send a delivery confirmation!
-	err = ag1.PubProperty(td1.ID, key1, data1)
-	err = ag1.PubProperty(td1.ID, key2, data2)
+	//err = ag1.PubProperty(td1.ID, key1, data1)
+	//err = ag1.PubProperty(td1.ID, key2, data2)
+	f3 := ts.GetForm(wot.HTOpPublishEvent, ag1.GetProtocolType())
+	//err = ag1.PubProperty(td1.ID, key1, data1)
+	//err = ag1.PubProperty(td1.ID, key2, data2)
+	_, err = ag1.SendNotification(f3, td1.ID, key1, data1, nil, "")
+	_, err = ag1.SendNotification(f3, td1.ID, key2, data2, nil, "")
 	require.NoError(t, err)
 
-	time.Sleep(time.Millisecond * 1000)
+	time.Sleep(time.Millisecond * 100)
 	assert.Equal(t, int32(2), msgCount.Load())
 }
 
@@ -220,7 +245,8 @@ func TestWriteProperties(t *testing.T) {
 	// step 1: agent publishes a TD first: dtw:agent1:thing-1
 	td1 := ts.CreateTestTD(0)
 	td1JSON, _ := json.Marshal(td1)
-	err := ag1.PubTD(td1.ID, string(td1JSON))
+	f1 := ts.GetForm(wot.HTOpUpdateTD, ag1.GetProtocolType())
+	_, err := ag1.SendNotification(f1, td1.ID, "", string(td1JSON), nil, "")
 
 	// agents listen for property write requests
 	ag1.SetRequestHandler(func(msg *transports.ThingMessage) (stat transports.RequestStatus) {
@@ -232,9 +258,12 @@ func TestWriteProperties(t *testing.T) {
 	})
 
 	// consumer subscribes to events/properties changes
-	err = cl1.Observe("", "")
+	f2 := ts.GetForm(wot.OpObserveAllProperties, cl1.GetProtocolType())
+	status, err := cl1.SendNotification(f2, "", "", nil, nil, "")
 	require.NoError(t, err)
-	cl1.SetMessageHandler(func(msg *transports.ThingMessage) {
+	require.NotEqual(t, transports.RequestFailed, status)
+
+	cl1.SetNotificationHandler(func(msg *transports.ThingMessage) {
 		// expect an action status message that is the result of invokeaction
 		if msg.Name == key1 {
 			msgCount.Add(1)
@@ -242,15 +271,21 @@ func TestWriteProperties(t *testing.T) {
 	})
 	time.Sleep(time.Millisecond * 100)
 
-	dThingID := tdd.MakeDigiTwinThingID(agentID, td1.ID)
-	stat2 := cl1.WriteProperty(dThingID, key1, data1)
-	require.Empty(t, stat2.Error)
-	require.Equal(t, vocab.RequestDelivered, stat2.Status)
+	dThingID := td.MakeDigiTwinThingID(agentID, td1.ID)
+	//stat2 := cl1.WriteProperty(dThingID, key1, data1)
+	//require.Empty(t, stat2.Error)
+	f3 := ts.GetForm(wot.OpWriteProperty, cl1.GetProtocolType())
+	err = cl1.SendRequest(f3, dThingID, key1, data1, nil)
+	require.NoError(t, err)
 	time.Sleep(time.Millisecond * 100)
 
 	// write property results in an action status message
 	// intended to be able to send a failure notice for the request.
 	assert.Equal(t, int32(2), msgCount.Load())
-	err = cl1.Unobserve("", "")
+
+	f4 := ts.GetForm(wot.OpUnobserveAllProperties, cl1.GetProtocolType())
+	status, err = cl1.SendNotification(f4, "", "", nil, nil, "")
+	//err = cl1.UnobserveProperty("", "")
 	assert.NoError(t, err)
+	require.NotEqual(t, transports.RequestFailed, status)
 }

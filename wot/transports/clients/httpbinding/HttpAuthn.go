@@ -31,11 +31,11 @@ const (
 // intended for testing a connection with a web server.
 //
 // This sets the bearer token for further requests
-func (cl *HttpBindingClient) ConnectWithLoginForm(password string) error {
+func (cl *HttpTransportClient) ConnectWithLoginForm(password string) error {
 	formMock := url.Values{}
-	formMock.Add("loginID", cl.clientID)
+	formMock.Add("loginID", cl.GetClientID())
 	formMock.Add("password", password)
-	fullURL := fmt.Sprintf("https://%s/login", cl.hostPort)
+	fullURL := fmt.Sprintf("https://%s/login", cl.BaseHostPort)
 
 	//PostForm should return a cookie that should be used in the http connection
 	resp, err := cl.httpClient.PostForm(fullURL, formMock)
@@ -59,9 +59,10 @@ func (cl *HttpBindingClient) ConnectWithLoginForm(password string) error {
 // and obtain an auth token for use with ConnectWithToken.
 //
 // This is currently hub specific, until a standard way is fond using the Hub TD
-func (cl *HttpBindingClient) ConnectWithPassword(password string) (newToken string, err error) {
+func (cl *HttpTransportClient) ConnectWithPassword(password string) (newToken string, err error) {
 
-	slog.Info("ConnectWithPassword", "clientID", cl.clientID, "cid", cl.cid)
+	slog.Info("ConnectWithPassword",
+		"clientID", cl.GetClientID(), "connectionID", cl.GetConnectionID())
 
 	// FIXME: figure out how a standard login method is used to obtain an auth token
 	loginMessage := map[string]string{
@@ -69,34 +70,34 @@ func (cl *HttpBindingClient) ConnectWithPassword(password string) (newToken stri
 		"password": password,
 	}
 	argsJSON, _ := json.Marshal(loginMessage)
-	correlationID := shortid.MustGenerate()
+	requestID := shortid.MustGenerate()
 	resp, _, err := cl._send(
-		http.MethodPost, PostLoginPath, "", "", "", argsJSON, correlationID)
+		http.MethodPost, PostLoginPath, "", "", "", argsJSON, requestID)
 	if err != nil {
 		slog.Warn("ConnectWithPassword failed", "err", err.Error())
 		return "", err
 	}
 	token := ""
-	err = jsoniter.Unmarshal(resp, &token)
+	err = cl.Unmarshal(resp, &token)
 	if err != nil {
 		err = fmt.Errorf("ConnectWithPassword: unexpected response: %s", err)
 		return "", err
 	}
 	// store the bearer token further requests
-	cl.mux.Lock()
+	cl.BaseMux.Lock()
 	cl.bearerToken = token
-	cl.mux.Unlock()
-	cl.isConnected.Store(true)
+	cl.BaseMux.Unlock()
+	cl.BaseIsConnected.Store(true)
 
 	return token, err
 }
 
 // ConnectWithToken sets the authentication bearer token to authenticate http requests.
-func (cl *HttpBindingClient) ConnectWithToken(token string) (newToken string, err error) {
-	cl.mux.Lock()
+func (cl *HttpTransportClient) ConnectWithToken(token string) (newToken string, err error) {
+	cl.BaseMux.Lock()
 	cl.bearerToken = token
-	cl.mux.Unlock()
-	cl.isConnected.Store(true)
+	cl.BaseMux.Unlock()
+	cl.BaseIsConnected.Store(true)
 
 	newToken, err = cl.RefreshToken(token)
 	return newToken, err
@@ -105,10 +106,11 @@ func (cl *HttpBindingClient) ConnectWithToken(token string) (newToken string, er
 // RefreshToken refreshes the authentication token
 // The resulting token can be used with 'ConnectWithToken'
 // This is specific to the Hiveot Hub.
-func (cl *HttpBindingClient) RefreshToken(oldToken string) (newToken string, err error) {
+func (cl *HttpTransportClient) RefreshToken(oldToken string) (newToken string, err error) {
 
 	// FIXME: what is the standard for refreshing a token using http?
-	slog.Info("RefreshToken", slog.String("clientID", cl.clientID))
+	slog.Info("RefreshToken",
+		slog.String("clientID", cl.GetClientID()))
 
 	// the bearer token holds the old token
 	payload, _ := jsoniter.Marshal(oldToken)
@@ -121,9 +123,9 @@ func (cl *HttpBindingClient) RefreshToken(oldToken string) (newToken string, err
 
 		if err == nil {
 			// reconnect using the new token
-			cl.mux.Lock()
+			cl.BaseMux.Lock()
 			cl.bearerToken = newToken
-			cl.mux.Unlock()
+			cl.BaseMux.Unlock()
 		}
 	}
 	return newToken, err
@@ -131,9 +133,10 @@ func (cl *HttpBindingClient) RefreshToken(oldToken string) (newToken string, err
 
 // Logout from the server and end the session.
 // This is specific to the Hiveot Hub.
-func (cl *HttpBindingClient) Logout() error {
+func (cl *HttpTransportClient) Logout() error {
 	// TODO: can this be derived from a form?
-	slog.Info("Logout", slog.String("clientID", cl.clientID))
+	slog.Info("Logout",
+		slog.String("clientID", cl.GetClientID()))
 	_, _, err := cl._send("POST", PostLogoutPath, "", "", "", nil, "")
 	return err
 }

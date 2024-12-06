@@ -3,8 +3,6 @@ package stateclient
 import (
 	"encoding/json"
 	"github.com/hiveot/hub/services/state/stateapi"
-	"github.com/hiveot/hub/wot/protocolclients"
-	"github.com/hiveot/hub/wot/tdd"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -77,7 +75,7 @@ func NewStateClient(hc clients.IConsumer) *StateClient {
 	agentID := stateapi.AgentID
 	cl := StateClient{
 		hc:       hc,
-		dThingID: tdd.MakeDigiTwinThingID(agentID, stateapi.StorageServiceID),
+		dThingID: td.MakeDigiTwinThingID(agentID, stateapi.StorageServiceID),
 	}
 	return &cl
 }

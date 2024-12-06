@@ -3,7 +3,6 @@ package idprovclient
 import (
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
-	"github.com/hiveot/hub/wot/tdd"
 )
 
 // ManageIdProvClient is a hiveot client for communicating with the provisioning
@@ -83,7 +82,7 @@ func NewIdProvManageClient(hc clients.IConsumer) *ManageIdProvClient {
 	agentID := idprovapi.AgentID
 	cl := &ManageIdProvClient{
 		hc:       hc,
-		dThingID: tdd.MakeDigiTwinThingID(agentID, idprovapi.ManageServiceID),
+		dThingID: td.MakeDigiTwinThingID(agentID, idprovapi.ManageServiceID),
 	}
 	return cl
 }

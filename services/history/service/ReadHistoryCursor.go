@@ -77,13 +77,13 @@ func decodeValue(bucketID string, storageKey string, raw []byte) (
 	}
 
 	thingValue = &transports.ThingMessage{
-		ThingID:       bucketID, // digital twin thingID that includes the agent prefix
-		CorrelationID: requestID,
-		Name:          name,
-		Data:          data,
-		Created:       createdTime.Format(wot.RFC3339Milli),
-		Operation:     operation,
-		SenderID:      senderID,
+		ThingID:   bucketID, // digital twin thingID that includes the agent prefix
+		RequestID: requestID,
+		Name:      name,
+		Data:      data,
+		Created:   createdTime.Format(wot.RFC3339Milli),
+		Operation: operation,
+		SenderID:  senderID,
 	}
 	return thingValue, true, err
 }

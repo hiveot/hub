@@ -5,7 +5,6 @@ import (
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/hiveot/hub/wot"
-	"github.com/hiveot/hub/wot/tdd"
 	"github.com/hiveot/hub/wot/transports"
 	"github.com/hiveot/hub/wot/transports/utils"
 	"github.com/teris-io/shortid"
@@ -32,7 +31,7 @@ const AffordanceTypeAction = "action"
 type ConsumedThing struct {
 	cc transports.IClientConnection
 
-	td *tdd.TD
+	td *td.TD
 	// observer of property value changes by property name
 	observers map[string]InteractionListener
 	// subscribers to events by eventName
@@ -55,7 +54,7 @@ func (ct *ConsumedThing) _rpc(op string, name string, input interface{}, output 
 	//just a simple wrapper around the transport client
 	thingID := ct.td.ID
 	form := ct.td.GetForm(op, name, ct.cc.GetProtocolType())
-	err := ct.cc.Rpc(form, thingID, name, input, output)
+	err := ct.cc.SendRequest(form, thingID, name, input, output)
 	return err
 }
 
@@ -112,7 +111,7 @@ func (ct *ConsumedThing) GetEventValue(name string) (iout *InteractionOutput) {
 }
 
 // GetThingDescription return the TD document that is represented here.
-func (ct *ConsumedThing) GetThingDescription() *tdd.TD {
+func (ct *ConsumedThing) GetThingDescription() *td.TD {
 	return ct.td
 }
 
@@ -208,7 +207,7 @@ func (ct *ConsumedThing) OnPropertyUpdate(msg *transports.ThingMessage) {
 //
 //	msg is the property message received from the hub. This isn't standard WoT so
 //	the objective is to remove the need for it.
-func (ct *ConsumedThing) OnTDUpdate(newTD *tdd.TD) {
+func (ct *ConsumedThing) OnTDUpdate(newTD *td.TD) {
 	ct.mux.Lock()
 	defer ct.mux.Unlock()
 	ct.td = newTD
@@ -239,7 +238,7 @@ func (ct *ConsumedThing) ReadEvent(name string) *InteractionOutput {
 	//	//tv, err := ct.cc.ReadEvent(ct.td.ID, name)
 	//	form := td.GetForm(wot.HTOpReadEvent, name, ct.cc.GetProtocolType())
 	//	var eventValue any
-	//	err := ct.cc.Rpc(form, ct.td.ID, name, nil, &eventValue)
+	//	err := ct.cc.SendRequest(form, ct.td.ID, name, nil, &eventValue)
 	//
 	//	if err == nil {
 	//		iout = NewInteractionOutputFromValue(&tv, td)
@@ -360,7 +359,7 @@ func (ct *ConsumedThing) WriteProperty(name string, value InteractionInput) (cor
 	form := ct.td.GetForm(wot.OpWriteProperty, name, ct.cc.GetProtocolType())
 	raw := value.value
 	correlationID = shortid.MustGenerate()
-	status, err := ct.cc.SendOperation(form, thingID, name, raw, nil, correlationID)
+	status, err := ct.cc.SendNotification(form, thingID, name, raw, nil, correlationID)
 	_ = status
 
 	return correlationID, err
@@ -376,7 +375,7 @@ func (ct *ConsumedThing) WriteMultipleProperties(
 
 // NewConsumedThing creates a new instance of a Thing
 // Call Stop() when done
-func NewConsumedThing(td *tdd.TD, hc transports.IClientConnection) *ConsumedThing {
+func NewConsumedThing(td *td.TD, hc transports.IClientConnection) *ConsumedThing {
 	c := ConsumedThing{
 		td:           td,
 		cc:           hc,

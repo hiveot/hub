@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/wot/tdd"
 	"github.com/hiveot/hub/wot/transports"
 	"github.com/hiveot/hub/wot/transports/utils"
 	"log/slog"
@@ -22,10 +21,10 @@ func (svc *DigitwinRouter) HandleUpdateProperty(msg *transports.ThingMessage) {
 
 	// update the property in the digitwin store and notify observers
 	changed, _ := svc.dtwStore.UpdatePropertyValue(
-		msg.SenderID, msg.ThingID, msg.Name, msg.Data, msg.CorrelationID)
+		msg.SenderID, msg.ThingID, msg.Name, msg.Data, msg.RequestID)
 	if changed {
-		dThingID := tdd.MakeDigiTwinThingID(msg.SenderID, msg.ThingID)
-		svc.cm.PublishProperty(dThingID, msg.Name, msg.Data, msg.CorrelationID, msg.SenderID)
+		dThingID := td.MakeDigiTwinThingID(msg.SenderID, msg.ThingID)
+		svc.cm.PublishProperty(dThingID, msg.Name, msg.Data, msg.RequestID, msg.SenderID)
 	}
 }
 
@@ -44,11 +43,11 @@ func (svc *DigitwinRouter) HandleUpdateMultipleProperties(msg *transports.ThingM
 	}
 	// update the property in the digitwin and notify observers for each change
 	changes, err := svc.dtwStore.UpdateProperties(
-		msg.SenderID, msg.ThingID, propMap, msg.CorrelationID)
+		msg.SenderID, msg.ThingID, propMap, msg.RequestID)
 	if len(changes) > 0 {
-		dThingID := tdd.MakeDigiTwinThingID(msg.SenderID, msg.ThingID)
+		dThingID := td.MakeDigiTwinThingID(msg.SenderID, msg.ThingID)
 		for k, v := range changes {
-			svc.cm.PublishProperty(dThingID, k, v, msg.CorrelationID, msg.SenderID)
+			svc.cm.PublishProperty(dThingID, k, v, msg.RequestID, msg.SenderID)
 		}
 	}
 }
@@ -85,12 +84,12 @@ func (svc *DigitwinRouter) HandleWriteProperty(msg *transports.ThingMessage, rep
 	stat transports.RequestStatus) {
 
 	// assign a requestID if none given
-	agentID, thingID := tdd.SplitDigiTwinThingID(msg.ThingID)
+	agentID, thingID := td.SplitDigiTwinThingID(msg.ThingID)
 
 	// forward the request to the thing's agent and update status
 	c := svc.cm.GetConnectionByClientID(agentID)
 	if c != nil {
-		status, err := c.WriteProperty(thingID, msg.Name, msg.Data, msg.CorrelationID, msg.SenderID)
+		status, err := c.WriteProperty(thingID, msg.Name, msg.Data, msg.RequestID, msg.SenderID)
 		if err != nil {
 			stat.Failed(msg, err)
 		} else {
@@ -103,11 +102,11 @@ func (svc *DigitwinRouter) HandleWriteProperty(msg *transports.ThingMessage, rep
 	if stat.Status != vocab.RequestCompleted && stat.Status != vocab.RequestFailed {
 		// the request is not yet finished. Track it in the active cache.
 		svc.mux.Lock()
-		svc.activeCache[msg.CorrelationID] = ActionFlowRecord{
+		svc.activeCache[msg.RequestID] = ActionFlowRecord{
 			Operation: msg.Operation,
 			AgentID:   agentID,
 			ThingID:   thingID,
-			RequestID: msg.CorrelationID,
+			RequestID: msg.RequestID,
 			ReplyTo:   replyTo,
 			Name:      msg.Name,
 			SenderID:  msg.SenderID,

@@ -2,7 +2,6 @@ package store
 
 import (
 	"github.com/hiveot/hub/api/go/digitwin"
-	"github.com/hiveot/hub/wot/tdd"
 )
 
 type ActionQueue struct {
@@ -20,9 +19,9 @@ type DigitalTwinInstance struct {
 	ID      string `json:"id" `
 
 	// ThingTD as exposed by the agent
-	ThingTD *tdd.TD `json:"agTD"`
+	ThingTD *td.TD `json:"agTD"`
 	// DtwTD as exposed by the hub
-	DtwTD *tdd.TD `json:"dtwTD" `
+	DtwTD *td.TD `json:"dtwTD" `
 
 	// Latest properties as received from the exposed Thing
 	PropValues map[string]digitwin.ThingValue `json:"pv"`

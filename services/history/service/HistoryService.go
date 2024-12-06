@@ -79,7 +79,7 @@ func (svc *HistoryService) Start(hc transports.IClientConnection) (err error) {
 		// TODO: add actions to the history, filtered through retention manager
 		// subscribe to receive the events to add to the history, filtered through the retention manager
 		err = svc.hc.Subscribe("", "")
-		err = svc.hc.Observe("", "")
+		err = svc.hc.ObserveProperty("", "")
 	}
 
 	return err

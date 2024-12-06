@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/transports"
 	"github.com/hiveot/hub/wot/transports/clients/ssescclient"
 	"github.com/hiveot/hub/wot/transports/connections"
@@ -42,16 +43,25 @@ type SseScServerConnection struct {
 	sseChan  chan SSEEvent
 	isClosed atomic.Bool
 
-	// TODO: split properties and events subscriptions
 	subscriptions connections.Subscriptions
 	observations  connections.Subscriptions
+	//
+	correlData map[string]chan any
+}
+
+type HttpActionStatus struct {
+	RequestID string `json:"request_id"`
+	ThingID   string `json:"thingID"`
+	Name      string `json:"name"`
+	Data      any    `json:"data"`
+	Error     string `json:"error"`
 }
 
 // _send sends the action or write request for the thing to the agent
 // The SSE event type is: messageType, where
 // The event ID is {thingID}/{name}/{requestID}/{senderID}
 func (c *SseScServerConnection) _send(operation string, thingID, name string,
-	data any, requestID string, senderID string) (status string, err error) {
+	data any, requestID string, senderID string) (err error) {
 
 	var payload []byte = nil
 	if data != nil {
@@ -76,11 +86,11 @@ func (c *SseScServerConnection) _send(operation string, thingID, name string,
 	// as long as the channel exists, delivery will take place
 	// FIXME: guarantee delivery
 	// todo: detect race conditions; or accept the small risk of delivery to a closing connection?
-	return vocab.RequestDelivered, nil
+	return nil
 }
 
-// Close closes the connection and ends the read loop
-func (c *SseScServerConnection) Close() {
+// Disconnect closes the connection and ends the read loop
+func (c *SseScServerConnection) Disconnect() {
 	c.mux.Lock()
 	defer c.mux.Unlock()
 	if !c.isClosed.Load() {
@@ -100,7 +110,7 @@ func (c *SseScServerConnection) GetConnectionID() string {
 }
 
 // GetProtocol returns the protocol used in this connection
-func (c *SseScServerConnection) GetProtocol() string {
+func (c *SseScServerConnection) GetProtocolType() string {
 	return transports.ProtocolTypeSSESC
 }
 
@@ -114,7 +124,7 @@ func (c *SseScServerConnection) InvokeAction(
 	thingID, name string, data any, requestID string, senderID string) (
 	status string, output any, err error) {
 
-	status, err = c._send(vocab.OpInvokeAction, thingID, name, data, requestID, senderID)
+	err = c._send(vocab.OpInvokeAction, thingID, name, data, requestID, senderID)
 	return status, nil, err
 }
 
@@ -141,35 +151,67 @@ func (c *SseScServerConnection) ObserveProperty(dThingID string, name string) {
 	c.observations.Subscribe(dThingID, name)
 }
 
-// PublishActionStatus sends an action progress update to the client
+// SendActionStatus sends an action result to the client
 // If an error is provided this sends the error, otherwise the output value
-func (c *SseScServerConnection) PublishActionStatus(stat transports.RequestStatus, agentID string) error {
-	if stat.CorrelationID == "" {
-		slog.Error("PublishActionStatus without requestID", "agentID", agentID)
+func (c *SseScServerConnection) SendActionStatus(requestID string, data any, err error) {
+	status := HttpActionStatus{
+		RequestID: requestID,
+		Data:      data,
 	}
-	_, err := c._send(vocab.HTOpUpdateActionStatus, stat.ThingID, stat.Name,
-		stat, stat.CorrelationID, agentID)
-	return err
+	if err != nil {
+		status.Error = err.Error()
+	}
+	c._send(wot.HTOpActionStatus, "", "", status, requestID, "")
+}
+
+// SendError returns an error to the client, send by an agent
+func (c *SseScServerConnection) SendError(dThingID, name string, errResponse string, requestID string) {
+	operation := "error"
+	_ = c._send(operation, dThingID, name, errResponse, requestID, "")
+}
+
+// SendNotification sends a notification message without a response.
+func (c *SseScServerConnection) SendNotification(
+	operation string, dThingID, name string, data any) {
+
+	err := c._send(operation, dThingID, name, data, "", "")
+	_ = err
+}
+
+// SendRequest sends a request (action, write property) to the client (agent).
+func (c *SseScServerConnection) SendRequest(
+	operation string, dThingID, name string, input any, requestID string) {
+
+	err := c._send(operation, dThingID, name, input, requestID, "")
+	_ = err
+}
+
+// SendResponse send a response (action status) to the client for a previous sent request.
+func (c *SseScServerConnection) SendResponse(
+	dThingID, name string, output any, requestID string) {
+	operation := wot.HTOpActionStatus
+	err := c._send(operation, dThingID, name, output, requestID, "")
+	_ = err
 }
 
 // PublishEvent send an event to subscribers
-func (c *SseScServerConnection) PublishEvent(
-	dThingID, name string, data any, requestID string, agentID string) {
-
-	if c.subscriptions.IsSubscribed(dThingID, name) {
-		_, _ = c._send(vocab.HTOpPublishEvent, dThingID, name, data, requestID, agentID)
-	}
-}
+//func (c *SseScServerConnection) PublishEvent(
+//	dThingID, name string, data any, requestID string, agentID string) {
+//
+//	if c.subscriptions.IsSubscribed(dThingID, name) {
+//		_, _ = c._send(vocab.HTOpPublishEvent, dThingID, name, data, requestID, agentID)
+//	}
+//}
 
 // PublishProperty send a property change update to observers
 // if name is empty then data contains a map of property key-value pairs
-func (c *SseScServerConnection) PublishProperty(
-	dThingID, name string, data any, requestID string, agentID string) {
-
-	if c.observations.IsSubscribed(dThingID, name) {
-		_, _ = c._send(vocab.HTOpUpdateProperty, dThingID, name, data, requestID, agentID)
-	}
-}
+//func (c *SseScServerConnection) PublishProperty(
+//	dThingID, name string, data any, requestID string, agentID string) {
+//
+//	if c.observations.IsSubscribed(dThingID, name) {
+//		_, _ = c._send(vocab.HTOpUpdateProperty, dThingID, name, data, requestID, agentID)
+//	}
+//}
 
 // Serve serves SSE connections.
 // This listens for outgoing requests on the given channel
@@ -211,7 +253,7 @@ func (c *SseScServerConnection) Serve(w http.ResponseWriter, r *http.Request) {
 			slog.Debug("SseConnection: Remote client disconnected (read context)")
 			// close channel when no-one is writing
 			// in the meantime keep reading to prevent deadlock
-			c.Close()
+			c.Disconnect()
 
 		}
 	}()
@@ -293,12 +335,12 @@ func (c *SseScServerConnection) UnobserveProperty(dThingID string, name string) 
 }
 
 // WriteProperty sends the property change request to the agent
-func (c *SseScServerConnection) WriteProperty(
-	thingID, name string, data any, requestID string, senderID string) (status string, err error) {
-
-	status, err = c._send(vocab.OpWriteProperty, thingID, name, data, requestID, senderID)
-	return status, err
-}
+//func (c *SseScServerConnection) WriteProperty(
+//	thingID, name string, data any, requestID string, senderID string) (status string, err error) {
+//
+//	status, err = c._send(vocab.OpWriteProperty, thingID, name, data, requestID, senderID)
+//	return status, err
+//}
 
 // NewSSEConnection creates a new SSE connection instance.
 // This implements the IServerConnection interface.
@@ -313,6 +355,7 @@ func NewSSEConnection(clientID string, cid string, remoteAddr string) *SseScServ
 		mux:           sync.RWMutex{},
 		observations:  connections.Subscriptions{},
 		subscriptions: connections.Subscriptions{},
+		correlData:    make(map[string]chan any),
 	}
 	// interface check
 	var _ transports.IServerConnection = c

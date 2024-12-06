@@ -1,7 +1,6 @@
 package directory
 
 import (
-	"github.com/hiveot/hub/wot/tdd"
 	"sort"
 )
 
@@ -11,20 +10,20 @@ import (
 // AgentThings holds a collection of Things from an agent
 type AgentThings struct {
 	AgentID string
-	Things  []*tdd.TD
+	Things  []*td.TD
 }
 
 // GroupByAgent groups Things by agent and sorts them by Thing title
-func GroupByAgent(tds map[string]*tdd.TD) []*AgentThings {
+func GroupByAgent(tds map[string]*td.TD) []*AgentThings {
 	agentMap := make(map[string]*AgentThings)
 	// first split the things by their agent
 	for thingID, td := range tds {
-		agentID, _ := tdd.SplitDigiTwinThingID(thingID)
+		agentID, _ := td.SplitDigiTwinThingID(thingID)
 		agentGroup, found := agentMap[agentID]
 		if !found {
 			agentGroup = &AgentThings{
 				AgentID: agentID,
-				Things:  make([]*tdd.TD, 0),
+				Things:  make([]*td.TD, 0),
 			}
 			agentMap[agentID] = agentGroup
 		}
@@ -44,7 +43,7 @@ func GroupByAgent(tds map[string]*tdd.TD) []*AgentThings {
 }
 
 // SortThingsByTitle as the name suggests sorts the things in the given slice
-func SortThingsByTitle(tds []*tdd.TD) {
+func SortThingsByTitle(tds []*td.TD) {
 	sort.Slice(tds, func(i, j int) bool {
 		tdI := tds[i]
 		tdJ := tds[j]

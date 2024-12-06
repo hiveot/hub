@@ -3,8 +3,7 @@ package ssescserver
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/wot/tdd"
-	"github.com/hiveot/hub/wot/transports"
+	"github.com/hiveot/hub/wot/td"
 	"github.com/hiveot/hub/wot/transports/clients/httpbinding"
 	"github.com/hiveot/hub/wot/transports/connections"
 	"github.com/hiveot/hub/wot/transports/servers/httpserver"
@@ -27,22 +26,22 @@ type SseScTransportServer struct {
 	mux sync.RWMutex
 }
 
-func (svc *SseScTransportServer) AddTDForms(td *tdd.TD) error {
+func (svc *SseScTransportServer) AddTDForms(tdi *td.TD) error {
 	// forms are handled through the http binding
-	return svc.httpTransport.AddTDForms(td)
+	return svc.httpTransport.AddTDForms(tdi)
 }
 
 // GetForm returns a new SSE form for the given operation
 // this returns the http form
-func (svc *SseScTransportServer) GetForm(op string) tdd.Form {
+func (svc *SseScTransportServer) GetForm(op string) td.Form {
 	// forms are handled through the http binding
 	return svc.httpTransport.GetForm(op)
 }
 
 // GetProtocolInfo returns info on the protocol supported by this binding
-func (svc *SseScTransportServer) GetProtocolInfo() transports.ProtocolInfo {
-	return svc.httpTransport.GetProtocolInfo()
-}
+//func (svc *SseScTransportServer) GetProtocolInfo() transports.ProtocolInfo {
+//	return svc.httpTransport.GetProtocolInfo()
+//}
 
 // GetSseConnection returns the SSE Connection with the given ID
 // This returns nil if not found or if the connectionID is not
@@ -191,6 +190,13 @@ func (svc *SseScTransportServer) HandleUnsubscribeEvent(w http.ResponseWriter, r
 	if err == nil {
 		c.UnsubscribeEvent(rp.ThingID, rp.Name)
 	}
+}
+
+// SendNotification broadcast an event or property change to subscribers clients
+func (svc *SseScTransportServer) SendNotification(operation string, dThingID, name string, data any) {
+	// this is needed so mqtt can broadcast once via the message bus instead all individual connections
+	// tbd. An embedded mqtt server can still send per connection?
+	slog.Error("todo: implement")
 }
 
 func (svc *SseScTransportServer) Stop() {

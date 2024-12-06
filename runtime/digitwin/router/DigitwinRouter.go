@@ -78,8 +78,8 @@ func (svc *DigitwinRouter) HandleMessage(
 		return stat
 	}
 
-	if msg.CorrelationID == "" {
-		msg.CorrelationID = "action-" + shortid.MustGenerate()
+	if msg.RequestID == "" {
+		msg.RequestID = "action-" + shortid.MustGenerate()
 	}
 	// TODO: use a middleware chain
 	svc.hasPermission(msg.SenderID, msg.Operation, msg.ThingID)
@@ -136,8 +136,8 @@ func (svc *DigitwinRouter) HandleMessage(
 //func (svc *DigitwinRouter) HandleRequest(
 //	request *transports.ThingMessage, replyTo string) (stat transports.RequestStatus) {
 //	// assign a requestID if none given
-//	if request.CorrelationID == "" {
-//		request.CorrelationID = "action-" + shortid.MustGenerate()
+//	if request.RequestID == "" {
+//		request.RequestID = "action-" + shortid.MustGenerate()
 //	}
 //	// TODO: use a middleware chain
 //	svc.hasPermission(request.SenderID, request.Operation, request.ThingID)

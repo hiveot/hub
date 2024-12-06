@@ -7,7 +7,7 @@ import (
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/wot"
-	"github.com/hiveot/hub/wot/tdd"
+	"github.com/hiveot/hub/wot/td"
 	"github.com/hiveot/hub/wot/transports"
 	"github.com/hiveot/hub/wot/transports/utils/tlsclient"
 	jsoniter "github.com/json-iterator/go"
@@ -25,7 +25,7 @@ func TestAddRemoveTD(t *testing.T) {
 	const agentID = "agent1"
 	const userID = "user1"
 	const agThing1ID = "thing1"
-	var dtThing1ID = tdd.MakeDigiTwinThingID(agentID, agThing1ID)
+	var dtThing1ID = td.MakeDigiTwinThingID(agentID, agThing1ID)
 	var evCount atomic.Int32
 
 	r := startRuntime()
@@ -37,44 +37,45 @@ func TestAddRemoveTD(t *testing.T) {
 	})
 	defer ag1.Disconnect()
 	cl1, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
-	cl1.SetMessageHandler(func(msg *transports.ThingMessage) {
+	cl1.SetNotificationHandler(func(msg *transports.ThingMessage) {
 		// expect 2 events, updated and removed
 		evCount.Add(1)
 	})
 	defer cl1.Disconnect()
 	f1 := ts.GetForm(wot.OpSubscribeAllEvents, cl1.GetProtocolType())
-	_, err := cl1.SendOperation(f1, "", "", nil, nil, "")
+	_, err := cl1.SendNotification(f1, "", "", nil, nil, "")
 	require.NoError(t, err)
 
 	// Add the TD by sending it as an event
-	td1 := tdd.NewTD(agThing1ID, "Title", vocab.ThingSensorMulti)
+	td1 := td.NewTD(agThing1ID, "Title", vocab.ThingSensorMulti)
 	td1JSON, _ := json.Marshal(td1)
 	//err = ag1.PubTD(agThing1ID, string(td1JSON))
 	f2 := ts.GetForm(wot.HTOpUpdateTD, cl1.GetProtocolType())
 	// the hub will intercept this operation and update the digitwin directory
 	// todo: changes this to follow the directory specification once it is available (assuming it fits)
-	_, err = ag1.SendOperation(f2, "", "", td1JSON, nil, "")
+	_, err = ag1.SendNotification(f2, "", "", td1JSON, nil, "")
 	assert.NoError(t, err)
 
 	// Get returns a serialized TD object
 	// use the helper directory client rpc method
-	td3Json, err := digitwin.DirectoryReadTD(cl1, dtThing1ID)
+
+	td3Json, err := digitwin.DirectoryReadTD(td, cl1, dtThing1ID)
 	require.NoError(t, err)
-	var td3 tdd.TD
+	var td3 td.TD
 	err = jsoniter.UnmarshalFromString(td3Json, &td3)
 	require.NoError(t, err)
 	assert.Equal(t, dtThing1ID, td3.ID)
 
-	//stat = cl1.Rpc(nil, directory.ThingID, directory.RemoveTDMethod, &args, nil)
+	//stat = cl1.SendRequest(nil, directory.ThingID, directory.RemoveTDMethod, &args, nil)
 	args4JSON, _ := jsoniter.Marshal(dtThing1ID)
 	// RemoveTD from the directory
 	f3 := ts.GetForm(wot.OpInvokeAction, cl1.GetProtocolType())
-	status, err := cl1.SendOperation(f3, digitwin.DirectoryDThingID, digitwin.DirectoryRemoveTDMethod, string(args4JSON), nil, "")
+	status, err := cl1.SendNotification(f3, digitwin.DirectoryDThingID, digitwin.DirectoryRemoveTDMethod, string(args4JSON), nil, "")
 	require.NoError(t, err)
 	require.Equal(t, transports.RequestCompleted, status)
 
 	// after removal of the TD, getTD should return an error but delivery is successful
-	status, err = cl1.SendOperation(f3, digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, string(args4JSON), nil, "")
+	status, err = cl1.SendNotification(f3, digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, string(args4JSON), nil, "")
 	require.Error(t, err)
 	require.Equal(t, vocab.RequestFailed, status)
 
@@ -109,7 +110,7 @@ func TestReadTDs(t *testing.T) {
 	args := digitwin.DirectoryReadAllTDsArgs{Limit: 10}
 	f1 := ts.GetForm(wot.OpInvokeAction, cl1.GetProtocolType())
 	tdList1 := []string{}
-	status, err := cl1.SendOperation(f1, digitwin.DirectoryDThingID, digitwin.DirectoryReadAllTDsMethod, args, &tdList1, "")
+	status, err := cl1.SendNotification(f1, digitwin.DirectoryDThingID, digitwin.DirectoryReadAllTDsMethod, args, &tdList1, "")
 	require.NoError(t, err)
 	assert.Equal(t, transports.RequestCompleted, status)
 	require.True(t, len(tdList1) > 0)
@@ -144,7 +145,7 @@ func TestReadTDsRest(t *testing.T) {
 	require.NoError(t, err)
 
 	// tds are sent as an array of JSON, first unpack the array of JSON strings
-	tdList, err := tdd.UnmarshalTDList(tdJSONList)
+	tdList, err := td.UnmarshalTDList(tdJSONList)
 	require.NoError(t, err)
 	require.Equal(t, 100, len(tdList)) // 100 is the given limit
 
@@ -170,13 +171,13 @@ func TestTDEvent(t *testing.T) {
 	defer cl1.Disconnect()
 
 	// wait to directory TD updated events
-	cl1.SetMessageHandler(func(msg *transports.ThingMessage) {
+	cl1.SetNotificationHandler(func(msg *transports.ThingMessage) {
 		if msg.Operation == vocab.HTOpPublishEvent &&
 			msg.ThingID == digitwin.DirectoryDThingID &&
 			msg.Name == digitwin.DirectoryEventThingUpdated {
 
 			// decode the TD
-			td := tdd.TD{}
+			td := td.TD{}
 			payload := msg.DataAsText()
 			err := jsoniter.UnmarshalFromString(payload, &td)
 			assert.NoError(t, err)
@@ -185,7 +186,7 @@ func TestTDEvent(t *testing.T) {
 	})
 	//err := cl1.Subscribe("", "")
 	f1 := ts.GetForm(wot.OpSubscribeAllEvents, cl1.GetProtocolType())
-	_, err := cl1.SendOperation(f1, "", "", nil, nil, "")
+	_, err := cl1.SendNotification(f1, "", "", nil, nil, "")
 	require.NoError(t, err)
 
 	time.Sleep(time.Millisecond * 100)

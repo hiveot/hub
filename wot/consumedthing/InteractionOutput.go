@@ -2,7 +2,6 @@ package consumedthing
 
 import (
 	"github.com/araddon/dateparse"
-	"github.com/hiveot/hub/wot/tdd"
 	"github.com/hiveot/hub/wot/transports"
 	"log/slog"
 	"time"
@@ -26,7 +25,7 @@ type InteractionOutput struct {
 
 	// Schema describing the data from property, event or action affordance
 	// This is an empty schema without type, if none is known
-	Schema tdd.DataSchema
+	Schema td.DataSchema
 
 	// decoded data in its native format as described by the schema
 	// eg string, int, array, object
@@ -75,7 +74,7 @@ func (iout *InteractionOutput) GetUpdated(format ...string) (updated string) {
 
 // SetSchemaFromTD updates the dataschema fields in this interaction output.
 // This first looks for events, then property then action output
-func (io *InteractionOutput) SetSchemaFromTD(td *tdd.TD) (found bool) {
+func (io *InteractionOutput) SetSchemaFromTD(td *td.TD) (found bool) {
 	// if name is that of an event then use it
 	eventAff, found := td.Events[io.Name]
 	if found {
@@ -131,7 +130,7 @@ func (io *InteractionOutput) SetSchemaFromTD(td *tdd.TD) (found bool) {
 //
 //	values is the property or event value map
 //	td Thing Description document with schemas for the value. Use nil if schema is unknown.
-func NewInteractionOutputFromValueList(values []transports.ThingMessage, td *tdd.TD) InteractionOutputMap {
+func NewInteractionOutputFromValueList(values []transports.ThingMessage, td *td.TD) InteractionOutputMap {
 	ioMap := make(map[string]*InteractionOutput)
 	for _, tv := range values {
 		io := NewInteractionOutputFromValue(&tv, td)
@@ -152,7 +151,7 @@ func NewInteractionOutputFromValueList(values []transports.ThingMessage, td *tdd
 //
 //	tv contains the thingValue data
 //	td is the associated thing description
-func NewInteractionOutputFromValue(tv *transports.ThingMessage, td *tdd.TD) *InteractionOutput {
+func NewInteractionOutputFromValue(tv *transports.ThingMessage, td *td.TD) *InteractionOutput {
 	io := &InteractionOutput{
 		ThingID:  td.ID,
 		Name:     tv.Name,
@@ -180,8 +179,8 @@ func NewInteractionOutputFromValue(tv *transports.ThingMessage, td *tdd.TD) *Int
 //		schema is the schema info for data, or nil if not known
 //		raw is the raw data
 //		created is the timestamp the data is created
-func NewInteractionOutput(td *tdd.TD, affType string, name string, raw any, created string) *InteractionOutput {
-	var schema *tdd.DataSchema
+func NewInteractionOutput(td *td.TD, affType string, name string, raw any, created string) *InteractionOutput {
+	var schema *td.DataSchema
 	switch affType {
 	case AffordanceTypeAction:
 		aff := td.Actions[name]
@@ -203,7 +202,7 @@ func NewInteractionOutput(td *tdd.TD, affType string, name string, raw any, crea
 		schema = &aff.DataSchema
 	}
 	if schema == nil {
-		schema = &tdd.DataSchema{
+		schema = &td.DataSchema{
 			Title: "unknown schema",
 		}
 	}

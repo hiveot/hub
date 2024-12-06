@@ -5,7 +5,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"github.com/hiveot/hub/wot"
-	"github.com/hiveot/hub/wot/tdd"
+	"github.com/hiveot/hub/wot/td"
 	"github.com/hiveot/hub/wot/transports"
 	"github.com/hiveot/hub/wot/transports/connections"
 	"log/slog"
@@ -28,7 +28,7 @@ type MqttTransportServer struct {
 	op2Topic map[string]string
 }
 
-func (svc *MqttTransportServer) AddTDForms(td *tdd.TD) error {
+func (svc *MqttTransportServer) AddTDForms(td *td.TD) error {
 	//svc.AddThingLevelForms(td)
 	//svc.AddPropertiesForms(td)
 	//svc.AddEventsForms(td)
@@ -38,7 +38,7 @@ func (svc *MqttTransportServer) AddTDForms(td *tdd.TD) error {
 
 // GetForm returns a new HTTP form for the given operation
 // Intended for Thing level operations
-func (svc *MqttTransportServer) GetForm(op string) tdd.Form {
+func (svc *MqttTransportServer) GetForm(op string) td.Form {
 	controlPacket := ""
 	topic, found := svc.op2Topic[op]
 	if !found {
@@ -66,7 +66,7 @@ func (svc *MqttTransportServer) GetForm(op string) tdd.Form {
 	}
 
 	hostPort := fmt.Sprintf("mqtts://%s:%d", svc.host, svc.tcpPort)
-	form := tdd.Form{}
+	form := td.Form{}
 	form["op"] = op
 	form["href"] = hostPort
 	form["mqv:retain"] = "false"
@@ -75,24 +75,30 @@ func (svc *MqttTransportServer) GetForm(op string) tdd.Form {
 	form["mqv:controlPacket"] = controlPacket
 
 	slog.Warn("GetForm. No form found for operation",
-		"op", op,
-		"protocol", svc.GetProtocolInfo().Schema)
+		"op", op)
 	return nil
 }
 
 // GetProtocolInfo returns info on the protocol supported by this binding
-func (svc *MqttTransportServer) GetProtocolInfo() transports.ProtocolInfo {
-	//hostName := svc.config.Host
-	//if hostName == "" {
-	//	hostName = "localhost"
-	//}
-	baseURL := fmt.Sprintf("https://%s:%d", svc.host, svc.tcpPort)
-	inf := transports.ProtocolInfo{
-		BaseURL:   baseURL,
-		Schema:    "https",
-		Transport: "https",
-	}
-	return inf
+//func (svc *MqttTransportServer) GetProtocolInfo() transports.ProtocolInfo {
+//	//hostName := svc.config.Host
+//	//if hostName == "" {
+//	//	hostName = "localhost"
+//	//}
+//	baseURL := fmt.Sprintf("https://%s:%d", svc.host, svc.tcpPort)
+//	inf := transports.ProtocolInfo{
+//		BaseURL:   baseURL,
+//		Schema:    "https",
+//		Transport: "https",
+//	}
+//	return inf
+//}
+
+// SendNotification broadcast an event or property change to subscribers clients
+func (svc *MqttTransportServer) SendNotification(operation string, dThingID, name string, data any) {
+	// this is needed so mqtt can broadcast once via the message bus instead all individual connections
+	// tbd. An embedded mqtt server can still send per connection?
+	slog.Error("todo: implement")
 }
 
 // Stop the mqtt broker

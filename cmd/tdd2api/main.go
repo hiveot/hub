@@ -23,7 +23,7 @@ func main() {
 		Commands: []*cli.Command{
 			//src.GenVocabCommand(),
 			src.ListTDsCommand(),
-			src.Tdd2GoCommand(apiDir),
+			src.Td2GoCommand(apiDir),
 		},
 	}
 	app.Suggest = true

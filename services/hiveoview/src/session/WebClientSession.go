@@ -362,7 +362,7 @@ func (sess *WebClientSession) ReplaceConnection(hc clients.IConsumer) {
 	oldHC := sess.hc
 	sess.hc = hc
 	hc.SetConnectHandler(sess.onHubConnectionChange)
-	//hc.SetMessageHandler(sess.onMessage)
+	//hc.SetNotificationHandler(sess.onMessage)
 	oldHC.SetConnectHandler(nil)
 	oldHC.SetMessageHandler(nil)
 	oldHC.Disconnect()
@@ -497,7 +497,7 @@ func NewWebClientSession(
 		cts:      consumedthing.NewConsumedThingsSession(hc),
 		onClosed: onClosed,
 	}
-	//hc.SetMessageHandler(cs.onMessage)
+	//hc.SetNotificationHandler(cs.onMessage)
 	hc.SetConnectHandler(cs.onHubConnectionChange)
 	// this is a bit quirky but its a transition period
 	cs.cts.SetEventHandler(cs.onMessage)
