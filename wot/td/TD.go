@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/wot"
-	"github.com/hiveot/hub/wot/transports/utils"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"net/url"
@@ -302,21 +301,21 @@ func (tdoc *TD) EscapeKeys() {
 	// NOTE: this does not modify links and refs. Those must be valid.
 	newProps := make(map[string]*PropertyAffordance)
 	for k, v := range tdoc.Properties {
-		kesc := strings.ReplaceAll(k, " ", "-")
+		kesc := strings.ReplaceAll(k, " ", "_")
 		newProps[kesc] = v
 	}
 	tdoc.Properties = newProps
 
 	newEvents := make(map[string]*EventAffordance)
 	for k, v := range tdoc.Events {
-		kesc := strings.ReplaceAll(k, " ", "-")
+		kesc := strings.ReplaceAll(k, " ", "_")
 		newEvents[kesc] = v
 	}
 	tdoc.Events = newEvents
 
 	newActions := make(map[string]*ActionAffordance)
 	for k, v := range tdoc.Actions {
-		kesc := strings.ReplaceAll(k, " ", "-")
+		kesc := strings.ReplaceAll(k, " ", "_")
 		newActions[kesc] = v
 	}
 	tdoc.Actions = newActions
@@ -339,20 +338,9 @@ func (tdoc *TD) GetAction(actionName string) *ActionAffordance {
 	return actionAffordance
 }
 
-//// GetAge returns the age of the document since last modified in a human-readable format.
-//// this is just an experiment to see if this is useful.
-//// Might be better to do on the UI client side to reduce cpu.
-//func (tdoc *TD) GetAge() string {
-//	t, err := dateparse.ParseAny(tdoc.Modified)
-//	if err != nil {
-//		return tdoc.Modified
-//	}
-//	return utils.Age(t)
-//}
-
-// GetAtTypeString return the @type field as a string
+// GetAtType return the @type field as a string
 // If @type contains an array then the first value is returned.
-func (tdoc *TD) GetAtTypeString() string {
+func (tdoc *TD) GetAtType() string {
 	switch t := tdoc.AtType.(type) {
 	case string:
 		return t
@@ -481,7 +469,7 @@ func (tdoc *TD) GetFormHRef(form Form, uriVars map[string]string) (string, error
 		href, err = url.JoinPath(tdoc.Base, uri.Path)
 	}
 	if uriVars != nil {
-		href = utils.Substitute(href, uriVars)
+		href = tdoc.Substitute(href, uriVars)
 	}
 	return href, nil
 }
@@ -510,16 +498,6 @@ func (tdoc *TD) GetPropertyOfVocabType(vocabType string) (string, *PropertyAffor
 	return "", nil
 }
 
-// GetAge is a helper function to return the age of the TD.
-func (tdoc *TD) GetAge() string {
-	modifiedTime, err := dateparse.ParseAny(tdoc.Modified)
-	if err != nil {
-		return tdoc.Modified
-	}
-	age := utils.Age(modifiedTime)
-	return age
-}
-
 // GetUpdated is a helper function to return the formatted time the thing was last updated.
 // This uses the time format RFC822 ("02 Jan 06 15:04 MST")
 func (tdoc *TD) GetUpdated() string {
@@ -529,7 +507,6 @@ func (tdoc *TD) GetUpdated() string {
 	}
 	created = created.Local()
 	return created.Format(time.RFC822)
-
 }
 
 // GetID returns the ID of the things TD
@@ -538,10 +515,27 @@ func (tdoc *TD) GetID() string {
 }
 
 // LoadFromJSON loads this TD from the given JSON encoded string
-func (tdoc *TD) LoadFromJSON(tddJSON string) error {
-	err := jsoniter.UnmarshalFromString(tddJSON, &tdoc)
-	tdoc.EscapeKeys()
-	return err
+//func (tdoc *TD) LoadFromJSON(tddJSON string) error {
+//	err := jsoniter.UnmarshalFromString(tddJSON, &tdoc)
+//	tdoc.EscapeKeys()
+//	return err
+//}
+
+// SetForms replaces the top level forms section of the TD
+func (tdoc *TD) SetForms(formList []Form) {
+	//tdoc.updateMutex.Lock()
+	//defer tdoc.updateMutex.Unlock()
+	tdoc.Forms = formList
+}
+
+// Substitute substitutes the variables in a string
+// Variables are define with curly brackets, eg: "this is a {variableName}"
+func (tdoc *TD) Substitute(s string, vars map[string]string) string {
+	for k, v := range vars {
+		stringVar := "{" + k + "}"
+		s = strings.Replace(s, stringVar, v, -1)
+	}
+	return s
 }
 
 // UpdateAction adds a new or replaces an existing action affordance of actionID. Intended for creating TDs.
@@ -550,7 +544,7 @@ func (tdoc *TD) LoadFromJSON(tddJSON string) error {
 //
 // This returns the added action affordance
 func (tdoc *TD) UpdateAction(name string, affordance *ActionAffordance) *ActionAffordance {
-	name = strings.ReplaceAll(name, " ", "-")
+	name = strings.ReplaceAll(name, " ", "_")
 	//tdoc.updateMutex.Lock()
 	//defer tdoc.updateMutex.Unlock()
 	tdoc.Actions[name] = affordance
@@ -563,18 +557,11 @@ func (tdoc *TD) UpdateAction(name string, affordance *ActionAffordance) *ActionA
 //
 // This returns the added event affordance.
 func (tdoc *TD) UpdateEvent(name string, affordance *EventAffordance) *EventAffordance {
-	name = strings.ReplaceAll(name, " ", "-")
+	name = strings.ReplaceAll(name, " ", "_")
 	//tdoc.updateMutex.Lock()
 	//defer tdoc.updateMutex.Unlock()
 	tdoc.Events[name] = affordance
 	return affordance
-}
-
-// UpdateForms sets the top level forms section of the TD
-func (tdoc *TD) UpdateForms(formList []Form) {
-	//tdoc.updateMutex.Lock()
-	//defer tdoc.updateMutex.Unlock()
-	tdoc.Forms = formList
 }
 
 // UpdateProperty adds or replaces a property affordance in the TD. Intended for creating TDs
@@ -583,7 +570,7 @@ func (tdoc *TD) UpdateForms(formList []Form) {
 //
 // This returns the added affordance to support chaining
 func (tdoc *TD) UpdateProperty(name string, affordance *PropertyAffordance) *PropertyAffordance {
-	name = strings.ReplaceAll(name, " ", "-")
+	name = strings.ReplaceAll(name, " ", "_")
 	//tdoc.updateMutex.Lock()
 	//defer tdoc.updateMutex.Unlock()
 	tdoc.Properties[name] = affordance

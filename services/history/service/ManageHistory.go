@@ -2,7 +2,7 @@ package service
 
 import (
 	"github.com/hiveot/hub/services/history/historyapi"
-	"github.com/hiveot/hub/wot/transports"
+	"github.com/hiveot/hub/transports"
 	"log/slog"
 )
 

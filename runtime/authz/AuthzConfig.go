@@ -3,6 +3,7 @@ package authz
 import (
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/wot/td"
 	"path"
 	"sync"
 )
@@ -63,8 +64,9 @@ type RolePermission struct {
 var agentPermissions = RolePermission{
 	Operations: []string{
 		vocab.OpInvokeAction,
-		vocab.HTOpUpdateActionStatus,
 		vocab.HTOpPublishEvent,
+		vocab.HTOpUpdateActionStatus,
+		vocab.HTOpUpdateMultipleProperties,
 		vocab.HTOpUpdateProperties,
 		vocab.HTOpUpdateProperty,
 		vocab.HTOpUpdateTD,
@@ -80,6 +82,7 @@ var servicePermissions = RolePermission{
 		vocab.OpObserveAllProperties,
 		vocab.HTOpUpdateActionStatus,
 		vocab.HTOpPublishEvent,
+		vocab.HTOpUpdateMultipleProperties,
 		vocab.HTOpUpdateProperties,
 		vocab.HTOpUpdateProperty,
 		vocab.OpSubscribeEvent,
@@ -93,6 +96,14 @@ var viewerPermissions = RolePermission{
 	Operations: []string{
 		vocab.OpObserveProperty,
 		vocab.OpSubscribeEvent,
+		// digitwin
+		vocab.OpReadAllProperties,
+		vocab.OpReadMultipleProperties,
+		vocab.OpReadProperty,
+		vocab.HTOpReadAllEvents,
+		vocab.HTOpReadEvent,
+		vocab.HTOpReadAllTDs,
+		vocab.HTOpReadTD,
 	},
 }
 
@@ -105,6 +116,14 @@ var operatorPermissions = RolePermission{
 		vocab.OpObserveAllProperties,
 		vocab.OpSubscribeEvent,
 		vocab.OpSubscribeAllEvents,
+		// digitwin
+		vocab.OpReadAllProperties,
+		vocab.OpReadMultipleProperties,
+		vocab.OpReadProperty,
+		vocab.HTOpReadAllEvents,
+		vocab.HTOpReadEvent,
+		vocab.HTOpReadAllTDs,
+		vocab.HTOpReadTD,
 	},
 }
 
@@ -117,6 +136,14 @@ var managerPermissions = RolePermission{
 		vocab.OpSubscribeEvent,
 		vocab.OpSubscribeAllEvents,
 		vocab.OpWriteProperty,
+		// digitwin
+		vocab.OpReadAllProperties,
+		vocab.OpReadMultipleProperties,
+		vocab.OpReadProperty,
+		vocab.HTOpReadAllEvents,
+		vocab.HTOpReadEvent,
+		vocab.HTOpReadAllTDs,
+		vocab.HTOpReadTD,
 	},
 }
 

@@ -5,14 +5,15 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/runtime/digitwin/store"
-	"github.com/hiveot/hub/wot/transports"
-	"github.com/hiveot/hub/wot/transports/connections"
+	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/connections"
 	"github.com/teris-io/shortid"
+	"log/slog"
 	"sync"
 )
 
 // ActionHandler is the API for service action handling
-type ActionHandler func(msg *transports.ThingMessage) (stat transports.RequestStatus)
+//type ActionHandler func(msg *transports.ThingMessage) (stat transports.RequestStatus)
 
 // PermissionHandler is the handler that authorizes the sender to perform an operation
 //
@@ -30,10 +31,10 @@ type DigitwinRouter struct {
 	dtwStore *store.DigitwinStore
 
 	// internal services are directly invoked
-	digitwinAction ActionHandler
+	digitwinAction transports.RequestHandler
 	dtwService     *service.DigitwinService
-	authnAction    ActionHandler
-	authzAction    ActionHandler
+	authnAction    transports.RequestHandler
+	authzAction    transports.RequestHandler
 	hasPermission  PermissionHandler
 
 	// in-memory cache of active actions lookup by requestID
@@ -46,20 +47,24 @@ type DigitwinRouter struct {
 
 // HandleMessage routes updates from agents to consumers
 func (svc *DigitwinRouter) HandleMessage(
-	msg *transports.ThingMessage, replyTo transports.IServerConnection) (
-	stat transports.RequestStatus) {
+	msg *transports.ThingMessage, replyTo transports.IServerConnection) {
 
 	var isHandled = true
 
 	// middleware: authorize the request.
 	// TODO: use a middleware chain
 	if !svc.hasPermission(msg.SenderID, msg.Operation, msg.ThingID) {
-		stat.Failed(msg, fmt.Errorf("Unauthorized"))
+		err := fmt.Sprintf("Unauthorized. client '%s' does not have permission"+
+			" to invoke operation '%s' on Thing '%s'",
+			msg.SenderID, msg.Operation, msg.ThingID)
+		slog.Warn(err)
+		replyTo.SendError(msg.ThingID, msg.Name, err, msg.RequestID)
+		return
 	}
 
 	// first handle send-and-forget operations (agent publications)
 	switch msg.Operation {
-	// operations with nothing to reply
+	// operations with no immediate result
 	case vocab.HTOpPublishEvent:
 		svc.HandlePublishEvent(msg)
 	case vocab.HTOpUpdateProperty:
@@ -67,103 +72,53 @@ func (svc *DigitwinRouter) HandleMessage(
 	case vocab.HTOpUpdateMultipleProperties:
 		svc.HandleUpdateMultipleProperties(msg)
 	case vocab.HTOpUpdateActionStatus, vocab.HTOpUpdateActionStatuses:
-		svc.HandleUpdateActionStatus(msg)
+		svc.HandleActionResponse(msg)
 	case vocab.HTOpUpdateTD:
 		svc.HandleUpdateTD(msg)
+	case vocab.OpInvokeAction:
+		svc.HandleInvokeAction(msg, replyTo)
+	case vocab.OpWriteProperty:
+		svc.HandleWriteProperty(msg, replyTo)
 	default:
 		isHandled = false
 	}
 	if isHandled {
-		stat.Completed(msg, nil, nil)
-		return stat
+		return
 	}
 
 	if msg.RequestID == "" {
 		msg.RequestID = "action-" + shortid.MustGenerate()
 	}
-	// TODO: use a middleware chain
-	svc.hasPermission(msg.SenderID, msg.Operation, msg.ThingID)
+	// operations from embedded services with immediate result
+	var err error
+	var output any
 
 	switch msg.Operation {
-	case vocab.OpInvokeAction:
-		stat = svc.HandleInvokeAction(msg, replyTo.GetConnectionID())
 	case vocab.HTOpLogin:
-		stat = svc.HandleLogin(msg)
+		output, err = svc.HandleLogin(msg)
 	case vocab.HTOpLogout:
-		stat = svc.HandleLogout(msg)
+		err = svc.HandleLogout(msg)
 	case vocab.HTOpRefresh:
-		stat = svc.HandleLoginRefresh(msg)
+		output, err = svc.HandleLoginRefresh(msg)
 	case vocab.HTOpReadAllEvents:
-		stat = svc.HandleReadAllEvents(msg)
+		output, err = svc.HandleReadAllEvents(msg)
 	case vocab.OpReadAllProperties:
-		stat = svc.HandleReadAllProperties(msg)
+		output, err = svc.HandleReadAllProperties(msg)
 	case vocab.HTOpReadEvent:
-		stat = svc.HandleReadEvent(msg)
+		output, err = svc.HandleReadEvent(msg)
 	case vocab.OpReadProperty:
-		stat = svc.HandleReadProperty(msg)
-	case vocab.OpWriteProperty:
-		stat = svc.HandleWriteProperty(msg, replyTo.GetConnectionID())
+		output, err = svc.HandleReadProperty(msg)
 	default:
-		err := fmt.Errorf("Unknown operation '%s' from client '%s'", msg.Operation, msg.SenderID)
-		stat.Failed(msg, err)
+		err = fmt.Errorf("Unknown operation '%s' from client '%s'", msg.Operation, msg.SenderID)
+		slog.Warn(err.Error())
 	}
-	return stat
+	if err != nil {
+		slog.Warn("HandleMessage failed", "err", err.Error())
+		replyTo.SendError(msg.ThingID, msg.Name, err.Error(), msg.RequestID)
+	} else {
+		_ = replyTo.SendResponse(msg.ThingID, msg.Name, output, msg.RequestID)
+	}
 }
-
-//// HandleMessage routes updates from agents to consumers
-//func (svc *DigitwinRouter) HandleMessage(msg *transports.ThingMessage) {
-//
-//	// middleware: authorize the request.
-//	// TODO: use a middleware chain
-//	svc.hasPermission(msg.SenderID, msg.Operation, msg.ThingID)
-//
-//	switch msg.Operation {
-//	case vocab.HTOpPublishEvent:
-//		svc.HandlePublishEvent(msg)
-//	case vocab.HTOpUpdateProperty:
-//		svc.HandleUpdateProperty(msg)
-//	case vocab.HTOpUpdateMultipleProperties:
-//		svc.HandleUpdateMultipleProperties(msg)
-//	case vocab.HTOpUpdateActionStatus, vocab.HTOpUpdateActionStatuses:
-//		svc.HandleUpdateActionStatus(msg)
-//	case vocab.HTOpUpdateTD:
-//		svc.HandleUpdateTD(msg)
-//	}
-//}
-//
-//// HandleRequest routers requests from consumers to the digital twin and on to agents
-//// The clcid is the client connectionID used when sending an asynchronous reply.
-//func (svc *DigitwinRouter) HandleRequest(
-//	request *transports.ThingMessage, replyTo string) (stat transports.RequestStatus) {
-//	// assign a requestID if none given
-//	if request.RequestID == "" {
-//		request.RequestID = "action-" + shortid.MustGenerate()
-//	}
-//	// TODO: use a middleware chain
-//	svc.hasPermission(request.SenderID, request.Operation, request.ThingID)
-//
-//	switch request.Operation {
-//	case vocab.OpInvokeAction:
-//		stat = svc.HandleInvokeAction(request, replyTo)
-//	case vocab.HTOpLogin:
-//		stat = svc.HandleLogin(request)
-//	case vocab.HTOpLogout:
-//		stat = svc.HandleLogout(request)
-//	case vocab.HTOpRefresh:
-//		stat = svc.HandleLoginRefresh(request)
-//	case vocab.HTOpReadAllEvents:
-//		stat = svc.HandleReadAllEvents(request)
-//	case vocab.OpReadAllProperties:
-//		stat = svc.HandleReadAllProperties(request)
-//	case vocab.HTOpReadEvent:
-//		stat = svc.HandleReadEvent(request)
-//	case vocab.OpReadProperty:
-//		stat = svc.HandleReadProperty(request)
-//	case vocab.OpWriteProperty:
-//		stat = svc.HandleWriteProperty(request, replyTo)
-//	}
-//	return stat
-//}
 
 // NewDigitwinRouter instantiates a new hub messaging router
 // Use SetTransport to link to a transport for forwarding messages to
@@ -173,9 +128,9 @@ func (svc *DigitwinRouter) HandleMessage(
 //	tb is the transport binding for forwarding service requests
 func NewDigitwinRouter(
 	dtwService *service.DigitwinService,
-	digitwinAction ActionHandler,
-	authnAgent ActionHandler,
-	authzAgent ActionHandler,
+	digitwinAction transports.RequestHandler,
+	authnAgent transports.RequestHandler,
+	authzAgent transports.RequestHandler,
 	permissionHandler PermissionHandler,
 	cm *connections.ConnectionManager,
 ) *DigitwinRouter {

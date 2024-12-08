@@ -2,7 +2,8 @@ package digitwin_test
 
 import (
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/wot/transports"
+	transports2 "github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/wot/td"
 )
 
 // dummy transport for testing with the digitwin service
@@ -13,11 +14,11 @@ type DummyTransportBinding struct {
 func (dummy *DummyTransportBinding) AddTDForms(td *td.TD) error {
 	return nil
 }
-func (dummy *DummyTransportBinding) GetConnectionByCID(cid string) transports.IServerConnection {
+func (dummy *DummyTransportBinding) GetConnectionByConnectionID(cid string) transports2.IServerConnection {
 	return nil
 }
-func (dummy *DummyTransportBinding) GetProtocolInfo() transports.ProtocolInfo {
-	return transports.ProtocolInfo{}
+func (dummy *DummyTransportBinding) GetProtocolType() string {
+	return transports2.ProtocolTypeEmbedded
 }
 
 func (dummy *DummyTransportBinding) InvokeAction(
@@ -35,7 +36,7 @@ func (dummy *DummyTransportBinding) PublishProperty(
 	dThingID string, name string, value any, requestID string, agentID string) {
 }
 func (dummy *DummyTransportBinding) PublishProgressUpdate(
-	connectionID string, stat transports.RequestStatus, agentID string) (bool, error) {
+	connectionID string, stat transports2.RequestStatus, agentID string) (bool, error) {
 	return false, nil
 }
 

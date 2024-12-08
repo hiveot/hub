@@ -3,37 +3,37 @@ package router
 
 import (
 	"github.com/hiveot/hub/api/go/authn"
-	"github.com/hiveot/hub/wot/transports"
+	"github.com/hiveot/hub/transports"
 )
 
 // HandleLogin converts the login operation into an authn service action
-func (svc *DigitwinRouter) HandleLogin(msg *transports.ThingMessage) transports.RequestStatus {
+func (svc *DigitwinRouter) HandleLogin(msg *transports.ThingMessage) (output any, err error) {
 	authnMsg := *msg
 	authnMsg.ThingID = authn.UserDThingID
 	authnMsg.Name = authn.UserLoginMethod
 
-	stat := svc.authnAction(&authnMsg)
-	return stat
+	output, err = svc.authnAction(&authnMsg)
+	return output, err
 }
 
 // HandleLoginRefresh converts the token refresh operation into an authn service action
-func (svc *DigitwinRouter) HandleLoginRefresh(msg *transports.ThingMessage) transports.RequestStatus {
+func (svc *DigitwinRouter) HandleLoginRefresh(msg *transports.ThingMessage) (output any, err error) {
 	authnMsg := *msg
 	authnMsg.ThingID = authn.UserDThingID
 	authnMsg.Name = authn.UserRefreshTokenMethod
 
-	stat := svc.authnAction(&authnMsg)
-	return stat
+	output, err = svc.authnAction(&authnMsg)
+	return output, err
 }
 
 // HandleLogout converts the logout operation into an authn service action
-func (svc *DigitwinRouter) HandleLogout(msg *transports.ThingMessage) transports.RequestStatus {
+// and closes all connections from the sender.
+func (svc *DigitwinRouter) HandleLogout(msg *transports.ThingMessage) (err error) {
 	authnMsg := *msg
 	authnMsg.ThingID = authn.UserDThingID
 	authnMsg.Name = authn.UserLogoutMethod
 
-	stat := svc.authnAction(&authnMsg)
-	// logout and close all existing connections
+	_, err = svc.authnAction(&authnMsg)
 	svc.cm.CloseAllClientConnections(msg.SenderID)
-	return stat
+	return err
 }

@@ -18,20 +18,17 @@ func GenServiceHandler(l *utils.SL, serviceTitle string, td1 *td.TD) {
 	interfaceName := "I" + serviceTitle + "Service"
 
 	l.Add("")
-	l.Add("// NewHandle%sAction returns a server handler for Thing '%s' actions.", serviceTitle, td1.ID)
+	l.Add("// NewHandle%sAction returns an agent handler for Thing '%s' actions.", serviceTitle, td1.ID)
 	l.Add("//")
 	l.Add("// This unmarshalls the request payload into an args struct and passes it to the service")
 	l.Add("// that implements the corresponding interface method.")
 	l.Add("// ")
 	l.Add("// This returns the marshalled response data or an error.")
-	l.Add("func NewHandle%sAction(svc %s)(func(msg *transports.ThingMessage) transports.RequestStatus) {", serviceTitle, interfaceName)
+	l.Add("func NewHandle%sAction(svc %s)(func(msg *transports.ThingMessage) (any, error)) {", serviceTitle, interfaceName)
 	l.Indent++
-	l.Add("return func(msg *transports.ThingMessage) (stat transports.RequestStatus) {")
+	l.Add("return func(msg *transports.ThingMessage) (output any, err error) {")
 
 	l.Indent++
-	l.Add("var err error")
-	l.Add("stat.Completed(msg,nil,nil)")
-	l.Add("var output any")
 
 	l.Add("switch msg.Name {")
 	l.Indent++
@@ -43,8 +40,7 @@ func GenServiceHandler(l *utils.SL, serviceTitle string, td1 *td.TD) {
 	l.Indent--
 	l.Add("}")
 
-	l.Add("stat.Completed(msg,output,err)")
-	l.Add("return stat")
+	l.Add("return output,err")
 	l.Indent--
 	l.Add("}")
 	l.Indent--
@@ -69,7 +65,7 @@ func GenActionHandler(l *utils.SL, serviceTitle string, name string, action *td.
 			goType := GoTypeFromSchema(action.Input)
 			l.Add("var args %s", goType)
 		}
-		l.Add("err = utils.DecodeAsObject(msg.Data, &args)")
+		l.Add("err = tputils.DecodeAsObject(msg.Data, &args)")
 
 		argsString += ", args"
 	}

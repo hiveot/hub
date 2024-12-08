@@ -12,7 +12,7 @@ import (
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views"
-	"github.com/hiveot/hub/wot/transports/utils/tlsserver"
+	"github.com/hiveot/hub/transports/utils/tlsserver"
 	"log/slog"
 	"net/http"
 	"os"

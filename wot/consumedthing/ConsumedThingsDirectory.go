@@ -2,8 +2,8 @@ package consumedthing
 
 import (
 	"github.com/hiveot/hub/api/go/digitwin"
+	transports2 "github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot"
-	"github.com/hiveot/hub/wot/transports"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"sync"
@@ -17,7 +17,7 @@ const ReadDirLimit = 1000
 // This maintains a single instance of each ConsumedThing and updates it when
 // an event and action progress updates are received.
 type ConsumedThingsDirectory struct {
-	cc transports.IClientConnection
+	cc transports2.IClientConnection
 	// Things used by the client
 	consumedThings map[string]*ConsumedThing
 	// directory of TD documents
@@ -25,7 +25,7 @@ type ConsumedThingsDirectory struct {
 	// the full directory has been read in this session
 	fullDirectoryRead bool
 	// additional handler of events for forwarding to other consumers
-	eventHandler func(msg *transports.ThingMessage)
+	eventHandler func(msg *transports2.ThingMessage)
 	mux          sync.RWMutex
 }
 
@@ -61,7 +61,7 @@ func (cts *ConsumedThingsDirectory) Consume(thingID string) (ct *ConsumedThing, 
 }
 
 // handleMessage updates the consumed things from subscriptions
-func (cts *ConsumedThingsDirectory) handleMessage(msg *transports.ThingMessage) {
+func (cts *ConsumedThingsDirectory) handleMessage(msg *transports2.ThingMessage) {
 
 	slog.Debug("CTS.handleMessage",
 		slog.String("senderID", msg.SenderID),
@@ -74,7 +74,7 @@ func (cts *ConsumedThingsDirectory) handleMessage(msg *transports.ThingMessage) 
 
 	// if an event is received from an unknown Thing then (re)load its TD
 	// progress updates don't count
-	if msg.Operation != wot.HTOpActionStatus {
+	if msg.Operation != wot.HTOpUpdateActionStatus {
 		cts.mux.RLock()
 		_, found := cts.directory[msg.ThingID]
 		cts.mux.RUnlock()
@@ -119,7 +119,7 @@ func (cts *ConsumedThingsDirectory) handleMessage(msg *transports.ThingMessage) 
 		if found {
 			ct.OnPropertyUpdate(msg)
 		}
-	} else if msg.Operation == wot.HTOpActionStatus {
+	} else if msg.Operation == wot.HTOpUpdateActionStatus {
 		// delivery status updates refer to actions
 		cts.mux.RLock()
 		ct, found := cts.consumedThings[msg.ThingID]
@@ -218,7 +218,7 @@ func (cts *ConsumedThingsDirectory) ReadTD(thingID string) (*td.TD, error) {
 // Intended for consumers such that need to pass all messages on, for example to
 // a UI frontend.
 // Currently only a single handler is supported.
-func (cts *ConsumedThingsDirectory) SetEventHandler(handler func(message *transports.ThingMessage)) {
+func (cts *ConsumedThingsDirectory) SetEventHandler(handler func(message *transports2.ThingMessage)) {
 	cts.mux.Lock()
 	defer cts.mux.Unlock()
 	cts.eventHandler = handler
@@ -253,7 +253,7 @@ func (cts *ConsumedThingsDirectory) UpdateTD(tdJSON string) *ConsumedThing {
 //
 // This will subscribe to events from the Hub using the provided hub client.
 // This will receive any prior event subscriber.
-func NewConsumedThingsSession(cc transports.IClientConnection) *ConsumedThingsDirectory {
+func NewConsumedThingsSession(cc transports2.IClientConnection) *ConsumedThingsDirectory {
 	ctm := ConsumedThingsDirectory{
 		cc:             cc,
 		consumedThings: make(map[string]*ConsumedThing),

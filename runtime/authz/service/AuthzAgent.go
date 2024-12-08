@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
-	"github.com/hiveot/hub/wot/transports"
+	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 )
 
@@ -13,27 +14,26 @@ import (
 // back to a reply message, if any.
 // The main entry point is the HandleMessage function.
 type AuthzAgent struct {
-	hc           clients.IConsumer
+	hc           transports.IClientConnection
 	svc          *AuthzService
-	adminHandler transports.ActionHandler
-	userHandler  transports.ActionHandler
+	adminHandler transports.RequestHandler
+	userHandler  transports.RequestHandler
 }
 
 // HandleAction authz service action handler
-func (agent *AuthzAgent) HandleAction(msg *transports.ThingMessage) (stat transports.RequestStatus) {
+func (agent *AuthzAgent) HandleAction(msg *transports.ThingMessage) (output any, err error) {
 
 	// if the message has an authn agent prefix then remove it.
 	// This can happen if invoked directly through an embedded client
 	_, thingID := td.SplitDigiTwinThingID(msg.ThingID)
 	if thingID == authz.AdminServiceID {
-		stat = agent.adminHandler(msg)
+		output, err = agent.adminHandler(msg)
 	} else if thingID == authz.UserServiceID {
-		stat = agent.userHandler(msg)
+		output, err = agent.userHandler(msg)
 	} else {
-		err := fmt.Errorf("unknown authz service capability '%s'", msg.ThingID)
-		stat.Failed(msg, err)
+		err = fmt.Errorf("unknown authz service capability '%s'", msg.ThingID)
 	}
-	return stat
+	return output, err
 }
 
 // HasPermission is a convenience function to check if the sender has permission

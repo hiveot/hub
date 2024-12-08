@@ -2,6 +2,7 @@ package store
 
 import (
 	"github.com/hiveot/hub/api/go/digitwin"
+	"github.com/hiveot/hub/wot/td"
 )
 
 type ActionQueue struct {

@@ -3,17 +3,18 @@ package service
 import (
 	"fmt"
 	"github.com/hiveot/hub/services/state/stateapi"
-	"github.com/hiveot/hub/wot/transports/utils"
+	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/tputils"
 )
 
 // StateAgent agent for the state storage services
 type StateAgent struct {
-	hc  clients.IAgent
+	hc  transports.IClientConnection
 	svc *StateService
 }
 
 // HandleRequest dispatches requests to the service capabilities
-func (agent *StateAgent) HandleRequest(msg *transports.ThingMessage) (stat transports.RequestStatus) {
+func (agent *StateAgent) HandleRequest(msg *transports.ThingMessage) (output any, err error) {
 	if msg.ThingID == stateapi.StorageServiceID {
 		switch msg.Name {
 		case stateapi.DeleteMethod:
@@ -28,47 +29,51 @@ func (agent *StateAgent) HandleRequest(msg *transports.ThingMessage) (stat trans
 			return agent.SetMultiple(msg)
 		}
 	}
-	stat.Failed(msg, fmt.Errorf(
-		"unknown action '%s' for service '%s'", msg.Name, msg.ThingID))
-	return stat
+	err = fmt.Errorf("unknown action '%s' for service '%s'", msg.Name, msg.ThingID)
+	return nil, err
 }
-func (agent *StateAgent) Delete(msg *transports.ThingMessage) (stat transports.RequestStatus) {
+func (agent *StateAgent) Delete(msg *transports.ThingMessage) (output any, err error) {
 	args := stateapi.DeleteArgs{}
-	err := utils.DecodeAsObject(msg.Data, &args)
-	err = agent.svc.Delete(msg.SenderID, args.Key)
-	stat.Completed(msg, nil, err)
-	return stat
+	err = tputils.DecodeAsObject(msg.Data, &args)
+	if err == nil {
+		err = agent.svc.Delete(msg.SenderID, args.Key)
+	}
+	return nil, err
 }
-func (agent *StateAgent) Get(msg *transports.ThingMessage) (stat transports.RequestStatus) {
+func (agent *StateAgent) Get(msg *transports.ThingMessage) (output any, err error) {
 	args := stateapi.GetArgs{}
 	resp := stateapi.GetResp{}
-	err := utils.DecodeAsObject(msg.Data, &args)
-	resp.Key = args.Key
-	resp.Value, resp.Found, err = agent.svc.Get(msg.SenderID, args.Key)
-	stat.Completed(msg, resp, err)
-	return stat
+	err = tputils.DecodeAsObject(msg.Data, &args)
+	if err != nil {
+		resp.Key = args.Key
+		resp.Value, resp.Found, err = agent.svc.Get(msg.SenderID, args.Key)
+	}
+	return resp, err
 }
-func (agent *StateAgent) GetMultiple(msg *transports.ThingMessage) (stat transports.RequestStatus) {
+func (agent *StateAgent) GetMultiple(msg *transports.ThingMessage) (output any, err error) {
 	args := stateapi.GetMultipleArgs{}
 	resp := stateapi.GetMultipleResp{}
-	err := utils.DecodeAsObject(msg.Data, &args)
-	resp.KV, err = agent.svc.GetMultiple(msg.SenderID, args.Keys)
-	stat.Completed(msg, resp, err)
-	return stat
+	err = tputils.DecodeAsObject(msg.Data, &args)
+	if err == nil {
+		resp.KV, err = agent.svc.GetMultiple(msg.SenderID, args.Keys)
+	}
+	return resp, err
 }
-func (agent *StateAgent) Set(msg *transports.ThingMessage) (stat transports.RequestStatus) {
+func (agent *StateAgent) Set(msg *transports.ThingMessage) (output any, err error) {
 	args := stateapi.SetArgs{}
-	err := utils.DecodeAsObject(msg.Data, &args)
-	err = agent.svc.Set(msg.SenderID, args.Key, args.Value)
-	stat.Completed(msg, nil, err)
-	return stat
+	err = tputils.DecodeAsObject(msg.Data, &args)
+	if err != nil {
+		err = agent.svc.Set(msg.SenderID, args.Key, args.Value)
+	}
+	return nil, err
 }
-func (agent *StateAgent) SetMultiple(msg *transports.ThingMessage) (stat transports.RequestStatus) {
+func (agent *StateAgent) SetMultiple(msg *transports.ThingMessage) (output any, err error) {
 	args := stateapi.SetMultipleArgs{}
-	err := utils.DecodeAsObject(msg.Data, &args)
-	err = agent.svc.SetMultiple(msg.SenderID, args.KV)
-	stat.Completed(msg, nil, err)
-	return stat
+	err = tputils.DecodeAsObject(msg.Data, &args)
+	if err == nil {
+		err = agent.svc.SetMultiple(msg.SenderID, args.KV)
+	}
+	return nil, err
 }
 
 // NewStateAgent returns a new instance of the communication agent for the state service.
@@ -86,7 +91,7 @@ func NewStateAgent(svc *StateService) *StateAgent {
 //
 //	svc is the state service whose capabilities to expose
 //	hc is the messaging client used to register a message handler
-func StartStateAgent(svc *StateService, hc clients.IAgent) *StateAgent {
+func StartStateAgent(svc *StateService, hc transports.IClientConnection) *StateAgent {
 	agent := StateAgent{hc: hc, svc: svc}
 	if hc != nil {
 		hc.SetRequestHandler(agent.HandleRequest)

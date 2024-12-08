@@ -184,7 +184,7 @@ func TestGetDifferentClientBuckets(t *testing.T) {
 	_ = stateCl
 	defer stopFn()
 
-	ag1, token1 := ts.AddConnectAgent(clientID1, agentUsesWSS)
+	ag1, token1 := ts.AddConnectAgent(clientID1)
 	require.NotEmpty(t, token1)
 	defer ag1.Disconnect()
 	hc2, token2 := ts.AddConnectService(clientID2)

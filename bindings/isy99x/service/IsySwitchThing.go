@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
+	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/utils"
 	"github.com/hiveot/hub/wot"
-	"github.com/hiveot/hub/wot/transports"
-	"github.com/hiveot/hub/wot/transports/utils"
 )
 
 // IsySwitchThing is a general-purpose on/off switch
@@ -34,7 +34,7 @@ func (it *IsySwitchThing) HandleActionRequest(action *transports.ThingMessage) (
 	// FIXME: action keys are the raw keys, not @type
 	// supported actions: on, off
 	if action.Name == "ST" {
-		newValueBool := utils.DecodeAsBool(action.Data)
+		newValueBool := tputils.DecodeAsBool(action.Data)
 		newValue = "DOF"
 		if newValueBool {
 			newValue = "DON"

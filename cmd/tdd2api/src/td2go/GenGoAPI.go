@@ -44,9 +44,8 @@ func GenGoAPIFromTD(td1 *td.TD, outFile string) (err error) {
 
 	l.Add("")
 	l.Add("import \"errors\"")
-	l.Add("import \"github.com/hiveot/hub/wot/td\"")
-	l.Add("import \"github.com/hiveot/hub/wot/transports/utils\"")
-	l.Add("import \"github.com/hiveot/hub/wot/transports\"")
+	l.Add("import \"github.com/hiveot/hub/transports/tputils\"")
+	l.Add("import \"github.com/hiveot/hub/transports\"")
 	l.Add("")
 	GenThingConstantsFromTD(l, thingTitleID, td1)
 	GenSchemaDefinitions(l, thingTitleID, td1)

@@ -2,8 +2,9 @@ package historyclient
 
 import (
 	"github.com/hiveot/hub/services/history/historyapi"
+	transports2 "github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
-	"github.com/hiveot/hub/wot/transports"
 	"time"
 )
 
@@ -11,9 +12,7 @@ import (
 type ReadHistoryClient struct {
 	// ThingID of the service providing the read history capability
 	dThingID string
-	cc       transports.IClientConnection
-	// invokeAction is the invokeAction from the service TD with the invoke-action operation
-	invokeAction td.Form
+	cc       transports2.IClientConnection
 }
 
 // GetCursor returns an iterator for ThingMessage objects containing historical events,tds or actions
@@ -29,8 +28,8 @@ func (cl *ReadHistoryClient) GetCursor(thingID string, filterOnName string) (
 		FilterOnName: filterOnName,
 	}
 	resp := historyapi.GetCursorResp{}
-	err = cl.cc.SendRequest(cl.invokeAction, cl.dThingID, historyapi.GetCursorMethod, &args, &resp)
-	cursor = NewHistoryCursorClient(cl.invokeAction, cl.cc, resp.CursorKey)
+	err = cl.cc.SendRequest(wot.OpInvokeAction, cl.dThingID, historyapi.GetCursorMethod, &args, &resp)
+	cursor = NewHistoryCursorClient(cl.cc, resp.CursorKey)
 	return cursor, cursor.Release, err
 }
 
@@ -47,7 +46,7 @@ func (cl *ReadHistoryClient) GetCursor(thingID string, filterOnName string) (
 // to continue reading the next page.
 func (cl *ReadHistoryClient) ReadHistory(thingID string, filterOnName string,
 	timestamp time.Time, duration time.Duration, limit int) (
-	batch []*transports.ThingMessage, itemsRemaining bool, err error) {
+	batch []*transports2.ThingMessage, itemsRemaining bool, err error) {
 
 	args := historyapi.ReadHistoryArgs{
 		ThingID:      thingID,
@@ -57,19 +56,18 @@ func (cl *ReadHistoryClient) ReadHistory(thingID string, filterOnName string,
 		Limit:        limit,
 	}
 	resp := historyapi.ReadHistoryResp{}
-	err = cl.cc.SendRequest(cl.invokeAction, cl.dThingID, historyapi.ReadHistoryMethod, &args, &resp)
+	err = cl.cc.SendRequest(wot.OpInvokeAction, cl.dThingID, historyapi.ReadHistoryMethod, &args, &resp)
 	return resp.Values, resp.ItemsRemaining, err
 }
 
 // NewReadHistoryClient returns an instance of the read history client using the given connection
 //
 //	invokeAction is the TD invokeAction for the invoke-action operation of the history service
-func NewReadHistoryClient(invokeAction td.Form, cc transports.IClientConnection) *ReadHistoryClient {
+func NewReadHistoryClient(cc transports2.IClientConnection) *ReadHistoryClient {
 	agentID := historyapi.AgentID
 	histCl := ReadHistoryClient{
-		cc:           cc,
-		invokeAction: invokeAction,
-		dThingID:     td.MakeDigiTwinThingID(agentID, historyapi.ReadHistoryServiceID),
+		cc:       cc,
+		dThingID: td.MakeDigiTwinThingID(agentID, historyapi.ReadHistoryServiceID),
 	}
 	return &histCl
 }

@@ -3,7 +3,7 @@ package pubsubcli
 import (
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/wot/transports"
+	"github.com/hiveot/hub/transports"
 	"github.com/urfave/cli/v2"
 )
 

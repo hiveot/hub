@@ -5,7 +5,8 @@ import (
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
-	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot"
+	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"sync"
@@ -137,7 +138,7 @@ func (svc *DigitwinStore) ReadAllEvents(dThingID string) (
 
 	// shallow copy
 	evMap := make(map[string]digitwin.ThingValue)
-	for k, v := range dtw.PropValues {
+	for k, v := range dtw.EventValues {
 		evMap[k] = v
 	}
 	return evMap, err
@@ -389,7 +390,7 @@ func (svc *DigitwinStore) UpdateActionStart(
 	actionValue.SenderID = senderID
 	actionValue.Input = input
 	actionValue.Progress = vocab.RequestPending
-	actionValue.Updated = time.Now().Format(utils.RFC3339Milli)
+	actionValue.Updated = time.Now().Format(wot.RFC3339Milli)
 	actionValue.RequestID = requestID
 	dtw.ActionValues[name] = actionValue
 	svc.changedThings[dThingID] = true
@@ -427,7 +428,7 @@ func (svc *DigitwinStore) UpdateActionStatus(
 			actionValue = digitwin.ActionValue{}
 		}
 		actionValue.Progress = status
-		actionValue.Updated = time.Now().Format(utils.RFC3339Milli)
+		actionValue.Updated = time.Now().Format(wot.RFC3339Milli)
 		if status == vocab.RequestCompleted {
 			actionValue.Output = output
 		}
@@ -469,10 +470,10 @@ func (svc *DigitwinStore) UpdateEventValue(
 		return dThingID, err
 	}
 	eventValue := digitwin.ThingValue{
-		Data:      data,
-		Created:   time.Now().Format(utils.RFC3339Milli),
-		MessageID: messageID,
-		Name:      eventName,
+		Data:    data,
+		Updated: time.Now().Format(wot.RFC3339Milli),
+		//MessageID: messageID,
+		Name: eventName,
 	}
 	dtw.EventValues[eventName] = eventValue
 	svc.changedThings[dThingID] = true
@@ -490,7 +491,7 @@ func (svc *DigitwinStore) UpdateEventValue(
 //
 // This returns a flag indicating whether the property value has changed.
 func (svc *DigitwinStore) UpdatePropertyValue(
-	agentID string, thingID string, propName string, newValue any, messageID string) (
+	agentID string, thingID string, propName string, newValue any, requestID string) (
 	hasChanged bool, err error) {
 
 	svc.cacheMux.Lock()
@@ -517,9 +518,9 @@ func (svc *DigitwinStore) UpdatePropertyValue(
 	hasChanged = oldValue != propValue
 
 	propValue.Data = newValue
-	propValue.MessageID = messageID
+	propValue.RequestID = requestID
 	propValue.Name = propName
-	propValue.Created = time.Now().Format(utils.RFC3339Milli)
+	propValue.Updated = time.Now().Format(wot.RFC3339Milli)
 
 	dtw.PropValues[propName] = propValue
 	svc.changedThings[dThingID] = hasChanged
@@ -565,8 +566,8 @@ func (svc *DigitwinStore) WriteProperty(dThingID string, tv digitwin.ThingValue)
 		err := fmt.Errorf("dThing with ID '%s' not found", dThingID)
 		return err
 	}
-	if tv.Created == "" {
-		tv.Created = time.Now().Format(utils.RFC3339Milli)
+	if tv.Updated == "" {
+		tv.Updated = time.Now().Format(wot.RFC3339Milli)
 	}
 	dtw.PropValues[tv.Name] = tv
 	svc.changedThings[dThingID] = true

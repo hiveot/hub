@@ -5,7 +5,7 @@ import (
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authn/config"
-	"github.com/hiveot/hub/wot/transports"
+	"github.com/hiveot/hub/transports"
 	"log/slog"
 )
 

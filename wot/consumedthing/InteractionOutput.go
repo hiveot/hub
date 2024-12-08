@@ -2,7 +2,7 @@ package consumedthing
 
 import (
 	"github.com/araddon/dateparse"
-	"github.com/hiveot/hub/wot/transports"
+	"github.com/hiveot/hub/transports"
 	"log/slog"
 	"time"
 )

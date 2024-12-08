@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	authn2 "github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authn/config"
 	jsoniter "github.com/json-iterator/go"
@@ -35,7 +35,7 @@ type AuthnFileStore struct {
 
 // Add a new client.
 // clientID, clientType are required, the rest is optional
-func (store *AuthnFileStore) Add(clientID string, profile authn2.ClientProfile) error {
+func (store *AuthnFileStore) Add(clientID string, profile authn.ClientProfile) error {
 
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
@@ -44,9 +44,9 @@ func (store *AuthnFileStore) Add(clientID string, profile authn2.ClientProfile) 
 	if clientID == "" || clientID != profile.ClientID {
 		return fmt.Errorf("Add: missing clientID")
 	}
-	if profile.ClientType != authn2.ClientTypeAgent &&
-		profile.ClientType != authn2.ClientTypeConsumer &&
-		profile.ClientType != authn2.ClientTypeService {
+	if profile.ClientType != authn.ClientTypeAgent &&
+		profile.ClientType != authn.ClientTypeConsumer &&
+		profile.ClientType != authn.ClientTypeService {
 		return fmt.Errorf("Add: invalid clientType '%s' for client '%s'",
 			profile.ClientType, clientID)
 	}
@@ -86,7 +86,7 @@ func (store *AuthnFileStore) Count() int {
 
 // GetProfile returns the client's profile
 func (store *AuthnFileStore) GetProfile(
-	clientID string) (profile authn2.ClientProfile, err error) {
+	clientID string) (profile authn.ClientProfile, err error) {
 
 	store.mutex.RLock()
 	defer store.mutex.RUnlock()
@@ -99,10 +99,10 @@ func (store *AuthnFileStore) GetProfile(
 }
 
 // GetProfiles returns a list of all client profiles in the store
-func (store *AuthnFileStore) GetProfiles() (profiles []authn2.ClientProfile, err error) {
+func (store *AuthnFileStore) GetProfiles() (profiles []authn.ClientProfile, err error) {
 	store.mutex.RLock()
 	defer store.mutex.RUnlock()
-	profiles = make([]authn2.ClientProfile, 0, len(store.entries))
+	profiles = make([]authn.ClientProfile, 0, len(store.entries))
 	for _, entry := range store.entries {
 		profiles = append(profiles, entry.ClientProfile)
 	}
@@ -281,7 +281,7 @@ func (store *AuthnFileStore) SetRole(clientID string, role string) error {
 // UpdateProfile updates the client profile
 // The senderID is the connection ID of the sender.
 // Authorization should only allow admin level
-func (store *AuthnFileStore) UpdateProfile(senderID string, profile authn2.ClientProfile) error {
+func (store *AuthnFileStore) UpdateProfile(senderID string, profile authn.ClientProfile) error {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
@@ -314,7 +314,7 @@ func (store *AuthnFileStore) UpdateProfile(senderID string, profile authn2.Clien
 // VerifyPassword verifies the given password with the stored hash
 // This returns the matching user's entry or an error if the password doesn't match
 func (store *AuthnFileStore) VerifyPassword(
-	loginID, password string) (profile authn2.ClientProfile, err error) {
+	loginID, password string) (profile authn.ClientProfile, err error) {
 	isValid := false
 	store.mutex.Lock()
 	defer store.mutex.Unlock()

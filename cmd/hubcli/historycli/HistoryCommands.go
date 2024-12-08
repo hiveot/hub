@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/services/history/historyapi"
 	"github.com/hiveot/hub/services/history/historyclient"
+	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot"
-	"github.com/hiveot/hub/wot/transports"
 	"github.com/urfave/cli/v2"
 )
 

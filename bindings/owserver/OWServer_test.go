@@ -6,7 +6,7 @@ import (
 	"github.com/hiveot/hub/bindings/owserver/config"
 	"github.com/hiveot/hub/bindings/owserver/service"
 	"github.com/hiveot/hub/lib/testenv"
-	"github.com/hiveot/hub/wot/transports/utils"
+	"github.com/hiveot/hub/transports/utils"
 	"log/slog"
 	"os"
 	"path"
@@ -97,7 +97,7 @@ func TestPoll(t *testing.T) {
 	cl1.SetNotificationHandler(func(msg *transports.ThingMessage) {
 		slog.Info("received message", "MessageType", msg.Operation, "id", msg.Name)
 		var value interface{}
-		err2 := utils.DecodeAsObject(msg.Data, &value)
+		err2 := tputils.DecodeAsObject(msg.Data, &value)
 		assert.NoError(t, err2)
 
 		tdCount.Add(1)

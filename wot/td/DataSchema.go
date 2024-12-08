@@ -4,7 +4,6 @@ package td
 
 import (
 	"github.com/hiveot/hub/api/go/vocab"
-	"strconv"
 )
 
 // DataSchema with metadata  that describes the data format used. It can be used for validation.
@@ -140,7 +139,7 @@ func (ds *DataSchema) GetAtTypeString() string {
 	return ""
 }
 
-// SetEnumValues updates the data schema with restricted enum values.
+// SetOneOfValues updates the data schema with restricted enum values.
 // This uses the 'oneOf' field to allow support title and description of enum values.
 // See also the discussion at: https://github.com/w3c/wot-thing-description/issues/997#issuecomment-1865902885
 // Values is a set of dataschema values where:
@@ -148,10 +147,10 @@ func (ds *DataSchema) GetAtTypeString() string {
 //   - title is the human description of the value
 //   - description contains an optional elaboration of the value
 //   - @type is optional reference to the corresponding vocabulary for this value (if used)
-func (ds *DataSchema) SetEnumValues(values []DataSchema) *DataSchema {
-	ds.OneOf = values
-	return ds
-}
+//func (ds *DataSchema) SetOneOfValues(values []DataSchema) *DataSchema {
+//	ds.OneOf = values
+//	return ds
+//}
 
 // UnitSymbol returns the symbol of the unit of this schema using the vocabulary unit map
 func (ds *DataSchema) UnitSymbol() string {
@@ -167,52 +166,52 @@ func (ds *DataSchema) UnitSymbol() string {
 
 // FormatAsText formats the given input value according to the data schema
 // Numeric values are rounded to the given precision
-func (ds *DataSchema) FormatAsText(rawValue string, precision int) string {
-	var textValue string
-	if ds.Type == vocab.WoTDataTypeNumber {
-		valueFloat, err := strconv.ParseFloat(rawValue, 32)
-		textValue = strconv.FormatFloat(valueFloat, 'f', precision, 32)
-		_ = err
-	} else if ds.Type == vocab.WoTDataTypeInteger {
-		valueInt, err := strconv.ParseInt(rawValue, 10, 32)
-		textValue = strconv.FormatInt(valueInt, 10)
-		_ = err
-	} else if ds.Type == vocab.WoTDataTypeUnsignedInt {
-		valueUInt, err := strconv.ParseUint(rawValue, 10, 32)
-		textValue = strconv.FormatUint(valueUInt, 10)
-		_ = err
-	} else if ds.Type == vocab.WoTDataTypeBool {
-		valueBool, err := strconv.ParseBool(rawValue)
-		textValue = strconv.FormatBool(valueBool)
-		_ = err
-	} else {
-		textValue = rawValue
-	}
-	return textValue
-}
+//func (ds *DataSchema) FormatAsText(rawValue string, precision int) string {
+//	var textValue string
+//	if ds.Type == vocab.WoTDataTypeNumber {
+//		valueFloat, err := strconv.ParseFloat(rawValue, 32)
+//		textValue = strconv.FormatFloat(valueFloat, 'f', precision, 32)
+//		_ = err
+//	} else if ds.Type == vocab.WoTDataTypeInteger {
+//		valueInt, err := strconv.ParseInt(rawValue, 10, 32)
+//		textValue = strconv.FormatInt(valueInt, 10)
+//		_ = err
+//	} else if ds.Type == vocab.WoTDataTypeUnsignedInt {
+//		valueUInt, err := strconv.ParseUint(rawValue, 10, 32)
+//		textValue = strconv.FormatUint(valueUInt, 10)
+//		_ = err
+//	} else if ds.Type == vocab.WoTDataTypeBool {
+//		valueBool, err := strconv.ParseBool(rawValue)
+//		textValue = strconv.FormatBool(valueBool)
+//		_ = err
+//	} else {
+//		textValue = rawValue
+//	}
+//	return textValue
+//}
 
 // FormatAsNumber formats the given input value according to the data schema
 // Numeric values are rounded to the given precision
-func (ds *DataSchema) FormatAsNumber(rawValue string, precision int) string {
-	var textValue string
-	if ds.Type == vocab.WoTDataTypeNumber {
-		valueFloat, err := strconv.ParseFloat(rawValue, 32)
-		textValue = strconv.FormatFloat(valueFloat, 'f', precision, 32)
-		_ = err
-	} else if ds.Type == vocab.WoTDataTypeInteger {
-		valueInt, err := strconv.ParseInt(rawValue, 10, 32)
-		textValue = strconv.FormatInt(valueInt, 10)
-		_ = err
-	} else if ds.Type == vocab.WoTDataTypeUnsignedInt {
-		valueUInt, err := strconv.ParseUint(rawValue, 10, 32)
-		textValue = strconv.FormatUint(valueUInt, 10)
-		_ = err
-	} else if ds.Type == vocab.WoTDataTypeBool {
-		valueBool, err := strconv.ParseBool(rawValue)
-		textValue = strconv.FormatBool(valueBool)
-		_ = err
-	} else {
-		textValue = rawValue
-	}
-	return textValue
-}
+//func (ds *DataSchema) FormatAsNumber(rawValue string, precision int) string {
+//	var textValue string
+//	if ds.Type == vocab.WoTDataTypeNumber {
+//		valueFloat, err := strconv.ParseFloat(rawValue, 32)
+//		textValue = strconv.FormatFloat(valueFloat, 'f', precision, 32)
+//		_ = err
+//	} else if ds.Type == vocab.WoTDataTypeInteger {
+//		valueInt, err := strconv.ParseInt(rawValue, 10, 32)
+//		textValue = strconv.FormatInt(valueInt, 10)
+//		_ = err
+//	} else if ds.Type == vocab.WoTDataTypeUnsignedInt {
+//		valueUInt, err := strconv.ParseUint(rawValue, 10, 32)
+//		textValue = strconv.FormatUint(valueUInt, 10)
+//		_ = err
+//	} else if ds.Type == vocab.WoTDataTypeBool {
+//		valueBool, err := strconv.ParseBool(rawValue)
+//		textValue = strconv.FormatBool(valueBool)
+//		_ = err
+//	} else {
+//		textValue = rawValue
+//	}
+//	return textValue
+//}

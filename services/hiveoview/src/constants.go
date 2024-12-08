@@ -21,7 +21,7 @@ const (
 	RenderAboutPath   = "/about"
 	RenderAppHeadPath = "/app/appHead"
 	RenderLoginPath   = "/login"
-	PostLoginPath     = "/login"
+	UIPostLoginPath   = "/login"
 
 	// action paths
 	RenderActionRequestPath     = "/action/{thingID}/{name}/request"

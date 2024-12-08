@@ -5,7 +5,7 @@ import (
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authn/authenticator"
-	"github.com/hiveot/hub/wot/transports"
+	"github.com/hiveot/hub/transports"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"

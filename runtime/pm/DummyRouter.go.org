@@ -1,0 +1,60 @@
+package pm
+
+import (
+	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/tputils"
+	"github.com/hiveot/hub/wot"
+)
+
+// DummyRouter for implementing test hooks defined in IHubRouter
+type DummyRouter struct {
+	OnAction func(msg *transports.ThingMessage, replyTo transports.IServerConnection)
+	OnEvent  func(msg *transports.ThingMessage)
+
+	authenticator transports.IAuthenticator
+}
+
+func (svc *DummyRouter) HandleMessage(msg *transports.ThingMessage) {
+	switch msg.Operation {
+	case wot.HTOpPublishEvent:
+		svc.OnEvent(msg)
+	}
+}
+func (svc *DummyRouter) HandleRequest(
+	msg *transports.ThingMessage, replyTo transports.IServerConnection) {
+	switch msg.Operation {
+	case wot.HTOpLogin:
+		var args authn.UserLoginArgs
+		tputils.Decode(msg.Data, &args)
+		token, err := svc.authenticator.Login(args.ClientID, args.Password)
+		if err != nil {
+			replyTo.SendError(msg.ThingID, msg.Name, err.Error(), msg.RequestID)
+		} else {
+			replyTo.SendResponse(msg.ThingID, msg.Name, token, msg.RequestID)
+		}
+	case wot.HTOpRefresh:
+		var args authn.UserRefreshTokenArgs
+		tputils.Decode(msg.Data, &args)
+		newToken, err := svc.authenticator.RefreshToken(msg.SenderID, args.ClientID, args.OldToken)
+		if err != nil {
+			replyTo.SendError(msg.ThingID, msg.Name, err.Error(), msg.RequestID)
+		} else {
+			replyTo.SendResponse(msg.ThingID, msg.Name, newToken, msg.RequestID)
+		}
+	case wot.HTOpLogout:
+		svc.authenticator.Logout(msg.SenderID)
+		// no output
+	case wot.OpInvokeAction:
+		// if a hook is provided, call it first
+		if svc.OnAction != nil {
+			svc.OnAction(msg, replyTo)
+		}
+	}
+}
+
+func NewDummyRouter(authenticator transports.IAuthenticator) *DummyRouter {
+	return &DummyRouter{
+		authenticator: authenticator,
+	}
+}

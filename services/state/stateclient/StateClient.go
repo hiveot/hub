@@ -3,6 +3,8 @@ package stateclient
 import (
 	"encoding/json"
 	"github.com/hiveot/hub/services/state/stateapi"
+	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -11,14 +13,14 @@ type StateClient struct {
 	// dThingID digital twin service ID of the state management
 	dThingID string
 	// Connection to the hub
-	hc clients.IConsumer
+	hc transports.IClientConnection
 }
 
 // Delete removes the record with the given key.
 func (cl *StateClient) Delete(key string) error {
 
 	req := stateapi.DeleteArgs{Key: key}
-	err := cl.hc.Rpc(cl.dThingID, stateapi.DeleteMethod, &req, nil)
+	err := cl.hc.InvokeAction(cl.dThingID, stateapi.DeleteMethod, &req, nil)
 	return err
 }
 
@@ -28,7 +30,7 @@ func (cl *StateClient) Get(key string, record interface{}) (found bool, err erro
 
 	req := stateapi.GetArgs{Key: key}
 	resp := stateapi.GetResp{}
-	err = cl.hc.Rpc(cl.dThingID, stateapi.GetMethod, &req, &resp)
+	err = cl.hc.InvokeAction(cl.dThingID, stateapi.GetMethod, &req, &resp)
 	if err != nil {
 		return false, err
 	}
@@ -43,7 +45,7 @@ func (cl *StateClient) GetMultiple(keys []string) (values map[string]string, err
 
 	req := stateapi.GetMultipleArgs{Keys: keys}
 	resp := stateapi.GetMultipleResp{}
-	err = cl.hc.Rpc(cl.dThingID, stateapi.GetMultipleMethod, &req, &resp)
+	err = cl.hc.InvokeAction(cl.dThingID, stateapi.GetMultipleMethod, &req, &resp)
 	if err != nil {
 		return nil, err
 	}
@@ -54,14 +56,14 @@ func (cl *StateClient) GetMultiple(keys []string) (values map[string]string, err
 func (cl *StateClient) Set(key string, record interface{}) error {
 	data, _ := json.Marshal(record)
 	req := stateapi.SetArgs{Key: key, Value: string(data)}
-	err := cl.hc.Rpc(cl.dThingID, stateapi.SetMethod, &req, nil)
+	err := cl.hc.InvokeAction(cl.dThingID, stateapi.SetMethod, &req, nil)
 	return err
 }
 
 // SetMultiple writes multiple serialized records
 func (cl *StateClient) SetMultiple(kv map[string]string) error {
 	req := stateapi.SetMultipleArgs{KV: kv}
-	err := cl.hc.Rpc(cl.dThingID, stateapi.SetMultipleMethod, &req, nil)
+	err := cl.hc.InvokeAction(cl.dThingID, stateapi.SetMultipleMethod, &req, nil)
 	return err
 }
 
@@ -71,7 +73,7 @@ func (cl *StateClient) SetMultiple(kv map[string]string) error {
 //
 //	hc is the hub client connection to use.
 //	agentID is the instance name of the state agent. Use "" for default.
-func NewStateClient(hc clients.IConsumer) *StateClient {
+func NewStateClient(hc transports.IClientConnection) *StateClient {
 	agentID := stateapi.AgentID
 	cl := StateClient{
 		hc:       hc,

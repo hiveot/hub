@@ -21,7 +21,7 @@ func RenderLogin(w http.ResponseWriter, r *http.Request) {
 	data := LoginTemplateData{
 		LoginID:       "",
 		LoginError:    "",
-		PostLoginPath: src.PostLoginPath,
+		PostLoginPath: src.UIPostLoginPath,
 	}
 
 	loginError := r.URL.Query().Get("error")

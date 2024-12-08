@@ -2,8 +2,8 @@ package historyclient
 
 import (
 	"github.com/hiveot/hub/services/history/historyapi"
+	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot/td"
-	"github.com/hiveot/hub/wot/transports"
 )
 
 // ManageHistoryClient client for managing retention of the history service

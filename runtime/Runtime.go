@@ -11,9 +11,9 @@ import (
 	service2 "github.com/hiveot/hub/runtime/authz/service"
 	"github.com/hiveot/hub/runtime/digitwin/router"
 	service4 "github.com/hiveot/hub/runtime/digitwin/service"
-	"github.com/hiveot/hub/runtime/transports"
+	"github.com/hiveot/hub/runtime/pm"
+	"github.com/hiveot/hub/transports/connections"
 	"github.com/hiveot/hub/wot/td"
-	"github.com/hiveot/hub/wot/transports/connections"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 )
@@ -30,7 +30,7 @@ type Runtime struct {
 	DigitwinSvc    *service4.DigitwinService
 	DigitwinRouter api.IDigitwinRouter
 	CM             *connections.ConnectionManager
-	TransportsMgr  *transports.ProtocolManager
+	TransportsMgr  *pm.ProtocolManager
 }
 
 // GetForm returns the form for an operation using a transport protocol binding
@@ -104,7 +104,7 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 
 	// the protocol manager receives messages from clients (source) and
 	// sends messages to connected clients (sink)
-	r.TransportsMgr, err = transports.StartProtocolManager(
+	r.TransportsMgr, err = pm.StartProtocolManager(
 		&r.cfg.Transports,
 		r.cfg.ServerCert,
 		r.cfg.CaCert,

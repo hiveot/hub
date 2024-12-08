@@ -11,6 +11,8 @@ import (
 
 var testDir = path.Join(os.TempDir(), "test-router")
 
+// runtime tests the router
+
 // TestMain for all authn tests, setup of default folders and filenames
 func TestMain(m *testing.M) {
 	logging.SetLogging("info", "")

@@ -1,7 +1,7 @@
 package consumedthing
 
 import (
-	"github.com/hiveot/hub/wot/transports/utils"
+	"github.com/hiveot/hub/transports/utils"
 	"log/slog"
 )
 
@@ -22,28 +22,28 @@ type DataSchemaValue struct {
 //	string: returns a single element with string
 func (v DataSchemaValue) Array() []interface{} {
 	objArr := make([]interface{}, 0)
-	err := utils.DecodeAsObject(v.raw, &objArr)
+	err := tputils.DecodeAsObject(v.raw, &objArr)
 	_ = err
 	return objArr
 }
 
 // Text returns the text representation of the value
 func (v DataSchemaValue) Text() string {
-	return utils.DecodeAsString(v.raw)
+	return tputils.DecodeAsString(v.raw)
 }
 
 func (v DataSchemaValue) Boolean() bool {
-	return utils.DecodeAsBool(v.raw)
+	return tputils.DecodeAsBool(v.raw)
 }
 func (v DataSchemaValue) Integer() int {
-	return utils.DecodeAsInt(v.raw)
+	return tputils.DecodeAsInt(v.raw)
 }
 
 // Map returns the value as a name-value map
 // Returns nil if no data was provided.
 func (v DataSchemaValue) Map() map[string]interface{} {
 	o := make(map[string]interface{})
-	err := utils.DecodeAsObject(v.raw, &o)
+	err := tputils.DecodeAsObject(v.raw, &o)
 	if err != nil {
 		slog.Error("Can't convert value to a map", "value", v.raw)
 	}
@@ -52,12 +52,12 @@ func (v DataSchemaValue) Map() map[string]interface{} {
 
 // Number returns the value as a float32
 func (v DataSchemaValue) Number() float32 {
-	return utils.DecodeAsNumber(v.raw)
+	return tputils.DecodeAsNumber(v.raw)
 }
 
 // Object decodes the value to the given object.
 func (v DataSchemaValue) Object(output interface{}) error {
-	return utils.DecodeAsObject(v.raw, output)
+	return tputils.DecodeAsObject(v.raw, output)
 }
 
 // Raw returns the raw value

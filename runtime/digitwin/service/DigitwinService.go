@@ -4,7 +4,8 @@ import (
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
 	"github.com/hiveot/hub/runtime/digitwin/store"
-	"github.com/hiveot/hub/wot/transports/connections"
+	"github.com/hiveot/hub/transports/connections"
+	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"os"
 	"path"
@@ -57,9 +58,6 @@ func (svc *DigitwinService) Stop() {
 
 // StartDigitwinService creates and start the digitwin services.
 // This creates a bucket store for the directory, inbox, and outbox.
-//
-// Use SetFormsHook to set the outgoing transport protocol handler for use
-// by this service.
 //
 // storesDir is the directory where to create the digitwin storage
 // cm is the connection manager used to send messages to clients

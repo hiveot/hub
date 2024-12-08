@@ -1,18 +1,16 @@
 package runtime_test
 
 import (
-	"context"
-	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/runtime"
+	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
-	"github.com/hiveot/hub/wot/transports"
-	"github.com/hiveot/hub/wot/transports/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"log/slog"
@@ -46,6 +44,7 @@ func TestStartStop(t *testing.T) {
 
 func TestLogin(t *testing.T) {
 	const clientID = "user1"
+	t.Log("--- TestLogin start ---")
 
 	r := startRuntime()
 	cl, token := ts.AddConnectConsumer(clientID, authz.ClientRoleManager)
@@ -65,6 +64,7 @@ func TestLogin(t *testing.T) {
 
 // test many connections from a single client and confirm they open close and receive messages properly.
 func TestMultiConnectSingleClient(t *testing.T) {
+	t.Log("--- TestMultiConnectSingleClient start ---")
 	const clientID1 = "user1"
 	const agentID = "agent1"
 	const testConnections = int32(100)
@@ -100,11 +100,8 @@ func TestMultiConnectSingleClient(t *testing.T) {
 		require.NoError(t, err)
 		// allow server to register its connection
 		time.Sleep(waitafterconnect)
-		//err = cl.Subscribe("", "")
-		f1 := ts.GetForm(wot.OpSubscribeAllEvents, cl.GetProtocolType())
-		status, err := cl.SendNotification(f1, "", "", nil, nil, "")
+		err = cl.Subscribe("", "")
 		require.NoError(t, err)
-		require.NotEqual(t, transports.RequestFailed, status)
 		_ = token
 		clients = append(clients, cl)
 	}
@@ -113,11 +110,9 @@ func TestMultiConnectSingleClient(t *testing.T) {
 	require.Equal(t, testConnections, connectCount.Load(), "connect count mismatch")
 
 	// 3: agent publishes an event, which should be received N times
-	f2 := ts.GetForm(wot.HTOpPublishEvent, ag1.GetProtocolType())
-	status, err := ag1.SendNotification(f2, td1.ID, eventName, "a value", nil, "")
+	err := ag1.SendNotification(wot.HTOpPublishEvent, td1.ID, eventName, "a value")
 	//err := ag1.PubEvent(td1.ID, eventName, "a value", "message1")
 	require.NoError(t, err)
-	require.NotEqual(t, transports.RequestFailed, status)
 
 	// event should have been received N times
 	time.Sleep(time.Millisecond * 100)
@@ -134,14 +129,13 @@ func TestMultiConnectSingleClient(t *testing.T) {
 
 	// 5: no more messages should be received after disconnecting
 	messageCount.Store(0)
-	//err = ag1.PubEvent(td1.ID, eventName, "a value", "message2")
-	status, err = ag1.SendNotification(f2, td1.ID, eventName, "a value", nil, "")
+	err = ag1.SendNotification(wot.HTOpPublishEvent, td1.ID, eventName, "a value")
 	require.NoError(t, err)
 	ag1.Disconnect()
 
 	// zero events should have been received
 	time.Sleep(time.Millisecond * 10)
-	assert.Equal(t, int32(0), messageCount.Load(), "still receiving events afer disconnect")
+	assert.Equal(t, int32(0), messageCount.Load(), "still receiving events after disconnect")
 
 	// last, the runtime connection manager should only have no connections
 	count, _ := r.CM.GetNrConnections()
@@ -158,7 +152,6 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	var actionPayload = "payload1"
 	var expectedReply = actionPayload + ".reply"
 	var rxMsg *transports.ThingMessage
-	var stat3 transports.RequestStatus
 
 	r := startRuntime()
 	defer r.Stop()
@@ -177,54 +170,27 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	defer cl1.Disconnect()
 
 	// Agent receives action request which we'll handle here
-	ag1.SetRequestHandler(func(msg *transports.ThingMessage) (stat transports.RequestStatus) {
+	agentRequestHandler := func(msg *transports.ThingMessage) (output any, err error) {
 		rxMsg = msg
-		reply := utils.DecodeAsString(msg.Data) + ".reply"
-		stat.Completed(msg, reply, nil)
+		reply := tputils.DecodeAsString(msg.Data) + ".reply"
 		// TODO WSS doesn't support the senderID in the message. How important is this?
 		// option1: not important - no use-case
 		// option2: extend the websocket InvokeAction message format with a SenderID
 		//assert.Equal(t, cl1.GetClientID(), msg.SenderID)
 		//stat.Failed(msg, fmt.Errorf("failuretest"))
 		slog.Info("TestActionWithDeliveryConfirmation: agent1 delivery complete", "requestID", msg.RequestID)
-		return stat
-	})
+		return reply, nil
+	}
+	ag1.SetRequestHandler(agentRequestHandler)
 
-	// users receives status updates when sending actions
-	deliveryCtx, deliveryCtxComplete := context.WithTimeout(context.Background(), time.Minute*1)
-	cl1.SetNotificationHandler(func(msg *transports.ThingMessage) {
-		if msg.Operation == vocab.HTOpUpdateActionStatus {
-			// delivery updates are only invoked on for non-rpc actions
-			err := utils.DecodeAsObject(msg.Data, &stat3)
-			require.NoError(t, err)
-			assert.Equal(t, ag1.GetClientID(), msg.SenderID)
-			slog.Info(fmt.Sprintf("reply: %s", stat3.Output))
-		}
-		defer deliveryCtxComplete()
-	})
-	time.Sleep(time.Millisecond * 10)
 	// client sends action to agent and expect a 'delivered' result
 	// The RPC method returns an error if no reply is received
 	dThingID := td.MakeDigiTwinThingID(agentID, thingID)
 
-	f1 := ts.GetForm(wot.OpInvokeAction, cl1.GetProtocolType())
-	status, err := cl1.SendNotification(f1, dThingID, actionID, actionPayload, nil, "testmsgid")
+	var result string
+	err := cl1.SendRequest(wot.OpInvokeAction, dThingID, actionID, actionPayload, &result)
 	require.NoError(t, err)
-	require.NotEqual(t, transports.RequestFailed, status)
-	//stat2 := cl1.InvokeAction(dThingID, actionID, actionPayload, nil, "testmsgid")
-	//require.Empty(t, stat2.Error)
-
-	// wait for delivery completion
-	select {
-	case <-deliveryCtx.Done():
-	}
-	time.Sleep(time.Millisecond * 10)
-
-	// verify final result
-	require.Equal(t, vocab.RequestCompleted, stat3.Status)
-	require.Empty(t, stat3.Error)
-	require.NotNil(t, rxMsg)
-	assert.Equal(t, expectedReply, stat3.Output)
+	assert.Equal(t, expectedReply, result)
 	assert.Equal(t, thingID, rxMsg.ThingID)
 	assert.Equal(t, actionID, rxMsg.Name)
 	assert.Equal(t, vocab.OpInvokeAction, rxMsg.Operation)
@@ -256,13 +222,13 @@ func TestServiceReconnect(t *testing.T) {
 	ts.AddTD(agentID, td1)
 
 	// Agent receives action request which we'll handle here
-	ag1.SetRequestHandler(func(msg *transports.ThingMessage) (stat transports.RequestStatus) {
+	ag1.SetRequestHandler(func(msg *transports.ThingMessage) (output any, err error) {
 		var req string
 		rxMsg.Store(&msg)
-		_ = utils.DecodeAsObject(msg.Data, &req)
-		stat.Completed(msg, req+".reply", nil)
+		_ = tputils.DecodeAsObject(msg.Data, &req)
+		output = req + ".reply"
 		slog.Info("agent1 delivery complete", "requestID", msg.RequestID)
-		return stat
+		return output, nil
 	})
 
 	// give connection time to be established before stopping the server
@@ -284,8 +250,7 @@ func TestServiceReconnect(t *testing.T) {
 	// this rpc call succeeds after agent1 has automatically reconnected
 	dThingID := td.MakeDigiTwinThingID(agentID, thingID)
 	var reply string
-	f1 := ts.GetForm(wot.OpInvokeAction, cl2.GetProtocolType())
-	err = cl2.SendRequest(f1, dThingID, actionID, &actionPayload, &reply)
+	err = cl2.SendRequest(wot.OpInvokeAction, dThingID, actionID, &actionPayload, &reply)
 	require.NoError(t, err)
 
 	require.NoError(t, err, "auto-reconnect didn't take place")
@@ -307,16 +272,23 @@ func TestAccess(t *testing.T) {
 	_ = token
 
 	//f := r.GetForm(wot.OpInvokeAction, hc.GetProtocolType())
-	authnAdminTD := r.GetTD(authn.AdminDThingID)
 
 	// regulars users should not have authn and authz admin access
-	clientProfiles, err := authn.AdminGetProfiles(authnAdminTD, hc)
+	clientProfiles, err := authn.AdminGetProfiles(hc)
 
 	require.Error(t, err, "regular users should not have access to authn.Admin")
 	require.Empty(t, clientProfiles)
 	//time.Sleep(time.Millisecond * 100)
-
-	role, err := authz.AdminGetClientRole(authnAdminTD, hc, clientID)
+	// fixme: deadlock in client when two responses are received,
+	// first one being unauthorized. [6]
+	// second onewith actionstatus=getclientrole output=viewer
+	// A: why 2 responses
+	// B: why would it deadlock => no-one is reading, no buffer
+	// action 1a: Set RPC buffer to 1 so that it can be closed while receiving a followup response
+	//              can the second write cause a panic => no, deadlock with 0 buf though
+	//              buf of 1 causes response to be lost. should go on as notification.!!
+	// action 1b: auto-lock and remove on receive so followup response is a notification.
+	role, err := authz.AdminGetClientRole(hc, clientID)
 	require.Error(t, err, "regular users should not have access to authz.Admin")
 	require.Empty(t, role)
 	//time.Sleep(time.Millisecond * 100)

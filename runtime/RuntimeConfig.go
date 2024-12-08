@@ -11,7 +11,7 @@ import (
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/runtime/authn/config"
 	"github.com/hiveot/hub/runtime/authz"
-	"github.com/hiveot/hub/runtime/transports"
+	"github.com/hiveot/hub/runtime/pm"
 	"gopkg.in/yaml.v3"
 	"log/slog"
 	"os"
@@ -29,9 +29,9 @@ const DefaultServerKeyFile = "hubKey.pem"
 type RuntimeConfig struct {
 
 	// middleware and services config. These all work out of the box with their defaults.
-	Authn      config.AuthnConfig         `yaml:"authn"`
-	Authz      authz.AuthzConfig          `yaml:"authz"`
-	Transports transports.ProtocolsConfig `yaml:"transports"`
+	Authn      config.AuthnConfig `yaml:"authn"`
+	Authz      authz.AuthzConfig  `yaml:"authz"`
+	Transports pm.ProtocolsConfig `yaml:"transports"`
 
 	// Runtime logging
 	LogLevel string `yaml:"logLevel,omitempty"` // default: warn
@@ -276,7 +276,7 @@ func NewRuntimeConfig() *RuntimeConfig {
 	cfg := &RuntimeConfig{
 		Authn:      config.NewAuthnConfig(),
 		Authz:      authz.NewAuthzConfig(),
-		Transports: transports.NewProtocolsConfig(),
+		Transports: pm.NewProtocolsConfig(),
 		LogLevel:   "info", // error, warning, info, debug
 		LogFile:    "",     // no logfile
 

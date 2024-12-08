@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/services/history/historyclient"
+	transports2 "github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot"
-	"github.com/hiveot/hub/wot/transports"
-	"github.com/hiveot/hub/wot/transports/utils"
-	"github.com/teris-io/shortid"
+	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"sync"
 	"time"
@@ -29,7 +29,7 @@ const AffordanceTypeAction = "action"
 //
 // This keeps a copy of the Thing's property and event values and updates on changes.
 type ConsumedThing struct {
-	cc transports.IClientConnection
+	cc transports2.IClientConnection
 
 	td *td.TD
 	// observer of property value changes by property name
@@ -38,7 +38,7 @@ type ConsumedThing struct {
 	subscribers map[string]InteractionListener
 
 	// action status values
-	actionValues map[string]*transports.RequestStatus
+	actionValues map[string]*transports2.RequestStatus
 	// prop values
 	propValues map[string]*InteractionOutput
 	// event values
@@ -53,13 +53,12 @@ type ConsumedThing struct {
 func (ct *ConsumedThing) _rpc(op string, name string, input interface{}, output interface{}) error {
 	//just a simple wrapper around the transport client
 	thingID := ct.td.ID
-	form := ct.td.GetForm(op, name, ct.cc.GetProtocolType())
-	err := ct.cc.SendRequest(form, thingID, name, input, output)
+	err := ct.cc.SendRequest(op, thingID, name, input, output)
 	return err
 }
 
 // build a map of interaction outputs for the given values
-func (ct *ConsumedThing) buildInteractionOutputMap(tvm map[string]*transports.ThingMessage) map[string]*InteractionOutput {
+func (ct *ConsumedThing) buildInteractionOutputMap(tvm map[string]*transports2.ThingMessage) map[string]*InteractionOutput {
 	outMap := make(map[string]*InteractionOutput)
 	for key, tv := range tvm {
 		iout := NewInteractionOutputFromValue(tv, ct.td)
@@ -69,7 +68,7 @@ func (ct *ConsumedThing) buildInteractionOutputMap(tvm map[string]*transports.Th
 }
 
 // Create an interactionOutput for the given thing message
-func (ct *ConsumedThing) buildInteractionOutput(tv *transports.ThingMessage) *InteractionOutput {
+func (ct *ConsumedThing) buildInteractionOutput(tv *transports2.ThingMessage) *InteractionOutput {
 	iout := NewInteractionOutputFromValue(tv, ct.td)
 	return iout
 }
@@ -149,7 +148,7 @@ func (ct *ConsumedThing) ObserveProperty(name string, listener InteractionListen
 //
 //	tm is the event message received from the hub. This isn't standard WoT so
 //	the objective is to remove the need for it.
-func (ct *ConsumedThing) OnDeliveryUpdate(msg *transports.ThingMessage) {
+func (ct *ConsumedThing) OnDeliveryUpdate(msg *transports2.ThingMessage) {
 	action, found := ct.actionValues[msg.Name]
 	_ = action
 	if !found {
@@ -158,8 +157,8 @@ func (ct *ConsumedThing) OnDeliveryUpdate(msg *transports.ThingMessage) {
 			"action", msg.Name)
 		return
 	}
-	stat := transports.RequestStatus{}
-	err := utils.DecodeAsObject(msg.Data, &stat)
+	stat := transports2.RequestStatus{}
+	err := tputils.DecodeAsObject(msg.Data, &stat)
 	if stat.Error != "" {
 		slog.Error("Delivery update invalid payload",
 			"thingID", msg.ThingID,
@@ -176,7 +175,7 @@ func (ct *ConsumedThing) OnDeliveryUpdate(msg *transports.ThingMessage) {
 //
 //	tm is the event message received from the hub. This isn't standard WoT so
 //	the objective is to remove the need for it.
-func (ct *ConsumedThing) OnEvent(tv *transports.ThingMessage) {
+func (ct *ConsumedThing) OnEvent(tv *transports2.ThingMessage) {
 	io := ct.buildInteractionOutput(tv)
 	ct.eventValues[tv.Name] = io
 	subscr, found := ct.subscribers[tv.Name]
@@ -192,7 +191,7 @@ func (ct *ConsumedThing) OnEvent(tv *transports.ThingMessage) {
 //
 //	msg is the property message received from the hub. This isn't standard WoT so
 //	the objective is to remove the need for it.
-func (ct *ConsumedThing) OnPropertyUpdate(msg *transports.ThingMessage) {
+func (ct *ConsumedThing) OnPropertyUpdate(msg *transports2.ThingMessage) {
 	io := ct.buildInteractionOutput(msg)
 	ct.propValues[msg.Name] = io
 	observer, found := ct.observers[msg.Name]
@@ -258,7 +257,7 @@ func (ct *ConsumedThing) ReadEvent(name string) *InteractionOutput {
 // get the remaining values.
 func (ct *ConsumedThing) ReadHistory(
 	name string, timestamp time.Time, duration time.Duration) (
-	values []*transports.ThingMessage, itemsRemaining bool, err error) {
+	values []*transports2.ThingMessage, itemsRemaining bool, err error) {
 
 	// FIXME: ReadHistory is not (yet) part of the WoT specification. Ege mentioned it would
 	// be added soon so this will change to follow the WoT specification.
@@ -352,17 +351,14 @@ func (ct *ConsumedThing) SubscribeEvent(name string, listener InteractionListene
 // delivery and applying the value.
 //
 // This returns a correlation ID and an error if the request cannot be delivered to the server.
-func (ct *ConsumedThing) WriteProperty(name string, value InteractionInput) (correlationID string, err error) {
+func (ct *ConsumedThing) WriteProperty(name string, value InteractionInput) (err error) {
 
 	//just a simple wrapper around the transport client
 	thingID := ct.td.ID
-	form := ct.td.GetForm(wot.OpWriteProperty, name, ct.cc.GetProtocolType())
 	raw := value.value
-	correlationID = shortid.MustGenerate()
-	status, err := ct.cc.SendNotification(form, thingID, name, raw, nil, correlationID)
-	_ = status
+	err = ct.cc.SendNotification(wot.OpWriteProperty, thingID, name, raw)
 
-	return correlationID, err
+	return err
 }
 
 // WriteMultipleProperties requests a change to multiple property values.
@@ -375,13 +371,13 @@ func (ct *ConsumedThing) WriteMultipleProperties(
 
 // NewConsumedThing creates a new instance of a Thing
 // Call Stop() when done
-func NewConsumedThing(td *td.TD, hc transports.IClientConnection) *ConsumedThing {
+func NewConsumedThing(td *td.TD, hc transports2.IClientConnection) *ConsumedThing {
 	c := ConsumedThing{
 		td:           td,
 		cc:           hc,
 		observers:    make(map[string]InteractionListener),
 		subscribers:  make(map[string]InteractionListener),
-		actionValues: make(map[string]*transports.RequestStatus),
+		actionValues: make(map[string]*transports2.RequestStatus),
 		eventValues:  make(map[string]*InteractionOutput),
 		propValues:   make(map[string]*InteractionOutput),
 	}

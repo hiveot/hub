@@ -37,7 +37,7 @@ func GenServiceClient(l *utils.SL, serviceTitle string, td *td.TD) {
 //	key with the service action method.
 //	action affordance describing the input and output parameters
 func GenActionMethod(l *utils.SL, serviceTitle string, key string, action *td.ActionAffordance) {
-	argsString := "td1 *td.TD, hc transports.IClientConnection"
+	argsString := "hc transports.IClientConnection"
 	respString := "err error"
 	invokeArgs := "nil"
 	invokeResp := "nil"
@@ -110,10 +110,8 @@ func GenActionMethod(l *utils.SL, serviceTitle string, key string, action *td.Ac
 	// if the input has multiple arguments then add the Args struct
 	l.Add(argStructLine)
 
-	l.Add("f := td1.GetForm(\"%s\",%sMethod, hc.GetProtocolType())",
-		wot.OpInvokeAction, methodName)
-	l.Add("err = hc.SendRequest(f, %s, %sMethod, %s, %s)",
-		serviceDigitwinID, methodName, invokeArgs, invokeResp)
+	l.Add("err = hc.SendRequest(\"%s\", %s, %sMethod, %s, %s)",
+		wot.OpInvokeAction, serviceDigitwinID, methodName, invokeArgs, invokeResp)
 	l.Add("return")
 	l.Indent--
 	l.Add("}")

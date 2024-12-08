@@ -1,7 +1,7 @@
 package historyapi
 
 import (
-	"github.com/hiveot/hub/wot/transports"
+	"github.com/hiveot/hub/transports"
 )
 
 // ReadHistoryServiceID is the ID of the service exposed by the agent

@@ -9,18 +9,17 @@ import (
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/runtime"
+	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/clients/mqttclient"
+	"github.com/hiveot/hub/transports/clients/ssescclient"
+	"github.com/hiveot/hub/transports/clients/wssclient"
 	"github.com/hiveot/hub/wot/td"
-	"github.com/hiveot/hub/wot/transports"
-	"github.com/hiveot/hub/wot/transports/clients/ssescclient"
 	"log/slog"
 	"math/rand"
 	"os"
 	"path"
 	"time"
 )
-
-const SSEProtocol = "sse"
-const WSSProtocol = "wss"
 
 // TestDir is the default test directory
 var TestDir = path.Join(os.TempDir(), "hiveot-test")
@@ -70,12 +69,23 @@ type TestServer struct {
 }
 
 func (test *TestServer) GetConnection(clientID string, protocolName string) transports.IClientConnection {
-	if protocolName == WSSProtocol {
+	getForm := func(op string) td.Form {
+		return test.Runtime.GetForm(op, protocolName)
+	}
+	if protocolName == transports.ProtocolTypeWSS {
 		wssURL := fmt.Sprintf("wss://localhost:%d/wss", test.Port)
-		return wssclient.NewWssTransportClient(wssURL, clientID, nil, test.Certs.CaCert, test.ConnectTimeout)
-	} else {
+		return wssclient.NewWssTransportClient(
+			wssURL, clientID, nil, test.Certs.CaCert, test.ConnectTimeout)
+	} else if protocolName == transports.ProtocolTypeMQTTS {
+		brokerURL := fmt.Sprintf("mqtts://localhost:%d", test.Port)
+		return mqttclient.NewMqttTransportClient(
+			brokerURL, clientID, nil, test.Certs.CaCert, getForm, test.ConnectTimeout)
+	} else if protocolName == transports.ProtocolTypeSSESC {
 		hostPort := fmt.Sprintf("localhost:%d", test.Port)
-		return ssescclient.NewSsescTransportClient(hostPort, clientID, nil, test.Certs.CaCert, test.ConnectTimeout)
+		return ssescclient.NewSsescTransportClient(
+			hostPort, clientID, nil, test.Certs.CaCert, getForm, test.ConnectTimeout)
+	} else {
+		panic("Unknown protocol: " + protocolName)
 	}
 }
 
@@ -147,15 +157,7 @@ func (test *TestServer) AddConnectService(serviceID string) (
 	if err != nil {
 		panic("AddConnectService: Failed adding client:" + err.Error())
 	}
-
-	if test.ServiceProtocol == WSSProtocol {
-		wssURL := fmt.Sprintf("wss://localhost:%d/wss", test.Port)
-		cl = wssclient.NewWssTransportClient(wssURL, serviceID, nil, test.Certs.CaCert, time.Minute)
-	} else {
-		hostPort := fmt.Sprintf("localhost:%d", test.Port)
-		cl = ssescclient.NewSsescTransportClient(hostPort, serviceID, nil, test.Certs.CaCert, time.Minute)
-	}
-
+	cl = test.GetConnection(serviceID, test.ServiceProtocol)
 	_, err = cl.ConnectWithToken(token)
 	if err != nil {
 		panic("AddConnectService: Failed connecting using token. serviceID=" + serviceID)
@@ -273,9 +275,9 @@ func NewTestServer() *TestServer {
 		Certs:   certs.CreateTestCertBundle(),
 		Config:  runtime.NewRuntimeConfig(),
 		// change these for running all tests with different protocols
-		AgentProtocol:    WSSProtocol,
-		ServiceProtocol:  SSEProtocol,
-		ConsumerProtocol: SSEProtocol,
+		AgentProtocol:    transports.ProtocolTypeWSS,
+		ServiceProtocol:  transports.ProtocolTypeWSS,
+		ConsumerProtocol: transports.ProtocolTypeWSS,
 		ConnectTimeout:   time.Second * 30, // testing extra long
 	}
 

@@ -5,6 +5,7 @@ import (
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/runtime/digitwin/store"
+	"github.com/hiveot/hub/wot/td"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"math/rand"

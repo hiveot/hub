@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/launcher/launcherclient"
-	"github.com/hiveot/hub/wot/transports"
+	"github.com/hiveot/hub/transports"
 	"github.com/urfave/cli/v2"
 )
 

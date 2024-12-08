@@ -8,8 +8,8 @@ import (
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/runtime/api"
-	"github.com/hiveot/hub/wot/transports"
-	"github.com/hiveot/hub/wot/transports/utils"
+	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"time"
 )
@@ -47,45 +47,83 @@ type ActionFlowRecord struct {
 // SSE, WS, MQTT bindings must use a correlation-id to match request-response messages.
 // this is not well-defined in the WoT specs and up to the protocol binding implementation.
 func (svc *DigitwinRouter) HandleInvokeAction(
-	msg *transports.ThingMessage, replyTo string) (stat transports.RequestStatus) {
-	//status string, output any, requestID string, err error) {
-
-	// check if consumer or agent has the right permissions
-	hasPerm := svc.hasPermission(msg.SenderID, msg.Operation, msg.ThingID)
-	if !hasPerm {
-		err := fmt.Errorf("Client '%s' does not have permission to invoke action '%s' on Thing '%s'",
-			msg.SenderID, msg.Name, msg.ThingID)
-		stat.Failed(msg, err)
-		return stat
-	}
+	msg *transports.ThingMessage, replyTo transports.IServerConnection) {
 
 	// Forward the action to the built-in services
 	agentID, thingID := td.SplitDigiTwinThingID(msg.ThingID)
+	_ = thingID
 	// TODO: Consider injecting the internal services instead of having direct dependencies
+	// internal services return instant result
+	hasOutput := true
+	var output any
+	var err error
 	switch agentID {
 	case digitwin.DirectoryAgentID:
-		stat = svc.digitwinAction(msg)
+		output, err = svc.digitwinAction(msg)
 	case authn.AdminAgentID:
-		stat = svc.authnAction(msg)
+		output, err = svc.authnAction(msg)
 	case authz.AdminAgentID:
-		stat = svc.authzAction(msg)
+		output, err = svc.authzAction(msg)
 	case api.DigitwinServiceID:
-		stat = svc.digitwinAction(msg)
+		output, err = svc.digitwinAction(msg)
 	default:
+		hasOutput = false
 		// Forward the action to external agents
-		slog.Info("HandleInvokeAction (to agent)",
+		svc.HandleInvokeRemoteAgent(msg, replyTo)
+	}
+	if hasOutput {
+		if err != nil {
+			slog.Warn("HandleInvokeAction failed", "err", err.Error())
+			replyTo.SendError(msg.ThingID, msg.Name, err.Error(), msg.RequestID)
+		} else {
+			_ = replyTo.SendResponse(msg.ThingID, msg.Name, output, msg.RequestID)
+		}
+	}
+}
+
+// HandleInvokeRemoteAgent forwards the action to external agents
+func (svc *DigitwinRouter) HandleInvokeRemoteAgent(
+	msg *transports.ThingMessage, replyTo transports.IServerConnection) {
+
+	agentID, thingID := td.SplitDigiTwinThingID(msg.ThingID)
+
+	slog.Info("HandleInvokeRemoteAgent (to agent)",
+		slog.String("dThingID", msg.ThingID),
+		slog.String("actionName", msg.Name),
+		slog.String("requestID", msg.RequestID),
+		slog.String("senderID", msg.SenderID),
+	)
+
+	// Store the action progress to be able to respond to queryAction.
+	// FIXME: don't store 'safe' actions as their results are meaningless in queryAction
+	// TODO: Maybe this shouldn't be stored at all and use properties instead.
+	_ = svc.dtwStore.UpdateActionStart(
+		msg.ThingID, msg.Name, msg.Data, msg.RequestID, msg.SenderID)
+
+	// forward to external services/things and return its response
+	var progress string
+
+	// Note: agents should only have a single instance
+	c := svc.cm.GetConnectionByClientID(agentID)
+	var err error
+	if c == nil {
+		progress = vocab.RequestFailed
+		err = fmt.Errorf("HandleInvokeRemoteAgent: Agent '%s' not reachable. Ignored", agentID)
+	} else {
+		progress = vocab.RequestDelivered
+		// FIXME: is this a potential race condition with updating ActionRecord?
+		// FIXME: send can still return an error
+		err = c.SendRequest(msg.Operation, thingID, msg.Name, msg.Data, msg.RequestID)
+	}
+	if err != nil {
+		slog.Warn("HandleInvokeRemoteAgent - failed",
 			slog.String("dThingID", msg.ThingID),
 			slog.String("actionName", msg.Name),
 			slog.String("requestID", msg.RequestID),
-			slog.String("senderID", msg.SenderID),
-		)
+			slog.String("err", err.Error()))
 
-		// Store the action progress to be able to respond to queryAction.
-		// FIXME: don't store 'safe' actions as their results are meaningless in queryAction
-		// TODO: Maybe this shouldn't be stored at all and use properties instead.
-		_ = svc.dtwStore.UpdateActionStart(
-			msg.ThingID, msg.Name, msg.Data, msg.RequestID, msg.SenderID)
-
+		replyTo.SendError(msg.ThingID, msg.Name, err.Error(), msg.RequestID)
+	} else {
 		// store a new action progress by message ID to support sending replies to the sender
 		actionRecord := ActionFlowRecord{
 			Operation: msg.Operation,
@@ -94,106 +132,61 @@ func (svc *DigitwinRouter) HandleInvokeAction(
 			RequestID: msg.RequestID,
 			Name:      msg.Name,
 			SenderID:  msg.SenderID,
-			Progress:  vocab.RequestPending,
+			Progress:  progress,
 			Updated:   time.Now(),
-			ReplyTo:   replyTo,
+			ReplyTo:   replyTo.GetConnectionID(),
 		}
+
+		// track in-progress actions
 		svc.mux.Lock()
+		actionRecord.Progress = progress
 		svc.activeCache[msg.RequestID] = actionRecord
 		svc.mux.Unlock()
-
-		// forward to external services/things and return its response
-		found := false
-
-		// Note: agents should only have a single instance
-		c := svc.cm.GetConnectionByClientID(agentID)
-		if c != nil {
-			found = true
-			status, output, err := c.InvokeAction(thingID, msg.Name, msg.Data, msg.RequestID, msg.SenderID)
-			stat.Delivered(msg)
-			stat.Status = status
-			stat.Output = output
-			if err != nil {
-				stat.Error = err.Error()
-			}
-		}
-
-		// Update the action status
-		svc.mux.Lock()
-		actionRecord.Progress = stat.Status
-		svc.activeCache[msg.RequestID] = actionRecord
-		svc.mux.Unlock()
-
-		if !found {
-			err := fmt.Errorf("HandleInvokeAction: Agent '%s' not reachable. Ignored", agentID)
-			stat.Failed(msg, err)
-		}
-		// update action status
-		_, _ = svc.dtwStore.UpdateActionStatus(
-			agentID, thingID, msg.Name, stat.Status, stat.Output)
-
-		// remove the action when completed
-		if stat.Status == vocab.RequestCompleted {
-			svc.mux.Lock()
-			delete(svc.activeCache, msg.RequestID)
-			svc.mux.Unlock()
-
-			slog.Info("HandleInvokeAction - finished",
-				slog.String("dThingID", msg.ThingID),
-				slog.String("actionName", msg.Name),
-				slog.String("requestID", msg.RequestID),
-			)
-		} else if stat.Status == vocab.RequestFailed {
-			svc.mux.Lock()
-			delete(svc.activeCache, msg.RequestID)
-			svc.mux.Unlock()
-
-			slog.Warn("HandleInvokeAction - failed",
-				slog.String("dThingID", msg.ThingID),
-				slog.String("actionName", msg.Name),
-				slog.String("requestID", msg.RequestID),
-				slog.String("err", stat.Error))
-		}
 	}
-	return stat
+
+	// store the action status
+	_, _ = svc.dtwStore.UpdateActionStatus(
+		agentID, thingID, msg.Name, progress, nil)
 }
 
-// HandleUpdateActionStatus agent sends an action progress update.
-// The message payload contains a RequestStatus object
+// HandleActionResponse agent sent an action response.
+// The message must contain the requestID previously used in SendRequest.
+// The payload is the application output object. (action output)
+// This completes the action successfully.
+//
+// Note, errors are returned via send error?
 //
 // This:
-// 1. Validates the request is still ongoing
-// 2: Updates the status of the current digital twin action record.
-// 3: Forwards the update to the sender, if this is an active request
-// 4: Updates the status of the active request cache
+// 1. Validates the request is still ongoing.
+// 2: Updates the status of the current digital twin action record to completed.
+// 3: Forwards the update to the sender, if this is an active request.
+// 4: Remove the active request from the cache.
 //
 // If the message is no longer in the active cache then it is ignored.
-func (svc *DigitwinRouter) HandleUpdateActionStatus(msg *transports.ThingMessage) {
-
-	var stat transports.RequestStatus
+func (svc *DigitwinRouter) HandleActionResponse(msg *transports.ThingMessage) {
 	var err error
 
 	agentID := msg.SenderID
-	err = utils.DecodeAsObject(msg.Data, &stat)
-	if err != nil {
-		slog.Warn("HandleUpdateActionStatus. Invalid payload", "err", err.Error())
-		return
-	}
+	slog.Info("HandleActionResponse",
+		slog.String("ThingID", msg.ThingID),
+		slog.String("Name", msg.Name),
+		slog.String("RequestID", msg.RequestID),
+	)
 
 	// 1: Validate this is an active action
 	svc.mux.Lock()
-	actionRecord, found := svc.activeCache[stat.CorrelationID]
+	actionRecord, found := svc.activeCache[msg.RequestID]
 	svc.mux.Unlock()
 	if !found {
 		err = fmt.Errorf(
-			"HandleUpdateActionStatus: Message '%s' from agent '%s' not in action cache. It is ignored",
-			stat.CorrelationID, agentID)
+			"HandleActionResponse: Message '%s' from agent '%s' not in action cache. It is ignored",
+			msg.RequestID, agentID)
 		slog.Warn(err.Error())
 		return
 	}
 	arAgentID := actionRecord.AgentID // this should match the msg.SenderID
-	if arAgentID != agentID {
-		slog.Error("HandleUpdateActionStatus. AgentID's don't match",
+	if arAgentID != msg.SenderID {
+		slog.Error("HandleActionResponse. AgentID's don't match",
 			"senderID", agentID, "requestRecord agent", arAgentID)
 		return
 	}
@@ -203,63 +196,66 @@ func (svc *DigitwinRouter) HandleUpdateActionStatus(msg *transports.ThingMessage
 	senderID := actionRecord.SenderID
 
 	// Update the thingID to notify the sender with progress on the digital twin thing ID
-	stat.ThingID = td.MakeDigiTwinThingID(agentID, thingID)
-	stat.Name = actionName
+	msg.ThingID = td.MakeDigiTwinThingID(agentID, thingID)
+	msg.Name = actionName
 
 	// the sender (agents) must be the thing agent
 	if agentID != arAgentID {
 		err = fmt.Errorf(
-			"HandleUpdateActionStatus: progress update '%s' of thing '%s' does not come from agent '%s' but from '%s'. Update ignored.",
-			stat.CorrelationID, thingID, arAgentID, agentID)
+			"HandleActionResponse: response ID '%s' of thing '%s' does"+
+				" not come from agent '%s' but from '%s'. Response ignored.",
+			msg.RequestID, thingID, arAgentID, agentID)
 		slog.Warn(err.Error(), "agentID", agentID)
 		return
 	}
 
 	// 2: Update the action status in the digital twin action record and log errors
 	//   (for use with query actions)
-	_, err = svc.dtwStore.UpdateActionStatus(agentID, thingID, actionName, stat.Status, stat.Output)
+	_, err = svc.dtwStore.UpdateActionStatus(
+		agentID, thingID, actionName, transports.StatusCompleted, msg.Data)
+	//
+	//if msg.Error != "" {
+	//	slog.Warn("HandleActionResponse - with error",
+	//		slog.String("AgentID", agentID),
+	//		slog.String("ThingID", thingID),
+	//		slog.String("Name", actionName),
+	//		slog.String("Status", msg.Status),
+	//		slog.String("RequestID", msg.RequestID),
+	//		//slog.String("Error", msg.Error),
+	//	)
+	//} else if stat.Status == vocab.RequestCompleted {
+	//	slog.Info("HandleActionResponse - completed",
+	//		slog.String("ThingID", thingID),
+	//		slog.String("Name", actionName),
+	//		slog.String("RequestID", stat.RequestID),
+	//	)
+	//} else {
+	//	slog.Info("HandleActionResponse - progress",
+	//		slog.String("ThingID", thingID),
+	//		slog.String("Name", actionName),
+	//		slog.String("RequestID", stat.RequestID),
+	//		slog.String("Status", stat.Status),
+	//	)
+	//}
 
-	if stat.Error != "" {
-		slog.Warn("HandleUpdateActionStatus - with error",
-			slog.String("AgentID", agentID),
-			slog.String("ThingID", thingID),
-			slog.String("Name", actionName),
-			slog.String("Status", stat.Status),
-			slog.String("RequestID", stat.CorrelationID),
-			slog.String("Error", stat.Error),
-		)
-	} else if stat.Status == vocab.RequestCompleted {
-		slog.Info("HandleUpdateActionStatus - completed",
-			slog.String("ThingID", thingID),
-			slog.String("Name", actionName),
-			slog.String("RequestID", stat.CorrelationID),
-		)
-	} else {
-		slog.Info("HandleUpdateActionStatus - progress",
-			slog.String("ThingID", thingID),
-			slog.String("Name", actionName),
-			slog.String("RequestID", stat.CorrelationID),
-			slog.String("Status", stat.Status),
-		)
-	}
-
-	// 3: Forward the progress update to the original sender
+	// 3: Forward the progress update to the sender of the request
 	c := svc.cm.GetConnectionByConnectionID(replyTo)
 	if c != nil {
-		err = c.PublishActionStatus(stat, agentID)
+		// send the response to the consumer
+		err = c.SendResponse(msg.ThingID, msg.Name, msg.Data, msg.RequestID)
 	} else {
-		err = fmt.Errorf("client connection-id (replyTo) '%s' not found for client '%s'", replyTo, senderID)
+		err = fmt.Errorf("client connection-id (replyTo) '%s' not found for client '%s'",
+			replyTo, senderID)
 		// try workaround
-
 	}
 
 	if err != nil {
-		slog.Warn("HandleUpdateActionStatus. Forwarding to sender failed",
+		slog.Warn("HandleActionResponse. Forwarding to sender failed",
 			slog.String("senderID", senderID),
 			slog.String("thingID", thingID),
 			slog.String("replyTo", replyTo),
 			slog.String("err", err.Error()),
-			slog.String("RequestID", stat.CorrelationID),
+			slog.String("RequestID", msg.RequestID),
 		)
 		err = nil
 	}
@@ -267,12 +263,7 @@ func (svc *DigitwinRouter) HandleUpdateActionStatus(msg *transports.ThingMessage
 	// 4: Update the active action cache and remove the action when completed or failed
 	svc.mux.Lock()
 	defer svc.mux.Unlock()
-	actionRecord.Progress = stat.Status
-	svc.activeCache[stat.CorrelationID] = actionRecord
-
-	if stat.Status == vocab.RequestCompleted || stat.Status == vocab.RequestFailed {
-		delete(svc.activeCache, stat.CorrelationID)
-	}
+	delete(svc.activeCache, msg.RequestID)
 	return
 }
 

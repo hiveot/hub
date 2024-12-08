@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/services/state/stateclient"
+	"github.com/hiveot/hub/transports/utils"
 	"github.com/hiveot/hub/wot/consumedthing"
-	"github.com/hiveot/hub/wot/transports/utils"
 	"log/slog"
 	"net/http"
 	"sync"
@@ -310,7 +310,7 @@ func (sess *WebClientSession) onMessage(msg *transports.ThingMessage) {
 		//    hx-trigger="sse:{{.Thing.ThingID}}/{{k}}"
 		// notify the browser both of the property value and the timestamp
 		thingAddr := fmt.Sprintf("%s/%s", msg.ThingID, msg.Name)
-		propVal := utils.DecodeAsString(msg.Data)
+		propVal := tputils.DecodeAsString(msg.Data)
 		sess.SendSSE(thingAddr, propVal)
 		thingAddr = fmt.Sprintf("%s/%s/updated", msg.ThingID, msg.Name)
 		sess.SendSSE(thingAddr, msg.GetUpdated())
@@ -318,7 +318,7 @@ func (sess *WebClientSession) onMessage(msg *transports.ThingMessage) {
 		// report unhandled delivery updates
 		// for now just pass it to the notification toaster
 		stat := transports.RequestStatus{}
-		_ = utils.DecodeAsObject(msg.Data, &stat)
+		_ = tputils.DecodeAsObject(msg.Data, &stat)
 
 		// TODO: figure out a way to replace the existing notification if the requestID
 		//  is the same (status changes from applied to delivered)

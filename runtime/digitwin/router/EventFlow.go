@@ -3,7 +3,7 @@ package router
 
 import (
 	"github.com/hiveot/hub/api/go/digitwin"
-	"github.com/hiveot/hub/wot/transports"
+	"github.com/hiveot/hub/transports"
 )
 
 // HandlePublishEvent agent sends an event
@@ -22,16 +22,15 @@ func (svc *DigitwinRouter) HandlePublishEvent(msg *transports.ThingMessage) {
 }
 
 // HandleReadEvent consumer requests a digital twin thing's event value
-func (svc *DigitwinRouter) HandleReadEvent(msg *transports.ThingMessage) (stat transports.RequestStatus) {
-	reply, err := svc.dtwService.ValuesSvc.ReadEvent(msg.SenderID,
+func (svc *DigitwinRouter) HandleReadEvent(msg *transports.ThingMessage) (output any, err error) {
+
+	output, err = svc.dtwService.ValuesSvc.ReadEvent(msg.SenderID,
 		digitwin.ValuesReadEventArgs{ThingID: msg.ThingID, Name: msg.Name})
-	stat.Completed(msg, reply, err)
-	return stat
+	return output, err
 }
 
 // HandleReadAllEvents consumer requests all digital twin thing event values
-func (svc *DigitwinRouter) HandleReadAllEvents(msg *transports.ThingMessage) (stat transports.RequestStatus) {
-	reply, err := svc.dtwService.ValuesSvc.ReadAllEvents(msg.SenderID, msg.ThingID)
-	stat.Completed(msg, reply, err)
-	return stat
+func (svc *DigitwinRouter) HandleReadAllEvents(msg *transports.ThingMessage) (output any, err error) {
+	output, err = svc.dtwService.ValuesSvc.ReadAllEvents(msg.SenderID, msg.ThingID)
+	return output, err
 }

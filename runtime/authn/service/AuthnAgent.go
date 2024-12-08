@@ -3,8 +3,8 @@ package service
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
+	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot/td"
-	"github.com/hiveot/hub/wot/transports"
 )
 
 // AuthnAgent agent for the authentication services:
@@ -14,18 +14,17 @@ type AuthnAgent struct {
 }
 
 // HandleAction authn services action request
-func (agent *AuthnAgent) HandleAction(msg *transports.ThingMessage) (stat transports.RequestStatus) {
+func (agent *AuthnAgent) HandleAction(msg *transports.ThingMessage) (output any, err error) {
 
 	_, thingID := td.SplitDigiTwinThingID(msg.ThingID)
 	if thingID == authn.AdminServiceID {
-		stat = agent.adminHandler(msg)
+		output, err = agent.adminHandler(msg)
 	} else if thingID == authn.UserServiceID {
-		stat = agent.userHandler(msg)
+		output, err = agent.userHandler(msg)
 	} else {
-		err := fmt.Errorf("unknown authn service capability '%s'", msg.ThingID)
-		stat.Failed(msg, err)
+		err = fmt.Errorf("unknown authn service capability '%s'", msg.ThingID)
 	}
-	return stat
+	return output, err
 }
 
 // StartAuthnAgent returns a new instance of the agent for the authentication services.
