@@ -107,6 +107,11 @@ func (c *WssServerConnection) SendNotification(
 	}
 
 	switch operation {
+	case wot.HTOpUpdateTD:
+		// update the TD if the client is subscribed to its events
+		if c.subscriptions.IsSubscribed(dThingID, "") {
+			c._send(msg)
+		}
 	case wot.HTOpPublishEvent:
 		if c.subscriptions.IsSubscribed(dThingID, name) {
 			c._send(msg)
@@ -160,7 +165,7 @@ func (c *WssServerConnection) SendRequest(
 // If the status is RequestFailed then output is an error, otherwise the output value
 // If this returns an error then no request will was sent.
 func (c *WssServerConnection) SendResponse(
-	thingID, name string, output any, requestID string) (err error) {
+	thingID, name string, output any, errResp error, requestID string) (err error) {
 
 	if requestID == "" {
 		err = fmt.Errorf("SendResponse to '%s' without requestID", c.clientID)
@@ -169,15 +174,27 @@ func (c *WssServerConnection) SendResponse(
 			slog.String("clientID", c.clientID),
 			"requestID", requestID)
 	}
-	msg := ActionStatusMessage{
-		ThingID:     thingID,
-		MessageType: MsgTypeActionStatus,
-		Name:        name,
-		RequestID:   requestID,
-		Output:      output,
-		Timestamp:   time.Now().Format(wot.RFC3339Milli),
+	if errResp != nil {
+		msg := ErrorMessage{
+			ThingID:     thingID,
+			MessageType: MsgTypeError,
+			Title:       errResp.Error(),
+			RequestID:   requestID,
+			Detail:      fmt.Sprintf("%v", output),
+			//Timestamp:   time.Now().Format(wot.RFC3339Milli),
+		}
+		_ = c._send(msg)
+	} else {
+		msg := ActionStatusMessage{
+			ThingID:     thingID,
+			MessageType: MsgTypeActionStatus,
+			Name:        name,
+			RequestID:   requestID,
+			Output:      output,
+			Timestamp:   time.Now().Format(wot.RFC3339Milli),
+		}
+		err = c._send(msg)
 	}
-	err = c._send(msg)
 	return err
 }
 

@@ -2,7 +2,7 @@
 package tests
 
 import (
-	transports2 "github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -40,10 +40,10 @@ func TestObservePropertyByConsumer(t *testing.T) {
 	defer cl2.Disconnect()
 
 	// set the handler for property updates and subscribe
-	cl1.SetNotificationHandler(func(ev *transports2.ThingMessage) {
+	cl1.SetNotificationHandler(func(ev *transports.ThingMessage) {
 		rxVal1.Store(ev.Data)
 	})
-	cl2.SetNotificationHandler(func(ev *transports2.ThingMessage) {
+	cl2.SetNotificationHandler(func(ev *transports.ThingMessage) {
 		rxVal2.Store(ev.Data)
 	})
 
@@ -96,10 +96,12 @@ func TestPublishPropertyByAgent(t *testing.T) {
 	var propValue1 = "value1"
 
 	// handler of property updates on the server
-	handler1 := func(msg *transports2.ThingMessage, replyTo transports2.IServerConnection) {
+	handler1 := func(msg *transports.ThingMessage, replyTo string) (
+		handled bool, output any, err error) {
 		// event handlers do not reply
-		require.Nil(t, replyTo)
+		require.Empty(t, replyTo)
 		evVal.Store(msg.Data)
+		return true, nil, nil
 	}
 
 	// 1. start the transport

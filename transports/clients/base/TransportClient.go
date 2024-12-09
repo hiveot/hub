@@ -7,14 +7,15 @@ import (
 	utils2 "github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/teris-io/shortid"
 	"log/slog"
 	"sync"
 	"sync/atomic"
 	"time"
 )
 
-// TransportClient provides base functionality of all transport clients
-type TransportClient struct {
+// BaseTransportClient provides base functionality of all transport clients
+type BaseTransportClient struct {
 	// ID of this client
 	BaseClientID string
 	// unique connectionID start with the clientID
@@ -40,8 +41,10 @@ type TransportClient struct {
 	// Request and Response channel helper
 	BaseRnrChan *utils2.RnRChan
 
-	// implementation of sendNotification
-	BaseSendNotification func(op string, thingID string, name string, data any) error
+	// implementation of SendOperation
+	// this is the base for sending notifications and requests.
+	// include a requestID if a response is to be sent. (depending on the operation)
+	BaseSendOperation func(op string, thingID string, name string, data any, requestID string) error
 
 	// callback for reporting connection status change
 	BaseConnectHandler func(connected bool, err error)
@@ -52,53 +55,86 @@ type TransportClient struct {
 }
 
 // GetClientID returns the client's account ID
-func (cl *TransportClient) GetClientID() string {
+func (cl *BaseTransportClient) GetClientID() string {
 	return cl.BaseClientID
 }
 
 // GetConnectionID returns the client's connection ID
-func (cl *TransportClient) GetConnectionID() string {
+func (cl *BaseTransportClient) GetConnectionID() string {
 	return cl.BaseConnectionID
 }
 
 // GetProtocolType returns the type of protocol this client supports
-func (cl *TransportClient) GetProtocolType() string {
+func (cl *BaseTransportClient) GetProtocolType() string {
 	return cl.BaseProtocolType
 }
 
 // GetServerURL returns the schema://address:port/path of the server connection
-func (cl *TransportClient) GetServerURL() string {
+func (cl *BaseTransportClient) GetServerURL() string {
 	return cl.BaseFullURL
 }
 
 // IsConnected return whether the return channel is connection, eg can receive data
-func (cl *TransportClient) IsConnected() bool {
+func (cl *BaseTransportClient) IsConnected() bool {
 	return cl.BaseIsConnected.Load()
 }
 
 // Marshal encodes the native data into the wire format
-func (cl *TransportClient) Marshal(data any) []byte {
+func (cl *BaseTransportClient) Marshal(data any) []byte {
 	jsonData, _ := jsoniter.Marshal(data)
 	return jsonData
 }
-func (cl *TransportClient) ObserveProperty(thingID string, name string) error {
+
+// ObserveProperty observe one or all properties
+func (cl *BaseTransportClient) ObserveProperty(thingID string, name string) error {
 	if name != "" {
-		return cl.BaseSendNotification(wot.OpObserveProperty, thingID, name, nil)
+		return cl.BaseSendOperation(wot.OpObserveProperty, thingID, name, nil, "")
 	} else {
-		return cl.BaseSendNotification(wot.OpObserveAllProperties, thingID, "", nil)
+		return cl.BaseSendOperation(wot.OpObserveAllProperties, thingID, "", nil, "")
 	}
+}
+
+// SendNotification sends the notification without a reply.
+func (cl *BaseTransportClient) SendNotification(
+	operation string, dThingID, name string, data any) error {
+
+	err := cl.BaseSendOperation(operation, dThingID, name, data, "")
+	return err
+}
+
+// SendRequest sends an operation request and waits for a completion or timeout.
+// This uses a correlationID to link actions to progress updates.
+func (cl *BaseTransportClient) SendRequest(operation string,
+	dThingID string, name string, input interface{}, output interface{}) (err error) {
+
+	// open a return channel for the response
+	requestID := "rpc-" + shortid.MustGenerate()
+	rChan := cl.BaseRnrChan.Open(requestID)
+
+	err = cl.BaseSendOperation(operation, dThingID, name, input, requestID)
+
+	if err != nil {
+		slog.Warn("SendRequest: failed sending request",
+			"dThingID", dThingID,
+			"name", name,
+			"requestID", requestID,
+			"err", err.Error())
+		return err
+	}
+	err = cl.WaitForResponse(rChan, requestID, output)
+	return err
 }
 
 // SetConnectHandler sets the notification handler of connection failure
 // Intended to notify the client that a reconnect or relogin is needed.
-func (cl *TransportClient) SetConnectHandler(cb func(connected bool, err error)) {
+func (cl *BaseTransportClient) SetConnectHandler(cb func(connected bool, err error)) {
 	cl.BaseMux.Lock()
 	cl.BaseConnectHandler = cb
 	cl.BaseMux.Unlock()
 }
 
 // SetNotificationHandler set the handler that receives server notifications
-func (cl *TransportClient) SetNotificationHandler(cb transports.NotificationHandler) {
+func (cl *BaseTransportClient) SetNotificationHandler(cb transports.NotificationHandler) {
 	cl.BaseMux.Lock()
 	cl.BaseNotificationHandler = cb
 	cl.BaseMux.Unlock()
@@ -106,7 +142,7 @@ func (cl *TransportClient) SetNotificationHandler(cb transports.NotificationHand
 
 // SetRequestHandler set the handler that receives all agent facing requests
 // and returns a reply.
-func (cl *TransportClient) SetRequestHandler(cb transports.RequestHandler) {
+func (cl *BaseTransportClient) SetRequestHandler(cb transports.RequestHandler) {
 	cl.BaseMux.Lock()
 	cl.BaseRequestHandler = cb
 	cl.BaseMux.Unlock()
@@ -114,35 +150,35 @@ func (cl *TransportClient) SetRequestHandler(cb transports.RequestHandler) {
 
 // Subscribe to one or all events of a thing
 // name is the event to subscribe to or "" for all events
-func (cl *TransportClient) Subscribe(thingID string, name string) error {
+func (cl *BaseTransportClient) Subscribe(thingID string, name string) error {
 	if name != "" {
-		return cl.BaseSendNotification(wot.OpSubscribeEvent, thingID, name, nil)
+		return cl.BaseSendOperation(wot.OpSubscribeEvent, thingID, name, nil, "")
 	} else {
-		return cl.BaseSendNotification(wot.OpSubscribeAllEvents, thingID, "", nil)
+		return cl.BaseSendOperation(wot.OpSubscribeAllEvents, thingID, "", nil, "")
 	}
 }
 
 // Unmarshal decodes the wire format to native data
-func (cl *TransportClient) Unmarshal(raw []byte, reply interface{}) error {
+func (cl *BaseTransportClient) Unmarshal(raw []byte, reply interface{}) error {
 	err := jsoniter.Unmarshal(raw, reply)
 	return err
 }
 
-// Unobserve a previous observe of a property
-func (cl *TransportClient) UnobserveProperty(thingID string, name string) error {
+// Unobserve a previous observed property or all properties
+func (cl *BaseTransportClient) UnobserveProperty(thingID string, name string) error {
 	if name != "" {
-		return cl.BaseSendNotification(wot.OpUnobserveProperty, thingID, name, nil)
+		return cl.BaseSendOperation(wot.OpUnobserveProperty, thingID, name, nil, "")
 	} else {
-		return cl.BaseSendNotification(wot.OpUnobserveAllProperties, thingID, "", nil)
+		return cl.BaseSendOperation(wot.OpUnobserveAllProperties, thingID, "", nil, "")
 	}
 }
 
 // Unsubscribe from previous subscription
-func (cl *TransportClient) Unsubscribe(thingID string, name string) error {
+func (cl *BaseTransportClient) Unsubscribe(thingID string, name string) error {
 	if name != "" {
-		return cl.BaseSendNotification(wot.OpUnsubscribeEvent, thingID, name, nil)
+		return cl.BaseSendOperation(wot.OpUnsubscribeEvent, thingID, name, nil, "")
 	} else {
-		return cl.BaseSendNotification(wot.OpUnsubscribeAllEvents, thingID, "", nil)
+		return cl.BaseSendOperation(wot.OpUnsubscribeAllEvents, thingID, "", nil, "")
 	}
 }
 
@@ -153,7 +189,7 @@ func (cl *TransportClient) Unsubscribe(thingID string, name string) error {
 // (no error) is returned. If the response is an error type, then return this
 // error.
 // If anything goes wrong, an error is returned
-func (cl *TransportClient) WaitForResponse(
+func (cl *BaseTransportClient) WaitForResponse(
 	rChan chan any, requestID string, output any) (err error) {
 
 	// wait for reply

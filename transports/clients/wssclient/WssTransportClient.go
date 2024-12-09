@@ -21,7 +21,7 @@ import (
 // WssTransportClient manages the connection to the hub server using Websockets.
 // This implements the IConsumer interface.
 type WssTransportClient struct {
-	base.TransportClient
+	base.BaseTransportClient
 
 	wssConn              *websocket.Conn
 	wssCancelFn          context.CancelFunc
@@ -120,74 +120,87 @@ func (cl *WssTransportClient) Reconnect() {
 }
 
 // SendError [agent] sends an error response.
-func (cl *WssTransportClient) SendError(
-	thingID string, name string, errResponse string, requestID string) {
+//func (cl *WssTransportClient) SendError(
+//	thingID string, name string, errResponse string, requestID string) {
+//
+//	slog.Debug("SendError",
+//		slog.String("agentID", cl.BaseClientID),
+//		slog.String("thingID", thingID),
+//		slog.String("name", name),
+//		slog.String("requestID", requestID))
+//
+//	msg := wssserver.ErrorMessage{
+//		MessageType: wssserver.MsgTypeError,
+//		ThingID:     thingID,
+//		Name:        name,
+//		RequestID:   requestID,
+//		Title:       errResponse,
+//		Timestamp:   time.Now().Format(wot.RFC3339Milli),
+//	}
+//	_ = cl._send(msg)
+//}
 
-	slog.Debug("SendError",
-		slog.String("agentID", cl.BaseClientID),
-		slog.String("thingID", thingID),
+func (cl *WssTransportClient) SendOperation(
+	operation string, dThingID, name string, data any, requestID string) error {
+
+	slog.Info("SendOperation",
+		slog.String("clientID", cl.GetClientID()),
+		slog.String("dThingID", dThingID),
 		slog.String("name", name),
-		slog.String("requestID", requestID))
+		slog.String("requestID", requestID),
+	)
 
-	msg := wssserver.ErrorMessage{
-		MessageType: wssserver.MsgTypeError,
-		ThingID:     thingID,
-		Name:        name,
-		RequestID:   requestID,
-		Title:       errResponse,
-		Timestamp:   time.Now().Format(wot.RFC3339Milli),
-	}
-	_ = cl._send(msg)
-}
-
-func (cl *WssTransportClient) SendNotification(
-	operation string, dThingID, name string, data any) error {
 	// convert the operation into a websocket message and send it to the server
-	msg, err := wssserver.OpToMessage(operation, dThingID, name, nil, data, "")
+	msg, err := wssserver.OpToMessage(operation, dThingID, name, nil, data, requestID)
 	if err != nil {
-		slog.Error("SendNotification: unknown operation", "op", operation)
+		slog.Error("SendOperation: unknown operation", "op", operation)
 		return err
 	}
 	err = cl._send(msg)
 	return err
 }
 
-// SendRequest sends an operation request and waits for a completion or timeout.
-// This uses a correlationID to link actions to progress updates.
-func (cl *WssTransportClient) SendRequest(operation string,
-	dThingID string, name string, input interface{}, output interface{}) (err error) {
-
-	requestID := "wssrpc-" + shortid.MustGenerate()
-	clientID := cl.GetClientID()
-	names := []string{}
-	wssMsg, err := wssserver.OpToMessage(operation, dThingID, name, names, input, requestID)
-	if err != nil {
-		slog.Error("SendRequest:Unknown operation", "op", operation)
-		return err
-	}
-	slog.Info("SendRequest (request)",
-		slog.String("clientID", clientID),
-		slog.String("dThingID", dThingID),
-		slog.String("name", name),
-		slog.String("requestID", requestID),
-	)
-	rChan := cl.BaseRnrChan.Open(requestID)
-
-	err = cl._send(wssMsg)
-
-	if err != nil {
-		slog.Warn("rpc: failed sending request",
-			"correlationID", requestID,
-			"err", err.Error())
-		return err
-	}
-	err = cl.WaitForResponse(rChan, requestID, output)
-	return err
-}
+//// SendRequest sends an operation request and waits for a completion or timeout.
+//// This uses a correlationID to link actions to progress updates.
+//func (cl *WssTransportClient) SendRequest(operation string,
+//	dThingID string, name string, input interface{}, output interface{}) (err error) {
+//
+//	// open a return channel for the response
+//	requestID := "wssrpc-" + shortid.MustGenerate()
+//	rChan := cl.BaseRnrChan.Open(requestID)
+//
+//	err = cl.SendOperation(operation, dThingID, name, input, requestID)
+//
+//	//clientID := cl.GetClientID()
+//	//names := []string{}
+//	//wssMsg, err := wssserver.OpToMessage(operation, dThingID, name, names, input, requestID)
+//	//if err != nil {
+//	//	slog.Error("SendRequest:Unknown operation", "op", operation)
+//	//	return err
+//	//}
+//	//slog.Info("SendRequest (request)",
+//	//	slog.String("clientID", cl.GetClientID()),
+//	//	slog.String("dThingID", dThingID),
+//	//	slog.String("name", name),
+//	//	slog.String("requestID", requestID),
+//	//)
+//	//rChan := cl.BaseRnrChan.Open(requestID)
+//
+//	//err = cl._send(wssMsg)
+//
+//	if err != nil {
+//		slog.Warn("rpc: failed sending request",
+//			"correlationID", requestID,
+//			"err", err.Error())
+//		return err
+//	}
+//	err = cl.WaitForResponse(rChan, requestID, output)
+//	return err
+//}
 
 // SendResponse [agent] sends an action status update to the server.
 func (cl *WssTransportClient) SendResponse(
-	thingID string, name string, output any, requestID string) {
+	thingID string, name string, output any, err error, requestID string) {
 
 	slog.Debug("SendResponse",
 		slog.String("agentID", cl.BaseClientID),
@@ -195,18 +208,33 @@ func (cl *WssTransportClient) SendResponse(
 		slog.String("name", name),
 		slog.String("requestID", requestID))
 
-	msg := wssserver.ActionStatusMessage{
-		MessageType: wssserver.MsgTypeActionStatus,
-		ThingID:     thingID,
-		Name:        name,
-		RequestID:   requestID,
-		MessageID:   shortid.MustGenerate(),
-		Status:      "completed",
-		Output:      output,
-		Timestamp:   time.Now().Format(wot.RFC3339Milli),
-	}
-	_ = cl._send(msg)
+	if err != nil {
 
+		msg := wssserver.ErrorMessage{
+			MessageType: wssserver.MsgTypeError,
+			ThingID:     thingID,
+			Name:        name,
+			RequestID:   requestID,
+			Title:       err.Error(),
+			Timestamp:   time.Now().Format(wot.RFC3339Milli),
+		}
+		if output != nil {
+			msg.Detail = fmt.Sprintf("%v", output)
+		}
+		_ = cl._send(msg)
+	} else {
+		msg := wssserver.ActionStatusMessage{
+			MessageType: wssserver.MsgTypeActionStatus,
+			ThingID:     thingID,
+			Name:        name,
+			RequestID:   requestID,
+			MessageID:   shortid.MustGenerate(),
+			Status:      "completed",
+			Output:      output,
+			Timestamp:   time.Now().Format(wot.RFC3339Milli),
+		}
+		_ = cl._send(msg)
+	}
 }
 
 // NewWssTransportClient creates a new instance of the websocket hub client.
@@ -237,7 +265,7 @@ func NewWssTransportClient(fullURL string, clientID string,
 		timeout = time.Second * 3
 	}
 	cl := WssTransportClient{
-		TransportClient: base.TransportClient{
+		BaseTransportClient: base.BaseTransportClient{
 			BaseCaCert:       caCert,
 			BaseClientID:     clientID,
 			BaseConnectionID: clientID + "." + shortid.MustGenerate(),
@@ -253,7 +281,7 @@ func NewWssTransportClient(fullURL string, clientID string,
 
 		// max message size for bulk reads is 10MB.
 	}
-	cl.BaseSendNotification = cl.SendNotification
+	cl.BaseSendOperation = cl.SendOperation
 
 	return &cl
 }

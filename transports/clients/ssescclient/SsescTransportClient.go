@@ -9,8 +9,6 @@ import (
 	"github.com/hiveot/hub/transports/clients/httpclient"
 	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot/td"
-	jsoniter "github.com/json-iterator/go"
-	"github.com/teris-io/shortid"
 	"log/slog"
 	"sync/atomic"
 	"time"
@@ -148,26 +146,25 @@ func (cl *SsescTransportClient) handleSSEConnect(connected bool, err error) {
 
 // SendRequest sends an operation request and waits for a completion or timeout.
 // This uses a correlationID to link actions to progress updates.
-func (cl *SsescTransportClient) SendRequest(operation string,
-	dThingID string, name string, input interface{}, output interface{}) (err error) {
-
-	// a requestID is needed before the action is published in order to match it with the reply
-	requestID := "sserpc-" + shortid.MustGenerate()
-	rChan := cl.rnrChan.Open(requestID)
-
-	// Without a return channel there is no waiting for a result
-	raw, _, err := cl.SendOperation(operation, dThingID, name, input, requestID)
-
-	// If a result is received then leave it there and return the result
-	// this is currently not supported
-	if raw != nil && output != nil {
-		err = jsoniter.Unmarshal(raw, output)
-		cl.rnrChan.Close(requestID)
-		return err
-	}
-	err = cl.WaitForResponse(rChan, requestID, output)
-	return err
-}
+//func (cl *SsescTransportClient) SendRequest(operation string,
+//	dThingID string, name string, input interface{}, output interface{}) (err error) {
+//
+//	// a requestID is needed before the action is published in order to match it with the reply
+//	requestID := "sserpc-" + shortid.MustGenerate()
+//	rChan := cl.rnrChan.Open(requestID)
+//
+//	raw, _, err := cl.SendOperation(operation, dThingID, name, input, requestID)
+//
+//	// If a result is received then leave it there and return the result
+//	// this is currently not supported
+//	if raw != nil && output != nil {
+//		err = jsoniter.Unmarshal(raw, output)
+//		cl.rnrChan.Close(requestID)
+//		return err
+//	}
+//	err = cl.WaitForResponse(rChan, requestID, output)
+//	return err
+//}
 
 // SetSSEPath sets the new sse path to use.
 // This allows to change the hub default /ssesc

@@ -56,19 +56,19 @@ func (svc *DigitwinRouter) HandleUpdateMultipleProperties(msg *transports.ThingM
 
 // HandleReadProperty consumer requests a digital twin thing's property value
 func (svc *DigitwinRouter) HandleReadProperty(
-	msg *transports.ThingMessage) (output any, err error) {
+	msg *transports.ThingMessage) (completed bool, output any, err error) {
 
 	output, err = svc.dtwService.ValuesSvc.ReadProperty(msg.SenderID,
 		digitwin.ValuesReadPropertyArgs{ThingID: msg.ThingID, Name: msg.Name})
-	return output, err
+	return true, output, err
 }
 
 // HandleReadAllProperties consumer requests reading all digital twin's property values
 func (svc *DigitwinRouter) HandleReadAllProperties(
-	msg *transports.ThingMessage) (output any, err error) {
+	msg *transports.ThingMessage) (completed bool, output any, err error) {
 
 	output, err = svc.dtwService.ValuesSvc.ReadAllProperties(msg.SenderID, msg.ThingID)
-	return output, err
+	return true, output, err
 }
 
 // HandleWriteProperty A consumer requests to write a new value to a property.
@@ -79,8 +79,8 @@ func (svc *DigitwinRouter) HandleReadAllProperties(
 //	                         -> progress event
 //
 // if name is empty then newValue contains a map of properties
-func (svc *DigitwinRouter) HandleWriteProperty(
-	msg *transports.ThingMessage, replyTo transports.IServerConnection) {
+func (svc *DigitwinRouter) HandleWriteProperty(msg *transports.ThingMessage, replyTo string) (
+	completed bool, output any, err error) {
 
 	// assign a requestID if none given
 	agentID, thingID := td.SplitDigiTwinThingID(msg.ThingID)
@@ -97,7 +97,7 @@ func (svc *DigitwinRouter) HandleWriteProperty(
 			AgentID:   agentID,
 			ThingID:   thingID,
 			RequestID: msg.RequestID,
-			ReplyTo:   replyTo.GetConnectionID(),
+			ReplyTo:   replyTo,
 			Name:      msg.Name,
 			SenderID:  msg.SenderID,
 			Progress:  vocab.RequestDelivered,
@@ -105,17 +105,16 @@ func (svc *DigitwinRouter) HandleWriteProperty(
 		}
 		svc.mux.Unlock()
 
-		err := c.SendRequest(wot.OpWriteProperty, thingID, msg.Name, msg.Data, msg.RequestID)
+		err = c.SendRequest(wot.OpWriteProperty, thingID, msg.Name, msg.Data, msg.RequestID)
 		if err != nil {
 			// unable to deliver the request
-			replyTo.SendError(msg.ThingID, msg.Name, err.Error(), msg.RequestID)
 			// cleanup since there will not be a response
 			svc.mux.Lock()
 			delete(svc.activeCache, msg.RequestID)
 			svc.mux.Unlock()
 		}
 	} else {
-		err := fmt.Sprintf("Agent '%s' not reachable", agentID)
-		replyTo.SendError(msg.ThingID, msg.Name, err, msg.RequestID)
+		err = fmt.Errorf("agent '%s' not reachable", agentID)
 	}
+	return false, nil, err
 }

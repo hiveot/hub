@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/clients/base"
@@ -32,7 +33,7 @@ import (
 // This client has no return channel so it does not support subscribe or observe
 // operations. Use the SsescBindingClient or WssBindingClient for this.
 type HttpTransportClient struct {
-	base.TransportClient
+	base.BaseTransportClient
 
 	// getForm obtains the form for sending a request or notification
 	getForm func(op string) td.Form
@@ -196,29 +197,20 @@ func (cl *HttpTransportClient) InvokeAction(dThingID, name string, input any, ou
 	return cl.SendRequest(wot.OpInvokeAction, dThingID, name, input, output)
 }
 
-// SendError sends the notification without a reply.
-func (cl *HttpTransportClient) SendError(
-	dThingID, name string, errResponse string, requestID string) {
-
-	stat := transports.RequestStatus{
-		ThingID:       dThingID,
-		Name:          name,
-		RequestID:     requestID,
-		Status:        transports.StatusCompleted,
-		Error:         errResponse,
-		TimeRequested: "",
-		TimeEnded:     time.Now().Format(wot.RFC3339Milli),
-	}
-	_, _, _ = cl.SendOperation(
-		wot.HTOpPublishError, dThingID, name, stat, requestID)
-}
-
-// SendOperation sends an operation and returns the result
+// SendOperation sends an operation asynchronously.
+//
+// If a requestID is supplied then it is assumed a response is expected.
+// If a result is received then this is passed to the handle BaseRnR channel
+// associated with the request.
+// If no response channel is opened then the response will be passed to the
+// notification handler.
+//
+// Note that this ignores the http response body.
 //
 // This locates the form for the operation and uses it
 // Intended as the base for all sends
-func (cl *HttpTransportClient) SendOperation(operation string,
-	dThingID, name string, data any, requestID string) ([]byte, http.Header, error) {
+func (cl *HttpTransportClient) SendOperation(
+	operation string, dThingID, name string, data any, requestID string) error {
 
 	var dataJSON []byte
 	var method string
@@ -235,49 +227,55 @@ func (cl *HttpTransportClient) SendOperation(operation string,
 	if operation == "" {
 		err := fmt.Errorf("SendOperation: missing operation")
 		slog.Error(err.Error())
-		return nil, nil, err
+		return err
 	} else if href == "" {
 		err := fmt.Errorf("SendNotification: Form is missing operation '%s' or href", operation)
 		slog.Error(err.Error())
-		return nil, nil, err
+		return err
 	}
 	if data != nil {
 		dataJSON = cl.Marshal(data)
 	}
 	output, headers, err := cl._send(
 		method, href, "", dThingID, name, dataJSON, requestID)
-	return output, headers, err
-}
-
-// SendNotification sends the notification without a reply.
-func (cl *HttpTransportClient) SendNotification(
-	operation string, dThingID, name string, data any) error {
-
-	_, _, err := cl.SendOperation(operation, dThingID, name, data, "")
-	return err
-}
-
-// SendRequest sends an operation and returns the result.
-//
-// Since the http binding doesn't have a return channel, this only works with
-// operations that return their result as http response.
-func (cl *HttpTransportClient) SendRequest(operation string,
-	dThingID, name string, input interface{}, output interface{}) error {
-
-	// Without a return channel there is no waiting for a result
-	raw, _, err := cl.SendOperation(operation, dThingID, name, input, "")
-
-	// in case an immediate result is received then unmarshal it and
-	// call it done.
-	if raw != nil && output != nil {
-		err = cl.Unmarshal(raw, output)
+	status := headers.Get(transports.StatusHeader)
+	if err != nil {
+		return err
+	}
+	if status == "" {
+		// this is not a hiveot server so return the output as the result
+	} else if status == transports.StatusCompleted || status == "" {
+		// request is completed
+		if requestID == "" {
+			// no response expected. We're done here.
+			return nil
+		} else {
+			// body contains the output
+			handled := cl.BaseRnrChan.HandleResponse(requestID, output, true)
+			if !handled {
+				// no rpc waiting, pass to the notification handler
+				msg := transports.NewThingMessage(operation, dThingID, name, data, "")
+				msg.RequestID = requestID
+				cl.BaseNotificationHandler(msg)
+			}
+		}
+		// not an rpc, handle as notification
+	} else if status == transports.StatusFailed {
+		// body contains the error details return the error
+		errTxt := "request failed"
+		if output != nil {
+			errTxt = fmt.Sprintf("%v", output)
+		}
+		return errors.New(errTxt)
+	} else {
+		// status is pending nothing to do here
 	}
 	return err
 }
 
 // SendResponse sends the action response message
 func (cl *HttpTransportClient) SendResponse(
-	dThingID, name string, output any, requestID string) {
+	dThingID, name string, output any, errResp error, requestID string) {
 
 	stat := transports.RequestStatus{
 		ThingID:       dThingID,
@@ -288,7 +286,10 @@ func (cl *HttpTransportClient) SendResponse(
 		TimeRequested: "",
 		TimeEnded:     time.Now().Format(wot.RFC3339Milli),
 	}
-	_, _, err := cl.SendOperation(
+	if errResp != nil {
+		stat.Error = errResp.Error()
+	}
+	err := cl.SendOperation(
 		wot.HTOpUpdateActionStatus, dThingID, name, stat, requestID)
 	_ = err
 }
@@ -314,7 +315,7 @@ func (cl *HttpTransportClient) Init(
 		timeout = time.Second * 3
 	}
 	urlParts, _ := url.Parse(fullURL)
-	cl.TransportClient = base.TransportClient{
+	cl.BaseTransportClient = base.BaseTransportClient{
 		BaseCaCert:       caCert,
 		BaseClientID:     clientID,
 		BaseConnectionID: clientID + "." + shortid.MustGenerate(),
@@ -332,7 +333,7 @@ func (cl *HttpTransportClient) Init(
 	cl.getForm = getForm
 	cl.headers = make(map[string]string)
 	cl.httpClient = tlsclient.NewHttp2TLSClient(caCert, clientCert, timeout)
-	cl.BaseSendNotification = cl.SendNotification
+	cl.BaseSendOperation = cl.SendOperation
 }
 
 // NewHttpTransportClient creates a new instance of the http binding client

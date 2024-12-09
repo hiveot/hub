@@ -47,16 +47,14 @@ type ActionFlowRecord struct {
 // SSE, WS, MQTT bindings must use a correlation-id to match request-response messages.
 // this is not well-defined in the WoT specs and up to the protocol binding implementation.
 func (svc *DigitwinRouter) HandleInvokeAction(
-	msg *transports.ThingMessage, replyTo transports.IServerConnection) {
+	msg *transports.ThingMessage, replyTo string) (completed bool, output any, err error) {
 
 	// Forward the action to the built-in services
 	agentID, thingID := td.SplitDigiTwinThingID(msg.ThingID)
 	_ = thingID
-	// TODO: Consider injecting the internal services instead of having direct dependencies
+
 	// internal services return instant result
-	hasOutput := true
-	var output any
-	var err error
+	completed = true
 	switch agentID {
 	case digitwin.DirectoryAgentID:
 		output, err = svc.digitwinAction(msg)
@@ -67,23 +65,16 @@ func (svc *DigitwinRouter) HandleInvokeAction(
 	case api.DigitwinServiceID:
 		output, err = svc.digitwinAction(msg)
 	default:
-		hasOutput = false
+		completed = false
 		// Forward the action to external agents
-		svc.HandleInvokeRemoteAgent(msg, replyTo)
+		completed, output, err = svc.HandleInvokeRemoteAgent(msg, replyTo)
 	}
-	if hasOutput {
-		if err != nil {
-			slog.Warn("HandleInvokeAction failed", "err", err.Error())
-			replyTo.SendError(msg.ThingID, msg.Name, err.Error(), msg.RequestID)
-		} else {
-			_ = replyTo.SendResponse(msg.ThingID, msg.Name, output, msg.RequestID)
-		}
-	}
+	return completed, output, err
 }
 
 // HandleInvokeRemoteAgent forwards the action to external agents
 func (svc *DigitwinRouter) HandleInvokeRemoteAgent(
-	msg *transports.ThingMessage, replyTo transports.IServerConnection) {
+	msg *transports.ThingMessage, replyTo string) (completed bool, output any, err error) {
 
 	agentID, thingID := td.SplitDigiTwinThingID(msg.ThingID)
 
@@ -105,24 +96,23 @@ func (svc *DigitwinRouter) HandleInvokeRemoteAgent(
 
 	// Note: agents should only have a single instance
 	c := svc.cm.GetConnectionByClientID(agentID)
-	var err error
+
 	if c == nil {
 		progress = vocab.RequestFailed
 		err = fmt.Errorf("HandleInvokeRemoteAgent: Agent '%s' not reachable. Ignored", agentID)
 	} else {
 		progress = vocab.RequestDelivered
 		// FIXME: is this a potential race condition with updating ActionRecord?
-		// FIXME: send can still return an error
+		// only when sendrequest is handled and replies before continuing... slim chance but still...
 		err = c.SendRequest(msg.Operation, thingID, msg.Name, msg.Data, msg.RequestID)
 	}
+	// post processing by tracking action progress
 	if err != nil {
 		slog.Warn("HandleInvokeRemoteAgent - failed",
 			slog.String("dThingID", msg.ThingID),
 			slog.String("actionName", msg.Name),
 			slog.String("requestID", msg.RequestID),
 			slog.String("err", err.Error()))
-
-		replyTo.SendError(msg.ThingID, msg.Name, err.Error(), msg.RequestID)
 	} else {
 		// store a new action progress by message ID to support sending replies to the sender
 		actionRecord := ActionFlowRecord{
@@ -134,7 +124,7 @@ func (svc *DigitwinRouter) HandleInvokeRemoteAgent(
 			SenderID:  msg.SenderID,
 			Progress:  progress,
 			Updated:   time.Now(),
-			ReplyTo:   replyTo.GetConnectionID(),
+			ReplyTo:   replyTo,
 		}
 
 		// track in-progress actions
@@ -147,14 +137,14 @@ func (svc *DigitwinRouter) HandleInvokeRemoteAgent(
 	// store the action status
 	_, _ = svc.dtwStore.UpdateActionStatus(
 		agentID, thingID, msg.Name, progress, nil)
+
+	return false, output, err
 }
 
 // HandleActionResponse agent sent an action response.
 // The message must contain the requestID previously used in SendRequest.
 // The payload is the application output object. (action output)
 // This completes the action successfully.
-//
-// Note, errors are returned via send error?
 //
 // This:
 // 1. Validates the request is still ongoing.
@@ -195,15 +185,17 @@ func (svc *DigitwinRouter) HandleActionResponse(msg *transports.ThingMessage) {
 	replyTo := actionRecord.ReplyTo
 	senderID := actionRecord.SenderID
 
-	// Update the thingID to notify the sender with progress on the digital twin thing ID
+	// the action response by sender uses the sender's thingID. Convert this to the
+	// digital twin thingID.
 	msg.ThingID = td.MakeDigiTwinThingID(agentID, thingID)
 	msg.Name = actionName
 
 	// the sender (agents) must be the thing agent
 	if agentID != arAgentID {
-		err = fmt.Errorf(
-			"HandleActionResponse: response ID '%s' of thing '%s' does"+
-				" not come from agent '%s' but from '%s'. Response ignored.",
+		// TODO: update the action status?
+
+		err = fmt.Errorf("HandleActionResponse: response ID '%s' of thing '%s' "+
+			"does not come from agent '%s' but from '%s'. Response ignored",
 			msg.RequestID, thingID, arAgentID, agentID)
 		slog.Warn(err.Error(), "agentID", agentID)
 		return
@@ -211,42 +203,19 @@ func (svc *DigitwinRouter) HandleActionResponse(msg *transports.ThingMessage) {
 
 	// 2: Update the action status in the digital twin action record and log errors
 	//   (for use with query actions)
-	_, err = svc.dtwStore.UpdateActionStatus(
+	_, _ = svc.dtwStore.UpdateActionStatus(
 		agentID, thingID, actionName, transports.StatusCompleted, msg.Data)
-	//
-	//if msg.Error != "" {
-	//	slog.Warn("HandleActionResponse - with error",
-	//		slog.String("AgentID", agentID),
-	//		slog.String("ThingID", thingID),
-	//		slog.String("Name", actionName),
-	//		slog.String("Status", msg.Status),
-	//		slog.String("RequestID", msg.RequestID),
-	//		//slog.String("Error", msg.Error),
-	//	)
-	//} else if stat.Status == vocab.RequestCompleted {
-	//	slog.Info("HandleActionResponse - completed",
-	//		slog.String("ThingID", thingID),
-	//		slog.String("Name", actionName),
-	//		slog.String("RequestID", stat.RequestID),
-	//	)
-	//} else {
-	//	slog.Info("HandleActionResponse - progress",
-	//		slog.String("ThingID", thingID),
-	//		slog.String("Name", actionName),
-	//		slog.String("RequestID", stat.RequestID),
-	//		slog.String("Status", stat.Status),
-	//	)
-	//}
 
 	// 3: Forward the progress update to the sender of the request
 	c := svc.cm.GetConnectionByConnectionID(replyTo)
 	if c != nil {
 		// send the response to the consumer
-		err = c.SendResponse(msg.ThingID, msg.Name, msg.Data, msg.RequestID)
+		// FIXME: how to return an error???
+		err = c.SendResponse(msg.ThingID, msg.Name, msg.Data, nil, msg.RequestID)
 	} else {
+		// can't reach the consumer
 		err = fmt.Errorf("client connection-id (replyTo) '%s' not found for client '%s'",
 			replyTo, senderID)
-		// try workaround
 	}
 
 	if err != nil {

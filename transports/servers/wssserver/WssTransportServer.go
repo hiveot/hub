@@ -35,9 +35,10 @@ type WssTransportServer struct {
 
 // SendNotification broadcast an event or property change to subscribers clients
 func (svc *WssTransportServer) SendNotification(operation string, dThingID, name string, data any) {
-	// this is needed so mqtt can broadcast once via the message bus instead all individual connections
-	// tbd. An embedded mqtt server can still send per connection?
-	slog.Error("todo: implement")
+	cList := svc.cm.GetConnectionByProtocol(transports.ProtocolTypeWSS)
+	for _, c := range cList {
+		c.SendNotification(operation, dThingID, name, data)
+	}
 }
 
 // Serve a new websocket connection.

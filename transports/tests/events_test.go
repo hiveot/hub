@@ -2,7 +2,7 @@ package tests
 
 import (
 	"context"
-	transports2 "github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -41,7 +41,7 @@ func TestSubscribeAllByConsumer(t *testing.T) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), time.Minute)
 	defer cancelFn()
 
-	cl1.SetNotificationHandler(func(ev *transports2.ThingMessage) {
+	cl1.SetNotificationHandler(func(ev *transports.ThingMessage) {
 		// receive event
 		rxVal.Store(ev.Data)
 		cancelFn()
@@ -87,10 +87,12 @@ func TestPublishEventsByAgent(t *testing.T) {
 	var eventKey = "event11"
 
 	// handler of events on the server
-	handler1 := func(msg *transports2.ThingMessage, replyTo transports2.IServerConnection) {
+	handler1 := func(msg *transports.ThingMessage, replyTo string) (
+		handled bool, output any, err error) {
 		// event handlers do not reply
-		require.Nil(t, replyTo)
+		require.Empty(t, replyTo)
 		evVal.Store(msg.Data)
+		return true, nil, nil
 	}
 
 	// 1. start the transport

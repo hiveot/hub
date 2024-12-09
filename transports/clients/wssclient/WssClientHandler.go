@@ -34,11 +34,7 @@ func (cl *WssTransportClient) _handleAsRequest(msg *transports.ThingMessage) {
 	}
 	// if a requestID is provided then send a reply
 	if msg.RequestID != "" {
-		if err != nil {
-			cl.SendError(msg.ThingID, msg.Name, err.Error(), msg.RequestID)
-		} else {
-			cl.SendResponse(msg.ThingID, msg.Name, output, msg.RequestID)
-		}
+		cl.SendResponse(msg.ThingID, msg.Name, output, err, msg.RequestID)
 	}
 	if err != nil {
 		slog.Error(err.Error())
@@ -152,11 +148,7 @@ func (cl *WssTransportClient) handlePropertyMessage(raw []byte) {
 		output, err := cl.BaseRequestHandler(rxMsg)
 		if rxMsg.RequestID != "" {
 			// send the result to the caller
-			if err != nil {
-				cl.SendResponse(wssMsg.ThingID, wssMsg.Name, output, wssMsg.RequestID)
-			} else {
-				cl.SendResponse(wssMsg.ThingID, wssMsg.Name, err, wssMsg.RequestID)
-			}
+			cl.SendResponse(wssMsg.ThingID, wssMsg.Name, output, err, wssMsg.RequestID)
 		}
 	} else {
 		// Observed property value change.

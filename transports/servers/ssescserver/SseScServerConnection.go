@@ -23,9 +23,10 @@ type SSEEvent struct {
 // SSEPingEvent can be used by the server to ping the client that the connection is ready
 const SSEPingEvent = "ping"
 
-// SseScServerConnection connection by remote client for the SSE-SC protocol
+// SseScServerConnection handles the SSE connection by remote client
 //
-// This implements the IServerConnection interface
+// This implements the IServerConnection interface for sending messages to
+// the client over SSE.
 type SseScServerConnection struct {
 	// connection ID (from header, without clientID prefix)
 	connectionID string
@@ -111,7 +112,7 @@ func (c *SseScServerConnection) GetConnectionID() string {
 	return c.connectionID
 }
 
-// GetProtocol returns the protocol used in this connection
+// GetProtocolType returns the protocol used in this connection
 func (c *SseScServerConnection) GetProtocolType() string {
 	return transports2.ProtocolTypeSSESC
 }
@@ -167,20 +168,38 @@ func (c *SseScServerConnection) SendActionStatus(requestID string, data any, err
 }
 
 // SendError returns an error to the client, send by an agent
-func (c *SseScServerConnection) SendError(dThingID, name string, errResponse string, requestID string) {
+func (c *SseScServerConnection) SendError(dThingID, name string, errResponse error, requestID string) {
 	operation := "error"
-	_ = c._send(operation, dThingID, name, errResponse, requestID, "")
+	_ = c._send(operation, dThingID, name, errResponse.Error(), requestID, "")
 }
 
 // SendNotification sends a notification message without a response.
 func (c *SseScServerConnection) SendNotification(
 	operation string, dThingID, name string, data any) {
 
-	err := c._send(operation, dThingID, name, data, "", "")
-	_ = err
+	switch operation {
+	case wot.HTOpUpdateTD:
+		// update the TD if the client is subscribed to its events
+		if c.subscriptions.IsSubscribed(dThingID, "") {
+			_ = c._send(operation, dThingID, name, data, "", "")
+		}
+	case wot.HTOpPublishEvent:
+		if c.subscriptions.IsSubscribed(dThingID, name) {
+			_ = c._send(operation, dThingID, name, data, "", "")
+		}
+	case wot.HTOpUpdateProperty, wot.HTOpUpdateMultipleProperties:
+		if c.observations.IsSubscribed(dThingID, name) {
+			_ = c._send(operation, dThingID, name, data, "", "")
+		}
+	default:
+		slog.Error("SendNotification: Unknown notification operation",
+			"op", operation,
+			"thingID", dThingID,
+			"to", c.clientID)
+	}
 }
 
-// SendRequest sends a request (action, write property) to the client (agent).
+// SendRequest sends a request (action, write property) to the client over sse (agent).
 func (c *SseScServerConnection) SendRequest(
 	operation string, dThingID, name string, input any, requestID string) error {
 
@@ -190,9 +209,12 @@ func (c *SseScServerConnection) SendRequest(
 
 // SendResponse send a response (action status) to the client for a previous sent request.
 func (c *SseScServerConnection) SendResponse(
-	dThingID, name string, output any, requestID string) error {
+	dThingID, name string, output any, err error, requestID string) error {
+	if err != nil {
+		c.SendError(dThingID, name, err, requestID)
+	}
 	operation := wot.HTOpUpdateActionStatus
-	err := c._send(operation, dThingID, name, output, requestID, "")
+	err = c._send(operation, dThingID, name, output, requestID, "")
 	return err
 }
 

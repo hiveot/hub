@@ -3,6 +3,8 @@ package connections_test
 import (
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/connections"
+	"github.com/hiveot/hub/wot"
+	"github.com/hiveot/hub/wot/td"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -153,11 +155,16 @@ func TestPublishEventProp(t *testing.T) {
 	c1 := NewDummyConnection(client1ID, remoteAddr, session1ID)
 	c1.SubscribeEvent(dThingID, "")
 	c1.ObserveProperty(dThingID, "")
-	c1.PublishEventHandler = func(dThingID, name string, data any, requestID string, agentID string) {
-		evCount++
+	c1.SendNotificationHandler = func(op, dThingID, name string, data any, requestID string) {
+		if op == wot.HTOpPublishEvent {
+			evCount++
+		} else if op == wot.HTOpUpdateProperty {
+			propCount++
+		}
 	}
-	c1.PublishPropHandler = func(dThingID, name string, data any, requestID string, agentID string) {
-		propCount++
+	c1.SendRequestHandler = func(op, dThingID, name string, data any, requestID string) error {
+		assert.Fail(t, "unexpected")
+		return nil
 	}
 
 	err := cm.AddConnection(c1)

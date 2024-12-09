@@ -54,9 +54,7 @@ func (cl *SsescTransportClient) handleRequestMessage(msg *transports.ThingMessag
 	if msg.RequestID == "" {
 		// no response
 	} else if err != nil {
-		cl.SendError(msg.ThingID, msg.Name, err.Error(), msg.RequestID)
-	} else {
-		cl.SendResponse(msg.ThingID, msg.Name, output, msg.RequestID)
+		cl.SendResponse(msg.ThingID, msg.Name, output, err, msg.RequestID)
 	}
 }
 

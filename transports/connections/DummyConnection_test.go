@@ -1,12 +1,14 @@
 package connections_test
 
 import (
+	"fmt"
 	transports2 "github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/connections"
-	"github.com/hiveot/hub/wot/transports"
+	"github.com/hiveot/hub/wot"
 )
 
 // Dummy connection for testing connection manager
+// this implements the IServerConnection interface.
 type DummyConnection struct {
 	connectionID  string
 	clientID      string
@@ -14,37 +16,50 @@ type DummyConnection struct {
 	observations  connections.Subscriptions
 	subscriptions connections.Subscriptions
 
-	PublishEventHandler func(dThingID string, name string, value any, requestID string, agentID string)
-	PublishPropHandler  func(dThingID string, name string, value any, requestID string, agentID string)
+	SendNotificationHandler func(op, dThingID, name string, value any, requestID string)
+	SendRequestHandler      func(op, dThingID, name string, value any, requestID string) error
 }
 
-func (c *DummyConnection) Close() {}
+func (c *DummyConnection) Disconnect() {}
 
 func (c *DummyConnection) GetConnectionID() string { return c.connectionID }
 func (c *DummyConnection) GetClientID() string     { return c.clientID }
 
-func (c *DummyConnection) GetProtocol() string { return "dummy" }
+func (c *DummyConnection) GetProtocolType() string { return "dummy" }
 
 //func (c *DummyConnection) GetSessionID() string    { return c.sessID }
 
-func (c *DummyConnection) InvokeAction(thingID string, name string, input any, requestID string, senderID string) (
-	status string, output any, err error) {
-	return transports.RequestCompleted, nil, nil
-}
+//func (c *DummyConnection) InvokeAction(thingID string, name string, input any, requestID string, senderID string) (
+//	status string, output any, err error) {
+//	return transports2.RequestCompleted, nil, nil
+//}
 
 func (c *DummyConnection) PublishActionStatus(stat transports2.RequestStatus, agentID string) error {
 	return nil
 }
 
-func (c *DummyConnection) PublishEvent(dThingID string, name string, value any, requestID string, agentID string) {
-	if c.PublishEventHandler != nil && c.subscriptions.IsSubscribed(dThingID, name) {
-		c.PublishEventHandler(dThingID, name, value, requestID, agentID)
+func (c *DummyConnection) SendError(dThingID, name string, errResponse string, requestID string) {
+	if c.SendNotificationHandler != nil {
+		c.SendNotificationHandler(wot.HTOpPublishError, dThingID, name, errResponse, "")
 	}
 }
-func (c *DummyConnection) PublishProperty(dThingID string, name string, value any, requestID string, agentID string) {
-	if c.PublishPropHandler != nil && c.observations.IsSubscribed(dThingID, name) {
-		c.PublishPropHandler(dThingID, name, value, requestID, agentID)
+func (c *DummyConnection) SendNotification(op, dThingID, name string, data any) {
+	if c.SendNotificationHandler != nil && c.subscriptions.IsSubscribed(dThingID, name) {
+		c.SendNotificationHandler(op, dThingID, name, data, "")
 	}
+}
+func (c *DummyConnection) SendRequest(op, dThingID, name string, data any, requestID string) error {
+	if c.SendRequestHandler != nil && c.observations.IsSubscribed(dThingID, name) {
+		return c.SendRequestHandler(op, dThingID, name, data, requestID)
+	}
+	return fmt.Errorf("no request sender set")
+}
+
+func (c *DummyConnection) SendResponse(dThingID, name string, data any, requestID string) error {
+	if c.SendNotificationHandler != nil {
+		c.SendNotificationHandler(wot.HTOpUpdateActionStatus, dThingID, name, data, requestID)
+	}
+	return nil
 }
 func (c *DummyConnection) SubscribeEvent(dThingID, name string) {
 	c.subscriptions.Subscribe(dThingID, name)
@@ -58,9 +73,10 @@ func (c *DummyConnection) UnsubscribeEvent(dThingID, name string) {
 func (c *DummyConnection) UnobserveProperty(dThingID, name string) {
 	c.observations.Unsubscribe(dThingID, name)
 }
-func (c *DummyConnection) WriteProperty(thingID, name string, value any, requestID string, senderID string) (status string, err error) {
-	return "", nil
-}
+
+//func (c *DummyConnection) WriteProperty(thingID, name string, value any, requestID string, senderID string) (status string, err error) {
+//	return "", nil
+//}
 
 func NewDummyConnection(clientID, remoteAddr, cid string) *DummyConnection {
 	clcid := clientID + "." + remoteAddr + "." + cid

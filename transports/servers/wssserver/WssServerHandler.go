@@ -14,15 +14,35 @@ import (
 // ForwardAsNotification message is notification for one or multiple clients,
 // depending on the operation.
 func (c *WssServerConnection) ForwardAsNotification(msg *transports.ThingMessage) {
-	c.messageHandler(msg, nil)
+	// nothing to return
+	_, _, _ = c.messageHandler(msg, "")
 }
 
 // ForwardAsRequest message is a request style messages to be sent to a destination
+// This returns a response message to the sender with the given requestID.
 func (c *WssServerConnection) ForwardAsRequest(msg *transports.ThingMessage) {
-	c.messageHandler(msg, c)
+	// the message handler does the processing
+	completed, output, err := c.messageHandler(msg, c.GetConnectionID())
+
+	// if completed, then send the result to the client.
+	// otherwise the response will come asynchronously
+	if completed || err != nil {
+		err2 := c.SendResponse(msg.ThingID, msg.Name, output, err, msg.RequestID)
+		if err2 != nil {
+			slog.Error("ForwardAsRequest. Failed sending response to client",
+				"operation", msg.Operation,
+				"thingID", msg.ThingID,
+				"name", msg.Name,
+				"clientID", c.GetClientID(),
+				"connectionID", c.GetConnectionID(),
+				"requestID", msg.RequestID,
+				"err", err.Error(),
+			)
+		}
+	}
 }
 
-// HandleError forwards an error message to the consumer that sent the request
+// HandleError forwards an error message to the sender
 func (c *WssServerConnection) HandleError(wssMsg *ErrorMessage) {
 	payload := wssMsg.Title + "\n" + wssMsg.Detail
 	msg := transports.NewThingMessage(

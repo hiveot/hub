@@ -5,7 +5,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"github.com/go-chi/chi/v5"
-	transports2 "github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/connections"
 	"github.com/hiveot/hub/transports/tputils/tlsserver"
 	jsoniter "github.com/json-iterator/go"
@@ -18,7 +18,7 @@ import (
 type HttpTransportServer struct {
 
 	// registered handler of received events or requests (which return a reply)
-	messageHandler transports2.ServerMessageHandler
+	messageHandler transports.ServerMessageHandler
 
 	// TLS server and router
 	httpServer *tlsserver.TLSServer
@@ -37,7 +37,7 @@ type HttpTransportServer struct {
 	//ws    *wssserver.WssTransportServer
 
 	// authenticator for logging in and validating session tokens
-	authenticator transports2.IAuthenticator
+	authenticator transports.IAuthenticator
 
 	// Thing level operations added by the http router
 	operations []HttpOperation
@@ -82,7 +82,7 @@ func (svc *HttpTransportServer) AddPostOp(
 }
 
 // GetConnectionByConnectionID returns the client connection for sending messages to a client
-func (svc *HttpTransportServer) GetConnectionByConnectionID(connectionID string) transports2.IServerConnection {
+func (svc *HttpTransportServer) GetConnectionByConnectionID(connectionID string) transports.IServerConnection {
 	return svc.cm.GetConnectionByConnectionID(connectionID)
 }
 
@@ -109,9 +109,10 @@ func (svc *HttpTransportServer) GetServerURL() string {
 
 // SendNotification broadcast an event or property change to subscribers clients
 func (svc *HttpTransportServer) SendNotification(operation string, dThingID, name string, data any) {
-	// this is needed so mqtt can broadcast once via the message bus instead all individual connections
-	// tbd. An embedded mqtt server can still send per connection?
-	slog.Error("not supported in http")
+	cList := svc.cm.GetConnectionByProtocol(transports.ProtocolTypeHTTPS)
+	for _, c := range cList {
+		c.SendNotification(operation, dThingID, name, data)
+	}
 }
 
 // Stop the https server
@@ -168,8 +169,8 @@ func (svc *HttpTransportServer) writeReply(w http.ResponseWriter, data any, err 
 func StartHttpTransportServer(host string, port int,
 	serverCert *tls.Certificate,
 	caCert *x509.Certificate,
-	authenticator transports2.IAuthenticator,
-	messageHandler transports2.ServerMessageHandler,
+	authenticator transports.IAuthenticator,
+	messageHandler transports.ServerMessageHandler,
 	cm *connections.ConnectionManager,
 ) (*HttpTransportServer, error) {
 

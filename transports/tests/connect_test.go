@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	"errors"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/transports"
@@ -130,9 +131,12 @@ func StartTransportServer(messageHandler transports.ServerMessageHandler) (
 	}, cm
 }
 
-func DummyMessageHandler(msg *transports.ThingMessage, replyTo transports.IServerConnection) {
+func DummyMessageHandler(msg *transports.ThingMessage, replyTo string) (
+	handled bool, output any, err error) {
+
 	slog.Info("DummyMessageHandler: Received message", "op", msg.Operation)
-	replyTo.SendResponse(msg.ThingID, msg.Name, "result", msg.RequestID)
+	//replyTo.SendResponse(msg.ThingID, msg.Name, "result", msg.RequestID)
+	return true, "result", nil
 }
 
 // TestMain sets logging
@@ -298,24 +302,30 @@ func TestReconnect(t *testing.T) {
 	const agentID = "agent1"
 	var reconnectedCallback atomic.Bool
 	var dThingID = td.MakeDigiTwinThingID(agentID, thingID)
+	var connMgr *connections.ConnectionManager
 
 	// this test handler receives an action and returns a 'delivered status',
 	// it is intended to prove reconnect works.
-	handleMessage := func(msg *transports.ThingMessage, replyTo transports.IServerConnection) {
+	handleMessage := func(msg *transports.ThingMessage, replyTo string) (
+		handled bool, output any, err error) {
 		slog.Info("Received message", "op", msg.Operation)
 		// prove that the return channel is connected
 		if msg.Operation == wot.OpInvokeAction {
 			go func() {
-				// send a completed update a fraction after returning 'delivered'
+				// send a asynchronous result after a fraction after returning 'delivered'
 				time.Sleep(time.Millisecond)
 				require.NotNil(t, replyTo)
 				output := msg.Data
-				replyTo.SendResponse(msg.ThingID, msg.Name, output, msg.RequestID)
+				c := connMgr.GetConnectionByConnectionID(replyTo)
+				_ = c.SendResponse(msg.ThingID, msg.Name, output, nil, msg.RequestID)
 			}()
+			return false, nil, nil
 		}
+		return true, nil, errors.New("Unexpected message")
 	}
 	// start the servers and connect as a client
 	srv, cancelFn, cm := StartTransportServer(handleMessage)
+	connMgr = cm
 	defer cancelFn()
 
 	// connect as client

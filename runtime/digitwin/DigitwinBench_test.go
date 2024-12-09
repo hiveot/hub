@@ -32,6 +32,7 @@ func BenchmarkUpdateDTW(b *testing.B) {
 	var err error
 
 	// 160 msec using golang json to update 1000 things
+	// 140 msec since sending notifications
 	// 78 msec using json-iterator (jsoniter)
 	b.Run(fmt.Sprintf("update DTW"),
 		func(b *testing.B) {

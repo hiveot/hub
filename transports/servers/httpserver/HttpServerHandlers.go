@@ -2,6 +2,7 @@
 package httpserver
 
 import (
+	"fmt"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/servers/httpserver/httpcontext"
 	"github.com/hiveot/hub/transports/tputils"
@@ -28,8 +29,8 @@ func (svc *HttpTransportServer) _handleNotification(op string, w http.ResponseWr
 	}
 	msg := transports.NewThingMessage(op, rp.ThingID, rp.Name, rp.Data, rp.ClientID)
 	// event style messages does not return data
-	svc.messageHandler(msg, nil)
-	svc.writeReply(w, nil, nil)
+	_, _, err = svc.messageHandler(msg, "")
+	svc.writeReply(w, nil, err)
 }
 
 // _handleRequestMessage provides the boilerplate code for reading headers,
@@ -60,37 +61,34 @@ func (svc *HttpTransportServer) _handleRequestMessage(op string, w http.Response
 		requestID = shortid.MustGenerate()
 	}
 
-	// there are 3 possible results:
-	// on status completed; return output
-	// on status failed: return http ok with RequestStatus containing error
-	// on status other: return  RequestStatus object with progress
-	//
-	// This means that the result is either out or a RequestStatus object
-	// Forms will have added:
-	// ```
-	//  "additionalResponses": [{
-	//                    "success": false,
-	//                    "contentType": "application/json",
-	//                    "schema": "RequestStatus"
-	//                }]
-	//```
 	msg := transports.NewThingMessage(op, rp.ThingID, rp.Name, rp.Data, rp.ClientID)
 	msg.RequestID = requestID
-	// reply to the client's return channel
-	replyTo := svc.cm.GetConnectionByConnectionID(rp.ConnectionID)
-	svc.messageHandler(msg, replyTo)
 
-	//
-	//replyHeader := w.Header()
-	//if replyHeader == nil {
-	//	// this happened a few times during testing. perhaps a broken connection while debugging?
-	//	err = fmt.Errorf("HandleActionRequest: Can't return result."+
-	//		" Write header is nil. This is unexpected. clientID='%s", rp.ClientID)
-	//	svc.writeError(w, err, http.StatusInternalServerError)
-	//	return
-	//}
-	//replyHeader.Set(httpbinding.RequestIDHeader, requestID)
-	//
+	// For 3rd party interoperability, embed the result in the response if available.
+	// and send it as a notification afterwards.
+	// TODO-2: Option to just wait for the result and always include it in the response.
+	//replyTo := svc.cm.GetConnectionByConnectionID(rp.ConnectionID)
+	//svc.messageHandler(msg, replyTo)
+	completed, output, err := svc.messageHandler(msg, rp.ConnectionID)
+
+	replyHeader := w.Header()
+	if replyHeader == nil {
+		// this happened a few times during testing. perhaps a broken connection while debugging?
+		err = fmt.Errorf("HandleActionRequest: Can't return result."+
+			" Write header is nil. This is unexpected. clientID='%s", rp.ClientID)
+		svc.writeError(w, err, http.StatusInternalServerError)
+		return
+	}
+	status := transports.StatusPending
+	if err != nil {
+		status = transports.StatusFailed
+	} else if completed {
+		status = transports.StatusCompleted
+	}
+	// is this needed?
+	replyHeader.Set(transports.RequestIDHeader, requestID)
+	replyHeader.Set(transports.StatusHeader, status)
+
 	//// in case of error include the return data schema
 	//// TODO: Use schema name from Forms. The action progress schema is in
 	//// the forms definition as an additional response.
@@ -106,8 +104,8 @@ func (svc *HttpTransportServer) _handleRequestMessage(op string, w http.Response
 	//	//	svc.writeReply(w, stat, nil)
 	//	//	return
 	//}
-	//// progress is complete, return the default output
-	//svc.writeReply(w, output, nil)
+	// progress is complete, return the default output
+	svc.writeReply(w, output, err)
 }
 
 // HandlePublishActionStatus sends an action progress update message to the digital twin

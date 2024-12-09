@@ -6,7 +6,7 @@ const DefaultMqttWssPort = 8884
 
 // HTTP protoocol constants
 const (
-	// StatusHeader for transports that support headers can include a progress status field
+	// StatusHeader contains the result of the request, eg Pending, Completed or Failed
 	StatusHeader = "status"
 	// RequestIDHeader for transports that support headers can include a message-ID
 	RequestIDHeader = "request-id"
@@ -39,14 +39,27 @@ const (
 //	status is the progress status: RequestDelivered,RequestFailed,RequestCompleted
 //	output is the result if status is RequestCompleted. Can be nil.
 //	err is the error in case status is RequestFailed
-type ReplyToHandler func(status string, output any, err error)
+//type ReplyToHandler func(status string, output any, err error)
 
 // ServerMessageHandler handles a request. The handler is responsible for
 // sending a reply to the sender.
 //
 //	msg is the envelope that contains the request to process.
 //	replyTo is the connection for sending a reply, or nil when no reply should be sent.
-type ServerMessageHandler func(msg *ThingMessage, replyTo IServerConnection)
+//
+// type ServerMessageHandler func(msg *ThingMessage, replyTo IServerConnection)
+
+// ServerMessageHandler handles a request. The handler either returns a result
+// immediately, if available, or sends it asynchronously to the replyTo address.
+//
+//	msg is the envelope that contains the request to process.
+//	replyTo is the connection-ID for sending a reply to the sender, or nil when
+//	no reply should be sent.
+//
+// This returns a flag whether the message handling is completed, potential output or an error
+// if completed is false then an async response on the replyTo client is expected.
+// Use cm.GetConnectionByConnectionID to obtain the connection to send a response.
+type ServerMessageHandler func(msg *ThingMessage, replyTo string) (completed bool, output any, err error)
 
 // IServerConnection is the interface of an incoming client connection on the server.
 // Protocol servers must implement this interface to return information to the consumer.
@@ -70,10 +83,6 @@ type IServerConnection interface {
 
 	// GetProtocolType returns the name of the protocol binding of this connection.
 	GetProtocolType() string
-
-	// SendError returns an error to the client, sent by an agent
-	// Intended to send an error to the client instead of a response.
-	SendError(thingID, name string, errResponse string, requestID string)
 
 	// SendNotification sends a notification to the client without expecting a response.
 	// Intended to send updates to consumers.
@@ -104,5 +113,5 @@ type IServerConnection interface {
 	// Typically used in sending a reply to a invokeaction request.
 	//	output is the response data
 	//	requestID contains the requestID provided in the request.
-	SendResponse(thingID, name string, output any, requestID string) error
+	SendResponse(thingID, name string, output any, err error, requestID string) error
 }

@@ -108,11 +108,7 @@ type IClientConnection interface {
 	// The resulting token can be used with 'ConnectWithToken'
 	RefreshToken(oldToken string) (newToken string, err error)
 
-	// SendError returns an error to the client, send by an agent
-	// Intended to send an error to the client instead of a response.
-	SendError(dThingID, name string, errResponse string, requestID string)
-
-	// SendNotification sends a notification to the server.
+	// SendNotification sends a notification to subscribers.
 	// Notifications do not receive a response.
 	//
 	// operation is the operation to invoke
@@ -132,8 +128,9 @@ type IClientConnection interface {
 	//	thingID of the thing the operation applies to
 	//	name of the affordance the operation applies to
 	//	output is the response data
+	//	err in case the response is an error. Output can contain additional details.
 	//	requestID contains the requestID provided in the request.
-	SendResponse(thingID, name string, output any, requestID string)
+	SendResponse(thingID, name string, output any, err error, requestID string)
 
 	// SetNotificationHandler sets the handler for notification message from the server.
 	// This replaces any previously set handler.

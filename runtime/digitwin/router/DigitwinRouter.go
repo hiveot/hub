@@ -7,7 +7,6 @@ import (
 	"github.com/hiveot/hub/runtime/digitwin/store"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/connections"
-	"github.com/teris-io/shortid"
 	"log/slog"
 	"sync"
 )
@@ -46,23 +45,22 @@ type DigitwinRouter struct {
 }
 
 // HandleMessage routes updates from agents to consumers
+// replyTo is only used if no immediate result is available
 func (svc *DigitwinRouter) HandleMessage(
-	msg *transports.ThingMessage, replyTo transports.IServerConnection) {
-
-	var isHandled = true
+	msg *transports.ThingMessage, replyTo string) (completed bool, output any, err error) {
 
 	// middleware: authorize the request.
 	// TODO: use a middleware chain
 	if !svc.hasPermission(msg.SenderID, msg.Operation, msg.ThingID) {
-		err := fmt.Sprintf("Unauthorized. client '%s' does not have permission"+
+		err = fmt.Errorf("unauthorized. client '%s' does not have permission"+
 			" to invoke operation '%s' on Thing '%s'",
 			msg.SenderID, msg.Operation, msg.ThingID)
-		slog.Warn(err)
-		replyTo.SendError(msg.ThingID, msg.Name, err, msg.RequestID)
-		return
+		slog.Warn(err.Error())
+		return false, nil, err
 	}
 
-	// first handle send-and-forget operations (agent publications)
+	// first handle remote operations that don't immediately return data
+	completed = true
 	switch msg.Operation {
 	// operations with no immediate result
 	case vocab.HTOpPublishEvent:
@@ -74,50 +72,36 @@ func (svc *DigitwinRouter) HandleMessage(
 	case vocab.HTOpUpdateActionStatus, vocab.HTOpUpdateActionStatuses:
 		svc.HandleActionResponse(msg)
 	case vocab.HTOpUpdateTD:
-		svc.HandleUpdateTD(msg)
+		completed, output, err = svc.HandleUpdateTD(msg)
 	case vocab.OpInvokeAction:
-		svc.HandleInvokeAction(msg, replyTo)
+		completed, output, err = svc.HandleInvokeAction(msg, replyTo)
 	case vocab.OpWriteProperty:
-		svc.HandleWriteProperty(msg, replyTo)
-	default:
-		isHandled = false
-	}
-	if isHandled {
-		return
-	}
+		completed, output, err = svc.HandleWriteProperty(msg, replyTo)
 
-	if msg.RequestID == "" {
-		msg.RequestID = "action-" + shortid.MustGenerate()
-	}
 	// operations from embedded services with immediate result
-	var err error
-	var output any
-
-	switch msg.Operation {
 	case vocab.HTOpLogin:
-		output, err = svc.HandleLogin(msg)
+		completed, output, err = svc.HandleLogin(msg)
 	case vocab.HTOpLogout:
-		err = svc.HandleLogout(msg)
+		completed, output, err = svc.HandleLogout(msg)
 	case vocab.HTOpRefresh:
-		output, err = svc.HandleLoginRefresh(msg)
+		completed, output, err = svc.HandleLoginRefresh(msg)
 	case vocab.HTOpReadAllEvents:
-		output, err = svc.HandleReadAllEvents(msg)
+		completed, output, err = svc.HandleReadAllEvents(msg)
 	case vocab.OpReadAllProperties:
-		output, err = svc.HandleReadAllProperties(msg)
+		completed, output, err = svc.HandleReadAllProperties(msg)
 	case vocab.HTOpReadEvent:
-		output, err = svc.HandleReadEvent(msg)
+		completed, output, err = svc.HandleReadEvent(msg)
 	case vocab.OpReadProperty:
-		output, err = svc.HandleReadProperty(msg)
+		completed, output, err = svc.HandleReadProperty(msg)
 	default:
-		err = fmt.Errorf("Unknown operation '%s' from client '%s'", msg.Operation, msg.SenderID)
+		completed = false // oops, no such thing
+		err = fmt.Errorf("unknown operation '%s' from client '%s'", msg.Operation, msg.SenderID)
 		slog.Warn(err.Error())
 	}
 	if err != nil {
 		slog.Warn("HandleMessage failed", "err", err.Error())
-		replyTo.SendError(msg.ThingID, msg.Name, err.Error(), msg.RequestID)
-	} else {
-		_ = replyTo.SendResponse(msg.ThingID, msg.Name, output, msg.RequestID)
 	}
+	return completed, output, err
 }
 
 // NewDigitwinRouter instantiates a new hub messaging router

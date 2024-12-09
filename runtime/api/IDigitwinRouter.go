@@ -13,12 +13,9 @@ type HandleMessage func(msg *transports2.ThingMessage)
 // IDigitwinRouter is the interface for routing the action,event and property messages
 // received from consumers and agents. It handles the flow for TD level operations.
 type IDigitwinRouter interface {
-	// HandleMessage handles updates from agents
-	//HandleMessage(msg *transports.ThingMessage)
-
-	// HandleRequest handles action and property write requests from consumers and agents
-	// replyTo is the client connection-id to reply to
-	//HandleRequest(request *transports.ThingMessage, replyTo string) (stat transports.RequestStatus)
-
-	HandleMessage(msg *transports2.ThingMessage, replyTo transports2.IServerConnection)
+	// HandleMessage with the message to handle.
+	// If a result is immediately available it is returned, otherwise it is sent
+	// separately to the connection with the ID of replyTo
+	HandleMessage(msg *transports2.ThingMessage, replyTo string) (
+		completed bool, output any, err error)
 }

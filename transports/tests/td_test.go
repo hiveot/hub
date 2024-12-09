@@ -2,7 +2,6 @@ package tests
 
 import (
 	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
@@ -25,10 +24,12 @@ func TestPublishTDByAgent(t *testing.T) {
 	var thingID = "thing1"
 
 	// handler of TDs on the server
-	handler1 := func(msg *transports.ThingMessage, replyTo transports.IServerConnection) {
+	handler1 := func(msg *transports.ThingMessage, replyTo string) (
+		handled bool, output any, err error) {
 		// event handlers do not reply
-		require.Nil(t, replyTo)
+		require.Empty(t, replyTo)
 		evVal.Store(msg.Data)
+		return true, nil, nil
 	}
 
 	// 1. start the transport
@@ -47,14 +48,16 @@ func TestPublishTDByAgent(t *testing.T) {
 	// 4. agent publishes the TD
 	err = ag1.SendNotification(wot.HTOpUpdateTD, thingID, "", string(td1JSON))
 	require.NoError(t, err)
-	time.Sleep(time.Millisecond) // time to take effect
+	time.Sleep(time.Millisecond * 10) // time to take effect
 
 	// TD received by server
-	rxMsg2 := evVal.Load()
-	require.NotNil(t, rxMsg2)
+	var rxMsg2Raw = evVal.Load()
+	require.NotNil(t, rxMsg2Raw)
+	rxMsg2 := rxMsg2Raw.(string)
 
 	var td2 td.TD
-	err = tputils.Decode(rxMsg2, &td2)
+	err = jsoniter.UnmarshalFromString(rxMsg2, &td2)
+	require.NoError(t, err)
 	assert.Equal(t, td1.ID, td2.ID)
 	assert.Equal(t, td1.Title, td2.Title)
 	assert.Equal(t, td1.AtType, td2.AtType)
@@ -89,10 +92,11 @@ func TestReadTD(t *testing.T) {
 	td1 := td.NewTD(thingID, "My gadget", DeviceTypeSensor)
 
 	// handler of TDs on the server
-	handler1 := func(msg *transports.ThingMessage, replyTo transports.IServerConnection) {
-		// event handlers do not reply
-		output := td1
-		replyTo.SendResponse(msg.ThingID, msg.Name, output, msg.RequestID)
+	handler1 := func(msg *transports.ThingMessage, replyTo string) (
+		handled bool, output any, err error) {
+		output = td1
+		//replyTo.SendResponse(msg.ThingID, msg.Name, output, msg.RequestID)
+		return true, output, nil
 	}
 
 	// 1. start the transport
@@ -108,6 +112,8 @@ func TestReadTD(t *testing.T) {
 	_, err = cl1.ConnectWithPassword(testClientPassword1)
 	require.NoError(t, err)
 
+	cl1.Subscribe(thingID, "")
+
 	//td2, err := cl1.ReadTD(thingID)
 	var td2 td.TD
 	err = cl1.SendRequest(wot.HTOpReadTD, thingID, "", thingID, &td2)
@@ -117,7 +123,6 @@ func TestReadTD(t *testing.T) {
 	// cl1 should receive update to published TD
 	rxTD := false
 	cl1.SetNotificationHandler(func(msg *transports.ThingMessage) {
-		// FIXME: wss server needs to implement sendoperation to connections
 		rxTD = true
 	})
 	srv.SendNotification(wot.HTOpUpdateTD, thingID, "", td2)

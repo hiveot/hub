@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	"errors"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot"
@@ -26,15 +27,16 @@ func TestInvokeActionFromConsumerToServer(t *testing.T) {
 	var thingID = "thing1"
 	var actionName = "action1"
 
-	// the server will receive the action request and send a result message
-	serverHandler := func(msg *transports.ThingMessage, replyTo transports.IServerConnection) {
+	// the server will receive the action request and return an immediate result
+	serverHandler := func(msg *transports.ThingMessage, replyTo string) (
+		handled bool, output any, err error) {
 		if msg.Operation == wot.OpInvokeAction {
 			inputVal.Store(msg.Data)
-			output := msg.Data
-			replyTo.SendResponse(msg.ThingID, msg.Name, output, msg.RequestID)
+			return true, msg.Data, nil
 		} else {
 			assert.Fail(t, "Not expecting this")
 		}
+		return true, nil, errors.New("unexpected message")
 	}
 	// 1. start the servers
 	srv, cancelFn, _ := StartTransportServer(serverHandler)
@@ -86,17 +88,17 @@ func TestInvokeActionFromServerToAgent(t *testing.T) {
 	var corrID = "correlation-1"
 
 	// 1. start the server. register a message handler for receiving an action status
-	// reply from the agent after the server sends an invoke action.
+	// async reply from the agent after the server sends an invoke action.
 	// Note that WoT doesn't cover this use-case so this uses hiveot vocabulary operation.
 
 	ctx1, cancelFn1 := context.WithTimeout(context.Background(), time.Minute)
 	defer cancelFn1()
-	serverHandler := func(
-		msg *transports.ThingMessage, replyTo transports.IServerConnection) {
+	serverHandler := func(msg *transports.ThingMessage, replyTo string) (
+		handled bool, output any, err error) {
 
 		// The server receives an action status reply message from the agent
 		// (which normally is forwarded to the remote consumer; but not in this test)
-		assert.Nil(t, replyTo)
+		assert.Empty(t, replyTo)
 		assert.Equal(t, testAgentID1, msg.SenderID)
 		require.Equal(t, wot.HTOpUpdateActionStatus, msg.Operation)
 
@@ -106,6 +108,8 @@ func TestInvokeActionFromServerToAgent(t *testing.T) {
 			"senderID", msg.SenderID)
 		replyVal.Store(msg.Data)
 		cancelFn1()
+		// there is no result for this reply
+		return true, nil, nil
 	}
 	srv, cancelFn, cm := StartTransportServer(serverHandler)
 	defer cancelFn()
@@ -127,6 +131,7 @@ func TestInvokeActionFromServerToAgent(t *testing.T) {
 
 	// send the action from the server to the agent (the agent is connected as a client)
 	// and expect result using the request status message sent by the agent.
+	time.Sleep(time.Millisecond)
 	ag1Server := cm.GetConnectionByClientID(testAgentID1)
 	require.NotNil(t, ag1Server)
 	ag1Server.SendRequest(wot.OpInvokeAction, thingID, actionKey, testMsg1, corrID)
@@ -149,8 +154,8 @@ func TestQueryActions(t *testing.T) {
 	// 1. start the server. register a message handler for receiving an action status
 	// reply from the agent after the server sends an invoke action.
 	// Note that WoT doesn't cover this use-case so this uses hiveot vocabulary operation.
-	serverHandler := func(
-		msg *transports.ThingMessage, replyTo transports.IServerConnection) {
+	serverHandler := func(msg *transports.ThingMessage, replyTo string) (
+		handled bool, output any, err error) {
 
 		require.NotNil(t, replyTo)
 		// FIXME: what is the format of a action query result
@@ -165,7 +170,8 @@ func TestQueryActions(t *testing.T) {
 				TimeRequested: msg.Timestamp,
 				TimeEnded:     time.Now().Format(wot.RFC3339Milli),
 			}
-			replyTo.SendResponse(msg.ThingID, msg.Name, output, msg.RequestID)
+			return true, output, nil
+			//replyTo.SendResponse(msg.ThingID, msg.Name, output, msg.RequestID)
 		} else if msg.Operation == wot.OpQueryAllActions {
 			actStat := make([]transports.RequestStatus, 2)
 			actStat[0].ThingID = thingID
@@ -174,8 +180,11 @@ func TestQueryActions(t *testing.T) {
 			actStat[1].ThingID = thingID
 			actStat[1].Name = actionKey
 			actStat[1].Output = testMsg1
-			replyTo.SendResponse(msg.ThingID, msg.Name, actStat, msg.RequestID)
+			output = actStat
+			return true, output, nil
+			//replyTo.SendResponse(msg.ThingID, msg.Name, actStat, msg.RequestID)
 		}
+		return true, nil, errors.New("unexpected request " + msg.Operation)
 	}
 
 	// 1. start the servers

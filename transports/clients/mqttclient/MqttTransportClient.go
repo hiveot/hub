@@ -46,7 +46,7 @@ const withQos = 1
 // MqttTransportClient provides WoT protocol binding for the MQTT protocol
 // This implements the IClientConnection interface.
 type MqttTransportClient struct {
-	base.TransportClient
+	base.BaseTransportClient
 
 	// mqtt broker url
 	brokerURL string
@@ -333,7 +333,7 @@ func (cl *MqttTransportClient) SendRequest(
 
 // SendResponse sends the action response message
 func (cl *MqttTransportClient) SendResponse(
-	dThingID, name string, output any, requestID string) {
+	dThingID, name string, output any, err error, requestID string) {
 	// FIXME: implement
 }
 
@@ -404,7 +404,7 @@ func NewMqttTransportClient(fullURL string, clientID string,
 	}
 
 	cl := MqttTransportClient{
-		TransportClient: base.TransportClient{
+		BaseTransportClient: base.BaseTransportClient{
 			BaseCaCert:       caCert,
 			BaseClientID:     clientID,
 			BaseConnectionID: clientID + "." + shortid.MustGenerate(),

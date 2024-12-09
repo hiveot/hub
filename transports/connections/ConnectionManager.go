@@ -147,6 +147,22 @@ func (cm *ConnectionManager) GetConnectionByClientID(clientID string) (c transpo
 	return c
 }
 
+// GetConnectionByProtocol returns the list of connections for a specific protocol
+func (cm *ConnectionManager) GetConnectionByProtocol(protocolType string) []transports.IServerConnection {
+	cm.mux.Lock()
+	defer cm.mux.Unlock()
+	// Not the most efficient way
+	// what is really needed is a way to get connections that don't supports broadcast
+	// using a message bus.
+	cList := make([]transports.IServerConnection, 0, len(cm.connectionsByClientID))
+	for _, c := range cm.connectionsByConnectionID {
+		if c.GetProtocolType() == protocolType {
+			cList = append(cList, c)
+		}
+	}
+	return cList
+}
+
 // GetNrConnections returns the number of client connections and nr of unique clients
 func (cm *ConnectionManager) GetNrConnections() (int, int) {
 	cm.mux.RLock()
