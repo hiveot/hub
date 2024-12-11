@@ -14,13 +14,16 @@ type LauncherConfig struct {
 	// List of services to automatically start in launch order
 	Autostart []string `yaml:"autostart"`
 
-	// RuntimeBin to run on startup, if any.
+	// RuntimeBin (file) to run on startup, if any.
 	// Default is not to launch a runtime.
 	RuntimeBin string `yaml:"runtime"`
 
 	// CreatePluginCred creates per-plugin key and token credential files if they don't exist
 	// Default is true
 	CreatePluginCred bool `yaml:"createPluginCred"`
+
+	// optional override of the logging location; default is ./logs
+	LogsDir string `yaml:"logsDir"`
 
 	// logging level. default is warning
 	LogLevel string `yaml:"logLevel"`

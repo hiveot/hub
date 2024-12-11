@@ -93,13 +93,18 @@ type ActionMessage struct {
 	MessageType string `json:"messageType"`
 	Name        string `json:"action"`
 	Data        any    `json:"input,omitempty"`
+	Timestamp   string `json:"timestamp"`
 
 	// FIXME: under discussions. href has nothing to do with tracking actions
 	HRef string `json:"href,omitempty"`
 	//
-	Timestamp string `json:"timestamp"`
-	MessageID string `json:"messageId,omitempty"`
+	// The requestID is not in the spec but needed to be able to correlate a response
+	// message.
 	RequestID string `json:"requestId,omitempty"`
+	// The senderID is not in the spec but it is needed for some services to
+	// identify who is sending the action. It can't be a parameter because that
+	// wouldnt be secure.
+	SenderID string `json:"senderID"`
 }
 
 // ActionStatusMessage containing progress of an action or property write request
@@ -160,7 +165,6 @@ type EventMessage struct {
 	LastEvent string `json:"lastEvent,omitempty"` // OpSubscribe...
 
 	Timestamp string `json:"timestamp"`
-	MessageID string `json:"messageId,omitempty"`
 	RequestID string `json:"requestId,omitempty"`
 }
 
@@ -173,7 +177,6 @@ type PropertyMessage struct {
 	LastTimestamp string   `json:"lastPropertyReading,omitempty"`
 	Timestamp     string   `json:"timestamp,omitempty"`
 	//
-	MessageID string `json:"messageId,omitempty"`
 	RequestID string `json:"requestId,omitempty"`
 }
 
@@ -184,6 +187,5 @@ type TDMessage struct {
 	Name      string `json:"event"`
 	Data      any    `json:"data,omitempty"` // JSON TD or list of JSON TDs
 	Timestamp string `json:"timestamp"`
-	MessageID string `json:"messageId,omitempty"`
 	RequestID string `json:"requestId,omitempty"`
 }

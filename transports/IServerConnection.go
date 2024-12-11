@@ -24,7 +24,9 @@ const (
 	HttpPostRefreshPath = "/authn/refresh"
 
 	// paths for the various clients
-	SSESCPathPrefix = "/ssesc"
+	DefaultWSSPath   = "/wss"
+	DefaultSSEPath   = "/sse"
+	DefaultSSESCPath = "/ssesc"
 
 	// Generic form href that maps to all operations for the http client, using URI variables
 	GenericHttpHRef = "/digitwin/{operation}/{thingID}/{name}"
@@ -100,14 +102,10 @@ type IServerConnection interface {
 	// The client MUST send a response message and include the provided requestID.
 	// Intended to send requests to agents.
 	//
-	// operation identifies the request to invoke.
-	// thingID of the thing the operation applies to
-	// name of the affordance the operation applies to
-	// input data of the request as per affordance
-	// requestID is the message requestID to use in the response.
+	// msg contains the request information
 	//
 	// This returns an error if the agent isn't reachable
-	SendRequest(operation string, thingID, name string, input any, requestID string) error
+	SendRequest(msg ThingMessage) error
 
 	// SendResponse send a response to the client for a previous sent request.
 	// Typically used in sending a reply to a invokeaction request.

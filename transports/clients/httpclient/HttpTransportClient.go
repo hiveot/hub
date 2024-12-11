@@ -250,12 +250,11 @@ func (cl *HttpTransportClient) SendOperation(
 			// no response expected. We're done here.
 			return nil
 		} else {
-			// body contains the output
-			handled := cl.BaseRnrChan.HandleResponse(requestID, output, true)
+			msg := transports.NewThingMessage(operation, dThingID, name, output, "")
+			msg.RequestID = requestID
+			handled := cl.BaseRnrChan.HandleResponse(msg, true)
 			if !handled {
 				// no rpc waiting, pass to the notification handler
-				msg := transports.NewThingMessage(operation, dThingID, name, data, "")
-				msg.RequestID = requestID
 				cl.BaseNotificationHandler(msg)
 			}
 		}
@@ -314,7 +313,10 @@ func (cl *HttpTransportClient) Init(
 	if timeout == 0 {
 		timeout = time.Second * 3
 	}
-	urlParts, _ := url.Parse(fullURL)
+	urlParts, err := url.Parse(fullURL)
+	if err != nil {
+		slog.Error("Invalid URL")
+	}
 	cl.BaseTransportClient = base.BaseTransportClient{
 		BaseCaCert:       caCert,
 		BaseClientID:     clientID,

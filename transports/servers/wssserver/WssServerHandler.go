@@ -118,8 +118,8 @@ func (c *WssServerConnection) WssServerHandleMessage(raw []byte) {
 	}
 	op, _ := MsgTypeToOp[baseMsg.MessageType]
 	slog.Info("WssServerHandleMessage: Received message",
-		slog.String("clientID", c.clientID),
 		slog.String("messageType", baseMsg.MessageType),
+		slog.String("senderID", c.clientID),
 		slog.String("requestID", baseMsg.RequestID))
 
 	switch baseMsg.MessageType {
@@ -147,7 +147,7 @@ func (c *WssServerConnection) WssServerHandleMessage(raw []byte) {
 		msg = transports.NewThingMessage(
 			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, c.clientID)
 		msg.RequestID = wssMsg.RequestID
-		msg.MessageID = wssMsg.MessageID
+		msg.SenderID = c.GetClientID()
 		msg.Timestamp = wssMsg.Timestamp
 		c.ForwardAsRequest(msg)
 
@@ -162,7 +162,6 @@ func (c *WssServerConnection) WssServerHandleMessage(raw []byte) {
 		msg = transports.NewThingMessage(
 			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, c.clientID)
 		msg.RequestID = wssMsg.RequestID
-		msg.MessageID = wssMsg.MessageID
 		msg.Timestamp = wssMsg.Timestamp
 		if baseMsg.MessageType == MsgTypePublishEvent {
 			c.ForwardAsNotification(msg)
@@ -185,7 +184,6 @@ func (c *WssServerConnection) WssServerHandleMessage(raw []byte) {
 		msg = transports.NewThingMessage(
 			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, c.clientID)
 		msg.RequestID = wssMsg.RequestID
-		msg.MessageID = wssMsg.MessageID
 		msg.Timestamp = wssMsg.Timestamp
 		if wssMsg.MessageType == MsgTypePropertyReading ||
 			wssMsg.MessageType == MsgTypePropertyReadings {
@@ -200,7 +198,6 @@ func (c *WssServerConnection) WssServerHandleMessage(raw []byte) {
 		msg = transports.NewThingMessage(
 			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, c.clientID)
 		msg.RequestID = wssMsg.RequestID
-		msg.MessageID = wssMsg.MessageID
 		msg.Timestamp = wssMsg.Timestamp
 		c.ForwardAsRequest(msg)
 
@@ -210,7 +207,6 @@ func (c *WssServerConnection) WssServerHandleMessage(raw []byte) {
 		msg = transports.NewThingMessage(
 			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, c.clientID)
 		msg.RequestID = wssMsg.RequestID
-		msg.MessageID = wssMsg.MessageID
 		msg.Timestamp = wssMsg.Timestamp
 		c.ForwardAsNotification(msg)
 
@@ -254,8 +250,13 @@ func (c *WssServerConnection) WssServerHandleMessage(raw []byte) {
 
 	// other messages handled inside this binding
 	case MsgTypeError:
+		// someone returned an error
 		wssMsg := ErrorMessage{}
 		_ = c.Unmarshal(raw, &wssMsg)
+		slog.Info("WSS Agent returned an error:",
+			"senderID", c.clientID,
+			"ThingID", wssMsg.ThingID,
+			"error", wssMsg.Title)
 		c.HandleError(&wssMsg)
 	case MsgTypePing:
 		wssMsg := BaseMessage{}

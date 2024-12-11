@@ -11,11 +11,12 @@ import (
 	service2 "github.com/hiveot/hub/runtime/authz/service"
 	"github.com/hiveot/hub/runtime/digitwin/router"
 	service4 "github.com/hiveot/hub/runtime/digitwin/service"
-	"github.com/hiveot/hub/runtime/pm"
 	"github.com/hiveot/hub/transports/connections"
+	"github.com/hiveot/hub/transports/servers"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
+	"time"
 )
 
 // Runtime is the Hub runtime. This is the bare-bone core of the hub that operates the
@@ -30,7 +31,7 @@ type Runtime struct {
 	DigitwinSvc    *service4.DigitwinService
 	DigitwinRouter api.IDigitwinRouter
 	CM             *connections.ConnectionManager
-	TransportsMgr  *pm.ProtocolManager
+	TransportsMgr  *servers.TransportManager
 }
 
 // GetForm returns the form for an operation using a transport protocol binding
@@ -38,6 +39,12 @@ type Runtime struct {
 // If the protocol is not found this returns a nil and might cause a panic
 func (r *Runtime) GetForm(op string, protocol string) (f td.Form) {
 	return r.TransportsMgr.GetForm(op, protocol)
+}
+
+// GetConnectURL returns the URL for connecting with the given protocol type.
+// If the protocol is not available, the https fallback is returned.
+func (r *Runtime) GetConnectURL(protocolType string) string {
+	return r.TransportsMgr.GetConnectURL(protocolType)
 }
 
 // GetTD returns the TD with the given digitwin ID.
@@ -104,7 +111,7 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 
 	// the protocol manager receives messages from clients (source) and
 	// sends messages to connected clients (sink)
-	r.TransportsMgr, err = pm.StartProtocolManager(
+	r.TransportsMgr, err = servers.StartProtocolManager(
 		&r.cfg.Transports,
 		r.cfg.ServerCert,
 		r.cfg.CaCert,
@@ -130,20 +137,21 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	_ = r.AuthzSvc.SetPermissions(authn.AdminServiceID, authz.ThingPermissions{
 		AgentID: digitwin.DirectoryAgentID,
 		ThingID: digitwin.DirectoryServiceID,
-		Allow:   []authz.ClientRole{authz.ClientRoleAgent, ""},
+		Allow:   []authz.ClientRole{authz.ClientRoleAgent},
 	})
 	// anyone else can read the directory
 	// FIXME: differentiate per action based on TD default?
 	_ = r.AuthzSvc.SetPermissions(authn.AdminServiceID, authz.ThingPermissions{
 		AgentID: digitwin.DirectoryAgentID,
 		ThingID: digitwin.DirectoryServiceID,
-		Deny:    []authz.ClientRole{authz.ClientRoleNone, ""},
+		Deny:    []authz.ClientRole{authz.ClientRoleNone},
 	})
 
 	return err
 }
 
 func (r *Runtime) Stop() {
+	time.Sleep(time.Millisecond) //allow connections to close
 	nrConnections, _ := r.CM.GetNrConnections()
 
 	if r.AuthnSvc != nil {

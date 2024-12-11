@@ -69,7 +69,7 @@ func StartAuthzAgent(svc *AuthzService) (*AuthzAgent, error) {
 		err = svc.SetPermissions(authn.UserAgentID, authz.ThingPermissions{
 			AgentID: authn.UserAgentID,
 			ThingID: authn.UserServiceID,
-			Deny:    []authz.ClientRole{authz.ClientRoleNone, ""},
+			Deny:    []authz.ClientRole{authz.ClientRoleNone},
 		})
 	}
 

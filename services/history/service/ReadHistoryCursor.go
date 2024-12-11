@@ -81,7 +81,7 @@ func decodeValue(bucketID string, storageKey string, raw []byte) (
 		RequestID: requestID,
 		Name:      name,
 		Data:      data,
-		Created:   createdTime.Format(wot.RFC3339Milli),
+		Timestamp: createdTime.Format(wot.RFC3339Milli),
 		Operation: operation,
 		SenderID:  senderID,
 	}

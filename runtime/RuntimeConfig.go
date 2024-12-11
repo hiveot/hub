@@ -85,6 +85,12 @@ func (cfg *RuntimeConfig) setupCerts(env *plugin.AppEnvironment) {
 	if cfg.CaCert == nil {
 		slog.Info("loading CA certificate and key")
 		cfg.CaCert, err = certs.LoadX509CertFromPEM(caCertPath)
+	} else {
+		// save the caCert and its key
+		err = certs.SaveX509CertToPEM(cfg.CaCert, caCertPath)
+		if err == nil && cfg.CaKey != nil {
+			err = cfg.CaKey.ExportPrivateToFile(caKeyPath)
+		}
 	}
 	// only load the ca key if the cert was loaded
 	if cfg.CaCert != nil && cfg.CaKey == nil {
@@ -161,7 +167,7 @@ func (cfg *RuntimeConfig) setupCerts(env *plugin.AppEnvironment) {
 		}
 		cfg.ServerCert = certs.X509CertToTLS(serverCert, cfg.ServerKey)
 
-		slog.Warn("Writing server cert", "serverCertPath", serverCertPath)
+		slog.Info("Writing server cert", "serverCertPath", serverCertPath)
 		err = certs.SaveX509CertToPEM(serverCert, serverCertPath)
 		if err != nil {
 			slog.Error("writing server cert failed: ", "err", err)

@@ -37,7 +37,7 @@ Pure HTTP is uni-directional. The server cannot push messages to the client, so 
 For the above reason, HTTP-only clients are only used by 3rd party consumers. It is the most basic and limited form of interoperability.
 HTTP can be combined with a sub-protocol to add a return channel, as described below.
 
-### HTTP Server
+### HTTP Basic Transport
 
 HTTP supports including results in the HTTP response body. It can therefore include a reply to requests as long as they are immediately available. 
 
@@ -53,16 +53,39 @@ Limitations:
 Future: 
 1. Support 'full compatibility mode' by having the server wait for a result of actions on remote Things. Enable/Disable this feature in the configuration. The downsides are that it can block the client connection until a result is received and it can use up a lot of resources.
 
+Examples:
+
+To return the TD of a thing:
+> GET https://server/digitwin/td/{thingID}
+
+
+To read a Thing property value:
+> GET https://server/digitwin/properties/{thingID}/{name}
+
+These operations are described in a TD top level form as per [TD-1.1 specification](https://www.w3.org/TR/wot-thing-description11/#form):
+```json
+{
+  "forms": [
+    {
+      "op": "readproperty",
+      "href": "/digitwin/properties/dtw:agent1:thing1/{name}",
+	  "htv:methodName": "GET"
+    }
+  ]
+}
+```
+
 ### HTTP+SSE Transport
 
-This transports adds a return channel to HTTP using the SSE sub-protocol. The WoT specification states that subscriptions and observations are defined in the connection header. Additional subscriptions require a new connection. 
+This transports adds a return channel to HTTP using the SSE sub-protocol. The WoT specification states that the connection path contains the resource to subscribe or observe. Additional subscriptions require a new connection. 
 
 Discovery publishes the http address and port, and the path to retrieve the Thing directory.
 
 Limitations: 
-1. Remote agents cannot use this to receive requests as this is not supported in the WoT standard.
-2. Only partially interoperable with http-only clients. Only immediate results from the digital twins are returned in the http body. Results from actions are send async. Same problem as http-only servers. 
-3. A separate connection is needed for subscribing to each thing. Subscribing to 10 Things for example requires 10 connections. This is only scalable when using HTTP/2. 
+1. This is currently not fully implemented 
+2. Remote agents cannot use this to receive requests as this is not supported in the WoT standard.
+3Only partially interoperable with http-only clients. Only immediate results from the digital twins are returned in the http body. Results from actions are send async. Same problem as http-only servers. 
+4. A separate connection is needed for subscribing to each thing. Subscribing to 10 Things for example requires 10 connections. This is only scalable when using HTTP/2. 
 
 Additional complications:
 1: how to return synchronous vs async results? 
@@ -74,12 +97,27 @@ Additional complications:
 		* Pro: easier to implement and handle
 		* Con: not compatible with 3rd party http consumers. 
 
-TODO:
+TODO: implement connecting as sse 
+
+Example: A form that could subscribe to all events of a Thing looks like:
+```json
+{
+  "forms": [
+    {
+      "op": ["subscribeallevents","unsubscribeallevents"],
+      "href": "/sse/digitwin/events/dtw:agent1:thing1",
+	  "htv:methodName": "GET",
+      "subprotocol": "sse"
+    }
+  ]
+}
+```
 
 
 ### HTTP+SSE_SC Transport
 
 This transport shares a single SSE return channel for all messages, subscriptions and observations from the connected client. It uses the SSE event ID to pass operation, ThingID and affordance name, which allows for identifying messages for multiple things, affordances and operations.
+HTTP methods are used to (un)subscribe events and (un)observe properties. These are defined in the Forms.
 
 Limitations:
 1. This is not a WoT SSE subprotocol specification (maybe it should be)
@@ -87,6 +125,43 @@ Limitations:
 3. Only partially interoperable with http-only clients. Only immediate results from the digital twins are returned in the http body. Results from actions are send async. Same problem as http-only servers.
 
 Discovery publishes the http address and port, and the path to retrieve the Thing directory. 
+
+Example:
+
+Forms to connect, subscribe and unsubscribe events of a Thing could look like:
+```json
+{
+  "forms": [
+    {
+      "op": "sse:connect",
+      "href": "/ssesc",
+      "htv:methodName": "GET",
+      "subprotocol": "ssesc",
+      "headers": ["cid"]
+    },
+    {
+      "op": "subscribeallevents",
+      "href": "/ssesc/digitwin/subscribe/dtw:agent1:thing1",
+      "htv:methodName": "POST",
+      "subprotocol": "ssesc",
+      "headers": ["cid", "requestID"]
+    },
+    {
+      "op": "unsubscribeallevents",
+      "href": "/ssesc/digitwin/unsubscribe/dtw:agent1:thing1",
+      "htv:methodName": "POST",
+      "subprotocol": "ssesc",
+      "headers": ["cid"]
+    }
+  ]
+}
+```
+
+This introduces a 'connect' operation for establishing the sse connection. This operation is only needed once for all subscriptions. This establishes an SSE connection as per RFC or returns 401 when the consumer does not provide proper credentials connecting to the sse endpoint.
+
+To subscribe to events, post to the subscribe endpoint with the thingID. This returns with a 200 code on success or 401 when the consumer is not allowed subscriptions to this Thing.
+
+Optionally supply a 'cid' header field containing a connection-id. This is required for linking a subscription to a connection from the same client, as is the case in multiple browser tabs where each tab has its own connection using the authentication token in a shared cookie.
 
 ### HTTP+WebSocket Transport
 
@@ -98,6 +173,26 @@ Limitations:
    * TBD, can the hub query the TD over the websocket connection? 
 
 Discovery publishes the http address, port and websocket address.
+
+A form to subscribe to all events of a Thing could look like:
+```json
+{
+  "forms": [
+    {
+      "op": "subscribeallevents",
+      "href": "/wss/digitwin/subscribe/dtw:agent1:thing1",
+      "subprotocol": "wss"
+    },
+    {
+      "op": "unsubscribeallevents",
+      "href": "/wss/digitwin/unsubscribe/dtw:agent1:thing1",
+      "subprotocol": "wss"
+    }
+  ]
+}
+```
+
+This follows the specification from the 'strawman proposal' https://docs.google.com/document/d/1KWv-aQfMgsqBFg0v4rVqzcVvzzisC7y4X4CMUYGc8rE by Ben Francis. 
 
 ## MQTT Transport Server (todo)
 

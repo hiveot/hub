@@ -2,7 +2,7 @@ package idprovclient
 
 import (
 	"github.com/hiveot/hub/services/idprov/idprovapi"
-	"github.com/hiveot/hub/transports/utils/tlsclient"
+	"github.com/hiveot/hub/transports/tputils/tlsclient"
 	jsoniter "github.com/json-iterator/go"
 )
 

@@ -11,8 +11,11 @@ import (
 
 // Pass the given message to the registered notification handler
 func (cl *WssTransportClient) _handleAsNotification(msg *transports.ThingMessage) {
-	if cl.BaseNotificationHandler != nil {
-		cl.BaseNotificationHandler(msg)
+	cl.BaseMux.RLock()
+	notificationHandler := cl.BaseNotificationHandler
+	cl.BaseMux.RUnlock()
+	if notificationHandler != nil {
+		notificationHandler(msg)
 	} else {
 		slog.Warn("received notification but no handler is registered",
 			"clientID", cl.BaseClientID)
@@ -48,19 +51,23 @@ func (cl *WssTransportClient) _handleAsRequest(msg *transports.ThingMessage) {
 func (cl *WssTransportClient) handleActionStatus(requestID string, raw []byte) {
 	var senderID = ""
 
+	slog.Info("handleActionStatus",
+		slog.String("clientID", cl.GetClientID()),
+		slog.String("requestID", requestID))
 	wssMsg := wssserver.ActionStatusMessage{}
 	_ = cl.Unmarshal(raw, &wssMsg)
 	op := wssserver.MsgTypeToOp[wssMsg.MessageType]
 
+	msg := transports.NewThingMessage(
+		op, wssMsg.ThingID, wssMsg.Name, wssMsg.Output, senderID)
+	msg.RequestID = wssMsg.RequestID
 	// if this is an RPC message then handle it now
-	isRPC := cl.BaseRnrChan.HandleResponse(requestID, wssMsg.Output, true)
+	isRPC := cl.BaseRnrChan.HandleResponse(msg, true)
 	if isRPC {
 		// Good, this was a known RPC request. It is handled by the channel listener.
 		return
 	}
 
-	msg := transports.NewThingMessage(
-		op, "", "", wssMsg.Output, senderID)
 	cl._handleAsNotification(msg)
 }
 
@@ -75,9 +82,9 @@ func (cl *WssTransportClient) handleActionMessage(raw []byte) {
 	_ = err
 	// agent receives action request
 	rxMsg := transports.NewThingMessage(
-		op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, "")
+		op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, wssMsg.SenderID)
 	rxMsg.RequestID = wssMsg.RequestID
-	rxMsg.MessageID = wssMsg.MessageID
+	rxMsg.SenderID = wssMsg.SenderID
 
 	cl._handleAsRequest(rxMsg)
 }
@@ -86,7 +93,7 @@ func (cl *WssTransportClient) handleActionMessage(raw []byte) {
 // This can be a response to a non-rpc request, or an update to a prior RPC.
 // This is passed to the client as an error instance.
 func (cl *WssTransportClient) handleError(requestID string, raw []byte) {
-	var senderID = ""
+	var senderID = "" // wssMsg doesn't contain this
 
 	wssMsg := wssserver.ErrorMessage{}
 	_ = cl.Unmarshal(raw, &wssMsg)
@@ -100,13 +107,13 @@ func (cl *WssTransportClient) handleError(requestID string, raw []byte) {
 		errorInfo += "\n" + wssMsg.Detail
 	}
 	err := errors.New(errorInfo)
-	isRPC := cl.BaseRnrChan.HandleResponse(requestID, err, true)
+	msg := transports.NewThingMessage(op, wssMsg.ThingID, wssMsg.Name, err, senderID)
+	msg.RequestID = wssMsg.RequestID
+	isRPC := cl.BaseRnrChan.HandleResponse(msg, true)
 	if isRPC {
 		// Good, this was a known RPC request. It is handled by the channel listener.
 		return
 	}
-	msg := transports.NewThingMessage(
-		op, "", "", err, senderID)
 	cl._handleAsNotification(msg)
 }
 
@@ -122,7 +129,6 @@ func (cl *WssTransportClient) handleEventMessage(raw []byte) {
 	rxMsg := transports.NewThingMessage(
 		op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, "")
 	rxMsg.RequestID = wssMsg.RequestID
-	rxMsg.MessageID = wssMsg.MessageID
 	rxMsg.Timestamp = wssMsg.Timestamp
 	cl._handleAsNotification(rxMsg)
 }
@@ -140,7 +146,7 @@ func (cl *WssTransportClient) handlePropertyMessage(raw []byte) {
 	rxMsg := transports.NewThingMessage(
 		op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, "")
 	rxMsg.RequestID = wssMsg.RequestID
-	rxMsg.MessageID = wssMsg.MessageID
+	//rxMsg.SenderID = wssMsg.SenderID
 	rxMsg.Timestamp = wssMsg.Timestamp
 
 	if op == wot.OpWriteProperty || op == wot.OpWriteMultipleProperties {
@@ -170,7 +176,7 @@ func (cl *WssTransportClient) handleTDMessage(raw []byte) {
 	rxMsg := transports.NewThingMessage(
 		op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, "")
 	rxMsg.RequestID = wssMsg.RequestID
-	rxMsg.MessageID = wssMsg.MessageID
+	//rxMsg.SenderID = wssMsg.SenderID
 	rxMsg.Timestamp = wssMsg.Timestamp
 	cl._handleAsNotification(rxMsg)
 }

@@ -6,7 +6,7 @@ import (
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/clients/httpclient"
 	"github.com/hiveot/hub/transports/clients/mqttclient"
-	"github.com/hiveot/hub/transports/clients/ssescclient"
+	"github.com/hiveot/hub/transports/clients/sseclient"
 	"github.com/hiveot/hub/transports/clients/wssclient"
 	"github.com/hiveot/hub/wot/td"
 	"strings"
@@ -36,9 +36,9 @@ func CreateTransportClient(
 	// determine the protocol to use from the URL
 	protocolType := transports.ProtocolTypeWSS
 	if strings.HasPrefix(fullURL, "https") {
-		if strings.HasSuffix(fullURL, "sse") {
+		if strings.HasSuffix(fullURL, transports.DefaultSSEPath) {
 			protocolType = transports.ProtocolTypeSSE
-		} else if strings.HasSuffix(fullURL, "ssesc") {
+		} else if strings.HasSuffix(fullURL, transports.DefaultSSESCPath) {
 			protocolType = transports.ProtocolTypeSSESC
 		} else {
 			protocolType = transports.ProtocolTypeHTTPS
@@ -67,7 +67,7 @@ func CreateTransportClient(
 		panic("sse client is not yet supported")
 
 	case transports.ProtocolTypeSSESC:
-		bc = ssescclient.NewSsescTransportClient(
+		bc = sseclient.NewSsescTransportClient(
 			fullURL, clientID, nil, caCert, getForm, DefaultTimeout)
 
 	case transports.ProtocolTypeWSS:

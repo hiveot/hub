@@ -373,14 +373,20 @@ func (svc *DigitwinStore) UpdateActionStart(
 
 	dtw, found := svc.dtwCache[dThingID]
 	if !found {
-		err := fmt.Errorf("dThing with ID '%s' is not a known Thing", dThingID)
-		return err
+		err := fmt.Errorf(
+			"UpdateActionStart: Action requested on an unknown Thing with ID '%s'. "+
+				"Action is not recorded", dThingID)
+		slog.Warn(err.Error())
+		//return err
+		return nil
 	}
-	// action affordance must exist
+	// action affordance should exist
 	aff, found := dtw.DtwTD.Actions[name]
 	_ = aff
 	if !found {
-		return fmt.Errorf("UpdateActionStart: Action '%s' not found in digital twin '%s'", name, dThingID)
+		err := fmt.Errorf("UpdateActionStart: Action '%s' not found in "+
+			"digital twin '%s'. Action is not recorded", name, dThingID)
+		slog.Warn(err.Error())
 	}
 	actionValue, found := dtw.ActionValues[name]
 	if !found {
@@ -466,7 +472,7 @@ func (svc *DigitwinStore) UpdateEventValue(
 	dtw, found := svc.dtwCache[dThingID]
 	if !found {
 		err := fmt.Errorf("dThing with ID '%s' not found", dThingID)
-		slog.Info("UpdateEventValue Can't update state of an unknown Thing. Event ignored.", "dThingID", dThingID)
+		slog.Warn("UpdateEventValue Can't update state of an unknown Thing. Event ignored.", "dThingID", dThingID)
 		return dThingID, err
 	}
 	eventValue := digitwin.ThingValue{

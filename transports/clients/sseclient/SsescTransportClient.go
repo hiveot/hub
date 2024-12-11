@@ -1,4 +1,4 @@
-package ssescclient
+package sseclient
 
 import (
 	"context"
@@ -14,13 +14,18 @@ import (
 	"time"
 )
 
-// SsescTransportClient extends the https binding with the SSE return channel.
+// SsescTransportClient extends the https binding with the SSE-SC return channel.
 //
 // This client creates two http/2 connections, one for posting messages and
 // one for a sse connection to establish a return channel.
 //
-// This clients implements the REST API supported by the digitwin runtime services,
-// specifically the directory, inbox, outbox, authn
+// This client is for using the hiveot SSE-SC protocol extension.
+// The hub server supports both SSE and SSE-SC.
+//
+// The difference between SSE and SSE-SC is that SSE provides subscription/observe in
+// the http header during connection, while sse-sc uses a separate REST call to
+// subscribe and unsubscribe. In addition, sse-sc uses the SSE eventID to pass
+// the operation, thingID and affordance name, supporting multiple devices.
 type SsescTransportClient struct {
 	httpclient.HttpTransportClient
 
@@ -144,28 +149,6 @@ func (cl *SsescTransportClient) handleSSEConnect(connected bool, err error) {
 	}
 }
 
-// SendRequest sends an operation request and waits for a completion or timeout.
-// This uses a correlationID to link actions to progress updates.
-//func (cl *SsescTransportClient) SendRequest(operation string,
-//	dThingID string, name string, input interface{}, output interface{}) (err error) {
-//
-//	// a requestID is needed before the action is published in order to match it with the reply
-//	requestID := "sserpc-" + shortid.MustGenerate()
-//	rChan := cl.rnrChan.Open(requestID)
-//
-//	raw, _, err := cl.SendOperation(operation, dThingID, name, input, requestID)
-//
-//	// If a result is received then leave it there and return the result
-//	// this is currently not supported
-//	if raw != nil && output != nil {
-//		err = jsoniter.Unmarshal(raw, output)
-//		cl.rnrChan.Close(requestID)
-//		return err
-//	}
-//	err = cl.WaitForResponse(rChan, requestID, output)
-//	return err
-//}
-
 // SetSSEPath sets the new sse path to use.
 // This allows to change the hub default /ssesc
 func (cl *SsescTransportClient) SetSSEPath(ssePath string) {
@@ -190,10 +173,10 @@ func NewSsescTransportClient(fullURL string, clientID string,
 
 	// Use CA certificate for server authentication if it exists
 	if caCert == nil {
-		slog.Info("NewHttpSSEClient: No CA certificate. InsecureSkipVerify used",
+		slog.Info("NewSsescTransportClient: No CA certificate. InsecureSkipVerify used",
 			slog.String("destination", fullURL))
 	} else {
-		slog.Debug("NewHttpSSEClient: CA certificate",
+		slog.Debug("NewSsescTransportClient: CA certificate",
 			slog.String("destination", fullURL),
 			slog.String("caCert CN", caCert.Subject.CommonName))
 		caCertPool.AddCert(caCert)
@@ -203,7 +186,7 @@ func NewSsescTransportClient(fullURL string, clientID string,
 	}
 
 	cl := SsescTransportClient{
-		ssePath:       transports.SSESCPathPrefix,
+		ssePath:       transports.DefaultSSESCPath,
 		subscriptions: nil,
 		rnrChan:       tputils.NewRnRChan(),
 	}

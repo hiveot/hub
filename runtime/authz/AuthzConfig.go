@@ -63,13 +63,14 @@ type RolePermission struct {
 // and subscribe to their own actions and config
 var agentPermissions = RolePermission{
 	Operations: []string{
-		vocab.OpInvokeAction,
+		vocab.HTOpPublishError,
 		vocab.HTOpPublishEvent,
 		vocab.HTOpUpdateActionStatus,
 		vocab.HTOpUpdateMultipleProperties,
 		vocab.HTOpUpdateProperties,
 		vocab.HTOpUpdateProperty,
 		vocab.HTOpUpdateTD,
+		vocab.OpInvokeAction,
 	},
 }
 
@@ -77,17 +78,18 @@ var agentPermissions = RolePermission{
 var servicePermissions = RolePermission{
 
 	Operations: []string{
-		vocab.OpInvokeAction,
-		vocab.OpObserveProperty,
-		vocab.OpObserveAllProperties,
-		vocab.HTOpUpdateActionStatus,
+		vocab.HTOpPublishError,
 		vocab.HTOpPublishEvent,
+		vocab.HTOpUpdateActionStatus,
+		vocab.HTOpUpdateTD,
 		vocab.HTOpUpdateMultipleProperties,
 		vocab.HTOpUpdateProperties,
 		vocab.HTOpUpdateProperty,
+		vocab.OpInvokeAction,
+		vocab.OpObserveProperty,
+		vocab.OpObserveAllProperties,
 		vocab.OpSubscribeEvent,
 		vocab.OpSubscribeAllEvents,
-		vocab.HTOpUpdateTD,
 	},
 }
 

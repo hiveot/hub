@@ -1,4 +1,4 @@
-package ssescclient
+package sseclient
 
 import (
 	"bytes"

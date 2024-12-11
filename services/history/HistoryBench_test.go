@@ -22,15 +22,15 @@ const timespanYear = timespanDay * 365
 //                                                                                          --- WOT protocol bindings (reading) ---
 //                                      ---------------  MQTT/NATS BROKER --------------     HTTPSSE runtime          WSS runtime
 //	DBSize #Things                      kvbtree (msec)    pebble (msec)     bbolt (msec)      pebble (msec)           pebble (msec)
-//	 10K      10    add 1K single (*)       2.5             4.7             4600/4600             6.0                    6.0           <- increase of 40% due to internal changes
+//	 10K      10    add 1K single (*)       2.5             4.7             4600/4600             6.0                    6.1           <- increase of 40% due to internal changes
 //	 10K      10    add 1K batch (*)        1.2             2.4               76/72               3.5                    3.5
-//	 10K      10    get 1K single         330/125         324/130            300/130            890     (!! ouch)      560
-//	 10K      10    get 1K batch          5.5/4.3           7                5.5/4.3             31     (!!)            39
+//	 10K      10    get 1K single         330/125         324/130            300/130            890     (!! ouch)      190
+//	 10K      10    get 1K batch          5.5/4.3           7                5.5/4.3             31     (!!)            15
 //
-//	100K      10    add 1K single (*)       2.9             4.3             4900/4900             5.6                    5.6
-//	100K      10    add 1K batch (*)        1.4             2.4               84/82               3.3                    3.3
-//	100K      10    get 1K single         340/130         320/128            325/130            890     (!! ouch)      550
-//	100K      10    get 1K batch          6.0/4.2           7                5.2/4.3             32                     36
+//	100K      10    add 1K single (*)       2.9             4.3             4900/4900             5.6                    5.5
+//	100K      10    add 1K batch (*)        1.4             2.4               84/82               3.3                    3.1
+//	100K      10    get 1K single         340/130         320/128            325/130            890     (!! ouch)      190
+//	100K      10    get 1K batch          6.0/4.2           7                5.2/4.3             32                     16
 //
 //	  1M     100    add 1K single (*)       2.9             5.7             5500
 //	  1M     100    add 1K batch (*)        1.4             3.1              580
@@ -102,7 +102,7 @@ func BenchmarkAddEvents(b *testing.B) {
 
 		// test reading records
 		// readHist uses the hubclient library
-		time.Sleep(time.Millisecond * 10) // let the add settle
+		time.Sleep(time.Millisecond * 100) // let the add settle
 		b.Run(fmt.Sprintf("[dbsize:%d] #things:%d get-single:%d", tbl.dataSize, tbl.nrThings, tbl.nrSets),
 			func(b *testing.B) {
 				for n := 0; n < b.N; n++ {

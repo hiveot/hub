@@ -10,8 +10,9 @@ import (
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/runtime"
 	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/clients/httpclient"
 	"github.com/hiveot/hub/transports/clients/mqttclient"
-	"github.com/hiveot/hub/transports/clients/ssescclient"
+	"github.com/hiveot/hub/transports/clients/sseclient"
 	"github.com/hiveot/hub/transports/clients/wssclient"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
@@ -23,6 +24,10 @@ import (
 
 // TestDir is the default test directory
 var TestDir = path.Join(os.TempDir(), "hiveot-test")
+
+const TestHttpsPort = 9444
+const TestMqttTcpPort = 9883
+const TestMqttWssPort = 9884
 
 var testTDs = []struct {
 	ID         string
@@ -54,7 +59,6 @@ var ActionTypes = []string{vocab.ActionDimmer, vocab.ActionSwitch,
 // TestServer for testing application services.
 // Usage: run NewTestServer() followed by Start(clean)
 type TestServer struct {
-	Port           int
 	Certs          certs.TestCertBundle
 	TestDir        string
 	ConnectTimeout time.Duration
@@ -72,18 +76,22 @@ func (test *TestServer) GetConnection(clientID string, protocolName string) tran
 	getForm := func(op string) td.Form {
 		return test.Runtime.GetForm(op, protocolName)
 	}
+	connectURL := test.Runtime.TransportsMgr.GetConnectURL(protocolName)
 	if protocolName == transports.ProtocolTypeWSS {
-		wssURL := fmt.Sprintf("wss://localhost:%d/wss", test.Port)
 		return wssclient.NewWssTransportClient(
-			wssURL, clientID, nil, test.Certs.CaCert, test.ConnectTimeout)
+			connectURL, clientID, nil, test.Certs.CaCert, test.ConnectTimeout)
 	} else if protocolName == transports.ProtocolTypeMQTTS {
-		brokerURL := fmt.Sprintf("mqtts://localhost:%d", test.Port)
 		return mqttclient.NewMqttTransportClient(
-			brokerURL, clientID, nil, test.Certs.CaCert, getForm, test.ConnectTimeout)
+			connectURL, clientID, nil, test.Certs.CaCert, getForm, test.ConnectTimeout)
+	} else if protocolName == transports.ProtocolTypeSSE {
+		return sseclient.NewSseTransportClient(
+			connectURL, clientID, nil, test.Certs.CaCert, getForm, test.ConnectTimeout)
 	} else if protocolName == transports.ProtocolTypeSSESC {
-		hostPort := fmt.Sprintf("localhost:%d", test.Port)
-		return ssescclient.NewSsescTransportClient(
-			hostPort, clientID, nil, test.Certs.CaCert, getForm, test.ConnectTimeout)
+		return sseclient.NewSsescTransportClient(
+			connectURL, clientID, nil, test.Certs.CaCert, getForm, test.ConnectTimeout)
+	} else if protocolName == transports.ProtocolTypeHTTPS {
+		return httpclient.NewHttpTransportClient(
+			connectURL, clientID, nil, test.Certs.CaCert, getForm, test.ConnectTimeout)
 	} else {
 		panic("Unknown protocol: " + protocolName)
 	}
@@ -134,7 +142,9 @@ func (test *TestServer) AddConnectAgent(agentID string) (cl transports.IClientCo
 
 	newToken, err := cl.ConnectWithToken(token)
 	if err != nil {
-		panic("AddConnectAgent: Failed connecting using token. SenderID=" + agentID)
+		err = fmt.Errorf("AddConnectAgent: Failed connecting using token. "+
+			"SenderID='%s': %s", agentID, err.Error())
+		panic(err)
 	}
 
 	return cl, newToken
@@ -237,6 +247,16 @@ func (test *TestServer) GetForm(op string, protocol string) td.Form {
 	return test.Runtime.GetForm(op, protocol)
 }
 
+// GetServerURL returns the default connection URL to use for the given client type
+func (test *TestServer) GetServerURL(clientType authn.ClientType) string {
+	if clientType == authn.ClientTypeService {
+		return test.Runtime.GetConnectURL(test.ServiceProtocol)
+	} else if clientType == authn.ClientTypeAgent {
+		return test.Runtime.GetConnectURL(test.AgentProtocol)
+	}
+	return test.Runtime.GetConnectURL(test.ConsumerProtocol)
+}
+
 // Start the test server.
 // This panics if something goes wrong.
 func (test *TestServer) Start(clean bool) {
@@ -247,11 +267,16 @@ func (test *TestServer) Start(clean bool) {
 	}
 	test.AppEnv = plugin.GetAppEnvironment(test.TestDir, false)
 	//
-	test.Config.Transports.HttpsPort = test.Port
+	test.Config.Transports.HttpHost = "localhost"
+	test.Config.Transports.HttpsPort = TestHttpsPort
+	test.Config.Transports.MqttHost = "localhost"
+	test.Config.Transports.MqttTcpPort = TestMqttTcpPort
+	test.Config.Transports.MqttWssPort = TestMqttWssPort
 	test.Config.CaCert = test.Certs.CaCert
 	test.Config.CaKey = test.Certs.CaKey
 	test.Config.ServerKey = test.Certs.ServerKey
 	test.Config.ServerCert = test.Certs.ServerCert
+
 	//err := test.Config.Setup(&test.AppEnv)
 	//if err != nil {
 	//	panic("unable to setup test server config")
@@ -270,7 +295,6 @@ func (test *TestServer) Stop() {
 
 func NewTestServer() *TestServer {
 	srv := TestServer{
-		Port:    9444,
 		TestDir: TestDir,
 		Certs:   certs.CreateTestCertBundle(),
 		Config:  runtime.NewRuntimeConfig(),

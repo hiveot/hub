@@ -3,7 +3,7 @@ package wssserver
 import (
 	"fmt"
 	"github.com/gorilla/websocket"
-	transports2 "github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/connections"
 	"github.com/hiveot/hub/wot"
 	"github.com/teris-io/shortid"
@@ -40,7 +40,7 @@ type WssServerConnection struct {
 
 	// handler for passing request to a single destination
 	// a reply is expected (asynchronously)
-	messageHandler transports2.ServerMessageHandler
+	messageHandler transports.ServerMessageHandler
 
 	isClosed atomic.Bool
 
@@ -63,7 +63,7 @@ func (c *WssServerConnection) _send(wssMsg interface{}) (err error) {
 		defer c.mux.Unlock()
 		err = c.wssConn.WriteMessage(websocket.TextMessage, msgJSON)
 		if err != nil {
-			err = fmt.Errorf("_send write error: ", err)
+			err = fmt.Errorf("_send write error: %s", err)
 		}
 	}
 	return err
@@ -91,15 +91,15 @@ func (c *WssServerConnection) GetClientID() string {
 
 // GetProtocolType returns the type of protocol used in this connection
 func (c *WssServerConnection) GetProtocolType() string {
-	return transports2.ProtocolTypeWSS
+	return transports.ProtocolTypeWSS
 }
 
 // SendNotification send an event or property update to subscribers
 func (c *WssServerConnection) SendNotification(
 	operation string, dThingID, name string, data any) {
 
-	msg, err := OpToMessage(operation,
-		dThingID, name, nil, data, "")
+	wssMsg, err := OpToMessage(operation,
+		dThingID, name, nil, data, "", "")
 
 	if err != nil {
 		slog.Error("SendNotification: Unknown operation. Ignored.", "op", operation)
@@ -110,15 +110,15 @@ func (c *WssServerConnection) SendNotification(
 	case wot.HTOpUpdateTD:
 		// update the TD if the client is subscribed to its events
 		if c.subscriptions.IsSubscribed(dThingID, "") {
-			c._send(msg)
+			c._send(wssMsg)
 		}
 	case wot.HTOpPublishEvent:
 		if c.subscriptions.IsSubscribed(dThingID, name) {
-			c._send(msg)
+			c._send(wssMsg)
 		}
 	case wot.HTOpUpdateProperty, wot.HTOpUpdateMultipleProperties:
 		if c.observations.IsSubscribed(dThingID, name) {
-			c._send(msg)
+			c._send(wssMsg)
 		}
 	default:
 		slog.Error("SendNotification: Unknown notification operation",
@@ -128,37 +128,38 @@ func (c *WssServerConnection) SendNotification(
 	}
 }
 
-// SendError sends an error response to the client.
-func (c *WssServerConnection) SendError(
-	thingID, name string, errResponse string, requestID string) {
-
-	if requestID == "" {
-		slog.Error("SendError without requestID", "clientID", c.clientID)
-	} else {
-		slog.Warn("SendError", "clientID", c.clientID,
-			"errResponse", errResponse, "requestID", requestID)
-	}
-	msg := ErrorMessage{
-		ThingID:     thingID,
-		MessageType: MsgTypeError,
-		Title:       name + " error",
-		RequestID:   requestID,
-		Detail:      errResponse,
-		//Timestamp:   time.Now().Format(wot.RFC3339Milli),
-	}
-	_ = c._send(msg)
-}
+//
+//// SendError sends an error response to the client.
+//func (c *WssServerConnection) SendError(
+//	thingID, name string, errResponse string, requestID string) {
+//
+//	if requestID == "" {
+//		slog.Error("SendError without requestID", "clientID", c.clientID)
+//	} else {
+//		slog.Warn("SendError", "clientID", c.clientID,
+//			"errResponse", errResponse, "requestID", requestID)
+//	}
+//	msg := ErrorMessage{
+//		ThingID:     thingID,
+//		MessageType: MsgTypeError,
+//		Title:       name + " error",
+//		RequestID:   requestID,
+//		Detail:      errResponse,
+//		//Timestamp:   time.Now().Format(wot.RFC3339Milli),
+//	}
+//	_ = c._send(msg)
+//}
 
 // SendRequest sends the request to the client (agent).
 // Intended to be used on clients that are agents for Things.
 // If this returns an error then no request will was sent.
-func (c *WssServerConnection) SendRequest(
-	operation string, thingID, name string, input any, requestID string) error {
-	msg, err := OpToMessage(operation, thingID, name, nil, input, requestID)
+func (c *WssServerConnection) SendRequest(msg transports.ThingMessage) error {
+	wssMsg, err := OpToMessage(msg.Operation, msg.ThingID, msg.Name, nil,
+		msg.Data, msg.RequestID, msg.SenderID)
 	if err != nil {
 		return err
 	}
-	return c._send(msg)
+	return c._send(wssMsg)
 }
 
 // SendResponse sends an action status update to the client.
@@ -172,7 +173,7 @@ func (c *WssServerConnection) SendResponse(
 	} else {
 		slog.Info("SendResponse - actionStatus",
 			slog.String("clientID", c.clientID),
-			"requestID", requestID)
+			slog.String("requestID", requestID))
 	}
 	if errResp != nil {
 		msg := ErrorMessage{
@@ -236,7 +237,7 @@ func (c *WssServerConnection) SendResponse(
 // This implements the IServerConnection interface.
 func NewWSSConnection(
 	clientID string, r *http.Request, wssConn *websocket.Conn,
-	messageHandler transports2.ServerMessageHandler,
+	messageHandler transports.ServerMessageHandler,
 ) *WssServerConnection {
 
 	clcid := "WSS" + shortid.MustGenerate()

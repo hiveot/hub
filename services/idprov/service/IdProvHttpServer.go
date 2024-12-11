@@ -5,7 +5,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
-	"github.com/hiveot/hub/transports/utils/tlsserver"
+	"github.com/hiveot/hub/transports/tputils/tlsserver"
 	jsoniter "github.com/json-iterator/go"
 	"io"
 	"log/slog"

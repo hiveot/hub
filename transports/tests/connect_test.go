@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"log/slog"
+	"net/url"
 	"os"
 	"sync/atomic"
 	"testing"
@@ -388,4 +389,15 @@ func TestBadForm(t *testing.T) {
 
 	form := NewForm("badoperation")
 	assert.Nil(t, form)
+}
+
+// Test getting server URL
+func TestServerURL(t *testing.T) {
+	t.Log("TestServerURL")
+
+	srv, cancelFn, _ := StartTransportServer(DummyMessageHandler)
+	defer cancelFn()
+	serverURL := srv.GetConnectURL()
+	_, err := url.Parse(serverURL)
+	require.NoError(t, err)
 }

@@ -2,6 +2,8 @@ package certsclient
 
 import (
 	"github.com/hiveot/hub/services/certs/certsapi"
+	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/wot/td"
 )
 
 // CertsClient is a marshaller for cert service messages using a provided hub connection.
@@ -10,7 +12,7 @@ type CertsClient struct {
 	// dThingID digital twin service ID of the certificate management
 	dThingID string
 	// Connection to the hub
-	hc clients.IConsumer
+	hc transports.IClientConnection
 }
 
 //// helper for publishing a rpc request to the certs service
@@ -42,7 +44,7 @@ func (cl *CertsClient) CreateDeviceCert(deviceID string, pubKeyPEM string, valid
 		ValidityDays: validityDays,
 	}
 	resp := certsapi.CreateCertResp{}
-	err = cl.hc.Rpc(cl.dThingID, certsapi.CreateDeviceCertMethod, req, &resp)
+	err = cl.hc.InvokeAction(cl.dThingID, certsapi.CreateDeviceCertMethod, req, &resp)
 	return resp.CertPEM, resp.CaCertPEM, err
 }
 
@@ -58,7 +60,7 @@ func (cl *CertsClient) CreateServiceCert(
 		ValidityDays: validityDays,
 	}
 	resp := certsapi.CreateCertResp{}
-	err = cl.hc.Rpc(cl.dThingID, certsapi.CreateServiceCertMethod, req, &resp)
+	err = cl.hc.InvokeAction(cl.dThingID, certsapi.CreateServiceCertMethod, req, &resp)
 
 	return resp.CertPEM, resp.CaCertPEM, err
 }
@@ -74,7 +76,7 @@ func (cl *CertsClient) CreateUserCert(
 		ValidityDays: validityDays,
 	}
 	resp := certsapi.CreateCertResp{}
-	err = cl.hc.Rpc(cl.dThingID, certsapi.CreateUserCertMethod, req, &resp)
+	err = cl.hc.InvokeAction(cl.dThingID, certsapi.CreateUserCertMethod, req, &resp)
 	return resp.CertPEM, resp.CaCertPEM, err
 }
 
@@ -86,14 +88,14 @@ func (cl *CertsClient) VerifyCert(
 		ClientID: clientID,
 		CertPEM:  certPEM,
 	}
-	err = cl.hc.Rpc(cl.dThingID, certsapi.VerifyCertMethod, req, nil)
+	err = cl.hc.InvokeAction(cl.dThingID, certsapi.VerifyCertMethod, req, nil)
 	return err
 }
 
 // NewCertsClient returns a certs service client for managing certificates
 //
 //	hc is the hub client connection to use
-func NewCertsClient(hc clients.IConsumer) *CertsClient {
+func NewCertsClient(hc transports.IClientConnection) *CertsClient {
 	agentID := certsapi.CertsAdminAgentID
 
 	cl := CertsClient{

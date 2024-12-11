@@ -17,6 +17,8 @@ func main() {
 
 	cfg := config.NewLauncherConfig()
 	cfg.LogLevel = env.LogLevel
+	cfg.LogsDir = env.LogsDir
+
 	err := env.LoadConfig(&cfg)
 	if err != nil {
 		slog.Error("Failed loading launcher config: ", "err", err)
@@ -26,7 +28,8 @@ func main() {
 
 	// start the launcher but do not connect yet as the runtime can be started by the launcher itself.
 	// the runtime will generate the launcher key and token.
-	svc := service.NewLauncherService(env, cfg, nil)
+	svc := service.NewLauncherService(env.ServerURL, env.ClientID,
+		env.BinDir, env.PluginsDir, env.CertsDir, cfg)
 	err = svc.Start()
 	if err != nil {
 		slog.Error("Failed starting launcher: ", "err", err)

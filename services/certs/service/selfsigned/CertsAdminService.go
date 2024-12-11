@@ -9,7 +9,7 @@ import (
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/services/certs/certsapi"
-	"github.com/hiveot/hub/wot/protocolclients"
+	"github.com/hiveot/hub/transports"
 	"log/slog"
 	"math/big"
 	"net"
@@ -30,7 +30,7 @@ type SelfSignedCertsService struct {
 	caCertPool *x509.CertPool
 
 	// messaging client for receiving requests
-	hc clients.IConsumer
+	hc transports.IClientConnection
 }
 
 // _createDeviceCert internal function to create a CA signed certificate for mutual authentication by IoT devices
@@ -200,7 +200,7 @@ func (svc *SelfSignedCertsService) CreateUserCert(
 // Start the service and listen for requests
 //
 //	hc is the connection to the hub with a service role. For testing it can be nil.
-func (svc *SelfSignedCertsService) Start(hc clients.IAgent) (err error) {
+func (svc *SelfSignedCertsService) Start(hc transports.IClientConnection) (err error) {
 	slog.Info("Starting certs service", "serviceID", hc.GetClientID())
 	// for testing, hc can be nil
 	svc.hc = hc
@@ -212,6 +212,8 @@ func (svc *SelfSignedCertsService) Start(hc clients.IAgent) (err error) {
 		Allow:   []authz.ClientRole{authz.ClientRoleAdmin},
 		Deny:    nil,
 	})
+
+	// FIXME: add the service TD with the actions
 
 	StartCertsAgent(svc, hc)
 	return err

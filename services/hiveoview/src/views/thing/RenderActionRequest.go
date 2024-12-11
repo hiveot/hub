@@ -5,12 +5,13 @@ import (
 	"github.com/araddon/dateparse"
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/api/go/digitwin"
-	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
-	utils2 "github.com/hiveot/hub/transports/utils"
+	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot/consumedthing"
+	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 	"net/http"
 	"time"
@@ -49,7 +50,7 @@ type ActionRequestTemplateData struct {
 }
 
 // Return the action affordance
-func getActionAff(hc clients.IConsumer, thingID string, name string) (
+func getActionAff(hc transports.IClientConnection, thingID string, name string) (
 	td *td.TD, actionAff *td.ActionAffordance, err error) {
 
 	tdJson, err := digitwin.DirectoryReadTD(hc, thingID)
@@ -115,12 +116,12 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 		//data.PrevValue = &lastActionRecord
 		updatedTime, _ := dateparse.ParseAny(data.LastActionRecord.Updated)
 		data.LastActionTime = updatedTime.Format(time.RFC1123)
-		data.LastActionAge = utils2.Age(updatedTime)
+		data.LastActionAge = tputils.Age(updatedTime)
 		data.LastActionInput = consumedthing.NewDataSchemaValue(data.LastActionRecord.Input)
 	}
 
 	pathArgs := map[string]string{"thingID": data.ThingID, "name": data.Name}
-	data.SubmitActionRequestPath = utils.Substitute(src.PostActionRequestPath, pathArgs)
+	data.SubmitActionRequestPath = tputils.Substitute(src.PostActionRequestPath, pathArgs)
 
 	buff, err := app.RenderAppOrFragment(r, RenderActionRequestTemplate, data)
 	sess.WritePage(w, buff, err)

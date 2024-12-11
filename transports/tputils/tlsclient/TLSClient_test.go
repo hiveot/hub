@@ -10,7 +10,7 @@ import (
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/utils/tlsclient"
+	"github.com/hiveot/hub/transports/tputils/tlsclient"
 	"github.com/stretchr/testify/require"
 	"io"
 	"log/slog"

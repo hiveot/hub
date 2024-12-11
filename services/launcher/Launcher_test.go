@@ -2,8 +2,8 @@ package launcher_test
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
-	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/services/launcher/config"
 	"github.com/hiveot/hub/services/launcher/launcherapi"
@@ -21,7 +21,7 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 )
 
-var homeDir = "/tmp/test-launcher"
+// var homeDir = "/tmp/test-launcher"
 var logDir = "/tmp/test-launcher"
 
 // the following are set by the testmain
@@ -45,17 +45,27 @@ func startService() (l *launcherclient.LauncherClient, stopFn func()) {
 
 	testServer = testenv.StartTestServer(true)
 
-	hc1, _ := testServer.AddConnectService(launcherID, agentUsesWSS)
+	//hc1, _ := testServer.AddConnectService(launcherID)
 	var launcherConfig = config.NewLauncherConfig()
 	launcherConfig.AttachStderr = true
 	launcherConfig.AttachStdout = false
 	launcherConfig.LogPlugins = true
-	var env = plugin.GetAppEnvironment(homeDir, false)
-	env.PluginsDir = "/bin" // for /bin/yes
-	env.LogsDir = logDir
-	env.CertsDir = homeDir
+	//launcherConfig.LogsDir = testServer.AppEnv.LogsDir
+	launcherConfig.LogsDir = logDir
+	//var env = plugin.GetAppEnvironment(testServer.AppEnv.HomeDir, false)
 
-	svc := service.NewLauncherService(env, launcherConfig, hc1)
+	binDir := testServer.AppEnv.BinDir
+	pluginsDir := "/bin" // for /bin/yes
+	certsDir := testServer.AppEnv.CertsDir
+	clientID := launcherapi.AgentID
+
+	//env.LogsDir = logDir
+	//env.CertsDir = homeDir
+	//env.CaCert = testServer.Certs.CaCert
+
+	serverURL := testServer.GetServerURL(authn.ClientTypeService)
+	svc := service.NewLauncherService(
+		serverURL, clientID, binDir, pluginsDir, certsDir, launcherConfig)
 	err := svc.Start()
 	if err != nil {
 		slog.Error(err.Error())
@@ -69,8 +79,9 @@ func startService() (l *launcherclient.LauncherClient, stopFn func()) {
 	cl := launcherclient.NewLauncherClient(launcherID, hc2)
 	return cl, func() {
 		hc2.Disconnect()
-		hc1.Disconnect()
+		//hc1.Disconnect()
 		_ = svc.Stop()
+		time.Sleep(time.Millisecond)
 		testServer.Stop()
 	}
 }
@@ -218,5 +229,5 @@ func TestStartStopAll(t *testing.T) {
 	info, err = svc.List(true)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(info))
-
+	svc.Stop()
 }

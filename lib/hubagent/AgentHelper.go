@@ -2,6 +2,7 @@ package hubagent
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/transports"
 )
 
 // AgentHandler is a helper that maps messages to a Thing (service) invocation
@@ -20,23 +21,23 @@ type AgentHandler struct {
 }
 
 func (agent *AgentHandler) InvokeMethod(
-	method interface{}, msg *transports.ThingMessage) (stat transports.RequestStatus) {
+	method interface{}, msg *transports.ThingMessage) (output any, err error) {
 
 	respData, err := HandleRequestMessage(msg.SenderID, method, msg.Data)
-	stat.Completed(msg, respData, err)
-	return stat
+	return respData, err
 }
 
-func (agent *AgentHandler) HandleRequest(msg *transports.ThingMessage) (stat transports.RequestStatus) {
+func (agent *AgentHandler) HandleRequest(msg *transports.ThingMessage) (output any, err error) {
 	if msg.ThingID == agent.thingID {
 		method, found := agent.methods[msg.Name]
 		if found {
-			return agent.InvokeMethod(method, msg)
+			output, err = agent.InvokeMethod(method, msg)
+			return output, err
 		}
 	}
-	stat.Failed(msg, fmt.Errorf(
-		"agent for service '%s' does not have method '%s'", agent.thingID, msg.Name))
-	return stat
+	err = fmt.Errorf(
+		"agent for service '%s' does not have method '%s'", agent.thingID, msg.Name)
+	return nil, err
 }
 
 func NewAgentHandler(thingID string, methods map[string]interface{}) *AgentHandler {

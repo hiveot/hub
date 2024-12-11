@@ -28,10 +28,7 @@ type AppEnvironment struct {
 	LogsDir    string `yaml:"logsDir,omitempty"`    // Logging output
 	LogLevel   string `yaml:"logLevel,omitempty"`   // logging level: error, warning, info, debug
 	StoresDir  string `yaml:"storesDir,omitempty"`  // Root of the service stores
-
-	// Server
-	//Core string `yaml:"core"` // core to use, "nats" or "mqtt". empty for auto-detect
-	ServerURL string `yaml:"serverURL,omitempty"` // server address
+	ServerURL  string `yaml:"serverURL,omitempty"`  // forced server to connect to: protocol://host/path or "" for auto
 
 	// Credentials
 	CaCert    *x509.Certificate `yaml:"-"`         // default cert if loaded
@@ -114,13 +111,12 @@ func GetAppEnvironment(homeDir string, withFlags bool) AppEnvironment {
 	var certsDir string
 	var logsDir string
 	var storesDir string
+	var serverURL string
 	clientID := path.Base(os.Args[0])
 	logLevel := os.Getenv("LOGLEVEL")
 	if logLevel == "" {
 		logLevel = "info"
 	}
-	serverURL := ""
-	//serverCore := ""
 
 	// TODO: get default config from environment
 	os.Environ()
@@ -141,7 +137,7 @@ func GetAppEnvironment(homeDir string, withFlags bool) AppEnvironment {
 		flag.StringVar(&configFile, "configFile", configFile, "Configuration file")
 		flag.StringVar(&clientID, "clientID", clientID, "Application clientID to authenticate with")
 		flag.StringVar(&logLevel, "logLevel", logLevel, "logging level: debug, warning, info, error")
-		flag.StringVar(&serverURL, "server", serverURL, "server URL or empty for auto-detect")
+		flag.StringVar(&serverURL, "serverURL", serverURL, "connection url for server")
 		if flag.Usage == nil {
 			flag.Usage = func() {
 				fmt.Println("Usage: " + clientID + " [options] ")
@@ -212,7 +208,6 @@ func GetAppEnvironment(homeDir string, withFlags bool) AppEnvironment {
 		KeyFile:    keyFile,
 		TokenFile:  tokenFile,
 		CaCert:     caCert,
-		//Core:   serverCore,
-		ServerURL: serverURL,
+		ServerURL:  serverURL,
 	}
 }

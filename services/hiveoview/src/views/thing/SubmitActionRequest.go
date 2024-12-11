@@ -4,14 +4,16 @@ import (
 	"errors"
 	"fmt"
 	"github.com/go-chi/chi/v5"
-	session2 "github.com/hiveot/hub/services/hiveoview/src/session"
+	"github.com/hiveot/hub/services/hiveoview/src/session"
+	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"net/http"
 )
 
 // SubmitActionRequest posts the request to start an action
 func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
-	var td *td.TD
+	var tdi *td.TD
 	var actionAff *td.ActionAffordance
 	var newValue any
 	actionTitle := ""
@@ -25,14 +27,14 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 
 	stat := transports.RequestStatus{}
 	//
-	_, sess, err := session2.GetSessionFromContext(r)
+	_, sess, err := session.GetSessionFromContext(r)
 	if err != nil {
 		sess.WriteError(w, err, http.StatusBadRequest)
 	}
 
 	// convert the value from string to the data type
-	td, actionAff, err = getActionAff(sess.GetHubClient(), thingID, actionName)
-	if err != nil || td == nil {
+	tdi, actionAff, err = getActionAff(sess.GetHubClient(), thingID, actionName)
+	if err != nil || tdi == nil {
 		sess.WriteError(w, err, http.StatusInternalServerError)
 		return
 	}
@@ -49,7 +51,7 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 		// FIXME: use async progress updates instead of RPC
 		//stat = hc.HandleActionFlow(thingID, actionName, newValue)
 		var resp interface{}
-		err = sess.GetHubClient().Rpc(thingID, actionName, newValue, &resp)
+		err = sess.GetHubClient().InvokeAction(thingID, actionName, newValue, &resp)
 		if stat.Error != "" {
 			err = errors.New(stat.Error)
 		} else if resp != nil {
@@ -67,7 +69,7 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 		// notify UI via SSE. This is handled by a toast component.
 		// todo, differentiate between server error, invalid value and unauthorized
 		// use human title from TD instead of action key to make error more presentable
-		aff := td.GetAction(actionName)
+		aff := tdi.GetAction(actionName)
 		if aff != nil {
 			actionTitle = aff.Title
 		}
@@ -75,7 +77,7 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 			actionTitle = actionName
 		}
 
-		err = fmt.Errorf("action '%s' of Thing '%s' failed: %w", actionTitle, td.Title, err)
+		err = fmt.Errorf("action '%s' of Thing '%s' failed: %w", actionTitle, tdi.Title, err)
 		sess.WriteError(w, err, http.StatusBadRequest)
 		return
 	} else {
@@ -91,7 +93,7 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 		unit = actionAff.Output.Unit
 	}
 	notificationText := fmt.Sprintf("Action %s: %v %s", actionTitle, reply, unit)
-	sess.SendNotify(session2.NotifySuccess, notificationText)
+	sess.SendNotify(session.NotifySuccess, notificationText)
 
 	w.WriteHeader(http.StatusOK)
 }

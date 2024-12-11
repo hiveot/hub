@@ -3,7 +3,7 @@ package login
 import (
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
-	"github.com/hiveot/hub/wot/protocolclients"
+	"github.com/hiveot/hub/transports"
 	"log/slog"
 	"net/http"
 )
@@ -26,7 +26,7 @@ func PostLoginHandler(sm *session.WebSessionManager) http.HandlerFunc {
 			//w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		cid := r.Header.Get(clients.ConnectionIDHeader)
+		cid := r.Header.Get(transports.ConnectionIDHeader)
 		slog.Info("PostLoginHandler",
 			"loginID", loginID,
 			"cid", cid)

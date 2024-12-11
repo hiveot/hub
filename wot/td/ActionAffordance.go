@@ -58,9 +58,9 @@ type ActionAffordance struct {
 	// Allow is a HiveOT extension to list which roles are allowed to invoke this action
 	// Intended for present only allowable actions.
 	// Without it, the default role permissions apply.
-	Allow []string `json:"allow,omitempty"`
+	//Allow []string `json:"allow,omitempty"`
 	// Deny is a HiveOT extension to list which roles are denied to invoke this action
-	Deny []string `json:"deny,omitempty"`
+	//Deny []string `json:"deny,omitempty"`
 }
 
 // GetAtTypeString returns the @type field from the affordance as a single string.

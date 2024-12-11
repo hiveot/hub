@@ -1,6 +1,7 @@
 package consumedthing
 
 import (
+	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 )
 

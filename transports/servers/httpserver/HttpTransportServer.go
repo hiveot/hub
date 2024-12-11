@@ -86,8 +86,8 @@ func (svc *HttpTransportServer) GetConnectionByConnectionID(connectionID string)
 	return svc.cm.GetConnectionByConnectionID(connectionID)
 }
 
-// GetServerURL returns base path of the server
-func (svc *HttpTransportServer) GetServerURL() string {
+// GetConnectURL returns connection url of the http server
+func (svc *HttpTransportServer) GetConnectURL() string {
 	baseURL := fmt.Sprintf("https://%s:%d", svc.hostName, svc.port)
 	return baseURL
 }

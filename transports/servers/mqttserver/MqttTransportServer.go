@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	transports2 "github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/connections"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
@@ -17,8 +17,8 @@ type MqttTransportServer struct {
 	wssPort        int
 	serverCert     *tls.Certificate
 	caCert         *x509.Certificate
-	authenticator  transports2.IAuthenticator
-	messageHandler transports2.ServerMessageHandler
+	authenticator  transports.IAuthenticator
+	messageHandler transports.ServerMessageHandler
 	cm             *connections.ConnectionManager
 
 	// convert operation to topics (for building forms)
@@ -62,10 +62,10 @@ func (svc *MqttTransportServer) GetForm(op string) td.Form {
 
 	}
 
-	hostPort := fmt.Sprintf("mqtts://%s:%d", svc.host, svc.tcpPort)
+	connectURL := svc.GetConnectURL()
 	form := td.Form{}
 	form["op"] = op
-	form["href"] = hostPort
+	form["href"] = connectURL
 	form["mqv:retain"] = "false"
 	form["mqv:qos"] = "1"
 	form["mqv:topic"] = topic
@@ -76,20 +76,11 @@ func (svc *MqttTransportServer) GetForm(op string) td.Form {
 	return nil
 }
 
-// GetProtocolInfo returns info on the protocol supported by this binding
-//func (svc *MqttTransportServer) GetProtocolInfo() transports.ProtocolInfo {
-//	//hostName := svc.config.Host
-//	//if hostName == "" {
-//	//	hostName = "localhost"
-//	//}
-//	baseURL := fmt.Sprintf("https://%s:%d", svc.host, svc.tcpPort)
-//	inf := transports.ProtocolInfo{
-//		BaseURL:   baseURL,
-//		Schema:    "https",
-//		Transport: "https",
-//	}
-//	return inf
-//}
+// GetServerURL returns base path of the server
+func (svc *MqttTransportServer) GetConnectURL() string {
+	connectURL := fmt.Sprintf("mqtts://%s:%d", svc.host, svc.tcpPort)
+	return connectURL
+}
 
 // SendNotification broadcast an event or property change to subscribers clients
 func (svc *MqttTransportServer) SendNotification(operation string, dThingID, name string, data any) {
@@ -115,8 +106,8 @@ func (svc *MqttTransportServer) Stop() {
 func StartMqttTransportServer(host string, tcpPort int, wssPort int,
 	serverCert *tls.Certificate,
 	caCert *x509.Certificate,
-	authenticator transports2.IAuthenticator,
-	messageHandler transports2.ServerMessageHandler,
+	authenticator transports.IAuthenticator,
+	messageHandler transports.ServerMessageHandler,
 	cm *connections.ConnectionManager,
 ) (*MqttTransportServer, error) {
 	svc := &MqttTransportServer{

@@ -48,16 +48,20 @@ func (c *DummyConnection) SendNotification(op, dThingID, name string, data any) 
 		c.SendNotificationHandler(op, dThingID, name, data, "")
 	}
 }
-func (c *DummyConnection) SendRequest(op, dThingID, name string, data any, requestID string) error {
-	if c.SendRequestHandler != nil && c.observations.IsSubscribed(dThingID, name) {
-		return c.SendRequestHandler(op, dThingID, name, data, requestID)
+func (c *DummyConnection) SendRequest(msg transports2.ThingMessage) error {
+	if c.SendRequestHandler != nil && c.observations.IsSubscribed(msg.ThingID, msg.Name) {
+		return c.SendRequestHandler(msg.Operation, msg.ThingID, msg.Name, msg.Data, msg.RequestID)
 	}
 	return fmt.Errorf("no request sender set")
 }
 
-func (c *DummyConnection) SendResponse(dThingID, name string, data any, requestID string) error {
-	if c.SendNotificationHandler != nil {
-		c.SendNotificationHandler(wot.HTOpUpdateActionStatus, dThingID, name, data, requestID)
+func (c *DummyConnection) SendResponse(dThingID, name string, data any, err error, requestID string) error {
+	if err != nil {
+		c.SendError(dThingID, name, err.Error(), requestID)
+	} else {
+		if c.SendNotificationHandler != nil {
+			c.SendNotificationHandler(wot.HTOpUpdateActionStatus, dThingID, name, data, requestID)
+		}
 	}
 	return nil
 }

@@ -29,10 +29,10 @@ type IPlugin interface {
 // The plugin clientID is used to connect to the hub and lookup a keys and token files
 // with the same name in the env.CertsDir directory.
 //
-//		plugin is the instance of the plugin with Start and Stop methods.
-//		clientID is the client's connect ID. certsDir is the location with the service token
-//	 file, primary key, and CA certificate.
-//		env is the application environment with clientID, certs directory
+//	plugin is the instance of the plugin with Start and Stop methods.
+//	clientID is the client's connect ID. certsDir is the location with the service token
+//	file, primary key, and CA certificate.
+//	env is the application environment with clientID, certs directory
 func StartPlugin(plugin IPlugin, clientID string, certsDir string) {
 
 	// locate the hub, load CA certificate, load service key and token and connect

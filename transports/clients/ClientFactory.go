@@ -8,7 +8,7 @@ import (
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/clients/mqttclient"
-	"github.com/hiveot/hub/transports/clients/ssescclient"
+	"github.com/hiveot/hub/transports/clients/sseclient"
 	"github.com/hiveot/hub/transports/clients/wssclient"
 	"log/slog"
 	"net/url"
@@ -64,9 +64,9 @@ func NewHubClientFactory(certsDir string) (*ClientFactory, error) {
 // 4. Create a hub client
 // 5. Connect using token and key files
 //
-//	fullURL is the scheme://addr:port/[wspath] the server is listening on
+//	fullURL is the scheme://addr:port/[wspath] the server is listening on. "" for auto discovery
 //	clientID to connect as. Also used for the key and token file names
-//	certDir is the location of the CA cert and key/token files
+//	certDir is the location of the CA cert and key/token files ({clientID}.key)
 //	core optional core selection. Fallback is to auto determine based on URL.
 //	 password optional for a user login
 func ConnectToHub(fullURL string, clientID string, certDir string, password string) (
@@ -149,7 +149,10 @@ func ConnectWithTokenFile(hc transports.IClientConnection, keysDir string) error
 //   - caCert of server or nil to not verify server cert
 func NewHubClient(fullURL string, clientID string, caCert *x509.Certificate) (hc transports.IClientConnection) {
 
-	parts, _ := url.Parse(fullURL)
+	parts, err := url.Parse(fullURL)
+	if err != nil {
+		panic("Invalid URL: " + fullURL)
+	}
 	clType := parts.Scheme
 	if clType == "mqtt" {
 		hc = mqttclient.NewMqttTransportClient(fullURL, clientID, nil, caCert, nil, DefaultTimeout)
@@ -158,7 +161,7 @@ func NewHubClient(fullURL string, clientID string, caCert *x509.Certificate) (hc
 	} else if clType == "wss" {
 		hc = wssclient.NewWssTransportClient(fullURL, clientID, nil, caCert, DefaultTimeout)
 	} else if clType == "https" || clType == "tls" {
-		hc = ssescclient.NewSsescTransportClient(parts.Host, clientID, nil, caCert, nil, DefaultTimeout)
+		hc = sseclient.NewSsescTransportClient(fullURL, clientID, nil, caCert, nil, DefaultTimeout)
 	} else if clType == "" {
 		// use NewClient on the embedded server
 		//hc = embedded.NewEmbeddedClient(clientID, nil)

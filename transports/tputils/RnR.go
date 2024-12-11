@@ -2,6 +2,7 @@ package tputils
 
 import (
 	"context"
+	"github.com/hiveot/hub/transports"
 	"sync"
 	"time"
 )
@@ -19,7 +20,7 @@ type RnRChan struct {
 	mux sync.RWMutex
 
 	// map of requestID to delivery status update channel
-	correlData map[string]chan any
+	correlData map[string]chan *transports.ThingMessage
 }
 
 // Close removes the request channel
@@ -40,7 +41,7 @@ func (rnr *RnRChan) CloseAll() {
 	for _, rChan := range rnr.correlData {
 		close(rChan)
 	}
-	rnr.correlData = make(map[string]chan any)
+	rnr.correlData = make(map[string]chan *transports.ThingMessage)
 
 }
 
@@ -49,14 +50,14 @@ func (rnr *RnRChan) CloseAll() {
 // This returns true on success or false if requestID is unknown (no-one is waiting)
 //
 // If autoClose is set then it is immediately closed before returning.
-func (rnr *RnRChan) HandleResponse(requestID string, reply any, autoClose bool) bool {
+func (rnr *RnRChan) HandleResponse(msg *transports.ThingMessage, autoClose bool) bool {
 	rnr.mux.Lock()
 	defer rnr.mux.Unlock()
-	rChan, isRPC := rnr.correlData[requestID]
+	rChan, isRPC := rnr.correlData[msg.RequestID]
 	if isRPC {
-		rChan <- reply
+		rChan <- msg
 		if autoClose {
-			delete(rnr.correlData, requestID)
+			delete(rnr.correlData, msg.RequestID)
 			close(rChan)
 		}
 	}
@@ -74,8 +75,8 @@ func (rnr *RnRChan) Len() int {
 //
 // This returns a reply channel on which the data is received. Use
 // WaitForResponse(rChan)
-func (rnr *RnRChan) Open(requestID string) chan any {
-	rChan := make(chan any)
+func (rnr *RnRChan) Open(requestID string) chan *transports.ThingMessage {
+	rChan := make(chan *transports.ThingMessage)
 	rnr.mux.Lock()
 	rnr.correlData[requestID] = rChan
 	rnr.mux.Unlock()
@@ -90,7 +91,8 @@ func (rnr *RnRChan) Open(requestID string) chan any {
 //
 // If the channel was closed this returns completed with no reply
 func (rnr *RnRChan) WaitForResponse(
-	replyChan chan any, timeout time.Duration) (completed bool, reply any) {
+	replyChan chan *transports.ThingMessage, timeout time.Duration) (
+	completed bool, reply *transports.ThingMessage) {
 
 	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
 	defer cancelFunc()
@@ -108,7 +110,7 @@ func (rnr *RnRChan) WaitForResponse(
 
 func NewRnRChan() *RnRChan {
 	r := &RnRChan{
-		correlData: make(map[string]chan any),
+		correlData: make(map[string]chan *transports.ThingMessage),
 	}
 	return r
 }

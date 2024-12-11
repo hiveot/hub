@@ -9,10 +9,9 @@ import (
 	"github.com/hiveot/hub/transports/servers/httpserver/httpcontext"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"sync/atomic"
 )
-
-const DefaultWssPath = "/wss"
 
 // WssTransportServer Websocket subprotocol binding
 type WssTransportServer struct {
@@ -27,11 +26,13 @@ type WssTransportServer struct {
 	opList []string
 }
 
-//// GetProtocolInfo returns info on the protocol supported by this binding
-//func (svc *WssTransportServer) GetProtocolInfo() transports.ProtocolInfo {
-//	// todo: wss protocol info?
-//	return svc.httpTransport.GetProtocolInfo()
-//}
+// GetConnectURL returns base path of the server with the wss connection path
+func (svc *WssTransportServer) GetConnectURL() string {
+	baseURL := svc.httpTransport.GetConnectURL()
+	parts, _ := url.Parse(baseURL)
+	wssURL, _ := url.JoinPath("wss://", parts.Host, svc.wssPath)
+	return wssURL
+}
 
 // SendNotification broadcast an event or property change to subscribers clients
 func (svc *WssTransportServer) SendNotification(operation string, dThingID, name string, data any) {
@@ -111,7 +112,8 @@ func (svc *WssTransportServer) ReadLoop(ctx context.Context, wssConn *websocket.
 			// ending the read loop and returning will close the connection
 			break
 		}
-		onMessage(raw)
+		// process the message in the background to free up the socket
+		go onMessage(raw)
 	}
 }
 
@@ -133,7 +135,7 @@ func StartWssTransportServer(
 	httpTransport *httpserver.HttpTransportServer,
 ) *WssTransportServer {
 	if wssPath == "" {
-		wssPath = DefaultWssPath
+		wssPath = transports.DefaultWSSPath
 	}
 	// initialize the message type to operation conversion
 	op2MsgType := make(map[string]string)

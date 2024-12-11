@@ -58,9 +58,14 @@ func (cl *WssTransportClient) ConnectWithPassword(password string) (newToken str
 //	token is the token previously obtained with login or refresh.
 func (cl *WssTransportClient) ConnectWithToken(token string) (newToken string, err error) {
 
-	cl.wssCancelFn, cl.wssConn, err = ConnectWSS(
+	wssCancelFn, wssConn, err := ConnectWSS(
 		cl.BaseClientID, cl.BaseFullURL, token, cl.BaseCaCert,
 		cl._onConnect, cl.WssClientHandleMessage)
+
+	cl.BaseMux.Lock()
+	cl.wssCancelFn = wssCancelFn
+	cl.wssConn = wssConn
+	cl.BaseMux.Unlock()
 
 	if err == nil {
 		// Refresh the auth token and verify the connection works.

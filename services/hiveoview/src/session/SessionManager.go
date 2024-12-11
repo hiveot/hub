@@ -4,8 +4,9 @@ import (
 	"crypto/ed25519"
 	"crypto/x509"
 	"github.com/hiveot/hub/services/hiveoview/src"
-	"github.com/hiveot/hub/wot/protocolclients"
-	"github.com/hiveot/hub/wot/protocolclients/connect"
+	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/clients"
+	"github.com/hiveot/hub/wot"
 	"log/slog"
 	"net/http"
 	"sync"
@@ -30,14 +31,14 @@ type WebSessionManager struct {
 	// Hub CA certificate
 	caCert *x509.Certificate
 	// hub client for publishing events
-	hc clients.IAgent
+	hc transports.IClientConnection
 	// disable persistence from state service (for testing)
 	noState bool
 }
 
 // add a new session with the given clientID and send a session count event
 func (sm *WebSessionManager) _addSession(
-	r *http.Request, cid string, hc clients.IConsumer) (
+	r *http.Request, cid string, hc transports.IClientConnection) (
 	cs *WebClientSession, err error) {
 
 	// if the browser does not provide a CID until after the first connection,
@@ -58,7 +59,7 @@ func (sm *WebSessionManager) _addSession(
 		// provides an existing or empty cid.
 		// Instead of throwing out the session, replace the connection.
 		cs = existingSession
-		_, exhccid, _ := existingSession.hc.GetConnectionStatus()
+		exhccid := existingSession.hc.GetConnectionID()
 		slog.Warn("session with clcid already exists. replace its connection.",
 			slog.String("clientID", clientID),
 			slog.String("clcid", cs.clcid),
@@ -73,7 +74,7 @@ func (sm *WebSessionManager) _addSession(
 		existingSession.ReplaceConnection(hc)
 	} else {
 		cs = NewWebClientSession(cid, hc, r.RemoteAddr, sm.noState, sm.onClose)
-		_, hccid, _ := hc.GetConnectionStatus()
+		hccid := hc.GetConnectionID()
 		slog.Info("_addSession",
 			slog.String("clientID", clientID),
 			slog.String("clcid", cs.clcid),
@@ -91,7 +92,7 @@ func (sm *WebSessionManager) _addSession(
 	//err = SetSessionCookie(w, clientID, newToken, maxAge, sm.signingKey)
 
 	// publish the new nr of sessions
-	sm.hc.PubEvent(src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions, "")
+	sm.hc.SendNotification(wot.HTOpPublishEvent, src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions)
 	return cs, err
 }
 
@@ -99,7 +100,8 @@ func (sm *WebSessionManager) _addSession(
 // Make sure the connection is closed before calling this
 func (sm *WebSessionManager) _removeSession(cs *WebClientSession) {
 	// do not call back into cs as this callback takes place in a locked section.
-	isConnected, hccid, _ := cs.hc.GetConnectionStatus()
+	isConnected := cs.hc.IsConnected()
+	hccid := cs.hc.GetConnectionID()
 	slog.Info("_removeSession",
 		slog.String("clientID", cs.GetClientID()),
 		slog.String("clcid", cs.GetCLCID()),
@@ -123,7 +125,7 @@ func (sm *WebSessionManager) _removeSession(cs *WebClientSession) {
 	sm.mux.Unlock()
 
 	// 5. publish the new nr of sessions
-	go sm.hc.PubEvent(src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions, "")
+	go sm.hc.SendNotification(wot.HTOpPublishEvent, src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions)
 }
 
 // onClose handles closing of the client connection
@@ -155,7 +157,7 @@ func (sm *WebSessionManager) onClose(cs *WebClientSession) {
 func (sm *WebSessionManager) ConnectWithPassword(w http.ResponseWriter, r *http.Request,
 	loginID string, password string, cid string) (err error) {
 
-	hc := connect.NewHubClient(sm.hubURL, loginID, sm.caCert)
+	hc := clients.NewHubClient(sm.hubURL, loginID, sm.caCert)
 	newToken, err := hc.ConnectWithPassword(password)
 	if err == nil {
 		if cid != "" {
@@ -191,7 +193,7 @@ func (sm *WebSessionManager) ConnectWithToken(
 		"clientID", loginID, "cid", cid, "remoteAddr", r.RemoteAddr,
 		"nr websessions", len(sm.sessions))
 
-	hc := connect.NewHubClient(sm.hubURL, loginID, sm.caCert)
+	hc := clients.NewHubClient(sm.hubURL, loginID, sm.caCert)
 	newToken, err := hc.ConnectWithToken(authToken)
 	if err == nil {
 		cs, err = sm._addSession(r, cid, hc)
@@ -246,7 +248,7 @@ func (sm *WebSessionManager) GetSessionFromCookie(r *http.Request) (
 	// sse-connect ignores the hx-header that contains the cid. As a workaround
 	// also check query parameters.
 	// lets face it though, it is time to ditch SSE and switch to websockets :/
-	cid = r.Header.Get(clients.ConnectionIDHeader)
+	cid = r.Header.Get(transports.ConnectionIDHeader)
 	if cid == "" {
 		cid = r.URL.Query().Get("cid")
 	}
@@ -262,7 +264,7 @@ func (sm *WebSessionManager) GetSessionFromCookie(r *http.Request) (
 
 func NewWebSessionManager(hubURL string,
 	signingKey ed25519.PrivateKey, caCert *x509.Certificate,
-	hc clients.IAgent, noState bool) *WebSessionManager {
+	hc transports.IClientConnection, noState bool) *WebSessionManager {
 	sm := &WebSessionManager{
 		sessions:   make(map[string]*WebClientSession),
 		mux:        sync.RWMutex{},

@@ -4,11 +4,10 @@ import (
 	"fmt"
 	"github.com/fsnotify/fsnotify"
 	"github.com/hiveot/hub/api/go/authz"
-	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/services/launcher/config"
 	"github.com/hiveot/hub/services/launcher/launcherapi"
-	"github.com/hiveot/hub/wot/protocolclients"
-	"github.com/hiveot/hub/wot/protocolclients/connect"
+	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/clients"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -24,7 +23,15 @@ import (
 type LauncherService struct {
 	// service configuration
 	cfg config.LauncherConfig
-	env plugin.AppEnvironment
+	//env plugin.AppEnvironment
+	// server to use or "" for auto discovery
+	serverURL string
+	clientID  string
+
+	// directories for launching plugins and obtaining certificates and keys
+	binDir     string
+	certsDir   string
+	pluginsDir string
 
 	// map of plugin name to running status
 	plugins map[string]*launcherapi.PluginInfo
@@ -32,7 +39,7 @@ type LauncherService struct {
 	cmds []*exec.Cmd
 
 	// hub messaging client
-	hc clients.IAgent
+	hc transports.IClientConnection
 
 	// mutex to keep things safe
 	mux sync.Mutex
@@ -47,7 +54,7 @@ type LauncherService struct {
 // Add discovered runtime to svc.plugins
 func (svc *LauncherService) addRuntime(runtimeBin string) error {
 	if runtimeBin != "" {
-		runtimePath := path.Join(svc.env.BinDir, runtimeBin)
+		runtimePath := path.Join(svc.binDir, runtimeBin)
 		runtimeInfo, err := os.Stat(runtimePath)
 		if err != nil {
 			err = fmt.Errorf("addRuntime. runtime in config not found. Path=%s", runtimePath)
@@ -143,7 +150,7 @@ func (svc *LauncherService) ScanPlugins() error {
 	svc.mux.Lock()
 	defer svc.mux.Unlock()
 
-	err := svc.addPlugins(svc.env.PluginsDir)
+	err := svc.addPlugins(svc.pluginsDir)
 	if err != nil {
 		slog.Error(err.Error())
 		return err
@@ -157,7 +164,7 @@ func (svc *LauncherService) ScanPlugins() error {
 //
 // Call stop to end
 func (svc *LauncherService) Start() error {
-	slog.Info("Starting LauncherService", "clientID", svc.env.ClientID)
+	slog.Info("Starting LauncherService")
 	svc.isRunning.Store(true)
 
 	// include the runtime
@@ -194,8 +201,8 @@ func (svc *LauncherService) Start() error {
 
 	// 3: a connection to the hub is needed to receive requests
 	if svc.hc == nil {
-		svc.hc, err = connect.ConnectToHub(
-			svc.env.ServerURL, svc.env.ClientID, svc.env.CertsDir, "")
+		svc.hc, err = clients.ConnectToHub(
+			svc.serverURL, svc.clientID, svc.certsDir, "")
 		if err != nil {
 			err = fmt.Errorf("failed starting launcher service: %w", err)
 			return err
@@ -222,7 +229,7 @@ func (svc *LauncherService) Start() error {
 	return err
 }
 
-// Stop the launcher and all running plugins
+// Stop the launcher, all running plugins and disconnect
 func (svc *LauncherService) Stop() error {
 	slog.Info("Stopping launcher service")
 
@@ -231,6 +238,9 @@ func (svc *LauncherService) Stop() error {
 	_ = svc.serviceWatcher.Close()
 
 	err := svc.StopAllPlugins(&launcherapi.StopAllPluginsArgs{IncludingRuntime: true})
+	if svc.hc != nil {
+		svc.hc.Disconnect()
+	}
 	return err
 }
 
@@ -238,9 +248,9 @@ func (svc *LauncherService) Stop() error {
 // This will detect adding new plugins without requiring a restart.
 func (svc *LauncherService) WatchPlugins() error {
 	svc.serviceWatcher, _ = fsnotify.NewWatcher()
-	err := svc.serviceWatcher.Add(svc.env.BinDir)
-	if err == nil && svc.env.PluginsDir != "" {
-		err = svc.serviceWatcher.Add(svc.env.PluginsDir)
+	err := svc.serviceWatcher.Add(svc.binDir)
+	if err == nil && svc.pluginsDir != "" {
+		err = svc.serviceWatcher.Add(svc.pluginsDir)
 	}
 	if err == nil {
 		go func() {
@@ -274,19 +284,33 @@ func (svc *LauncherService) WatchPlugins() error {
 // This scans the folder for executables, adds these to the list of available plugins and autostarts plugins
 // Logging will be enabled based on LauncherConfig.
 //
+//	serverURL to connect to once runtime is started
+//	clientID of this service
+//	binDir with location of the runtime
+//	pluginsDir with location of plugins
+//	certsDir with location of caCert and service certs/keys
+//
 // The hub client is used to create service accounts if needed.
 func NewLauncherService(
-	env plugin.AppEnvironment,
+	serverURL string,
+	clientID string,
+	binDir string,
+	pluginsDir string,
+	certsDir string,
 	cfg config.LauncherConfig,
-	hc clients.IAgent,
+	// hc transports.IClientConnection,
 ) *LauncherService {
 
 	ls := &LauncherService{
-		env:     env,
-		cfg:     cfg,
-		plugins: make(map[string]*launcherapi.PluginInfo),
-		cmds:    make([]*exec.Cmd, 0),
-		hc:      hc,
+		pluginsDir: pluginsDir,
+		binDir:     binDir,
+		certsDir:   certsDir,
+		serverURL:  serverURL,
+		clientID:   clientID,
+		cfg:        cfg,
+		plugins:    make(map[string]*launcherapi.PluginInfo),
+		cmds:       make([]*exec.Cmd, 0),
+		//hc:        hc,
 	}
 
 	return ls

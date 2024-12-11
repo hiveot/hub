@@ -1,11 +1,12 @@
 package thing
 
 import (
-	"errors"
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
+	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"net/http"
 )
@@ -15,7 +16,7 @@ import (
 // TODO: use the form method from the TD - once forms are added
 func SubmitProperty(w http.ResponseWriter, r *http.Request) {
 	var newValue any
-	var td *td.TD
+	var tdi *td.TD
 	var propAff *td.PropertyAffordance
 	stat := transports.RequestStatus{}
 	thingID := chi.URLParam(r, "thingID")
@@ -24,8 +25,8 @@ func SubmitProperty(w http.ResponseWriter, r *http.Request) {
 
 	_, sess, err := session.GetSessionFromContext(r)
 	if err == nil {
-		td, propAff, err = getPropAff(sess.GetHubClient(), thingID, propName)
-		_ = td
+		tdi, propAff, err = getPropAff(sess.GetHubClient(), thingID, propName)
+		_ = tdi
 	}
 	slog.Info("Updating config",
 		slog.String("thingID", thingID),
@@ -36,10 +37,7 @@ func SubmitProperty(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		newValue, err = td.ConvertToNative(valueStr, &propAff.DataSchema)
 
-		stat = sess.GetHubClient().WriteProperty(thingID, propName, newValue)
-		if stat.Error != "" {
-			err = errors.New(stat.Error)
-		}
+		err = sess.GetHubClient().WriteProperty(thingID, propName, newValue, true)
 	}
 	if err != nil {
 		sess.SendNotify(session.NotifyError, "Property update failed: "+err.Error())

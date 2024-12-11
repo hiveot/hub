@@ -54,8 +54,8 @@ func TestInvokeActionFromConsumerToServer(t *testing.T) {
 	cl1.SetNotificationHandler(func(ev *transports.ThingMessage) {
 		// this depends on the transport protocol
 		slog.Info("testOutput was updated asynchronously via the message handler")
-		err = tputils.Decode(ev.Data, &testOutput)
-		assert.NoError(t, err)
+		err2 := tputils.Decode(ev.Data, &testOutput)
+		assert.NoError(t, err2)
 		release1()
 	})
 	// 3. invoke the action as a notification, (not a rpc request)
@@ -125,6 +125,7 @@ func TestInvokeActionFromServerToAgent(t *testing.T) {
 	ag1client.SetRequestHandler(func(msg *transports.ThingMessage) (output any, err error) {
 		// agent receives action request and returns a result
 		slog.Info("Agent receives message", "op", msg.Operation)
+		assert.Equal(t, testClientID1, msg.SenderID)
 		reqVal.Store(msg.Data)
 		return testMsg2, nil
 	})
@@ -134,7 +135,9 @@ func TestInvokeActionFromServerToAgent(t *testing.T) {
 	time.Sleep(time.Millisecond)
 	ag1Server := cm.GetConnectionByClientID(testAgentID1)
 	require.NotNil(t, ag1Server)
-	ag1Server.SendRequest(wot.OpInvokeAction, thingID, actionKey, testMsg1, corrID)
+	msg := transports.NewThingMessage(wot.OpInvokeAction, thingID, actionKey, testMsg1, corrID)
+	msg.SenderID = testClientID1
+	ag1Server.SendRequest(*msg)
 
 	// wait until the agent has sent a reply
 	<-ctx1.Done()

@@ -2,6 +2,7 @@
 package router
 
 import (
+	"errors"
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
@@ -9,6 +10,7 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"time"
@@ -86,11 +88,20 @@ func (svc *DigitwinRouter) HandleInvokeRemoteAgent(
 	)
 
 	// Store the action progress to be able to respond to queryAction.
+	// The TD of a service must be known before its action can be invoked.
+	// If we get here then the form to invoke the action is somehow known so
+	// the TD isn't really neccesary.
+	// Considerations where this isn't an error:
+	// 1. 'secret' services where the TD is shared out of band and not in the directory
+	// 2. 'safe' actions that don't change state.
 	// FIXME: don't store 'safe' actions as their results are meaningless in queryAction
 	// TODO: Maybe this shouldn't be stored at all and use properties instead.
-	_ = svc.dtwStore.UpdateActionStart(
+	err = svc.dtwStore.UpdateActionStart(
 		msg.ThingID, msg.Name, msg.Data, msg.RequestID, msg.SenderID)
 
+	if err != nil {
+		return false, nil, err
+	}
 	// forward to external services/things and return its response
 	var progress string
 
@@ -102,18 +113,7 @@ func (svc *DigitwinRouter) HandleInvokeRemoteAgent(
 		err = fmt.Errorf("HandleInvokeRemoteAgent: Agent '%s' not reachable. Ignored", agentID)
 	} else {
 		progress = vocab.RequestDelivered
-		// FIXME: is this a potential race condition with updating ActionRecord?
-		// only when sendrequest is handled and replies before continuing... slim chance but still...
-		err = c.SendRequest(msg.Operation, thingID, msg.Name, msg.Data, msg.RequestID)
-	}
-	// post processing by tracking action progress
-	if err != nil {
-		slog.Warn("HandleInvokeRemoteAgent - failed",
-			slog.String("dThingID", msg.ThingID),
-			slog.String("actionName", msg.Name),
-			slog.String("requestID", msg.RequestID),
-			slog.String("err", err.Error()))
-	} else {
+
 		// store a new action progress by message ID to support sending replies to the sender
 		actionRecord := ActionFlowRecord{
 			Operation: msg.Operation,
@@ -131,6 +131,23 @@ func (svc *DigitwinRouter) HandleInvokeRemoteAgent(
 		svc.mux.Lock()
 		actionRecord.Progress = progress
 		svc.activeCache[msg.RequestID] = actionRecord
+		svc.mux.Unlock()
+
+		msg2 := *msg
+		msg2.ThingID = thingID // agent uses the local message ID
+		err = c.SendRequest(msg2)
+	}
+	// post processing by tracking action progress
+	if err != nil {
+		slog.Warn("HandleInvokeRemoteAgent - failed",
+			slog.String("dThingID", msg.ThingID),
+			slog.String("actionName", msg.Name),
+			slog.String("requestID", msg.RequestID),
+			slog.String("err", err.Error()))
+
+		// cleanup as the record is no longer needed
+		svc.mux.Lock()
+		delete(svc.activeCache, msg.RequestID)
 		svc.mux.Unlock()
 	}
 
@@ -209,9 +226,15 @@ func (svc *DigitwinRouter) HandleActionResponse(msg *transports.ThingMessage) {
 	// 3: Forward the progress update to the sender of the request
 	c := svc.cm.GetConnectionByConnectionID(replyTo)
 	if c != nil {
+		err = nil
+		if msg.Operation == wot.HTOpPublishError {
+			errText := fmt.Sprintf("%v", msg.Data)
+			// send the response to the consumer
+			err = errors.New(errText)
+		}
 		// send the response to the consumer
-		// FIXME: how to return an error???
-		err = c.SendResponse(msg.ThingID, msg.Name, msg.Data, nil, msg.RequestID)
+		err = c.SendResponse(msg.ThingID, msg.Name, msg.Data, err, msg.RequestID)
+
 	} else {
 		// can't reach the consumer
 		err = fmt.Errorf("client connection-id (replyTo) '%s' not found for client '%s'",

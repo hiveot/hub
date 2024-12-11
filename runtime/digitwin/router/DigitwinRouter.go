@@ -63,6 +63,8 @@ func (svc *DigitwinRouter) HandleMessage(
 	completed = true
 	switch msg.Operation {
 	// operations with no immediate result
+	case vocab.HTOpPublishError:
+		svc.HandleActionResponse(msg)
 	case vocab.HTOpPublishEvent:
 		svc.HandlePublishEvent(msg)
 	case vocab.HTOpUpdateProperty:

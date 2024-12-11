@@ -21,7 +21,7 @@ func opToMessageType(op string) string {
 // OpToMessage creates a websocket message for an operation
 func OpToMessage(
 	op string, dThingID string, name string, names []string,
-	data any, requestID string) (msg any, err error) {
+	data any, requestID string, senderID string) (msg any, err error) {
 
 	if requestID == "" {
 		requestID = shortid.MustGenerate()
@@ -36,7 +36,7 @@ func OpToMessage(
 			MessageType: msgType,
 			Name:        name,
 			RequestID:   requestID,
-			MessageID:   requestID,
+			SenderID:    senderID,
 			Data:        data,
 			Timestamp:   timestamp,
 		}
@@ -51,7 +51,6 @@ func OpToMessage(
 			Names:       names,
 			Data:        data,
 			RequestID:   requestID,
-			MessageID:   requestID,
 			Timestamp:   timestamp,
 		}
 	case wot.HTOpReadAllEvents, wot.HTOpReadEvent,
@@ -67,7 +66,6 @@ func OpToMessage(
 			Names:       names,
 			Data:        data,
 			RequestID:   requestID,
-			MessageID:   requestID,
 			Timestamp:   timestamp,
 		}
 	case wot.HTOpReadTD, wot.HTOpReadAllTDs,
@@ -78,7 +76,6 @@ func OpToMessage(
 			Name:        name,
 			Data:        data,
 			RequestID:   requestID,
-			MessageID:   requestID,
 			Timestamp:   timestamp,
 		}
 	default:

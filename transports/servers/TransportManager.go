@@ -1,9 +1,10 @@
-package pm
+package servers
 
 import (
 	"crypto/tls"
 	"crypto/x509"
 	"github.com/hiveot/hub/runtime/api"
+	"github.com/hiveot/hub/runtime/pm"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/connections"
 	"github.com/hiveot/hub/transports/servers/discotransport"
@@ -15,20 +16,20 @@ import (
 	"log/slog"
 )
 
-// ProtocolManager aggregates multiple transport protocol bindings and manages
+// TransportManager aggregates multiple transport protocol servers and manages
 // the connection and session management.
 //
 // This implements the ITransportBinding interface like the protocols it manages.
 // Incoming messages without an ID are assigned a new requestID
-type ProtocolManager struct {
+type TransportManager struct {
 	// protocol transport bindings for events, actions and rpc requests
 	// The embedded binding can be used directly with embedded services
 	discoveryTransport *discotransport.DiscoveryTransport
-	httpTransport      *httpserver.HttpTransportServer
+	httpsTransport     *httpserver.HttpTransportServer
 	ssescTransport     transports.ITransportServer
 	wssTransport       transports.ITransportServer
 
-	mqttTransport transports.ITransportServer
+	mqttsTransport transports.ITransportServer
 	//dtwService *service.DigitwinService
 
 	// handler to pass incoming messages to
@@ -37,60 +38,63 @@ type ProtocolManager struct {
 }
 
 // AddTDForms adds forms for all active transports
-func (svc *ProtocolManager) AddTDForms(td *td.TD) (err error) {
-	if svc.httpTransport != nil {
-		err = svc.httpTransport.AddTDForms(td)
+func (svc *TransportManager) AddTDForms(td *td.TD) (err error) {
+	if svc.httpsTransport != nil {
+		err = svc.httpsTransport.AddTDForms(td)
 	}
-	//if svc.mqttTransport != nil {
-	//	svc.mqttTransport.AddTDForms(td)
+	//if svc.mqttsTransport != nil {
+	//	svc.mqttsTransport.AddTDForms(td)
 	//}
 	return err
 }
 
 // GetForm returns the form for an operation using a transport protocol binding.
 // If the protocol is not found this returns a nil and might cause a panic
-func (svc *ProtocolManager) GetForm(op string, protocol string) (form td.Form) {
+func (svc *TransportManager) GetForm(op string, protocol string) (form td.Form) {
 	switch protocol {
-	case transports.ProtocolTypeHTTPS, transports.ProtocolTypeSSESC, transports.ProtocolTypeSSE:
-		form = svc.httpTransport.GetForm(op)
+	case transports.ProtocolTypeHTTPS, transports.ProtocolTypeSSESC:
+		form = svc.httpsTransport.GetForm(op)
 	case transports.ProtocolTypeWSS:
 		form = svc.wssTransport.GetForm(op)
 	case transports.ProtocolTypeMQTTS:
-		form = svc.mqttTransport.GetForm(op)
+		form = svc.mqttsTransport.GetForm(op)
 	}
 	return form
 }
 
-// GetConnectURL returns URL of the first protocol that has a baseurl
-func (svc *ProtocolManager) GetConnectURL() (baseURL string) {
-	// right now only https has a baseurl
-	if svc.httpTransport != nil {
-		baseURL = svc.httpTransport.GetServerURL()
+// GetConnectURL returns URL of the protocol
+// If a protocol isn't available the default https url is returned
+func (svc *TransportManager) GetConnectURL(protocolType string) (connectURL string) {
+	if protocolType == transports.ProtocolTypeWSS && svc.wssTransport != nil {
+		connectURL = svc.wssTransport.GetConnectURL()
+	} else if protocolType == transports.ProtocolTypeSSESC && svc.ssescTransport != nil {
+		connectURL = svc.ssescTransport.GetConnectURL()
+	} else if protocolType == transports.ProtocolTypeMQTTS && svc.mqttsTransport != nil {
+		connectURL = svc.mqttsTransport.GetConnectURL()
+	} else {
+		connectURL = svc.httpsTransport.GetConnectURL()
 	}
-	//if baseURL == "" && svc.mqttTransport != nil {
-	//	baseURL = svc.mqttTransport.GetProtocolInfo().BaseURL
-	//}
-	return baseURL
+	return connectURL
 }
 
 // GetProtocolInfo returns information on the default protocol
-//func (svc *ProtocolManager) GetProtocolInfo() (pi transports.ProtocolInfo) {
-//	if svc.httpTransport != nil {
-//		return svc.httpTransport.GetProtocolInfo()
+//func (svc *TransportManager) GetProtocolInfo() (pi transports.ProtocolInfo) {
+//	if svc.httpsTransport != nil {
+//		return svc.httpsTransport.GetProtocolInfo()
 //	}
 //	return
 //}
 
 // Stop the protocol servers
-func (svc *ProtocolManager) Stop() {
+func (svc *TransportManager) Stop() {
 	if svc.discoveryTransport != nil {
 		svc.discoveryTransport.Stop()
 	}
-	if svc.httpTransport != nil {
-		svc.httpTransport.Stop()
+	if svc.httpsTransport != nil {
+		svc.httpsTransport.Stop()
 	}
-	//if svc.mqttTransport != nil {
-	//	svc.mqttTransport.Stop()
+	//if svc.mqttsTransport != nil {
+	//	svc.mqttsTransport.Stop()
 	//}
 	//if svc.embeddedTransport != nil {
 	//	svc.embeddedTransport.Stop()
@@ -104,15 +108,15 @@ func (svc *ProtocolManager) Stop() {
 // to be used to register embedded services.
 //
 // The transport manager implements the ITransportBinding API.
-func StartProtocolManager(cfg *ProtocolsConfig,
+func StartProtocolManager(cfg *pm.ProtocolsConfig,
 	serverCert *tls.Certificate,
 	caCert *x509.Certificate,
 	authenticator transports.IAuthenticator,
 	digitwinRouter api.IDigitwinRouter,
 	cm *connections.ConnectionManager,
-) (svc *ProtocolManager, err error) {
+) (svc *TransportManager, err error) {
 
-	svc = &ProtocolManager{
+	svc = &TransportManager{
 		//dtwService: dtwService,
 	}
 	// the embedded transport protocol is required for the runtime
@@ -120,7 +124,7 @@ func StartProtocolManager(cfg *ProtocolsConfig,
 	//svc.embeddedTransport = embedded.StartEmbeddedBinding()
 
 	if cfg.EnableHTTPS {
-		svc.httpTransport, err = httpserver.StartHttpTransportServer(
+		svc.httpsTransport, err = httpserver.StartHttpTransportServer(
 			cfg.HttpHost, cfg.HttpsPort,
 			serverCert, caCert,
 			authenticator, digitwinRouter.HandleMessage,
@@ -128,25 +132,26 @@ func StartProtocolManager(cfg *ProtocolsConfig,
 		// http subprotocols
 		if cfg.EnableSSESC {
 			svc.ssescTransport = ssescserver.StartSseScTransportServer(
-				cfg.HttpSSEPath,
-				cm, svc.httpTransport)
+				"",
+				cm, svc.httpsTransport)
 		}
 		if cfg.EnableWSS {
 			svc.wssTransport = wssserver.StartWssTransportServer(
-				cfg.HttpWSSPath,
+				"",
 				digitwinRouter.HandleMessage,
-				cm, svc.httpTransport)
+				cm, svc.httpsTransport)
 		}
 	}
 	if cfg.EnableMQTT {
-		svc.mqttTransport, err = mqttserver.StartMqttTransportServer(
+		svc.mqttsTransport, err = mqttserver.StartMqttTransportServer(
 			cfg.MqttHost, cfg.MqttTcpPort, cfg.MqttWssPort,
 			serverCert, caCert,
 			authenticator, digitwinRouter.HandleMessage,
 			cm)
 	}
+	// FIXME: how to support multiple URLs in discovery. See the WoT discovery spec.
 	if cfg.EnableDiscovery {
-		serverURL := svc.GetConnectURL()
+		serverURL := svc.GetConnectURL(transports.ProtocolTypeHTTPS)
 		svc.discoveryTransport = discotransport.StartDiscoveryTransport(
 			cfg.Discovery, serverURL)
 	}

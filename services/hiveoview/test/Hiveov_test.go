@@ -6,8 +6,10 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/services/hiveoview/src/service"
-	"github.com/hiveot/hub/transports/utils/tlsclient"
-	"github.com/hiveot/hub/wot/protocolclients/ssescclient"
+	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/clients/wssclient"
+	"github.com/hiveot/hub/transports/tputils/tlsclient"
+	"github.com/hiveot/hub/wot"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -38,17 +40,27 @@ var ts *testenv.TestServer
 func WebLogin(clientID string,
 	onConnection func(bool, error),
 	onMessage func(message *transports.ThingMessage),
-	onRequest func(message *transports.ThingMessage) transports.RequestStatus) (
-	*ssescclient.HttpSSEClient, error) {
+	onRequest func(message *transports.ThingMessage) (output any, err error)) (
+	cl transports.IClientConnection, err error) {
 
-	hostPort := fmt.Sprintf("localhost:%d", servicePort)
-	sseCl := ssescclient.NewHttpSSEClient(hostPort, clientID, nil, ts.Certs.CaCert, time.Minute*10)
+	fullURL := fmt.Sprintf("https://localhost:%d", servicePort)
+
+	//sseCl := clients.NewHubClient(fullURL, clientID, ts.Certs.CaCert)
+	// websocket client
+	sseCl := wssclient.NewWssTransportClient(
+		fullURL, clientID, nil, ts.Certs.CaCert, time.Minute)
+	// or sse-sc client
+	//sseCl := sseclient.NewSsescTransportClient(
+	//	fullURL, clientID, nil, ts.Certs.CaCert, nil, time.Minute)
+	//sseCl.SetSSEPath("/websse")
 	sseCl.SetConnectHandler(onConnection)
-	sseCl.SetMessageHandler(onMessage)
+	sseCl.SetNotificationHandler(onMessage)
 	sseCl.SetRequestHandler(onRequest)
-	sseCl.SetSSEPath("/websse")
 
-	err := sseCl.ConnectWithLoginForm(clientID)
+	//err = sseCl.ConnectWithLoginForm(clientID)
+	// FIXME: password is clientID
+	token, err := sseCl.ConnectWithPassword(clientID)
+	_ = token
 
 	return sseCl, err
 }
@@ -76,7 +88,7 @@ func TestStartStop(t *testing.T) {
 
 	svc := service.NewHiveovService(servicePort, true, nil, "",
 		ts.Certs.ServerCert, ts.Certs.CaCert, noState)
-	hc1, _ := ts.AddConnectService(serviceID, agentUsesWSS)
+	hc1, _ := ts.AddConnectService(serviceID)
 
 	err := svc.Start(hc1)
 	require.NoError(t, err)
@@ -92,7 +104,7 @@ func TestLogin(t *testing.T) {
 	//    the state service isnt found. ignore it.
 	svc := service.NewHiveovService(servicePort, true,
 		nil, "", ts.Certs.ServerCert, ts.Certs.CaCert, noState)
-	avcAg, _ := ts.AddConnectService(serviceID, agentUsesWSS)
+	avcAg, _ := ts.AddConnectService(serviceID)
 	err := svc.Start(avcAg)
 
 	require.NoError(t, err)
@@ -134,7 +146,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	const agentID = "agent1"
 	const testConnections = int32(1)
 	const eventName = "event1"
-	var webClients = make([]*ssescclient.HttpSSEClient, 0)
+	var webClients = make([]transports.IClientConnection, 0)
 	var connectCount atomic.Int32
 	var disConnectCount atomic.Int32
 	var messageCount atomic.Int32
@@ -145,14 +157,14 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	//    the state service isnt found. ignore it.
 	svc := service.NewHiveovService(servicePort, true,
 		nil, "", ts.Certs.ServerCert, ts.Certs.CaCert, noState)
-	avcAg, _ := ts.AddConnectService(serviceID, agentUsesWSS)
+	avcAg, _ := ts.AddConnectService(serviceID)
 	err := svc.Start(avcAg)
 
 	require.NoError(t, err)
 	defer svc.Stop()
 
 	// the agent for publishing events. A TD is needed for them to be accepted.
-	ag1, _ := ts.AddConnectAgent(agentID, agentUsesWSS)
+	ag1, _ := ts.AddConnectAgent(agentID)
 	_ = ag1
 	td1 := ts.AddTD(agentID, nil)
 	_ = td1
@@ -190,7 +202,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	require.Equal(t, testConnections, connectCount.Load(), "connect count mismatch")
 
 	// 3: agent publishes an event, which should be received N times
-	err = ag1.PubEvent(td1.ID, eventName, "a value", "message1")
+	err = ag1.SendNotification(wot.HTOpPublishEvent, td1.ID, eventName, "a value")
 	require.NoError(t, err)
 
 	// event should have been received N times
@@ -213,7 +225,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 
 	//	// 5: no more messages should be received after disconnecting
 	messageCount.Store(0)
-	err = ag1.PubEvent(td1.ID, eventName, "a value", "message2")
+	err = ag1.SendNotification(wot.HTOpPublishEvent, td1.ID, eventName, "a value")
 	require.NoError(t, err)
 
 	// zero events should have been received

@@ -3,6 +3,7 @@ package pm
 import (
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/servers/discotransport"
+	"os"
 )
 
 type ProtocolsConfig struct {
@@ -26,9 +27,9 @@ type ProtocolsConfig struct {
 	// https listening port
 	HttpsPort int `yaml:"httpsPort"`
 	// SSE subprotocol prefix
-	HttpSSEPath string `yaml:"ssePath"`
+	//HttpSSEPath string `yaml:"ssePath"`
 	// Websocket subprotocol prefix
-	HttpWSSPath string `yaml:"wssPath"`
+	//HttpWSSPath string `yaml:"wssPath"`
 
 	// MQTT host interface
 	MqttHost string `yaml:"mqttHost"`
@@ -44,17 +45,22 @@ type ProtocolsConfig struct {
 // NewProtocolsConfig creates the default configuration of communication protocols
 // This enables https and mdns
 func NewProtocolsConfig() ProtocolsConfig {
+	hostName, _ := os.Hostname()
+
 	cfg := ProtocolsConfig{
 		EnableHTTPS:     true,
 		EnableSSESC:     true,
 		EnableWSS:       true,
 		EnableDiscovery: true,
 		EnableMQTT:      false, // todo
-		HttpHost:        "",    // interface
-		HttpsPort:       transports.DefaultHttpsPort,
-		MqttHost:        "", // todo
-		MqttTcpPort:     8883,
-		MqttWssPort:     8884,
+		//HttpWSSPath:     transports.DefaultWSSPath,
+		//HttpSsePath:     transports.DefaultSSEPath,
+		//HttpSseScPath:     transports.DefaultSSESCPath,
+		HttpHost:    hostName,
+		HttpsPort:   transports.DefaultHttpsPort,
+		MqttHost:    hostName,
+		MqttTcpPort: transports.DefaultMqttTcpPort,
+		MqttWssPort: transports.DefaultMqttWssPort,
 
 		Discovery: discotransport.NewDiscoveryConfig(),
 	}

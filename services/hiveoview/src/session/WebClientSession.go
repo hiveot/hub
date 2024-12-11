@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/services/state/stateclient"
-	"github.com/hiveot/hub/transports/utils"
+	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot/consumedthing"
 	"log/slog"
 	"net/http"
@@ -66,7 +67,7 @@ type WebClientSession struct {
 	lastError    error
 
 	// The associated hub client for pub/sub
-	hc clients.IConsumer
+	hc transports.IClientConnection
 	// session mutex for updating sse and activity
 	mux sync.RWMutex
 
@@ -115,7 +116,7 @@ func (sess *WebClientSession) GetClientData() *ClientDataModel {
 }
 
 // GetHubClient returns the hub client connection for use in pub/sub
-func (sess *WebClientSession) GetHubClient() clients.IConsumer {
+func (sess *WebClientSession) GetHubClient() transports.IClientConnection {
 	return sess.hc
 }
 
@@ -128,18 +129,6 @@ func (sess *WebClientSession) GetConsumedThingsDirectory() *consumedthing.Consum
 //func (sess *WebClientSession) GetViewModel() *ClientViewModel {
 //	return sess.viewModel
 //}
-
-// GetStatus returns the status of hub connection
-// This returns:
-//
-//	status transports.ConnectionStatus
-//	 * expired when session is expired (and renew failed)
-//	 * connected when connected to the hub
-//	 * connecting or disconnected when not connected
-//	info with a human description
-func (sess *WebClientSession) GetStatus() (bool, string, error) {
-	return sess.hc.GetConnectionStatus()
-}
 
 // HandleWebConnectionClosed is called by the web server when a
 // web client sse connection closes.
@@ -224,6 +213,11 @@ func (sess *WebClientSession) IsActive() bool {
 	return sess.isActive.Load()
 }
 
+// IsConnected returns the 'connected' status of hub connection
+func (sess *WebClientSession) IsConnected() bool {
+	return sess.hc.IsConnected()
+}
+
 // LoadState loads the client session state containing dashboard and other model data,
 // and clear 'clientModelChanged' status
 func (sess *WebClientSession) LoadState() error {
@@ -301,7 +295,7 @@ func (sess *WebClientSession) onMessage(msg *transports.ThingMessage) {
 		//slog.Any("data", msg.Data),
 		slog.String("senderID", msg.SenderID),
 		slog.String("receiver cid", sess.cid),
-		slog.String("requestID", msg.CorrelationID),
+		slog.String("requestID", msg.RequestID),
 	)
 	if msg.Operation == vocab.HTOpUpdateProperty {
 		// Publish a sse event for each property
@@ -358,13 +352,13 @@ func (sess *WebClientSession) onMessage(msg *transports.ThingMessage) {
 
 // ReplaceConnection replaces the hub connection in this session.
 // This closes the old connection and ignores the callback it gives.
-func (sess *WebClientSession) ReplaceConnection(hc clients.IConsumer) {
+func (sess *WebClientSession) ReplaceConnection(hc transports.IClientConnection) {
 	oldHC := sess.hc
 	sess.hc = hc
 	hc.SetConnectHandler(sess.onHubConnectionChange)
 	//hc.SetNotificationHandler(sess.onMessage)
 	oldHC.SetConnectHandler(nil)
-	oldHC.SetMessageHandler(nil)
+	oldHC.SetNotificationHandler(nil)
 	oldHC.Disconnect()
 }
 
@@ -482,7 +476,7 @@ func (sess *WebClientSession) WritePage(w http.ResponseWriter, buff *bytes.Buffe
 //	remoteAddr is the web client remote address
 //	onClose is the callback to invoke when this session is closed.
 func NewWebClientSession(
-	cid string, hc clients.IConsumer, remoteAddr string, noState bool,
+	cid string, hc transports.IClientConnection, remoteAddr string, noState bool,
 	onClosed func(*WebClientSession)) *WebClientSession {
 	var err error
 
@@ -502,7 +496,7 @@ func NewWebClientSession(
 	// this is a bit quirky but its a transition period
 	cs.cts.SetEventHandler(cs.onMessage)
 
-	isConnected, _, _ := hc.GetConnectionStatus()
+	isConnected := hc.IsConnected()
 	cs.isActive.Store(isConnected)
 
 	// restore the session data model
@@ -518,7 +512,7 @@ func NewWebClientSession(
 
 	// TODO: selectively subscribe instead of everything, but, based on what?
 	err = hc.Subscribe("", "")
-	err = hc.Observe("", "")
+	err = hc.ObserveProperty("", "")
 	if err != nil {
 		cs.lastError = err
 	}

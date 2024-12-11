@@ -65,8 +65,8 @@ func (svc *LauncherService) _startPlugin(pluginName string) (pi launcherapi.Plug
 		svcCmd.Env = append(os.Environ(), "LOGLEVEL="+svc.cfg.LogLevel)
 
 		// inspired by https://gist.github.com/jerblack/4b98ba48ed3fb1d9f7544d2b1a1be287
-		logfile := path.Join(svc.env.LogsDir, pluginName+".log")
-		_ = os.MkdirAll(svc.env.LogsDir, 0700)
+		logfile := path.Join(svc.cfg.LogsDir, pluginName+".log")
+		_ = os.MkdirAll(svc.cfg.LogsDir, 0700)
 		fp, err := os.OpenFile(logfile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 		if err == nil {
 			if svc.cfg.AttachStderr {
@@ -102,10 +102,10 @@ func (svc *LauncherService) _startPlugin(pluginName string) (pi launcherapi.Plug
 	}
 	// step 4: add the service account and generate its credentials
 	if pluginName != svc.cfg.RuntimeBin {
-		tokenPath := path.Join(svc.env.CertsDir, pluginName+".token")
+		tokenPath := path.Join(svc.certsDir, pluginName+".token")
 
 		slog.Info("Adding plugin service client with key and token",
-			"pluginName", pluginName, "certsDir", svc.env.CertsDir, "tokenPath", tokenPath)
+			"pluginName", pluginName, "certsDir", svc.certsDir, "tokenPath", tokenPath)
 
 		// add a service account. Authn admin generates a new token file in the keys directory
 		// the service must have read access to this directory, or the keys must be

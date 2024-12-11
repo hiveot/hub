@@ -103,7 +103,7 @@ func (cl *BaseTransportClient) SendNotification(
 }
 
 // SendRequest sends an operation request and waits for a completion or timeout.
-// This uses a correlationID to link actions to progress updates.
+// This uses a requestID to link actions to progress updates.
 func (cl *BaseTransportClient) SendRequest(operation string,
 	dThingID string, name string, input interface{}, output interface{}) (err error) {
 
@@ -190,12 +190,12 @@ func (cl *BaseTransportClient) Unsubscribe(thingID string, name string) error {
 // error.
 // If anything goes wrong, an error is returned
 func (cl *BaseTransportClient) WaitForResponse(
-	rChan chan any, requestID string, output any) (err error) {
+	rChan chan *transports.ThingMessage, requestID string, output interface{}) (err error) {
 
 	// wait for reply
 	waitCount := 0
 	var completed bool
-	var reply any
+	var reply *transports.ThingMessage
 
 	for !completed {
 		// if the hub connection no longer exists then don't wait any longer
@@ -207,6 +207,7 @@ func (cl *BaseTransportClient) WaitForResponse(
 		// wait at most cl.timeout or until delivery completes or fails
 		// if the connection breaks while waiting then tlsClient will be nil.
 		if time.Duration(waitCount)*time.Second > cl.BaseTimeout {
+			err = errors.New("timeout. No response")
 			break
 		}
 		if waitCount > 0 {
@@ -230,15 +231,26 @@ func (cl *BaseTransportClient) WaitForResponse(
 	// check for errors
 	if err != nil {
 		slog.Warn("SendRequest failed", "err", err.Error())
-	}
-	// only after completion will there be a reply as a result
-	if err == nil && output != nil && reply != nil {
+	} else if reply.Data != nil {
 		var isError bool
-		err, isError = reply.(error)
-		if !isError {
-			// convert the reply to the output format
-			err = utils2.Decode(reply, output)
+		err2, isError := reply.Data.(error)
+		if isError {
+			// this error was received through RnR.go:HandleResponse()
+			err = err2
 		}
 	}
+	// only after completion will there be a reply as a result
+	if err == nil && output != nil && reply.Data != nil {
+		// convert the reply to the output format
+		err = utils2.Decode(reply.Data, output)
+	}
 	return err
+}
+
+func (cl *BaseTransportClient) WriteProperty(thingID string, name string, input any, async bool) error {
+	if async {
+		return cl.SendNotification(wot.OpWriteProperty, thingID, name, input)
+	} else {
+		return cl.SendRequest(wot.OpWriteProperty, thingID, name, input, nil)
+	}
 }

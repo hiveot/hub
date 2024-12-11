@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
-	"github.com/hiveot/hub/wot/protocolclients"
+	"github.com/hiveot/hub/transports"
 	"log/slog"
 	"sync"
 	"time"
@@ -17,7 +17,7 @@ type ManageIdProvService struct {
 	requests map[string]idprovapi.ProvisionStatus
 
 	//
-	hc clients.IConsumer
+	hc transports.IClientConnection
 	// mutex to guard access to maps
 	mux sync.RWMutex
 }
@@ -190,7 +190,7 @@ func (svc *ManageIdProvService) SubmitRequest(senderID string, args *idprovapi.P
 func (svc *ManageIdProvService) Stop() {
 }
 
-func StartManageIdProvService(hc clients.IConsumer) *ManageIdProvService {
+func StartManageIdProvService(hc transports.IClientConnection) *ManageIdProvService {
 
 	svc := &ManageIdProvService{
 		// map of requests by SenderID

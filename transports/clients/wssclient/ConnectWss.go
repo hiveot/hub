@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/url"
 	"sync/atomic"
 )
 
@@ -39,13 +40,14 @@ func ConnectWSS(
 	//if clientCert != nil {
 	//	clientCertList = []tls.Certificate{*clientCert}
 	//}
-	//wssURLParsed, _ := url.Parse(hostPort)
+	wssURLParsed, _ := url.Parse(wssURL)
 	tlsConfig := &tls.Config{
-		//ServerName:         wssURLParsed.Hostname(),
 		RootCAs: caCertPool,
-		//InsecureSkipVerify: caCert == nil,
-		InsecureSkipVerify: true,
-		Certificates:       clientCertList,
+		// ServerName is required with InsecureSkipVerify disabled
+		ServerName:         wssURLParsed.Hostname(), // how to know?
+		InsecureSkipVerify: caCert == nil,
+		//InsecureSkipVerify: true,
+		Certificates: clientCertList,
 	}
 
 	wssHeader := http.Header{}
@@ -56,7 +58,8 @@ func ConnectWSS(
 	//origin := fmt.Sprintf("%s://%s", parts.Scheme, parts.Host)
 	//opts.HTTPHeader.Add("Origin", origin)
 
-	dialer := websocket.DefaultDialer
+	dialer := *websocket.DefaultDialer // run a copy
+	//dialer := websocket.DefaultDialer
 	dialer.TLSClientConfig = tlsConfig
 	dialer.NetDialTLSContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
 		netConn, err := net.Dial(network, addr)
@@ -81,6 +84,10 @@ func ConnectWSS(
 		return tlsConn, nil
 	}
 	// FIXME: use http/2
+	//httpParts, _ := url.Parse(wssURL)
+	//httpParts.Scheme = "https"
+	//httpsURL := httpParts.String()
+
 	wssConn, _, err := dialer.Dial(wssURL, wssHeader)
 	if err != nil {
 		wssCancelFn()
@@ -135,7 +142,8 @@ func WSSReadLoop(ctx context.Context, wssConn *websocket.Conn, onMessage func([]
 			// ending the read loop and returning will close the connection
 			break
 		}
-		onMessage(raw)
+		// process in the background
+		go onMessage(raw)
 	}
 
 }

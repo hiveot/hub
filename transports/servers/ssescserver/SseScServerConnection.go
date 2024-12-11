@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
-	transports2 "github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/connections"
 	"github.com/hiveot/hub/wot"
 	"log/slog"
@@ -50,6 +50,10 @@ type SseScServerConnection struct {
 	observations  connections.Subscriptions
 	//
 	correlData map[string]chan any
+
+	// fallback to the SSE mode instead of the SSE-SC mode
+	// enabled when subscription headers are present on connect.
+	sseFallback bool
 }
 
 type HttpActionStatus struct {
@@ -70,9 +74,16 @@ func (c *SseScServerConnection) _send(operation string, thingID, name string,
 	if data != nil {
 		payload, _ = json.Marshal(data)
 	}
+	// in sseFallback mode the ID is not used
 	eventID := fmt.Sprintf("%s/%s/%s/%s", thingID, name, senderID, requestID)
+	eventType := operation
+	if c.sseFallback {
+		// SSE protocol binding uses the affordance name as the event type
+		eventID = operation
+		eventType = name
+	}
 	msg := SSEEvent{
-		EventType: operation,
+		EventType: eventType,
 		ID:        eventID,
 		Payload:   string(payload),
 	}
@@ -114,7 +125,7 @@ func (c *SseScServerConnection) GetConnectionID() string {
 
 // GetProtocolType returns the protocol used in this connection
 func (c *SseScServerConnection) GetProtocolType() string {
-	return transports2.ProtocolTypeSSESC
+	return transports.ProtocolTypeSSESC
 }
 
 // GetSessionID returns the client's authentication session ID
@@ -200,10 +211,9 @@ func (c *SseScServerConnection) SendNotification(
 }
 
 // SendRequest sends a request (action, write property) to the client over sse (agent).
-func (c *SseScServerConnection) SendRequest(
-	operation string, dThingID, name string, input any, requestID string) error {
+func (c *SseScServerConnection) SendRequest(msg transports.ThingMessage) error {
 
-	err := c._send(operation, dThingID, name, input, requestID, "")
+	err := c._send(msg.Operation, msg.ThingID, msg.Name, msg.Data, msg.RequestID, msg.SenderID)
 	return err
 }
 
@@ -368,7 +378,7 @@ func (c *SseScServerConnection) UnobserveProperty(dThingID string, name string) 
 
 // NewSSEConnection creates a new SSE connection instance.
 // This implements the IServerConnection interface.
-func NewSSEConnection(clientID string, cid string, remoteAddr string) *SseScServerConnection {
+func NewSSEConnection(clientID string, cid string, remoteAddr string, sseFallback bool) *SseScServerConnection {
 	connectionID := clientID + "-" + cid // -> must match subscribe/observe requests
 
 	c := &SseScServerConnection{
@@ -380,8 +390,9 @@ func NewSSEConnection(clientID string, cid string, remoteAddr string) *SseScServ
 		observations:  connections.Subscriptions{},
 		subscriptions: connections.Subscriptions{},
 		correlData:    make(map[string]chan any),
+		sseFallback:   sseFallback,
 	}
 	// interface check
-	var _ transports2.IServerConnection = c
+	var _ transports.IServerConnection = c
 	return c
 }

@@ -1,4 +1,4 @@
-package ssescclient
+package sseclient
 
 import (
 	"github.com/hiveot/hub/transports"
@@ -16,16 +16,9 @@ import (
 // The payload is a RequestStatus object.
 func (cl *SsescTransportClient) handleResponseMessage(
 	msg *transports.ThingMessage, raw []byte) {
-	//var stat transports.RequestStatus
-	//err := utils.DecodeAsObject(raw, &stat)
-	//if err != nil || stat.RequestID == "" || stat.RequestID == "-" {
-	//	slog.Error("handleSseEvent: SSE message of type delivery update is missing requestID or not a RequestStatus ", "err", err)
-	//	return
-	//}
-	//msg.Data = stat
-	// Determine if this was the result of an RPC call
-	//handled := cl.BaseRnrChan.HandleResponse(stat.RequestID, stat)
-	handled := cl.BaseRnrChan.HandleResponse(msg.RequestID, raw, true)
+
+	msg.Data = raw
+	handled := cl.BaseRnrChan.HandleResponse(msg, true)
 	if handled {
 		return
 	} else if cl.BaseNotificationHandler != nil {

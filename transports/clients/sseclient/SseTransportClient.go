@@ -1,31 +1,26 @@
-package ssescclient
+package sseclient
 
 import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/clients/httpclient"
-	"github.com/hiveot/hub/transports/utils"
+	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot/td"
-	jsoniter "github.com/json-iterator/go"
-	"github.com/teris-io/shortid"
+	"github.com/tmaxmax/go-sse"
 	"log/slog"
 	"sync/atomic"
 	"time"
 )
-
-const SSEPath = "/sse"
 
 // SseTransportClient extends the https binding with the SSE return channel.
 //
 // This client creates two http/2 connections, one for posting messages and
 // one for a sse connection to establish a return channel.
 //
-// Intended for sse WoT compatibility. Each subscription requires a new instance
-// so this is only efficient when few subscriptions are needed.
-//
-// For a non-official shared connection see the sse-sc transport binding
+// This client is for using the SSE sub-protocol extension.
 type SseTransportClient struct {
 	httpclient.HttpTransportClient
 
@@ -37,9 +32,7 @@ type SseTransportClient struct {
 
 	lastError atomic.Pointer[error]
 
-	// the subscription for this client
-	// sse only has a single on
-	subscription string
+	subscriptions map[string]bool
 
 	// Request and Response channel helper
 	rnrChan *tputils.RnRChan
@@ -49,7 +42,7 @@ type SseTransportClient struct {
 // FIXME: use the http/2 binding connection
 func (cl *SseTransportClient) connectSSE(token string) (err error) {
 	if cl.ssePath == "" {
-		return fmt.Errorf("SseTransportClient: Missing SSE path")
+		return fmt.Errorf("Missing SSE path")
 	}
 	// create a second client to establish the sse connection if a path is set
 	sseURL := fmt.Sprintf("https://%s%s", cl.BaseHostPort, cl.ssePath)
@@ -59,6 +52,11 @@ func (cl *SseTransportClient) connectSSE(token string) (err error) {
 		cl.handleSSEConnect, cl.handleSseEvent)
 
 	return err
+}
+
+// handleSSEEvent processes the push-event received from the hub.
+func (cl *SseTransportClient) handleSseEvent(event sse.Event) {
+	panic("not yet implemented")
 }
 
 // ConnectWithPassword connects to the Hub TLS server using a login ID and password
@@ -96,7 +94,7 @@ func (cl *SseTransportClient) ConnectWithToken(token string) (newToken string, e
 
 // Disconnect from the server
 func (cl *SseTransportClient) Disconnect() {
-	slog.Debug("SseTransportClient.Disconnect",
+	slog.Debug("HttpSSEClient.Disconnect",
 		slog.String("clientID", cl.GetClientID()),
 		slog.String("cid", cl.GetConnectionID()),
 	)
@@ -151,29 +149,6 @@ func (cl *SseTransportClient) handleSSEConnect(connected bool, err error) {
 	}
 }
 
-// SendRequest sends an operation request and waits for a completion or timeout.
-// This uses a correlationID to link actions to progress updates.
-func (cl *SseTransportClient) SendRequest(operation string,
-	dThingID string, name string, input interface{}, output interface{}) (err error) {
-
-	// a requestID is needed before the action is published in order to match it with the reply
-	requestID := "sserpc-" + shortid.MustGenerate()
-	rChan := cl.rnrChan.Open(requestID)
-
-	// Without a return channel there is no waiting for a result
-	raw, _, err := cl.SendOperation(operation, dThingID, name, input, requestID)
-
-	// If a result is received then leave it there and return the result
-	// this is currently not supported
-	if raw != nil && output != nil {
-		err = jsoniter.Unmarshal(raw, output)
-		cl.rnrChan.Close(requestID)
-		return err
-	}
-	err = cl.WaitForResponse(rChan, requestID, output)
-	return err
-}
-
 // SetSSEPath sets the new sse path to use.
 // This allows to change the hub default /ssesc
 func (cl *SseTransportClient) SetSSEPath(ssePath string) {
@@ -182,9 +157,9 @@ func (cl *SseTransportClient) SetSSEPath(ssePath string) {
 	cl.BaseMux.Unlock()
 }
 
-// NewSseTransportClient creates a new instance of the http client with SSE return-channel.
+// NewSseTransportClient creates a new instance of the http client with SSE-SC return-channel.
 //
-//	fullURL of server to connect to
+//	hostPort of broker to connect to, without the scheme
 //	clientID to connect as
 //	clientCert optional client certificate to connect with
 //	caCert of the server to validate the server or nil to not check the server cert
@@ -192,16 +167,16 @@ func (cl *SseTransportClient) SetSSEPath(ssePath string) {
 func NewSseTransportClient(fullURL string, clientID string,
 	clientCert *tls.Certificate, caCert *x509.Certificate,
 	getForm func(op string) td.Form,
-	timeout time.Duration) *SseTransportClient {
+	timeout time.Duration) *SsescTransportClient {
 
 	caCertPool := x509.NewCertPool()
 
 	// Use CA certificate for server authentication if it exists
 	if caCert == nil {
-		slog.Info("NewHttpSSEClient: No CA certificate. InsecureSkipVerify used",
+		slog.Info("NewSseTransportClient: No CA certificate. InsecureSkipVerify used",
 			slog.String("destination", fullURL))
 	} else {
-		slog.Debug("NewHttpSSEClient: CA certificate",
+		slog.Debug("NewSseTransportClient: CA certificate",
 			slog.String("destination", fullURL),
 			slog.String("caCert CN", caCert.Subject.CommonName))
 		caCertPool.AddCert(caCert)
@@ -210,13 +185,16 @@ func NewSseTransportClient(fullURL string, clientID string,
 		timeout = time.Second * 3
 	}
 
-	cl := SseTransportClient{
-		ssePath: SSEPath,
-		rnrChan: tputils.NewRnRChan(),
+	cl := SsescTransportClient{
+		ssePath:       transports.DefaultSSESCPath,
+		subscriptions: nil,
+		rnrChan:       tputils.NewRnRChan(),
 	}
 	// initialize the embedded http transport
 	cl.HttpTransportClient.Init(
 		fullURL, clientID, clientCert, caCert, getForm, timeout)
+	//cl.tlsClient = tlsclient.NewTLSClient(
+	//	hostPort, clientCert, caCert, timeout, cid)
 
 	return &cl
 }

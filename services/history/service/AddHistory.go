@@ -6,7 +6,7 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/transports"
-	utils2 "github.com/hiveot/hub/transports/utils"
+	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
@@ -34,10 +34,10 @@ type AddHistory struct {
 func (svc *AddHistory) encodeValue(msg *transports.ThingMessage) (storageKey string, data []byte) {
 	var err error
 	createdTime := time.Now()
-	if msg.Created != "" {
-		createdTime, err = dateparse.ParseAny(msg.Created)
+	if msg.Timestamp != "" {
+		createdTime, err = dateparse.ParseAny(msg.Timestamp)
 		if err != nil {
-			slog.Warn("Invalid Created time. Using current time instead", "created", msg.Created)
+			slog.Warn("Invalid Created time. Using current time instead", "created", msg.Timestamp)
 			createdTime = time.Now()
 		}
 	}
@@ -196,15 +196,15 @@ func (svc *AddHistory) AddProperty(msg *transports.ThingMessage) (err error) {
 
 	propMap := make(map[string]any)
 	if msg.Name == "" {
-		err = utils2.DecodeAsObject(msg.Data, &propMap)
+		err = tputils.DecodeAsObject(msg.Data, &propMap)
 		if err != nil {
 			return err
 		}
 	} else {
 		propMap[msg.Name] = msg.Data
 	}
-	if msg.Created == "" {
-		msg.Created = time.Now().Format(wot.RFC3339Milli)
+	if msg.Timestamp == "" {
+		msg.Timestamp = time.Now().Format(wot.RFC3339Milli)
 	}
 	thingAddr := msg.ThingID // the digitwin ID with the agent prefix
 	bucket := svc.store.GetBucket(thingAddr)
@@ -213,7 +213,7 @@ func (svc *AddHistory) AddProperty(msg *transports.ThingMessage) (err error) {
 	for propName, propValue := range propMap {
 		tv := transports.NewThingMessage(vocab.HTOpUpdateProperty,
 			msg.ThingID, propName, propValue, msg.SenderID)
-		tv.Created = msg.Created
+		tv.Timestamp = msg.Timestamp
 
 		retain, err := svc.validateValue(tv)
 		if err != nil {
@@ -244,8 +244,8 @@ func (svc *AddHistory) validateValue(tv *transports.ThingMessage) (retained bool
 	if tv.SenderID == "" && tv.Operation == vocab.OpInvokeAction {
 		return false, fmt.Errorf("missing sender for action on thing '%s'", tv.ThingID)
 	}
-	if tv.Created == "" {
-		tv.Created = time.Now().Format(wot.RFC3339Milli)
+	if tv.Timestamp == "" {
+		tv.Timestamp = time.Now().Format(wot.RFC3339Milli)
 	}
 	if svc.retentionMgr != nil {
 		retain, rule := svc.retentionMgr._IsRetained(tv)

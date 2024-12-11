@@ -12,8 +12,7 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/wot/protocolclients"
-	"github.com/hiveot/hub/wot/protocolclients/connect"
+	"github.com/hiveot/hub/transports/clients"
 	"github.com/urfave/cli/v2"
 	"log/slog"
 	"os"
@@ -100,7 +99,7 @@ func main() {
 			if nowrap {
 				fmt.Printf(utils.WrapOff)
 			}
-			hc, err = connect.ConnectToHub(serverURL, loginID, certsDir, password)
+			hc, err = clients.ConnectToHub(serverURL, loginID, certsDir, password)
 			if err != nil {
 				slog.Error("Unable to connect to the server", "err", err)
 				return err

@@ -122,6 +122,10 @@ type IClientConnection interface {
 	// SendRequest sends an operation and waits for a response or until timeout.
 	SendRequest(operation string, thingID, name string, input any, output any) error
 
+	// WriteProperty submits a request to modify a property
+	// use async
+	WriteProperty(thingID, name string, input any, async bool) error
+
 	// SendResponse agent sends a response to a request.
 	//
 	// Intended for agents to send the response to a request.

@@ -3,6 +3,7 @@ package certs_test
 import (
 	"crypto/x509"
 	"github.com/hiveot/hub/api/go/authz"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/logging"
@@ -10,6 +11,7 @@ import (
 	"github.com/hiveot/hub/services/certs/certsapi"
 	"github.com/hiveot/hub/services/certs/certsclient"
 	"github.com/hiveot/hub/services/certs/service/selfsigned"
+	"github.com/hiveot/hub/wot/td"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"os"
@@ -25,7 +27,8 @@ func startService() (cl *certsclient.CertsClient, stopFunc func()) {
 	ts = testenv.StartTestServer(true)
 
 	// the service needs a server connection
-	hc1, token1 := ts.AddConnectService(certsapi.CertsAdminAgentID, agentUsesWSS)
+	// FIXME: certs service need to register their service
+	hc1, token1 := ts.AddConnectService(certsapi.CertsAdminAgentID)
 	_ = token1
 
 	//storeDir := path.Join(ts.TestDir, "test-certs")
@@ -60,7 +63,8 @@ func TestMain(m *testing.M) {
 
 func TestCreateDeviceCert(t *testing.T) {
 	t.Log("--- TestCreateDeviceCert ---")
-	deviceID := "device1"
+	agentID := "agent1"
+	agThingID := "thing1"
 
 	certAdmin, stopFunc := startService()
 	defer stopFunc()
@@ -68,8 +72,12 @@ func TestCreateDeviceCert(t *testing.T) {
 	k := keys.NewKey(keys.KeyTypeECDSA)
 	pubKeyPEM := k.ExportPublic()
 
+	// a TD is needed first
+	td1 := td.NewTD(agThingID, "Title", vocab.ThingSensorMulti)
+	ts.AddTD(agentID, td1)
+
 	deviceCertPEM, caCertPEM, err := certAdmin.CreateDeviceCert(
-		deviceID, pubKeyPEM, 1)
+		agentID, pubKeyPEM, 1)
 	require.NoError(t, err)
 
 	deviceCert, err := certs.X509CertFromPEM(deviceCertPEM)
@@ -80,7 +88,7 @@ func TestCreateDeviceCert(t *testing.T) {
 	require.NotNil(t, caCert2)
 
 	// verify certificate
-	err = certAdmin.VerifyCert(deviceID, deviceCertPEM)
+	err = certAdmin.VerifyCert(agentID, deviceCertPEM)
 	assert.NoError(t, err)
 	err = certAdmin.VerifyCert("notanid", deviceCertPEM)
 	assert.Error(t, err)
@@ -100,11 +108,15 @@ func TestCreateDeviceCert(t *testing.T) {
 // test device cert with bad parameters
 func TestDeviceCertBadParms(t *testing.T) {
 	t.Log("--- TestDeviceCertBadParms ---")
-	deviceID := "device1"
+	agentID := "agent1"
+	agThingID := "thing1"
 
 	// test creating hub certificate
 	certAdmin, stopFunc := startService()
 	defer stopFunc()
+	// a TD is needed first
+	td1 := td.NewTD(agThingID, "Title", vocab.ThingSensorMulti)
+	ts.AddTD(agentID, td1)
 
 	k := keys.NewKey(keys.KeyTypeECDSA)
 	pubKeyPEM := k.ExportPublic()
@@ -115,7 +127,7 @@ func TestDeviceCertBadParms(t *testing.T) {
 	assert.Empty(t, certPEM)
 
 	// missing public key
-	certPEM, _, err = certAdmin.CreateDeviceCert(deviceID, "", 1)
+	certPEM, _, err = certAdmin.CreateDeviceCert(agentID, "", 1)
 	require.Error(t, err)
 	assert.Empty(t, certPEM)
 	t.Log("--- TestDeviceCertBadParms ended ---")

@@ -35,10 +35,12 @@ type WssTransportClient struct {
 
 // websocket connection status handler
 func (cl *WssTransportClient) _onConnect(connected bool, err error) {
-
+	cl.BaseMux.RLock()
+	connectHandler := cl.BaseConnectHandler
+	cl.BaseMux.RUnlock()
 	cl.BaseIsConnected.Store(connected)
-	if cl.BaseConnectHandler != nil {
-		cl.BaseConnectHandler(connected, err)
+	if connectHandler != nil {
+		connectHandler(connected, err)
 	}
 	// if retrying is enabled then try on disconnect
 	if !connected && cl.retryOnDisconnect.Load() {
@@ -144,6 +146,7 @@ func (cl *WssTransportClient) SendOperation(
 	operation string, dThingID, name string, data any, requestID string) error {
 
 	slog.Info("SendOperation",
+		slog.String("operation", operation),
 		slog.String("clientID", cl.GetClientID()),
 		slog.String("dThingID", dThingID),
 		slog.String("name", name),
@@ -151,7 +154,8 @@ func (cl *WssTransportClient) SendOperation(
 	)
 
 	// convert the operation into a websocket message and send it to the server
-	msg, err := wssserver.OpToMessage(operation, dThingID, name, nil, data, requestID)
+	msg, err := wssserver.OpToMessage(operation, dThingID, name, nil, data,
+		requestID, cl.GetClientID())
 	if err != nil {
 		slog.Error("SendOperation: unknown operation", "op", operation)
 		return err
@@ -159,44 +163,6 @@ func (cl *WssTransportClient) SendOperation(
 	err = cl._send(msg)
 	return err
 }
-
-//// SendRequest sends an operation request and waits for a completion or timeout.
-//// This uses a correlationID to link actions to progress updates.
-//func (cl *WssTransportClient) SendRequest(operation string,
-//	dThingID string, name string, input interface{}, output interface{}) (err error) {
-//
-//	// open a return channel for the response
-//	requestID := "wssrpc-" + shortid.MustGenerate()
-//	rChan := cl.BaseRnrChan.Open(requestID)
-//
-//	err = cl.SendOperation(operation, dThingID, name, input, requestID)
-//
-//	//clientID := cl.GetClientID()
-//	//names := []string{}
-//	//wssMsg, err := wssserver.OpToMessage(operation, dThingID, name, names, input, requestID)
-//	//if err != nil {
-//	//	slog.Error("SendRequest:Unknown operation", "op", operation)
-//	//	return err
-//	//}
-//	//slog.Info("SendRequest (request)",
-//	//	slog.String("clientID", cl.GetClientID()),
-//	//	slog.String("dThingID", dThingID),
-//	//	slog.String("name", name),
-//	//	slog.String("requestID", requestID),
-//	//)
-//	//rChan := cl.BaseRnrChan.Open(requestID)
-//
-//	//err = cl._send(wssMsg)
-//
-//	if err != nil {
-//		slog.Warn("rpc: failed sending request",
-//			"correlationID", requestID,
-//			"err", err.Error())
-//		return err
-//	}
-//	err = cl.WaitForResponse(rChan, requestID, output)
-//	return err
-//}
 
 // SendResponse [agent] sends an action status update to the server.
 func (cl *WssTransportClient) SendResponse(

@@ -9,18 +9,21 @@ import (
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
-	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"log/slog"
 	"sync/atomic"
 	"testing"
 	"time"
 )
 
 func TestQueryActions(t *testing.T) {
+	t.Log("TestQueryActions")
 	const agentID = "agent1"
 	const userID = "user1"
 	const data = "Hello world"
+	const actionID = "action-0"
+	var updateChan1 = make(chan bool)
 
 	r := startRuntime()
 	defer r.Stop()
@@ -33,32 +36,29 @@ func TestQueryActions(t *testing.T) {
 
 	// step 1: agent publishes a TD: dtw:agent1:thing-1
 	td1 := ts.CreateTestTD(0)
-	key1 := "action-0" // must match TD
 	td1JSON, _ := json.Marshal(td1)
 	var dThing1ID = td.MakeDigiTwinThingID(agentID, td1.ID)
 	ag1.SetRequestHandler(func(msg *transports.ThingMessage) (output any, err error) {
 		return data, nil
 	})
-	//err := ag1.PubTD(td1.ID, string(td1JSON))
-	err := ag1.SendNotification(wot.HTOpUpdateTD, td1.ID, "", string(td1JSON))
-	require.NoError(t, err)
-
-	// step 2: consumer publish an action to the agent
 	cl1.SetNotificationHandler(func(msg *transports.ThingMessage) {
+		slog.Info("notification: " + msg.Operation)
+		// signal notification received
+		updateChan1 <- true
 	})
-	err = ag1.SendNotification(wot.OpInvokeAction, dThing1ID, key1, data)
-	//stat := cl1.InvokeAction(dThing1ID, key1, data, nil, "")
+	err := cl1.Subscribe("", "")
 	require.NoError(t, err)
+	time.Sleep(time.Millisecond)
+	//err := ag1.PubTD(td1.ID, string(td1JSON))
 
-	// step 3: read the latest actions from the digital twin
-	// first gets its TD
-	var tdJSON = ""
-	var td td.TD
+	// step 2: consumer publish an action to the agent it should return as
+	// a notification.
+	err = ag1.SendNotification(wot.HTOpUpdateTD, td1.ID, "", string(td1JSON))
+	require.NoError(t, err)
+	<-updateChan1
 
-	//stat2 := cl1.InvokeAction(digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, dThing1ID, nil, "")
-	err = ag1.SendRequest(wot.OpInvokeAction, digitwin.DirectoryDThingID,
-		digitwin.DirectoryReadTDMethod, dThing1ID, &tdJSON)
-	err = jsoniter.UnmarshalFromString(tdJSON, &td)
+	// this action is recorded
+	err = cl1.InvokeAction(dThing1ID, actionID, data, nil)
 	require.NoError(t, err)
 
 	// get the latest action values from the thing
@@ -68,12 +68,13 @@ func TestQueryActions(t *testing.T) {
 	valueMap := api.ActionListToMap(valueList)
 
 	// value must match that of the action in step 1 and match its requestID
-	actVal := valueMap[key1]
+	actVal := valueMap[actionID]
 	assert.Equal(t, data, actVal.Input)
 }
 
 // Get events from the outbox using the experimental http REST api
 func TestReadEvents(t *testing.T) {
+	t.Log("TestReadEvents")
 	const agentID = "agent1"
 	const key1 = "key1"
 	const userID = "user1"
@@ -96,10 +97,11 @@ func TestReadEvents(t *testing.T) {
 	// is requested. hiveot uses it to determine if a response is required.
 	err := ag1.SendNotification(wot.HTOpUpdateTD, td1.ID, "", string(td1JSON))
 	require.NoError(t, err)
-	time.Sleep(time.Millisecond)
-	//err = ag1.PubEvent(td1.ID, key1, data, "")
+	time.Sleep(time.Millisecond * 10)
+
 	err = ag1.SendNotification(wot.HTOpPublishEvent, td1.ID, key1, data)
 	require.NoError(t, err)
+	time.Sleep(time.Millisecond * 1)
 
 	dtwValues := make([]digitwin.ThingValue, 0)
 	//stat := hc1.ReadAllEvents(dThing1ID, &dtwValues, "")
@@ -121,6 +123,7 @@ func TestReadEvents(t *testing.T) {
 }
 
 func TestHttpsGetProps(t *testing.T) {
+	t.Log("TestHttpsGetProps")
 	const agentID = "agent1"
 	const key1 = "key1"
 	const key2 = "key2"
@@ -143,6 +146,7 @@ func TestHttpsGetProps(t *testing.T) {
 	td1JSON, _ := json.Marshal(td1)
 	var dThingID = td.MakeDigiTwinThingID(agentID, td1.ID)
 	err := ag1.SendNotification(wot.HTOpUpdateTD, td1.ID, "", string(td1JSON))
+	time.Sleep(time.Millisecond * 10)
 	require.NoError(t, err)
 
 	//err = ag1.PubProperty(td1.ID, key1, data1)
@@ -180,16 +184,15 @@ func TestSubscribeValues(t *testing.T) {
 	cl1, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
 	defer cl1.Disconnect()
 
+	// consumer subscribes to events/properties
+	err := cl1.Subscribe("", "")
+	require.NoError(t, err)
+
 	// step 1: agent publishes a TD first: dtw:agent1:thing-1
 	td1 := ts.CreateTestTD(0)
 	td1JSON, _ := json.Marshal(td1)
-	//var dThingID = tdd.MakeDigiTwinThingID(agentID, td1.ID)
-	err := ag1.SendNotification(wot.HTOpUpdateTD, td1.ID, "", string(td1JSON))
 
-	// consumer subscribes to events/properties
-	//err = cl1.Subscribe("", "")
-	err = cl1.Subscribe("", "")
-	require.NoError(t, err)
+	err = ag1.SendNotification(wot.HTOpUpdateTD, td1.ID, "", string(td1JSON))
 
 	cl1.SetNotificationHandler(func(msg *transports.ThingMessage) {
 		msgCount.Add(1)

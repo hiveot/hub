@@ -27,21 +27,21 @@ func (cl *ManageHistoryClient) GetRetentionRule(dThingID string, name string) (*
 		Name:    name,
 	}
 	resp := historyapi.GetRetentionRuleResp{}
-	err := cl.cc.SendRequest(cl.invokeAction, cl.dThingID, historyapi.GetRetentionRuleMethod, &args, &resp)
+	err := cl.cc.InvokeAction(cl.dThingID, historyapi.GetRetentionRuleMethod, &args, &resp)
 	return resp.Rule, err
 }
 
 // GetRetentionRules returns the list of retention rules
 func (cl *ManageHistoryClient) GetRetentionRules() (historyapi.RetentionRuleSet, error) {
 	resp := historyapi.GetRetentionRulesResp{}
-	err := cl.cc.SendRequest(cl.invokeAction, cl.dThingID, historyapi.GetRetentionRulesMethod, nil, &resp)
+	err := cl.cc.InvokeAction(cl.dThingID, historyapi.GetRetentionRulesMethod, nil, &resp)
 	return resp.Rules, err
 }
 
 // SetRetentionRules configures the retention of a Thing event
 func (cl *ManageHistoryClient) SetRetentionRules(rules historyapi.RetentionRuleSet) error {
 	args := historyapi.SetRetentionRulesArgs{Rules: rules}
-	err := cl.cc.SendRequest(cl.invokeAction, cl.dThingID, historyapi.SetRetentionRulesMethod, &args, nil)
+	err := cl.cc.InvokeAction(cl.dThingID, historyapi.SetRetentionRulesMethod, &args, nil)
 	return err
 }
 

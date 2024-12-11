@@ -6,7 +6,7 @@ import (
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/connections"
 	"github.com/hiveot/hub/transports/servers/httpserver"
-	httpcontext2 "github.com/hiveot/hub/transports/servers/httpserver/httpcontext"
+	"github.com/hiveot/hub/transports/servers/httpserver/httpcontext"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"net/http"
@@ -14,6 +14,23 @@ import (
 )
 
 // SseScTransportServer is a subprotocol binding server of http
+//
+// This server supports both the SSE (TODO) and the SSE-SC sub-protocols.
+//
+// The SSE subprotocol provides event/property resource in the path.
+// See also https://w3c.github.io/wot-profile/#sec-http-sse-profile
+// The SSE event 'event' field contains the event or property affordance name.
+//
+// The SSE-SC extension is automatically enabled if the SSE connection is made
+// on the ssesc base path. Clients subscribe and observe methods to make
+// REST calls to subscribe and unsubscribe.
+// An SSE-SC event 'event' field contains the operation name while the ID field
+// contains the concatenation of operation/thingID/affordance name.
+// (todo: look into using operation/thingID/affordance in the event field instead
+// so it is closer to the SSE spec)
+//
+// For consideration is a third variant that uses message envelopes similar to
+// websockets.
 type SseScTransportServer struct {
 	// connection manager to add/remove connections
 	cm *connections.ConnectionManager
@@ -36,10 +53,10 @@ func (svc *SseScTransportServer) GetForm(op string) td.Form {
 	return svc.httpTransport.GetForm(op)
 }
 
-// GetProtocolInfo returns info on the protocol supported by this binding
-//func (svc *SseScTransportServer) GetProtocolInfo() transports.ProtocolInfo {
-//	return svc.httpTransport.GetProtocolInfo()
-//}
+// GetConnectURL returns SSE connection path of the server
+func (svc *SseScTransportServer) GetConnectURL() string {
+	return svc.httpTransport.GetConnectURL() + transports.DefaultSSESCPath
+}
 
 // GetSseConnection returns the SSE Connection with the given ID
 // This returns nil if not found or if the connectionID is not
@@ -61,7 +78,7 @@ func (svc *SseScTransportServer) HandleConnect(w http.ResponseWriter, r *http.Re
 
 	//An active session is required before accepting the request. This is created on
 	//authentication/login. Until then SSE connections are blocked.
-	clientID, err := httpcontext2.GetClientIdFromContext(r)
+	clientID, err := httpcontext.GetClientIdFromContext(r)
 
 	if err != nil {
 		slog.Warn("SSESC HandleConnect. No session available yet, telling client to delay retry to 10 seconds",
@@ -82,7 +99,8 @@ func (svc *SseScTransportServer) HandleConnect(w http.ResponseWriter, r *http.Re
 	cid := r.Header.Get(transports.ConnectionIDHeader)
 
 	// add the new sse connection
-	c := NewSSEConnection(clientID, cid, r.RemoteAddr)
+	sseFallback := false // TODO
+	c := NewSSEConnection(clientID, cid, r.RemoteAddr, sseFallback)
 
 	err = svc.cm.AddConnection(c)
 	if err != nil {
@@ -103,7 +121,7 @@ func (svc *SseScTransportServer) HandleObserveAllProperties(w http.ResponseWrite
 
 // HandleObserveProperty handles a property observe request for one or all properties
 func (svc *SseScTransportServer) HandleObserveProperty(w http.ResponseWriter, r *http.Request) {
-	rp, err := httpcontext2.GetRequestParams(r)
+	rp, err := httpcontext.GetRequestParams(r)
 	if err != nil {
 		slog.Warn("HandleObserveProperty", "err", err.Error())
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -130,7 +148,7 @@ func (svc *SseScTransportServer) HandleSubscribeAllEvents(w http.ResponseWriter,
 
 // HandleSubscribeEvent handles a subscription request for one or all events
 func (svc *SseScTransportServer) HandleSubscribeEvent(w http.ResponseWriter, r *http.Request) {
-	rp, err := httpcontext2.GetRequestParams(r)
+	rp, err := httpcontext.GetRequestParams(r)
 	if err != nil {
 		slog.Warn("HandleSubscribe", "err", err.Error())
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -159,7 +177,7 @@ func (svc *SseScTransportServer) HandleUnobserveAllProperties(w http.ResponseWri
 // HandleUnobserveProperty handles removal of one property observe subscriptions
 func (svc *SseScTransportServer) HandleUnobserveProperty(w http.ResponseWriter, r *http.Request) {
 	slog.Info("HandleUnobserveProperty")
-	rp, err := httpcontext2.GetRequestParams(r)
+	rp, err := httpcontext.GetRequestParams(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -179,7 +197,7 @@ func (svc *SseScTransportServer) HandleUnsubscribeAllEvents(w http.ResponseWrite
 // HandleUnsubscribeEvent handles removal of one or all event subscriptions
 func (svc *SseScTransportServer) HandleUnsubscribeEvent(w http.ResponseWriter, r *http.Request) {
 	slog.Info("HandleUnsubscribeEvent")
-	rp, err := httpcontext2.GetRequestParams(r)
+	rp, err := httpcontext.GetRequestParams(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -215,7 +233,7 @@ func StartSseScTransportServer(
 	httpTransport *httpserver.HttpTransportServer,
 ) *SseScTransportServer {
 	if ssePath == "" {
-		ssePath = transports.SSESCPathPrefix
+		ssePath = transports.DefaultSSESCPath
 	}
 	b := &SseScTransportServer{
 		cm:            cm,

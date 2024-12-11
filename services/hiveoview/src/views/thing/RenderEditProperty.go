@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/api/go/digitwin"
-	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
+	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot/consumedthing"
+	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"net/http"
@@ -27,7 +29,7 @@ type RenderEditPropertyTemplateData struct {
 	SubmitPropertyPath string
 }
 
-func getPropAff(hc clients.IConsumer, thingID string, name string) (
+func getPropAff(hc transports.IClientConnection, thingID string, name string) (
 	td *td.TD, propAff *td.PropertyAffordance, err error) {
 
 	tdJson, err := digitwin.DirectoryReadTD(hc, thingID)
@@ -48,7 +50,7 @@ func getPropAff(hc clients.IConsumer, thingID string, name string) (
 // obtain a schema value instance from a thingID and key
 // this pulls the TD from the server (todo: consider using a local cache)
 func getConfigValue(
-	hc clients.IConsumer, thingID string, name string) (sv RenderEditPropertyTemplateData, err error) {
+	hc transports.IClientConnection, thingID string, name string) (sv RenderEditPropertyTemplateData, err error) {
 
 	td, propAff, err := getPropAff(hc, thingID, name)
 	_ = td
@@ -82,7 +84,7 @@ func RenderEditProperty(w http.ResponseWriter, r *http.Request) {
 		data, err = getConfigValue(sess.GetHubClient(), thingID, propName)
 	}
 	pathParams := map[string]string{"thingID": thingID, "name": propName}
-	data.SubmitPropertyPath = utils.Substitute(src.PostThingPropertyEditPath, pathParams)
+	data.SubmitPropertyPath = tputils.Substitute(src.PostThingPropertyEditPath, pathParams)
 	if err != nil {
 		slog.Error("RenderEditConfigDialog:", "err", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)

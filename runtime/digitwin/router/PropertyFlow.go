@@ -105,7 +105,10 @@ func (svc *DigitwinRouter) HandleWriteProperty(msg *transports.ThingMessage, rep
 		}
 		svc.mux.Unlock()
 
-		err = c.SendRequest(wot.OpWriteProperty, thingID, msg.Name, msg.Data, msg.RequestID)
+		msg2 := *msg
+		msg2.ThingID = thingID // agents use the local thing ID
+		msg2.Operation = wot.OpWriteProperty
+		err = c.SendRequest(msg2)
 		if err != nil {
 			// unable to deliver the request
 			// cleanup since there will not be a response

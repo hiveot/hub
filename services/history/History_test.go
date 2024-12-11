@@ -12,7 +12,7 @@ import (
 	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/hiveot/hub/services/history/service"
 	"github.com/hiveot/hub/transports"
-	utils2 "github.com/hiveot/hub/transports/utils"
+	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
@@ -74,8 +74,8 @@ func startHistoryService(clean bool) (
 	if err != nil {
 		panic("can't connect operator")
 	}
-	invokeActionForm := ts.GetForm(wot.OpInvokeAction, cl1.GetProtocolType())
-	histCl := historyclient.NewReadHistoryClient(invokeActionForm, cl1)
+	//invokeActionForm := ts.GetForm(wot.OpInvokeAction, cl1.GetProtocolType())
+	histCl := historyclient.NewReadHistoryClient(cl1)
 
 	return svc, histCl, func() {
 		cl1.Disconnect()
@@ -120,12 +120,12 @@ func makeValueBatch(agentID string, nrValues, nrThings, timespanSec int) (
 			fmt.Sprintf("%2.3f", randomValue), "",
 		)
 		msg.SenderID = agentID
-		msg.Created = randomTime.Format(wot.RFC3339Milli)
+		msg.Timestamp = randomTime.Format(wot.RFC3339Milli)
 
 		// track the actual most recent event for the name for things 3
 		if randomID == 0 {
 			if _, exists := highest[msg.Name]; !exists ||
-				highest[msg.Name].Created < msg.Created {
+				highest[msg.Name].Timestamp < msg.Timestamp {
 				highest[msg.Name] = msg
 			}
 		}
@@ -198,7 +198,7 @@ func TestAddGetEvent(t *testing.T) {
 	ev1_1 := &transports.ThingMessage{
 		Operation: vocab.HTOpPublishEvent,
 		SenderID:  agent1ID, ThingID: dThing1ID, Name: evTemperature,
-		Data: "12.5", Created: fivemago.Format(wot.RFC3339Milli),
+		Data: "12.5", Timestamp: fivemago.Format(wot.RFC3339Milli),
 	}
 	err := addHist.AddEvent(ev1_1)
 	assert.NoError(t, err)
@@ -206,7 +206,7 @@ func TestAddGetEvent(t *testing.T) {
 	ev1_2 := &transports.ThingMessage{
 		Operation: vocab.HTOpPublishEvent,
 		SenderID:  agent1ID, ThingID: dThing1ID, Name: evHumidity,
-		Data: "70", Created: fiftyfivemago.Format(wot.RFC3339Milli),
+		Data: "70", Timestamp: fiftyfivemago.Format(wot.RFC3339Milli),
 	}
 	err = addHist.AddEvent(ev1_2)
 	assert.NoError(t, err)
@@ -216,7 +216,7 @@ func TestAddGetEvent(t *testing.T) {
 	ev2_1 := &transports.ThingMessage{
 		Operation: vocab.HTOpPublishEvent,
 		SenderID:  agent1ID, ThingID: dThing2ID, Name: evHumidity,
-		Data: "50", Created: fivemago.Format(wot.RFC3339Milli),
+		Data: "50", Timestamp: fivemago.Format(wot.RFC3339Milli),
 	}
 	err = addHist.AddEvent(ev2_1)
 	assert.NoError(t, err)
@@ -225,13 +225,14 @@ func TestAddGetEvent(t *testing.T) {
 	ev2_2 := &transports.ThingMessage{
 		Operation: vocab.HTOpPublishEvent,
 		SenderID:  agent1ID, ThingID: dThing2ID, Name: evTemperature,
-		Data: "17.5", Created: fiftyfivemago.Format(wot.RFC3339Milli),
+		Data: "17.5", Timestamp: fiftyfivemago.Format(wot.RFC3339Milli),
 	}
 	err = addHist.AddEvent(ev2_2)
 	assert.NoError(t, err)
 
 	// Test 1: get events of thing1 older than 300 minutes ago - expect 1 humidity from 55 minutes ago
 	cursor1, c1Release, err := readHist.GetCursor(dThing1ID, "")
+	require.NoError(t, err)
 
 	// seek must return the things humidity added 55 minutes ago, not 5 minutes ago
 	timeAfter := time.Now().Add(-time.Minute * 300)
@@ -256,7 +257,7 @@ func TestAddGetEvent(t *testing.T) {
 	if assert.True(t, valid) {
 		assert.Equal(t, dThing1ID, tv3.ThingID)  // must match the filtered id1
 		assert.Equal(t, evTemperature, tv3.Name) // must match evTemperature from 5 minutes ago
-		assert.Equal(t, fivemago.Format(wot.RFC3339Milli), tv3.Created)
+		assert.Equal(t, fivemago.Format(wot.RFC3339Milli), tv3.Timestamp)
 	}
 	c1Release()
 	// Stop the service before phase 2
@@ -320,7 +321,7 @@ func TestAddProperties(t *testing.T) {
 		SenderID:  agent1,
 		ThingID:   dThing1ID,
 		Name:      "baddate",
-		Created:   "-1",
+		Timestamp: "-1",
 		Operation: vocab.HTOpPublishEvent,
 	}
 	badEvent4 := &transports.ThingMessage{
@@ -380,7 +381,7 @@ func TestAddProperties(t *testing.T) {
 			//err = utils.DecodeAsObject(msg.Data, &props)
 			//require.NoError(t, err)
 		} else if msg.Name == vocab.PropEnvTemperature {
-			dataInt := utils2.DecodeAsInt(msg.Data)
+			dataInt := tputils.DecodeAsInt(msg.Data)
 			require.Equal(t, temp1, dataInt)
 		}
 		msg, valid, err = c.Next()
@@ -451,7 +452,7 @@ func TestPrevNext(t *testing.T) {
 	item0b, valid, err := cursor.Prev()
 	require.NoError(t, err)
 	assert.True(t, valid)
-	assert.Equal(t, item0.Created, item0b.Created)
+	assert.Equal(t, item0.Timestamp, item0b.Timestamp)
 
 	// can't skip before the beginning of time
 	iteminv, valid, err := cursor.Prev()
@@ -461,7 +462,7 @@ func TestPrevNext(t *testing.T) {
 
 	// seek to item11 should succeed
 	item11 := items2to11[9]
-	timeStamp, _ := dateparse.ParseAny(item11.Created)
+	timeStamp, _ := dateparse.ParseAny(item11.Timestamp)
 	item11b, valid, err := cursor.Seek(timeStamp)
 	require.NoError(t, err)
 	assert.True(t, valid)
@@ -510,7 +511,7 @@ func TestPrevNextFiltered(t *testing.T) {
 	// reached first item
 	item0b, valid, err := cursor.Prev()
 	assert.True(t, valid)
-	assert.Equal(t, item0.Created, item0b.Created)
+	assert.Equal(t, item0.Timestamp, item0b.Timestamp)
 	assert.Equal(t, propName, item0b.Name)
 
 	// can't skip before the beginning of time
@@ -520,7 +521,7 @@ func TestPrevNextFiltered(t *testing.T) {
 
 	// seek to item11 should succeed
 	item11 := items2to11[9]
-	timeStamp, _ := dateparse.ParseAny(item11.Created)
+	timeStamp, _ := dateparse.ParseAny(item11.Timestamp)
 	item11b, valid, err := cursor.Seek(timeStamp)
 	assert.True(t, valid)
 	assert.Equal(t, item11.Name, item11b.Name)
@@ -636,8 +637,7 @@ func TestPubEvents(t *testing.T) {
 		val := strconv.Itoa(i + 1)
 		// events are published by the agent using their native thingID
 		name := names[i]
-		f1 := td1.GetForm(wot.HTOpPublishEvent, name, ag1.GetProtocolType())
-		_, err := ag1.SendNotification(f1, thing0ID, name, val, nil, "")
+		err := ag1.SendNotification(wot.HTOpPublishEvent, thing0ID, name, val)
 		//err := ag1.PubEvent(f1, thing0ID, name, val, "")
 		assert.NoError(t, err)
 		// make sure timestamp differs
@@ -712,10 +712,9 @@ func TestManageRetention(t *testing.T) {
 	ag1, _ := ts.AddConnectService(agentID)
 	require.NoError(t, err)
 	defer ag1.Disconnect()
-	f1 := ts.GetForm(wot.HTOpPublishEvent, cl1.GetProtocolType())
-	_, err = ag1.SendNotification(f1, td0.ID, event1Name, "event one", nil, "")
+	err = ag1.SendNotification(wot.HTOpPublishEvent, td0.ID, event1Name, "event one")
 	assert.NoError(t, err)
-	_, err = ag1.SendNotification(f1, td0.ID, event2Name, "event two", nil, "")
+	err = ag1.SendNotification(wot.HTOpPublishEvent, td0.ID, event2Name, "event two")
 	assert.NoError(t, err)
 	// give it some time to persist the bucket
 	time.Sleep(time.Millisecond * 100)

@@ -121,11 +121,11 @@ func TestReadTD(t *testing.T) {
 	require.Equal(t, thingID, td2.ID)
 
 	// cl1 should receive update to published TD
-	rxTD := false
+	var rxTD atomic.Bool
 	cl1.SetNotificationHandler(func(msg *transports.ThingMessage) {
-		rxTD = true
+		rxTD.Store(true)
 	})
 	srv.SendNotification(wot.HTOpUpdateTD, thingID, "", td2)
 	time.Sleep(time.Millisecond * 10)
-	assert.True(t, rxTD)
+	assert.True(t, rxTD.Load())
 }

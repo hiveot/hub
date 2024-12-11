@@ -3,6 +3,7 @@ package consumedthing
 import (
 	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"time"
 )
@@ -156,7 +157,7 @@ func NewInteractionOutputFromValue(tv *transports.ThingMessage, td *td.TD) *Inte
 		ThingID:  td.ID,
 		Name:     tv.Name,
 		SenderID: tv.SenderID,
-		Updated:  tv.Created,
+		Updated:  tv.Timestamp,
 		Value:    NewDataSchemaValue(tv.Data),
 		Err:      nil,
 	}
@@ -179,23 +180,23 @@ func NewInteractionOutputFromValue(tv *transports.ThingMessage, td *td.TD) *Inte
 //		schema is the schema info for data, or nil if not known
 //		raw is the raw data
 //		created is the timestamp the data is created
-func NewInteractionOutput(td *td.TD, affType string, name string, raw any, created string) *InteractionOutput {
+func NewInteractionOutput(tdi *td.TD, affType string, name string, raw any, created string) *InteractionOutput {
 	var schema *td.DataSchema
 	switch affType {
 	case AffordanceTypeAction:
-		aff := td.Actions[name]
+		aff := tdi.Actions[name]
 		if aff == nil {
 			break
 		}
 		schema = aff.Output
 	case AffordanceTypeEvent:
-		aff := td.Events[name]
+		aff := tdi.Events[name]
 		if aff == nil {
 			break
 		}
 		schema = aff.Data
 	case AffordanceTypeProperty:
-		aff := td.Properties[name]
+		aff := tdi.Properties[name]
 		if aff == nil {
 			break
 		}
@@ -207,7 +208,7 @@ func NewInteractionOutput(td *td.TD, affType string, name string, raw any, creat
 		}
 	}
 	io := &InteractionOutput{
-		ThingID: td.ID,
+		ThingID: tdi.ID,
 		Name:    name,
 		Updated: created,
 		Schema:  *schema,

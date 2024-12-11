@@ -9,8 +9,9 @@ import (
 	"github.com/hiveot/hub/services/idprov/idprovapi"
 	"github.com/hiveot/hub/services/idprov/idprovclient"
 	"github.com/hiveot/hub/services/idprov/service"
-	"github.com/hiveot/hub/transports/utils/tlsclient"
-	"github.com/hiveot/hub/wot/protocolclients/connect"
+	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/clients"
+	"github.com/hiveot/hub/transports/tputils/tlsclient"
 	"os"
 	"testing"
 	"time"
@@ -24,11 +25,11 @@ import (
 // when testing using the capnp RPC
 var testPort = 23001
 
-// the following are set by the testmain
+// the following are set by newIdProvService
 var ts *testenv.TestServer
 
 // Create a new store, delete if it already exists
-func newIdProvService() (svc *service.IdProvService, hc clients.IAgent, stopFn func()) {
+func newIdProvService() (svc *service.IdProvService, hc transports.IClientConnection, stopFn func()) {
 
 	ts = testenv.StartTestServer(true)
 	hc, token1 := ts.AddConnectService(idprovapi.AgentID)
@@ -66,6 +67,7 @@ func TestMain(m *testing.M) {
 
 // Test starting the provisioning service
 func TestStartStop(t *testing.T) {
+	t.Log("TestStartStop")
 	svc, hc, stopFn := newIdProvService()
 	_ = svc
 	_ = hc
@@ -74,6 +76,7 @@ func TestStartStop(t *testing.T) {
 }
 
 func TestAutomaticProvisioning(t *testing.T) {
+	t.Log("TestAutomaticProvisioning")
 	const device1ID = "device1"
 	const device2ID = "device2"
 
@@ -82,8 +85,8 @@ func TestAutomaticProvisioning(t *testing.T) {
 	defer stopFn()
 
 	mngCl := idprovclient.NewIdProvManageClient(hc)
-	device1KP := hc.CreateKeyPair()
-	device2KP := hc.CreateKeyPair()
+	device1KP := keys.NewEcdsaKey()
+	device2KP := keys.NewEcdsaKey()
 
 	approvedDevices := make([]idprovapi.PreApprovedClient, 2)
 	approvedDevices[0] = idprovapi.PreApprovedClient{
@@ -120,8 +123,8 @@ func TestAutomaticProvisioning(t *testing.T) {
 	assert.True(t, hasDevice1)
 
 	// token should be used to connect
-	srvURL := ts.Runtime.TransportsMgr.GetConnectURL()
-	ag1 := connect.NewHubClient(srvURL, device1ID, ts.Certs.CaCert)
+	srvURL := ts.GetServerURL(authn.ClientTypeAgent)
+	ag1 := clients.NewHubClient(srvURL, device1ID, ts.Certs.CaCert)
 	//ag1.SetRetryConnect(false)
 	newToken, err := ag1.ConnectWithToken(token1)
 	require.NotEmpty(t, newToken)
@@ -130,6 +133,7 @@ func TestAutomaticProvisioning(t *testing.T) {
 }
 
 func TestAutomaticProvisioningBadParameters(t *testing.T) {
+	t.Log("TestAutomaticProvisioningBadParameters")
 	const device1ID = "device1"
 
 	device1Keys := keys.NewKey(keys.KeyTypeEd25519)
@@ -168,6 +172,7 @@ func TestAutomaticProvisioningBadParameters(t *testing.T) {
 }
 
 func TestManualProvisioning(t *testing.T) {
+	t.Log("TestManualProvisioning")
 	const device1ID = "device1"
 	device1Keys := keys.NewKey(keys.KeyTypeEd25519)
 	device1PubPEM := device1Keys.ExportPublic()

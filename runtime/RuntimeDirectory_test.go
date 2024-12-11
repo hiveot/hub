@@ -2,7 +2,7 @@ package runtime_test
 
 import (
 	"encoding/json"
-	"fmt"
+	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
@@ -138,7 +138,7 @@ func TestReadTDsRest(t *testing.T) {
 	// add a whole bunch of things
 	ts.AddTDs(agentID, 100)
 
-	serverURL := fmt.Sprintf("localhost:%d", ts.Port)
+	serverURL := ts.GetServerURL(authn.ClientTypeConsumer)
 	cl2 := tlsclient.NewTLSClient(serverURL, nil, ts.Certs.CaCert, time.Second*30, "")
 	cl2.SetAuthToken(token)
 

@@ -3,7 +3,9 @@ package service
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/lib/hubagent"
 	"github.com/hiveot/hub/services/history/historyapi"
+	"github.com/hiveot/hub/transports"
 )
 
 // StartHistoryAgent returns a new instance of the agent for the history services.
@@ -14,7 +16,7 @@ import (
 //
 //	svc is the history service whose capabilities to expose
 //	hc is the optional message client connected to the server protocol
-func StartHistoryAgent(svc *HistoryService, hc clients.IAgent) {
+func StartHistoryAgent(svc *HistoryService, hc transports.IClientConnection) {
 
 	// TODO: load latest retention rules from state store
 	manageHistoryMethods := map[string]interface{}{
@@ -38,7 +40,7 @@ func StartHistoryAgent(svc *HistoryService, hc clients.IAgent) {
 	mah := hubagent.NewAgentHandler(historyapi.ManageHistoryServiceID, manageHistoryMethods)
 
 	// receive subscribed updates for events and properties
-	hc.SetMessageHandler(func(msg *transports.ThingMessage) {
+	hc.SetNotificationHandler(func(msg *transports.ThingMessage) {
 		if msg.Operation == vocab.HTOpPublishEvent {
 			_ = svc.addHistory.AddEvent(msg)
 		} else if msg.Operation == vocab.HTOpUpdateProperty {
@@ -49,7 +51,7 @@ func StartHistoryAgent(svc *HistoryService, hc clients.IAgent) {
 	})
 
 	// handle service requests
-	hc.SetRequestHandler(func(msg *transports.ThingMessage) (stat transports.RequestStatus) {
+	hc.SetRequestHandler(func(msg *transports.ThingMessage) (output any, err error) {
 		if msg.Operation == vocab.OpInvokeAction {
 			if msg.ThingID == historyapi.ReadHistoryServiceID {
 				return rah.HandleRequest(msg)
@@ -57,7 +59,7 @@ func StartHistoryAgent(svc *HistoryService, hc clients.IAgent) {
 				return mah.HandleRequest(msg)
 			}
 		}
-		stat.Failed(msg, fmt.Errorf("Unhandled message"))
-		return stat
+		err = fmt.Errorf("Unhandled message")
+		return nil, err
 	})
 }

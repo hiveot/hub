@@ -101,6 +101,7 @@ func (svc *StateService) Start(hc transports.IClientConnection) (err error) {
 	if err != nil {
 		return err
 	}
+
 	StartStateAgent(svc, hc)
 	return err
 }
