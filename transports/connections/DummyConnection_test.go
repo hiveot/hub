@@ -34,7 +34,7 @@ func (c *DummyConnection) GetProtocolType() string { return "dummy" }
 //	return transports2.RequestCompleted, nil, nil
 //}
 
-func (c *DummyConnection) PublishActionStatus(stat transports2.RequestStatus, agentID string) error {
+func (c *DummyConnection) PublishActionStatus(stat transports2.ActionStatus, agentID string) error {
 	return nil
 }
 

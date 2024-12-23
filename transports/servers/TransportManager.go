@@ -127,8 +127,12 @@ func StartProtocolManager(cfg *pm.ProtocolsConfig,
 		svc.httpsTransport, err = httpserver.StartHttpTransportServer(
 			cfg.HttpHost, cfg.HttpsPort,
 			serverCert, caCert,
-			authenticator, digitwinRouter.HandleMessage,
-			cm)
+			authenticator,
+			cm,
+			digitwinRouter.HandleRequest,
+			digitwinRouter.HandleResponse,
+			digitwinRouter.HandleNotification,
+		)
 		// http subprotocols
 		if cfg.EnableSSESC {
 			svc.ssescTransport = ssescserver.StartSseScTransportServer(
@@ -137,17 +141,22 @@ func StartProtocolManager(cfg *pm.ProtocolsConfig,
 		}
 		if cfg.EnableWSS {
 			svc.wssTransport = wssserver.StartWssTransportServer(
-				"",
-				digitwinRouter.HandleMessage,
-				cm, svc.httpsTransport)
+				"", cm,
+				digitwinRouter.HandleRequest,
+				digitwinRouter.HandleResponse,
+				digitwinRouter.HandleNotification,
+				svc.httpsTransport)
 		}
 	}
 	if cfg.EnableMQTT {
 		svc.mqttsTransport, err = mqttserver.StartMqttTransportServer(
 			cfg.MqttHost, cfg.MqttTcpPort, cfg.MqttWssPort,
 			serverCert, caCert,
-			authenticator, digitwinRouter.HandleMessage,
-			cm)
+			authenticator, cm,
+			digitwinRouter.HandleRequest,
+			digitwinRouter.HandleResponse,
+			digitwinRouter.HandleNotification,
+		)
 	}
 	// FIXME: how to support multiple URLs in discovery. See the WoT discovery spec.
 	if cfg.EnableDiscovery {

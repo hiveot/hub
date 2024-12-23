@@ -3,6 +3,7 @@ package tests
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/transports"
@@ -24,6 +25,7 @@ import (
 	"time"
 )
 
+const testTimeout = time.Second * 300
 const testAgentID1 = "agent1"
 const testAgentPassword1 = "agent1pass"
 const testClientID1 = "client1"
@@ -35,31 +37,17 @@ const testServerSsescURL = "https://localhost:9445/ssesc"
 const testServerWssURL = "wss://localhost:9445/wss"
 const testServerMqttURL = "mqtts://localhost:9446"
 
-//var defaultProtocol = transports.ProtocolTypeSSESC
+var defaultProtocol = transports.ProtocolTypeSSESC
 
-var defaultProtocol = transports.ProtocolTypeWSS
+// var defaultProtocol = transports.ProtocolTypeWSS
 var transportServer transports.ITransportServer
 var authenticator *tputils.DummyAuthenticator
 var certBundle = certs.CreateTestCertBundle()
 
-//// NewClient creates a new unconnected agent client with the given ID
-//// This panics if a client cannot be created
-//func NewAgentClient(clientID string) transports.IClientConnection {
-//	protocol := defaultProtocol
-//	fullURL := testServerHttpURL
-//	caCert := certBundle.CaCert
-//	bc, err := clients.CreateTransportClient(protocol, fullURL, clientID, caCert)
-//	if err != nil {
-//		panic("NewClient failed:" + err.Error())
-//	}
-//	// FIXME: align the interfaces for connection, consumer, agent
-//	return bc
-//}
-
-// NewClient creates a new unconnected consumer client with the given ID
+// NewAgent creates a new unconnected agent client with the given ID
 // This panics if a client cannot be created
 // ClientID is only used for logging
-func NewClient(clientID string, getForm func(op string) td.Form) transports.IClientConnection {
+func NewAgent(clientID string, getForm func(op string) td.Form) transports.IAgentConnection {
 	fullURL := testServerHttpURL
 
 	switch defaultProtocol {
@@ -75,13 +63,18 @@ func NewClient(clientID string, getForm func(op string) td.Form) transports.ICli
 		fullURL = testServerMqttURL
 	}
 	caCert := certBundle.CaCert
-	bc, err := clients.CreateTransportClient(
-		fullURL, clientID, caCert, getForm)
+	bc, err := clients.NewTransportClient(fullURL, clientID, caCert, getForm, testTimeout)
 	if err != nil {
 		panic("NewClient failed:" + err.Error())
 	}
-	// FIXME: align the interfaces for connection, consumer, agent
 	return bc
+}
+
+// NewConsumer creates a new unconnected consumer client with the given ID
+// This panics if a client cannot be created
+// ClientID is only used for logging
+func NewConsumer(clientID string, getForm func(op string) td.Form) transports.IConsumerConnection {
+	return NewAgent(clientID, getForm)
 }
 
 // Create a new form for the given operation
@@ -93,7 +86,7 @@ func NewForm(op string) td.Form {
 
 // start the default transport server
 // This panics if the http server cannot be created
-func StartTransportServer(messageHandler transports.ServerMessageHandler) (
+func StartTransportServer() (
 	srv transports.ITransportServer, cancelFunc func(), cm *connections.ConnectionManager) {
 
 	caCert := certBundle.CaCert
@@ -109,18 +102,21 @@ func StartTransportServer(messageHandler transports.ServerMessageHandler) (
 		// Start the HTTP binding with SSE-SC and WS sub-protocols
 		var err error
 		httpTransportServer, err = httpserver.StartHttpTransportServer(
-			"localhost", testServerHttpPort, serverCert, caCert, authenticator, messageHandler, cm)
+			"localhost", testServerHttpPort, serverCert, caCert, authenticator, cm)
 		if err != nil {
 			panic("Unable to create protocol server: " + err.Error())
 		}
 		if defaultProtocol == transports.ProtocolTypeSSESC {
 			transportServer = ssescserver.StartSseScTransportServer("", cm, httpTransportServer)
+
 		} else if defaultProtocol == transports.ProtocolTypeWSS {
-			transportServer = wssserver.StartWssTransportServer("", messageHandler, cm, httpTransportServer)
+			transportServer = wssserver.StartWssTransportServer("", cm, httpTransportServer)
 		} else {
 			// http only, no subprotocol bindings
 			transportServer = httpTransportServer
 		}
+		//transportServer.SetRequestHandler(cm.AddConnection)
+		//transportServer.SetMessageHandler(cm.AddConnection)
 	}
 	return transportServer, func() {
 		if transportServer != nil {
@@ -132,12 +128,21 @@ func StartTransportServer(messageHandler transports.ServerMessageHandler) (
 	}, cm
 }
 
-func DummyMessageHandler(msg *transports.ThingMessage, replyTo string) (
-	handled bool, output any, err error) {
+func DummyRequestHandler(request *transports.RequestMessage, replyTo string) (
+	response transports.ResponseMessage) {
 
-	slog.Info("DummyMessageHandler: Received message", "op", msg.Operation)
+	slog.Info("DummyRequestHandler: Received request", "op", request.Operation)
+	return request.CreateResponse(transports.StatusCompleted, "result", nil)
+}
+func DummyNotificationHandler(notification *transports.NotificationMessage) {
+
+	slog.Info("DummyNotificationHandler: Received notification", "op", notification.Operation)
 	//replyTo.SendResponse(msg.ThingID, msg.Name, "result", msg.RequestID)
-	return true, "result", nil
+}
+func DummyResponseHandler(response *transports.ResponseMessage) {
+
+	slog.Info("DummyResponse: Received request", "op", response.Operation)
+	//replyTo.SendResponse(msg.ThingID, msg.Name, "result", msg.RequestID)
 }
 
 // TestMain sets logging
@@ -150,9 +155,11 @@ func TestMain(m *testing.M) {
 
 // test create a server and connect a client
 func TestStartStop(t *testing.T) {
-	srv, cancelFn, _ := StartTransportServer(DummyMessageHandler)
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+
+	srv, cancelFn, _ := StartTransportServer(DummyRequestHandler, DummyResponseHandler, DummyNotificationHandler)
 	defer cancelFn()
-	cl1 := NewClient(testClientID1, srv.GetForm)
+	cl1 := NewConsumer(testClientID1, srv.GetForm)
 	defer cl1.Disconnect()
 
 	token, err := cl1.ConnectWithPassword(testClientPassword1)
@@ -161,10 +168,12 @@ func TestStartStop(t *testing.T) {
 }
 
 func TestLoginRefresh(t *testing.T) {
-	t.Log("TestLoginRefresh")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	const thingID1 = "thing1"
+
 	srv, cancelFn, _ := StartTransportServer(DummyMessageHandler)
 	defer cancelFn()
-	cl1 := NewClient(testClientID1, srv.GetForm)
+	cl1 := NewConsumer(testClientID1, srv.GetForm)
 	defer cl1.Disconnect()
 
 	isConnected := cl1.IsConnected()
@@ -173,6 +182,12 @@ func TestLoginRefresh(t *testing.T) {
 	token, err := cl1.ConnectWithPassword(testClientPassword1)
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
+	//time.Sleep(time.Millisecond * 1)
+
+	err = cl1.Ping()
+	require.NoError(t, err)
+
+	// FIXME: SSE server sends ping event but it isn't received until later???
 
 	isConnected = cl1.IsConnected()
 	assert.True(t, isConnected)
@@ -182,8 +197,9 @@ func TestLoginRefresh(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, newToken)
 
-	// end the session
+	// end the connection
 	cl1.Disconnect()
+	time.Sleep(time.Millisecond * 1)
 
 	// should be able to reconnect with the new token
 	// NOTE: the runtime session manager doesn't allow this as
@@ -200,18 +216,19 @@ func TestLoginRefresh(t *testing.T) {
 }
 
 func TestLogout(t *testing.T) {
-	t.Log("TestLogout")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	srv, cancelFn, _ := StartTransportServer(DummyMessageHandler)
 	defer cancelFn()
 
 	// check if this test still works with a valid login
-	cl1 := NewClient(testClientID1, srv.GetForm)
+	cl1 := NewConsumer(testClientID1, srv.GetForm)
 	token, err := cl1.ConnectWithPassword(testClientPassword1)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, token)
 
 	// logout
 	err = cl1.Logout()
+	t.Log("logged out, some warnings are expected next")
 	assert.NoError(t, err)
 
 	// This causes Refresh to fail
@@ -221,14 +238,11 @@ func TestLogout(t *testing.T) {
 }
 
 func TestBadLogin(t *testing.T) {
-	t.Log("TestBadLogin")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	srv, cancelFn, _ := StartTransportServer(DummyMessageHandler)
 	defer cancelFn()
 
-	cl1 := NewClient(testClientID1, srv.GetForm)
-
-	// check no login
-	cl1.SendNotification(wot.OpReadAllProperties, "thing1", "", nil)
+	cl1 := NewConsumer(testClientID1, srv.GetForm)
 
 	// check if this test still works with a valid login
 	token, err := cl1.ConnectWithPassword(testClientPassword1)
@@ -252,17 +266,17 @@ func TestBadLogin(t *testing.T) {
 	cl1.Disconnect()
 
 	// bad client ID
-	cl2 := NewClient("badID", srv.GetForm)
+	cl2 := NewConsumer("badID", srv.GetForm)
 	token, err = cl2.ConnectWithPassword(testClientPassword1)
 	assert.Error(t, err)
 	assert.Empty(t, token)
 }
 
 func TestBadRefresh(t *testing.T) {
-	t.Log("TestBadRefresh")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	srv, cancelFn, _ := StartTransportServer(DummyMessageHandler)
 	defer cancelFn()
-	cl1 := NewClient(testClientID1, srv.GetForm)
+	cl1 := NewConsumer(testClientID1, srv.GetForm)
 	defer cl1.Disconnect()
 
 	// set the token
@@ -296,7 +310,7 @@ func TestBadRefresh(t *testing.T) {
 
 // Auto-reconnect using hub client and server
 func TestReconnect(t *testing.T) {
-	t.Log("TestReconnect")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 
 	const thingID = "thing1"
 	const actionKey = "action1"
@@ -330,7 +344,7 @@ func TestReconnect(t *testing.T) {
 	defer cancelFn()
 
 	// connect as client
-	cl1 := NewClient(testClientID1, srv.GetForm)
+	cl1 := NewConsumer(testClientID1, srv.GetForm)
 	token := authenticator.CreateSessionToken(testClientID1, "", 0)
 	_, err := cl1.ConnectWithToken(token)
 	require.NoError(t, err)
@@ -368,11 +382,11 @@ func TestReconnect(t *testing.T) {
 }
 
 func TestPing(t *testing.T) {
-	t.Log("TestBadForm")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 
 	srv, cancelFn, _ := StartTransportServer(DummyMessageHandler)
 	defer cancelFn()
-	cl1 := NewClient(testClientID1, srv.GetForm)
+	cl1 := NewConsumer(testClientID1, srv.GetForm)
 	defer cl1.Disconnect()
 
 	_, err := cl1.ConnectWithPassword(testClientPassword1)
@@ -385,7 +399,10 @@ func TestPing(t *testing.T) {
 
 // Test getting form for unknown operation
 func TestBadForm(t *testing.T) {
-	t.Log("TestBadForm")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+
+	_, cancelFn, _ := StartTransportServer(DummyMessageHandler)
+	defer cancelFn()
 
 	form := NewForm("badoperation")
 	assert.Nil(t, form)
@@ -393,7 +410,7 @@ func TestBadForm(t *testing.T) {
 
 // Test getting server URL
 func TestServerURL(t *testing.T) {
-	t.Log("TestServerURL")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 
 	srv, cancelFn, _ := StartTransportServer(DummyMessageHandler)
 	defer cancelFn()

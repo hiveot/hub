@@ -37,25 +37,24 @@ const (
 	MsgTypePropertyReadings        = "propertyReadings"
 	MsgTypePropertyReading         = "propertyReading"
 	MsgTypeUpdateTD                = "updateTD"
-	MsgTypeWriteAllProperties      = "writeAllProperties"
 	MsgTypeWriteMultipleProperties = "writeMultipleProperties"
 	MsgTypeWriteProperty           = "writeProperty"
 )
 
 // MsgTypeToOp converts websocket message types to a WoT operation
 var MsgTypeToOp = map[string]string{
-	MsgTypeActionStatus:            wot.HTOpUpdateActionStatus,
-	MsgTypeActionStatuses:          wot.HTOpUpdateActionStatuses,
+	MsgTypeActionStatus:            wot.HTOpActionStatus,
+	MsgTypeActionStatuses:          wot.HTOpActionStatuses,
 	MsgTypeCancelAction:            wot.OpCancelAction,
 	MsgTypeInvokeAction:            wot.OpInvokeAction,
 	MsgTypeLogin:                   wot.HTOpLogin,
 	MsgTypeLogout:                  wot.HTOpLogout,
 	MsgTypeObserveAllProperties:    wot.OpObserveAllProperties,
 	MsgTypeObserveProperty:         wot.OpObserveProperty,
-	MsgTypeError:                   wot.HTOpPublishError,
+	MsgTypeError:                   "error",
 	MsgTypePing:                    wot.HTOpPing,
 	MsgTypePong:                    wot.HTOpPong,
-	MsgTypePublishEvent:            wot.HTOpPublishEvent,
+	MsgTypePublishEvent:            wot.HTOpEvent,
 	MsgTypeQueryAction:             wot.OpQueryAction,
 	MsgTypeQueryAllActions:         wot.OpQueryAllActions,
 	MsgTypeReadAllEvents:           wot.HTOpReadAllEvents,
@@ -74,7 +73,6 @@ var MsgTypeToOp = map[string]string{
 	MsgTypePropertyReadings:        wot.HTOpUpdateMultipleProperties,
 	MsgTypePropertyReading:         wot.HTOpUpdateProperty,
 	MsgTypeUpdateTD:                wot.HTOpUpdateTD,
-	MsgTypeWriteAllProperties:      wot.OpWriteAllProperties,
 	MsgTypeWriteMultipleProperties: wot.OpWriteMultipleProperties,
 	MsgTypeWriteProperty:           wot.OpWriteProperty,
 }
@@ -84,8 +82,8 @@ var MsgTypeToOp = map[string]string{
 type BaseMessage struct {
 	ThingID     string `json:"thingId"`
 	MessageType string `json:"messageType"`
-	MessageID   string `json:"messageId,omitempty"`
-	RequestID   string `json:"requestId,omitempty"`
+	//MessageID   string `json:"messageId,omitempty"`
+	RequestID string `json:"requestId,omitempty"`
 }
 
 type ActionMessage struct {
@@ -126,7 +124,7 @@ type ActionStatusMessage struct {
 
 	//
 	Timestamp string `json:"timestamp"` // timestamp of this update
-	MessageID string `json:"messageId,omitempty"`
+	//MessageID string `json:"messageId,omitempty"`
 	RequestID string `json:"requestId,omitempty"`
 }
 

@@ -5,6 +5,8 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"github.com/gorilla/websocket"
+	"github.com/hiveot/hub/transports/servers/wssserver"
+	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"net"
 	"net/http"
@@ -15,7 +17,8 @@ import (
 // ConnectWSS establishes a websocket session with a server
 func ConnectWSS(
 	clientID string, wssURL string, bearerToken string, caCert *x509.Certificate,
-	onConnect func(bool, error), onMessage func(raw []byte),
+	onConnect func(bool, error),
+	onMessage func(wssBase wssserver.BaseMessage, raw []byte),
 ) (cancelFn func(), conn *websocket.Conn, err error) {
 	var clientCertList []tls.Certificate
 
@@ -116,7 +119,8 @@ func ConnectWSS(
 }
 
 // WSSReadLoop reads incoming websocket messages in a loop, until connection closes or context is cancelled
-func WSSReadLoop(ctx context.Context, wssConn *websocket.Conn, onMessage func([]byte)) {
+func WSSReadLoop(ctx context.Context, wssConn *websocket.Conn,
+	onMessage func(wssBase wssserver.BaseMessage, raw []byte)) {
 
 	var readLoop atomic.Bool
 	readLoop.Store(true)
@@ -142,8 +146,15 @@ func WSSReadLoop(ctx context.Context, wssConn *websocket.Conn, onMessage func([]
 			// ending the read loop and returning will close the connection
 			break
 		}
-		// process in the background
-		go onMessage(raw)
+		baseMsg := wssserver.BaseMessage{}
+		err = jsoniter.Unmarshal(raw, &baseMsg)
+		if err != nil {
+			slog.Error("WSSReadLoop: message is not a valid websocket message. Ignored",
+				"message size", len(raw))
+		} else {
+			// process in the background
+			go onMessage(baseMsg, raw)
+		}
 	}
 
 }

@@ -1,20 +1,17 @@
 package mqttclient
 
 import (
-	"context"
-	"errors"
 	"fmt"
 	"github.com/eclipse/paho.golang/paho"
 	"github.com/hiveot/hub/transports"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"strings"
-	"time"
 )
 
 // handleMessage handles incoming MQTT messages from the agent
 // FIXME: rework for hiveot
-func (cl *MqttTransportClient) handleMessage(m *paho.Publish) {
+func (cl *MqttConsumerTransport) handlePahoMessage(m *paho.Publish) {
 	slog.Debug("handleMessage", slog.String("topic", m.Topic))
 	// run this in the background to allow for reentrancy
 	go func() {
@@ -45,7 +42,7 @@ func (cl *MqttTransportClient) handleMessage(m *paho.Publish) {
 			var donotreply bool
 			// get a reply from the single request handler
 			cl.BaseMux.RLock()
-			reqHandler := cl.BaseRequestHandler
+			reqHandler := cl.AppRequestHandler
 			cl.BaseMux.RUnlock()
 
 			if reqHandler != nil {
@@ -89,7 +86,7 @@ func (cl *MqttTransportClient) handleMessage(m *paho.Publish) {
 }
 
 // ParseResponse helper message to parse response and check for errors
-func (cl *MqttTransportClient) ParseResponse(data []byte, resp interface{}) error {
+func (cl *MqttConsumerTransport) ParseResponse(data []byte, resp interface{}) error {
 	var err error
 	if data == nil || len(data) == 0 {
 		if resp != nil {
@@ -109,102 +106,13 @@ func (cl *MqttTransportClient) ParseResponse(data []byte, resp interface{}) erro
 	return err
 }
 
-// PubRequest publishes a request message and waits for an answer or until timeout
-// In order to receive replies, an inbox subscription is added on the first request.
-func (cl *MqttTransportClient) PubRequest(topic string, payload []byte) (resp []byte, err error) {
-	slog.Debug("PubRequest", "topic", topic)
-
-	ctx, cancelFn := context.WithTimeout(context.Background(), cl.BaseTimeout)
-	defer cancelFn()
-
-	// FIXME! a deadlock can occur here
-	cl.BaseMux.RLock()
-	pcl := cl.pahoClient
-	inboxTopic := cl.inboxTopic
-	connectID := cl.connectID
-	cl.BaseMux.RUnlock()
-
-	if pcl == nil {
-		return nil, fmt.Errorf("connection lost")
-	}
-	if inboxTopic == "" {
-		inboxTopic = fmt.Sprintf(InboxTopicFormat, connectID)
-		if connectID == "" {
-			err = fmt.Errorf("can't publish request as connectID is not set. This is unexpected.")
-			slog.Error(err.Error())
-			return nil, err
-		}
-		cl.BaseMux.Lock()
-		cl.inboxTopic = inboxTopic
-		cl.BaseMux.Unlock()
-		err = cl.SubscribeToTopic(inboxTopic)
-		if err != nil {
-			slog.Error("Failed inbox subscription",
-				"err", err, "inboxTopic", inboxTopic)
-			return nil, err
-		}
-	}
-	// from paho rpc.go:
-	cid := fmt.Sprintf("%d", time.Now().UnixNano())
-	rChan := make(chan *paho.Publish)
-	cl.BaseMux.Lock()
-	cl.correlData[cid] = rChan
-	cl.BaseMux.Unlock()
-
-	pubMsg := &paho.Publish{
-		QoS:     withQos,
-		Retain:  false,
-		Topic:   topic,
-		Payload: payload,
-		Properties: &paho.PublishProperties{
-			CorrelationData: []byte(cid),
-			ResponseTopic:   inboxTopic,
-			ContentType:     "json",
-			User: paho.UserProperties{{
-				Key:   "test",
-				Value: "test",
-			}},
-		},
-	}
-	_, err = pcl.Publish(ctx, pubMsg)
-	if err != nil {
-		return nil, err
-	}
-
-	// wait for response
-	var respMsg *paho.Publish
-	select {
-	case <-ctx.Done():
-		err = fmt.Errorf("timeout waiting for response")
-		break
-	case respMsg = <-rChan:
-		break
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	// test alternative to handling errors since User properties aren't
-	// passed through for some reason.
-	if respMsg.Properties.ContentType == "error" {
-		err = errors.New(string(respMsg.Payload))
-		return nil, err
-	}
-
-	slog.Debug("PubRequest end:",
-		slog.String("topic", topic),
-		slog.String("ContentType (if any)", respMsg.Properties.ContentType),
-	)
-	return respMsg.Payload, err
-}
-
 // sendReply sends a reply on the response topic of the request
 // This uses the same QoS as the request, without retain.
 //
 //	req is the request to reply to
 //	optionally include a payload in the reply
 //	optionally include an error message in the reply
-func (cl *MqttTransportClient) sendReply(req *paho.Publish, payload []byte, errResp error) (err error) {
+func (cl *MqttConsumerTransport) sendReply(req *paho.Publish, payload []byte, errResp error) (err error) {
 
 	slog.Debug("sendReply",
 		slog.String("topic", req.Topic),
@@ -254,7 +162,7 @@ func (cl *MqttTransportClient) sendReply(req *paho.Publish, payload []byte, errR
 // SubscribeToTopic subscribes to a topic.
 // Incoming messages are passed to the event or request handler, depending on whether
 // a reply-to address and correlation-ID is set.
-func (cl *MqttTransportClient) SubscribeToTopic(topic string) error {
+func (cl *MqttConsumerTransport) SubscribeToTopic(topic string) error {
 	slog.Debug("SubscribeToTopic", "topic", topic)
 	err := cl.sub(topic)
 	if err != nil {
@@ -265,7 +173,7 @@ func (cl *MqttTransportClient) SubscribeToTopic(topic string) error {
 	cl.BaseMux.Unlock()
 	return err
 }
-func (cl *MqttTransportClient) UnsubscribeFromTopic(topic string) {
+func (cl *MqttConsumerTransport) UnsubscribeFromTopic(topic string) {
 	packet := &paho.Unsubscribe{
 		Topics: []string{topic},
 	}

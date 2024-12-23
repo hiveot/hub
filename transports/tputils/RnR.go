@@ -20,7 +20,7 @@ type RnRChan struct {
 	mux sync.RWMutex
 
 	// map of requestID to delivery status update channel
-	correlData map[string]chan *transports.ThingMessage
+	correlData map[string]chan transports.ResponseMessage
 }
 
 // Close removes the request channel
@@ -41,7 +41,7 @@ func (rnr *RnRChan) CloseAll() {
 	for _, rChan := range rnr.correlData {
 		close(rChan)
 	}
-	rnr.correlData = make(map[string]chan *transports.ThingMessage)
+	rnr.correlData = make(map[string]chan transports.ResponseMessage)
 
 }
 
@@ -50,16 +50,12 @@ func (rnr *RnRChan) CloseAll() {
 // This returns true on success or false if requestID is unknown (no-one is waiting)
 //
 // If autoClose is set then it is immediately closed before returning.
-func (rnr *RnRChan) HandleResponse(msg *transports.ThingMessage, autoClose bool) bool {
+func (rnr *RnRChan) HandleResponse(msg transports.ResponseMessage) bool {
 	rnr.mux.Lock()
 	defer rnr.mux.Unlock()
 	rChan, isRPC := rnr.correlData[msg.RequestID]
 	if isRPC {
 		rChan <- msg
-		if autoClose {
-			delete(rnr.correlData, msg.RequestID)
-			close(rChan)
-		}
 	}
 	return isRPC
 }
@@ -75,8 +71,9 @@ func (rnr *RnRChan) Len() int {
 //
 // This returns a reply channel on which the data is received. Use
 // WaitForResponse(rChan)
-func (rnr *RnRChan) Open(requestID string) chan *transports.ThingMessage {
-	rChan := make(chan *transports.ThingMessage)
+func (rnr *RnRChan) Open(requestID string) chan transports.ResponseMessage {
+	// should this include a buffer or size parameter?
+	rChan := make(chan transports.ResponseMessage)
 	rnr.mux.Lock()
 	rnr.correlData[requestID] = rChan
 	rnr.mux.Unlock()
@@ -91,26 +88,25 @@ func (rnr *RnRChan) Open(requestID string) chan *transports.ThingMessage {
 //
 // If the channel was closed this returns completed with no reply
 func (rnr *RnRChan) WaitForResponse(
-	replyChan chan *transports.ThingMessage, timeout time.Duration) (
-	completed bool, reply *transports.ThingMessage) {
+	replyChan chan transports.ResponseMessage, timeout time.Duration) (
+	completed bool, resp transports.ResponseMessage) {
 
 	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
 	defer cancelFunc()
 	select {
 	case rData := <-replyChan:
-		// immediately close the channel so no further writes are possible
 		reply = rData
 		completed = true
 		break
 	case <-ctx.Done():
 		completed = false
 	}
-	return completed, reply
+	return completed, resp
 }
 
 func NewRnRChan() *RnRChan {
 	r := &RnRChan{
-		correlData: make(map[string]chan *transports.ThingMessage),
+		correlData: make(map[string]chan transports.ResponseMessage),
 	}
 	return r
 }

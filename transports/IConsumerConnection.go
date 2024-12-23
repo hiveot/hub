@@ -1,48 +1,8 @@
 // Package transports with the interface of a client transport connection
 package transports
 
-// Supported transport protocol bindings types
-const (
-	ProtocolTypeHTTPS    = "https"
-	ProtocolTypeSSE      = "sse"   // subprotocol of https
-	ProtocolTypeSSESC    = "ssesc" // subprotocol of https
-	ProtocolTypeWSS      = "wss"   // subprotocol of https
-	ProtocolTypeMQTTS    = "mqtts"
-	ProtocolTypeEmbedded = "embedded" // for testing
-)
-
-// NotificationHandler processes a message without a response
-type NotificationHandler func(msg *ThingMessage)
-
-// RequestHandler processes a request and returns a response.
-//
-//	msg is the envelope that contains the request to process
-type RequestHandler func(msg *ThingMessage) (output any, err error)
-
-// TransportStatus connection status of a hub client transport
-//type TransportStatus struct {
-//	// URL of the hub
-//	HubURL string
-//	// CA used to connect
-//	CaCert *x509.Certificate
-//	// the client ID to identify as
-//	//SenderID string
-//
-//	// The current connection status
-//	isConnected bool
-//
-//	// The last connection error message, if any
-//	LastError error
-//
-//	// flags indicating the supported protocols
-//	SupportsCertAuth     bool
-//	SupportsPasswordAuth bool
-//	SupportsKeysAuth     bool
-//	SupportsTokenAuth    bool
-//}
-
-// IClientConnection defines the client interface of a transport protocol binding
-type IClientConnection interface {
+// IConsumerConnection defines the client interface of a consumer client connection
+type IConsumerConnection interface {
 	// ConnectWithClientCert connects to the server using a client certificate.
 	// This authentication method is optional
 	//ConnectWithClientCert(kp keys.IHiveKey, cert *tls.Certificate) (err error)
@@ -104,54 +64,38 @@ type IClientConnection interface {
 	// The client has to use login with password to reauthenticate.
 	Logout() error
 
+	// Ping the server and receive confirmation
+	// Intended to check if the connection is alive.
+	Ping() error
+
 	// RefreshToken refreshes the authentication token
 	// The resulting token can be used with 'ConnectWithToken'
 	RefreshToken(oldToken string) (newToken string, err error)
 
-	// SendNotification sends a notification to subscribers.
-	// Notifications do not receive a response.
-	//
-	// operation is the operation to invoke
-	// thingID of the thing the operation applies to
-	// name of the affordance the operation applies to
-	// data contains the notification data as described in the TD affordance.
-	//
-	// This returns an error if the notification could not be delivered to the server.
-	SendNotification(operation string, thingID, name string, data any) error
+	// SendRequest sends a request message.
+	// wait is true to wait for a response or false to return immediately
+	SendRequest(msg RequestMessage, wait bool) (ResponseMessage, error)
 
-	// SendRequest sends an operation and waits for a response or until timeout.
-	SendRequest(operation string, thingID, name string, input any, output any) error
+	// SetConnectHandler sets the callback for connection status changes
+	// This replaces any previously set handler.
+	SetConnectHandler(cb func(connected bool, err error))
 
-	// WriteProperty submits a request to modify a property
-	// use async
-	WriteProperty(thingID, name string, input any, async bool) error
-
-	// SendResponse agent sends a response to a request.
-	//
-	// Intended for agents to send the response to a request.
-	//	thingID of the thing the operation applies to
-	//	name of the affordance the operation applies to
-	//	output is the response data
-	//	err in case the response is an error. Output can contain additional details.
-	//	requestID contains the requestID provided in the request.
-	SendResponse(thingID, name string, output any, err error, requestID string)
-
-	// SetNotificationHandler sets the handler for notification message from the server.
+	// SetNotificationHandler [consumer] sets the callback for receiving notifications.
 	// This replaces any previously set handler.
 	SetNotificationHandler(cb NotificationHandler)
 
-	// SetRequestHandler sets the handler for operations that return a response.
+	// SetResponseHandler [consumer] sets the callback for receiving unhandled responses
+	// to requests. If a request is sent with 'sync' set to true then SendRequest
+	// will handle the response instead.
+	//
 	// This replaces any previously set handler.
-	SetRequestHandler(cb RequestHandler)
+	SetResponseHandler(cb ResponseHandler)
 
-	// SetConnectHandler sets the notification handler of connection status changes
-	SetConnectHandler(cb func(connected bool, err error))
-
-	// ObserveProperty changes to a property.
+	// ObserveProperty [consumer] observes changes to a property.
 	//
 	// The protocol binding handles this as per its specification
 	// This is a convenience method and short for
-	//  SendNotification(wot.ObserveProperty,thingID,name,nil)
+	//  SendRequest(wot.ObserveProperty,thingID,name,nil)
 	// name is the property to subscribe to or "" for all properties
 	ObserveProperty(thingID string, name string) error
 	// UnobserveProperty removes a previous observe of a property
@@ -161,4 +105,12 @@ type IClientConnection interface {
 	Subscribe(thingID string, name string) error
 	// Unsubscribe from previous subscription
 	Unsubscribe(thingID string, name string) error
+
+	// WriteProperty submits a request to modify a property
+	// This is short for SendRequest(wot.OpWriteProperty, ...)
+	//	thingID is the thing whose property to write
+	//	name is the property affordance name
+	//	input is the value to write as per affordance dataschema
+	//	async is true to return after submitting the request or false to wait for a response
+	WriteProperty(thingID, name string, input any, async bool) error
 }

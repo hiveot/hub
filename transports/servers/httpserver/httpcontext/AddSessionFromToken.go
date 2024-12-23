@@ -43,11 +43,13 @@ func AddSessionFromToken(userAuthn transports.IAuthenticator) func(next http.Han
 			//check if the token is properly signed
 			clientID, sid, err := userAuthn.ValidateToken(bearerToken)
 			if err != nil || clientID == "" {
-				errMsg := "Invalid session token"
-				http.Error(w, errMsg, http.StatusUnauthorized)
-
+				http.Error(w, err.Error(), http.StatusUnauthorized)
 				slog.Warn("AddSessionFromToken: Invalid session token:",
 					"err", err, "clientID", clientID)
+				return
+			} else if clientID == "" {
+				http.Error(w, "missing clientID", http.StatusUnauthorized)
+				slog.Warn("AddSessionFromToken: Missing clientID")
 				return
 			}
 

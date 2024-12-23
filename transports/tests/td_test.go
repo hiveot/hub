@@ -37,7 +37,7 @@ func TestPublishTDByAgent(t *testing.T) {
 	defer cancelFn()
 
 	// 2. connect as an agent
-	ag1 := NewClient(testAgentID1, srv.GetForm)
+	ag1 := NewAgent(testAgentID1, srv.GetForm)
 	_, err := ag1.ConnectWithPassword(testAgentPassword1)
 	require.NoError(t, err)
 	defer ag1.Disconnect()
@@ -108,7 +108,7 @@ func TestReadTD(t *testing.T) {
 	require.NoError(t, err)
 
 	// 4. Check that at least 1 form are present
-	cl1 := NewClient(testClientID1, srv.GetForm)
+	cl1 := NewConsumer(testClientID1, srv.GetForm)
 	_, err = cl1.ConnectWithPassword(testClientPassword1)
 	require.NoError(t, err)
 

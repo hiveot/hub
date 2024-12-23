@@ -24,7 +24,7 @@ type ITransportServer interface {
 	// SendNotification broadcast an event or property change to subscribers
 	// Use this instead of sending notifications to individual connections
 	// as message bus brokers handle their own subscriptions.
-	SendNotification(operation string, dThingID, name string, data any)
+	SendNotification(msg NotificationMessage)
 
 	// Stop the server
 	Stop()

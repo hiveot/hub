@@ -14,7 +14,7 @@ import (
 	"net/http"
 )
 
-// receive a notification message from a client and pass it on to the digital twin.
+// receive a notification message from an agent and pass it on to the server handler.
 func (svc *HttpTransportServer) _handleNotification(op string, w http.ResponseWriter, r *http.Request) {
 	rp, err := httpcontext.GetRequestParams(r)
 	if err != nil {
@@ -22,21 +22,21 @@ func (svc *HttpTransportServer) _handleNotification(op string, w http.ResponseWr
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	// pass the event to the digitwin service for further processing
-	requestID := r.Header.Get(transports.RequestIDHeader)
-	if requestID == "" {
-		requestID = shortid.MustGenerate()
-	}
-	msg := transports.NewThingMessage(op, rp.ThingID, rp.Name, rp.Data, rp.ClientID)
-	// event style messages does not return data
-	_, _, err = svc.messageHandler(msg, "")
-	svc.writeReply(w, nil, err)
+	msg := transports.NewNotificationMessage(op, rp.ThingID, rp.Name, rp.Data)
+	svc.handleNotification(msg)
+	svc.writeReply(w, nil, "", err)
 }
 
-// _handleRequestMessage provides the boilerplate code for reading headers,
-// unmarshalling the arguments and returning a response. If no immediate
-// result is available this returns an alternative RequestStatus result object.
+// _handleRequestMessage handles requests that expect a response.
+// This first builds a ThingMessage instance containing the connectionID, requestID,
+// operation and payload; Next it passes this to the registered handler for processing.
+// Finally, the result is included in the response payload.
+//
+// Note: If result is async then the response will be sent separately by agent using an
+// ActionStatus message.
 func (svc *HttpTransportServer) _handleRequestMessage(op string, w http.ResponseWriter, r *http.Request) {
+
+	var response transports.ResponseMessage
 	rp, err := httpcontext.GetRequestParams(r)
 	if err != nil {
 		slog.Error(err.Error())
@@ -50,27 +50,31 @@ func (svc *HttpTransportServer) _handleRequestMessage(op string, w http.Response
 
 	// an action request should have a cid when used with SSE.
 	// without a connection-id this request can not receive an async reply
-	if r.Header.Get(transports.ConnectionIDHeader) == "" {
+	if r.Header.Get(ConnectionIDHeader) == "" {
 		slog.Info("_handleRequestMessage request has no 'cid' header.",
 			"clientID", rp.ClientID, "op", op)
 	}
 
 	// pass the event to the digitwin service for further processing
-	requestID := r.Header.Get(transports.RequestIDHeader)
+	requestID := r.Header.Get(RequestIDHeader)
 	if requestID == "" {
 		requestID = shortid.MustGenerate()
 	}
 
-	msg := transports.NewThingMessage(op, rp.ThingID, rp.Name, rp.Data, rp.ClientID)
-	msg.RequestID = requestID
+	request := transports.NewRequestMessage(op, rp.ThingID, rp.Name, rp.Data, requestID)
+	request.SenderID = rp.ClientID
 
-	// For 3rd party interoperability, embed the result in the response if available.
-	// and send it as a notification afterwards.
-	// TODO-2: Option to just wait for the result and always include it in the response.
-	//replyTo := svc.cm.GetConnectionByConnectionID(rp.ConnectionID)
-	//svc.messageHandler(msg, replyTo)
-	completed, output, err := svc.messageHandler(msg, rp.ConnectionID)
-
+	// ping is handled internally
+	if op == wot.HTOpPing {
+		// regular http server returns with pong -
+		// used only when no sub-protocol is used as return channel
+		response = request.CreateResponse(transports.StatusCompleted, "pong", nil)
+	} else {
+		// forward the request to the internal handler for further processing.
+		// If a result is available immediately, it will be embedded into the http
+		// response body, otherwise a status pending is returned.
+		response = svc.handleRequest(request, rp.ConnectionID)
+	}
 	replyHeader := w.Header()
 	if replyHeader == nil {
 		// this happened a few times during testing. perhaps a broken connection while debugging?
@@ -79,38 +83,45 @@ func (svc *HttpTransportServer) _handleRequestMessage(op string, w http.Response
 		svc.writeError(w, err, http.StatusInternalServerError)
 		return
 	}
-	status := transports.StatusPending
-	if err != nil {
-		status = transports.StatusFailed
-	} else if completed {
-		status = transports.StatusCompleted
-	}
-	// is this needed?
-	replyHeader.Set(transports.RequestIDHeader, requestID)
-	replyHeader.Set(transports.StatusHeader, status)
+	// hiveot used headers
+	replyHeader.Set(RequestIDHeader, requestID)
 
-	//// in case of error include the return data schema
-	//// TODO: Use schema name from Forms. The action progress schema is in
-	//// the forms definition as an additional response.
-	//// right now the only response is an action progress.
-	//if err != nil {
-	//	//replyHeader.Set(httpbinding.StatusHeader, vocab.RequestFailed)
-	//	svc.writeReply(w, nil, err)
-	//	return
-	//	//} else if stat.Status != vocab.RequestCompleted {
-	//	//	// if progress isn't completed then also return the delivery progress
-	//	//	replyHeader.Set(httpbinding.StatusHeader, stat.Status)
-	//	//	replyHeader.Set(httpbinding.DataSchemaHeader, "RequestStatus")
-	//	//	svc.writeReply(w, stat, nil)
-	//	//	return
-	//}
 	// progress is complete, return the default output
-	svc.writeReply(w, output, err)
+	svc.writeReply(w, response.Output, response.Status, err)
 }
 
-// HandlePublishActionStatus sends an action progress update message to the digital twin
-func (svc *HttpTransportServer) HandlePublishActionStatus(w http.ResponseWriter, r *http.Request) {
-	svc._handleNotification(wot.HTOpUpdateActionStatus, w, r)
+// HandleActionStatus handles a received action status message from an agent client
+// and forwards this as a ResponseMessage to the server response handler.
+func (svc *HttpTransportServer) HandleActionStatus(w http.ResponseWriter, r *http.Request) {
+	//svc._handleNotification(wot.HTOpActionStatus, w, r)
+	rp, err := httpcontext.GetRequestParams(r)
+	if err != nil {
+		slog.Error(err.Error())
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	actionStatus := HttpActionStatus{}
+	err = tputils.Decode(rp.Data, &actionStatus)
+	if err != nil {
+		slog.Warn("HandleActionStatus. Payload is not an HttpActionStatus object",
+			"agentID", rp.ClientID,
+			"requestID", rp.RequestID)
+	}
+	// on the server the action status is handled using a standardized ResponseMessage instance
+	// This is converted to the transport protocol used to send it to the client.
+	response := transports.ResponseMessage{
+		Operation: wot.OpInvokeAction,
+		ThingID:   rp.ThingID,
+		Name:      rp.Name,
+		RequestID: rp.RequestID,
+		Status:    actionStatus.Status, // todo map names (they are the same)
+		Error:     actionStatus.Error,
+		Output:    actionStatus.Output,
+		Received:  actionStatus.TimeRequested,
+		Updated:   actionStatus.TimeEnded,
+	}
+	err = svc.handleResponse(response)
+	svc.writeReply(w, nil, "", err)
 }
 
 // HandleInvokeAction requests an action from the digital twin.
@@ -150,7 +161,7 @@ func (svc *HttpTransportServer) HandleLogin(w http.ResponseWriter, r *http.Reque
 	}
 	// TODO: set client session cookie for browser clients
 	//svc.sessionManager.SetSessionCookie(cs.sessionID,token)
-	svc.writeReply(w, reply, nil)
+	svc.writeReply(w, reply, transports.StatusCompleted, nil)
 }
 
 // HandleLoginRefresh refreshes the auth token using the session authenticator.
@@ -171,7 +182,7 @@ func (svc *HttpTransportServer) HandleLoginRefresh(w http.ResponseWriter, r *htt
 		svc.writeError(w, err, 0)
 		return
 	}
-	svc.writeReply(w, newToken, nil)
+	svc.writeReply(w, newToken, transports.StatusCompleted, nil)
 }
 
 // HandleLogout ends the session and closes all client connections
@@ -181,7 +192,18 @@ func (svc *HttpTransportServer) HandleLogout(w http.ResponseWriter, r *http.Requ
 	if err == nil {
 		svc.authenticator.Logout(rp.ClientID)
 	}
-	svc.writeReply(w, nil, err)
+	svc.writeReply(w, nil, transports.StatusCompleted, err)
+}
+
+// HandlePing with http handler of ping as a request
+func (svc *HttpTransportServer) HandlePing(w http.ResponseWriter, r *http.Request) {
+	// simply return a pong message
+	rp, err := httpcontext.GetRequestParams(r)
+	replyHeader := w.Header()
+	replyHeader.Set(RequestIDHeader, rp.RequestID)
+	svc.writeReply(w, "pong", transports.StatusCompleted, err)
+
+	//svc._handleRequestMessage(wot.HTOpPing, w, r)
 }
 
 // HandlePublishEvent update digitwin with event published by agent
@@ -211,41 +233,6 @@ func (svc *HttpTransportServer) HandleReadAllEvents(w http.ResponseWriter, r *ht
 func (svc *HttpTransportServer) HandleReadAllProperties(w http.ResponseWriter, r *http.Request) {
 	svc._handleRequestMessage(wot.OpReadAllProperties, w, r)
 }
-
-// HandleReadAllThings returns a list of things in the directory
-//
-// Query params for paging:
-//
-//	limit=N, limit the number of results to N TD documents
-//	offset=N, skip the first N results in the result
-//func (svc *HttpBinding) HandleReadAllThings(w http.ResponseWriter, r *http.Request) {
-//	rp, err := subprotocols.GetRequestParams(r)
-//	if err != nil {
-//		w.WriteHeader(http.StatusUnauthorized)
-//		return
-//	}
-//	slog.Debug("HandleReadAllThings", slog.String("SenderID", rp.ClientID))
-//	// this request can simply be turned into an action message for the directory.
-//	limit := 100
-//	offset := 0
-//	if r.URL.Query().Has("limit") {
-//		limitStr := r.URL.Query().Get("limit")
-//		limit32, _ := strconv.ParseInt(limitStr, 10, 32)
-//		limit = int(limit32)
-//	}
-//	if r.URL.Query().Has("offset") {
-//		offsetStr := r.URL.Query().Get("offset")
-//		offset32, _ := strconv.ParseInt(offsetStr, 10, 32)
-//		offset = int(offset32)
-//	}
-//	thingsList, err := svc.dtwService.DirSvc.ReadAllTDs(rp.ClientID,
-//		digitwin.DirectoryReadAllTDsArgs{Offset: offset, Limit: limit})
-//	if err != nil {
-//		svc.writeError(w, err, 0)
-//		return
-//	}
-//	svc.writeReply(w, thingsList)
-//}
 
 // HandleReadEvent returns the latest event value from a Thing
 // Parameters: {thingID}, {name}

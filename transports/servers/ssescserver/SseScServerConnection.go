@@ -1,12 +1,11 @@
 package ssescserver
 
 import (
-	"encoding/json"
 	"fmt"
-	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/connections"
 	"github.com/hiveot/hub/wot"
+	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"net/http"
 	"sync"
@@ -21,9 +20,12 @@ type SSEEvent struct {
 }
 
 // SSEPingEvent can be used by the server to ping the client that the connection is ready
-const SSEPingEvent = "ping"
+const SSEPingEvent = "sseping"
 
 // SseScServerConnection handles the SSE connection by remote client
+//
+// The Sse-sc protocol binding uses a 'hiveot' message envelope for sending messages
+// between server and consumer.
 //
 // This implements the IServerConnection interface for sending messages to
 // the client over SSE.
@@ -56,35 +58,23 @@ type SseScServerConnection struct {
 	sseFallback bool
 }
 
-type HttpActionStatus struct {
-	RequestID string `json:"request_id"`
-	ThingID   string `json:"thingID"`
-	Name      string `json:"name"`
-	Data      any    `json:"data"`
-	Error     string `json:"error"`
-}
+//type HttpActionStatus struct {
+//	RequestID string `json:"request_id"`
+//	ThingID   string `json:"thingID"`
+//	Name      string `json:"name"`
+//	Data      any    `json:"data"`
+//	Error     string `json:"error"`
+//}
 
-// _send sends the action or write request for the thing to the agent
-// The SSE event type is: messageType, where
-// The event ID is {thingID}/{name}/{requestID}/{senderID}
-func (c *SseScServerConnection) _send(operation string, thingID, name string,
-	data any, requestID string, senderID string) (err error) {
+// _send sends a request, response or notification message to the client over SSE.
+// This is different from the WoT SSE subprotocol in that the payload is the
+// message envelope and can carry any operation.
+func (c *SseScServerConnection) _send(msgType string, msg any) (err error) {
 
 	var payload []byte = nil
-	if data != nil {
-		payload, _ = json.Marshal(data)
-	}
-	// in sseFallback mode the ID is not used
-	eventID := fmt.Sprintf("%s/%s/%s/%s", thingID, name, senderID, requestID)
-	eventType := operation
-	if c.sseFallback {
-		// SSE protocol binding uses the affordance name as the event type
-		eventID = operation
-		eventType = name
-	}
-	msg := SSEEvent{
-		EventType: eventType,
-		ID:        eventID,
+	payload, _ = jsoniter.Marshal(msg)
+	sseMsg := SSEEvent{
+		EventType: msgType,
 		Payload:   string(payload),
 	}
 	c.mux.Lock()
@@ -92,14 +82,11 @@ func (c *SseScServerConnection) _send(operation string, thingID, name string,
 	if !c.isClosed.Load() {
 		slog.Debug("_send",
 			slog.String("to", c.clientID),
-			slog.String("MessageType", operation),
-			slog.String("eventID", eventID),
+			slog.String("MessageType", msgType),
 		)
-		c.sseChan <- msg
+		c.sseChan <- sseMsg
 	}
 	// as long as the channel exists, delivery will take place
-	// FIXME: guarantee delivery
-	// todo: detect race conditions; or accept the small risk of delivery to a closing connection?
 	return nil
 }
 
@@ -133,15 +120,6 @@ func (c *SseScServerConnection) GetProtocolType() string {
 //	return c.sessionID
 //}
 
-// InvokeAction sends the action request for the thing to the agent over SSE
-func (c *SseScServerConnection) InvokeAction(
-	thingID, name string, data any, requestID string, senderID string) (
-	status string, output any, err error) {
-
-	err = c._send(vocab.OpInvokeAction, thingID, name, data, requestID, senderID)
-	return status, nil, err
-}
-
 //// IsSubscribed returns true if subscription for thing and name exists
 //// If dThingID or name are empty, then "+" is used as wildcard
 //func (c *SseScServerConnection) IsSubscribed(subs []string, dThingID string, name string) bool {
@@ -165,87 +143,42 @@ func (c *SseScServerConnection) ObserveProperty(dThingID string, name string) {
 	c.observations.Subscribe(dThingID, name)
 }
 
-// SendActionStatus sends an action result to the client
-// If an error is provided this sends the error, otherwise the output value
-func (c *SseScServerConnection) SendActionStatus(requestID string, data any, err error) {
-	status := HttpActionStatus{
-		RequestID: requestID,
-		Data:      data,
-	}
-	if err != nil {
-		status.Error = err.Error()
-	}
-	_ = c._send(wot.HTOpUpdateActionStatus, "", "", status, requestID, "")
-}
+// SendNotification sends a notification message if the client is subscribed
+func (c *SseScServerConnection) SendNotification(noti transports.NotificationMessage) {
 
-// SendError returns an error to the client, send by an agent
-func (c *SseScServerConnection) SendError(dThingID, name string, errResponse error, requestID string) {
-	operation := "error"
-	_ = c._send(operation, dThingID, name, errResponse.Error(), requestID, "")
-}
-
-// SendNotification sends a notification message without a response.
-func (c *SseScServerConnection) SendNotification(
-	operation string, dThingID, name string, data any) {
-
-	switch operation {
+	switch noti.Operation {
 	case wot.HTOpUpdateTD:
 		// update the TD if the client is subscribed to its events
-		if c.subscriptions.IsSubscribed(dThingID, "") {
-			_ = c._send(operation, dThingID, name, data, "", "")
+		if c.subscriptions.IsSubscribed(noti.ThingID, "") {
+			_ = c._send(transports.MessageTypeNotification, noti)
 		}
-	case wot.HTOpPublishEvent:
-		if c.subscriptions.IsSubscribed(dThingID, name) {
-			_ = c._send(operation, dThingID, name, data, "", "")
+	case wot.HTOpEvent:
+		if c.subscriptions.IsSubscribed(noti.ThingID, noti.Name) {
+			_ = c._send(transports.MessageTypeNotification, noti)
 		}
 	case wot.HTOpUpdateProperty, wot.HTOpUpdateMultipleProperties:
-		if c.observations.IsSubscribed(dThingID, name) {
-			_ = c._send(operation, dThingID, name, data, "", "")
+		if c.observations.IsSubscribed(noti.ThingID, noti.Name) {
+			_ = c._send(transports.MessageTypeNotification, noti)
 		}
 	default:
 		slog.Error("SendNotification: Unknown notification operation",
-			"op", operation,
-			"thingID", dThingID,
+			"op", noti.Operation,
+			"thingID", noti.ThingID,
 			"to", c.clientID)
 	}
 }
 
-// SendRequest sends a request (action, write property) to the client over sse (agent).
-func (c *SseScServerConnection) SendRequest(msg transports.ThingMessage) error {
-
-	err := c._send(msg.Operation, msg.ThingID, msg.Name, msg.Data, msg.RequestID, msg.SenderID)
-	return err
+// SendRequest sends a request message to an agent over SSE
+func (c *SseScServerConnection) SendRequest(req transports.RequestMessage) error {
+	// This simply sends the message as-is
+	return c._send(transports.MessageTypeRequest, req)
 }
 
-// SendResponse send a response (action status) to the client for a previous sent request.
-func (c *SseScServerConnection) SendResponse(
-	dThingID, name string, output any, err error, requestID string) error {
-	if err != nil {
-		c.SendError(dThingID, name, err, requestID)
-	}
-	operation := wot.HTOpUpdateActionStatus
-	err = c._send(operation, dThingID, name, output, requestID, "")
-	return err
+// SendResponse send a response (action status) from server to client.
+func (c *SseScServerConnection) SendResponse(resp transports.ResponseMessage) error {
+	// This simply sends the message as-is
+	return c._send(transports.MessageTypeResponse, resp)
 }
-
-// PublishEvent send an event to subscribers
-//func (c *SseScServerConnection) PublishEvent(
-//	dThingID, name string, data any, requestID string, agentID string) {
-//
-//	if c.subscriptions.IsSubscribed(dThingID, name) {
-//		_, _ = c._send(vocab.HTOpPublishEvent, dThingID, name, data, requestID, agentID)
-//	}
-//}
-
-// PublishProperty send a property change update to observers
-// if name is empty then data contains a map of property key-value pairs
-//func (c *SseScServerConnection) PublishProperty(
-//	dThingID, name string, data any, requestID string, agentID string) {
-//
-//	if c.observations.IsSubscribed(dThingID, name) {
-//		_, _ = c._send(vocab.HTOpUpdateProperty, dThingID, name, data, requestID, agentID)
-//	}
-//}
 
 // Serve serves SSE connections.
 // This listens for outgoing requests on the given channel

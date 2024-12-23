@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/clients/base"
+	"github.com/hiveot/hub/transports/servers/httpserver"
 	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/transports/tputils/tlsclient"
 	"github.com/hiveot/hub/wot"
@@ -21,19 +22,18 @@ import (
 	"time"
 )
 
-// HttpTransportClient is the http/2 client for performing operations on one or more Things.
-// This implements the IBindingClient interface.
+// HttpConsumerClient is the http/2 client for connecting a WoT consumer to a
+// WoT server.
+// This implements the IAgentTransport interface.
 //
-// NOTE: this binding implementation is intended to connect to the hiveOT Hub,
-// not for connecting to 3rd party Thing servients. As such, it doesn't use forms
-// as the endpoints are well known.
-// The use of Forms to perform operation is planned. Thing top level operations
-// will be replaced with a single InvokeForm method.
+// The Forms needed to invoke an operations are obtained using the 'getForm'
+// callback, which can be tied to a store of TD documents.
 //
-// This client has no return channel so it does not support subscribe or observe
-// operations. Use the SsescBindingClient or WssBindingClient for this.
-type HttpTransportClient struct {
-	base.BaseTransportClient
+// While this client can be used stand-alone, it is intended for use as a base
+// for http subprotocols SSE-SC and WSS
+// See SsescTransportClient and WSSTransportClient.
+type HttpConsumerClient struct {
+	base.BaseClient
 
 	// getForm obtains the form for sending a request or notification
 	getForm func(op string) td.Form
@@ -48,7 +48,7 @@ type HttpTransportClient struct {
 	lastError atomic.Pointer[error]
 }
 
-// _send a HTTPS method and read response.
+// _send a HTTPS method and return the http response.
 //
 // If token authentication is enabled then add the bearer token to the header
 //
@@ -57,11 +57,11 @@ type HttpTransportClient struct {
 //	contentType of the payload or "" for default (application/json)
 //	thingID optional path URI variable
 //	name optional path URI variable containing affordance name
-//	body contains the serialized request body
+//	body contains the raw serialized request body
 //	requestID: optional requestID header value
 //
-// This returns the serialized response data, a response message ID, return status code or an error
-func (cl *HttpTransportClient) _send(method string, methodPath string,
+// This returns the raw serialized response data, a response message ID, return status code or an error
+func (cl *HttpConsumerClient) _send(method string, methodPath string,
 	contentType string, thingID string, name string,
 	body []byte, requestID string) (
 	resp []byte, headers http.Header, err error) {
@@ -89,14 +89,18 @@ func (cl *HttpTransportClient) _send(method string, methodPath string,
 
 	// Caution! a double // in the path causes a 301 and changes post to get
 	bodyReader := bytes.NewReader(body)
-	fullURL := cl.GetServerURL() + reqPath
+	serverURL := cl.GetServerURL()
+	parts, _ := url.Parse(serverURL)
+	parts.Path = reqPath
+	fullURL := parts.String()
+	//fullURL := parts.cl.GetServerURL() + reqPath
 	req, err := http.NewRequest(method, fullURL, bodyReader)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// set the origin header to the intended destination without the path
-	parts, err := url.Parse(fullURL)
+	//parts, err := url.Parse(fullURL)
 	origin := fmt.Sprintf("%s://%s", parts.Scheme, parts.Host)
 	req.Header.Set("Origin", origin)
 
@@ -110,9 +114,9 @@ func (cl *HttpTransportClient) _send(method string, methodPath string,
 		contentType = "application/json"
 	}
 	req.Header.Set("Content-Type", contentType)
-	req.Header.Set(transports.ConnectionIDHeader, cl.GetConnectionID())
+	req.Header.Set(httpserver.ConnectionIDHeader, cl.GetConnectionID())
 	if requestID != "" {
-		req.Header.Set(transports.RequestIDHeader, requestID)
+		req.Header.Set(httpserver.RequestIDHeader, requestID)
 	}
 	for k, v := range cl.headers {
 		req.Header.Set(k, v)
@@ -122,6 +126,14 @@ func (cl *HttpTransportClient) _send(method string, methodPath string,
 	if err != nil {
 		slog.Error(err.Error())
 		return nil, nil, err
+	}
+
+	if httpResp.Header != nil {
+		setCookie := httpResp.Header.Get("Set-Cookie")
+		if setCookie != "" {
+			// TO set the cookie with the result
+		}
+		// TODO: add to cookie-jar
 	}
 	respBody, err := io.ReadAll(httpResp.Body)
 	//respRequestID = httpResp.Header.Get(HTTPMessageIDHeader)
@@ -152,7 +164,7 @@ func (cl *HttpTransportClient) _send(method string, methodPath string,
 //	clientCert client tls certificate containing x509 cert and private key
 //
 // Returns nil if successful, or an error if connection failed
-//func (cl *HttpTransportClient) ConnectWithClientCert(kp keys.IHiveKey, clientCert *tls.Certificate) (err error) {
+//func (cl *HttpConsumerClient) ConnectWithClientCert(kp keys.IHiveKey, clientCert *tls.Certificate) (err error) {
 //	cl.mux.RLock()
 //	defer cl.mux.RUnlock()
 //	_ = kp
@@ -161,21 +173,31 @@ func (cl *HttpTransportClient) _send(method string, methodPath string,
 //}
 
 // CreateKeyPair returns a new set of serialized public/private key pair
-//func (cl *HttpTransportClient) CreateKeyPair() (cryptoKeys keys.IHiveKey) {
+//func (cl *HttpConsumerClient) CreateKeyPair() (cryptoKeys keys.IHiveKey) {
 //	k := keys.NewKey(keys.KeyTypeEd25519)
 //	return k
 //}
 
 // GetDefaultForm return the default http form for the operation
 // This uses the hiveot hub generic href
-func (cl *HttpTransportClient) GetDefaultForm(op string) td.Form {
-	f := td.NewForm(op, transports.GenericHttpHRef)
+// The only exceptions are the login and refresh operations as they are
+// outside the protected routes.
+func (cl *HttpConsumerClient) GetDefaultForm(op string) td.Form {
+	href := httpserver.GenericHttpHRef
+	method := http.MethodPost
+	if op == wot.HTOpLogin {
+		href = httpserver.HttpPostLoginPath
+	} else if op == wot.HTOpRefresh {
+		href = httpserver.HttpPostRefreshPath
+	}
+	f := td.NewForm(op, href)
+	f.SetMethodName(method)
 	return f
 }
 
 // Disconnect from the server
-func (cl *HttpTransportClient) Disconnect() {
-	slog.Debug("HttpTransportClient.Disconnect",
+func (cl *HttpConsumerClient) Disconnect() {
+	slog.Debug("HttpConsumerClient.Disconnect",
 		slog.String("clientID", cl.GetClientID()),
 	)
 
@@ -186,80 +208,107 @@ func (cl *HttpTransportClient) Disconnect() {
 	}
 }
 
-func (cl *HttpTransportClient) GetTlsClient() *http.Client {
+func (cl *HttpConsumerClient) GetTlsClient() *http.Client {
 	cl.BaseMux.RLock()
 	defer cl.BaseMux.RUnlock()
 	return cl.httpClient
 }
 
-// InvokeAction invokes an action on a thing and wait for the response
-func (cl *HttpTransportClient) InvokeAction(dThingID, name string, input any, output any) error {
-	return cl.SendRequest(wot.OpInvokeAction, dThingID, name, input, output)
-}
-
-// SendOperation sends an operation asynchronously.
+// PubRequest publishes a request message to the server.
 //
-// If a requestID is supplied then it is assumed a response is expected.
-// If a result is received then this is passed to the handle BaseRnR channel
-// associated with the request.
-// If no response channel is opened then the response will be passed to the
-// notification handler.
+// If a result is included in the http response then this is passed to the BaseRnR
+// channel associated with the request just like it is done with an async response.
 //
-// Note that this ignores the http response body.
-//
-// This locates the form for the operation and uses it
-// Intended as the base for all sends
-func (cl *HttpTransportClient) SendOperation(
-	operation string, dThingID, name string, data any, requestID string) error {
+// This locates the form for the operation using 'getForm' and uses the result
+// to determine the URL to publish the request to.
+func (cl *HttpConsumerClient) PubRequest(req transports.RequestMessage) error {
 
 	var dataJSON []byte
 	var method string
 	var href string
-	f := cl.getForm(operation)
+	var output any
+
+	// the getForm callback provides the method and URL to invoke for this operation.
+	f := cl.getForm(req.Operation)
 	if f != nil {
 		method, _ = f.GetMethodName()
 		href, _ = f.GetHRef()
 	}
-	if method == "" {
+	if method == "" || href == "" {
+		// use the built-in format
+		href = httpserver.GenericHttpHRef
 		method = http.MethodGet
 	}
 
-	if operation == "" {
-		err := fmt.Errorf("SendOperation: missing operation")
-		slog.Error(err.Error())
-		return err
-	} else if href == "" {
-		err := fmt.Errorf("SendNotification: Form is missing operation '%s' or href", operation)
+	if req.Operation == "" && req.RequestID == "" {
+		err := fmt.Errorf("SendMessage: missing both operation and requestID")
 		slog.Error(err.Error())
 		return err
 	}
-	if data != nil {
-		dataJSON = cl.Marshal(data)
+	if req.Input != nil {
+		dataJSON = cl.Marshal(req.Input)
 	}
-	output, headers, err := cl._send(
-		method, href, "", dThingID, name, dataJSON, requestID)
-	status := headers.Get(transports.StatusHeader)
+	// use + as wildcard for thingID to avoid a 404
+	// while not recommended, it is allowed to subscribe/observe all things
+	if req.ThingID == "" {
+		req.ThingID = "+"
+	}
+	// use + as wildcard for affordance name to avoid a 404
+	// this should not happen very often but it is allowed
+	if req.Name == "" {
+		req.Name = "+"
+	}
+
+	// substitute URI variables in the path, if any
+	vars := map[string]string{
+		"thingID":   req.ThingID,
+		"name":      req.Name,
+		"operation": req.Operation}
+	reqPath := tputils.Substitute(href, vars)
+
+	outputRaw, headers, err := cl._send(
+		method, reqPath, "", req.ThingID, req.Name, dataJSON, req.RequestID)
+
+	// Unfortunately the http binding has no deterministic result format
+	// types of responses:
+	//	1. error - based on error result; return error
+	//	2. raw data - based on response body; handle as completed
+	//  3. completed - based on StatusHeader header field
+	//	4. failed  - based on StatusHeader header field
+	//  5. with body - completed based on reply content
+	//	6. other - assume not completed
+	// notifications do not return any data
+	// response message return error status
+	// requests return optionally a response payload
+
+	// 1. error response
 	if err != nil {
 		return err
 	}
-	if status == "" {
-		// this is not a hiveot server so return the output as the result
-	} else if status == transports.StatusCompleted || status == "" {
-		// request is completed
-		if requestID == "" {
-			// no response expected. We're done here.
-			return nil
-		} else {
-			msg := transports.NewThingMessage(operation, dThingID, name, output, "")
-			msg.RequestID = requestID
-			handled := cl.BaseRnrChan.HandleResponse(msg, true)
-			if !handled {
-				// no rpc waiting, pass to the notification handler
-				cl.BaseNotificationHandler(msg)
-			}
-		}
-		// not an rpc, handle as notification
-	} else if status == transports.StatusFailed {
+
+	// status header indicate the result to consumers
+	statusHeader := ""
+	if headers != nil {
+		statusHeader = headers.Get(httpserver.StatusHeader)
+	}
+	// having raw output data is treated as completed
+	if outputRaw != nil && len(outputRaw) > 0 {
+		err = cl.Unmarshal(outputRaw, &output)
+	}
+	// 2 and 3. request completed
+	if output != nil || statusHeader == transports.StatusCompleted {
+		// the synchronous result of the request contains the output and is completed.
+		go func() {
+			// Handle this in the background to avoid it being blocked, because
+			// the caller will have to read the response channel. (caller doesn't know if the result is
+			// immediately or asynchronously)
+			resp := transports.NewResponseMessage(
+				req.Operation, req.ThingID, req.Name, output, nil, req.RequestID)
+
+			// pass a response to the sync or asyncn handler of responses
+			cl.OnResponse(resp)
+		}()
+	} else if statusHeader == transports.StatusFailed {
 		// body contains the error details return the error
 		errTxt := "request failed"
 		if output != nil {
@@ -272,32 +321,11 @@ func (cl *HttpTransportClient) SendOperation(
 	return err
 }
 
-// SendResponse sends the action response message
-func (cl *HttpTransportClient) SendResponse(
-	dThingID, name string, output any, errResp error, requestID string) {
-
-	stat := transports.RequestStatus{
-		ThingID:       dThingID,
-		Name:          name,
-		RequestID:     requestID,
-		Status:        transports.StatusCompleted,
-		Output:        output,
-		TimeRequested: "",
-		TimeEnded:     time.Now().Format(wot.RFC3339Milli),
-	}
-	if errResp != nil {
-		stat.Error = errResp.Error()
-	}
-	err := cl.SendOperation(
-		wot.HTOpUpdateActionStatus, dThingID, name, stat, requestID)
-	_ = err
-}
-
-func (cl *HttpTransportClient) Init(
+func (cl *HttpConsumerClient) Init(
 	fullURL string, clientID string, clientCert *tls.Certificate, caCert *x509.Certificate,
 	getForm func(op string) td.Form,
 	timeout time.Duration) {
-
+	baseHostPort := ""
 	caCertPool := x509.NewCertPool()
 
 	// Use CA certificate for server authentication if it exists
@@ -316,14 +344,16 @@ func (cl *HttpTransportClient) Init(
 	urlParts, err := url.Parse(fullURL)
 	if err != nil {
 		slog.Error("Invalid URL")
+	} else {
+		baseHostPort = urlParts.Host
 	}
-	cl.BaseTransportClient = base.BaseTransportClient{
+	cl.BaseClient = base.BaseClient{
 		BaseCaCert:       caCert,
 		BaseClientID:     clientID,
 		BaseConnectionID: clientID + "." + shortid.MustGenerate(),
 		BaseProtocolType: transports.ProtocolTypeHTTPS,
 		BaseFullURL:      fullURL,
-		BaseHostPort:     urlParts.Host,
+		BaseHostPort:     baseHostPort,
 		BaseTimeout:      timeout,
 		BaseRnrChan:      tputils.NewRnRChan(),
 	}
@@ -334,8 +364,11 @@ func (cl *HttpTransportClient) Init(
 	//
 	cl.getForm = getForm
 	cl.headers = make(map[string]string)
+	// TODO: Should this use NewTLSClient, which adds a cookie-jar?
+	//  This would the client to remember auth tokens in cookies
+	//  between requests. Alternative to bearer token.
 	cl.httpClient = tlsclient.NewHttp2TLSClient(caCert, clientCert, timeout)
-	cl.BaseSendOperation = cl.SendOperation
+	cl.BasePubRequest = cl.PubRequest
 }
 
 // NewHttpTransportClient creates a new instance of the http binding client
@@ -351,9 +384,9 @@ func (cl *HttpTransportClient) Init(
 func NewHttpTransportClient(
 	fullURL string, clientID string, clientCert *tls.Certificate, caCert *x509.Certificate,
 	getForm func(op string) td.Form,
-	timeout time.Duration) *HttpTransportClient {
+	timeout time.Duration) *HttpConsumerClient {
 
-	cl := HttpTransportClient{}
+	cl := HttpConsumerClient{}
 	cl.Init(fullURL, clientID, clientCert, caCert, getForm, timeout)
 	return &cl
 }

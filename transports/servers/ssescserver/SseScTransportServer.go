@@ -2,16 +2,20 @@ package ssescserver
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/connections"
 	"github.com/hiveot/hub/transports/servers/httpserver"
 	"github.com/hiveot/hub/transports/servers/httpserver/httpcontext"
+	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"net/http"
 	"sync"
 )
+
+const SSEOpConnect = "sse-connect"
+const SSEOpPing = "sse-ping"
+const SSEOpPong = "sse-pong" // reply to sse-ping
 
 // SseScTransportServer is a subprotocol binding server of http
 //
@@ -55,7 +59,7 @@ func (svc *SseScTransportServer) GetForm(op string) td.Form {
 
 // GetConnectURL returns SSE connection path of the server
 func (svc *SseScTransportServer) GetConnectURL() string {
-	return svc.httpTransport.GetConnectURL() + transports.DefaultSSESCPath
+	return svc.httpTransport.GetConnectURL() + httpserver.DefaultSSESCPath
 }
 
 // GetSseConnection returns the SSE Connection with the given ID
@@ -96,7 +100,7 @@ func (svc *SseScTransportServer) HandleConnect(w http.ResponseWriter, r *http.Re
 	// SSE-SC clients include a connection-ID header to link subscriptions to this
 	// connection. This is prefixed with "{clientID}-" to ensure uniqueness and
 	// prevent connection hijacking.
-	cid := r.Header.Get(transports.ConnectionIDHeader)
+	cid := r.Header.Get(httpserver.ConnectionIDHeader)
 
 	// add the new sse connection
 	sseFallback := false // TODO
@@ -112,6 +116,19 @@ func (svc *SseScTransportServer) HandleConnect(w http.ResponseWriter, r *http.Re
 
 	// finally cleanup the connection
 	svc.cm.RemoveConnection(c.GetConnectionID())
+}
+
+// HandlePing responds with a pong reply message on the SSE return channel
+func (svc *SseScTransportServer) HandlePing(w http.ResponseWriter, r *http.Request) {
+	rp, _ := httpcontext.GetRequestParams(r)
+
+	c := svc.GetSseConnection(rp.ConnectionID)
+	if c == nil {
+		http.Error(w, "Missing or unknown connection ID", http.StatusBadRequest)
+		return
+	}
+	resp := transports.NewResponseMessage(wot.HTOpPong, "", "", "pon", nil, rp.RequestID)
+	_ = c._send(transports.MessageTypeResponse, resp)
 }
 
 // HandleObserveAllProperties adds a property subscription
@@ -184,7 +201,7 @@ func (svc *SseScTransportServer) HandleUnobserveProperty(w http.ResponseWriter, 
 	}
 
 	c := svc.GetSseConnection(rp.ConnectionID)
-	if err == nil {
+	if c != nil {
 		c.UnobserveProperty(rp.ThingID, rp.Name)
 	}
 }
@@ -203,21 +220,22 @@ func (svc *SseScTransportServer) HandleUnsubscribeEvent(w http.ResponseWriter, r
 		return
 	}
 	c := svc.GetSseConnection(rp.ConnectionID)
-	if err == nil {
+	if c != nil {
 		c.UnsubscribeEvent(rp.ThingID, rp.Name)
 	}
 }
 
 // SendNotification broadcast an event or property change to subscribers clients
-func (svc *SseScTransportServer) SendNotification(operation string, dThingID, name string, data any) {
+func (svc *SseScTransportServer) SendNotification(notification transports.NotificationMessage) {
 	cList := svc.cm.GetConnectionByProtocol(transports.ProtocolTypeSSESC)
 	for _, c := range cList {
-		c.SendNotification(operation, dThingID, name, data)
+		c.SendNotification(notification)
 	}
 }
 
 func (svc *SseScTransportServer) Stop() {
-	// nothing to do here as this runs on top of the http server
+	//Close all incoming SSE connections
+	svc.cm.CloseAll()
 }
 
 // StartSseScTransportServer returns a new SSE-SC sub-protocol binding.
@@ -233,29 +251,31 @@ func StartSseScTransportServer(
 	httpTransport *httpserver.HttpTransportServer,
 ) *SseScTransportServer {
 	if ssePath == "" {
-		ssePath = transports.DefaultSSESCPath
+		ssePath = httpserver.DefaultSSESCPath
 	}
 	b := &SseScTransportServer{
 		cm:            cm,
 		httpTransport: httpTransport,
 	}
-	httpTransport.AddGetOp("connect",
+	httpTransport.AddGetOp(nil, SSEOpConnect,
 		ssePath, b.HandleConnect)
-	httpTransport.AddPostOp(vocab.OpObserveAllProperties,
+	httpTransport.AddGetOp(nil, SSEOpPing,
+		ssePath+"/ping", b.HandlePing)
+	httpTransport.AddPostOp(nil, wot.OpObserveAllProperties,
 		ssePath+"/digitwin/observe/{thingID}", b.HandleObserveAllProperties)
-	httpTransport.AddPostOp(vocab.OpSubscribeAllEvents,
+	httpTransport.AddPostOp(nil, wot.OpSubscribeAllEvents,
 		ssePath+"/digitwin/subscribe/{thingID}", b.HandleSubscribeAllEvents)
-	httpTransport.AddPostOp(vocab.OpSubscribeEvent,
+	httpTransport.AddPostOp(nil, wot.OpSubscribeEvent,
 		ssePath+"/digitwin/subscribe/{thingID}/{name}", b.HandleSubscribeEvent)
-	httpTransport.AddPostOp(vocab.OpObserveProperty,
+	httpTransport.AddPostOp(nil, wot.OpObserveProperty,
 		ssePath+"/digitwin/observe/{thingID}/{name}", b.HandleObserveProperty)
-	httpTransport.AddPostOp(vocab.OpUnobserveAllProperties,
+	httpTransport.AddPostOp(nil, wot.OpUnobserveAllProperties,
 		ssePath+"/digitwin/unobserve/{thingID}", b.HandleUnobserveAllProperties)
-	httpTransport.AddPostOp(vocab.OpUnobserveProperty,
+	httpTransport.AddPostOp(nil, wot.OpUnobserveProperty,
 		ssePath+"/digitwin/unobserve/{thingID}/{name}", b.HandleUnobserveProperty)
-	httpTransport.AddPostOp(vocab.OpUnsubscribeAllEvents,
+	httpTransport.AddPostOp(nil, wot.OpUnsubscribeAllEvents,
 		ssePath+"/digitwin/unsubscribe/{thingID}", b.HandleUnsubscribeAllEvents)
-	httpTransport.AddPostOp(vocab.OpUnsubscribeEvent,
+	httpTransport.AddPostOp(nil, wot.OpUnsubscribeEvent,
 		ssePath+"/digitwin/unsubscribe/{thingID}/{name}", b.HandleUnsubscribeEvent)
 	return b
 }

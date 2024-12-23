@@ -289,13 +289,10 @@ func NewTLSClient(hostPort string, clientCert *tls.Certificate, caCert *x509.Cer
 	httpClient := NewHttp2TLSClient(caCert, clientCert, timeout)
 
 	// add a cookie jar for storing cookies
-	// FIXME:
-	// 1 does this also work if the server is connected using an IP address?
-	// 2. How are cookies stored between sessions?
 	cjarOpts := &cookiejar.Options{PublicSuffixList: publicsuffix.List}
 	cjar, err := cookiejar.New(cjarOpts)
 	if err != nil {
-		err = fmt.Errorf("NewTLSClient: error setting cookiejar. The use of bearer tokens might not persist. Continuing: %w", err)
+		err = fmt.Errorf("NewTLSClient: error setting cookiejar. The use of auth cookie might not persist. Continuing: %w", err)
 		slog.Error(err.Error())
 		err = nil
 	}

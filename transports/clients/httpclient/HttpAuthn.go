@@ -1,11 +1,11 @@
 package httpclient
 
 import (
-	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/servers/httpserver"
+	"github.com/hiveot/hub/wot"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/teris-io/shortid"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -15,18 +15,43 @@ import (
 // ConnectWithLoginForm invokes login using a form - temporary helper
 // intended for testing a connection with a web server.
 //
-// This sets the bearer token for further requests
-func (cl *HttpTransportClient) ConnectWithLoginForm(password string) error {
+// This sets the bearer token for further requests. It requires the server
+// to set a session cookie in response to the login.
+func (cl *HttpConsumerClient) ConnectWithLoginForm(
+	password string) (newToken string, err error) {
+
+	// FIXME: does this client need a cookie jar???
+
 	formMock := url.Values{}
 	formMock.Add("loginID", cl.GetClientID())
 	formMock.Add("password", password)
-	fullURL := fmt.Sprintf("https://%s/login", cl.BaseHostPort)
+
+	var loginHRef string
+	f := cl.getForm(wot.HTOpLoginWithForm)
+	if f != nil {
+		loginHRef, _ = f.GetHRef()
+	}
+	loginURL, err := url.Parse(loginHRef)
+	if err != nil {
+		return "", err
+	}
+	if loginURL.Host == "" {
+		loginHRef = cl.BaseFullURL + loginHRef
+	}
 
 	//PostForm should return a cookie that should be used in the http connection
-	resp, err := cl.httpClient.PostForm(fullURL, formMock)
+	if loginHRef == "" {
+		return "", errors.New("Login path not found in getForm")
+	}
+	resp, err := cl.httpClient.PostForm(loginHRef, formMock)
+	if err != nil {
+		return "", err
+	}
+	// FIXME: where are the cookies?
 	if err == nil {
 		// get the session token from the cookie
-		cookie := resp.Request.Header.Get("cookie")
+		//cookie := resp.Request.Header.Get("cookie")
+		cookie := resp.Header.Get("cookie")
 		kvList := strings.Split(cookie, ",")
 
 		for _, kv := range kvList {
@@ -37,14 +62,17 @@ func (cl *HttpTransportClient) ConnectWithLoginForm(password string) error {
 			}
 		}
 	}
-	return err
+	if cl.bearerToken == "" {
+		slog.Error("No session cookie was received on login")
+	}
+	return cl.bearerToken, err
 }
 
-// ConnectWithPassword connects to the Hub TLS server using a login ID and password
+// ConnectWithPassword connects to the TLS server using a login ID and password
 // and obtain an auth token for use with ConnectWithToken.
 //
 // This is currently hub specific, until a standard way is fond using the Hub TD
-func (cl *HttpTransportClient) ConnectWithPassword(password string) (newToken string, err error) {
+func (cl *HttpConsumerClient) ConnectWithPassword(password string) (newToken string, err error) {
 
 	slog.Info("ConnectWithPassword",
 		"clientID", cl.GetClientID(), "connectionID", cl.GetConnectionID())
@@ -54,35 +82,46 @@ func (cl *HttpTransportClient) ConnectWithPassword(password string) (newToken st
 		"login":    cl.GetClientID(),
 		"password": password,
 	}
-	argsJSON, _ := json.Marshal(loginMessage)
-	requestID := shortid.MustGenerate()
-	resp, _, err := cl._send(
-		http.MethodPost, transports.HttpPostLoginPath, "", "", "", argsJSON, requestID)
+	// FIXME: can't use sendrequest as it needs an established connection
+	//err = cl.SendOperation(wot.HTOpLogin, "", "", loginMessage, &token)
+	f := cl.getForm(wot.HTOpLogin)
+	if f == nil {
+		err = fmt.Errorf("missing form for login operation")
+		slog.Error(err.Error())
+		return "", err
+	}
+	method, _ := f.GetMethodName()
+	href, _ := f.GetHRef()
+
+	dataJSON := cl.Marshal(loginMessage)
+	outputRaw, _, err := cl._send(
+		method, href, "", "", "", dataJSON, "")
+
 	if err != nil {
 		slog.Warn("ConnectWithPassword failed", "err", err.Error())
 		return "", err
 	}
-	token := ""
-	err = cl.Unmarshal(resp, &token)
+	err = jsoniter.Unmarshal(outputRaw, &newToken)
 	if err != nil {
 		err = fmt.Errorf("ConnectWithPassword: unexpected response: %s", err)
 		return "", err
 	}
+
 	// store the bearer token further requests
 	cl.BaseMux.Lock()
-	cl.bearerToken = token
+	cl.bearerToken = newToken
 	cl.BaseMux.Unlock()
-	cl.BaseIsConnected.Store(true)
+	//cl.BaseIsConnected.Store(true)
 
-	return token, err
+	return newToken, err
 }
 
 // ConnectWithToken sets the authentication bearer token to authenticate http requests.
-func (cl *HttpTransportClient) ConnectWithToken(token string) (newToken string, err error) {
+func (cl *HttpConsumerClient) ConnectWithToken(token string) (newToken string, err error) {
 	cl.BaseMux.Lock()
 	cl.bearerToken = token
 	cl.BaseMux.Unlock()
-	cl.BaseIsConnected.Store(true)
+	//cl.BaseIsConnected.Store(true)
 
 	newToken, err = cl.RefreshToken(token)
 	return newToken, err
@@ -91,37 +130,23 @@ func (cl *HttpTransportClient) ConnectWithToken(token string) (newToken string, 
 // RefreshToken refreshes the authentication token
 // The resulting token can be used with 'ConnectWithToken'
 // This is specific to the Hiveot Hub.
-func (cl *HttpTransportClient) RefreshToken(oldToken string) (newToken string, err error) {
+func (cl *HttpConsumerClient) RefreshToken(oldToken string) (newToken string, err error) {
 
-	// FIXME: what is the standard for refreshing a token using http?
-	slog.Info("RefreshToken",
-		slog.String("clientID", cl.GetClientID()))
-
-	// the bearer token holds the old token
-	payload, _ := jsoniter.Marshal(oldToken)
-	resp, _, err := cl._send(
-		http.MethodPost, transports.HttpPostRefreshPath, "", "", "", payload, "")
-
-	// set the new token as the bearer token
+	newToken, err = cl.BaseClient.RefreshToken(oldToken)
 	if err == nil {
-		err = jsoniter.Unmarshal(resp, &newToken)
-
-		if err == nil {
-			// reconnect using the new token
-			cl.BaseMux.Lock()
-			cl.bearerToken = newToken
-			cl.BaseMux.Unlock()
-		}
+		cl.BaseMux.Lock()
+		cl.bearerToken = newToken
+		cl.BaseMux.Unlock()
 	}
 	return newToken, err
 }
 
 // Logout from the server and end the session.
 // This is specific to the Hiveot Hub.
-func (cl *HttpTransportClient) Logout() error {
+func (cl *HttpConsumerClient) Logout() error {
 	// TODO: can this be derived from a form?
 	slog.Info("Logout",
 		slog.String("clientID", cl.GetClientID()))
-	_, _, err := cl._send(http.MethodPost, transports.HttpPostLogoutPath, "", "", "", nil, "")
+	_, _, err := cl._send(http.MethodPost, httpserver.HttpPostLogoutPath, "", "", "", nil, "")
 	return err
 }

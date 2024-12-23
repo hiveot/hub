@@ -6,8 +6,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/tputils/tlsclient"
+	"github.com/hiveot/hub/transports/servers/httpserver"
 	"github.com/tmaxmax/go-sse"
 	"log/slog"
 	"net/http"
@@ -28,19 +27,20 @@ func ConnectSSE(
 	clientID string, cid string,
 	sseURL string, bearerToken string,
 	caCert *x509.Certificate,
+	httcl *http.Client,
 	onConnect func(bool, error),
 	onMessage func(event sse.Event),
 ) (cancelFn func(), err error) {
 
 	// separate client with a long timeout for sse
 	// use a new http client instance to set an indefinite timeout for the sse connection
-	httpClient := tlsclient.NewHttp2TLSClient(caCert, nil, 0)
-
-	slog.Info("ConnectSSE (to hub) - establish SSE connection to server",
-		slog.String("URL", sseURL),
-		slog.String("clientID", clientID),
-		slog.String("cid", cid),
-	)
+	//httpClient := tlsclient.NewHttp2TLSClient(caCert, nil, 0)
+	//_ = httpClient
+	//slog.Info("ConnectSSE (to hub) - establish SSE connection to server",
+	//	slog.String("URL", sseURL),
+	//	slog.String("clientID", clientID),
+	//	slog.String("cid", cid),
+	//)
 
 	// use context to disconnect the client
 	sseCtx, sseCancelFn := context.WithCancel(context.Background())
@@ -50,7 +50,7 @@ func ConnectSSE(
 		sseCancelFn()
 		return nil, err
 	}
-	req.Header.Add(transports.ConnectionIDHeader, cid)
+	req.Header.Add(httpserver.ConnectionIDHeader, cid)
 	req.Header.Add("Authorization", "bearer "+bearerToken)
 	parts, _ := url.Parse(sseURL)
 	origin := fmt.Sprintf("%s://%s", parts.Scheme, parts.Host)
@@ -58,9 +58,12 @@ func ConnectSSE(
 	//req.Header.Add("Connection", "keep-alive")
 
 	sseClient := &sse.Client{
-		HTTPClient: httpClient,
-		OnRetry: func(err error, _ time.Duration) {
-			slog.Info("SSE Connection retry", "err", err, "clientID", clientID)
+		//HTTPClient: httpClient,
+		HTTPClient: httcl,
+		// todo honor the backoff period
+		OnRetry: func(err error, backoff time.Duration) {
+			slog.Warn("SSE Connection retry", "err", err, "clientID", clientID,
+				"backoff", backoff)
 			// TODO: how to be notified if the connection is restored?
 			//  workaround: in handleSSEEvent, update the connection status
 			onConnect(false, err)
@@ -82,7 +85,6 @@ func ConnectSSE(
 		// onConnect will be called on receiving the first (ping) message
 		//onConnect(true, nil)
 		err := conn.Connect()
-		onConnect(false, err)
 
 		if connError, ok := err.(*sse.ConnectionError); ok {
 			// since sse retries, this is likely an authentication error
@@ -95,6 +97,7 @@ func ConnectSSE(
 			// context was cancelled. no error
 			err = nil
 		}
+		onConnect(false, err)
 		// test if we're still receiving events after context is closed
 		_ = remover
 		//remover() // remove subscriptions connection

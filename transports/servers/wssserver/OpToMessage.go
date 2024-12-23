@@ -8,6 +8,9 @@ import (
 	"time"
 )
 
+// const WSSOpPing = "wss-ping"
+const WSSOpConnect = "wss-connect"
+
 func opToMessageType(op string) string {
 	// yeah not very efficient. FIXME
 	for k, v := range MsgTypeToOp {
@@ -40,6 +43,17 @@ func OpToMessage(
 			Data:        data,
 			Timestamp:   timestamp,
 		}
+	case wot.HTOpActionStatus:
+		msg = ActionStatusMessage{
+			ThingID:     dThingID,
+			MessageType: msgType,
+			Status:      "completed",
+			Name:        name,
+			RequestID:   requestID,
+			Output:      data,
+			Timestamp:   timestamp,
+		}
+
 	case wot.OpObserveAllProperties, wot.OpObserveProperty,
 		wot.OpUnobserveAllProperties, wot.OpUnobserveProperty,
 		wot.OpReadAllProperties, wot.OpReadProperty, wot.OpReadMultipleProperties,
@@ -57,7 +71,7 @@ func OpToMessage(
 		//wot.HTOpReadMultipleEvents,
 		wot.OpSubscribeEvent, wot.OpSubscribeAllEvents,
 		wot.OpUnsubscribeEvent, wot.OpUnsubscribeAllEvents,
-		wot.HTOpPublishEvent,
+		wot.HTOpEvent,
 		wot.HTOpPing, wot.HTOpPong:
 		msg = EventMessage{
 			ThingID:     dThingID,

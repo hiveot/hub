@@ -224,7 +224,7 @@ func TestAuthJWT(t *testing.T) {
 		authMsg := authn.UserLoginArgs{}
 		slog.Info("TestAuthJWT: login")
 		body, err := io.ReadAll(req.Body)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		err = json.Unmarshal(body, &authMsg)
 
 		// expect a requestID

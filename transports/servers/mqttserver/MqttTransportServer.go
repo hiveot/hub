@@ -12,14 +12,16 @@ import (
 )
 
 type MqttTransportServer struct {
-	host           string
-	tcpPort        int
-	wssPort        int
-	serverCert     *tls.Certificate
-	caCert         *x509.Certificate
-	authenticator  transports.IAuthenticator
-	messageHandler transports.ServerMessageHandler
-	cm             *connections.ConnectionManager
+	host               string
+	tcpPort            int
+	wssPort            int
+	serverCert         *tls.Certificate
+	caCert             *x509.Certificate
+	authenticator      transports.IAuthenticator
+	handleRequest      transports.ServerRequestHandler
+	handleResponse     transports.ServerResponseHandler
+	handleNotification transports.ServerNotificationHandler
+	cm                 *connections.ConnectionManager
 
 	// convert operation to topics (for building forms)
 	op2Topic map[string]string
@@ -83,7 +85,7 @@ func (svc *MqttTransportServer) GetConnectURL() string {
 }
 
 // SendNotification broadcast an event or property change to subscribers clients
-func (svc *MqttTransportServer) SendNotification(operation string, dThingID, name string, data any) {
+func (svc *MqttTransportServer) SendNotification(notif transports.NotificationMessage) {
 	// this is needed so mqtt can broadcast once via the message bus instead all individual connections
 	// tbd. An embedded mqtt server can still send per connection?
 	slog.Error("todo: implement")
@@ -107,15 +109,19 @@ func StartMqttTransportServer(host string, tcpPort int, wssPort int,
 	serverCert *tls.Certificate,
 	caCert *x509.Certificate,
 	authenticator transports.IAuthenticator,
-	messageHandler transports.ServerMessageHandler,
 	cm *connections.ConnectionManager,
+	handleRequest transports.ServerRequestHandler,
+	handleResponse transports.ServerResponseHandler,
+	handleNotification transports.ServerNotificationHandler,
 ) (*MqttTransportServer, error) {
 	svc := &MqttTransportServer{
-		serverCert:     serverCert,
-		caCert:         caCert,
-		authenticator:  authenticator,
-		messageHandler: messageHandler,
-		cm:             cm,
+		serverCert:         serverCert,
+		caCert:             caCert,
+		authenticator:      authenticator,
+		cm:                 cm,
+		handleRequest:      handleRequest,
+		handleResponse:     handleResponse,
+		handleNotification: handleNotification,
 	}
 	return svc, fmt.Errorf("Not yet implemented")
 }

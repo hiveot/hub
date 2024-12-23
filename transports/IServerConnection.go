@@ -4,64 +4,39 @@ const DefaultHttpsPort = 8444
 const DefaultMqttTcpPort = 8883
 const DefaultMqttWssPort = 8884
 
-// HTTP protoocol constants
+// Supported transport protocol bindings types
 const (
-	// StatusHeader contains the result of the request, eg Pending, Completed or Failed
-	StatusHeader = "status"
-	// RequestIDHeader for transports that support headers can include a message-ID
-	RequestIDHeader = "request-id"
-	// ConnectionIDHeader identifies the client's connection in case of multiple
-	// connections from the same client.
-	ConnectionIDHeader = "connection-id"
-	// DataSchemaHeader to indicate which  'additionalresults' dataschema being returned.
-	DataSchemaHeader = "dataschema"
-
-	// HTTP Paths for auth.
-	// THIS WILL BE REMOVED AFTER THE PROTOCOL BINDING PUBLISHES THESE IN THE TDD.
-	// The hub client will need the TD (ConsumedThing) to determine the paths.
-	HttpPostLoginPath   = "/authn/login"
-	HttpPostLogoutPath  = "/authn/logout"
-	HttpPostRefreshPath = "/authn/refresh"
-
-	// paths for the various clients
-	DefaultWSSPath   = "/wss"
-	DefaultSSEPath   = "/sse"
-	DefaultSSESCPath = "/ssesc"
-
-	// Generic form href that maps to all operations for the http client, using URI variables
-	GenericHttpHRef = "/digitwin/{operation}/{thingID}/{name}"
+	ProtocolTypeHTTPS    = "https"
+	ProtocolTypeSSE      = "sse"   // subprotocol of https
+	ProtocolTypeSSESC    = "ssesc" // subprotocol of https
+	ProtocolTypeWSS      = "wss"   // subprotocol of https
+	ProtocolTypeMQTTS    = "mqtts"
+	ProtocolTypeEmbedded = "embedded" // for testing
 )
 
-// ReplyToHandler is a server-side handler for sending replies to requests that
-// expect one. E.g: InvokeAction and WriteProperty (tbd)
-// The server side transport protocol implements the most efficient way to send that reply
-// back to the client, either as an immediate result or asynchronously after the
-// request has returned.
-//
-//	status is the progress status: RequestDelivered,RequestFailed,RequestCompleted
-//	output is the result if status is RequestCompleted. Can be nil.
-//	err is the error in case status is RequestFailed
-//type ReplyToHandler func(status string, output any, err error)
-
-// ServerMessageHandler handles a request. The handler is responsible for
-// sending a reply to the sender.
-//
-//	msg is the envelope that contains the request to process.
-//	replyTo is the connection for sending a reply, or nil when no reply should be sent.
-//
-// type ServerMessageHandler func(msg *ThingMessage, replyTo IServerConnection)
-
-// ServerMessageHandler handles a request. The handler either returns a result
+// ServerRequestHandler handles an incoming request. The handler either returns a result
 // immediately, if available, or sends it asynchronously to the replyTo address.
 //
 //	msg is the envelope that contains the request to process.
 //	replyTo is the connection-ID for sending a reply to the sender, or nil when
 //	no reply should be sent.
 //
-// This returns a flag whether the message handling is completed, potential output or an error
-// if completed is false then an async response on the replyTo client is expected.
-// Use cm.GetConnectionByConnectionID to obtain the connection to send a response.
-type ServerMessageHandler func(msg *ThingMessage, replyTo string) (completed bool, output any, err error)
+// This returns a response message with a Status flag indicating whether the message
+// handling is in progress, completed, or failed.
+// Use cm.GetConnectionByConnectionID(replyTo) to obtain the connection to send a response.
+type ServerRequestHandler func(msg RequestMessage, replyTo string) ResponseMessage
+
+// ServerResponseHandler handles an incoming response to a request from an agent.
+// The handler delivers the response to the client that sent the original request.
+//
+// This returns an error if the client is not reachable. This can be used to
+// retry sending the response or dispose of it altogether.
+type ServerResponseHandler func(msg ResponseMessage) error
+
+// ServerNotificationHandler handles an incoming notification from an agent.
+// The handler delivers the notification to subscribers.
+// There is no error result as this is a broadcast.
+type ServerNotificationHandler func(msg NotificationMessage)
 
 // IServerConnection is the interface of an incoming client connection on the server.
 // Protocol servers must implement this interface to return information to the consumer.
@@ -86,30 +61,42 @@ type IServerConnection interface {
 	// GetProtocolType returns the name of the protocol binding of this connection.
 	GetProtocolType() string
 
-	// SendNotification sends a notification to the client without expecting a response.
+	// SendNotification sends a notification to the client without a response.
 	// Intended to send updates to consumers.
 	//
 	// operation is the operation to invoke
 	// thingID of the thing the operation applies to
 	// name of the affordance the operation applies to
 	// data contains the notification data as described in the TD affordance.
-	SendNotification(operation string, dThingID, name string, data any)
+	SendNotification(msg NotificationMessage)
 
-	// SendRequest sends a request (action, write property) to the client (agent).
+	// SendRequest sends a request (action, write property) to the connecting agent.
 	//
-	// Unlike the client's SendRequest, this expects a result asynchronously to prevent
-	// resources to be depleted if no reply comes.
-	// The client MUST send a response message and include the provided requestID.
-	// Intended to send requests to agents.
+	// A ResponseMessage MUST be sent by the client when the request is handled,
+	// including the provided requestID.
 	//
 	// msg contains the request information
-	//
 	// This returns an error if the agent isn't reachable
-	SendRequest(msg ThingMessage) error
+	SendRequest(msg RequestMessage) error
 
-	// SendResponse send a response to the client for a previous sent request.
-	// Typically used in sending a reply to a invokeaction request.
-	//	output is the response data
-	//	requestID contains the requestID provided in the request.
-	SendResponse(thingID, name string, output any, err error, requestID string) error
+	// SendResponse send a response message to the client as a reply to a previous request.
+	//
+	//	 msg contains the response information
+	// This returns an error if the agent isn't reachable
+	SendResponse(msg ResponseMessage) error
+
+	// SetRequestHandler [agent] sets the handler for operations that return a response.
+	// This replaces any previously set handler.
+	//SetRequestHandler(request ServerRequestHandler)
+
+	// SetNotificationHandler [consumer] sets the callback for receiving notifications.
+	// This replaces any previously set handler.
+	//SetNotificationHandler(cb ServerNotificationHandler)
+
+	// SetResponseHandler [consumer] sets the callback for receiving unhandled responses
+	// to requests. If a request is sent with 'sync' set to true then SendRequest
+	// will handle the response instead.
+	//
+	// This replaces any previously set handler.
+	//SetResponseHandler(cb ServerResponseHandler)
 }

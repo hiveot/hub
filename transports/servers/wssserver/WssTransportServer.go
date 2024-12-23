@@ -15,10 +15,13 @@ import (
 
 // WssTransportServer Websocket subprotocol binding
 type WssTransportServer struct {
-	messageHandler transports.ServerMessageHandler
-	wssPath        string
-	httpTransport  *httpserver.HttpTransportServer
-	cm             *connections.ConnectionManager
+	wssPath       string
+	httpTransport *httpserver.HttpTransportServer
+	cm            *connections.ConnectionManager
+
+	handleRequest      transports.ServerRequestHandler
+	handleResponse     transports.ServerResponseHandler
+	handleNotification transports.ServerNotificationHandler
 
 	// convert operation to message type (for building forms)
 	op2MsgType map[string]string
@@ -35,10 +38,26 @@ func (svc *WssTransportServer) GetConnectURL() string {
 }
 
 // SendNotification broadcast an event or property change to subscribers clients
-func (svc *WssTransportServer) SendNotification(operation string, dThingID, name string, data any) {
+func (svc *WssTransportServer) SendNotification(notif transports.NotificationMessage) {
 	cList := svc.cm.GetConnectionByProtocol(transports.ProtocolTypeWSS)
 	for _, c := range cList {
-		c.SendNotification(operation, dThingID, name, data)
+		c.SendNotification(notif)
+	}
+}
+
+// SendRequest sends a request (action, write property) to the connecting agent.
+func (svc *WssTransportServer) SendRequest(req transports.RequestMessage) {
+	cList := svc.cm.GetConnectionByProtocol(transports.ProtocolTypeWSS)
+	for _, c := range cList {
+		_ = c.SendRequest(req)
+	}
+}
+
+// SendResponse send a response message to the client as a reply to a previous request.
+func (svc *WssTransportServer) SendResponse(resp transports.ResponseMessage) {
+	cList := svc.cm.GetConnectionByProtocol(transports.ProtocolTypeWSS)
+	for _, c := range cList {
+		_ = c.SendResponse(resp)
 	}
 }
 
@@ -69,7 +88,8 @@ func (svc *WssTransportServer) Serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c := NewWSSConnection(clientID, r, wssConn, svc.messageHandler)
+	c := NewWSSConnection(clientID, r, wssConn,
+		svc.handleRequest, svc.handleResponse, svc.handleNotification)
 
 	err = svc.cm.AddConnection(c)
 	if err != nil {
@@ -128,14 +148,14 @@ func (svc *WssTransportServer) Stop() {
 //	cm is the connection registry for sending messages to clients
 //	wssPath to use, without the host
 //	httpTransport to attach to
-func StartWssTransportServer(
-	wssPath string,
-	messageHandler transports.ServerMessageHandler,
-	cm *connections.ConnectionManager,
-	httpTransport *httpserver.HttpTransportServer,
-) *WssTransportServer {
+func StartWssTransportServer(wssPath string, cm *connections.ConnectionManager,
+	handleRequest transports.ServerRequestHandler,
+	handleResponse transports.ServerResponseHandler,
+	handleNotification transports.ServerNotificationHandler,
+	httpTransport *httpserver.HttpTransportServer) *WssTransportServer {
+
 	if wssPath == "" {
-		wssPath = transports.DefaultWSSPath
+		wssPath = httpserver.DefaultWSSPath
 	}
 	// initialize the message type to operation conversion
 	op2MsgType := make(map[string]string)
@@ -145,15 +165,18 @@ func StartWssTransportServer(
 		opList = append(opList, op)
 	}
 	b := &WssTransportServer{
-		cm:             cm,
-		messageHandler: messageHandler,
-		httpTransport:  httpTransport,
-		wssPath:        wssPath,
-		op2MsgType:     op2MsgType,
-		opList:         opList,
+		cm:                 cm,
+		httpTransport:      httpTransport,
+		wssPath:            wssPath,
+		op2MsgType:         op2MsgType,
+		opList:             opList,
+		handleRequest:      handleRequest,
+		handleResponse:     handleResponse,
+		handleNotification: handleNotification,
 	}
 	// add the WSS routes
-	httpTransport.AddGetOp("ws-connect", wssPath, b.Serve)
+	httpTransport.AddGetOp(nil, WSSOpConnect, wssPath, b.Serve)
+	//httpTransport.AddGetOp(nil, WSSOpPing, wssPath, b.Serve)
 
 	return b
 }

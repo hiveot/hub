@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	"fmt"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot"
 	"github.com/stretchr/testify/assert"
@@ -16,7 +17,7 @@ import (
 
 // Test subscribing and receiving all events by consumer
 func TestSubscribeAllByConsumer(t *testing.T) {
-	t.Log("TestSubscribeAllByConsumer")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	var rxVal atomic.Value
 	var testMsg1 = "hello world 1"
 	var testMsg2 = "hello world 2"
@@ -28,11 +29,11 @@ func TestSubscribeAllByConsumer(t *testing.T) {
 	defer cancelFn()
 
 	// 2. connect as consumers
-	cl1 := NewClient(testClientID1, srv.GetForm)
+	cl1 := NewConsumer(testClientID1, srv.GetForm)
 	_, err := cl1.ConnectWithPassword(testClientPassword1)
 	require.NoError(t, err)
 	defer cl1.Disconnect()
-	cl2 := NewClient(testClientID1, srv.GetForm)
+	cl2 := NewConsumer(testClientID1, srv.GetForm)
 	_, err = cl2.ConnectWithPassword(testClientPassword1)
 	require.NoError(t, err)
 	defer cl2.Disconnect()
@@ -80,7 +81,7 @@ func TestSubscribeAllByConsumer(t *testing.T) {
 // This is used if the Thing agent is connected as a client, and does not
 // run a server itself.
 func TestPublishEventsByAgent(t *testing.T) {
-	t.Log("TestPublishEventsByAgent")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	var evVal atomic.Value
 	var testMsg = "hello world"
 	var thingID = "thing1"
@@ -100,7 +101,7 @@ func TestPublishEventsByAgent(t *testing.T) {
 	defer cancelFn()
 
 	// 2. connect as an agent
-	ag1 := NewClient(testAgentID1, srv.GetForm)
+	ag1 := NewAgent(testAgentID1, srv.GetForm)
 	_, err := ag1.ConnectWithPassword(testAgentPassword1)
 	require.NoError(t, err)
 	defer ag1.Disconnect()

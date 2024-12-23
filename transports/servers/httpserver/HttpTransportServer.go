@@ -17,8 +17,12 @@ import (
 // This wraps the library's https server and add routes and middleware for use in the binding
 type HttpTransportServer struct {
 
-	// registered handler of received events or requests (which return a reply)
-	messageHandler transports.ServerMessageHandler
+	// registered handler of received notifications (sent by agents)
+	handleNotification transports.ServerNotificationHandler
+	// registered handler of requests (which return a reply)
+	handleRequest transports.ServerRequestHandler
+	// registered handler of responses (which sends a reply to the request sender)
+	handleResponse transports.ServerResponseHandler
 
 	// TLS server and router
 	httpServer *tlsserver.TLSServer
@@ -52,8 +56,11 @@ type HttpTransportServer struct {
 //
 // This is used to add Forms to the digitwin TDs
 func (svc *HttpTransportServer) AddGetOp(
-	op string, opURL string, handler http.HandlerFunc) {
+	r chi.Router, op string, opURL string, handler http.HandlerFunc) {
 
+	if r == nil {
+		r = svc.protectedRoutes
+	}
 	svc.operations = append(svc.operations, HttpOperation{
 		op:      op,
 		method:  http.MethodGet,
@@ -61,7 +68,7 @@ func (svc *HttpTransportServer) AddGetOp(
 		handler: handler,
 		//isThingLevel: thingLevel,
 	})
-	svc.protectedRoutes.Get(opURL, handler)
+	r.Get(opURL, handler)
 }
 
 // AddPostOp adds protocol binding operation with a URL and handler
@@ -70,7 +77,12 @@ func (svc *HttpTransportServer) AddGetOp(
 //
 // This is used to add Forms to the digitwin TDs
 func (svc *HttpTransportServer) AddPostOp(
+	r chi.Router,
 	op string, opURL string, handler http.HandlerFunc) {
+
+	if r == nil {
+		r = svc.protectedRoutes
+	}
 	svc.operations = append(svc.operations, HttpOperation{
 		op:      op,
 		method:  http.MethodPost,
@@ -78,7 +90,7 @@ func (svc *HttpTransportServer) AddPostOp(
 		handler: handler,
 		//isThingLevel: isThingLevel,
 	})
-	svc.protectedRoutes.Post(opURL, handler)
+	r.Post(opURL, handler)
 }
 
 // GetConnectionByConnectionID returns the client connection for sending messages to a client
@@ -108,10 +120,10 @@ func (svc *HttpTransportServer) GetConnectURL() string {
 //}
 
 // SendNotification broadcast an event or property change to subscribers clients
-func (svc *HttpTransportServer) SendNotification(operation string, dThingID, name string, data any) {
+func (svc *HttpTransportServer) SendNotification(msg transports.NotificationMessage) {
 	cList := svc.cm.GetConnectionByProtocol(transports.ProtocolTypeHTTPS)
 	for _, c := range cList {
-		c.SendNotification(operation, dThingID, name, data)
+		c.SendNotification(msg)
 	}
 }
 
@@ -128,6 +140,7 @@ func (svc *HttpTransportServer) Stop() {
 
 // writeError is a convenience function that logs and writes an error
 // If the reply has an error then write a bad request with the error as payload
+// This also writes the StatusHeader containing StatusFailed.
 func (svc *HttpTransportServer) writeError(w http.ResponseWriter, err error, code int) {
 	if code == 0 {
 		code = http.StatusBadRequest
@@ -136,13 +149,24 @@ func (svc *HttpTransportServer) writeError(w http.ResponseWriter, err error, cod
 		slog.Warn("Request error: ", "err", err.Error())
 		http.Error(w, err.Error(), code)
 	} else {
+		replyHeader := w.Header()
+		replyHeader.Set(StatusHeader, transports.StatusCompleted)
 		w.WriteHeader(code)
 	}
 }
 
 // writeReply is a convenience function that serializes the data and writes it as a response,
 // optionally reporting an error with code BadRequest.
-func (svc *HttpTransportServer) writeReply(w http.ResponseWriter, data any, err error) {
+//
+// status is completed,failed,... set in the 'StatusHeader' reply header if provided.
+// only used by hiveot.
+func (svc *HttpTransportServer) writeReply(
+	w http.ResponseWriter, data any, status string, err error) {
+
+	if status != "" {
+		replyHeader := w.Header()
+		replyHeader.Set(StatusHeader, status)
+	}
 	if err != nil {
 		slog.Warn("Request error: ", "err", err.Error())
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -170,8 +194,10 @@ func StartHttpTransportServer(host string, port int,
 	serverCert *tls.Certificate,
 	caCert *x509.Certificate,
 	authenticator transports.IAuthenticator,
-	messageHandler transports.ServerMessageHandler,
 	cm *connections.ConnectionManager,
+	handleRequest transports.ServerRequestHandler,
+	handleResponse transports.ServerResponseHandler,
+	handleNotification transports.ServerNotificationHandler,
 ) (*HttpTransportServer, error) {
 
 	httpServer, httpRouter := tlsserver.NewTLSServer(
@@ -179,10 +205,9 @@ func StartHttpTransportServer(host string, port int,
 
 	//wssURL := fmt.Sprintf("wss://%s:%d", config.Host, config.Port)
 	svc := HttpTransportServer{
-		authenticator:  authenticator,
-		messageHandler: messageHandler,
+		authenticator: authenticator,
 
-		//ws: wssserver.NewWssTransportServer(cm, requestHandler, wssURL),
+		//ws: wssserver.NewWssTransportServer(cm, handleRequest, wssURL),
 		//sse:   ssescserver.NewSseScTransportServer(cm),
 		//ssesc: ssescserver.NewSseScTransportServer(cm),
 

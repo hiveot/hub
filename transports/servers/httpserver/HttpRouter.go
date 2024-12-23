@@ -3,10 +3,38 @@ package httpserver
 import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/servers/httpserver/httpcontext"
+	"github.com/hiveot/hub/wot"
 	"net/http"
+)
+
+const (
+
+	// HTTP protoocol constants
+	// StatusHeader contains the result of the request, eg Pending, Completed or Failed
+	StatusHeader = "status"
+	// RequestIDHeader for transports that support headers can include a message-ID
+	RequestIDHeader = "request-id"
+	// ConnectionIDHeader identifies the client's connection in case of multiple
+	// connections from the same client.
+	ConnectionIDHeader = "connection-id"
+	// DataSchemaHeader to indicate which  'additionalresults' dataschema being returned.
+	DataSchemaHeader = "dataschema"
+
+	// HTTP Paths for auth. - FIXME MOVE TO HTTP implementation
+	// THIS WILL BE REMOVED AFTER THE PROTOCOL BINDING PUBLISHES THESE IN THE TDD.
+	// The hub client will need the TD (ConsumedThing) to determine the paths.
+	HttpPostLoginPath   = "/authn/login"
+	HttpPostLogoutPath  = "/authn/logout"
+	HttpPostRefreshPath = "/authn/refresh"
+
+	// paths for HTTP subprotocols
+	DefaultWSSPath   = "/wss"
+	DefaultSSEPath   = "/sse"
+	DefaultSSESCPath = "/ssesc"
+
+	// Generic form href that maps to all operations for the http client, using URI variables
+	GenericHttpHRef = "/hub/{operation}/{thingID}/{name}"
 )
 
 // HttpRouter contains the method to setup the HTTP binding routes
@@ -48,7 +76,7 @@ func (svc *HttpTransportServer) createRoutes(router chi.Router) http.Handler {
 
 		//r.Get("/static/*", staticFileServer.ServeHTTP)
 		// build-in REST API for easy login to obtain a token
-		r.Post(transports.HttpPostLoginPath, svc.HandleLogin)
+		svc.AddPostOp(r, wot.HTOpLogin, HttpPostLoginPath, svc.HandleLogin)
 	})
 
 	//--- private routes that requires authentication (as published in the TD)
@@ -61,26 +89,27 @@ func (svc *HttpTransportServer) createRoutes(router chi.Router) http.Handler {
 
 		// the following are protected http routes
 		svc.protectedRoutes = r
+		svc.AddGetOp(r, wot.HTOpPing, "/ping", svc.HandlePing)
 
 		//- direct methods for digital twins
-		svc.AddGetOp(vocab.OpReadAllProperties,
-			"/digitwin/properties/{thingID}", svc.HandleReadAllProperties)
-		svc.AddGetOp(vocab.OpReadProperty,
-			"/digitwin/properties/{thingID}/{name}", svc.HandleReadProperty)
-		svc.AddPostOp(vocab.OpWriteProperty,
-			"/digitwin/properties/{thingID}/{name}", svc.HandleWriteProperty)
+		svc.AddGetOp(r, wot.OpReadAllProperties,
+			"/digitwin/readallproperties/{thingID}", svc.HandleReadAllProperties)
+		svc.AddGetOp(r, wot.OpReadProperty,
+			"/digitwin/readproperty/{thingID}/{name}", svc.HandleReadProperty)
+		svc.AddPostOp(r, wot.OpWriteProperty,
+			"/digitwin/writeproperty/{thingID}/{name}", svc.HandleWriteProperty)
 
-		svc.AddGetOp("readallevents",
-			"/digitwin/events/{thingID}", svc.HandleReadAllEvents)
-		svc.AddGetOp("readevent",
-			"/digitwin/events/{thingID}/{eventID}", svc.HandleReadEvent)
+		svc.AddGetOp(r, wot.HTOpReadAllEvents,
+			"/digitwin/readallevents/{thingID}", svc.HandleReadAllEvents)
+		svc.AddGetOp(r, wot.HTOpReadEvent,
+			"/digitwin/readevent/{thingID}/{eventID}", svc.HandleReadEvent)
 
-		svc.AddGetOp(vocab.OpQueryAllActions,
-			"/digitwin/actions/{thingID}", svc.HandleQueryAllActions)
-		svc.AddGetOp(vocab.OpQueryAction,
-			"/digitwin/actions/{thingID}/{name}", svc.HandleQueryAction)
-		svc.AddPostOp(vocab.OpInvokeAction,
-			"/digitwin/actions/{thingID}/{name}", svc.HandleInvokeAction)
+		svc.AddGetOp(r, wot.OpQueryAllActions,
+			"/digitwin/queryallactions/{thingID}", svc.HandleQueryAllActions)
+		svc.AddGetOp(r, wot.OpQueryAction,
+			"/digitwin/queryaction/{thingID}/{name}", svc.HandleQueryAction)
+		svc.AddPostOp(r, wot.OpInvokeAction,
+			"/digitwin/invokeaction/{thingID}/{name}", svc.HandleInvokeAction)
 
 		//if svc.sse != nil {
 		//// sse subprotocol routes
@@ -90,35 +119,35 @@ func (svc *HttpTransportServer) createRoutes(router chi.Router) http.Handler {
 		//	"/sse/digitwin/observe/{thingID}", svc.sse.HandleObserveAllProperties)
 		//}
 		// digitwin directory actions. These are just for convenience as actions are normally used
-		svc.AddGetOp(vocab.HTOpReadTD,
-			"/digitwin/directory/{thingID}", svc.HandleReadTD)
-		svc.AddGetOp(vocab.HTOpReadAllTDs,
-			"/digitwin/directory", svc.HandleReadAllTDs) // query params: offset,limit
+		svc.AddGetOp(r, wot.HTOpReadTD,
+			"/digitwin/readtd/{thingID}", svc.HandleReadTD)
+		svc.AddGetOp(r, wot.HTOpReadAllTDs,
+			"/digitwin/readalltds", svc.HandleReadAllTDs) // query params: offset,limit
 
 		// handlers for other services. Operations to invoke actions.
 		// TODO: these probably belong with the digitwin service TD
 
 		// authn/authz service actions
-		svc.AddPostOp(vocab.HTOpRefresh,
-			"/authn/refresh", svc.HandleLoginRefresh)
-		svc.AddPostOp(vocab.HTOpLogout,
-			"/authn/logout", svc.HandleLogout)
+		svc.AddPostOp(r, wot.HTOpRefresh,
+			HttpPostRefreshPath, svc.HandleLoginRefresh)
+		svc.AddPostOp(r, wot.HTOpLogout,
+			HttpPostLogoutPath, svc.HandleLogout)
 
 		// handlers for requests by agents
 		// TODO: These should be included in the digitwin TD forms
-		svc.AddPostOp(vocab.HTOpUpdateTD,
-			"/agent/tdd/{thingID}", svc.HandlePublishTD)
-		svc.AddPostOp(vocab.HTOpPublishEvent,
+		svc.AddPostOp(r, wot.HTOpUpdateTD,
+			"/agent/updatetd/{thingID}", svc.HandlePublishTD)
+		svc.AddPostOp(r, wot.HTOpPublishEvent,
 			"/agent/event/{thingID}/{name}", svc.HandlePublishEvent)
-		svc.AddPostOp(vocab.HTOpUpdateProperty,
-			"/agent/property/{thingID}/{name}", svc.HandlePublishProperty)
-		svc.AddPostOp(vocab.HTOpUpdateMultipleProperties,
-			"/agent/properties/{thingID}", svc.HandlePublishMultipleProperties)
-		svc.AddPostOp("",
-			"/agent/progress", svc.HandlePublishActionStatus)
+		svc.AddPostOp(r, wot.HTOpUpdateProperty,
+			"/agent/updateproperty/{thingID}/{name}", svc.HandlePublishProperty)
+		svc.AddPostOp(r, wot.HTOpUpdateMultipleProperties,
+			"/agent/updatemultipleproperties/{thingID}", svc.HandlePublishMultipleProperties)
+		svc.AddPostOp(r, wot.HTOpActionStatus,
+			"/agent/actionstatus", svc.HandleActionStatus)
 
-		svc.AddPostOp("", // all operations work with the generic URL
-			transports.GenericHttpHRef, svc.HandleGenericHttpOp)
+		svc.AddPostOp(r, "", // TODO all operations work with the generic URL
+			GenericHttpHRef, svc.HandleGenericHttpOp)
 	})
 
 	return router

@@ -5,52 +5,12 @@ import (
 	"github.com/hiveot/hub/wot"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
+	"time"
 )
 
 // Handle incoming messages from clients
 // These are converted into a standard ThingMessage envelope and passed to
 // the handler.
-
-// ForwardAsNotification message is notification for one or multiple clients,
-// depending on the operation.
-func (c *WssServerConnection) ForwardAsNotification(msg *transports.ThingMessage) {
-	// nothing to return
-	_, _, _ = c.messageHandler(msg, "")
-}
-
-// ForwardAsRequest message is a request style messages to be sent to a destination
-// This returns a response message to the sender with the given requestID.
-func (c *WssServerConnection) ForwardAsRequest(msg *transports.ThingMessage) {
-	// the message handler does the processing
-	completed, output, err := c.messageHandler(msg, c.GetConnectionID())
-
-	// if completed, then send the result to the client.
-	// otherwise the response will come asynchronously
-	if completed || err != nil {
-		err2 := c.SendResponse(msg.ThingID, msg.Name, output, err, msg.RequestID)
-		if err2 != nil {
-			slog.Error("ForwardAsRequest. Failed sending response to client",
-				"operation", msg.Operation,
-				"thingID", msg.ThingID,
-				"name", msg.Name,
-				"clientID", c.GetClientID(),
-				"connectionID", c.GetConnectionID(),
-				"requestID", msg.RequestID,
-				"err", err.Error(),
-			)
-		}
-	}
-}
-
-// HandleError forwards an error message to the sender
-func (c *WssServerConnection) HandleError(wssMsg *ErrorMessage) {
-	payload := wssMsg.Title + "\n" + wssMsg.Detail
-	msg := transports.NewThingMessage(
-		wot.HTOpPublishError, wssMsg.ThingID, wssMsg.Name, payload, c.clientID)
-	msg.RequestID = wssMsg.RequestID
-	msg.Timestamp = wssMsg.Timestamp
-	c.ForwardAsNotification(msg)
-}
 
 func (c *WssServerConnection) HandleObserveAllProperties(wssMsg *PropertyMessage) {
 	c.observations.SubscribeAll(wssMsg.ThingID)
@@ -62,8 +22,13 @@ func (c *WssServerConnection) HandleObserveProperty(wssMsg *PropertyMessage) {
 
 // HandlePing replies with pong to a ping message
 func (c *WssServerConnection) HandlePing(wssMsg *BaseMessage) {
-	pongMessage := *wssMsg
-	pongMessage.MessageType = MsgTypePong
+	// return an action response
+	pongMessage := ActionStatusMessage{
+		MessageType: MsgTypePong,
+		Output:      "pong",
+		Timestamp:   time.Now().Format(wot.RFC3339Milli),
+		RequestID:   wssMsg.RequestID,
+	}
 	c._send(pongMessage)
 }
 
@@ -103,8 +68,8 @@ func (c *WssServerConnection) Unmarshal(raw []byte, reply interface{}) error {
 }
 
 // WssServerHandleMessage handles an incoming websocket message from a client
+// This can be a consumer request, agent notifications or an agent response
 func (c *WssServerConnection) WssServerHandleMessage(raw []byte) {
-	var msg *transports.ThingMessage
 	baseMsg := BaseMessage{}
 
 	// the operation is needed to determine whether this is a request or send and forget message
@@ -125,90 +90,97 @@ func (c *WssServerConnection) WssServerHandleMessage(raw []byte) {
 	switch baseMsg.MessageType {
 
 	case MsgTypeActionStatus:
-		// hub receives an action result from an agent
-		// this will be forwarded to the consumer as a message
+		// hub receives an action status from an agent.
+		// this will be forwarded to the consumer as a response
 		wssMsg := ActionStatusMessage{}
 		_ = c.Unmarshal(raw, &wssMsg)
+		resp := transports.NewResponseMessage(wot.OpInvokeAction,
+			wssMsg.ThingID, wssMsg.Name, wssMsg.Output, nil, wssMsg.RequestID)
+		resp.Error = wssMsg.Error
+		resp.Status = wssMsg.Status // todo: convert from wss to global names
+		resp.Updated = wssMsg.TimeEnded
+		_ = c.responseHandler(resp)
 
-		msg = transports.NewThingMessage(
-			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Output, c.clientID)
-		msg.RequestID = wssMsg.RequestID
-		msg.MessageID = wssMsg.MessageID
-		msg.Timestamp = wssMsg.Timestamp
-		c.ForwardAsNotification(msg)
-
-	case // hub receives action messages from a consumer
+	case // hub receives action messages from a consumer. Forward as a request.
 		MsgTypeInvokeAction,
 		MsgTypeQueryAction,
 		MsgTypeQueryAllActions:
-		// map the message to a ThingMessage
+		// map the message to a RequestMessage
 		wssMsg := ActionMessage{}
 		_ = c.Unmarshal(raw, &wssMsg)
-		msg = transports.NewThingMessage(
-			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, c.clientID)
-		msg.RequestID = wssMsg.RequestID
-		msg.SenderID = c.GetClientID()
-		msg.Timestamp = wssMsg.Timestamp
-		c.ForwardAsRequest(msg)
+		req := transports.NewRequestMessage(
+			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, wssMsg.RequestID)
+		req.SenderID = c.GetClientID()
+		req.Created = wssMsg.Timestamp
+		_ = c.requestHandler(req, c.GetConnectionID())
 
-	case // hub receives event action messages
+	case // hub receives event request. Forward as request.
 		MsgTypeReadAllEvents,
-		//wssbinding.MsgTypeReadMultipleEvents,
-		MsgTypePublishEvent,
 		MsgTypeReadEvent:
-		// map the message to a ThingMessage
+		// map the message to a request
 		wssMsg := EventMessage{}
 		_ = c.Unmarshal(raw, &wssMsg)
-		msg = transports.NewThingMessage(
-			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, c.clientID)
-		msg.RequestID = wssMsg.RequestID
-		msg.Timestamp = wssMsg.Timestamp
-		if baseMsg.MessageType == MsgTypePublishEvent {
-			c.ForwardAsNotification(msg)
-		} else {
-			c.ForwardAsRequest(msg)
-		}
+		req := transports.NewRequestMessage(
+			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, wssMsg.RequestID)
+		req.SenderID = c.GetClientID()
+		req.Created = wssMsg.Timestamp
+		_ = c.requestHandler(req, c.GetConnectionID())
 
-	case // digital twin property messages
+	case // hub receives event notification. Forward as notification.
+		MsgTypePublishEvent:
+		// map the message to a request
+		wssMsg := EventMessage{}
+		_ = c.Unmarshal(raw, &wssMsg)
+		notif := transports.NewNotificationMessage(
+			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data)
+		notif.Created = wssMsg.Timestamp
+		c.notificationHandler(notif)
+
+	case // property requests. Forward as requests
 		MsgTypeReadAllProperties,
 		MsgTypeReadMultipleProperties,
 		MsgTypeReadProperty,
 		MsgTypeWriteMultipleProperties,
-		MsgTypeWriteProperty,
-		MsgTypePropertyReadings, // agent publishes properties update
-		MsgTypePropertyReading:  // agent publishes property update
+		MsgTypeWriteProperty:
 		// map the message to a ThingMessage
 		wssMsg := PropertyMessage{}
 		_ = c.Unmarshal(raw, &wssMsg)
 		// FIXME: readmultiple has an array of names
-		msg = transports.NewThingMessage(
-			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, c.clientID)
-		msg.RequestID = wssMsg.RequestID
-		msg.Timestamp = wssMsg.Timestamp
-		if wssMsg.MessageType == MsgTypePropertyReading ||
-			wssMsg.MessageType == MsgTypePropertyReadings {
-			c.ForwardAsNotification(msg)
-		} else {
-			c.ForwardAsRequest(msg)
-		}
+		req := transports.NewRequestMessage(
+			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, wssMsg.RequestID)
+		req.SenderID = c.GetClientID()
+		req.Created = wssMsg.Timestamp
+		_ = c.requestHandler(req, c.GetConnectionID())
+
+	case // agent response
+		MsgTypePropertyReadings, // agent response
+		MsgTypePropertyReading:  // agent response
+		// map the message to a ThingMessage
+		wssMsg := PropertyMessage{}
+		_ = c.Unmarshal(raw, &wssMsg)
+		// FIXME: readmultiple has an array of names
+		resp := transports.NewResponseMessage(
+			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, nil, wssMsg.RequestID)
+		resp.Updated = wssMsg.Timestamp
+		_ = c.responseHandler(resp)
+
 		// td messages
 	case MsgTypeReadTD:
 		wssMsg := TDMessage{}
 		_ = c.Unmarshal(raw, &wssMsg)
-		msg = transports.NewThingMessage(
-			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, c.clientID)
-		msg.RequestID = wssMsg.RequestID
-		msg.Timestamp = wssMsg.Timestamp
-		c.ForwardAsRequest(msg)
+		req := transports.NewRequestMessage(
+			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, wssMsg.RequestID)
+		req.SenderID = c.GetClientID()
+		req.Created = wssMsg.Timestamp
+		_ = c.requestHandler(req, c.GetConnectionID())
 
 	case MsgTypeUpdateTD:
 		wssMsg := TDMessage{}
 		_ = c.Unmarshal(raw, &wssMsg)
-		msg = transports.NewThingMessage(
-			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, c.clientID)
-		msg.RequestID = wssMsg.RequestID
-		msg.Timestamp = wssMsg.Timestamp
-		c.ForwardAsNotification(msg)
+		notif := transports.NewNotificationMessage(
+			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data)
+		notif.Created = wssMsg.Timestamp
+		c.notificationHandler(notif)
 
 	// subscriptions are handled inside this binding
 	case MsgTypeObserveAllProperties:
@@ -250,20 +222,26 @@ func (c *WssServerConnection) WssServerHandleMessage(raw []byte) {
 
 	// other messages handled inside this binding
 	case MsgTypeError:
-		// someone returned an error
+		// agent returned an error
 		wssMsg := ErrorMessage{}
 		_ = c.Unmarshal(raw, &wssMsg)
 		slog.Info("WSS Agent returned an error:",
 			"senderID", c.clientID,
 			"ThingID", wssMsg.ThingID,
 			"error", wssMsg.Title)
-		c.HandleError(&wssMsg)
+		resp := transports.NewResponseMessage(
+			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Detail, nil, wssMsg.RequestID)
+		resp.Updated = wssMsg.Timestamp
+		resp.Error = wssMsg.Title
+		_ = c.responseHandler(resp)
+
 	case MsgTypePing:
 		wssMsg := BaseMessage{}
 		_ = c.Unmarshal(raw, &wssMsg)
 		c.HandlePing(&wssMsg)
 
 	default:
+		// FIXME: a no-operation with requestID is a response
 		slog.Warn("_receive: unknown operation",
 			"messageType", baseMsg.MessageType)
 	}
