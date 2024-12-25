@@ -85,10 +85,14 @@ func NewForm(op string) td.Form {
 }
 
 // start the default transport server
-// This panics if the http server cannot be created
-func StartTransportServer() (
-	srv transports.ITransportServer, cancelFunc func(), cm *connections.ConnectionManager) {
+// This panics if the server cannot be created
+func StartTransportServer(
+	rqh transports.ServerRequestHandler,
+	rph transports.ServerResponseHandler,
+	nth transports.ServerNotificationHandler) (
 
+	srv transports.ITransportServer, cancelFunc func(), cm *connections.ConnectionManager) {
+	var err error
 	caCert := certBundle.CaCert
 	serverCert := certBundle.ServerCert
 	cm = connections.NewConnectionManager()
@@ -98,26 +102,36 @@ func StartTransportServer() (
 	var httpTransportServer *httpserver.HttpTransportServer
 
 	switch defaultProtocol {
-	case transports.ProtocolTypeHTTPS, transports.ProtocolTypeSSESC, transports.ProtocolTypeWSS:
-		// Start the HTTP binding with SSE-SC and WS sub-protocols
-		var err error
+	case transports.ProtocolTypeHTTPS:
+		// http only, no subprotocol bindings
 		httpTransportServer, err = httpserver.StartHttpTransportServer(
-			"localhost", testServerHttpPort, serverCert, caCert, authenticator, cm)
-		if err != nil {
-			panic("Unable to create protocol server: " + err.Error())
-		}
-		if defaultProtocol == transports.ProtocolTypeSSESC {
-			transportServer = ssescserver.StartSseScTransportServer("", cm, httpTransportServer)
+			"localhost", testServerHttpPort, serverCert, caCert, authenticator, cm,
+			rqh, rph, nth)
 
-		} else if defaultProtocol == transports.ProtocolTypeWSS {
-			transportServer = wssserver.StartWssTransportServer("", cm, httpTransportServer)
-		} else {
-			// http only, no subprotocol bindings
-			transportServer = httpTransportServer
-		}
-		//transportServer.SetRequestHandler(cm.AddConnection)
-		//transportServer.SetMessageHandler(cm.AddConnection)
+	case transports.ProtocolTypeSSESC:
+		httpTransportServer, err = httpserver.StartHttpTransportServer(
+			"localhost", testServerHttpPort, serverCert, caCert, authenticator, cm,
+			rqh, rph, nth)
+		transportServer = ssescserver.StartSseScTransportServer("", cm, httpTransportServer)
+
+	case transports.ProtocolTypeWSS:
+		httpTransportServer, err = httpserver.StartHttpTransportServer(
+			"localhost", testServerHttpPort, serverCert, caCert, authenticator, cm,
+			// FIXME: add handlers
+			nil, nil, nil)
+		transportServer = wssserver.StartWssTransportServer(
+			"", cm, httpTransportServer,
+			rqh, rph, nth)
+	default:
+		err = errors.New("unknown protocol name: " + defaultProtocol)
 	}
+
+	if err != nil {
+		panic("Unable to create protocol server: " + err.Error())
+	}
+	//transportServer.SetRequestHandler(cm.AddConnection)
+	//transportServer.SetMessageHandler(cm.AddConnection)
+
 	return transportServer, func() {
 		if transportServer != nil {
 			transportServer.Stop()
@@ -128,21 +142,20 @@ func StartTransportServer() (
 	}, cm
 }
 
-func DummyRequestHandler(request *transports.RequestMessage, replyTo string) (
-	response transports.ResponseMessage) {
-
-	slog.Info("DummyRequestHandler: Received request", "op", request.Operation)
-	return request.CreateResponse(transports.StatusCompleted, "result", nil)
-}
-func DummyNotificationHandler(notification *transports.NotificationMessage) {
+func DummyNotificationHandler(notification transports.NotificationMessage) {
 
 	slog.Info("DummyNotificationHandler: Received notification", "op", notification.Operation)
 	//replyTo.SendResponse(msg.ThingID, msg.Name, "result", msg.RequestID)
 }
-func DummyResponseHandler(response *transports.ResponseMessage) {
+func DummyRequestHandler(request transports.RequestMessage, replyTo string) transports.ResponseMessage {
+
+	slog.Info("DummyRequestHandler: Received request", "op", request.Operation)
+	return request.CreateResponse(transports.StatusCompleted, "result", nil)
+}
+func DummyResponseHandler(response transports.ResponseMessage) error {
 
 	slog.Info("DummyResponse: Received request", "op", response.Operation)
-	//replyTo.SendResponse(msg.ThingID, msg.Name, "result", msg.RequestID)
+	return nil
 }
 
 // TestMain sets logging
@@ -171,7 +184,7 @@ func TestLoginRefresh(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	const thingID1 = "thing1"
 
-	srv, cancelFn, _ := StartTransportServer(DummyMessageHandler)
+	srv, cancelFn, _ := StartTransportServer(nil, nil, nil)
 	defer cancelFn()
 	cl1 := NewConsumer(testClientID1, srv.GetForm)
 	defer cl1.Disconnect()
@@ -217,7 +230,7 @@ func TestLoginRefresh(t *testing.T) {
 
 func TestLogout(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
-	srv, cancelFn, _ := StartTransportServer(DummyMessageHandler)
+	srv, cancelFn, _ := StartTransportServer(DummyRequestHandler, DummyResponseHandler, DummyNotificationHandler)
 	defer cancelFn()
 
 	// check if this test still works with a valid login
@@ -239,7 +252,7 @@ func TestLogout(t *testing.T) {
 
 func TestBadLogin(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
-	srv, cancelFn, _ := StartTransportServer(DummyMessageHandler)
+	srv, cancelFn, _ := StartTransportServer(DummyRequestHandler, DummyResponseHandler, DummyNotificationHandler)
 	defer cancelFn()
 
 	cl1 := NewConsumer(testClientID1, srv.GetForm)
@@ -274,7 +287,7 @@ func TestBadLogin(t *testing.T) {
 
 func TestBadRefresh(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
-	srv, cancelFn, _ := StartTransportServer(DummyMessageHandler)
+	srv, cancelFn, _ := StartTransportServer(DummyRequestHandler, DummyResponseHandler, DummyNotificationHandler)
 	defer cancelFn()
 	cl1 := NewConsumer(testClientID1, srv.GetForm)
 	defer cl1.Disconnect()
@@ -321,25 +334,28 @@ func TestReconnect(t *testing.T) {
 
 	// this test handler receives an action and returns a 'delivered status',
 	// it is intended to prove reconnect works.
-	handleMessage := func(msg *transports.ThingMessage, replyTo string) (
-		handled bool, output any, err error) {
-		slog.Info("Received message", "op", msg.Operation)
+	handleRequest := func(req transports.RequestMessage, replyTo string) transports.ResponseMessage {
+		slog.Info("Received request", "op", req.Operation)
+		var err error
 		// prove that the return channel is connected
-		if msg.Operation == wot.OpInvokeAction {
+		if req.Operation == wot.OpInvokeAction {
 			go func() {
 				// send a asynchronous result after a fraction after returning 'delivered'
 				time.Sleep(time.Millisecond)
 				require.NotNil(t, replyTo)
-				output := msg.Data
+				output := req.Input
 				c := connMgr.GetConnectionByConnectionID(replyTo)
-				_ = c.SendResponse(msg.ThingID, msg.Name, output, nil, msg.RequestID)
+				resp := req.CreateResponse(transports.StatusCompleted, output, nil)
+				err = c.SendResponse(resp)
+				assert.NoError(t, err)
 			}()
-			return false, nil, nil
+			return req.CreateResponse(transports.StatusPending, nil, nil)
 		}
-		return true, nil, errors.New("Unexpected message")
+		err = errors.New("Unexpected request")
+		return req.CreateResponse(transports.StatusFailed, "", err)
 	}
 	// start the servers and connect as a client
-	srv, cancelFn, cm := StartTransportServer(handleMessage)
+	srv, cancelFn, cm := StartTransportServer(handleRequest, nil, nil)
 	connMgr = cm
 	defer cancelFn()
 
@@ -372,8 +388,8 @@ func TestReconnect(t *testing.T) {
 	// An RPC call is the ultimate test
 	var rpcArgs string = "rpc test"
 	var rpcResp string
-	// this client call receives the response from the handler above
-	err = cl1.SendRequest(wot.OpInvokeAction, dThingID, actionKey, &rpcArgs, &rpcResp)
+
+	err = cl1.Rpc(wot.OpInvokeAction, dThingID, actionKey, &rpcArgs, &rpcResp)
 	require.NoError(t, err)
 	assert.Equal(t, rpcArgs, rpcResp)
 
@@ -384,7 +400,7 @@ func TestReconnect(t *testing.T) {
 func TestPing(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 
-	srv, cancelFn, _ := StartTransportServer(DummyMessageHandler)
+	srv, cancelFn, _ := StartTransportServer(nil, nil, nil)
 	defer cancelFn()
 	cl1 := NewConsumer(testClientID1, srv.GetForm)
 	defer cl1.Disconnect()
@@ -393,7 +409,8 @@ func TestPing(t *testing.T) {
 	require.NoError(t, err)
 
 	var output any
-	err = cl1.SendRequest(wot.HTOpPing, "", "", nil, &output)
+	err = cl1.Rpc(wot.HTOpPing, "", "", nil, &output)
+	assert.Equal(t, "pong", output)
 	assert.NoError(t, err)
 }
 
@@ -401,7 +418,7 @@ func TestPing(t *testing.T) {
 func TestBadForm(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 
-	_, cancelFn, _ := StartTransportServer(DummyMessageHandler)
+	_, cancelFn, _ := StartTransportServer(nil, nil, nil)
 	defer cancelFn()
 
 	form := NewForm("badoperation")
@@ -412,7 +429,7 @@ func TestBadForm(t *testing.T) {
 func TestServerURL(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 
-	srv, cancelFn, _ := StartTransportServer(DummyMessageHandler)
+	srv, cancelFn, _ := StartTransportServer(nil, nil, nil)
 	defer cancelFn()
 	serverURL := srv.GetConnectURL()
 	_, err := url.Parse(serverURL)

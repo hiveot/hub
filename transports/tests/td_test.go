@@ -23,17 +23,13 @@ func TestPublishTDByAgent(t *testing.T) {
 	var evVal atomic.Value
 	var thingID = "thing1"
 
-	// handler of TDs on the server
-	handler1 := func(msg *transports.ThingMessage, replyTo string) (
-		handled bool, output any, err error) {
-		// event handlers do not reply
-		require.Empty(t, replyTo)
+	// notification handler of TDs on the server
+	notificationHandler := func(msg transports.NotificationMessage) {
 		evVal.Store(msg.Data)
-		return true, nil, nil
 	}
 
 	// 1. start the transport
-	srv, cancelFn, _ := StartTransportServer(handler1)
+	srv, cancelFn, _ := StartTransportServer(nil, nil, notificationHandler)
 	defer cancelFn()
 
 	// 2. connect as an agent
@@ -46,7 +42,8 @@ func TestPublishTDByAgent(t *testing.T) {
 	td1 := td.NewTD(thingID, "My gadget", DeviceTypeSensor)
 	td1JSON, _ := jsoniter.Marshal(td1)
 	// 4. agent publishes the TD
-	err = ag1.SendNotification(wot.HTOpUpdateTD, thingID, "", string(td1JSON))
+	notif1 := transports.NewNotificationMessage(wot.HTOpUpdateTD, thingID, "", string(td1JSON))
+	err = ag1.SendNotification(notif1)
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond * 10) // time to take effect
 
@@ -70,7 +67,7 @@ func TestAddForms(t *testing.T) {
 
 	// handler of TDs on the server
 	// 1. start the transport
-	_, cancelFn, _ := StartTransportServer(DummyMessageHandler)
+	_, cancelFn, _ := StartTransportServer(nil, nil, nil)
 	defer cancelFn()
 
 	// 2. Create a TD
@@ -92,18 +89,16 @@ func TestReadTD(t *testing.T) {
 	td1 := td.NewTD(thingID, "My gadget", DeviceTypeSensor)
 
 	// handler of TDs on the server
-	handler1 := func(msg *transports.ThingMessage, replyTo string) (
-		handled bool, output any, err error) {
-		output = td1
-		//replyTo.SendResponse(msg.ThingID, msg.Name, output, msg.RequestID)
-		return true, output, nil
+	requestHandler := func(msg transports.RequestMessage, replyTo string) transports.ResponseMessage {
+		resp := msg.CreateResponse(transports.StatusCompleted, td1, nil)
+		return resp
 	}
 
 	// 1. start the transport
-	srv, cancelFn, _ := StartTransportServer(handler1)
+	srv, cancelFn, _ := StartTransportServer(requestHandler, nil, nil)
 	defer cancelFn()
 
-	// 3. add forms
+	// 2. add forms
 	err := transportServer.AddTDForms(td1)
 	require.NoError(t, err)
 
@@ -116,16 +111,18 @@ func TestReadTD(t *testing.T) {
 
 	//td2, err := cl1.ReadTD(thingID)
 	var td2 td.TD
-	err = cl1.SendRequest(wot.HTOpReadTD, thingID, "", thingID, &td2)
+	// FIXME: this requires a request handler
+	err = cl1.Rpc(wot.HTOpReadTD, thingID, "", thingID, &td2)
 	require.NoError(t, err)
 	require.Equal(t, thingID, td2.ID)
 
 	// cl1 should receive update to published TD
 	var rxTD atomic.Bool
-	cl1.SetNotificationHandler(func(msg *transports.ThingMessage) {
+	cl1.SetNotificationHandler(func(msg transports.NotificationMessage) {
 		rxTD.Store(true)
 	})
-	srv.SendNotification(wot.HTOpUpdateTD, thingID, "", td2)
+	notif1 := transports.NewNotificationMessage(wot.HTOpUpdateTD, thingID, "", td2)
+	srv.SendNotification(notif1)
 	time.Sleep(time.Millisecond * 10)
 	assert.True(t, rxTD.Load())
 }

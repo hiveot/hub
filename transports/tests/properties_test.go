@@ -27,7 +27,7 @@ func TestObservePropertyByConsumer(t *testing.T) {
 	var propValue2 = "value2"
 
 	// 1. start the server
-	srv, cancelFn, cm := StartTransportServer(DummyMessageHandler)
+	srv, cancelFn, cm := StartTransportServer(nil, nil, nil)
 	defer cancelFn()
 
 	// 2. connect with two consumers
@@ -41,10 +41,10 @@ func TestObservePropertyByConsumer(t *testing.T) {
 	defer cl2.Disconnect()
 
 	// set the handler for property updates and subscribe
-	cl1.SetNotificationHandler(func(ev *transports.ThingMessage) {
+	cl1.SetNotificationHandler(func(ev transports.NotificationMessage) {
 		rxVal1.Store(ev.Data)
 	})
-	cl2.SetNotificationHandler(func(ev *transports.ThingMessage) {
+	cl2.SetNotificationHandler(func(ev transports.NotificationMessage) {
 		rxVal2.Store(ev.Data)
 	})
 
@@ -56,7 +56,9 @@ func TestObservePropertyByConsumer(t *testing.T) {
 	time.Sleep(time.Millisecond) // time to take effect
 
 	// 3. Server sends a property update to consumers
-	cm.PublishProperty(thingID, propertyKey1, propValue1, "", testAgentID1)
+	notif1 := transports.NewNotificationMessage(
+		wot.HTOpUpdateProperty, thingID, propertyKey1, propValue1)
+	cm.PublishNotification(notif1)
 
 	// 4. both observers should have received it
 	time.Sleep(time.Millisecond)
@@ -69,8 +71,12 @@ func TestObservePropertyByConsumer(t *testing.T) {
 	time.Sleep(time.Millisecond * 10) // time to take effect
 
 	// 6. Server sends a property update to consumers
-	cm.PublishProperty(thingID, propertyKey1, propValue2, "", testAgentID1)
-	cm.PublishProperty(thingID, propertyKey2, propValue2, "", testAgentID1)
+	notif2 := transports.NewNotificationMessage(
+		wot.HTOpUpdateProperty, thingID, propertyKey1, propValue2)
+	cm.PublishNotification(notif2)
+	notif3 := transports.NewNotificationMessage(
+		wot.HTOpUpdateProperty, thingID, propertyKey2, propValue2)
+	cm.PublishNotification(notif3)
 
 	// 7. property should not have been received
 	time.Sleep(time.Millisecond * 10)
@@ -80,7 +86,9 @@ func TestObservePropertyByConsumer(t *testing.T) {
 	// 8. client 2 unobserves
 	err = cl2.UnobserveProperty("", "")
 	time.Sleep(time.Millisecond * 10)
-	cm.PublishProperty(thingID, propertyKey2, propValue1, "", testAgentID1)
+	notif4 := transports.NewNotificationMessage(
+		wot.HTOpUpdateProperty, thingID, propertyKey2, propValue1)
+	cm.PublishNotification(notif4)
 	// no change is expected
 	assert.Equal(t, propValue2, rxVal2.Load())
 
@@ -97,16 +105,12 @@ func TestPublishPropertyByAgent(t *testing.T) {
 	var propValue1 = "value1"
 
 	// handler of property updates on the server
-	handler1 := func(msg *transports.ThingMessage, replyTo string) (
-		handled bool, output any, err error) {
-		// event handlers do not reply
-		require.Empty(t, replyTo)
+	notificationHandler := func(msg transports.NotificationMessage) {
 		evVal.Store(msg.Data)
-		return true, nil, nil
 	}
 
 	// 1. start the transport
-	srv, cancelFn, _ := StartTransportServer(handler1)
+	srv, cancelFn, _ := StartTransportServer(nil, nil, notificationHandler)
 	defer cancelFn()
 
 	// 2. connect as an agent
@@ -116,7 +120,8 @@ func TestPublishPropertyByAgent(t *testing.T) {
 	defer ag1.Disconnect()
 
 	// 3. agent publishes a property update
-	err = ag1.SendNotification(wot.HTOpUpdateProperty, thingID, propKey1, propValue1)
+	notif1 := transports.NewNotificationMessage(wot.HTOpUpdateProperty, thingID, propKey1, propValue1)
+	err = ag1.SendNotification(notif1)
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond) // time to take effect
 

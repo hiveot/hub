@@ -25,7 +25,7 @@ func TestSubscribeAllByConsumer(t *testing.T) {
 	var eventKey = "event11"
 
 	// 1. start the servers
-	srv, cancelFn, cm := StartTransportServer(DummyMessageHandler)
+	srv, cancelFn, cm := StartTransportServer(nil, nil, nil)
 	defer cancelFn()
 
 	// 2. connect as consumers
@@ -42,7 +42,7 @@ func TestSubscribeAllByConsumer(t *testing.T) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), time.Minute)
 	defer cancelFn()
 
-	cl1.SetNotificationHandler(func(ev *transports.ThingMessage) {
+	cl1.SetNotificationHandler(func(ev transports.NotificationMessage) {
 		// receive event
 		rxVal.Store(ev.Data)
 		cancelFn()
@@ -56,7 +56,8 @@ func TestSubscribeAllByConsumer(t *testing.T) {
 
 	// 3. Server sends event to consumers
 	time.Sleep(time.Millisecond * 10)
-	cm.PublishEvent(thingID, eventKey, testMsg1, "", testAgentID1)
+	notif1 := transports.NewNotificationMessage(wot.HTOpEvent, thingID, eventKey, testMsg1)
+	cm.PublishNotification(notif1)
 
 	// 4. subscriber should have received them
 	<-ctx.Done()
@@ -70,7 +71,8 @@ func TestSubscribeAllByConsumer(t *testing.T) {
 	err = cl2.Unsubscribe(thingID, eventKey)
 
 	// 5. Server sends another event to consumers
-	cm.PublishEvent(thingID, eventKey, testMsg2, "", testAgentID1)
+	notif2 := transports.NewNotificationMessage(wot.HTOpEvent, thingID, eventKey, testMsg2)
+	cm.PublishNotification(notif2)
 	// update not received
 	assert.Equal(t, testMsg1, rxVal.Load(), "Unsubscribe didnt work")
 
@@ -87,17 +89,13 @@ func TestPublishEventsByAgent(t *testing.T) {
 	var thingID = "thing1"
 	var eventKey = "event11"
 
-	// handler of events on the server
-	handler1 := func(msg *transports.ThingMessage, replyTo string) (
-		handled bool, output any, err error) {
-		// event handlers do not reply
-		require.Empty(t, replyTo)
+	// handler of event notification on the server
+	notificationHandler := func(msg transports.NotificationMessage) {
 		evVal.Store(msg.Data)
-		return true, nil, nil
 	}
 
 	// 1. start the transport
-	srv, cancelFn, _ := StartTransportServer(handler1)
+	srv, cancelFn, _ := StartTransportServer(nil, nil, notificationHandler)
 	defer cancelFn()
 
 	// 2. connect as an agent
@@ -107,7 +105,8 @@ func TestPublishEventsByAgent(t *testing.T) {
 	defer ag1.Disconnect()
 
 	// 3. agent publishes an event
-	err = ag1.SendNotification(wot.HTOpPublishEvent, thingID, eventKey, testMsg)
+	notif := transports.NewNotificationMessage(wot.HTOpEvent, thingID, eventKey, testMsg)
+	err = ag1.SendNotification(notif)
 	time.Sleep(time.Millisecond) // time to take effect
 	require.NoError(t, err)
 
