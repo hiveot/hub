@@ -124,7 +124,7 @@ func TestAutomaticProvisioning(t *testing.T) {
 
 	// token should be used to connect
 	srvURL := ts.GetServerURL(authn.ClientTypeAgent)
-	ag1 := clients.NewHubClient(srvURL, device1ID, ts.Certs.CaCert)
+	ag1 := clients.NewTransportClient(srvURL, device1ID, ts.Certs.CaCert)
 	//ag1.SetRetryConnect(false)
 	newToken, err := ag1.ConnectWithToken(token1)
 	require.NotEmpty(t, newToken)

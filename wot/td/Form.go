@@ -10,7 +10,7 @@ import "log/slog"
 type Form map[string]any
 
 // GetHRef returns the form's href field
-func (f Form) GetHRef() (string, bool) {
+func (f Form) GetHRef() (href string, found bool) {
 	val, found := f["href"]
 	if val != nil {
 		return val.(string), found
@@ -29,12 +29,17 @@ func (f Form) GetOperation() string {
 }
 
 // GetMethodName returns the form's HTTP "htv:methodName" field
-func (f Form) GetMethodName() (string, bool) {
+func (f Form) GetMethodName() (method string, found bool) {
 	val, found := f["htv:methodName"]
 	if val != nil {
 		return val.(string), found
 	}
 	return "", found
+}
+
+// SetMethodName sets the form's HTTP "htv:methodName" field
+func (f Form) SetMethodName(method string) {
+	f["htv:methodName"] = method
 }
 
 func NewForm(operation string, href string) Form {

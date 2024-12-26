@@ -3,6 +3,7 @@ package session
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/teris-io/shortid"
 	"log/slog"
 	"net/http"
@@ -27,17 +28,25 @@ func AddSessionToContext(sm *WebSessionManager) func(next http.Handler) http.Han
 			// get the current connection object
 			cs, clientID, cid, authToken, err := sm.GetSessionFromCookie(r)
 			if err != nil {
-				slog.Warn("AddSessionToContext: No valid authentication. Redirect to login.",
-					slog.String("remoteAdd", r.RemoteAddr),
-					slog.String("url", r.URL.String()))
+				//slog.Warn("AddSessionToContext: No valid authentication. Redirect to login.",
+				//	slog.String("remoteAdd", r.RemoteAddr),
+				//	slog.String("path", r.URL.String()))
+
+				// set retry to a large number
+				// see https://javascript.info/server-sent-events#reconnection
+				errMsg := fmt.Sprintf("retry: %s\nevent:%s\n\n",
+					"10000", "logout")
+				http.Error(w, errMsg, http.StatusUnauthorized)
+				w.(http.Flusher).Flush()
 				time.Sleep(time.Second)
-				SessionLogout(w, r)
 				return
 			}
 			if cs != nil {
 				if !cs.IsActive() {
+					// this should normally not happen unless logout is called
 					slog.Error("Session available but it is disconnected from the hub")
 					http.Error(w, "session has no hub connection", http.StatusInternalServerError)
+					// this should normally not happening unless logout is called
 					return
 				}
 				// active session exists. make it available in the context

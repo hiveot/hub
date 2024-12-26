@@ -3,10 +3,11 @@ package directory
 import (
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/api/go/digitwin"
-	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
+	"github.com/hiveot/hub/transports/tputils"
+	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 	"net/http"
 )
@@ -44,7 +45,7 @@ func RenderConfirmDeleteTD(w http.ResponseWriter, r *http.Request) {
 	data := ConfirmDeleteTDTemplateData{
 		ThingID:            thingID,
 		TD:                 &td,
-		SubmitDeleteTDPath: utils.Substitute(src.DeleteThingPath, tdParams),
+		SubmitDeleteTDPath: tputils.Substitute(src.DeleteThingPath, tdParams),
 	}
 	buff, err := app.RenderAppOrFragment(r, RenderConfirmDeleteTDTemplate, data)
 	sess.WritePage(w, buff, err)

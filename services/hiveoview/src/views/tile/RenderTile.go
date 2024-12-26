@@ -1,12 +1,14 @@
 package tile
 
 import (
-	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"github.com/hiveot/hub/services/hiveoview/src/views/history"
+	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot/consumedthing"
+	"github.com/hiveot/hub/wot/td"
 	"net/http"
 	"time"
 )
@@ -57,13 +59,15 @@ func (d RenderTileTemplateData) GetValue(thingID string, name string) (iout *con
 	var updated string
 	ct, _ := d.cts.Consume(thingID)
 	if ct == nil {
+		// FIXME: is this a property, event or action value?
 		// Thing not found. return a dummy interaction output with a non-schema
-		iout = consumedthing.NewInteractionOutput(
-			thingID, name, nil, nil, "")
-		iout.Value = consumedthing.NewDataSchemaValue("n/a")
-		return iout
+		tdi := td.NewTD(thingID, "unknown", vocab.ThingDevice)
+		dummy := consumedthing.NewInteractionOutput(
+			tdi, consumedthing.AffordanceTypeProperty, name, nil, "")
+		dummy.Value = consumedthing.NewDataSchemaValue("n/a")
+		return dummy
 	}
-	td := ct.GetThingDescription()
+	tdi := ct.GetThingDescription()
 	// assume this is an event
 	iout = ct.ReadEvent(name)
 	if iout == nil {
@@ -78,7 +82,7 @@ func (d RenderTileTemplateData) GetValue(thingID string, name string) (iout *con
 	}
 
 	// if name is also an action with an input schema, then get this schema with the event/prop value
-	actionAff := td.GetAction(name)
+	actionAff := tdi.GetAction(name)
 	if actionAff != nil && actionAff.Input != nil {
 		if iout != nil && iout.Schema.Type != actionAff.Input.Type {
 			// FIXME: rawValue must be of the same type as the action input otherwise
@@ -86,7 +90,7 @@ func (d RenderTileTemplateData) GetValue(thingID string, name string) (iout *con
 			//  until a recovery solution is known.
 		}
 		iout = consumedthing.NewInteractionOutput(
-			thingID, name, actionAff.Input, rawValue, updated)
+			tdi, consumedthing.AffordanceTypeAction, name, rawValue, updated)
 	}
 	return iout
 }
@@ -133,10 +137,10 @@ func RenderTile(w http.ResponseWriter, r *http.Request) {
 	pathArgs := map[string]string{"dashboardID": ctc.dashboardID, "tileID": ctc.tileID}
 	data := RenderTileTemplateData{
 		Tile:                        ctc.tile,
-		RenderEditTilePath:          utils.Substitute(src.RenderTileEditPath, pathArgs),
-		RenderConfirmDeleteTilePath: utils.Substitute(src.RenderTileConfirmDeletePath, pathArgs),
-		ReRenderTilePath:            utils.Substitute(src.RenderTilePath, pathArgs),
-		TileUpdatedEvent:            utils.Substitute(src.TileUpdatedEvent, pathArgs),
+		RenderEditTilePath:          tputils.Substitute(src.RenderTileEditPath, pathArgs),
+		RenderConfirmDeleteTilePath: tputils.Substitute(src.RenderTileConfirmDeletePath, pathArgs),
+		ReRenderTilePath:            tputils.Substitute(src.RenderTilePath, pathArgs),
+		TileUpdatedEvent:            tputils.Substitute(src.TileUpdatedEvent, pathArgs),
 		cts:                         sess.GetConsumedThingsDirectory(),
 	}
 	buff, err := app.RenderAppOrFragment(r, RenderTileTemplate, data)

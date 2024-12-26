@@ -94,14 +94,14 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 		sess.WriteError(w, err, http.StatusBadRequest)
 		return
 	}
-
+	tdi := ct.GetThingDescription()
 	data := ActionRequestTemplateData{
 		ThingID: thingID,
 		Name:    name,
 		Action:  actionAff,
 		CT:      ct,
 		InputValue: consumedthing.NewInteractionOutput(
-			thingID, name, actionAff.Input, nil, ""),
+			tdi, consumedthing.AffordanceTypeAction, name, nil, ""),
 		Description: actionAff.Description,
 	}
 	if data.Description == "" {

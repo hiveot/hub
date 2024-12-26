@@ -14,26 +14,28 @@ import (
 // back to a reply message, if any.
 // The main entry point is the HandleMessage function.
 type AuthzAgent struct {
-	hc           transports.IClientConnection
+	hc           transports.IAgentConnection
 	svc          *AuthzService
 	adminHandler transports.RequestHandler
 	userHandler  transports.RequestHandler
 }
 
 // HandleAction authz service action handler
-func (agent *AuthzAgent) HandleAction(msg *transports.ThingMessage) (output any, err error) {
+func (agent *AuthzAgent) HandleAction(
+	req transports.RequestMessage) (resp transports.ResponseMessage) {
 
 	// if the message has an authn agent prefix then remove it.
 	// This can happen if invoked directly through an embedded client
-	_, thingID := td.SplitDigiTwinThingID(msg.ThingID)
+	_, thingID := td.SplitDigiTwinThingID(req.ThingID)
 	if thingID == authz.AdminServiceID {
-		output, err = agent.adminHandler(msg)
+		resp = agent.adminHandler(req)
 	} else if thingID == authz.UserServiceID {
-		output, err = agent.userHandler(msg)
+		resp = agent.userHandler(req)
 	} else {
-		err = fmt.Errorf("unknown authz service capability '%s'", msg.ThingID)
+		err := fmt.Errorf("unknown authz service capability '%s'", req.ThingID)
+		resp = req.CreateResponse(nil, err)
 	}
-	return output, err
+	return resp
 }
 
 // HasPermission is a convenience function to check if the sender has permission

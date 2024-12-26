@@ -24,13 +24,13 @@ const timespanYear = timespanDay * 365
 //	DBSize #Things                      kvbtree (msec)    pebble (msec)     bbolt (msec)      pebble (msec)           pebble (msec)
 //	 10K      10    add 1K single (*)       2.5             4.7             4600/4600             6.0                    6.1           <- increase of 40% due to internal changes
 //	 10K      10    add 1K batch (*)        1.2             2.4               76/72               3.5                    3.5
-//	 10K      10    get 1K single         330/125         324/130            300/130            890     (!! ouch)      190
-//	 10K      10    get 1K batch          5.5/4.3           7                5.5/4.3             31     (!!)            15
+//	 10K      10    get 1K single         330/125         324/130            300/130            241     (!! ouch)      190
+//	 10K      10    get 1K batch          5.5/4.3           7                5.5/4.3             15     (!!)            15
 //
-//	100K      10    add 1K single (*)       2.9             4.3             4900/4900             5.6                    5.5
-//	100K      10    add 1K batch (*)        1.4             2.4               84/82               3.3                    3.1
-//	100K      10    get 1K single         340/130         320/128            325/130            890     (!! ouch)      190
-//	100K      10    get 1K batch          6.0/4.2           7                5.2/4.3             32                     16
+//	100K      10    add 1K single (*)       2.9             4.3             4900/4900             5.8                    5.5
+//	100K      10    add 1K batch (*)        1.4             2.4               84/82               3.4                    3.1
+//	100K      10    get 1K single         340/130         320/128            325/130            230     (!! ouch)      190
+//	100K      10    get 1K batch          6.0/4.2           7                5.2/4.3             15                     16
 //
 //	  1M     100    add 1K single (*)       2.9             5.7             5500
 //	  1M     100    add 1K batch (*)        1.4             3.1              580

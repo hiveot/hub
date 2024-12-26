@@ -18,11 +18,11 @@ import (
 type HttpTransportServer struct {
 
 	// registered handler of received notifications (sent by agents)
-	handleNotification transports.ServerNotificationHandler
+	serverNotificationHandler transports.ServerNotificationHandler
 	// registered handler of requests (which return a reply)
-	handleRequest transports.ServerRequestHandler
+	serverRequestHandler transports.ServerRequestHandler
 	// registered handler of responses (which sends a reply to the request sender)
-	handleResponse transports.ServerResponseHandler
+	serverResponseHandler transports.ServerResponseHandler
 
 	// TLS server and router
 	httpServer *tlsserver.TLSServer
@@ -185,11 +185,14 @@ func (svc *HttpTransportServer) writeReply(
 //
 // Call stop to end the transport server.
 //
-//	config
-//	privKey
-//	caCert
-//	sessionAuth for creating and validating authentication tokens
-//	dtwService that handles digital thing requests
+//	host, port with the server listening address (or "") and port
+//	serverCert: the TLS certificate of this server
+//	caCert: the CA public certificate that signed the server cert
+//	authenticator: plugin to authenticate requests
+//	cm: handler of new incoming connections
+//	serverRequestHandler: handler of incoming requests from clients
+//	serverResponseHandler: handler of incoming response from agents
+//	serverNotificationHandler: handler if incoming notifications from agents
 func StartHttpTransportServer(host string, port int,
 	serverCert *tls.Certificate,
 	caCert *x509.Certificate,
@@ -207,7 +210,11 @@ func StartHttpTransportServer(host string, port int,
 	svc := HttpTransportServer{
 		authenticator: authenticator,
 
-		//ws: wssserver.NewWssTransportServer(cm, handleRequest, wssURL),
+		serverRequestHandler:      handleRequest,
+		serverResponseHandler:     handleResponse,
+		serverNotificationHandler: handleNotification,
+
+		//ws: wssserver.NewWssTransportServer(cm, serverRequestHandler, wssURL),
 		//sse:   ssescserver.NewSseScTransportServer(cm),
 		//ssesc: ssescserver.NewSseScTransportServer(cm),
 

@@ -34,7 +34,7 @@ func TestActionFlow(t *testing.T) {
 	require.NoError(t, err)
 
 	// update the action
-	err = dtwStore.UpdateActionStart(
+	err = dtwStore.NewActionStart(
 		dThingID, actionName, actionValue, msgID, consumerID)
 	require.NoError(t, err)
 
@@ -116,14 +116,14 @@ func TestInvokeActionErrors(t *testing.T) {
 	require.NoError(t, err)
 
 	// invoke the action with the wrong thing
-	err = dtwStore.UpdateActionStart(
+	err = dtwStore.NewActionStart(
 		"badThingID", actionName, actionValue, msgID, consumerID)
 	// disable this check for now as unknown thingIDs are still allowed.
 	// re-enable once all services are updated to publish their TD on startup.
 	//assert.Error(t, err)
 
 	// invoke the action with the wrong name
-	err = dtwStore.UpdateActionStart(
+	err = dtwStore.NewActionStart(
 		dThingID, "badName", actionValue, msgID, consumerID)
 	// same as above
 	//assert.Error(t, err)

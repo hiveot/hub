@@ -24,7 +24,7 @@ func TestPublishTDByAgent(t *testing.T) {
 	var thingID = "thing1"
 
 	// notification handler of TDs on the server
-	notificationHandler := func(msg transports.NotificationMessage) {
+	notificationHandler := func(agentID string, msg transports.NotificationMessage) {
 		evVal.Store(msg.Data)
 	}
 
@@ -90,7 +90,7 @@ func TestReadTD(t *testing.T) {
 
 	// handler of TDs on the server
 	requestHandler := func(msg transports.RequestMessage, replyTo string) transports.ResponseMessage {
-		resp := msg.CreateResponse(transports.StatusCompleted, td1, nil)
+		resp := msg.CreateResponse(td1, nil)
 		return resp
 	}
 

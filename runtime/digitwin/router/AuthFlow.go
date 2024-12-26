@@ -6,40 +6,37 @@ import (
 	"github.com/hiveot/hub/transports"
 )
 
-// HandleLogin converts the login operation into an authn service action
+// HandleLogin passes the request as an action to the authn service
 func (svc *DigitwinRouter) HandleLogin(
-	msg *transports.ThingMessage) (completed bool, output any, err error) {
+	req transports.RequestMessage) transports.ResponseMessage {
 
-	authnMsg := *msg
-	authnMsg.ThingID = authn.UserDThingID
-	authnMsg.Name = authn.UserLoginMethod
-
-	output, err = svc.authnAction(&authnMsg)
-	return true, output, err
+	// Data {login,password}
+	req.ThingID = authn.UserDThingID
+	req.Name = authn.UserLoginMethod
+	resp := svc.authnAction(req)
+	return resp
 }
 
-// HandleLoginRefresh converts the token refresh operation into an authn service action
+// HandleLoginRefresh passes the request as an action to the authn service
 func (svc *DigitwinRouter) HandleLoginRefresh(
-	msg *transports.ThingMessage) (completed bool, output any, err error) {
+	req transports.RequestMessage) transports.ResponseMessage {
 
-	authnMsg := *msg
-	authnMsg.ThingID = authn.UserDThingID
-	authnMsg.Name = authn.UserRefreshTokenMethod
+	// Data {oldToken}
+	req.ThingID = authn.UserDThingID
+	req.Name = authn.UserRefreshTokenMethod
 
-	output, err = svc.authnAction(&authnMsg)
-	return true, output, err
+	resp := svc.authnAction(req)
+	return resp
 }
 
 // HandleLogout converts the logout operation into an authn service action
 // and closes all connections from the sender.
 func (svc *DigitwinRouter) HandleLogout(
-	msg *transports.ThingMessage) (completed bool, output any, err error) {
+	req transports.RequestMessage) transports.ResponseMessage {
 
-	authnMsg := *msg
-	authnMsg.ThingID = authn.UserDThingID
-	authnMsg.Name = authn.UserLogoutMethod
-
-	_, err = svc.authnAction(&authnMsg)
-	svc.cm.CloseAllClientConnections(msg.SenderID)
-	return true, nil, err
+	req.ThingID = authn.UserDThingID
+	req.Name = authn.UserLogoutMethod
+	resp := svc.authnAction(req)
+	svc.cm.CloseAllClientConnections(req.SenderID)
+	return resp
 }

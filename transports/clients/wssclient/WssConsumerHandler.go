@@ -10,6 +10,7 @@ import (
 
 // This file contains handlers for consumer messages.
 
+// Convert a Websocket message to the unified notification message
 func (cl *WssConsumerClient) wssToNotification(baseMsg wssserver.BaseMessage, raw []byte) (
 	isNotification bool, notif transports.NotificationMessage) {
 
@@ -43,6 +44,8 @@ func (cl *WssConsumerClient) wssToNotification(baseMsg wssserver.BaseMessage, ra
 	return isNotification, notif
 }
 
+// Convert a Websocket message to the unified response message
+// unified response messages carry the operation from the request.
 func (cl *WssConsumerClient) wssToResponse(baseMsg wssserver.BaseMessage, raw []byte) (
 	isResponse bool, resp transports.ResponseMessage) {
 
@@ -55,7 +58,7 @@ func (cl *WssConsumerClient) wssToResponse(baseMsg wssserver.BaseMessage, raw []
 		if wssMsg.Error != "" {
 			err = errors.New(wssMsg.Error)
 		}
-		resp = transports.NewResponseMessage(wot.HTOpActionStatus,
+		resp = transports.NewResponseMessage(wot.OpInvokeAction,
 			wssMsg.ThingID, wssMsg.Name, wssMsg.Output, err, baseMsg.RequestID)
 
 	case wssserver.MsgTypePong:
@@ -68,7 +71,7 @@ func (cl *WssConsumerClient) wssToResponse(baseMsg wssserver.BaseMessage, raw []
 		if err == nil {
 			err = errors.New(wssMsg.Title)
 		}
-		resp = transports.NewResponseMessage(wot.HTOpActionStatus,
+		resp = transports.NewResponseMessage(wot.OpInvokeAction,
 			wssMsg.ThingID, wssMsg.Name, wssMsg.Detail, err, baseMsg.RequestID)
 
 	case wssserver.MsgTypePropertyReading:
@@ -118,8 +121,8 @@ func (cl *WssConsumerClient) HandleWssMessage(baseMsg wssserver.BaseMessage, raw
 	case wssserver.MsgTypePublishEvent:
 	case wssserver.MsgTypeUpdateTD:
 		isNotification, notif := cl.wssToNotification(baseMsg, raw)
-		if isNotification && cl.AppNotificationHandler != nil {
-			cl.AppNotificationHandler(notif)
+		if isNotification {
+			cl.OnNotification(notif)
 		}
 
 	default:

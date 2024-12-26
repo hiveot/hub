@@ -25,7 +25,7 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 	newValue = valueStr
 	reply := ""
 
-	stat := transports.RequestStatus{}
+	stat := transports.ActionStatus{}
 	//
 	_, sess, err := session.GetSessionFromContext(r)
 	if err != nil {

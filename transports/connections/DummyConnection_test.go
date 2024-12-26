@@ -16,8 +16,8 @@ type DummyConnection struct {
 	observations  connections.Subscriptions
 	subscriptions connections.Subscriptions
 
-	SendNotificationHandler func(op, dThingID, name string, value any, requestID string)
-	SendRequestHandler      func(op, dThingID, name string, value any, requestID string) error
+	SendNotificationHandler transports2.ServerNotificationHandler
+	SendRequestHandler      transports2.ServerRequestHandler
 }
 
 func (c *DummyConnection) Disconnect() {}
@@ -43,12 +43,12 @@ func (c *DummyConnection) SendError(dThingID, name string, errResponse string, r
 		c.SendNotificationHandler(wot.HTOpPublishError, dThingID, name, errResponse, "")
 	}
 }
-func (c *DummyConnection) SendNotification(op, dThingID, name string, data any) {
-	if c.SendNotificationHandler != nil && c.subscriptions.IsSubscribed(dThingID, name) {
-		c.SendNotificationHandler(op, dThingID, name, data, "")
+func (c *DummyConnection) SendNotification(notif transports2.NotificationMessage) {
+	if c.SendNotificationHandler != nil && c.subscriptions.IsSubscribed(notif.ThingID, notif.Name) {
+		c.SendNotificationHandler(notif)
 	}
 }
-func (c *DummyConnection) SendRequest(msg transports2.ThingMessage) error {
+func (c *DummyConnection) SendRequest(msg transports2.RequestMessage) error {
 	if c.SendRequestHandler != nil && c.observations.IsSubscribed(msg.ThingID, msg.Name) {
 		return c.SendRequestHandler(msg.Operation, msg.ThingID, msg.Name, msg.Data, msg.RequestID)
 	}

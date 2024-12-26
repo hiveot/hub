@@ -2,6 +2,7 @@ package consumedthing
 
 import (
 	"github.com/araddon/dateparse"
+	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
@@ -73,9 +74,9 @@ func (iout *InteractionOutput) GetUpdated(format ...string) (updated string) {
 	return updated
 }
 
-// SetSchemaFromTD updates the dataschema fields in this interaction output.
+// setSchemaFromTD updates the dataschema fields in this interaction output.
 // This first looks for events, then property then action output
-func (io *InteractionOutput) SetSchemaFromTD(td *td.TD) (found bool) {
+func (io *InteractionOutput) setSchemaFromTD(td *td.TD) (found bool) {
 	// if name is that of an event then use it
 	eventAff, found := td.Events[io.Name]
 	if found {
@@ -118,7 +119,7 @@ func (io *InteractionOutput) SetSchemaFromTD(td *td.TD) (found bool) {
 		}
 		return true
 	}
-	slog.Warn("SetSchemaFromTD: value without schema in the TD",
+	slog.Warn("setSchemaFromTD: value without schema in the TD",
 		"thingID", io.ThingID, "name", io.Name)
 	return false
 }
@@ -129,35 +130,76 @@ func (io *InteractionOutput) SetSchemaFromTD(td *td.TD) (found bool) {
 // This determines the dataschema by looking for the schema in the events, properties and
 // actions (output) section of the TD.
 //
+// Intended for use with the digitwin Values service functions which return
+// a ThingValue object.
+//
 //	values is the property or event value map
 //	td Thing Description document with schemas for the value. Use nil if schema is unknown.
-func NewInteractionOutputFromValueList(values []transports.ThingMessage, td *td.TD) InteractionOutputMap {
+func NewInteractionOutputFromValueList(values []digitwin.ThingValue, td *td.TD) InteractionOutputMap {
 	ioMap := make(map[string]*InteractionOutput)
 	for _, tv := range values {
 		io := NewInteractionOutputFromValue(&tv, td)
 		// property values only contain completed changes.
 		io.Err = nil
-		io.SetSchemaFromTD(td)
+		io.setSchemaFromTD(td)
 		ioMap[tv.Name] = io
 
 	}
 	return ioMap
 }
 
-// NewInteractionOutputFromValue creates a new immutable interaction output from
-// a ThingValue and optionally its associated TD.
+// NewInteractionOutputFromMessage creates a new immutable interaction output from
+// a ThingMessage and optionally its associated TD.
 //
 // If no td is available, this value conversion will still be usable but it won't
 // contain any schema information.
 //
-//	tv contains the thingValue data
+// Intended for use when a property, or event value update is received from
+// a subscription.
+//
+// See also the digitwin Values Service, which provides a ThingValue result that
+// includes metadata such as a timestamp when it was last updated and who updated it.
+//
+//	tm contains the received ThingMessage data
 //	td is the associated thing description
-func NewInteractionOutputFromValue(tv *transports.ThingMessage, td *td.TD) *InteractionOutput {
+func NewInteractionOutputFromMessage(
+	msg *transports.ThingMessage, td *td.TD) *InteractionOutput {
+
+	io := &InteractionOutput{
+		ThingID:  td.ID,
+		Name:     msg.Name,
+		SenderID: msg.SenderID,
+		Updated:  msg.Timestamp,
+		Value:    NewDataSchemaValue(msg.Data),
+		Err:      nil,
+	}
+	if td == nil {
+		return io
+	}
+	io.ThingID = td.ID
+	io.setSchemaFromTD(td)
+	return io
+}
+
+// NewInteractionOutputFromValue creates a new immutable interaction output from
+// a ThingValue result and optionally its associated TD.
+//
+// If no td is available, this value conversion will still be usable but it won't
+// contain any schema information.
+//
+// Intended for use when a property, or event value update are read using the
+// digitwin service calls.
+//
+//	tv contains the received ThingValue data
+//	td is the associated thing description
+func NewInteractionOutputFromValue(
+	tv *digitwin.ThingValue, td *td.TD) *InteractionOutput {
+
 	io := &InteractionOutput{
 		ThingID:  td.ID,
 		Name:     tv.Name,
 		SenderID: tv.SenderID,
-		Updated:  tv.Timestamp,
+		Updated:  tv.Updated,
 		Value:    NewDataSchemaValue(tv.Data),
 		Err:      nil,
 	}
@@ -165,7 +207,7 @@ func NewInteractionOutputFromValue(tv *transports.ThingMessage, td *td.TD) *Inte
 		return io
 	}
 	io.ThingID = td.ID
-	io.SetSchemaFromTD(td)
+	io.setSchemaFromTD(td)
 	return io
 }
 
@@ -175,11 +217,11 @@ func NewInteractionOutputFromValue(tv *transports.ThingMessage, td *td.TD) *Inte
 // As events are used to update property values, this uses the message Name to
 // determine whether this is a property, event or action IO.
 //
-//	 thingID whose value is contained
-//		name is the interaction affordance name the output belongs to
-//		schema is the schema info for data, or nil if not known
-//		raw is the raw data
-//		created is the timestamp the data is created
+//	tdi TD instance whose output this is
+//	affType is one of AffordanceTypeAction, event or property
+//	name is the interaction affordance name the output belongs to
+//	raw is the raw data
+//	created is the timestamp the data is created
 func NewInteractionOutput(tdi *td.TD, affType string, name string, raw any, created string) *InteractionOutput {
 	var schema *td.DataSchema
 	switch affType {

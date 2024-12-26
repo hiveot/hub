@@ -3,7 +3,6 @@ package connections
 import (
 	"fmt"
 	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/wot"
 	"log/slog"
 	"slices"
 	"sync"
@@ -170,35 +169,19 @@ func (cm *ConnectionManager) GetNrConnections() (int, int) {
 	return len(cm.connectionsByConnectionID), len(cm.connectionsByClientID)
 }
 
-// PublishEvent broadcasts an event message to subscribers of this event.
-func (cm *ConnectionManager) PublishEvent(
-	dThingID string, name string, value any, requestID string, agentID string) {
+// PublishNotification broadcasts a notification to subscribers
+func (cm *ConnectionManager) PublishNotification(notif transports.NotificationMessage) {
 
-	slog.Debug("PublishEvent (to subscribers)",
-		slog.String("dThingID", dThingID),
-		slog.String("name", name),
-		slog.Any("value", value),
-		slog.String("agentID", agentID),
+	slog.Debug("PublishNotification (to subscribers/observers)",
+		slog.String("Operation", notif.Operation),
+		slog.String("dThingID", notif.ThingID),
+		slog.String("name", notif.Name),
+		slog.Any("value", notif.Data),
 	)
 	// FIXME: invoke the servers instead as the subscription mechanism
 	// is determined by the server (like MQTT)
 	cm.ForEachConnection(func(c transports.IServerConnection) {
-		c.SendNotification(wot.HTOpPublishEvent, dThingID, name, value)
-	})
-}
-
-// PublishProperty broadcasts a property update to observers of this property.
-func (cm *ConnectionManager) PublishProperty(
-	dThingID string, name string, value any, requestID string, agentID string) {
-
-	slog.Debug("PublishProperty (to subscribers)",
-		slog.String("dThingID", dThingID),
-		slog.String("name", name),
-		slog.Any("value", value),
-		slog.String("agentID", agentID),
-	)
-	cm.ForEachConnection(func(c transports.IServerConnection) {
-		c.SendNotification(wot.HTOpUpdateProperty, dThingID, name, value)
+		c.SendNotification(notif)
 	})
 }
 

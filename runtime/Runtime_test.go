@@ -1,6 +1,7 @@
 package runtime_test
 
 import (
+	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/vocab"
@@ -37,6 +38,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestStartStop(t *testing.T) {
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	r := startRuntime()
 	r.Stop()
 	//time.Sleep(time.Millisecond * 100)
@@ -44,7 +46,7 @@ func TestStartStop(t *testing.T) {
 
 func TestLogin(t *testing.T) {
 	const clientID = "user1"
-	t.Log("--- TestLogin start ---")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 
 	r := startRuntime()
 	cl, token := ts.AddConnectConsumer(clientID, authz.ClientRoleManager)
@@ -64,12 +66,12 @@ func TestLogin(t *testing.T) {
 
 // test many connections from a single client and confirm they open close and receive messages properly.
 func TestMultiConnectSingleClient(t *testing.T) {
-	t.Log("--- TestMultiConnectSingleClient start ---")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	const clientID1 = "user1"
 	const agentID = "agent1"
 	const testConnections = int32(100)
 	const eventName = "event1"
-	var clients = make([]transports.IClientConnection, 0)
+	var clients = make([]transports.IConsumerConnection, 0)
 	var connectCount atomic.Int32
 	var disConnectCount atomic.Int32
 	var messageCount atomic.Int32
@@ -88,14 +90,18 @@ func TestMultiConnectSingleClient(t *testing.T) {
 			disConnectCount.Add(1)
 		}
 	}
-	onMessage := func(msg *transports.ThingMessage) {
+	//onRequest := func(req *transports.RequestMessage) transports.ResponseMessage {
+	//	messageCount.Add(1)
+	//	return req.CreateResponse()
+	//}
+	onNotification := func(msg transports.NotificationMessage) {
 		messageCount.Add(1)
 	}
 	// 2: connect and subscribe clients and verify
 	for range testConnections {
 		cl := ts.GetConnection(clientID1, ts.ConsumerProtocol)
 		cl.SetConnectHandler(onConnection)
-		cl.SetNotificationHandler(onMessage)
+		cl.SetNotificationHandler(onNotification)
 		token, err := cl.ConnectWithToken(token1)
 		require.NoError(t, err)
 		// allow server to register its connection
@@ -110,7 +116,8 @@ func TestMultiConnectSingleClient(t *testing.T) {
 	require.Equal(t, testConnections, connectCount.Load(), "connect count mismatch")
 
 	// 3: agent publishes an event, which should be received N times
-	err := ag1.SendNotification(wot.HTOpPublishEvent, td1.ID, eventName, "a value")
+	err := ag1.SendNotification(transports.NewNotificationMessage(
+		wot.HTOpEvent, td1.ID, eventName, "a value"))
 	//err := ag1.PubEvent(td1.ID, eventName, "a value", "message1")
 	require.NoError(t, err)
 
@@ -129,7 +136,8 @@ func TestMultiConnectSingleClient(t *testing.T) {
 
 	// 5: no more messages should be received after disconnecting
 	messageCount.Store(0)
-	err = ag1.SendNotification(wot.HTOpPublishEvent, td1.ID, eventName, "a value")
+	err = ag1.SendNotification(transports.NewNotificationMessage(
+		wot.HTOpEvent, td1.ID, eventName, "a value"))
 	require.NoError(t, err)
 	ag1.Disconnect()
 
@@ -145,13 +153,13 @@ func TestMultiConnectSingleClient(t *testing.T) {
 }
 
 func TestActionWithDeliveryConfirmation(t *testing.T) {
-	t.Log("TestActionWithDeliveryConfirmation")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	const agentID = "agent1"
 	const userID = "user1"
 	const actionID = "action-1" // match the test TD action
 	var actionPayload = "payload1"
 	var expectedReply = actionPayload + ".reply"
-	var rxMsg *transports.ThingMessage
+	var rxMsg transports.RequestMessage
 
 	r := startRuntime()
 	defer r.Stop()
@@ -170,16 +178,16 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	defer cl1.Disconnect()
 
 	// Agent receives action request which we'll handle here
-	agentRequestHandler := func(msg *transports.ThingMessage) (output any, err error) {
-		rxMsg = msg
-		reply := tputils.DecodeAsString(msg.Data) + ".reply"
+	agentRequestHandler := func(req transports.RequestMessage) transports.ResponseMessage {
+		rxMsg = req
+		reply := tputils.DecodeAsString(req.Input) + ".reply"
 		// TODO WSS doesn't support the senderID in the message. How important is this?
 		// option1: not important - no use-case
 		// option2: extend the websocket InvokeAction message format with a SenderID
 		//assert.Equal(t, cl1.GetClientID(), msg.SenderID)
 		//stat.Failed(msg, fmt.Errorf("failuretest"))
-		slog.Info("TestActionWithDeliveryConfirmation: agent1 delivery complete", "requestID", msg.RequestID)
-		return reply, nil
+		slog.Info("TestActionWithDeliveryConfirmation: agent1 delivery complete", "requestID", req.RequestID)
+		return req.CreateResponse(reply, nil)
 	}
 	ag1.SetRequestHandler(agentRequestHandler)
 
@@ -188,7 +196,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	dThingID := td.MakeDigiTwinThingID(agentID, thingID)
 
 	var result string
-	err := cl1.SendRequest(wot.OpInvokeAction, dThingID, actionID, actionPayload, &result)
+	err := cl1.Rpc(wot.OpInvokeAction, dThingID, actionID, actionPayload, &result)
 	require.NoError(t, err)
 	assert.Equal(t, expectedReply, result)
 	assert.Equal(t, thingID, rxMsg.ThingID)
@@ -199,20 +207,20 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 
 // Services and agents should auto-reconnect when server is restarted
 func TestServiceReconnect(t *testing.T) {
-	t.Log("TestServiceReconnect")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	const agentID = "agent1"
 	const userID = "user1"
-	var rxMsg atomic.Pointer[*transports.ThingMessage]
+	var rxMsg atomic.Pointer[transports.RequestMessage]
 	var actionPayload = "payload1"
 	var expectedReply = actionPayload + ".reply"
 
 	r := startRuntime()
+	// r is stopped below
 
 	// give server time to start up before connecting
 	time.Sleep(time.Millisecond * 10)
 
-	ag1, cl1Token := ts.AddConnectAgent(agentID)
-	_ = cl1Token
+	ag1, _ := ts.AddConnectAgent(agentID)
 	defer ag1.Disconnect()
 
 	// step 1: ensure the thing TD exists
@@ -221,14 +229,17 @@ func TestServiceReconnect(t *testing.T) {
 	actionID := "action-1" // match the test TD action
 	ts.AddTD(agentID, td1)
 
+	hasAgent := ts.Runtime.CM.GetConnectionByClientID(ag1.GetClientID())
+	require.NotNil(t, hasAgent)
+
 	// Agent receives action request which we'll handle here
-	ag1.SetRequestHandler(func(msg *transports.ThingMessage) (output any, err error) {
+	ag1.SetRequestHandler(func(msg transports.RequestMessage) transports.ResponseMessage {
 		var req string
 		rxMsg.Store(&msg)
-		_ = tputils.DecodeAsObject(msg.Data, &req)
-		output = req + ".reply"
+		_ = tputils.DecodeAsObject(msg.Input, &req)
+		output := req + ".reply"
 		slog.Info("agent1 delivery complete", "requestID", msg.RequestID)
-		return output, nil
+		return msg.CreateResponse(output, nil)
 	})
 
 	// give connection time to be established before stopping the server
@@ -236,21 +247,30 @@ func TestServiceReconnect(t *testing.T) {
 
 	// after restarting the server, ag1's connection should automatically be re-established
 	// TBD what is the go-sse reconnect algorithm? How to know it triggered?
+	t.Log("--- restarting the runtime; 1 existing connection remaining")
 	r.Stop()
-	time.Sleep(time.Millisecond * 10)
+	time.Sleep(time.Millisecond * 100)
+
 	err := r.Start(&ts.AppEnv)
 	require.NoError(t, err)
 	defer r.Stop()
+	t.Log("--- server restarted; expecting an agent reconnect")
+
+	// wait for the reconnect
+	time.Sleep(time.Second * 1)
+
+	hasAgent = ts.Runtime.CM.GetConnectionByClientID(ag1.GetClientID())
+	require.NotNil(t, hasAgent)
 
 	cl2, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
 	defer cl2.Disconnect()
-	// FIXME: detect a reconnect
-	time.Sleep(time.Second * 3)
+	// FIXME: wait for an actual reconnect
+	time.Sleep(time.Second * 1)
 
 	// this rpc call succeeds after agent1 has automatically reconnected
 	dThingID := td.MakeDigiTwinThingID(agentID, thingID)
 	var reply string
-	err = cl2.SendRequest(wot.OpInvokeAction, dThingID, actionID, &actionPayload, &reply)
+	err = cl2.Rpc(wot.OpInvokeAction, dThingID, actionID, &actionPayload, &reply)
 	require.NoError(t, err)
 
 	require.NoError(t, err, "auto-reconnect didn't take place")
@@ -261,7 +281,7 @@ func TestServiceReconnect(t *testing.T) {
 
 // test that regular users don't have admin access to authn, authz
 func TestAccess(t *testing.T) {
-	t.Log("TestAccess")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	const clientID = "user1"
 
 	r := startRuntime()

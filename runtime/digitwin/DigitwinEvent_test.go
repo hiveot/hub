@@ -30,7 +30,7 @@ func TestAddReadEvent(t *testing.T) {
 	err := svc.DirSvc.UpdateTD(agent1ID, string(tdDoc1Json))
 
 	// provide an event value
-	dThingID, err := dtwStore.UpdateEventValue(agent1ID, thing1ID, eventName, eventValue, "")
+	err = dtwStore.UpdateEventValue(dThing1ID, eventName, eventValue)
 	assert.NoError(t, err)
 
 	// Read the event value and all events
@@ -95,11 +95,12 @@ func TestEventUpdateFail(t *testing.T) {
 	err := svc.DirSvc.UpdateTD(agentID, string(tdDoc1Json))
 	require.NoError(t, err)
 
-	_, err = dtwStore.UpdateEventValue(agentID, "notathing", EventName, 123, "")
+	err = dtwStore.UpdateEventValue("notathing", EventName, 123)
 	assert.Error(t, err)
 
 	//event names not in the TD are accepted
-	dThingID2, err := dtwStore.UpdateEventValue(agentID, thingID, "notanevent", 123, "")
+	dThingID2 := td.MakeDigiTwinThingID(agentID, thingID)
+	err = dtwStore.UpdateEventValue(dThingID2, "notanevent", 123)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, dThingID2)
 }

@@ -13,18 +13,20 @@ type AuthnAgent struct {
 	userHandler  transports.RequestHandler
 }
 
-// HandleAction authn services action request
-func (agent *AuthnAgent) HandleAction(msg *transports.ThingMessage) (output any, err error) {
+// HandleRequest authn services action request
+func (agent *AuthnAgent) HandleRequest(
+	req transports.RequestMessage) (resp transports.ResponseMessage) {
 
-	_, thingID := td.SplitDigiTwinThingID(msg.ThingID)
+	_, thingID := td.SplitDigiTwinThingID(req.ThingID)
 	if thingID == authn.AdminServiceID {
-		output, err = agent.adminHandler(msg)
+		resp = agent.adminHandler(req)
 	} else if thingID == authn.UserServiceID {
-		output, err = agent.userHandler(msg)
+		resp = agent.userHandler(req)
 	} else {
-		err = fmt.Errorf("unknown authn service capability '%s'", msg.ThingID)
+		err := fmt.Errorf("unknown authn service capability '%s'", req.ThingID)
+		resp = req.CreateResponse(nil, err)
 	}
-	return output, err
+	return resp
 }
 
 // StartAuthnAgent returns a new instance of the agent for the authentication services.

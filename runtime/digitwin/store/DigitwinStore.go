@@ -3,8 +3,8 @@ package store
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/digitwin"
-	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
@@ -84,7 +84,7 @@ func (store *DigitwinStore) LoadCacheFromStore() error {
 // QueryAction returns the current status of the action
 // This returns an empty value if no action value is available
 func (svc *DigitwinStore) QueryAction(
-	dThingID string, name string) (v digitwin.ActionValue, err error) {
+	dThingID string, name string) (v digitwin.ActionStatus, err error) {
 
 	svc.cacheMux.RLock()
 	defer svc.cacheMux.RUnlock()
@@ -101,13 +101,13 @@ func (svc *DigitwinStore) QueryAction(
 			return v, fmt.Errorf("QueryAction: Action '%s' not found in digital twin '%s'", name, dThingID)
 		}
 	}
-	v, found = dtw.ActionValues[name]
+	v, found = dtw.ActionStatuses[name]
 	return v, nil
 }
 
 // QueryAllActions returns all last known action invocation status of the given thing
 func (svc *DigitwinStore) QueryAllActions(dThingID string) (
-	v map[string]digitwin.ActionValue, err error) {
+	v map[string]digitwin.ActionStatus, err error) {
 
 	svc.cacheMux.RLock()
 	defer svc.cacheMux.RUnlock()
@@ -117,8 +117,8 @@ func (svc *DigitwinStore) QueryAllActions(dThingID string) (
 		return v, err
 	}
 	// shallow copy
-	actMap := make(map[string]digitwin.ActionValue)
-	for k, v := range dtw.ActionValues {
+	actMap := make(map[string]digitwin.ActionStatus)
+	for k, v := range dtw.ActionStatuses {
 		actMap[k] = v
 	}
 	return actMap, err
@@ -346,11 +346,11 @@ func (svc *DigitwinStore) UpdateTD(
 	dtw, found := svc.dtwCache[dThingID]
 	if !found {
 		dtw = &DigitalTwinInstance{
-			AgentID:      agentID,
-			ID:           dThingID,
-			PropValues:   make(map[string]digitwin.ThingValue),
-			EventValues:  make(map[string]digitwin.ThingValue),
-			ActionValues: make(map[string]digitwin.ActionValue),
+			AgentID:        agentID,
+			ID:             dThingID,
+			PropValues:     make(map[string]digitwin.ThingValue),
+			EventValues:    make(map[string]digitwin.ThingValue),
+			ActionStatuses: make(map[string]digitwin.ActionStatus),
 		}
 		svc.dtwCache[dThingID] = dtw
 		svc.thingKeys = append(svc.thingKeys, dThingID)
@@ -360,93 +360,110 @@ func (svc *DigitwinStore) UpdateTD(
 	svc.changedThings[dThingID] = true
 }
 
-// UpdateActionStart updates the action with a new start and pending status
+// NewActionStart updates the action with a new start and pending status.
 //
-// dThingID is the digital twin thingID
-// name is the name of the action whose progress is updated.
-// requestID is the request requestID used to correlate the async reply
-// senderID is the ID of the sender of the request
-func (svc *DigitwinStore) UpdateActionStart(
-	dThingID string, name string, input any, requestID string, senderID string) error {
+// This stores the action request for use with query actions.
+//
+// Note 'safe' actions are not stored as they don't affect the state of a Thing.
+// The output is just a transformation of the input.
+//
+// This returns true if the request is stored or false if the request is safe.
+func (svc *DigitwinStore) NewActionStart(req transports.RequestMessage) (stored bool, err error) {
 	svc.cacheMux.Lock()
 	defer svc.cacheMux.Unlock()
 
-	dtw, found := svc.dtwCache[dThingID]
+	// A digital twin must exist. They are created when a TD is received.
+	dtw, found := svc.dtwCache[req.ThingID]
 	if !found {
+		// for now just warn for unknown things, in case the TD is not yet known.
+		// This might become an error in the future once the use-cases that can
+		// trigger this are better understood.
 		err := fmt.Errorf(
-			"UpdateActionStart: Action requested on an unknown Thing with ID '%s'. "+
-				"Action is not recorded", dThingID)
+			"NewActionStart: Action requested on an unknown Thing with ID '%s'. "+
+				"Action is not recorded", req.ThingID)
 		slog.Warn(err.Error())
-		//return err
-		return nil
+		return false, nil
 	}
 	// action affordance should exist
-	aff, found := dtw.DtwTD.Actions[name]
+	aff, found := dtw.DtwTD.Actions[req.Name]
 	_ = aff
 	if !found {
-		err := fmt.Errorf("UpdateActionStart: Action '%s' not found in "+
-			"digital twin '%s'. Action is not recorded", name, dThingID)
+		// The request might not be an action but could also be a Thing level operation
+		// Need to understand the use-cases this might occur before changing this
+		// into an error or info. Most operations should be handled by the digital twin,
+		// not by remote agents.
+		err := fmt.Errorf("NewActionStart: Action '%s' not found in "+
+			"digital twin '%s'. Action is not recorded", req.Name, req.ThingID)
 		slog.Warn(err.Error())
+		// this is currently only a warning
+		return false, nil
 	}
-	actionValue, found := dtw.ActionValues[name]
+	if aff.Safe {
+		// Safe actions do not affect the Thing state. The response is a function
+		// if the input parameters so no use storing these.
+		slog.Info("Not recording a safe action as it doesnt affect Thing state")
+		return false, nil
+	}
+	// this is an action that affects the Thing state (not safe). Record it.
+	actionStatus, found := dtw.ActionStatuses[req.Name]
 	if !found {
-		actionValue = digitwin.ActionValue{}
+		actionStatus = digitwin.ActionStatus{}
 	}
-	actionValue.Name = name
-	actionValue.SenderID = senderID
-	actionValue.Input = input
-	actionValue.Progress = vocab.RequestPending
-	actionValue.Updated = time.Now().Format(wot.RFC3339Milli)
-	actionValue.RequestID = requestID
-	dtw.ActionValues[name] = actionValue
-	svc.changedThings[dThingID] = true
+	actionStatus.Name = req.Name
+	actionStatus.SenderID = req.SenderID
+	actionStatus.Input = req.Input
+	actionStatus.Status = transports.StatusPending
+	actionStatus.TimeRequested = req.Created
+	actionStatus.RequestID = req.RequestID
+	dtw.ActionStatuses[req.Name] = actionStatus
+	svc.changedThings[req.ThingID] = true
 
-	return nil
+	return true, nil
 }
 
-// UpdateActionStatus updates the progress of the last invoked action or property write
+// UpdateActionStatus (by agent) updates the progress of an action with a
+// progress response.
 //
-//	agentID is the ID of the agent sending the update.
-//	thingID is the ID of the original thing as managed by the agent.
-//	name is the name of the action whose progress is updated.
-//	status of the action
-//	output of the action. Only used when status is completed
-func (svc *DigitwinStore) UpdateActionStatus(
-	agentID string, thingID string, name string, status string, output any) (
-	actionValue digitwin.ActionValue, err error) {
+// resp is a progress response with a ThingID of the digital twin
+func (svc *DigitwinStore) UpdateActionStatus(agentID string, resp transports.ResponseMessage) (
+	actionValue digitwin.ActionStatus, err error) {
 
 	svc.cacheMux.Lock()
 	defer svc.cacheMux.Unlock()
 
-	dThingID := td.MakeDigiTwinThingID(agentID, thingID)
-	dtw, found := svc.dtwCache[dThingID]
+	dtw, found := svc.dtwCache[resp.ThingID]
 	if !found {
-		err := fmt.Errorf("dThing with ID '%s' not found", dThingID)
+		err := fmt.Errorf("dThing with ID '%s' not found", resp.ThingID)
 		return actionValue, err
 	}
 	// action affordance or property affordance must exist
-	_, found = dtw.DtwTD.Actions[name]
+	_, found = dtw.DtwTD.Actions[resp.Name]
 	if found {
-		// handle action progress
+		// this is a progress update; update only the status fields.
 		// action value should exist. recover if it doesn't
-		actionValue, found = dtw.ActionValues[name]
+		actionValue, found = dtw.ActionStatuses[resp.Name]
 		if !found {
-			actionValue = digitwin.ActionValue{}
+			actionValue = digitwin.ActionStatus{}
 		}
-		actionValue.Progress = status
-		actionValue.Updated = time.Now().Format(wot.RFC3339Milli)
-		if status == vocab.RequestCompleted {
-			actionValue.Output = output
+		actionValue.Status = resp.Status
+		actionValue.TimeUpdated = time.Now().Format(wot.RFC3339Milli)
+		if resp.Status == transports.StatusCompleted {
+			actionValue.Output = resp.Output
+			actionValue.TimeEnded = resp.Updated
+		} else if resp.Error != "" {
+			actionValue.Error = resp.Error
 		}
-		dtw.ActionValues[name] = actionValue
-		svc.changedThings[dThingID] = true
+		dtw.ActionStatuses[resp.Name] = actionValue
+		svc.changedThings[resp.ThingID] = true
 
 		return actionValue, nil
 	} else {
 		// property write progress is ignored as the thing should simply update
 		//the property value after applying the write.
 	}
-	return actionValue, fmt.Errorf("UpdateActionStatus: Action '%s' not found in digital twin '%s'", name, dThingID)
+	return actionValue, fmt.Errorf(
+		"UpdateActionStatus: Action '%s' not found in digital twin '%s'",
+		resp.Name, resp.ThingID)
 
 }
 
@@ -455,25 +472,18 @@ func (svc *DigitwinStore) UpdateActionStatus(
 // This does accept event values that are not defined in the TD.
 // This is intentional.
 //
-// agentID is the ID of the agent sending the update.
-// thingID is the ID of the original thing as managed by the agent.
+// dThingID is the ID of the digital twin whose event is submitted.
+// data is the event payload
 // eventName is the name of the event whose value is updated.
-// requestID is if the event is in response to an action or write property
-//
-// # Invoked by agents
-//
-// This returns the digital twin's ID where the event is stored.
-func (svc *DigitwinStore) UpdateEventValue(
-	agentID string, thingID string, eventName string, data any, messageID string) (string, error) {
+func (svc *DigitwinStore) UpdateEventValue(dThingID string, eventName string, data any) error {
 	svc.cacheMux.Lock()
 	defer svc.cacheMux.Unlock()
 
-	dThingID := td.MakeDigiTwinThingID(agentID, thingID)
 	dtw, found := svc.dtwCache[dThingID]
 	if !found {
 		err := fmt.Errorf("dThing with ID '%s' not found", dThingID)
 		slog.Warn("UpdateEventValue Can't update state of an unknown Thing. Event ignored.", "dThingID", dThingID)
-		return dThingID, err
+		return err
 	}
 	eventValue := digitwin.ThingValue{
 		Data:    data,
@@ -484,26 +494,24 @@ func (svc *DigitwinStore) UpdateEventValue(
 	dtw.EventValues[eventName] = eventValue
 	svc.changedThings[dThingID] = true
 
-	return dThingID, nil
+	return nil
 }
 
 // UpdatePropertyValue updates the last known thing property value.
 //
-// agentID is the ID of the agent sending the update.
-// thingID is the ID of the original thing as managed by the agent.
+// dThingID is the ID of the digital twin Thing
 // propName is the name of the property whose value is updated
 // newValue of the property
 // requestID provided by the agent, in response to an action or write
 //
 // This returns a flag indicating whether the property value has changed.
 func (svc *DigitwinStore) UpdatePropertyValue(
-	agentID string, thingID string, propName string, newValue any, requestID string) (
+	dThingID string, propName string, newValue any, requestID string) (
 	hasChanged bool, err error) {
 
 	svc.cacheMux.Lock()
 	defer svc.cacheMux.Unlock()
 
-	dThingID := td.MakeDigiTwinThingID(agentID, thingID)
 	dtw, found := svc.dtwCache[dThingID]
 	if !found {
 		err := fmt.Errorf("dThing with ID '%s' not found", dThingID)
@@ -539,18 +547,18 @@ func (svc *DigitwinStore) UpdatePropertyValue(
 // This will bulk update all properties in the map. They are stored separately.
 //
 // agentID is the ID of the agent sending the update.
-// thingID is the ID of the original thing as managed by the agent.
+// dThingID is the ID of the digital twin.
 // propMap map of property name-value pairs
 // requestID provided by the agent, in response to an action or write
 //
 // This returns a map with changed property values.
 func (svc *DigitwinStore) UpdateProperties(
-	agentID string, thingID string, propMap map[string]any, requestID string) (
+	dThingID string, propMap map[string]any, requestID string) (
 	changes map[string]any, err error) {
 
 	changes = make(map[string]any)
 	for propName, newValue := range propMap {
-		changed, _ := svc.UpdatePropertyValue(agentID, thingID, propName, newValue, requestID)
+		changed, _ := svc.UpdatePropertyValue(dThingID, propName, newValue, requestID)
 		if changed {
 			changes[propName] = newValue
 		}

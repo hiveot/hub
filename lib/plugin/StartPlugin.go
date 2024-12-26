@@ -17,7 +17,7 @@ type PluginConfig struct {
 type IPlugin interface {
 	// Start the plugin with the given environment settings and hub connection
 	//	hc is the hub connection for publishing and subscribing
-	Start(hc transports.IClientConnection) error
+	Start(hc transports.IAgentConnection) error
 	Stop()
 }
 
@@ -40,7 +40,7 @@ func StartPlugin(plugin IPlugin, clientID string, certsDir string) {
 	caCert, err := certs.LoadX509CertFromPEM(caCertFile)
 
 	// FIXME: the plugin needs a bootstrap form to connect to the server
-	hc, err := clients.CreateTransportClient("", clientID, caCert, nil)
+	hc, err := clients.NewTransportClient("", clientID, caCert, nil, 0)
 
 	if err != nil {
 		slog.Error("Failed connecting to the Hub", "err", err)

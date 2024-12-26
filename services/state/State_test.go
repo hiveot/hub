@@ -60,14 +60,14 @@ func TestMain(m *testing.M) {
 }
 
 func TestStartStop(t *testing.T) {
-	fmt.Println("--- TestStartStop ---")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	_, stateCl, stopFn := startStateService(true)
 	defer stopFn()
 	assert.NotNil(t, stateCl)
 }
 
 func TestStartStopBadLocation(t *testing.T) {
-	fmt.Println("--- TestStartStopBadLocation ---")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 
 	_, _, stopFn := startStateService(true)
 	defer stopFn()
@@ -83,7 +83,7 @@ func TestStartStopBadLocation(t *testing.T) {
 }
 
 func TestSetGet1(t *testing.T) {
-	fmt.Println("--- TestSetGet1 ---")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	const key1 = "key1"
 	var val1 = "value 1"
 	var val2 = ""
@@ -114,7 +114,7 @@ func TestSetGet1(t *testing.T) {
 }
 
 func TestSetGetMultiple(t *testing.T) {
-	fmt.Println("--- TestSetGetMultiple ---")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	const key1 = "key1"
 	const key2 = "key2"
 	var val1 = "value 1"
@@ -139,7 +139,7 @@ func TestSetGetMultiple(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	fmt.Println("--- TestDelete ---")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	const key1 = "key1"
 	var val1 = "value 1"
 	var val2 = ""
@@ -172,7 +172,7 @@ func TestDelete(t *testing.T) {
 }
 
 func TestGetDifferentClientBuckets(t *testing.T) {
-	fmt.Println("--- TestGetDifferentClientBuckets ---")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	const clientID1 = "test-client1"
 	const clientID2 = "test-client2"
 	const key1 = "key1"

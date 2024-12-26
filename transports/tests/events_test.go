@@ -90,7 +90,7 @@ func TestPublishEventsByAgent(t *testing.T) {
 	var eventKey = "event11"
 
 	// handler of event notification on the server
-	notificationHandler := func(msg transports.NotificationMessage) {
+	notificationHandler := func(clientID string, msg transports.NotificationMessage) {
 		evVal.Store(msg.Data)
 	}
 

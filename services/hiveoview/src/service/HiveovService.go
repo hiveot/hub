@@ -12,9 +12,11 @@ import (
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views"
-	"github.com/hiveot/hub/transports/utils/tlsserver"
+	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/tputils/tlsserver"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"time"
@@ -37,12 +39,13 @@ type HiveovService struct {
 	serverCert *tls.Certificate
 	caCert     *x509.Certificate
 	tlsServer  *tlsserver.TLSServer
+	serverURL  string
 	// a web session per connections
 	sm *session.WebSessionManager
 
 	// hc hub client of this service.
 	// This client's CA and URL is also used to establish client sessions.
-	hc clients.IAgent
+	hc transports.IClientConnection
 
 	// cookie signing
 	signingKey ed25519.PrivateKey
@@ -53,6 +56,10 @@ type HiveovService struct {
 	noState bool
 }
 
+func (svc *HiveovService) GetServerURL() string {
+	return svc.serverURL
+}
+
 // GetSM returns the web session manager
 // Intended for testing.
 func (svc *HiveovService) GetSM() *session.WebSessionManager {
@@ -60,7 +67,8 @@ func (svc *HiveovService) GetSM() *session.WebSessionManager {
 }
 
 // Start the web server and publish the service's own TD.
-func (svc *HiveovService) Start(hc clients.IAgent) error {
+// domainName is the listening domain name that matches the server certificate.
+func (svc *HiveovService) Start(hc transports.IClientConnection) error {
 	slog.Info("Starting HiveovService", "clientID", hc.GetClientID())
 	svc.hc = hc
 
@@ -76,20 +84,29 @@ func (svc *HiveovService) Start(hc clients.IAgent) error {
 
 	// Setup the handling of incoming web sessions
 	// re-use the runtime connection manager
-	hubURL := hc.GetHubURL()
+	hubURL := hc.GetServerURL()
 	svc.sm = session.NewWebSessionManager(hubURL, svc.signingKey, svc.caCert, hc, svc.noState)
 
 	// parse the templates
 	svc.tm.ParseAllTemplates()
 
+	// TODO: hostname configurable as the server can live elsewhere
+	// This is an SSE server
+	urlParts, _ := url.Parse(hc.GetServerURL())
+	svc.serverURL = fmt.Sprintf("https://%s:%d%s", urlParts.Hostname(), svc.port, WebSsePath)
+
 	// Start the TLS server for serving the UI
+	// The server certificate must match the domain name used here, so just
+	// use the hub url.
 	if svc.serverCert != nil {
+
 		tlsServer, router := tlsserver.NewTLSServer(
 			"", svc.port, svc.serverCert, svc.caCert)
 
 		svc.CreateRoutes(router, svc.rootPath)
 		svc.tlsServer = tlsServer
 		err = tlsServer.Start()
+
 	} else {
 		// add the routes
 		router := chi.NewRouter()
@@ -117,6 +134,7 @@ func (svc *HiveovService) Stop() {
 	slog.Info("Stopping HiveovService")
 	// TODO: send event the service has stopped
 	svc.hc.Disconnect()
+	svc.sm.CloseAllWebSessions()
 	if svc.tlsServer != nil {
 		svc.tlsServer.Stop()
 	}

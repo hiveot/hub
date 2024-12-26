@@ -69,7 +69,6 @@ WoTVocab:
     OpReadAllProperties      : "readallproperties"
     OpReadMultipleProperties : "readmultipleproperties"
     OpReadProperty           : "readproperty"
-    OpWriteAllProperties     : "writeallproperties"
     OpWriteMultipleProperties : "writemultipleproperties"
     OpWriteProperty          : "writeproperty"
     OpUnobserveAllProperties : "unobserveallproperties"

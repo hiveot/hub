@@ -403,7 +403,6 @@ func (tdoc *TD) GetForm(operation string, name string, protocol string) Form {
 			wot.OpUnobserveAllProperties,
 			wot.OpUnobserveProperty,
 			wot.OpWriteProperty,
-			wot.OpWriteAllProperties,
 			wot.OpWriteMultipleProperties:
 			aff, _ := tdoc.Properties[name]
 			if aff != nil {

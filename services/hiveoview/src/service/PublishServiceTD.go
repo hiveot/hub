@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/services/hiveoview/src"
+	"github.com/hiveot/hub/wot"
+	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 )
 
@@ -11,20 +13,20 @@ import (
 func (svc *HiveovService) CreateHiveoviewTD() *td.TD {
 	title := "Web Server"
 	deviceType := vocab.ThingService
-	td := td.NewTD(src.HiveoviewServiceID, title, deviceType)
+	tdi := td.NewTD(src.HiveoviewServiceID, title, deviceType)
 	//TODO: add properties or events for : uptime, nr connections, nr clients, etc
 
-	td.AddEvent(src.NrActiveSessionsEvent,
+	tdi.AddEvent(src.NrActiveSessionsEvent,
 		"Nr Sessions", "Number of active sessions",
 		&td.DataSchema{
 			//AtType: vocab.SessionCount,
 			Type: vocab.WoTDataTypeInteger,
 		})
 
-	td.AddProperty(vocab.PropNetPort, vocab.PropNetPort,
+	tdi.AddProperty(vocab.PropNetPort, vocab.PropNetPort,
 		"UI Port", vocab.WoTDataTypeInteger)
 
-	return td
+	return tdi
 }
 
 // PublishServiceTD create and publish the TD of the hiveoview service
@@ -32,7 +34,8 @@ func (svc *HiveovService) PublishServiceTD() error {
 
 	myTD := svc.CreateHiveoviewTD()
 	tdJSON, _ := json.Marshal(myTD)
-	err := svc.hc.PubTD(myTD.ID, string(tdJSON))
+	//err := svc.hc.PubTD(myTD.ID, string(tdJSON))
+	err := svc.hc.SendNotification(wot.HTOpUpdateTD, myTD.ID, "", string(tdJSON))
 
 	if err != nil {
 		slog.Error("failed to publish the hiveoview service TD", "err", err.Error())
@@ -42,7 +45,8 @@ func (svc *HiveovService) PublishServiceTD() error {
 
 // PublishServiceProps publishes the service properties
 func (svc *HiveovService) PublishServiceProps() error {
-	err := svc.hc.PubProperty(src.HiveoviewServiceID, vocab.PropNetPort, svc.port)
+	err := svc.hc.SendNotification(
+		wot.HTOpUpdateProperty, src.HiveoviewServiceID, vocab.PropNetPort, svc.port)
 
 	if err != nil {
 		slog.Error("failed to publish the hiveoview service properties", "err", err.Error())

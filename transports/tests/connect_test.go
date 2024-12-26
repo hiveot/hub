@@ -142,21 +142,22 @@ func StartTransportServer(
 	}, cm
 }
 
-func DummyNotificationHandler(notification transports.NotificationMessage) {
-
-	slog.Info("DummyNotificationHandler: Received notification", "op", notification.Operation)
-	//replyTo.SendResponse(msg.ThingID, msg.Name, "result", msg.RequestID)
-}
-func DummyRequestHandler(request transports.RequestMessage, replyTo string) transports.ResponseMessage {
-
-	slog.Info("DummyRequestHandler: Received request", "op", request.Operation)
-	return request.CreateResponse(transports.StatusCompleted, "result", nil)
-}
-func DummyResponseHandler(response transports.ResponseMessage) error {
-
-	slog.Info("DummyResponse: Received request", "op", response.Operation)
-	return nil
-}
+//
+//func DummyNotificationHandler(notification transports.NotificationMessage) {
+//
+//	slog.Info("DummyNotificationHandler: Received notification", "op", notification.Operation)
+//	//replyTo.SendResponse(msg.ThingID, msg.Name, "result", msg.RequestID)
+//}
+//func DummyRequestHandler(request transports.RequestMessage, replyTo string) transports.ResponseMessage {
+//
+//	slog.Info("DummyRequestHandler: Received request", "op", request.Operation)
+//	return request.CreateResponse("result", nil)
+//}
+//func DummyResponseHandler(response transports.ResponseMessage) error {
+//
+//	slog.Info("DummyResponse: Received request", "op", response.Operation)
+//	return nil
+//}
 
 // TestMain sets logging
 func TestMain(m *testing.M) {
@@ -170,7 +171,7 @@ func TestMain(m *testing.M) {
 func TestStartStop(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 
-	srv, cancelFn, _ := StartTransportServer(DummyRequestHandler, DummyResponseHandler, DummyNotificationHandler)
+	srv, cancelFn, _ := StartTransportServer(nil, nil, nil)
 	defer cancelFn()
 	cl1 := NewConsumer(testClientID1, srv.GetForm)
 	defer cl1.Disconnect()
@@ -230,7 +231,7 @@ func TestLoginRefresh(t *testing.T) {
 
 func TestLogout(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
-	srv, cancelFn, _ := StartTransportServer(DummyRequestHandler, DummyResponseHandler, DummyNotificationHandler)
+	srv, cancelFn, _ := StartTransportServer(nil, nil, nil)
 	defer cancelFn()
 
 	// check if this test still works with a valid login
@@ -252,7 +253,7 @@ func TestLogout(t *testing.T) {
 
 func TestBadLogin(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
-	srv, cancelFn, _ := StartTransportServer(DummyRequestHandler, DummyResponseHandler, DummyNotificationHandler)
+	srv, cancelFn, _ := StartTransportServer(nil, nil, nil)
 	defer cancelFn()
 
 	cl1 := NewConsumer(testClientID1, srv.GetForm)
@@ -287,7 +288,7 @@ func TestBadLogin(t *testing.T) {
 
 func TestBadRefresh(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
-	srv, cancelFn, _ := StartTransportServer(DummyRequestHandler, DummyResponseHandler, DummyNotificationHandler)
+	srv, cancelFn, _ := StartTransportServer(nil, nil, nil)
 	defer cancelFn()
 	cl1 := NewConsumer(testClientID1, srv.GetForm)
 	defer cl1.Disconnect()
@@ -345,14 +346,16 @@ func TestReconnect(t *testing.T) {
 				require.NotNil(t, replyTo)
 				output := req.Input
 				c := connMgr.GetConnectionByConnectionID(replyTo)
-				resp := req.CreateResponse(transports.StatusCompleted, output, nil)
+				resp := req.CreateResponse(output, nil)
 				err = c.SendResponse(resp)
 				assert.NoError(t, err)
 			}()
-			return req.CreateResponse(transports.StatusPending, nil, nil)
+			resp := req.CreateResponse(nil, nil)
+			resp.Status = transports.StatusPending
+			return resp
 		}
 		err = errors.New("Unexpected request")
-		return req.CreateResponse(transports.StatusFailed, "", err)
+		return req.CreateResponse("", err)
 	}
 	// start the servers and connect as a client
 	srv, cancelFn, cm := StartTransportServer(handleRequest, nil, nil)

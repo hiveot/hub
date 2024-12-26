@@ -43,16 +43,16 @@ func OpToMessage(
 			Data:        data,
 			Timestamp:   timestamp,
 		}
-	case wot.HTOpActionStatus:
-		msg = ActionStatusMessage{
-			ThingID:     dThingID,
-			MessageType: msgType,
-			Status:      "completed",
-			Name:        name,
-			RequestID:   requestID,
-			Output:      data,
-			Timestamp:   timestamp,
-		}
+	//case wot.HTOpActionStatus:
+	//	msg = ActionStatusMessage{
+	//		ThingID:     dThingID,
+	//		MessageType: msgType,
+	//		Status:      "completed",
+	//		Name:        name,
+	//		RequestID:   requestID,
+	//		Output:      data,
+	//		Timestamp:   timestamp,
+	//	}
 
 	case wot.OpObserveAllProperties, wot.OpObserveProperty,
 		wot.OpUnobserveAllProperties, wot.OpUnobserveProperty,

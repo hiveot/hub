@@ -105,7 +105,7 @@ func TestPublishPropertyByAgent(t *testing.T) {
 	var propValue1 = "value1"
 
 	// handler of property updates on the server
-	notificationHandler := func(msg transports.NotificationMessage) {
+	notificationHandler := func(agentID string, msg transports.NotificationMessage) {
 		evVal.Store(msg.Data)
 	}
 

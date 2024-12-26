@@ -6,7 +6,6 @@ import (
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/connections"
 	"github.com/hiveot/hub/transports/servers/httpserver"
-	"github.com/hiveot/hub/transports/servers/httpserver/httpcontext"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -69,7 +68,7 @@ func (svc *WssTransportServer) SendResponse(resp transports.ResponseMessage) {
 func (svc *WssTransportServer) Serve(w http.ResponseWriter, r *http.Request) {
 	//An active session is required before accepting the request. This is created on
 	//authentication/login. Until then SSE connections are blocked.
-	clientID, err := httpcontext.GetClientIdFromContext(r)
+	clientID, err := httpserver.GetClientIdFromContext(r)
 
 	if err != nil {
 		slog.Warn("WS HandleConnect. No session available yet, telling client to delay retry to 10 seconds",
@@ -149,10 +148,11 @@ func (svc *WssTransportServer) Stop() {
 //	wssPath to use, without the host
 //	httpTransport to attach to
 func StartWssTransportServer(wssPath string, cm *connections.ConnectionManager,
+	httpTransport *httpserver.HttpTransportServer,
 	handleRequest transports.ServerRequestHandler,
 	handleResponse transports.ServerResponseHandler,
 	handleNotification transports.ServerNotificationHandler,
-	httpTransport *httpserver.HttpTransportServer) *WssTransportServer {
+) *WssTransportServer {
 
 	if wssPath == "" {
 		wssPath = httpserver.DefaultWSSPath

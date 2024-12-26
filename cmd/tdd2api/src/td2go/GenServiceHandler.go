@@ -8,7 +8,7 @@ import (
 // GenServiceHandler generates a function that returns an action handler that
 // unmarshals a request and invoke the requested service.
 //
-// The signature is: NewHandle<ThingID>Action(service I...Service) *HandleAction
+// The signature is: NewHandle<ThingID>Action(service I...Service) *HandleRequest
 //
 //	func (agent *...)NewHandleAction(
 //	  consumerID string, dThingID string, actionName string, input any, requestID string
@@ -24,12 +24,14 @@ func GenServiceHandler(l *utils.SL, serviceTitle string, td1 *td.TD) {
 	l.Add("// that implements the corresponding interface method.")
 	l.Add("// ")
 	l.Add("// This returns the marshalled response data or an error.")
-	l.Add("func NewHandle%sAction(svc %s)(func(msg *transports.ThingMessage) (any, error)) {", serviceTitle, interfaceName)
+	l.Add("func NewHandle%sAction(svc %s)(func(msg transports.RequestMessage) transports.ResponseMessage) {", serviceTitle, interfaceName)
 	l.Indent++
-	l.Add("return func(msg *transports.ThingMessage) (output any, err error) {")
+	l.Add("return func(msg transports.RequestMessage) transports.ResponseMessage {")
 
 	l.Indent++
 
+	l.Add("var output any")
+	l.Add("var err error")
 	l.Add("switch msg.Name {")
 	l.Indent++
 	for name, action := range td1.Actions {
@@ -40,7 +42,7 @@ func GenServiceHandler(l *utils.SL, serviceTitle string, td1 *td.TD) {
 	l.Indent--
 	l.Add("}")
 
-	l.Add("return output,err")
+	l.Add("return msg.CreateResponse(output,err)")
 	l.Indent--
 	l.Add("}")
 	l.Indent--
@@ -65,7 +67,7 @@ func GenActionHandler(l *utils.SL, serviceTitle string, name string, action *td.
 			goType := GoTypeFromSchema(action.Input)
 			l.Add("var args %s", goType)
 		}
-		l.Add("err = tputils.DecodeAsObject(msg.Data, &args)")
+		l.Add("err = tputils.DecodeAsObject(msg.Input, &args)")
 
 		argsString += ", args"
 	}

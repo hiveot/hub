@@ -9,7 +9,9 @@ import (
 )
 
 // Decode converts the any-type to the given interface type.
-// This returns an error if unmarshalling fails.
+// If the output type is a native type then also consider using one of the DecodeAs...
+// methods as these are likely more performant.
+// This returns an error if conversion fails.
 func Decode(value any, arg interface{}) error {
 	if value == nil {
 		arg = nil

@@ -15,7 +15,6 @@ import (
 
 type SSEEvent struct {
 	EventType string // type of message, eg event, action or other
-	ID        string // message topic: {thingID}/{name}/{requestID}
 	Payload   string // message content
 }
 
@@ -200,7 +199,7 @@ func (c *SseScServerConnection) Serve(w http.ResponseWriter, r *http.Request) {
 	c.mux.Unlock()
 
 	// _send a ping event as the go-sse client doesn't have a 'connected callback'
-	pingEvent := SSEEvent{EventType: SSEPingEvent, ID: "pingID"}
+	pingEvent := SSEEvent{EventType: SSEPingEvent}
 	c.mux.Lock()
 	c.sseChan <- pingEvent
 	c.mux.Unlock()
@@ -238,22 +237,15 @@ func (c *SseScServerConnection) Serve(w http.ResponseWriter, r *http.Request) {
 				// ending the read loop and returning will close the connection
 				break
 			}
-			slog.Debug("SseConnection: sending sse event to client",
+			slog.Info("SseConnection: sending sse event to client",
 				//slog.String("sessionID", c.sessionID),
 				slog.String("clientID", c.clientID),
 				slog.String("connectionID", c.connectionID),
-				slog.String("sseMsg", sseMsg.ID),
 				slog.String("sse eventType", sseMsg.EventType),
 			)
-			// write the message with or without requestID
-			if sseMsg.ID == "" {
-				// force a requestID to avoid go-sse client injecting the last eventID,
-				// which can mess things up.
-				sseMsg.ID = "-"
-			}
 			var n int
-			n, err = fmt.Fprintf(w, "event: %s\nid:%s\ndata: %s\n\n",
-				sseMsg.EventType, sseMsg.ID, sseMsg.Payload)
+			n, err = fmt.Fprintf(w, "event: %s\ndata: %s\n\n",
+				sseMsg.EventType, sseMsg.Payload)
 			//_, err = fmt.Fprintf(w, "event: %s\ndata: %s\n\n",
 			//	sseMsg.EventType, sseMsg.ID, sseMsg.Payload)
 			if err != nil {
@@ -263,7 +255,6 @@ func (c *SseScServerConnection) Serve(w http.ResponseWriter, r *http.Request) {
 				// closed go channels panic when written to. So keep reading.
 				slog.Error("SseConnection: Error writing SSE event",
 					slog.String("Event", sseMsg.EventType),
-					slog.String("SSE ID", sseMsg.ID),
 					slog.String("SenderID", c.clientID),
 					slog.Int("size", len(sseMsg.Payload)),
 				)

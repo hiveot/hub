@@ -1,11 +1,11 @@
 package dashboard
 
 import (
-	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"github.com/hiveot/hub/services/hiveoview/src/views/tile"
+	"github.com/hiveot/hub/transports/tputils"
 	"log/slog"
 	"net/http"
 )
@@ -27,7 +27,7 @@ type DashboardPageTemplateData struct {
 func (data DashboardPageTemplateData) GetTileTemplateData(tileID string) tile.RenderTileTemplateData {
 
 	pathArgs := map[string]string{"dashboardID": data.Dashboard.ID, "tileID": tileID}
-	renderTilePath := utils.Substitute(src.RenderTilePath, pathArgs)
+	renderTilePath := tputils.Substitute(src.RenderTilePath, pathArgs)
 	tileTemplateData := tile.RenderTileTemplateData{
 		//DashboardID:      data.Dashboard.ID,
 		ReRenderTilePath: renderTilePath,

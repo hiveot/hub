@@ -31,7 +31,7 @@ type DigitwinService struct {
 
 // ReadAllTDs returns a list digitwin TDs
 func (svc *DigitwinService) ReadAllTDs(
-	consumerID string, offset int, limit int) ([]*td.TD, error) {
+	clientID string, offset int, limit int) ([]*td.TD, error) {
 	dtlist, err := svc.DtwStore.ReadTDs(offset, limit)
 	return dtlist, err
 }

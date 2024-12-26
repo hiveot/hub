@@ -142,10 +142,11 @@ func StartProtocolManager(cfg *pm.ProtocolsConfig,
 		if cfg.EnableWSS {
 			svc.wssTransport = wssserver.StartWssTransportServer(
 				"", cm,
+				svc.httpsTransport,
 				digitwinRouter.HandleRequest,
 				digitwinRouter.HandleResponse,
 				digitwinRouter.HandleNotification,
-				svc.httpsTransport)
+			)
 		}
 	}
 	if cfg.EnableMQTT {

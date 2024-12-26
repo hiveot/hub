@@ -25,7 +25,7 @@ import (
 var logDir = "/tmp/test-launcher"
 
 // the following are set by the testmain
-var testServer *testenv.TestServer
+var ts *testenv.TestServer
 
 const agentUsesWSS = false
 
@@ -43,27 +43,27 @@ func startService() (l *launcherclient.LauncherClient, stopFn func()) {
 	const launcherID = launcherapi.AgentID
 	const adminID = "admin"
 
-	testServer = testenv.StartTestServer(true)
+	ts = testenv.StartTestServer(true)
 
-	//hc1, _ := testServer.AddConnectService(launcherID)
+	//hc1, _ := ts.AddConnectService(launcherID)
 	var launcherConfig = config.NewLauncherConfig()
 	launcherConfig.AttachStderr = true
 	launcherConfig.AttachStdout = false
 	launcherConfig.LogPlugins = true
-	//launcherConfig.LogsDir = testServer.AppEnv.LogsDir
+	//launcherConfig.LogsDir = ts.AppEnv.LogsDir
 	launcherConfig.LogsDir = logDir
-	//var env = plugin.GetAppEnvironment(testServer.AppEnv.HomeDir, false)
+	//var env = plugin.GetAppEnvironment(ts.AppEnv.HomeDir, false)
 
-	binDir := testServer.AppEnv.BinDir
+	binDir := ts.AppEnv.BinDir
 	pluginsDir := "/bin" // for /bin/yes
-	certsDir := testServer.AppEnv.CertsDir
+	certsDir := ts.AppEnv.CertsDir
 	clientID := launcherapi.AgentID
 
 	//env.LogsDir = logDir
 	//env.CertsDir = homeDir
-	//env.CaCert = testServer.Certs.CaCert
+	//env.CaCert = ts.Certs.CaCert
 
-	serverURL := testServer.GetServerURL(authn.ClientTypeService)
+	serverURL := ts.GetServerURL(authn.ClientTypeService)
 	svc := service.NewLauncherService(
 		serverURL, clientID, binDir, pluginsDir, certsDir, launcherConfig)
 	err := svc.Start()
@@ -75,14 +75,14 @@ func startService() (l *launcherclient.LauncherClient, stopFn func()) {
 	//agent := service.StartLauncherAgent(svc, hc1)
 	//_ = agent
 	//--- connect the launcher user
-	hc2, _ := testServer.AddConnectConsumer(adminID, authz.ClientRoleAdmin)
-	cl := launcherclient.NewLauncherClient(launcherID, hc2)
-	return cl, func() {
+	hc2, _ := ts.AddConnectConsumer(adminID, authz.ClientRoleAdmin)
+	lcl := launcherclient.NewLauncherClient(launcherID, hc2)
+	return lcl, func() {
 		hc2.Disconnect()
 		//hc1.Disconnect()
 		_ = svc.Stop()
 		time.Sleep(time.Millisecond)
-		testServer.Stop()
+		ts.Stop()
 	}
 }
 
@@ -97,7 +97,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestStartStop(t *testing.T) {
-	fmt.Printf("---%s---\n", t.Name())
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	svc, cancelFunc := startService()
 	assert.NotNil(t, svc)
 	time.Sleep(time.Millisecond)
@@ -105,7 +105,7 @@ func TestStartStop(t *testing.T) {
 }
 
 func TestList(t *testing.T) {
-	fmt.Printf("---%s---\n", t.Name())
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	userID := "user1"
 
 	svc, cancelFunc := startService()
@@ -116,7 +116,7 @@ func TestList(t *testing.T) {
 	require.NoError(t, err)
 	assert.Greater(t, len(info), 10)
 
-	hc, _ := testServer.AddConnectConsumer(userID, authz.ClientRoleAdmin)
+	hc, _ := ts.AddConnectConsumer(userID, authz.ClientRoleAdmin)
 	defer hc.Disconnect()
 	cl := launcherclient.NewLauncherClient("", hc)
 	info2, err := cl.List(false)
@@ -125,14 +125,14 @@ func TestList(t *testing.T) {
 }
 
 func TestListNoPermission(t *testing.T) {
-	fmt.Printf("---%s---\n", t.Name())
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	userID := "user1"
 
 	svc, cancelFunc := startService()
 	defer cancelFunc()
 	require.NotNil(t, svc)
 
-	hc, _ := testServer.AddConnectConsumer(userID, authz.ClientRoleNone)
+	hc, _ := ts.AddConnectConsumer(userID, authz.ClientRoleNone)
 	defer hc.Disconnect()
 	cl := launcherclient.NewLauncherClient("", hc)
 	info2, err := cl.List(false)
@@ -141,7 +141,7 @@ func TestListNoPermission(t *testing.T) {
 }
 
 func TestStartYes(t *testing.T) {
-	fmt.Printf("---%s---\n", t.Name())
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	// remove logfile from previous run
 	logFile := path.Join(logDir, "yes.log")
 	_ = os.Remove(logFile)
@@ -168,11 +168,13 @@ func TestStartYes(t *testing.T) {
 }
 
 func TestStartBadName(t *testing.T) {
-	fmt.Printf("---%s---\n", t.Name())
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 
 	svc, cancelFunc := startService()
 	defer cancelFunc()
 	assert.NotNil(t, svc)
+
+	// FIXME: the error is not received - how to return an error in an action response?!
 
 	_, err := svc.StartPlugin("notaservicename")
 	require.Error(t, err)
@@ -182,7 +184,7 @@ func TestStartBadName(t *testing.T) {
 }
 
 func TestStartStopTwice(t *testing.T) {
-	fmt.Printf("---%s---\n", t.Name())
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	svc, cancelFunc := startService()
 	defer cancelFunc()
 	assert.NotNil(t, svc)
@@ -208,7 +210,7 @@ func TestStartStopTwice(t *testing.T) {
 }
 
 func TestStartStopAll(t *testing.T) {
-	fmt.Printf("---%s---\n", t.Name())
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	svc, cancelFunc := startService()
 	defer cancelFunc()
 	assert.NotNil(t, svc)

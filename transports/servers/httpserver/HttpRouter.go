@@ -3,7 +3,6 @@ package httpserver
 import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/hiveot/hub/transports/servers/httpserver/httpcontext"
 	"github.com/hiveot/hub/wot"
 	"net/http"
 )
@@ -34,7 +33,11 @@ const (
 	DefaultSSESCPath = "/ssesc"
 
 	// Generic form href that maps to all operations for the http client, using URI variables
-	GenericHttpHRef = "/hub/{operation}/{thingID}/{name}"
+	// Generic HiveOT HTTP urls when Forms are not available. The payload is a
+	// corresponding standardized message.
+	HiveOTPostNotificationHRef = "/hiveot/notification"
+	HiveOTPostRequestHRef      = "/hiveot/request"
+	HiveOTPostResponseHRef     = "/hiveot/response"
 )
 
 // HttpRouter contains the method to setup the HTTP binding routes
@@ -85,7 +88,7 @@ func (svc *HttpTransportServer) createRoutes(router chi.Router) http.Handler {
 			"text/html", "text/css", "text/javascript", "image/svg+xml"))
 
 		// client sessions authenticate the sender
-		r.Use(httpcontext.AddSessionFromToken(svc.authenticator))
+		r.Use(AddSessionFromToken(svc.authenticator))
 
 		// the following are protected http routes
 		svc.protectedRoutes = r
@@ -133,21 +136,11 @@ func (svc *HttpTransportServer) createRoutes(router chi.Router) http.Handler {
 		svc.AddPostOp(r, wot.HTOpLogout,
 			HttpPostLogoutPath, svc.HandleLogout)
 
-		// handlers for requests by agents
-		// TODO: These should be included in the digitwin TD forms
-		svc.AddPostOp(r, wot.HTOpUpdateTD,
-			"/agent/updatetd/{thingID}", svc.HandlePublishTD)
-		svc.AddPostOp(r, wot.HTOpPublishEvent,
-			"/agent/event/{thingID}/{name}", svc.HandlePublishEvent)
-		svc.AddPostOp(r, wot.HTOpUpdateProperty,
-			"/agent/updateproperty/{thingID}/{name}", svc.HandlePublishProperty)
-		svc.AddPostOp(r, wot.HTOpUpdateMultipleProperties,
-			"/agent/updatemultipleproperties/{thingID}", svc.HandlePublishMultipleProperties)
-		svc.AddPostOp(r, wot.HTOpActionStatus,
-			"/agent/actionstatus", svc.HandleActionStatus)
-
-		svc.AddPostOp(r, "", // TODO all operations work with the generic URL
-			GenericHttpHRef, svc.HandleGenericHttpOp)
+		// HiveOT messaging API using standardized envelops. This can be used instead
+		// of Forms. Only 3 endpoints are needed. Please try me :)
+		svc.AddPostOp(r, "request", HiveOTPostRequestHRef, svc.HandleHiveotRequest)
+		svc.AddPostOp(r, "response", HiveOTPostResponseHRef, svc.HandleHiveotResponse)
+		svc.AddPostOp(r, "notification", HiveOTPostNotificationHRef, svc.HandleHiveotNotification)
 	})
 
 	return router

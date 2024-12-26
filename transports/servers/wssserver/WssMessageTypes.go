@@ -43,8 +43,8 @@ const (
 
 // MsgTypeToOp converts websocket message types to a WoT operation
 var MsgTypeToOp = map[string]string{
-	MsgTypeActionStatus:            wot.HTOpActionStatus,
-	MsgTypeActionStatuses:          wot.HTOpActionStatuses,
+	MsgTypeActionStatus:            "actionstatus",
+	MsgTypeActionStatuses:          "actionstatuses",
 	MsgTypeCancelAction:            wot.OpCancelAction,
 	MsgTypeInvokeAction:            wot.OpInvokeAction,
 	MsgTypeLogin:                   wot.HTOpLogin,

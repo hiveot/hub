@@ -35,13 +35,13 @@ func TestInvokeActionFromConsumerToServer(t *testing.T) {
 		if req.Operation == wot.OpInvokeAction {
 			inputVal.Store(req.Input)
 			// Hmm, should this be pending with a separate async completed result?
-			return req.CreateResponse(transports.StatusCompleted, req.Input, nil)
+			return req.CreateResponse(req.Input, nil)
 		}
 		assert.Fail(t, "Not expecting this")
-		return req.CreateResponse(transports.StatusFailed, nil, errors.New("unexpected request"))
+		return req.CreateResponse(nil, errors.New("unexpected request"))
 	}
 	// 1. start the servers
-	srv, cancelFn, _ := StartTransportServer(requestHandler, DummyResponseHandler, DummyNotificationHandler)
+	srv, cancelFn, _ := StartTransportServer(requestHandler, nil, nil)
 	defer cancelFn()
 
 	// 2. connect a client
@@ -107,7 +107,7 @@ func TestInvokeActionFromServerToAgent(t *testing.T) {
 	ctx1, cancelFn1 := context.WithTimeout(context.Background(), time.Minute)
 	defer cancelFn1()
 	// server receives agent response
-	responseHandler := func(resp transports.ResponseMessage) error {
+	responseHandler := func(agentID string, resp transports.ResponseMessage) error {
 		var responseData string
 		// The server receives a response message from the agent
 		// (which normally is forwarded to the remote consumer; but not in this test)
@@ -125,7 +125,7 @@ func TestInvokeActionFromServerToAgent(t *testing.T) {
 		cancelFn1()
 		return nil
 	}
-	srv, cancelFn2, cm2 := StartTransportServer(DummyRequestHandler, responseHandler, DummyNotificationHandler)
+	srv, cancelFn2, cm2 := StartTransportServer(nil, responseHandler, nil)
 	cm = cm2
 	defer cancelFn2()
 
@@ -142,7 +142,7 @@ func TestInvokeActionFromServerToAgent(t *testing.T) {
 		slog.Info("Agent receives request", "op", req.Operation)
 		assert.Equal(t, testClientID1, req.SenderID)
 		reqVal.Store(req.Input)
-		return req.CreateResponse(transports.StatusCompleted, testMsg2, nil)
+		return req.CreateResponse(testMsg2, nil)
 	})
 
 	// Send the action request from the server to the agent (the agent is connected as a client)
@@ -190,7 +190,7 @@ func TestQueryActions(t *testing.T) {
 				Received:  req.Created,
 				Updated:   time.Now().Format(wot.RFC3339Milli),
 			}
-			return req.CreateResponse(transports.StatusCompleted, actStat, nil)
+			return req.CreateResponse(actStat, nil)
 
 			//replyTo.SendResponse(msg.ThingID, msg.Name, output, msg.RequestID)
 		} else if req.Operation == wot.OpQueryAllActions {
@@ -202,12 +202,11 @@ func TestQueryActions(t *testing.T) {
 			actStat[1].Name = actionKey
 			actStat[1].RequestID = "requestID-123"
 			actStat[1].Status = transports.StatusCompleted
-			resp := req.CreateResponse(transports.StatusCompleted, actStat, nil)
+			resp := req.CreateResponse(actStat, nil)
 			return resp
 			//replyTo.SendResponse(msg.ThingID, msg.Name, actStat, msg.RequestID)
 		}
-		return req.CreateResponse(transports.StatusFailed, nil,
-			errors.New("unexpected response "+req.Operation))
+		return req.CreateResponse(nil, errors.New("unexpected response "+req.Operation))
 	}
 
 	// 1. start the servers

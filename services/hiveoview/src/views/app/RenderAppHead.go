@@ -1,9 +1,9 @@
 package app
 
 import (
-	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
+	"github.com/hiveot/hub/transports/tputils"
 	"net/http"
 )
 
@@ -60,11 +60,11 @@ func RenderAppHead(w http.ResponseWriter, r *http.Request) {
 		dashboardData := AppHeadDashboardData{
 			ID:                               dashboardModel.ID,
 			Title:                            dashboardModel.Title,
-			RenderDashboardPath:              utils.Substitute(src.RenderDashboardPath, pathArgs),
-			RenderAddTilePath:                utils.Substitute(src.RenderTileAddPath, pathArgs),
-			RenderConfirmDeleteDashboardPath: utils.Substitute(src.RenderDashboardConfirmDeletePath, pathArgs),
-			RenderEditDashboardPath:          utils.Substitute(src.PostDashboardConfigPath, pathArgs),
-			RenderAddDashboardPath:           utils.Substitute(src.RenderDashboardAddPath, pathArgs),
+			RenderDashboardPath:              tputils.Substitute(src.RenderDashboardPath, pathArgs),
+			RenderAddTilePath:                tputils.Substitute(src.RenderTileAddPath, pathArgs),
+			RenderConfirmDeleteDashboardPath: tputils.Substitute(src.RenderDashboardConfirmDeletePath, pathArgs),
+			RenderEditDashboardPath:          tputils.Substitute(src.PostDashboardConfigPath, pathArgs),
+			RenderAddDashboardPath:           tputils.Substitute(src.RenderDashboardAddPath, pathArgs),
 		}
 		data.AppHeadDashboards = append(data.AppHeadDashboards, dashboardData)
 	}

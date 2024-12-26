@@ -9,6 +9,7 @@ import (
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/clients/httpclient"
 	"github.com/hiveot/hub/transports/servers/ssescserver"
+	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/tmaxmax/go-sse"
@@ -183,18 +184,20 @@ func (cl *SsescConsumerClient) handleSseEvent(event sse.Event) {
 	// As soon as a connection is established the server could send a 'ping' event.
 	if !cl.IsConnected() {
 		// success!
-		slog.Debug("handleSSEEvent: connection (re)established; setting connected to true")
+		slog.Info("handleSSEEvent: connection (re)established; setting connected to true")
 		cl.handleSSEConnect(true, nil)
 	}
+	slog.Info("handleSSEEvent; received SSE event",
+		slog.String("event type", event.Type))
 	// no further processing of a ping needed
 	if event.Type == ssescserver.SSEPingEvent {
 		return
 	}
 
 	// Use the hiveot message envelopes for request, response and notification
-	if event.Type == transports.RequestMessageType {
+	if event.Type == transports.MessageTypeRequest {
 		cl.agentRequestHandler(event.Data)
-	} else if event.Type == transports.ResponseMessageType {
+	} else if event.Type == transports.MessageTypeResponse {
 		resp := transports.ResponseMessage{}
 		_ = jsoniter.UnmarshalFromString(event.Data, &resp)
 		cl.OnResponse(resp)
@@ -208,7 +211,7 @@ func (cl *SsescConsumerClient) handleSseEvent(event sse.Event) {
 
 // Ping the server and wait for a pong response over the sse return channel
 func (cl *SsescConsumerClient) Ping() error {
-	req := transports.NewRequestMessage(ssescserver.SSEOpPing, "", "", nil, "")
+	req := transports.NewRequestMessage(wot.HTOpPing, "", "", nil, "")
 	resp, err := cl.SendRequest(req, true)
 	if err != nil {
 		return err

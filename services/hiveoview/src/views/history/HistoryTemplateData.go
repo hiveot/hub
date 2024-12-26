@@ -3,9 +3,12 @@ package history
 import (
 	"encoding/json"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/hiveoview/src"
+	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/tputils"
+	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/consumedthing"
+	"github.com/hiveot/hub/wot/td"
 	"strconv"
 	"time"
 )
@@ -55,7 +58,7 @@ func (ht HistoryTemplateData) AsJSON() string {
 
 		}
 		dataList = append(dataList,
-			HistoryDataPoint{X: m.Created, Y: yValue})
+			HistoryDataPoint{X: m.Timestamp, Y: yValue})
 	}
 	dataJSON, _ := json.Marshal(dataList)
 	return string(dataJSON)
@@ -103,7 +106,7 @@ func NewHistoryTemplateData(
 		Name:         name,
 		Title:        td.Title,
 		Timestamp:    timestamp,
-		TimestampStr: timestamp.Format(utils.RFC3339Milli),
+		TimestampStr: timestamp.Format(wot.RFC3339Milli),
 		DurationSec:  int(duration.Seconds()),
 		//DataSchema:     nil,  // see below
 		Stepped:        false,
@@ -127,10 +130,10 @@ func NewHistoryTemplateData(
 	prevDayTime := hs.PrevDay().Format(time.RFC3339)
 	nextDayTime := hs.NextDay().Format(time.RFC3339)
 	todayTime := time.Now().Format(time.RFC3339)
-	hs.PrevDayPath = utils.Substitute(src.RenderHistoryTimePath+prevDayTime, pathParams)
-	hs.NextDayPath = utils.Substitute(src.RenderHistoryTimePath+nextDayTime, pathParams)
-	hs.TodayPath = utils.Substitute(src.RenderHistoryTimePath+todayTime, pathParams)
-	hs.RenderHistoryLatestRow = utils.Substitute(src.RenderHistoryLatestValueRowPath, pathParams)
-	hs.RenderThingDetailsPath = utils.Substitute(src.RenderThingDetailsPath, pathParams)
+	hs.PrevDayPath = tputils.Substitute(src.RenderHistoryTimePath+prevDayTime, pathParams)
+	hs.NextDayPath = tputils.Substitute(src.RenderHistoryTimePath+nextDayTime, pathParams)
+	hs.TodayPath = tputils.Substitute(src.RenderHistoryTimePath+todayTime, pathParams)
+	hs.RenderHistoryLatestRow = tputils.Substitute(src.RenderHistoryLatestValueRowPath, pathParams)
+	hs.RenderThingDetailsPath = tputils.Substitute(src.RenderThingDetailsPath, pathParams)
 	return &hs, err
 }

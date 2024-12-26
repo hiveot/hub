@@ -10,7 +10,6 @@ import (
 	"github.com/eclipse/paho.golang/paho"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/clients/base"
-	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/teris-io/shortid"
@@ -609,7 +608,7 @@ func (cl *MqttConsumerClient) Init(fullURL string, clientID string,
 	cl.BaseTimeout = timeout
 	cl.BaseProtocolType = transports.ProtocolTypeMQTTS
 	cl.BaseFullURL = fullURL
-	cl.BaseRnrChan = tputils.NewRnRChan()
+	cl.BaseRnrChan = base.NewRnRChan()
 
 	// max delay 3 seconds before a response is expected
 	cl.brokerURL = fullURL

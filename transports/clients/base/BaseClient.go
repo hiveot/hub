@@ -40,10 +40,10 @@ type BaseClient struct {
 	BaseIsConnected atomic.Bool
 
 	// Request and Response channel helper
-	BaseRnrChan *tputils.RnRChan
+	BaseRnrChan *RnRChan
 
 	// BasePubRequest is set to the implementation of publishing a
-	// request by the subclass without waiting for a response.
+	// request by the subclass in the background, without waiting for a response.
 	// Workaround for golang not supporting inheritance.
 	BasePubRequest func(msg transports.RequestMessage) error
 
@@ -126,7 +126,7 @@ func (cl *BaseClient) ObserveProperty(thingID string, name string) error {
 // OnNotification passes a notification to the registered handler or log an error if
 // no handler is set.
 func (cl *BaseClient) OnNotification(notif transports.NotificationMessage) {
-	cl.OnNotification(notif)
+
 	if cl.appNotificationHandler == nil {
 		slog.Error("handleSseEvent: Received notification but no handler is set",
 			"operation", notif.Operation,
@@ -146,7 +146,7 @@ func (cl *BaseClient) OnRequest(req transports.RequestMessage) transports.Respon
 	// handle requests if any
 	if cl.appRequestHandler == nil {
 		err := fmt.Errorf("Received request but no handler is set")
-		resp := req.CreateResponse(transports.StatusFailed, nil, err)
+		resp := req.CreateResponse(nil, err)
 		return resp
 	}
 	resp := cl.appRequestHandler(req)
@@ -217,11 +217,33 @@ func (cl *BaseClient) RefreshToken(oldToken string) (newToken string, err error)
 	return newToken, err
 }
 
+// Rpc sends a request message and waits for a response.
+// This returns an error if the request fails or if the response contains an error
+func (cl *BaseClient) Rpc(operation, thingID, name string, input any, output any) error {
+	requestID := shortid.MustGenerate()
+	req := transports.NewRequestMessage(operation, thingID, name, input, requestID)
+	resp, err := cl.SendRequest(req, true)
+	if err == nil {
+		if resp.Status == transports.StatusFailed {
+			detail := fmt.Sprintf("%v", resp.Output)
+			errTxt := resp.Error
+			if detail != "" {
+				errTxt += "\n" + detail
+			}
+			err = errors.New(errTxt)
+		} else if resp.Output != nil && output != nil {
+			err = tputils.Decode(resp.Output, output)
+		}
+	}
+	return err
+}
+
 // SendRequest sends an operation request and optionally waits for completion or timeout.
 // If waitForCompletion is true and no requestID is provided then a requestID will
 // be generated to wait for completion.
-func (cl *BaseClient) SendRequest(
-	req transports.RequestMessage, waitForCompletion bool) (resp transports.ResponseMessage, err error) {
+// If waitForCompletion is false then the response will go to the response handler
+func (cl *BaseClient) SendRequest(req transports.RequestMessage, waitForCompletion bool) (
+	resp transports.ResponseMessage, err error) {
 
 	t0 := time.Now()
 	slog.Info("SendRequest",
@@ -230,7 +252,15 @@ func (cl *BaseClient) SendRequest(
 		slog.String("name", req.Name),
 		slog.String("requestID", req.RequestID),
 	)
-	if req.RequestID == "" && waitForCompletion {
+	// if not waiting then return asap with a pending response
+	if !waitForCompletion {
+		err = cl.BasePubRequest(req)
+		resp = req.CreateResponse(nil, err)
+		resp.Status = transports.StatusPending
+		return resp, err
+	}
+
+	if req.RequestID == "" {
 		req.RequestID = shortid.MustGenerate()
 	}
 	// open a return channel for the response
@@ -251,7 +281,7 @@ func (cl *BaseClient) SendRequest(
 	// the alternative is not to use SendRequest but plain TLS post
 	ignoreDisconnect := req.Operation == wot.HTOpLogin || req.Operation == wot.HTOpRefresh
 
-	resp, err = cl.WaitForResponse(rChan, req.Operation, req.RequestID, ignoreDisconnect)
+	resp, err = cl.WaitForCompletion(rChan, req.Operation, req.RequestID, ignoreDisconnect)
 
 	t1 := time.Now()
 	duration := t1.Sub(t0)
@@ -341,18 +371,19 @@ func (cl *BaseClient) Unsubscribe(thingID string, name string) error {
 	return err
 }
 
-// WaitForResponse waits for a response message on the given requestID channel,
-// or until N seconds passed, or the connection drops.
+// WaitForCompletion waits for a completed or failed response message on the
+// given requestID channel, or until N seconds passed, or the connection drops.
 //
 // If a proper response is received it is written to the given output and nil
 // (no error) is returned.
 // If anything goes wrong, an error is returned
-func (cl *BaseClient) WaitForResponse(
+func (cl *BaseClient) WaitForCompletion(
 	rChan chan transports.ResponseMessage, operation, requestID string, ignoreDisconnect bool) (
 	resp transports.ResponseMessage, err error) {
 
 	waitCount := 0
 	var completed bool
+	var hasResponse bool
 
 	for !completed {
 		// If the server connection no longer exists then don't wait any longer.
@@ -372,20 +403,25 @@ func (cl *BaseClient) WaitForResponse(
 			break
 		}
 		if waitCount > 0 {
-			slog.Info("WaitForResponse (wait)",
+			slog.Info("WaitForCompletion (wait)",
 				slog.Int("count", waitCount),
 				slog.String("clientID", cl.GetClientID()),
 				slog.String("operation", operation),
 				slog.String("requestID", requestID),
 			)
 		}
-		completed, resp = cl.BaseRnrChan.WaitForResponse(rChan, time.Second)
+		hasResponse, resp = cl.BaseRnrChan.WaitForResponse(rChan, time.Second)
+		if hasResponse {
+			// ignore pending or other transient responses
+			completed = resp.Status == transports.StatusCompleted ||
+				resp.Status == transports.StatusFailed
+		}
 		waitCount++
 	}
 
 	// ending the wait
 	cl.BaseRnrChan.Close(requestID)
-	slog.Debug("WaitForResponse (result)",
+	slog.Debug("WaitForCompletion (result)",
 		slog.String("clientID", cl.GetClientID()),
 		slog.String("operation", operation),
 		slog.String("requestID", requestID),
@@ -393,7 +429,7 @@ func (cl *BaseClient) WaitForResponse(
 
 	// check for errors
 	if err != nil {
-		slog.Warn("WaitForResponse failed", "err", err.Error())
+		slog.Warn("WaitForCompletion failed", "err", err.Error())
 	} else if resp.Error != "" {
 		// if response data holds an error type then return that as the error
 		err = errors.New(resp.Error)

@@ -115,8 +115,7 @@ func (cl *MqttAgentClient) sendReply(req *paho.Publish, payload []byte, errResp 
 }
 
 // SendNotification sends the operation as a notification and returns immediately.
-func (cl *MqttAgentClient) SendNotification(
-	operation string, thingID, name string, input interface{}) error {
+func (cl *MqttAgentClient) SendNotification(notif transports.NotificationMessage) error {
 
 	// FIXME: implement message envelope
 	err := errors.New("not implemented")

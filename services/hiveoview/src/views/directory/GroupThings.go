@@ -1,6 +1,7 @@
 package directory
 
 import (
+	"github.com/hiveot/hub/wot/td"
 	"sort"
 )
 
@@ -17,7 +18,7 @@ type AgentThings struct {
 func GroupByAgent(tds map[string]*td.TD) []*AgentThings {
 	agentMap := make(map[string]*AgentThings)
 	// first split the things by their agent
-	for thingID, td := range tds {
+	for thingID, tdi := range tds {
 		agentID, _ := td.SplitDigiTwinThingID(thingID)
 		agentGroup, found := agentMap[agentID]
 		if !found {
@@ -27,7 +28,7 @@ func GroupByAgent(tds map[string]*td.TD) []*AgentThings {
 			}
 			agentMap[agentID] = agentGroup
 		}
-		agentGroup.Things = append(agentGroup.Things, td)
+		agentGroup.Things = append(agentGroup.Things, tdi)
 	}
 	// next, sort the agent things
 	agentsList := make([]*AgentThings, 0, len(agentMap))

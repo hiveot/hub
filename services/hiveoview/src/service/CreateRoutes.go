@@ -19,6 +19,8 @@ import (
 	"time"
 )
 
+const WebSsePath = "/websse"
+
 // CreateRoutes sets-up the chain of routes used by the service and return the router
 // rootPath points to the filesystem containing /static and template files
 func (svc *HiveovService) CreateRoutes(router *chi.Mux, rootPath string) http.Handler {
@@ -61,6 +63,7 @@ func (svc *HiveovService) CreateRoutes(router *chi.Mux, rootPath string) http.Ha
 		r.Get("/webcomp/*", staticFileServer.ServeHTTP)
 		r.Get("/login", login.RenderLogin)
 		r.Post("/login", login.PostLoginHandler(svc.sm))
+		r.Post("/loginForm", login.PostLoginFormHandler(svc.sm))
 		r.Get("/logout", session.SessionLogout)
 	})
 
@@ -70,7 +73,7 @@ func (svc *HiveovService) CreateRoutes(router *chi.Mux, rootPath string) http.Ha
 		// these routes must be authenticated otherwise redirect to /login
 		r.Use(session.AddSessionToContext(svc.sm))
 
-		r.Get("/websse", session.SseHandler)
+		r.Get(WebSsePath, session.SseHandler)
 
 		// see also:https://medium.com/gravel-engineering/i-find-it-hard-to-reuse-root-template-in-go-htmx-so-i-made-my-own-little-tools-to-solve-it-df881eed7e4d
 		// these render full page or fragments for non hx-boost hx-requests

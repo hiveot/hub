@@ -99,7 +99,7 @@ func (c *WssServerConnection) WssServerHandleMessage(raw []byte) {
 		resp.Error = wssMsg.Error
 		resp.Status = wssMsg.Status // todo: convert from wss to global names
 		resp.Updated = wssMsg.TimeEnded
-		_ = c.responseHandler(resp)
+		_ = c.responseHandler(c.clientID, resp)
 
 	case // hub receives action messages from a consumer. Forward as a request.
 		MsgTypeInvokeAction,
@@ -134,7 +134,7 @@ func (c *WssServerConnection) WssServerHandleMessage(raw []byte) {
 		notif := transports.NewNotificationMessage(
 			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data)
 		notif.Created = wssMsg.Timestamp
-		c.notificationHandler(notif)
+		c.notificationHandler(c.clientID, notif)
 
 	case // property requests. Forward as requests
 		MsgTypeReadAllProperties,
@@ -162,7 +162,7 @@ func (c *WssServerConnection) WssServerHandleMessage(raw []byte) {
 		resp := transports.NewResponseMessage(
 			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, nil, wssMsg.RequestID)
 		resp.Updated = wssMsg.Timestamp
-		_ = c.responseHandler(resp)
+		_ = c.responseHandler(c.clientID, resp)
 
 		// td messages
 	case MsgTypeReadTD:
@@ -180,7 +180,7 @@ func (c *WssServerConnection) WssServerHandleMessage(raw []byte) {
 		notif := transports.NewNotificationMessage(
 			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data)
 		notif.Created = wssMsg.Timestamp
-		c.notificationHandler(notif)
+		c.notificationHandler(c.clientID, notif)
 
 	// subscriptions are handled inside this binding
 	case MsgTypeObserveAllProperties:
@@ -233,7 +233,7 @@ func (c *WssServerConnection) WssServerHandleMessage(raw []byte) {
 			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Detail, nil, wssMsg.RequestID)
 		resp.Updated = wssMsg.Timestamp
 		resp.Error = wssMsg.Title
-		_ = c.responseHandler(resp)
+		_ = c.responseHandler(c.clientID, resp)
 
 	case MsgTypePing:
 		wssMsg := BaseMessage{}

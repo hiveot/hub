@@ -33,7 +33,8 @@ func GetConnectStatus(r *http.Request) *ConnectStatus {
 	if cs == nil {
 		status.Description = "Session not established"
 	} else {
-		isConnected, _, lastError := cs.GetStatus()
+		isConnected := cs.IsConnected()
+		lastError := cs.GetLastError()
 		status.LoginID = cs.GetClientID()
 		if lastError != nil {
 			status.Error = lastError.Error()

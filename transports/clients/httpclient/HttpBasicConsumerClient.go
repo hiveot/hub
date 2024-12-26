@@ -183,7 +183,8 @@ func (cl *HttpConsumerClient) _send(method string, methodPath string,
 // The only exceptions are the login and refresh operations as they are
 // outside the protected routes.
 func (cl *HttpConsumerClient) GetDefaultForm(op string) td.Form {
-	href := httpserver.GenericHttpHRef
+	// FIXME: change the default to use the hiveot protocol based on operation
+	href := httpserver.HiveOTPostRequestHRef
 	method := http.MethodPost
 	if op == wot.HTOpLogin {
 		href = httpserver.HttpPostLoginPath
@@ -233,11 +234,6 @@ func (cl *HttpConsumerClient) PubRequest(req transports.RequestMessage) error {
 	if f != nil {
 		method, _ = f.GetMethodName()
 		href, _ = f.GetHRef()
-	}
-	if method == "" || href == "" {
-		// use the built-in format
-		href = httpserver.GenericHttpHRef
-		method = http.MethodGet
 	}
 
 	if req.Operation == "" && req.RequestID == "" {
@@ -296,7 +292,7 @@ func (cl *HttpConsumerClient) PubRequest(req transports.RequestMessage) error {
 		err = cl.Unmarshal(outputRaw, &output)
 	}
 	// 2 and 3. request completed
-	if output != nil || statusHeader == transports.StatusCompleted {
+	if statusHeader == transports.StatusCompleted {
 		// the synchronous result of the request contains the output and is completed.
 		go func() {
 			// Handle this in the background to avoid it being blocked, because
@@ -304,7 +300,6 @@ func (cl *HttpConsumerClient) PubRequest(req transports.RequestMessage) error {
 			// immediately or asynchronously)
 			resp := transports.NewResponseMessage(
 				req.Operation, req.ThingID, req.Name, output, nil, req.RequestID)
-
 			// pass a response to the sync or asyncn handler of responses
 			cl.OnResponse(resp)
 		}()
@@ -316,7 +311,7 @@ func (cl *HttpConsumerClient) PubRequest(req transports.RequestMessage) error {
 		}
 		return errors.New(errTxt)
 	} else {
-		// status is pending nothing to do here
+		// status is pending no reason to treat it as a response
 	}
 	return err
 }
@@ -355,7 +350,7 @@ func (cl *HttpConsumerClient) Init(
 		BaseFullURL:      fullURL,
 		BaseHostPort:     baseHostPort,
 		BaseTimeout:      timeout,
-		BaseRnrChan:      tputils.NewRnRChan(),
+		BaseRnrChan:      base.NewRnRChan(),
 	}
 
 	if getForm == nil {

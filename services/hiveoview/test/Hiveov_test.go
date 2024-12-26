@@ -5,11 +5,14 @@ import (
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
+	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/service"
 	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/clients/wssclient"
+	"github.com/hiveot/hub/transports/clients/sseclient"
 	"github.com/hiveot/hub/transports/tputils/tlsclient"
 	"github.com/hiveot/hub/wot"
+	"github.com/hiveot/hub/wot/td"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -23,7 +26,6 @@ import (
 
 const serviceID = "hiveoview-test"
 const servicePort = 9999
-const agentUsesWSS = true
 
 // set to true to test without state service
 const noState = true
@@ -33,35 +35,61 @@ var testFolder = path.Join(os.TempDir(), "test-hiveoview")
 // the following are set by the testmain
 var ts *testenv.TestServer
 
+// return the form with href for login operations to the hiveoview server
+// these must match the paths in hiveoview CreateRoutes.
+func getHiveoviewForm(op string) td.Form {
+	var href string
+	var method string
+	switch op {
+	case wot.HTOpLogin:
+		href = "/login"
+		method = "POST"
+	case wot.HTOpLoginWithForm:
+		href = "/loginForm"
+		method = "GET"
+	case wot.HTOpLogout:
+		href = "/logout"
+		method = "POST"
+	case wot.HTOpRefresh:
+		href = "/refresh" // todo
+		method = "POST"
+	default:
+		panic("Unexpected operation: " + op)
+	}
+	f := td.NewForm(op, href)
+	f.SetMethodName(method)
+	return f
+}
+
 // Helper function to login as a web client and sse listener
 // This will set its cookie to allow for further requests.
 // Run the TestLogin test before using this.
 // This returns a client. Call Close() when done.
-func WebLogin(clientID string,
+func WebLogin(fullURL string, clientID string,
 	onConnection func(bool, error),
 	onMessage func(message *transports.ThingMessage),
 	onRequest func(message *transports.ThingMessage) (output any, err error)) (
 	cl transports.IClientConnection, err error) {
 
-	fullURL := fmt.Sprintf("https://localhost:%d", servicePort)
-
 	//sseCl := clients.NewHubClient(fullURL, clientID, ts.Certs.CaCert)
 	// websocket client
-	sseCl := wssclient.NewWssTransportClient(
-		fullURL, clientID, nil, ts.Certs.CaCert, time.Minute)
+	//sseCl := wssclient.NewWssTransportClient(
+	//	fullURL, clientID, nil, ts.Certs.CaCert, time.Minute)
 	// or sse-sc client
-	//sseCl := sseclient.NewSsescTransportClient(
-	//	fullURL, clientID, nil, ts.Certs.CaCert, nil, time.Minute)
-	//sseCl.SetSSEPath("/websse")
+
+	// use the hub's SSE client to connect to the hiveoview server
+	sseCl := sseclient.NewSsescTransportClient(
+		fullURL, clientID, nil, ts.Certs.CaCert, getHiveoviewForm, time.Minute)
 	sseCl.SetConnectHandler(onConnection)
 	sseCl.SetNotificationHandler(onMessage)
 	sseCl.SetRequestHandler(onRequest)
 
 	//err = sseCl.ConnectWithLoginForm(clientID)
 	// FIXME: password is clientID
-	token, err := sseCl.ConnectWithPassword(clientID)
-	_ = token
+	// hiveoview uses a different login path as the hub
+	_, err = sseCl.ConnectWithPassword(clientID)
 
+	time.Sleep(time.Second * 10)
 	return sseCl, err
 }
 
@@ -96,7 +124,7 @@ func TestStartStop(t *testing.T) {
 	svc.Stop()
 }
 
-// test many connections from a single client and confirm they open close and receive messages properly.
+// test login from a client using password
 func TestLogin(t *testing.T) {
 	const clientID1 = "user1"
 
@@ -105,6 +133,81 @@ func TestLogin(t *testing.T) {
 	svc := service.NewHiveovService(servicePort, true,
 		nil, "", ts.Certs.ServerCert, ts.Certs.CaCert, noState)
 	avcAg, _ := ts.AddConnectService(serviceID)
+	require.NotNil(t, avcAg)
+	defer avcAg.Disconnect()
+	err := svc.Start(avcAg)
+	require.NoError(t, err)
+	defer svc.Stop()
+
+	// make sure the client to login as exists
+	cl1, token1 := ts.AddConnectConsumer(clientID1, authz.ClientRoleOperator)
+	//defer cl1.Disconnect()
+	cl1.Disconnect()
+	_ = token1
+	time.Sleep(time.Millisecond * 10)
+
+	// 2: login using plain TLS connection and a form
+	hostPort := fmt.Sprintf("localhost:%d", servicePort)
+	cl2 := tlsclient.NewTLSClient(
+		hostPort, nil, ts.Certs.CaCert, time.Second*60, "cid1")
+
+	// try login. The test user password is the clientID
+	// authenticate the connection with the hiveot http/sse service (not the hub server)
+	// the service will in turn forward the request to the hub.
+	loginMessage := map[string]string{
+		"login":    clientID1,
+		"password": clientID1,
+	}
+	// this login will set an auth cookie
+	loginJSON, _ := jsoniter.Marshal(loginMessage)
+	_ = loginJSON
+	resp, _, statusCode, err := cl2.Post("/login", loginJSON, "cid2")
+	//resp holds the serialized new token
+	cl2.Close()
+	require.NoError(t, err)
+	assert.Equal(t, 200, statusCode)
+
+	// result contains the new paseto auth token (v4.public.*)
+	var newToken string
+	err = jsoniter.Unmarshal(resp, &newToken)
+	assert.NotEmpty(t, newToken)
+	assert.NoError(t, err)
+	clientID, sessID, err := ts.Runtime.AuthnSvc.SessionAuth.ValidateToken(newToken)
+	_ = clientID
+	_ = sessID
+	require.NoError(t, err)
+
+	// retrieving about should succeed
+	data, statusCode, err := cl2.Get(src.RenderAboutPath)
+	_ = statusCode
+	assert.NoError(t, err)
+	assert.NotEmpty(t, data)
+	// todo verify the redirect to /about
+
+	// request using a new client and the given auth token
+	//cl3 := tlsclient.NewTLSClient(
+	//	hostPort, nil, ts.Certs.CaCert, time.Second*60, "cid3")
+	//cl3.SetAuthToken(newToken)
+	//data, statusCode, err = cl3.Get(src.RenderAboutPath)
+	//_ = statusCode
+	//assert.NoError(t, err)
+	//assert.NotEmpty(t, data)
+	// todo verify the result is the about path, not a redirect to login
+
+	t.Log("TestLogin completed")
+}
+
+// test login from a client using forms
+func TestLoginForm(t *testing.T) {
+	const clientID1 = "user1"
+
+	// 1: setup: start a runtime and service; this generates an error that
+	//    the state service isnt found. ignore it.
+	svc := service.NewHiveovService(servicePort, true,
+		nil, "", ts.Certs.ServerCert, ts.Certs.CaCert, noState)
+	avcAg, _ := ts.AddConnectService(serviceID)
+	require.NotNil(t, avcAg)
+	defer avcAg.Disconnect()
 	err := svc.Start(avcAg)
 
 	require.NoError(t, err)
@@ -112,13 +215,18 @@ func TestLogin(t *testing.T) {
 
 	// make sure the client to login as exists
 	cl1, token1 := ts.AddConnectConsumer(clientID1, authz.ClientRoleOperator)
-	defer cl1.Disconnect()
+	//defer cl1.Disconnect()
+	cl1.Disconnect()
 
 	_ = token1
 
-	// 2: login using form
+	ccount, _ := ts.Runtime.CM.GetNrConnections()
+	_ = ccount
+	time.Sleep(time.Millisecond * 10)
+
+	// 2: login using plain TLS connection and a form
 	hostPort := fmt.Sprintf("localhost:%d", servicePort)
-	cl := tlsclient.NewTLSClient(
+	cl2 := tlsclient.NewTLSClient(
 		hostPort, nil, ts.Certs.CaCert, time.Second*60, "cid1")
 
 	// try login. The test user password is the clientID
@@ -126,8 +234,12 @@ func TestLogin(t *testing.T) {
 	formMock := url.Values{}
 	formMock.Add("loginID", clientID1)
 	formMock.Add("password", clientID1)
-	fullURL := fmt.Sprintf("https://%s/login", hostPort)
-	resp, err := cl.GetHttpClient().PostForm(fullURL, formMock)
+	fullURL := fmt.Sprintf("https://%s/loginForm", hostPort)
+
+	// authenticate the connection with the hiveot http/sse service (not the hub server)
+	// the service will in turn forward the request to the hub.
+	resp, err := cl2.GetHttpClient().PostForm(fullURL, formMock)
+	cl2.Close()
 	require.NoError(t, err)
 	// this should redirect to /dashboard
 	assert.Equal(t, 200, resp.StatusCode)
@@ -135,9 +247,10 @@ func TestLogin(t *testing.T) {
 
 	// result contains html
 	body, err := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
 	assert.NoError(t, err)
 	assert.NotEmpty(t, body)
-	cl.Close()
+	t.Log("TestLogin completed")
 }
 
 // test many connections from a single client and confirm they open close and receive messages properly.
@@ -169,11 +282,15 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	td1 := ts.AddTD(agentID, nil)
 	_ = td1
 	// create the user account this test is going to connect as.
+	// hiveoview server only supports HTTP/SSE
 	cl1, token1 := ts.AddConnectConsumer(clientID1, authz.ClientRoleOperator)
-	cl1.Disconnect()
+	defer cl1.Disconnect()
+	err = cl1.Subscribe("", "")
+	require.NoError(t, err)
 	time.Sleep(waitamoment)
 
 	_ = token1
+	//handler for web connections
 	onConnection := func(connected bool, err error) {
 		if connected {
 			connectCount.Add(1)
@@ -181,6 +298,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 			disConnectCount.Add(1)
 		}
 	}
+	// handler for web connection messages
 	onMessage := func(msg *transports.ThingMessage) {
 		// the UI expects this format for triggering htmx
 		expectedType := fmt.Sprintf("dtw:%s:%s/%s", agentID, td1.ID, eventName)
@@ -190,16 +308,23 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	}
 
 	// 2: connect and subscribe web clients and verify
+	// each webclient connection will trigger a separate connection to the hub
+	// with its own subscription.
+	// The hiveoview server only supports SSE
+	hiveoviewURL := svc.GetServerURL()
 	for range testConnections {
-		sseCl, err := WebLogin(clientID1, onConnection, onMessage, nil)
+		sseCl, err := WebLogin(hiveoviewURL, clientID1, onConnection, onMessage, nil)
 		require.NoError(t, err)
 		require.NotNil(t, sseCl)
 		webClients = append(webClients, sseCl)
 		time.Sleep(waitamoment)
 	}
 	// connection notification should have been received N times
-	time.Sleep(time.Second * 3)
+	time.Sleep(time.Second * 1)
 	require.Equal(t, testConnections, connectCount.Load(), "connect count mismatch")
+	// the hiveoview session manager should have corresponding connections
+	nrSessions := svc.GetSM().GetNrSessions()
+	require.Equal(t, testConnections, nrSessions)
 
 	// 3: agent publishes an event, which should be received N times
 	err = ag1.SendNotification(wot.HTOpPublishEvent, td1.ID, eventName, "a value")
@@ -242,7 +367,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	// with SSE and this never closes the connection.
 	// The second remaining session doesn't happen while debugging .. yeah fun
 	nrConnections, _ := ts.Runtime.CM.GetNrConnections()
-	nrSessions := svc.GetSM().GetNrSessions()
+	nrSessions = svc.GetSM().GetNrSessions()
 	if nrConnections > 0 {
 		t.Log(fmt.Sprintf(
 			"FIXME: expected 0 remaining connections and sessions. "+

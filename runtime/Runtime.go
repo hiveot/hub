@@ -103,8 +103,8 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	// turn updates the digital twin and forwards the requests.
 	r.DigitwinRouter = router.NewDigitwinRouter(
 		r.DigitwinSvc,
-		dtwAgent.HandleAction,
-		r.AuthnAgent.HandleAction,
+		dtwAgent.HandleRequest,
+		r.AuthnAgent.HandleRequest,
 		r.AuthzAgent.HandleAction,
 		r.AuthzAgent.HasPermission,
 		r.CM)
@@ -151,7 +151,8 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 }
 
 func (r *Runtime) Stop() {
-	time.Sleep(time.Millisecond) //allow connections to close
+	// wait a little to allow ongoing connection closure to complete
+	time.Sleep(time.Millisecond * 10)
 	nrConnections, _ := r.CM.GetNrConnections()
 
 	if r.AuthnSvc != nil {

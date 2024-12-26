@@ -31,23 +31,29 @@
 	"deny": ["none"],
 	"schemaDefinitions": {
 
-		"ActionValue": {
-			"title": "Action Value",
-			"description": "Input value of the last action",
+		"ActionStatus": {
+			"title": "Action Status",
+			"description": "Status of the last action",
 			"type": "object",
 			"properties": {
+				"agentID": {
+					"title": "Agent ID",
+					"description": "The agent handling the action",
+					"type": "string"
+				},
+				"error": {
+					"title": "Error",
+					"description": "Action error info when failed",
+					"type": "string"
+				},
 				"input": {
 					"title": "Action input",
 					"description": "Action input value",
 					"type": "any"
 				},
-				"requestID": {
-					"title": "Message ID",
-					"description": "Message ID of the action",
-					"type": "string"
-				},
 				"name": {
 					"title": "Action name",
+					"description": "name of the action or property",
 					"type": "string"
 				},
 				"output": {
@@ -55,18 +61,38 @@
 					"description": "",
 					"type": "any"
 				},
+				"requestID": {
+					"title": "Request ID",
+					"description": "The action request identifier",
+					"type": "string"
+				},
 				"senderID": {
 					"title": "Consumer ID",
 					"type": "string"
 				},
-				"progress": {
-					"title": "Action progress",
+				"status": {
+					"title": "Action status",
 					"description": "Status of the action's progress",
 					"type": "string"
 				},
-				"updated": {
+				"thingID": {
+					"title": "Action Thing",
+					"description": "Digital twin ThingID the action applies to",
+					"type": "string"
+				},
+				"timeEnded": {
+					"title": "End Time",
+					"description": "Time the action has completed or failed",
+					"type": "dateTime"
+				},
+				"timeRequested": {
+					"title": "Creation Time",
+					"description": "Time the action was initially requested",
+					"type": "dateTime"
+				},
+				"timeUpdated": {
 					"title": "Updated time",
-					"description": "Time the action was initiated",
+					"description": "Time the action status was last updated",
 					"type": "dateTime"
 				}
 			}
@@ -187,29 +213,7 @@
 				"title": "Action value",
 				"description": "The latest action value",
 				"comment": "defined in schemadefinitions",
-				"type": "ActionValue"
-			}
-		},
-
-		"queryAllActions": {
-			"@type": "hiveot:function",
-			"title": "All actions",
-			"description": "Read the current status for all actions of a Thing",
-			"safe": true,
-			"idempotent": true,
-			"input": {
-				"title": "Thing ID",
-				"description": "ID of the Thing to query",
-				"type": "string"
-			},
-			"output": {
-				"title": "Action values",
-				"description": "List with the latest known action value for all actions",
-				"comment": "defined in TD schemadefinitions",
-				"type": "array",
-				"items": {
-					"type": "ActionValue"
-				}
+				"type": "ActionStatus"
 			}
 		},
 

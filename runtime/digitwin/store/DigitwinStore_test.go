@@ -67,7 +67,7 @@ func addValues(svc *store.DigitwinStore,
 		}
 
 		value := fmt.Sprintf("%2.3f", randomValue)
-		svc.UpdateEventValue(agentID, thingID, valueNames[randomName], value, "")
+		svc.UpdateEventValue(dThingID, valueNames[randomName], value)
 	}
 }
 
@@ -171,7 +171,7 @@ func TestUpdateProps(t *testing.T) {
 	defer closeFn()
 	addValues(svc, 10, agent1ID, []string{thing1ID}, 3600*24*30)
 
-	changed, err := svc.UpdatePropertyValue(agent1ID, thing1ID, prop1Name, prop1Value, "")
+	changed, err := svc.UpdatePropertyValue(dThingID1, prop1Name, prop1Value, "")
 	require.NoError(t, err)
 	require.True(t, changed)
 
@@ -183,11 +183,12 @@ func TestUpdateProps(t *testing.T) {
 func TestAddPropsFail(t *testing.T) {
 	agent1ID := "agent1"
 	thing1ID := "badthingid"
+	dThingID := td.MakeDigiTwinThingID(agent1ID, thing1ID)
 	svc, closeFn := startLatestStore(true)
 	_ = svc
 	defer closeFn()
 
-	changed, err := svc.UpdatePropertyValue(agent1ID, thing1ID, "prop1", "val1", "")
+	changed, err := svc.UpdatePropertyValue(dThingID, "prop1", "val1", "")
 	require.Error(t, err)
 	require.False(t, changed)
 }

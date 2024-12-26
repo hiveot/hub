@@ -2,8 +2,9 @@ package consumedthing
 
 import (
 	"github.com/hiveot/hub/api/go/digitwin"
-	transports2 "github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot"
+	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"sync"
@@ -17,7 +18,7 @@ const ReadDirLimit = 1000
 // This maintains a single instance of each ConsumedThing and updates it when
 // an event and action progress updates are received.
 type ConsumedThingsDirectory struct {
-	cc transports2.IClientConnection
+	cc transports.IClientConnection
 	// Things used by the client
 	consumedThings map[string]*ConsumedThing
 	// directory of TD documents
@@ -25,7 +26,7 @@ type ConsumedThingsDirectory struct {
 	// the full directory has been read in this session
 	fullDirectoryRead bool
 	// additional handler of events for forwarding to other consumers
-	eventHandler func(msg *transports2.ThingMessage)
+	eventHandler func(msg *transports.ThingMessage)
 	mux          sync.RWMutex
 }
 
@@ -61,7 +62,7 @@ func (cts *ConsumedThingsDirectory) Consume(thingID string) (ct *ConsumedThing, 
 }
 
 // handleMessage updates the consumed things from subscriptions
-func (cts *ConsumedThingsDirectory) handleMessage(msg *transports2.ThingMessage) {
+func (cts *ConsumedThingsDirectory) handleMessage(msg *transports.ThingMessage) {
 
 	slog.Debug("CTS.handleMessage",
 		slog.String("senderID", msg.SenderID),
@@ -218,7 +219,7 @@ func (cts *ConsumedThingsDirectory) ReadTD(thingID string) (*td.TD, error) {
 // Intended for consumers such that need to pass all messages on, for example to
 // a UI frontend.
 // Currently only a single handler is supported.
-func (cts *ConsumedThingsDirectory) SetEventHandler(handler func(message *transports2.ThingMessage)) {
+func (cts *ConsumedThingsDirectory) SetEventHandler(handler func(message *transports.ThingMessage)) {
 	cts.mux.Lock()
 	defer cts.mux.Unlock()
 	cts.eventHandler = handler
@@ -252,13 +253,13 @@ func (cts *ConsumedThingsDirectory) UpdateTD(tdJSON string) *ConsumedThing {
 // consumed Things through a client connection.
 //
 // This will subscribe to events from the Hub using the provided hub client.
-// This will receive any prior event subscriber.
-func NewConsumedThingsSession(cc transports2.IClientConnection) *ConsumedThingsDirectory {
+func NewConsumedThingsSession(hc transports.IClientConnection) *ConsumedThingsDirectory {
 	ctm := ConsumedThingsDirectory{
-		cc:             cc,
+		cc:             hc,
 		consumedThings: make(map[string]*ConsumedThing),
 		directory:      make(map[string]*td.TD),
 	}
-	cc.SetNotificationHandler(ctm.handleMessage)
+	//hc.Subscribe("", "") TODO: where to subscribe?
+	hc.SetNotificationHandler(ctm.handleMessage)
 	return &ctm
 }

@@ -120,6 +120,11 @@ func (sess *WebClientSession) GetHubClient() transports.IClientConnection {
 	return sess.hc
 }
 
+// GetLastError returns the most recent error, if any
+func (sess *WebClientSession) GetLastError() error {
+	return sess.lastError
+}
+
 // GetConsumedThingsDirectory returns the directory of consumed things of this client
 func (sess *WebClientSession) GetConsumedThingsDirectory() *consumedthing.ConsumedThingsDirectory {
 	return sess.cts
@@ -311,7 +316,7 @@ func (sess *WebClientSession) onMessage(msg *transports.ThingMessage) {
 	} else if msg.Operation == vocab.HTOpUpdateActionStatus {
 		// report unhandled delivery updates
 		// for now just pass it to the notification toaster
-		stat := transports.RequestStatus{}
+		stat := transports.ActionStatus{}
 		_ = tputils.DecodeAsObject(msg.Data, &stat)
 
 		// TODO: figure out a way to replace the existing notification if the requestID
@@ -472,13 +477,18 @@ func (sess *WebClientSession) WritePage(w http.ResponseWriter, buff *bytes.Buffe
 // can hang around indefinitely.
 //
 //	cid is the web client provided connectionID used to associate http request with SSE clients
-//	hc is the establihsed hub connection
+//	hc is the corresponding established hub connection
 //	remoteAddr is the web client remote address
 //	onClose is the callback to invoke when this session is closed.
 func NewWebClientSession(
 	cid string, hc transports.IClientConnection, remoteAddr string, noState bool,
 	onClosed func(*WebClientSession)) *WebClientSession {
 	var err error
+
+	// each web client session has their own connection to the Hub through
+	// a consumed thing session, supporting multiple consumed things.
+	// the consumed thing subscribes to updates.
+	cts := consumedthing.NewConsumedThingsSession(hc)
 
 	cs := WebClientSession{
 		cid:          cid,
@@ -488,13 +498,13 @@ func NewWebClientSession(
 		lastActivity: time.Now(),
 		clientData:   NewClientDataModel(),
 		//viewModel:    NewClientViewModel(hc),
-		cts:      consumedthing.NewConsumedThingsSession(hc),
+		cts:      cts,
 		onClosed: onClosed,
 	}
 	//hc.SetNotificationHandler(cs.onMessage)
 	hc.SetConnectHandler(cs.onHubConnectionChange)
-	// this is a bit quirky but its a transition period
-	cs.cts.SetEventHandler(cs.onMessage)
+	// onMessage is called with updates from the consumed thing
+	cts.SetEventHandler(cs.onMessage)
 
 	isConnected := hc.IsConnected()
 	cs.isActive.Store(isConnected)
@@ -520,13 +530,13 @@ func NewWebClientSession(
 	// prevent orphaned sessions. Cleanup after 3 sec
 	// the number is arbitrary and not sensitive.
 	go func() {
-		time.Sleep(time.Second * 3)
+		time.Sleep(time.Second * 300) // for testing change to 300
 		cs.mux.RLock()
 		hasSSE := cs.sseChan != nil
 		cs.mux.RUnlock()
 
 		if !hasSSE && cs.IsActive() {
-			slog.Info("Removing orphaned web-session (no sse connection) after 3 seconds", "cid", cs.cid)
+			slog.Info("Removing orphaned web-session (no sse connection) within 3 seconds", "cid", cs.cid)
 			cs.hc.Disconnect()
 		}
 	}()

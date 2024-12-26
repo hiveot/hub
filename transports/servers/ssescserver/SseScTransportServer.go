@@ -5,7 +5,6 @@ import (
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/connections"
 	"github.com/hiveot/hub/transports/servers/httpserver"
-	"github.com/hiveot/hub/transports/servers/httpserver/httpcontext"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
@@ -14,8 +13,6 @@ import (
 )
 
 const SSEOpConnect = "sse-connect"
-const SSEOpPing = "sse-ping"
-const SSEOpPong = "sse-pong" // reply to sse-ping
 
 // SseScTransportServer is a subprotocol binding server of http
 //
@@ -82,7 +79,7 @@ func (svc *SseScTransportServer) HandleConnect(w http.ResponseWriter, r *http.Re
 
 	//An active session is required before accepting the request. This is created on
 	//authentication/login. Until then SSE connections are blocked.
-	clientID, err := httpcontext.GetClientIdFromContext(r)
+	clientID, err := httpserver.GetClientIdFromContext(r)
 
 	if err != nil {
 		slog.Warn("SSESC HandleConnect. No session available yet, telling client to delay retry to 10 seconds",
@@ -118,18 +115,18 @@ func (svc *SseScTransportServer) HandleConnect(w http.ResponseWriter, r *http.Re
 	svc.cm.RemoveConnection(c.GetConnectionID())
 }
 
-// HandlePing responds with a pong reply message on the SSE return channel
-func (svc *SseScTransportServer) HandlePing(w http.ResponseWriter, r *http.Request) {
-	rp, _ := httpcontext.GetRequestParams(r)
-
-	c := svc.GetSseConnection(rp.ConnectionID)
-	if c == nil {
-		http.Error(w, "Missing or unknown connection ID", http.StatusBadRequest)
-		return
-	}
-	resp := transports.NewResponseMessage(wot.HTOpPong, "", "", "pon", nil, rp.RequestID)
-	_ = c._send(transports.MessageTypeResponse, resp)
-}
+//// HandlePing responds with a pong reply message on the SSE return channel
+//func (svc *SseScTransportServer) HandlePing(w http.ResponseWriter, r *http.Request) {
+//	rp, _ := httpserver.GetRequestParams(r)
+//
+//	c := svc.GetSseConnection(rp.ConnectionID)
+//	if c == nil {
+//		http.Error(w, "Missing or unknown connection ID", http.StatusBadRequest)
+//		return
+//	}
+//	resp := transports.NewResponseMessage(wot.HTOpPong, "", "", "pon", nil, rp.RequestID)
+//	_ = c._send(transports.MessageTypeResponse, resp)
+//}
 
 // HandleObserveAllProperties adds a property subscription
 func (svc *SseScTransportServer) HandleObserveAllProperties(w http.ResponseWriter, r *http.Request) {
@@ -138,7 +135,7 @@ func (svc *SseScTransportServer) HandleObserveAllProperties(w http.ResponseWrite
 
 // HandleObserveProperty handles a property observe request for one or all properties
 func (svc *SseScTransportServer) HandleObserveProperty(w http.ResponseWriter, r *http.Request) {
-	rp, err := httpcontext.GetRequestParams(r)
+	rp, err := httpserver.GetRequestParams(r)
 	if err != nil {
 		slog.Warn("HandleObserveProperty", "err", err.Error())
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -165,7 +162,7 @@ func (svc *SseScTransportServer) HandleSubscribeAllEvents(w http.ResponseWriter,
 
 // HandleSubscribeEvent handles a subscription request for one or all events
 func (svc *SseScTransportServer) HandleSubscribeEvent(w http.ResponseWriter, r *http.Request) {
-	rp, err := httpcontext.GetRequestParams(r)
+	rp, err := httpserver.GetRequestParams(r)
 	if err != nil {
 		slog.Warn("HandleSubscribe", "err", err.Error())
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -194,7 +191,7 @@ func (svc *SseScTransportServer) HandleUnobserveAllProperties(w http.ResponseWri
 // HandleUnobserveProperty handles removal of one property observe subscriptions
 func (svc *SseScTransportServer) HandleUnobserveProperty(w http.ResponseWriter, r *http.Request) {
 	slog.Info("HandleUnobserveProperty")
-	rp, err := httpcontext.GetRequestParams(r)
+	rp, err := httpserver.GetRequestParams(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -214,7 +211,7 @@ func (svc *SseScTransportServer) HandleUnsubscribeAllEvents(w http.ResponseWrite
 // HandleUnsubscribeEvent handles removal of one or all event subscriptions
 func (svc *SseScTransportServer) HandleUnsubscribeEvent(w http.ResponseWriter, r *http.Request) {
 	slog.Info("HandleUnsubscribeEvent")
-	rp, err := httpcontext.GetRequestParams(r)
+	rp, err := httpserver.GetRequestParams(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -259,8 +256,8 @@ func StartSseScTransportServer(
 	}
 	httpTransport.AddGetOp(nil, SSEOpConnect,
 		ssePath, b.HandleConnect)
-	httpTransport.AddGetOp(nil, SSEOpPing,
-		ssePath+"/ping", b.HandlePing)
+	//httpTransport.AddGetOp(nil, SSEOpPing,
+	//	ssePath+"/ping", b.HandlePing)
 	httpTransport.AddPostOp(nil, wot.OpObserveAllProperties,
 		ssePath+"/digitwin/observe/{thingID}", b.HandleObserveAllProperties)
 	httpTransport.AddPostOp(nil, wot.OpSubscribeAllEvents,

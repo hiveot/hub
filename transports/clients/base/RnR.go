@@ -1,8 +1,9 @@
-package tputils
+package base
 
 import (
 	"context"
 	"github.com/hiveot/hub/transports"
+	"log/slog"
 	"sync"
 	"time"
 )
@@ -21,6 +22,9 @@ type RnRChan struct {
 
 	// map of requestID to delivery status update channel
 	correlData map[string]chan transports.ResponseMessage
+
+	//timeout write to a response channel
+	writeTimeout time.Duration
 }
 
 // Close removes the request channel
@@ -49,13 +53,21 @@ func (rnr *RnRChan) CloseAll() {
 //
 // This returns true on success or false if requestID is unknown (no-one is waiting)
 //
-// If autoClose is set then it is immediately closed before returning.
+// If a timeout passes while writing is block the write is released.
 func (rnr *RnRChan) HandleResponse(msg transports.ResponseMessage) bool {
 	rnr.mux.Lock()
 	defer rnr.mux.Unlock()
 	rChan, isRPC := rnr.correlData[msg.RequestID]
 	if isRPC {
-		rChan <- msg
+		ctx, cancelFn := context.WithTimeout(context.Background(), rnr.writeTimeout)
+		select {
+		case rChan <- msg:
+		case <-ctx.Done():
+			slog.Error("Response channel is full. Is no-one listening?")
+			// pass as notification as the channel isn't read
+			isRPC = false
+		}
+		cancelFn()
 	}
 	return isRPC
 }
@@ -72,7 +84,7 @@ func (rnr *RnRChan) Len() int {
 // This returns a reply channel on which the data is received. Use
 // WaitForResponse(rChan)
 func (rnr *RnRChan) Open(requestID string) chan transports.ResponseMessage {
-	// should this include a buffer or size parameter?
+	// todo: is there a use-case for a buffer?
 	rChan := make(chan transports.ResponseMessage)
 	rnr.mux.Lock()
 	rnr.correlData[requestID] = rChan
@@ -95,7 +107,7 @@ func (rnr *RnRChan) WaitForResponse(
 	defer cancelFunc()
 	select {
 	case rData := <-replyChan:
-		reply = rData
+		resp = rData
 		completed = true
 		break
 	case <-ctx.Done():
@@ -106,7 +118,8 @@ func (rnr *RnRChan) WaitForResponse(
 
 func NewRnRChan() *RnRChan {
 	r := &RnRChan{
-		correlData: make(map[string]chan transports.ResponseMessage),
+		correlData:   make(map[string]chan transports.ResponseMessage),
+		writeTimeout: time.Second * 300, // default 3
 	}
 	return r
 }

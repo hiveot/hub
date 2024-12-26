@@ -10,10 +10,7 @@ import (
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/runtime"
 	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/clients/httpclient"
-	"github.com/hiveot/hub/transports/clients/mqttclient"
-	"github.com/hiveot/hub/transports/clients/sseclient"
-	"github.com/hiveot/hub/transports/clients/wssclient"
+	"github.com/hiveot/hub/transports/clients"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"math/rand"
@@ -72,36 +69,24 @@ type TestServer struct {
 	ConsumerProtocol string
 }
 
-func (test *TestServer) GetConnection(clientID string, protocolName string) transports.IClientConnection {
+// GetConnection returns a hub connection for a client and protocol.
+// This sets 'getForm' to the handler provided by the protocol server. For testing only.
+func (test *TestServer) GetConnection(clientID string, protocolName string) transports.IAgentConnection {
 	getForm := func(op string) td.Form {
 		return test.Runtime.GetForm(op, protocolName)
 	}
+
 	connectURL := test.Runtime.TransportsMgr.GetConnectURL(protocolName)
-	if protocolName == transports.ProtocolTypeWSS {
-		return wssclient.NewWssTransportClient(
-			connectURL, clientID, nil, test.Certs.CaCert, test.ConnectTimeout)
-	} else if protocolName == transports.ProtocolTypeMQTTS {
-		return mqttclient.NewMqttTransportClient(
-			connectURL, clientID, nil, test.Certs.CaCert, getForm, test.ConnectTimeout)
-	} else if protocolName == transports.ProtocolTypeSSE {
-		return sseclient.NewSseTransportClient(
-			connectURL, clientID, nil, test.Certs.CaCert, getForm, test.ConnectTimeout)
-	} else if protocolName == transports.ProtocolTypeSSESC {
-		return sseclient.NewSsescTransportClient(
-			connectURL, clientID, nil, test.Certs.CaCert, getForm, test.ConnectTimeout)
-	} else if protocolName == transports.ProtocolTypeHTTPS {
-		return httpclient.NewHttpTransportClient(
-			connectURL, clientID, nil, test.Certs.CaCert, getForm, test.ConnectTimeout)
-	} else {
-		panic("Unknown protocol: " + protocolName)
-	}
+
+	cl, _ := clients.NewTransportClient(connectURL, clientID, test.Certs.CaCert, getForm, test.ConnectTimeout)
+	return cl
 }
 
 // AddConnectConsumer creates a new test user with the given role,
 // and returns a hub client and a new session token.
 // In case of error this panics.
 func (test *TestServer) AddConnectConsumer(
-	clientID string, clientRole authz.ClientRole) (cl transports.IClientConnection, token string) {
+	clientID string, clientRole authz.ClientRole) (cl transports.IConsumerConnection, token string) {
 
 	password := clientID
 	err := test.Runtime.AuthnSvc.AdminSvc.AddConsumer(clientID,
@@ -126,7 +111,7 @@ func (test *TestServer) AddConnectConsumer(
 // AddConnectAgent creates a new agent test client.
 // Agents use non-session tokens and survive a server restart.
 // This returns the agent's connection token.
-func (test *TestServer) AddConnectAgent(agentID string) (cl transports.IClientConnection, token string) {
+func (test *TestServer) AddConnectAgent(agentID string) (cl transports.IAgentConnection, token string) {
 
 	token, err := test.Runtime.AuthnSvc.AdminSvc.AddAgent(agentID,
 		authn.AdminAddAgentArgs{agentID, "agent name", ""})
@@ -154,9 +139,11 @@ func (test *TestServer) AddConnectAgent(agentID string) (cl transports.IClientCo
 // Services are agents and use non-session tokens and survive a server restart.
 // This returns the service's connection token.
 //
+// This sets the getForm handler of the client to the protocol server. (for testing)
+//
 // clientType can be one of ClientTypeAgent or ClientTypeService
 func (test *TestServer) AddConnectService(serviceID string) (
-	cl transports.IClientConnection, token string) {
+	cl transports.IAgentConnection, token string) {
 
 	token, err := test.Runtime.AuthnSvc.AdminSvc.AddService(serviceID,
 		authn.AdminAddServiceArgs{serviceID, "service name", ""})
@@ -299,10 +286,10 @@ func NewTestServer() *TestServer {
 		Certs:   certs.CreateTestCertBundle(),
 		Config:  runtime.NewRuntimeConfig(),
 		// change these for running all tests with different protocols
-		AgentProtocol:    transports.ProtocolTypeWSS,
-		ServiceProtocol:  transports.ProtocolTypeWSS,
-		ConsumerProtocol: transports.ProtocolTypeWSS,
-		ConnectTimeout:   time.Second * 30, // testing extra long
+		AgentProtocol:    transports.ProtocolTypeSSESC,
+		ServiceProtocol:  transports.ProtocolTypeSSESC,
+		ConsumerProtocol: transports.ProtocolTypeSSESC,
+		ConnectTimeout:   time.Second * 300, // testing extra long
 	}
 
 	return &srv

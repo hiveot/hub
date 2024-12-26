@@ -3,8 +3,8 @@ package api
 import "github.com/hiveot/hub/api/go/digitwin"
 
 // ActionListToMap creates a map from a digitwin action value list
-func ActionListToMap(valueList []digitwin.ActionValue) map[string]digitwin.ActionValue {
-	valMap := make(map[string]digitwin.ActionValue)
+func ActionListToMap(valueList []digitwin.ActionStatus) map[string]digitwin.ActionStatus {
+	valMap := make(map[string]digitwin.ActionStatus)
 	for _, value := range valueList {
 		valMap[value.Name] = value
 	}

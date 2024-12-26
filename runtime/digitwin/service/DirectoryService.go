@@ -3,7 +3,9 @@ package service
 import (
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/runtime/digitwin/store"
+	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/connections"
+	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
@@ -93,11 +95,11 @@ func (svc *DirectoryService) ReadAllTDs(
 func (svc *DirectoryService) RemoveTD(senderID string, dThingID string) error {
 	err := svc.dtwStore.RemoveDTW(dThingID, senderID)
 	if err == nil && svc.cm != nil {
-		// notify subscribers that the digital twin thing was removed.
-		// payload is the digital twin's ID
-		go svc.cm.PublishEvent(
-			digitwin.DirectoryDThingID, digitwin.DirectoryEventThingRemoved, dThingID,
-			"", digitwin.DirectoryAgentID)
+		// Publish an event notifying subscribers that the Thing was removed from the directory
+		// Those subscribing to directory event will be notified
+		notif := transports.NewNotificationMessage(
+			wot.HTOpEvent, digitwin.DirectoryDThingID, digitwin.DirectoryEventThingRemoved, dThingID)
+		go svc.cm.PublishNotification(notif)
 	}
 	return err
 }
@@ -123,9 +125,10 @@ func (svc *DirectoryService) UpdateTD(agentID string, tdJson string) error {
 		//svc.cm.PublishTD()
 		//ForEachConnection
 
-		go svc.cm.PublishEvent(
-			digitwin.DirectoryDThingID, digitwin.DirectoryEventThingUpdated, string(dtdJSON),
-			"", digitwin.DirectoryAgentID)
+		// publish an event that the thing TD has updated
+		notif := transports.NewNotificationMessage(
+			wot.HTOpEvent, digitwin.DirectoryDThingID, digitwin.DirectoryEventThingUpdated, string(dtdJSON))
+		go svc.cm.PublishNotification(notif)
 	}
 	return err
 }

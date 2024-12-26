@@ -128,6 +128,21 @@ func (sm *WebSessionManager) _removeSession(cs *WebClientSession) {
 	go sm.hc.SendNotification(wot.HTOpPublishEvent, src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions)
 }
 
+// disconnect all the web client sessions by disconnecting the client side
+func (sm *WebSessionManager) CloseAllWebSessions() {
+	sm.mux.RLock()
+	// shallow copy of the map into an array of remaining sesions
+	sessions := make([]*WebClientSession, 0, len(sm.sessions))
+	for _, s := range sm.sessions {
+		sessions = append(sessions, s)
+	}
+	sm.mux.RUnlock()
+	for _, s := range sessions {
+		slog.Warn("CloseAllWebSessions", "clientID", s.hc.GetClientID())
+		s.hc.Disconnect()
+	}
+}
+
 // onClose handles closing of the client connection
 func (sm *WebSessionManager) onClose(cs *WebClientSession) {
 	sm._removeSession(cs)
@@ -152,13 +167,14 @@ func (sm *WebSessionManager) onClose(cs *WebClientSession) {
 //}
 
 // ConnectWithPassword logs-in to the hub using the given password.
-// If successful this updates the secure cookie with a new auth token.
-// If a cid is provided it will create a session using it.
+// If successful this updates the secure cookie with a new auth token and also
+// returns this token.
+// If a cid is provided in the headers it will create a session using it.
 func (sm *WebSessionManager) ConnectWithPassword(w http.ResponseWriter, r *http.Request,
-	loginID string, password string, cid string) (err error) {
+	loginID string, password string, cid string) (newToken string, err error) {
 
-	hc := clients.NewHubClient(sm.hubURL, loginID, sm.caCert)
-	newToken, err := hc.ConnectWithPassword(password)
+	hc := clients.NewTransportClient(sm.hubURL, loginID, sm.caCert)
+	newToken, err = hc.ConnectWithPassword(password)
 	if err == nil {
 		if cid != "" {
 			_, err = sm._addSession(r, cid, hc)
@@ -168,8 +184,12 @@ func (sm *WebSessionManager) ConnectWithPassword(w http.ResponseWriter, r *http.
 		// Update the session cookie with the new auth token (default 14 days)
 		maxAge := time.Hour * 24 * 14
 		err = SetSessionCookie(w, loginID, newToken, maxAge, sm.signingKey)
+
+		// this will prevent a redirect from working
+		//newTokenJSON, _ := jsoniter.Marshal(newToken)
+		//w.Write(newTokenJSON)
 	}
-	return err
+	return newToken, err
 }
 
 // ConnectWithToken logs-in to the hub using the given valid auth token.
@@ -193,7 +213,7 @@ func (sm *WebSessionManager) ConnectWithToken(
 		"clientID", loginID, "cid", cid, "remoteAddr", r.RemoteAddr,
 		"nr websessions", len(sm.sessions))
 
-	hc := clients.NewHubClient(sm.hubURL, loginID, sm.caCert)
+	hc := clients.NewTransportClient(sm.hubURL, loginID, sm.caCert)
 	newToken, err := hc.ConnectWithToken(authToken)
 	if err == nil {
 		cs, err = sm._addSession(r, cid, hc)
@@ -235,7 +255,7 @@ func (sm *WebSessionManager) GetSession(clientID, cid string) *WebClientSession 
 }
 
 // GetSessionFromCookie returns the websession and auth info
-// The authentication token comes from the cookie, or the authorization header.
+// The authentication token comes from the cookie.
 //
 // This should only be used from the middleware.
 //
@@ -262,6 +282,7 @@ func (sm *WebSessionManager) GetSessionFromCookie(r *http.Request) (
 	return cs, clientID, cid, authToken, nil
 }
 
+// signingKey for use with session cookies
 func NewWebSessionManager(hubURL string,
 	signingKey ed25519.PrivateKey, caCert *x509.Certificate,
 	hc transports.IClientConnection, noState bool) *WebSessionManager {

@@ -236,6 +236,7 @@ func (isyAPI *IsyAPI) SendRequest(method string, restPath string, body string, r
 	// Decode the response into XML
 	if response != nil {
 		data, err := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
 		_ = data
 		_ = err
 		//dec := xml.NewDecoder(resp.Body)

@@ -58,6 +58,8 @@ func getConfigValue(
 		return sv, err
 	}
 
+	// FIXME: Readproperty - handled by whom? is the digitwin service name relevant
+	// What does the wot specification for directory say?
 	propValue, err := digitwin.ValuesReadProperty(hc, name, thingID)
 	io := consumedthing.NewInteractionOutputFromValue(&propValue, td)
 	sv = RenderEditPropertyTemplateData{

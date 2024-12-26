@@ -72,9 +72,15 @@ type IConsumerConnection interface {
 	// The resulting token can be used with 'ConnectWithToken'
 	RefreshToken(oldToken string) (newToken string, err error)
 
+	// Rpc sends a request message and waits for a response.
+	// This is a helper function that marshals and unmarshals the payload
+	Rpc(operation, thingID, name string, input any, output any) error
+
 	// SendRequest sends a request message.
-	// wait is true to wait for a response or false to return immediately
-	SendRequest(msg RequestMessage, wait bool) (ResponseMessage, error)
+	// If waitForCompletion is true and no requestID is provided then a requestID will
+	// be generated to wait for completion.
+	// If waitForCompletion is false then return immediately and the response will go to the response handler
+	SendRequest(msg RequestMessage, waitForCompletion bool) (ResponseMessage, error)
 
 	// SetConnectHandler sets the callback for connection status changes
 	// This replaces any previously set handler.

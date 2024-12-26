@@ -39,7 +39,7 @@ func (cl *WssAgentTransport) handleAgentRequest(req transports.RequestMessage) {
 	}
 }
 
-// wssToRequest converts a websocket message to a standardized request message
+// wssToRequest converts a websocket message to the unified request message
 func (cl *WssAgentTransport) wssToRequest(
 	baseMsg wssserver.BaseMessage, raw []byte) (isRequest bool, req transports.RequestMessage) {
 

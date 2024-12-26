@@ -29,7 +29,7 @@ func GenServiceClient(l *utils.SL, serviceTitle string, td *td.TD) {
 // For multi-arguments the format of the generated client is:
 // > func(hc hubclient.IConsumerlient, arg1 type, arg2 type, ...)(resp type, err error) {
 // >   var args = ArgTypeNameArgs{arg1, arg2, ...}
-// >   err = hc.SendRequest(DThingID, MethodName, &args, &resp)
+// >   err = hc.Rpc(DThingID, MethodName, &args, &resp)
 // >   return
 // > }
 //
@@ -37,7 +37,7 @@ func GenServiceClient(l *utils.SL, serviceTitle string, td *td.TD) {
 //	key with the service action method.
 //	action affordance describing the input and output parameters
 func GenActionMethod(l *utils.SL, serviceTitle string, key string, action *td.ActionAffordance) {
-	argsString := "hc transports.IClientConnection"
+	argsString := "hc transports.IConsumerConnection"
 	respString := "err error"
 	invokeArgs := "nil"
 	invokeResp := "nil"
@@ -110,7 +110,7 @@ func GenActionMethod(l *utils.SL, serviceTitle string, key string, action *td.Ac
 	// if the input has multiple arguments then add the Args struct
 	l.Add(argStructLine)
 
-	l.Add("err = hc.SendRequest(\"%s\", %s, %sMethod, %s, %s)",
+	l.Add("err = hc.Rpc(\"%s\", %s, %sMethod, %s, %s)",
 		wot.OpInvokeAction, serviceDigitwinID, methodName, invokeArgs, invokeResp)
 	l.Add("return")
 	l.Indent--

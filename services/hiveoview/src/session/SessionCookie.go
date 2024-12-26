@@ -6,7 +6,6 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"strings"
 	"time"
 )
 
@@ -17,36 +16,39 @@ const SessionCookieID = "session"
 // If no valid cookie is found then the bearer token is checked, otherwise this returns an error.
 // Intended for use by middleware. Any updates to the session will not be available in the cookie
 // until the next request. In almost all cases use session from context as set by middleware.
+// This returns the session cookie's auth token and clientID, or an error if not found.
 func GetSessionCookie(r *http.Request, pubKey ed25519.PublicKey) (clientID string, authToken string, err error) {
 	cookie, err := r.Cookie(SessionCookieID)
-	hasBearer := false
 
 	if err != nil || cookie.Valid() != nil {
+		//hasBearer := false
 		// missing or invalid cookie
-		reqToken := r.Header.Get("Authorization")
-		hasBearer = strings.HasPrefix(strings.ToLower(reqToken), "bearer ")
-		if hasBearer {
-			authToken = reqToken[len("bearer "):]
-		} else {
-			// no cookie, no bearer. We are done here.
-			slog.Debug("missing or invalid session cookie", "remoteAddr", r.RemoteAddr)
-			return "", "", errors.New("no session cookie")
-		}
+		// thou shall not pass. Even with a bearer token!
+		//reqToken := r.Header.Get("Authorization")
+		//hasBearer = strings.HasPrefix(strings.ToLower(reqToken), "bearer ")
+		//if hasBearer {
+		// //	the hub auth token
+		//authToken = reqToken[len("bearer "):]
+		//} else {
+		// no cookie, no bearer. We are done here.
+		slog.Debug("missing or invalid session cookie", "remoteAddr", r.RemoteAddr)
+		return "", "", errors.New("no valid session cookie")
+		//}
 	} else {
-		authToken = cookie.Value
+		var pToken *paseto.Token
+		pasetoParser := paseto.NewParserForValidNow()
+		v4PubKey, _ := paseto.NewV4AsymmetricPublicKeyFromEd25519(pubKey)
+		// validate the cookie value token, which is a paseto token signed
+		// by the hiveoview key and make sure the bearer token is present
+		pToken, err = pasetoParser.ParseV4Public(v4PubKey, cookie.Value, nil)
+		if err == nil {
+			clientID, err = pToken.GetSubject()
+			if err == nil {
+				authToken, err = pToken.GetString("authToken")
+			}
+		}
 	}
 
-	pasetoParser := paseto.NewParserForValidNow()
-	v4PubKey, err := paseto.NewV4AsymmetricPublicKeyFromEd25519(pubKey)
-	// validae the token
-	pToken, err := pasetoParser.ParseV4Public(v4PubKey, authToken, nil)
-	if err == nil {
-		clientID, err = pToken.GetSubject()
-	}
-	if err == nil {
-		// TODO: isn't this duplicate?
-		authToken, err = pToken.GetString("authToken")
-	}
 	return clientID, authToken, err
 }
 

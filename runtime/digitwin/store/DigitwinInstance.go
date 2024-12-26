@@ -5,9 +5,6 @@ import (
 	"github.com/hiveot/hub/wot/td"
 )
 
-type ActionQueue struct {
-	actions []digitwin.ActionValue
-}
 type ValueQueue struct {
 	values   []digitwin.ThingValue
 	maxDepth int
@@ -29,7 +26,7 @@ type DigitalTwinInstance struct {
 	// Latest events as received from the exposed Thing
 	EventValues map[string]digitwin.ThingValue `json:"ev"`
 	// Latest 'unsafe' actions as requested with their status
-	ActionValues map[string]digitwin.ActionValue `json:"av"`
+	ActionStatuses map[string]digitwin.ActionStatus `json:"av"`
 
 	// TBD: queue actions in the inbox of this device for timed delivery
 	//Inbox ActionQueue `json:"inbox"`
