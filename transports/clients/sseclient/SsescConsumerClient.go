@@ -196,16 +196,20 @@ func (cl *SsescConsumerClient) handleSseEvent(event sse.Event) {
 
 	// Use the hiveot message envelopes for request, response and notification
 	if event.Type == transports.MessageTypeRequest {
-		cl.agentRequestHandler(event.Data)
+		go func() {
+			cl.agentRequestHandler(event.Data)
+		}()
 	} else if event.Type == transports.MessageTypeResponse {
 		resp := transports.ResponseMessage{}
 		_ = jsoniter.UnmarshalFromString(event.Data, &resp)
-		cl.OnResponse(resp)
+		// don't block the receiver flow
+		go cl.OnResponse(resp)
 	} else {
 		// everything is a notification
 		notif := transports.NotificationMessage{}
 		_ = jsoniter.UnmarshalFromString(event.Data, &notif)
-		cl.OnNotification(notif)
+		// don't block the receiver flow
+		go cl.OnNotification(notif)
 	}
 }
 

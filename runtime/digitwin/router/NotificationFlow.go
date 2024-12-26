@@ -35,7 +35,10 @@ func (svc *DigitwinRouter) HandleNotification(agentID string, notif transports.N
 	} else if notif.Operation == wot.HTOpUpdateTD {
 		tdJSON := notif.ToString()
 		svc.dtwService.DirSvc.UpdateTD(agentID, tdJSON)
-		svc.cm.PublishNotification(notif)
+
+		// Don't forward the notification.
+		//Only digitwin TDs should be published. These have updated forms.
+		//svc.cm.PublishNotification(notif)
 
 	} else {
 		err := fmt.Errorf("Unknown notification '%s'", notif.Operation)

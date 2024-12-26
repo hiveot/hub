@@ -264,7 +264,7 @@ func (svc *DigitwinRouter) HandleReadTD(
 	// the thingID in the request becomes the argument for the directory service, if any
 	req.Input = req.ThingID
 	req.ThingID = digitwin.DirectoryDThingID
-	req.Name = digitwin.DirectoryActionReadTD
+	req.Name = digitwin.DirectoryReadTDMethod
 	resp := svc.digitwinAction(req)
 	return resp
 }
@@ -275,7 +275,7 @@ func (svc *DigitwinRouter) HandleReadAllTDs(
 	req transports.RequestMessage) transports.ResponseMessage {
 
 	req.ThingID = digitwin.DirectoryDThingID
-	req.Name = digitwin.DirectoryActionReadAllTDs
+	req.Name = digitwin.DirectoryReadAllTDsMethod
 	resp := svc.digitwinAction(req)
 	return resp
 }

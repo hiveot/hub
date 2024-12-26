@@ -17,7 +17,8 @@ func TestUpdateReadProperty(t *testing.T) {
 	const propName = "prop1"
 	const propValue = 25
 	const propValue2 = 52
-	const msgID = "msg1"
+	const requestID = "request-1"
+	dThing1ID := td.MakeDigiTwinThingID(agent1ID, thing1ID)
 
 	svc, dtwStore, stopFunc := startService(true)
 	defer stopFunc()
@@ -30,30 +31,28 @@ func TestUpdateReadProperty(t *testing.T) {
 
 	//
 
-	// agent provides a new property value
-	changed, err := dtwStore.UpdatePropertyValue(agent1ID, thing1ID, propName, propValue, "")
+	// agent has provided a new property value
+	changed, err := dtwStore.UpdatePropertyValue(dThing1ID, propName, propValue, "")
 	assert.NoError(t, err)
 	assert.True(t, changed)
 
 	// Read the property value and all values
-	dThingID := td.MakeDigiTwinThingID(agent1ID, thing1ID)
 	v2, err := svc.ValuesSvc.ReadProperty(user1ID, digitwin.ValuesReadPropertyArgs{
-		ThingID: dThingID,
+		ThingID: dThing1ID,
 		Name:    propName})
 	assert.NoError(t, err)
 	assert.Equal(t, propValue, v2.Data)
 
-	propList, err := svc.ValuesSvc.ReadAllProperties(user1ID, dThingID)
+	propList, err := svc.ValuesSvc.ReadAllProperties(user1ID, dThing1ID)
 	assert.Equal(t, 1, len(propList))
 	assert.NoError(t, err)
 
 	// next write a new value
-	changed, err = dtwStore.UpdatePropertyValue(
-		agent1ID, thing1ID, propName, propValue2, "")
+	changed, err = dtwStore.UpdatePropertyValue(dThing1ID, propName, propValue2, "")
 	assert.NoError(t, err)
 	assert.True(t, changed)
 	v3, err := svc.ValuesSvc.ReadProperty(user1ID, digitwin.ValuesReadPropertyArgs{
-		ThingID: dThingID,
+		ThingID: dThing1ID,
 		Name:    propName})
 	assert.Equal(t, propValue2, v3.Data)
 }
@@ -84,6 +83,8 @@ func TestPropertyUpdateFail(t *testing.T) {
 	const agentID = "agent1"
 	const thingID = "thing1"
 	const propName = "prop1"
+	dThing1ID := td.MakeDigiTwinThingID(agentID, thingID)
+	dBadThingID := td.MakeDigiTwinThingID(agentID, "notathing")
 
 	svc, dtwStore, stopFunc := startService(true)
 	defer stopFunc()
@@ -96,13 +97,11 @@ func TestPropertyUpdateFail(t *testing.T) {
 	err := svc.DirSvc.UpdateTD(agentID, string(tdDoc1Json))
 	require.NoError(t, err)
 
-	changed, err := dtwStore.UpdatePropertyValue(
-		agentID, "notathing", propName, 123, "")
+	changed, err := dtwStore.UpdatePropertyValue(dBadThingID, propName, 123, "")
 	assert.Error(t, err)
 	assert.False(t, changed)
 	//property names not in the TD are accepted
-	changed, err = dtwStore.UpdatePropertyValue(
-		agentID, thingID, "unknownprop", 123, "")
+	changed, err = dtwStore.UpdatePropertyValue(dThing1ID, "unknownprop", 123, "")
 	assert.NoError(t, err)
 	assert.True(t, changed)
 

@@ -191,29 +191,27 @@ func TestSubscribeValues(t *testing.T) {
 	cl1, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
 	defer cl1.Disconnect()
 
-	// consumer subscribes to events/properties
+	// 1. consumer subscribes to events/properties
 	err := cl1.Subscribe("", "")
 	require.NoError(t, err)
-
-	// step 1: agent publishes a TD first: dtw:agent1:thing-1
-	td1 := ts.CreateTestTD(0)
-	td1JSON, _ := json.Marshal(td1)
-
-	notif1 := transports.NewNotificationMessage(wot.HTOpUpdateTD, td1.ID, "", string(td1JSON))
-	err = ag1.SendNotification(notif1)
-
 	cl1.SetNotificationHandler(func(msg transports.NotificationMessage) {
 		msgCount.Add(1)
 	})
+
+	// 2: agent creates a TD first: dtw:agent1:thing-1 - this sends a notification
+	td1 := ts.CreateTestTD(0)
+	td1JSON, _ := json.Marshal(td1)
+
+	// 3: agent publishes notification
+	notif1 := transports.NewNotificationMessage(wot.HTOpUpdateTD, td1.ID, "", string(td1JSON))
+	err = ag1.SendNotification(notif1)
+
 	time.Sleep(time.Millisecond * 100)
 
 	propMap := map[string]any{}
 	propMap[key1] = data1
 	propMap[key2] = data2
-	// FIXME: this is agent->consumer
-	// consumer SSE client should not send a delivery confirmation!
-	//err = ag1.PubProperty(td1.ID, key1, data1)
-	//err = ag1.PubProperty(td1.ID, key2, data2)
+
 	notif2 := transports.NewNotificationMessage(wot.HTOpEvent, td1.ID, key1, data1)
 	err = ag1.SendNotification(notif2)
 	notif3 := transports.NewNotificationMessage(wot.HTOpEvent, td1.ID, key2, data2)

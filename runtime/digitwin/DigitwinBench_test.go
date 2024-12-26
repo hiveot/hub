@@ -31,9 +31,7 @@ func BenchmarkUpdateDTW(b *testing.B) {
 
 	var err error
 
-	// 160 msec using golang json to update 1000 things
-	// 140 msec since sending notifications
-	// 78 msec using json-iterator (jsoniter)
+	// 140 msec to update 1000 things
 	b.Run(fmt.Sprintf("update DTW"),
 		func(b *testing.B) {
 			for n := 0; n < b.N; n++ {
@@ -45,8 +43,7 @@ func BenchmarkUpdateDTW(b *testing.B) {
 			}
 		})
 
-	// 165 msec to reload a cache with 1000 things using std json
-	// 78 msec with json-iterator
+	// 78 msec to reload a cache with 1000 things (using json-iterator)
 	b.Run(fmt.Sprintf("LoadCacheFromStore"),
 		func(b *testing.B) {
 			for n := 0; n < b.N; n++ {

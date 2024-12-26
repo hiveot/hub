@@ -15,6 +15,7 @@ func TestAddReadEvent(t *testing.T) {
 	const thing1ID = "thing1"
 	const eventName = "event1"
 	const eventValue = 25
+	dThing1ID := td.MakeDigiTwinThingID(agent1ID, thing1ID)
 
 	svc, dtwStore, stopFunc := startService(true)
 	defer stopFunc()
@@ -35,12 +36,12 @@ func TestAddReadEvent(t *testing.T) {
 
 	// Read the event value and all events
 	ev2, err := svc.ValuesSvc.ReadEvent("user1", digitwin.ValuesReadEventArgs{
-		ThingID: dThingID,
+		ThingID: dThing1ID,
 		Name:    eventName,
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, eventValue, ev2.Data)
-	evList, err := svc.ValuesSvc.ReadAllEvents("user1", dThingID)
+	evList, err := svc.ValuesSvc.ReadAllEvents("user1", dThing1ID)
 	assert.Equal(t, 1, len(evList))
 	assert.NoError(t, err)
 }

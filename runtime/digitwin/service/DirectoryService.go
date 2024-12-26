@@ -107,25 +107,24 @@ func (svc *DirectoryService) RemoveTD(senderID string, dThingID string) error {
 // UpdateTD updates the digitwin TD from an agent supplied TD
 // This transforms the given TD into the digital twin instance, stores it in the directory
 // store and sends a thing-updated event as described in the TD.
-// This returns the updated digital twin TD
-// FIXME: only agents are allowed this
+// This returns true when the TD has changed or an error
 func (svc *DirectoryService) UpdateTD(agentID string, tdJson string) error {
 
 	// transform the agent provided TD into a digital twin's TD
 	thingTD, digitalTwinTD, err := svc.MakeDigitalTwinTD(agentID, tdJson)
 	slog.Info("UpdateDTD",
 		slog.String("agentID", agentID), slog.String("thingID", thingTD.ID))
+	if err != nil {
+		return err
+	}
 	// store both the original and digitwin TD documents
 	svc.dtwStore.UpdateTD(agentID, thingTD, digitalTwinTD)
 
 	// notify subscribers of TD updates
-	if err == nil && svc.cm != nil {
+	if svc.cm != nil {
 		dtdJSON, _ := jsoniter.Marshal(digitalTwinTD)
-		// FIXME: notify subscribers that the TD has been updated
-		//svc.cm.PublishTD()
-		//ForEachConnection
-
-		// publish an event that the thing TD has updated
+		// todo: only send notification on changes
+		// publish an event that the directory TD has updated with a new TD
 		notif := transports.NewNotificationMessage(
 			wot.HTOpEvent, digitwin.DirectoryDThingID, digitwin.DirectoryEventThingUpdated, string(dtdJSON))
 		go svc.cm.PublishNotification(notif)

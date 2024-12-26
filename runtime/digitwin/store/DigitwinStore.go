@@ -332,7 +332,11 @@ func (svc *DigitwinStore) SaveChanges() error {
 
 // UpdateTD update the provided TD and the derived digital twin TD in the
 // stored digital twin record.
+//
+// The given TD is  provided by the agent and has the agent's ThingID.
 // If no digital twin exists yet, it is created.
+//
+// This returns false if the given TD is the same as the one on record.
 func (svc *DigitwinStore) UpdateTD(
 	agentID string, thingTD *td.TD, digitwinTD *td.TD) {
 
