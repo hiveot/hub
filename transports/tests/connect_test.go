@@ -9,6 +9,7 @@ import (
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/clients"
 	"github.com/hiveot/hub/transports/connections"
+	"github.com/hiveot/hub/transports/servers/hiveotserver"
 	"github.com/hiveot/hub/transports/servers/httpserver"
 	"github.com/hiveot/hub/transports/servers/ssescserver"
 	"github.com/hiveot/hub/transports/servers/wssserver"
@@ -27,9 +28,7 @@ import (
 
 const testTimeout = time.Second * 300
 const testAgentID1 = "agent1"
-const testAgentPassword1 = "agent1pass"
 const testClientID1 = "client1"
-const testClientPassword1 = "client1pass"
 const testServerHttpPort = 9445
 const testServerHttpURL = "https://localhost:9445"
 const testServerSseURL = "https://localhost:9445/sse"
@@ -44,11 +43,15 @@ var transportServer transports.ITransportServer
 var authenticator *tputils.DummyAuthenticator
 var certBundle = certs.CreateTestCertBundle()
 
-// NewAgent creates a new unconnected agent client with the given ID
+// NewAgent creates a new unconnected agent client with the given ID. The
+// transport server must be started first.
+//
+// This uses the clientID as password
 // This panics if a client cannot be created
 // ClientID is only used for logging
-func NewAgent(clientID string, getForm func(op string) td.Form) transports.IAgentConnection {
+func NewAgent(clientID string) transports.IAgentConnection {
 	fullURL := testServerHttpURL
+	authenticator.AddClient(clientID, clientID)
 
 	switch defaultProtocol {
 	case transports.ProtocolTypeHTTPS:
@@ -63,23 +66,47 @@ func NewAgent(clientID string, getForm func(op string) td.Form) transports.IAgen
 		fullURL = testServerMqttURL
 	}
 	caCert := certBundle.CaCert
-	bc, err := clients.NewTransportClient(fullURL, clientID, caCert, getForm, testTimeout)
+	bc, err := clients.NewAgentClient(fullURL, clientID, caCert, testTimeout)
 	if err != nil {
 		panic("NewClient failed:" + err.Error())
 	}
 	return bc
 }
 
-// NewConsumer creates a new unconnected consumer client with the given ID
+// NewConsumer creates a new unconnected consumer client with the given ID.
+// The transport server must be started first.
+//
+// This uses the clientID as password
 // This panics if a client cannot be created
 // ClientID is only used for logging
-func NewConsumer(clientID string, getForm func(op string) td.Form) transports.IConsumerConnection {
-	return NewAgent(clientID, getForm)
+func NewConsumer(clientID string, getForm func(op string) *td.Form) transports.IConsumerConnection {
+	fullURL := testServerHttpURL
+
+	authenticator.AddClient(clientID, clientID)
+
+	switch defaultProtocol {
+	case transports.ProtocolTypeHTTPS:
+		fullURL = testServerHttpURL
+	case transports.ProtocolTypeSSE:
+		fullURL = testServerSseURL
+	case transports.ProtocolTypeSSESC:
+		fullURL = testServerSsescURL
+	case transports.ProtocolTypeWSS:
+		fullURL = testServerWssURL
+	case transports.ProtocolTypeMQTTS:
+		fullURL = testServerMqttURL
+	}
+	caCert := certBundle.CaCert
+	cc, err := clients.NewConsumerClient(fullURL, clientID, caCert, getForm, testTimeout)
+	if err != nil {
+		panic("NewClient failed:" + err.Error())
+	}
+	return cc
 }
 
 // Create a new form for the given operation
 // This uses the default protocol binding server to generate the Form
-func NewForm(op string) td.Form {
+func NewForm(op string) *td.Form {
 	form := transportServer.GetForm(op)
 	return form
 }
@@ -97,8 +124,6 @@ func StartTransportServer(
 	serverCert := certBundle.ServerCert
 	cm = connections.NewConnectionManager()
 	authenticator = tputils.NewDummyAuthenticator()
-	authenticator.AddClient(testAgentID1, testAgentPassword1)
-	authenticator.AddClient(testClientID1, testClientPassword1)
 	var httpTransportServer *httpserver.HttpTransportServer
 
 	switch defaultProtocol {
@@ -113,6 +138,8 @@ func StartTransportServer(
 			"localhost", testServerHttpPort, serverCert, caCert, authenticator, cm,
 			rqh, rph, nth)
 		transportServer = ssescserver.StartSseScTransportServer("", cm, httpTransportServer)
+		// add support for hiveot protocol in http/ssesc
+		hiveotserver.StartHiveotProtocolServer(cm, httpTransportServer, rqh, rph, nth)
 
 	case transports.ProtocolTypeWSS:
 		httpTransportServer, err = httpserver.StartHttpTransportServer(
@@ -176,7 +203,7 @@ func TestStartStop(t *testing.T) {
 	cl1 := NewConsumer(testClientID1, srv.GetForm)
 	defer cl1.Disconnect()
 
-	token, err := cl1.ConnectWithPassword(testClientPassword1)
+	token, err := cl1.ConnectWithPassword(testClientID1)
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
 }
@@ -193,7 +220,7 @@ func TestLoginRefresh(t *testing.T) {
 	isConnected := cl1.IsConnected()
 	assert.False(t, isConnected)
 
-	token, err := cl1.ConnectWithPassword(testClientPassword1)
+	token, err := cl1.ConnectWithPassword(testClientID1)
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
 	//time.Sleep(time.Millisecond * 1)
@@ -236,7 +263,7 @@ func TestLogout(t *testing.T) {
 
 	// check if this test still works with a valid login
 	cl1 := NewConsumer(testClientID1, srv.GetForm)
-	token, err := cl1.ConnectWithPassword(testClientPassword1)
+	token, err := cl1.ConnectWithPassword(testClientID1)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, token)
 
@@ -259,7 +286,7 @@ func TestBadLogin(t *testing.T) {
 	cl1 := NewConsumer(testClientID1, srv.GetForm)
 
 	// check if this test still works with a valid login
-	token, err := cl1.ConnectWithPassword(testClientPassword1)
+	token, err := cl1.ConnectWithPassword(testClientID1)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, token)
 
@@ -281,7 +308,7 @@ func TestBadLogin(t *testing.T) {
 
 	// bad client ID
 	cl2 := NewConsumer("badID", srv.GetForm)
-	token, err = cl2.ConnectWithPassword(testClientPassword1)
+	token, err = cl2.ConnectWithPassword(testClientID1)
 	assert.Error(t, err)
 	assert.Empty(t, token)
 }
@@ -302,7 +329,7 @@ func TestBadRefresh(t *testing.T) {
 	assert.Empty(t, token)
 
 	// get a valid token and connect with a bad clientid
-	token, err = cl1.ConnectWithPassword(testClientPassword1)
+	token, err = cl1.ConnectWithPassword(testClientID1)
 	assert.NoError(t, err)
 	validToken, err := cl1.RefreshToken(token)
 	assert.NoError(t, err)
@@ -408,7 +435,7 @@ func TestPing(t *testing.T) {
 	cl1 := NewConsumer(testClientID1, srv.GetForm)
 	defer cl1.Disconnect()
 
-	_, err := cl1.ConnectWithPassword(testClientPassword1)
+	_, err := cl1.ConnectWithPassword(testClientID1)
 	require.NoError(t, err)
 
 	var output any

@@ -55,7 +55,7 @@ type MqttConsumerClient struct {
 	// enable debug logging in the paho client
 	logDebug bool
 	// handler to obtain a form for the operation
-	getForm func(op string) td.Form
+	getForm func(op string) *td.Form
 	// authentication token
 	authToken string
 	//
@@ -583,7 +583,7 @@ func (cl *MqttConsumerClient) sub(topic string) error {
 // Initialize the client
 func (cl *MqttConsumerClient) Init(fullURL string, clientID string,
 	clientCert *tls.Certificate, caCert *x509.Certificate,
-	getForm func(op string) td.Form,
+	getForm func(op string) *td.Form,
 	timeout time.Duration) {
 
 	caCertPool := x509.NewCertPool()
@@ -631,7 +631,7 @@ func (cl *MqttConsumerClient) Init(fullURL string, clientID string,
 	//err = cl.pahoConnect()
 }
 
-// NewMqttConsumerTransport creates a new instance of the mqtt binding client
+// NewMqttConsumerClient creates a new instance of the mqtt binding client
 //
 //	fullURL of broker to connect to, including the schema
 //	clientID to connect as
@@ -639,9 +639,9 @@ func (cl *MqttConsumerClient) Init(fullURL string, clientID string,
 //	caCert of the server to validate the server or nil to not check the server cert
 //	getForm is the handler that provides a form for the given operation
 //	timeout for waiting for response. 0 to use the default.
-func NewMqttConsumerTransport(fullURL string, clientID string,
+func NewMqttConsumerClient(fullURL string, clientID string,
 	clientCert *tls.Certificate, caCert *x509.Certificate,
-	getForm func(op string) td.Form,
+	getForm func(op string) *td.Form,
 	timeout time.Duration) *MqttConsumerClient {
 
 	cl := MqttConsumerClient{}

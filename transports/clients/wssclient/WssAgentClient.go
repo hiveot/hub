@@ -7,7 +7,6 @@ import (
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/servers/wssserver"
 	"github.com/hiveot/hub/wot"
-	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"time"
 )
@@ -142,11 +141,11 @@ func (cl *WssAgentTransport) HandleAgentMessage(baseMsg wssserver.BaseMessage, r
 //	timeout for waiting for response. 0 to use the default.
 func (cl *WssAgentTransport) Init(fullURL string, clientID string,
 	clientCert *tls.Certificate, caCert *x509.Certificate,
-	getForm func(op string) td.Form,
 	timeout time.Duration) {
 
+	// forms are not used in agents
 	cl.WssConsumerClient.Init(
-		fullURL, clientID, clientCert, caCert, getForm, timeout)
+		fullURL, clientID, clientCert, caCert, nil, timeout)
 	cl.agentRequestHandler = cl.HandleAgentMessage
 }
 
@@ -206,13 +205,12 @@ func (cl *WssAgentTransport) SendResponse(resp transports.ResponseMessage) (err 
 	return err
 }
 
-// NewWssAgentTransport creates a new instance of the websocket hub client.
-func NewWssAgentTransport(fullURL string, clientID string,
+// NewWssAgentClient creates a new instance of the websocket hub client.
+func NewWssAgentClient(fullURL string, clientID string,
 	clientCert *tls.Certificate, caCert *x509.Certificate,
-	getForm func(op string) td.Form,
 	timeout time.Duration) *WssAgentTransport {
 	cl := WssAgentTransport{}
-	cl.Init(fullURL, clientID, clientCert, caCert, getForm, timeout)
+	cl.Init(fullURL, clientID, clientCert, caCert, timeout)
 
 	return &cl
 }

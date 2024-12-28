@@ -321,7 +321,7 @@ func (cl *WssConsumerClient) _send(wssMsg any) (err error) {
 //	timeout for waiting for response. 0 to use the default.
 func (cl *WssConsumerClient) Init(fullURL string, clientID string,
 	clientCert *tls.Certificate, caCert *x509.Certificate,
-	getForm func(op string) td.Form,
+	getForm func(op string) *td.Form,
 	timeout time.Duration) {
 
 	cl.HttpConsumerClient.Init(
@@ -335,10 +335,10 @@ func (cl *WssConsumerClient) Init(fullURL string, clientID string,
 	cl.BasePubRequest = cl.PubRequest
 }
 
-// NewWssConsumerTransport creates a new instance of the websocket hub client.
-func NewWssConsumerTransport(fullURL string, clientID string,
+// NewWssConsumerClient creates a new instance of the websocket hub client.
+func NewWssConsumerClient(fullURL string, clientID string,
 	clientCert *tls.Certificate, caCert *x509.Certificate,
-	getForm func(op string) td.Form,
+	getForm func(op string) *td.Form,
 	timeout time.Duration) *WssConsumerClient {
 
 	cl := WssConsumerClient{}

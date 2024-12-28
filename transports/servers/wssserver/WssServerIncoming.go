@@ -12,12 +12,8 @@ import (
 // These are converted into a standard ThingMessage envelope and passed to
 // the handler.
 
-func (c *WssServerConnection) HandleObserveAllProperties(wssMsg *PropertyMessage) {
-	c.observations.SubscribeAll(wssMsg.ThingID)
-}
-
-func (c *WssServerConnection) HandleObserveProperty(wssMsg *PropertyMessage) {
-	c.observations.Subscribe(wssMsg.ThingID, wssMsg.Name)
+func (c *WssServerConnection) ObserveProperty(thingID, name string) {
+	c.observations.Subscribe(thingID, name)
 }
 
 // HandlePing replies with pong to a ping message
@@ -32,27 +28,15 @@ func (c *WssServerConnection) HandlePing(wssMsg *BaseMessage) {
 	c._send(pongMessage)
 }
 
-func (c *WssServerConnection) HandleSubscribeAllEvents(wssMsg *EventMessage) {
-	c.subscriptions.SubscribeAll(wssMsg.ThingID)
+func (c *WssServerConnection) SubscribeEvent(thingID, name string) {
+	c.subscriptions.Subscribe(thingID, name)
+}
+func (c *WssServerConnection) UnobserveProperty(thingID, name string) {
+	c.observations.Unsubscribe(thingID, name)
 }
 
-func (c *WssServerConnection) HandleSubscribeEvent(wssMsg *EventMessage) {
-	c.subscriptions.Subscribe(wssMsg.ThingID, wssMsg.Name)
-}
-func (c *WssServerConnection) HandleUnobserveAllProperties(wssMsg *PropertyMessage) {
-	c.observations.UnsubscribeAll(wssMsg.ThingID)
-}
-
-func (c *WssServerConnection) HandleUnobserveProperty(wssMsg *PropertyMessage) {
-	c.observations.Unsubscribe(wssMsg.ThingID, wssMsg.Name)
-}
-
-func (c *WssServerConnection) HandleUnsubscribeAllEvents(wssMsg *EventMessage) {
-	c.subscriptions.UnsubscribeAll(wssMsg.ThingID)
-}
-
-func (c *WssServerConnection) HandleUnsubscribeEvent(wssMsg *EventMessage) {
-	c.subscriptions.Unsubscribe(wssMsg.ThingID, wssMsg.Name)
+func (c *WssServerConnection) UnsubscribeEvent(thingID, name string) {
+	c.subscriptions.Unsubscribe(thingID, name)
 }
 
 // Marshal encodes the native data into the wire format
@@ -99,7 +83,8 @@ func (c *WssServerConnection) WssServerHandleMessage(raw []byte) {
 		resp.Error = wssMsg.Error
 		resp.Status = wssMsg.Status // todo: convert from wss to global names
 		resp.Updated = wssMsg.TimeEnded
-		_ = c.responseHandler(c.clientID, resp)
+		resp.SenderID = c.GetClientID()
+		_ = c.responseHandler(resp)
 
 	case // hub receives action messages from a consumer. Forward as a request.
 		MsgTypeInvokeAction,
@@ -134,7 +119,8 @@ func (c *WssServerConnection) WssServerHandleMessage(raw []byte) {
 		notif := transports.NewNotificationMessage(
 			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data)
 		notif.Created = wssMsg.Timestamp
-		c.notificationHandler(c.clientID, notif)
+		notif.SenderID = c.GetClientID()
+		c.notificationHandler(notif)
 
 	case // property requests. Forward as requests
 		MsgTypeReadAllProperties,
@@ -162,7 +148,8 @@ func (c *WssServerConnection) WssServerHandleMessage(raw []byte) {
 		resp := transports.NewResponseMessage(
 			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, nil, wssMsg.RequestID)
 		resp.Updated = wssMsg.Timestamp
-		_ = c.responseHandler(c.clientID, resp)
+		resp.SenderID = c.GetClientID()
+		_ = c.responseHandler(resp)
 
 		// td messages
 	case MsgTypeReadTD:
@@ -180,45 +167,26 @@ func (c *WssServerConnection) WssServerHandleMessage(raw []byte) {
 		notif := transports.NewNotificationMessage(
 			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data)
 		notif.Created = wssMsg.Timestamp
-		c.notificationHandler(c.clientID, notif)
+		notif.SenderID = c.GetClientID()
+		c.notificationHandler(notif)
 
 	// subscriptions are handled inside this binding
-	case MsgTypeObserveAllProperties:
+	case MsgTypeObserveProperty, MsgTypeObserveAllProperties:
 		wssMsg := PropertyMessage{}
 		_ = c.Unmarshal(raw, &wssMsg)
-		c.HandleObserveAllProperties(&wssMsg)
-	//case wssbinding.MsgTypeObserveMultipleProperties:
-	//	wssMsg := wssbinding.PropertyMessage{}
-	//	err = c.UnmarshalFromString(jsonMsg, &wssMsg)
-	//	c.HandleObserveMultipleProperties(&wssMsg)
-	case MsgTypeObserveProperty:
+		c.ObserveProperty(wssMsg.ThingID, wssMsg.Name)
+	case MsgTypeSubscribeEvent, MsgTypeSubscribeAllEvents:
+		wssMsg := EventMessage{}
+		_ = c.Unmarshal(raw, &wssMsg)
+		c.SubscribeEvent(wssMsg.ThingID, wssMsg.Name)
+	case MsgTypeUnobserveProperty, MsgTypeUnobserveAllProperties:
 		wssMsg := PropertyMessage{}
 		_ = c.Unmarshal(raw, &wssMsg)
-		c.HandleObserveProperty(&wssMsg)
-	case MsgTypeSubscribeAllEvents:
+		c.UnobserveProperty(wssMsg.ThingID, wssMsg.Name)
+	case MsgTypeUnsubscribeEvent, MsgTypeUnsubscribeAllEvents:
 		wssMsg := EventMessage{}
 		_ = c.Unmarshal(raw, &wssMsg)
-		c.HandleSubscribeAllEvents(&wssMsg)
-	case MsgTypeSubscribeEvent:
-		wssMsg := EventMessage{}
-		_ = c.Unmarshal(raw, &wssMsg)
-		c.HandleSubscribeEvent(&wssMsg)
-	case MsgTypeUnobserveAllProperties:
-		wssMsg := PropertyMessage{}
-		_ = c.Unmarshal(raw, &wssMsg)
-		c.HandleUnobserveAllProperties(&wssMsg)
-	case MsgTypeUnobserveProperty:
-		wssMsg := PropertyMessage{}
-		_ = c.Unmarshal(raw, &wssMsg)
-		c.HandleUnobserveProperty(&wssMsg)
-	case MsgTypeUnsubscribeAllEvents:
-		wssMsg := EventMessage{}
-		_ = c.Unmarshal(raw, &wssMsg)
-		c.HandleUnsubscribeAllEvents(&wssMsg)
-	case MsgTypeUnsubscribeEvent:
-		wssMsg := EventMessage{}
-		_ = c.Unmarshal(raw, &wssMsg)
-		c.HandleUnsubscribeEvent(&wssMsg)
+		c.UnsubscribeEvent(wssMsg.ThingID, wssMsg.Name)
 
 	// other messages handled inside this binding
 	case MsgTypeError:
@@ -233,7 +201,8 @@ func (c *WssServerConnection) WssServerHandleMessage(raw []byte) {
 			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Detail, nil, wssMsg.RequestID)
 		resp.Updated = wssMsg.Timestamp
 		resp.Error = wssMsg.Title
-		_ = c.responseHandler(c.clientID, resp)
+		resp.SenderID = c.GetClientID()
+		_ = c.responseHandler(resp)
 
 	case MsgTypePing:
 		wssMsg := BaseMessage{}

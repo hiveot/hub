@@ -24,17 +24,17 @@ func TestPublishTDByAgent(t *testing.T) {
 	var thingID = "thing1"
 
 	// notification handler of TDs on the server
-	notificationHandler := func(agentID string, msg transports.NotificationMessage) {
+	notificationHandler := func(msg transports.NotificationMessage) {
 		evVal.Store(msg.Data)
 	}
 
 	// 1. start the transport
-	srv, cancelFn, _ := StartTransportServer(nil, nil, notificationHandler)
+	_, cancelFn, _ := StartTransportServer(nil, nil, notificationHandler)
 	defer cancelFn()
 
 	// 2. connect as an agent
-	ag1 := NewAgent(testAgentID1, srv.GetForm)
-	_, err := ag1.ConnectWithPassword(testAgentPassword1)
+	ag1 := NewAgent(testAgentID1)
+	_, err := ag1.ConnectWithPassword(testAgentID1)
 	require.NoError(t, err)
 	defer ag1.Disconnect()
 
@@ -71,14 +71,14 @@ func TestAddForms(t *testing.T) {
 	defer cancelFn()
 
 	// 2. Create a TD
-	td := td.NewTD(thingID, "My gadget", DeviceTypeSensor)
+	tdi := td.NewTD(thingID, "My gadget", DeviceTypeSensor)
 
 	// 3. add forms
-	err := transportServer.AddTDForms(td)
+	err := transportServer.AddTDForms(tdi)
 	require.NoError(t, err)
 
 	// 4. Check that at least 1 form are present
-	assert.GreaterOrEqual(t, len(td.Forms), 1)
+	assert.GreaterOrEqual(t, len(tdi.Forms), 1)
 }
 
 func TestReadTD(t *testing.T) {
@@ -104,10 +104,11 @@ func TestReadTD(t *testing.T) {
 
 	// 4. Check that at least 1 form are present
 	cl1 := NewConsumer(testClientID1, srv.GetForm)
-	_, err = cl1.ConnectWithPassword(testClientPassword1)
+	_, err = cl1.ConnectWithPassword(testClientID1)
 	require.NoError(t, err)
 
-	cl1.Subscribe(thingID, "")
+	err = cl1.Subscribe(thingID, "")
+	require.NoError(t, err)
 
 	//td2, err := cl1.ReadTD(thingID)
 	var td2 td.TD

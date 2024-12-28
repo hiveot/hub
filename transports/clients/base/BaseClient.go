@@ -118,7 +118,7 @@ func (cl *BaseClient) ObserveProperty(thingID string, name string) error {
 		op = wot.OpObserveAllProperties
 	}
 	req := transports.NewRequestMessage(op, thingID, name, nil, "")
-	resp, err := cl.SendRequest(req, false)
+	resp, err := cl.SendRequest(req, true)
 	_ = resp
 	return err
 }
@@ -129,6 +129,7 @@ func (cl *BaseClient) OnNotification(notif transports.NotificationMessage) {
 
 	if cl.appNotificationHandler == nil {
 		slog.Error("handleSseEvent: Received notification but no handler is set",
+			"clientID", cl.GetClientID(),
 			"operation", notif.Operation,
 			"thingID", notif.ThingID,
 			"name", notif.Name,
@@ -170,7 +171,7 @@ func (cl *BaseClient) OnResponse(resp transports.ResponseMessage) {
 	}
 
 	if cl.appNotificationHandler != nil {
-		// last resport is to pass to the notification handler
+		// the last resort is to pass to the notification handler
 		notif := transports.NewNotificationMessage(
 			resp.Operation, resp.ThingID, resp.Name, resp.Output)
 		cl.appNotificationHandler(notif)
@@ -336,7 +337,7 @@ func (cl *BaseClient) Subscribe(thingID string, name string) error {
 		op = wot.OpSubscribeAllEvents
 	}
 	req := transports.NewRequestMessage(op, thingID, name, nil, "")
-	resp, err := cl.SendRequest(req, false)
+	resp, err := cl.SendRequest(req, true)
 	_ = resp
 	return err
 }
@@ -354,7 +355,7 @@ func (cl *BaseClient) UnobserveProperty(thingID string, name string) error {
 		op = wot.OpUnobserveAllProperties
 	}
 	req := transports.NewRequestMessage(op, thingID, name, nil, "")
-	resp, err := cl.SendRequest(req, false)
+	resp, err := cl.SendRequest(req, true)
 	_ = resp
 	return err
 }
@@ -366,7 +367,7 @@ func (cl *BaseClient) Unsubscribe(thingID string, name string) error {
 		op = wot.OpUnsubscribeAllEvents
 	}
 	req := transports.NewRequestMessage(op, thingID, name, nil, "")
-	resp, err := cl.SendRequest(req, false)
+	resp, err := cl.SendRequest(req, true)
 	_ = resp
 	return err
 }

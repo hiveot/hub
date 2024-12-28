@@ -49,7 +49,7 @@ func (svc *SseScTransportServer) AddTDForms(tdi *td.TD) error {
 
 // GetForm returns a new SSE form for the given operation
 // this returns the http form
-func (svc *SseScTransportServer) GetForm(op string) td.Form {
+func (svc *SseScTransportServer) GetForm(op string) *td.Form {
 	// forms are handled through the http binding
 	return svc.httpTransport.GetForm(op)
 }

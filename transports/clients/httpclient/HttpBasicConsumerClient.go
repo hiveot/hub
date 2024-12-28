@@ -13,6 +13,7 @@ import (
 	"github.com/hiveot/hub/transports/tputils/tlsclient"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/teris-io/shortid"
 	"io"
 	"log/slog"
@@ -36,7 +37,8 @@ type HttpConsumerClient struct {
 	base.BaseClient
 
 	// getForm obtains the form for sending a request or notification
-	getForm func(op string) td.Form
+	// if nil, then the hiveot protocol envelope and URL are used as fallback
+	getForm func(op string) *td.Form
 
 	// http2 client for posting messages
 	httpClient *http.Client
@@ -179,20 +181,16 @@ func (cl *HttpConsumerClient) _send(method string, methodPath string,
 //}
 
 // GetDefaultForm return the default http form for the operation
-// This uses the hiveot hub generic href
-// The only exceptions are the login and refresh operations as they are
-// outside the protected routes.
-func (cl *HttpConsumerClient) GetDefaultForm(op string) td.Form {
-	// FIXME: change the default to use the hiveot protocol based on operation
-	href := httpserver.HiveOTPostRequestHRef
-	method := http.MethodPost
+// This simply returns nil for anything else than login.
+func (cl *HttpConsumerClient) GetDefaultForm(op string) (f *td.Form) {
+	// login has its own URL as it is unauthenticated
 	if op == wot.HTOpLogin {
-		href = httpserver.HttpPostLoginPath
-	} else if op == wot.HTOpRefresh {
-		href = httpserver.HttpPostRefreshPath
+		href := httpserver.HttpPostLoginPath
+		nf := td.NewForm(op, href)
+		nf.SetMethodName(http.MethodPost)
+		f = &nf
 	}
-	f := td.NewForm(op, href)
-	f.SetMethodName(method)
+	// everything else has no default form, so falls back to hiveot protocol endpoints
 	return f
 }
 
@@ -217,6 +215,10 @@ func (cl *HttpConsumerClient) GetTlsClient() *http.Client {
 
 // PubRequest publishes a request message to the server.
 //
+//	If no form is found them send it using the hiveot protocol. The request will
+//	be carried in the RequestMessage envelope (as-is) and the response will be
+//	received in the ResponseMessage envelope.
+//
 // If a result is included in the http response then this is passed to the BaseRnR
 // channel associated with the request just like it is done with an async response.
 //
@@ -229,19 +231,27 @@ func (cl *HttpConsumerClient) PubRequest(req transports.RequestMessage) error {
 	var href string
 	var output any
 
+	if req.Operation == "" && req.RequestID == "" {
+		err := fmt.Errorf("SendMessage: missing both operation and requestID")
+		slog.Error(err.Error())
+		return err
+	}
+
 	// the getForm callback provides the method and URL to invoke for this operation.
+	// use the hiveot fallback if not available
 	f := cl.getForm(req.Operation)
 	if f != nil {
 		method, _ = f.GetMethodName()
 		href, _ = f.GetHRef()
 	}
 
-	if req.Operation == "" && req.RequestID == "" {
-		err := fmt.Errorf("SendMessage: missing both operation and requestID")
-		slog.Error(err.Error())
-		return err
-	}
-	if req.Input != nil {
+	if f == nil {
+		// fallback to sending the hiveot request envelope
+		// FIXME: this is temporary as agents don't use forms.
+		dataJSON = cl.Marshal(req)
+		method = http.MethodPost
+		href = httpserver.HiveOTPostRequestHRef
+	} else if req.Input != nil {
 		dataJSON = cl.Marshal(req.Input)
 	}
 	// use + as wildcard for thingID to avoid a 404
@@ -262,6 +272,8 @@ func (cl *HttpConsumerClient) PubRequest(req transports.RequestMessage) error {
 		"operation": req.Operation}
 	reqPath := tputils.Substitute(href, vars)
 
+	// note, if the request is the hiveot fallback path with RequestMessage, then
+	// the response will be the ResponseMessage envelope instead of the raw payload.
 	outputRaw, headers, err := cl._send(
 		method, reqPath, "", req.ThingID, req.Name, dataJSON, req.RequestID)
 
@@ -282,43 +294,56 @@ func (cl *HttpConsumerClient) PubRequest(req transports.RequestMessage) error {
 		return err
 	}
 
-	// status header indicate the result to consumers
-	statusHeader := ""
-	if headers != nil {
-		statusHeader = headers.Get(httpserver.StatusHeader)
-	}
-	// having raw output data is treated as completed
-	if outputRaw != nil && len(outputRaw) > 0 {
-		err = cl.Unmarshal(outputRaw, &output)
-	}
-	// 2 and 3. request completed
-	if statusHeader == transports.StatusCompleted {
-		// the synchronous result of the request contains the output and is completed.
+	if f == nil {
+		// if the response comes from the hiveot endpoint then it contains a
+		// responsemessage envelope already. Pass it to the handler of responses.
+		resp := transports.ResponseMessage{}
+		err = jsoniter.Unmarshal(outputRaw, &resp)
+		resp.RequestID = req.RequestID // just to be sure
 		go func() {
-			// Handle this in the background to avoid it being blocked, because
-			// the caller will have to read the response channel. (caller doesn't know if the result is
-			// immediately or asynchronously)
-			resp := transports.NewResponseMessage(
-				req.Operation, req.ThingID, req.Name, output, nil, req.RequestID)
-			// pass a response to the sync or asyncn handler of responses
 			cl.OnResponse(resp)
 		}()
-	} else if statusHeader == transports.StatusFailed {
-		// body contains the error details return the error
-		errTxt := "request failed"
-		if output != nil {
-			errTxt = fmt.Sprintf("%v", output)
-		}
-		return errors.New(errTxt)
 	} else {
-		// status is pending no reason to treat it as a response
+		// follow the HTTP Basic specification
+		// status header indicate the result to consumers
+		statusHeader := ""
+		if headers != nil {
+			statusHeader = headers.Get(httpserver.StatusHeader)
+		}
+		// having raw output data is treated as completed
+		if outputRaw != nil && len(outputRaw) > 0 {
+			err = cl.Unmarshal(outputRaw, &output)
+		}
+		// 2 and 3. request completed
+		// not all client respond with a statusHeader
+		if statusHeader == transports.StatusCompleted || statusHeader == "" {
+			// the synchronous result of the request contains the output and is completed.
+			go func() {
+				// Handle this in the background to avoid it being blocked, because
+				// the caller will have to read the response channel. (caller doesn't know if the result is
+				// immediately or asynchronously)
+				resp := transports.NewResponseMessage(
+					req.Operation, req.ThingID, req.Name, output, nil, req.RequestID)
+				// pass a response to the sync or asyncn handler of responses
+				cl.OnResponse(resp)
+			}()
+		} else if statusHeader == transports.StatusFailed {
+			// body contains the error details return the error
+			errTxt := "request failed"
+			if output != nil {
+				errTxt = fmt.Sprintf("%v", output)
+			}
+			return errors.New(errTxt)
+		} else {
+			// status is pending no reason to treat it as a response
+		}
 	}
 	return err
 }
 
 func (cl *HttpConsumerClient) Init(
 	fullURL string, clientID string, clientCert *tls.Certificate, caCert *x509.Certificate,
-	getForm func(op string) td.Form,
+	getForm func(op string) *td.Form,
 	timeout time.Duration) {
 	baseHostPort := ""
 	caCertPool := x509.NewCertPool()
@@ -378,7 +403,7 @@ func (cl *HttpConsumerClient) Init(
 //	timeout for waiting for response. 0 to use the default.
 func NewHttpTransportClient(
 	fullURL string, clientID string, clientCert *tls.Certificate, caCert *x509.Certificate,
-	getForm func(op string) td.Form,
+	getForm func(op string) *td.Form,
 	timeout time.Duration) *HttpConsumerClient {
 
 	cl := HttpConsumerClient{}

@@ -5,7 +5,6 @@ import (
 	"crypto/x509"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/clients/httpclient"
-	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"time"
@@ -42,16 +41,16 @@ func (cl *SsescAgentClient) handleAgentRequest(raw string) {
 //	timeout for waiting for response. 0 to use the default.
 func (cl *SsescAgentClient) Init(fullURL string, clientID string,
 	clientCert *tls.Certificate, caCert *x509.Certificate,
-	getForm func(op string) td.Form,
 	timeout time.Duration) {
 
+	// forms are not used for agents
 	cl.SsescConsumerClient.Init(
-		fullURL, clientID, clientCert, caCert, getForm, timeout)
+		fullURL, clientID, clientCert, caCert, nil, timeout)
 	cl.HttpAgentClient.Init(&cl.SsescConsumerClient.HttpConsumerClient)
 	cl.agentRequestHandler = cl.handleAgentRequest
 }
 
-// NewSsescAgentTransport creates a new instance of the agent client with SSE-SC
+// NewSsescAgentClient creates a new instance of the agent client with SSE-SC
 // return-channel.
 //
 //	fullURL full path of the sse endpoint
@@ -59,12 +58,11 @@ func (cl *SsescAgentClient) Init(fullURL string, clientID string,
 //	clientCert optional client certificate to connect with
 //	caCert of the server to validate the server or nil to not check the server cert
 //	timeout for waiting for response. 0 to use the default.
-func NewSsescAgentTransport(fullURL string, clientID string,
+func NewSsescAgentClient(fullURL string, clientID string,
 	clientCert *tls.Certificate, caCert *x509.Certificate,
-	getForm func(op string) td.Form,
 	timeout time.Duration) *SsescAgentClient {
 
 	cl := SsescAgentClient{}
-	cl.Init(fullURL, clientID, clientCert, caCert, getForm, timeout)
+	cl.Init(fullURL, clientID, clientCert, caCert, timeout)
 	return &cl
 }

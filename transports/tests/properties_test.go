@@ -20,6 +20,7 @@ func TestObservePropertyByConsumer(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	var rxVal1 atomic.Value
 	var rxVal2 atomic.Value
+	var agentID = "agent1"
 	var thingID = "thing1"
 	var propertyKey1 = "property1"
 	var propertyKey2 = "property2"
@@ -32,11 +33,11 @@ func TestObservePropertyByConsumer(t *testing.T) {
 
 	// 2. connect with two consumers
 	cl1 := NewConsumer(testClientID1, srv.GetForm)
-	_, err := cl1.ConnectWithPassword(testClientPassword1)
+	_, err := cl1.ConnectWithPassword(testClientID1)
 	require.NoError(t, err)
 	defer cl1.Disconnect()
 	cl2 := NewConsumer(testClientID1, srv.GetForm)
-	_, err = cl2.ConnectWithPassword(testClientPassword1)
+	_, err = cl2.ConnectWithPassword(testClientID1)
 	require.NoError(t, err)
 	defer cl2.Disconnect()
 
@@ -58,6 +59,7 @@ func TestObservePropertyByConsumer(t *testing.T) {
 	// 3. Server sends a property update to consumers
 	notif1 := transports.NewNotificationMessage(
 		wot.HTOpUpdateProperty, thingID, propertyKey1, propValue1)
+	notif1.SenderID = agentID
 	cm.PublishNotification(notif1)
 
 	// 4. both observers should have received it
@@ -73,9 +75,11 @@ func TestObservePropertyByConsumer(t *testing.T) {
 	// 6. Server sends a property update to consumers
 	notif2 := transports.NewNotificationMessage(
 		wot.HTOpUpdateProperty, thingID, propertyKey1, propValue2)
+	notif2.SenderID = agentID
 	cm.PublishNotification(notif2)
 	notif3 := transports.NewNotificationMessage(
 		wot.HTOpUpdateProperty, thingID, propertyKey2, propValue2)
+	notif3.SenderID = agentID
 	cm.PublishNotification(notif3)
 
 	// 7. property should not have been received
@@ -88,6 +92,7 @@ func TestObservePropertyByConsumer(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 	notif4 := transports.NewNotificationMessage(
 		wot.HTOpUpdateProperty, thingID, propertyKey2, propValue1)
+	notif4.SenderID = agentID
 	cm.PublishNotification(notif4)
 	// no change is expected
 	assert.Equal(t, propValue2, rxVal2.Load())
@@ -100,27 +105,30 @@ func TestObservePropertyByConsumer(t *testing.T) {
 func TestPublishPropertyByAgent(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	var evVal atomic.Value
+	var agentID = "agent1"
 	var thingID = "thing1"
 	var propKey1 = "property1"
 	var propValue1 = "value1"
 
 	// handler of property updates on the server
-	notificationHandler := func(agentID string, msg transports.NotificationMessage) {
+	notificationHandler := func(msg transports.NotificationMessage) {
 		evVal.Store(msg.Data)
 	}
 
 	// 1. start the transport
 	srv, cancelFn, _ := StartTransportServer(nil, nil, notificationHandler)
+	_ = srv
 	defer cancelFn()
 
 	// 2. connect as an agent
-	ag1 := NewAgent(testAgentID1, srv.GetForm)
-	_, err := ag1.ConnectWithPassword(testAgentPassword1)
+	ag1 := NewAgent(testAgentID1)
+	_, err := ag1.ConnectWithPassword(testAgentID1)
 	require.NoError(t, err)
 	defer ag1.Disconnect()
 
 	// 3. agent publishes a property update
 	notif1 := transports.NewNotificationMessage(wot.HTOpUpdateProperty, thingID, propKey1, propValue1)
+	notif1.SenderID = agentID
 	err = ag1.SendNotification(notif1)
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond) // time to take effect

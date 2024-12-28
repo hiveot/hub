@@ -8,6 +8,7 @@ import (
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/connections"
 	"github.com/hiveot/hub/transports/servers/discotransport"
+	"github.com/hiveot/hub/transports/servers/hiveotserver"
 	"github.com/hiveot/hub/transports/servers/httpserver"
 	"github.com/hiveot/hub/transports/servers/mqttserver"
 	"github.com/hiveot/hub/transports/servers/ssescserver"
@@ -50,7 +51,7 @@ func (svc *TransportManager) AddTDForms(td *td.TD) (err error) {
 
 // GetForm returns the form for an operation using a transport protocol binding.
 // If the protocol is not found this returns a nil and might cause a panic
-func (svc *TransportManager) GetForm(op string, protocol string) (form td.Form) {
+func (svc *TransportManager) GetForm(op string, protocol string) (form *td.Form) {
 	switch protocol {
 	case transports.ProtocolTypeHTTPS, transports.ProtocolTypeSSESC:
 		form = svc.httpsTransport.GetForm(op)
@@ -124,7 +125,7 @@ func StartProtocolManager(cfg *pm.ProtocolsConfig,
 	//svc.embeddedTransport = embedded.StartEmbeddedBinding()
 
 	if cfg.EnableHTTPS {
-		svc.httpsTransport, err = httpserver.StartHttpTransportServer(
+		httpServer, err2 := httpserver.StartHttpTransportServer(
 			cfg.HttpHost, cfg.HttpsPort,
 			serverCert, caCert,
 			authenticator,
@@ -133,11 +134,21 @@ func StartProtocolManager(cfg *pm.ProtocolsConfig,
 			digitwinRouter.HandleResponse,
 			digitwinRouter.HandleNotification,
 		)
+		err = err2
+		svc.httpsTransport = httpServer
 		// http subprotocols
 		if cfg.EnableSSESC {
 			svc.ssescTransport = ssescserver.StartSseScTransportServer(
 				"",
 				cm, svc.httpsTransport)
+			// support for hiveot protocol using http
+			hiveotserver.StartHiveotProtocolServer(
+				authenticator,
+				cm,
+				httpServer,
+				digitwinRouter.HandleRequest,
+				digitwinRouter.HandleResponse,
+				digitwinRouter.HandleNotification)
 		}
 		if cfg.EnableWSS {
 			svc.wssTransport = wssserver.StartWssTransportServer(

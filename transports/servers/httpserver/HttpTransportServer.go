@@ -214,10 +214,6 @@ func StartHttpTransportServer(host string, port int,
 		serverResponseHandler:     handleResponse,
 		serverNotificationHandler: handleNotification,
 
-		//ws: wssserver.NewWssTransportServer(cm, serverRequestHandler, wssURL),
-		//sse:   ssescserver.NewSseScTransportServer(cm),
-		//ssesc: ssescserver.NewSseScTransportServer(cm),
-
 		hostName:   host,
 		port:       port,
 		httpServer: httpServer,

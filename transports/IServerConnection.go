@@ -6,11 +6,16 @@ const DefaultMqttWssPort = 8884
 
 // Supported transport protocol bindings types
 const (
-	ProtocolTypeHTTPS    = "https"
-	ProtocolTypeSSE      = "sse"   // subprotocol of https
-	ProtocolTypeSSESC    = "ssesc" // subprotocol of https
-	ProtocolTypeWSS      = "wss"   // subprotocol of https
-	ProtocolTypeMQTTS    = "mqtts"
+	ProtocolTypeHTTPS = "https"
+	// SSE subprotocol return channel
+	ProtocolTypeSSE = "sse"
+	// SSE-SC subprotocol return channel
+	ProtocolTypeSSESC = "ssesc" // subprotocol of https
+	// Websocket subprotocol two-way channel
+	ProtocolTypeWSS = "wss" // subprotocol of https
+	// MQTT protocol
+	ProtocolTypeMQTTS = "mqtts"
+	// Internal embedded direct call, for testing
 	ProtocolTypeEmbedded = "embedded" // for testing
 )
 
@@ -20,11 +25,10 @@ const (
 // Note that the ThingID in the notification is that of the agent, not the digital
 // twin ThingID.
 //
-//	senderID is the authenticated ID of the agent sending the notification
-//	msg is the notification message envelope
+//	msg is the notification message envelope filled in by the server
 //
 // There is no error result as this is a broadcast.
-type ServerNotificationHandler func(senderID string, msg NotificationMessage)
+type ServerNotificationHandler func(msg NotificationMessage)
 
 // ServerRequestHandler handles an incoming request. The handler either returns a result
 // immediately, if available, or sends it asynchronously to the replyTo address.
@@ -48,7 +52,7 @@ type ServerRequestHandler func(msg RequestMessage, replyTo string) ResponseMessa
 //
 // This returns an error if the client is not reachable. This can be used to
 // retry sending the response or dispose of it altogether.
-type ServerResponseHandler func(senderID string, msg ResponseMessage) error
+type ServerResponseHandler func(msg ResponseMessage) error
 
 // IServerConnection is the interface of an incoming client connection on the server.
 // Protocol servers must implement this interface to return information to the consumer.
@@ -97,18 +101,19 @@ type IServerConnection interface {
 	// This returns an error if the agent isn't reachable
 	SendResponse(msg ResponseMessage) error
 
-	// SetRequestHandler [agent] sets the handler for operations that return a response.
-	// This replaces any previously set handler.
-	//SetRequestHandler(request ServerRequestHandler)
+	// Subscribe to property changes
+	// Experimental. Intended for integration split protocol http/sse
+	ObserveProperty(thingID, name string)
 
-	// SetNotificationHandler [consumer] sets the callback for receiving notifications.
-	// This replaces any previously set handler.
-	//SetNotificationHandler(cb ServerNotificationHandler)
+	// Subscribe to thing event(s)
+	// Experimental. Intended for integration split protocol http/sse
+	SubscribeEvent(thingID, name string)
 
-	// SetResponseHandler [consumer] sets the callback for receiving unhandled responses
-	// to requests. If a request is sent with 'sync' set to true then SendRequest
-	// will handle the response instead.
-	//
-	// This replaces any previously set handler.
-	//SetResponseHandler(cb ServerResponseHandler)
+	// UnsubscribeEvent unsubscribes from thing event(s)
+	// Experimental
+	UnsubscribeEvent(thingID, name string)
+
+	// UnobserveProperty removes observation of property(ies)
+	// Experimental
+	UnobserveProperty(thingID, name string)
 }

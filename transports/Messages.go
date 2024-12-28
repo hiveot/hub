@@ -45,7 +45,7 @@ type NotificationMessage struct {
 
 	// ThingID of the thing this notification is from.
 	// For messages to/from consumers this is the digitwin dThingID
-	// For messages from/to agents this is the agent ThingID
+	// For messages from agents this is the agent ThingID
 	// This field is required.
 	ThingID string `json:"thingID"`
 
@@ -61,6 +61,10 @@ type NotificationMessage struct {
 	// Created holds the date-time the notification was created. using RFC3339milli
 	// This MUST be set by the protocol binding if not provided.
 	Created string `json:"timestamp"`
+
+	// AgentID contains the Agent ID that published the notification
+	// The protocol server MUST set this to the authenticated client.
+	SenderID string `json:"senderID"`
 
 	//--- additional optional fields
 
@@ -189,6 +193,10 @@ type ResponseMessage struct {
 	// Timestasmp the status was updated in this response
 	Updated string `json:"timestamp"`
 
+	// Authenticated ID of the agent sending the response, set by the server
+	// The protocol server MUST set this to the authenticated client.
+	SenderID string `json:"senderID"`
+
 	//--- additional optional fields
 
 	// ThingID of the thing this is a response from.
@@ -264,11 +272,15 @@ func NewResponseMessage(operation string, thingID, name string, output any, err 
 
 // NewNotificationMessage creates a new NotificationMessage instance.
 //
+// When agents create a notification they use the local ThingID. The digital twin
+// ThingID is used when the digital twin forwards the notification to subscribers.
+//
 //	operation is the operation describing the notification WoTOp... or HTOp...
-//	thingID is the thing the notification applies to
+//	thingID is the Thing the notification applies to.
 //	name is the name of the property, event or action affordance as described in the thing TD
 //	data is the notification data as defined in the corresponding affordance dataschema, or nil if not applicable.
 func NewNotificationMessage(operation string, thingID, name string, data any) NotificationMessage {
+
 	return NotificationMessage{
 		MessageType: MessageTypeNotification,
 		Operation:   operation,

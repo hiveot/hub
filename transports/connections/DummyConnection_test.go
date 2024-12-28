@@ -2,9 +2,9 @@ package connections_test
 
 import (
 	"fmt"
-	transports2 "github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/api/go/digitwin"
+	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/connections"
-	"github.com/hiveot/hub/wot"
 )
 
 // Dummy connection for testing connection manager
@@ -16,8 +16,9 @@ type DummyConnection struct {
 	observations  connections.Subscriptions
 	subscriptions connections.Subscriptions
 
-	SendNotificationHandler transports2.ServerNotificationHandler
-	SendRequestHandler      transports2.ServerRequestHandler
+	SendNotificationHandler transports.ServerNotificationHandler
+	SendRequestHandler      transports.ServerRequestHandler
+	SendResponseHandler     transports.ServerResponseHandler
 }
 
 func (c *DummyConnection) Disconnect() {}
@@ -34,34 +35,25 @@ func (c *DummyConnection) GetProtocolType() string { return "dummy" }
 //	return transports2.RequestCompleted, nil, nil
 //}
 
-func (c *DummyConnection) PublishActionStatus(stat transports2.ActionStatus, agentID string) error {
+func (c *DummyConnection) PublishActionStatus(stat digitwin.ActionStatus, agentID string) error {
 	return nil
 }
 
-func (c *DummyConnection) SendError(dThingID, name string, errResponse string, requestID string) {
-	if c.SendNotificationHandler != nil {
-		c.SendNotificationHandler(wot.HTOpPublishError, dThingID, name, errResponse, "")
-	}
-}
-func (c *DummyConnection) SendNotification(notif transports2.NotificationMessage) {
+func (c *DummyConnection) SendNotification(notif transports.NotificationMessage) {
 	if c.SendNotificationHandler != nil && c.subscriptions.IsSubscribed(notif.ThingID, notif.Name) {
 		c.SendNotificationHandler(notif)
 	}
 }
-func (c *DummyConnection) SendRequest(msg transports2.RequestMessage) error {
+func (c *DummyConnection) SendRequest(msg transports.RequestMessage) error {
 	if c.SendRequestHandler != nil && c.observations.IsSubscribed(msg.ThingID, msg.Name) {
-		return c.SendRequestHandler(msg.Operation, msg.ThingID, msg.Name, msg.Data, msg.RequestID)
+		c.SendRequestHandler(msg, c.GetConnectionID())
 	}
 	return fmt.Errorf("no request sender set")
 }
 
-func (c *DummyConnection) SendResponse(dThingID, name string, data any, err error, requestID string) error {
-	if err != nil {
-		c.SendError(dThingID, name, err.Error(), requestID)
-	} else {
-		if c.SendNotificationHandler != nil {
-			c.SendNotificationHandler(wot.HTOpUpdateActionStatus, dThingID, name, data, requestID)
-		}
+func (c *DummyConnection) SendResponse(resp transports.ResponseMessage) error {
+	if c.SendResponseHandler != nil {
+		c.SendResponseHandler(resp)
 	}
 	return nil
 }

@@ -37,7 +37,7 @@ func (svc *MqttTransportServer) AddTDForms(td *td.TD) error {
 
 // GetForm returns a new HTTP form for the given operation
 // Intended for Thing level operations
-func (svc *MqttTransportServer) GetForm(op string) td.Form {
+func (svc *MqttTransportServer) GetForm(op string) *td.Form {
 	controlPacket := ""
 	topic, found := svc.op2Topic[op]
 	if !found {
@@ -75,7 +75,7 @@ func (svc *MqttTransportServer) GetForm(op string) td.Form {
 
 	slog.Warn("GetForm. No form found for operation",
 		"op", op)
-	return nil
+	return &form
 }
 
 // GetServerURL returns base path of the server

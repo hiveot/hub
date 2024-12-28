@@ -244,7 +244,7 @@ func (cl *SsescConsumerClient) SetSSEPath(ssePath string) {
 //	timeout for waiting for response. 0 to use the default.
 func (cl *SsescConsumerClient) Init(fullURL string, clientID string,
 	clientCert *tls.Certificate, caCert *x509.Certificate,
-	getForm func(op string) td.Form,
+	getForm func(op string) *td.Form,
 	timeout time.Duration) {
 
 	cl.HttpConsumerClient.Init(
@@ -257,10 +257,10 @@ func (cl *SsescConsumerClient) Init(fullURL string, clientID string,
 	}
 }
 
-// NewSsescConsumerTransport creates a new instance of the http consumer with SSE-SC return-channel.
-func NewSsescConsumerTransport(fullURL string, clientID string,
+// NewSsescConsumerClient creates a new instance of the http consumer with SSE-SC return-channel.
+func NewSsescConsumerClient(fullURL string, clientID string,
 	clientCert *tls.Certificate, caCert *x509.Certificate,
-	getForm func(op string) td.Form,
+	getForm func(op string) *td.Form,
 	timeout time.Duration) *SsescConsumerClient {
 
 	cl := SsescConsumerClient{}

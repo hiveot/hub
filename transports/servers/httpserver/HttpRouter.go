@@ -136,11 +136,11 @@ func (svc *HttpTransportServer) createRoutes(router chi.Router) http.Handler {
 		svc.AddPostOp(r, wot.HTOpLogout,
 			HttpPostLogoutPath, svc.HandleLogout)
 
-		// HiveOT messaging API using standardized envelops. This can be used instead
+		// HiveOT messaging API using standardized envelopes. This can be used instead
 		// of Forms. Only 3 endpoints are needed. Please try me :)
-		svc.AddPostOp(r, "request", HiveOTPostRequestHRef, svc.HandleHiveotRequest)
-		svc.AddPostOp(r, "response", HiveOTPostResponseHRef, svc.HandleHiveotResponse)
-		svc.AddPostOp(r, "notification", HiveOTPostNotificationHRef, svc.HandleHiveotNotification)
+		//svc.AddPostOp(r, "request", HiveOTPostRequestHRef, svc.HandleHiveotRequest)
+		//svc.AddPostOp(r, "response", HiveOTPostResponseHRef, svc.HandleHiveotResponse)
+		//svc.AddPostOp(r, "notification", HiveOTPostNotificationHRef, svc.HandleHiveotNotification)
 	})
 
 	return router

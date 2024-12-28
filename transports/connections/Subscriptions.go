@@ -61,11 +61,6 @@ func (s *Subscriptions) Subscribe(dThingID string, name string) {
 	s.subscriptions = append(s.subscriptions, subKey)
 }
 
-// SubscribeAll adds a subscription for all thing events/properties
-func (s *Subscriptions) SubscribeAll(dThingID string) {
-	s.Subscribe(dThingID, "")
-}
-
 // Unsubscribe removes a subscription for a thing event/property
 func (s *Subscriptions) Unsubscribe(dThingID string, name string) {
 	s.mux.Lock()
@@ -83,10 +78,4 @@ func (s *Subscriptions) Unsubscribe(dThingID string, name string) {
 	} else {
 		slog.Info("UnobserveProperty/unsubscribe. Subscription not found", "subKey", subKey)
 	}
-}
-
-// UnsubscribeAll removes an 'all' subscription for all thing events/properties
-func (s *Subscriptions) UnsubscribeAll(dThingID string) {
-	// TODO: remove all individual subscriptions instead of just the 'all'
-	s.Unsubscribe(dThingID, "")
 }

@@ -1,6 +1,7 @@
 package connections_test
 
 import (
+	"errors"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/connections"
 	"github.com/hiveot/hub/wot"
@@ -155,24 +156,28 @@ func TestPublishEventProp(t *testing.T) {
 	c1 := NewDummyConnection(client1ID, remoteAddr, session1ID)
 	c1.SubscribeEvent(dThingID, "")
 	c1.ObserveProperty(dThingID, "")
-	c1.SendNotificationHandler = func(op, dThingID, name string, data any, requestID string) {
-		if op == wot.HTOpPublishEvent {
+	c1.SendNotificationHandler = func(notif transports.NotificationMessage) {
+		if notif.Operation == wot.HTOpEvent {
 			evCount++
-		} else if op == wot.HTOpUpdateProperty {
+		} else if notif.Operation == wot.HTOpUpdateProperty {
 			propCount++
 		}
 	}
-	c1.SendRequestHandler = func(op, dThingID, name string, data any, requestID string) error {
+	c1.SendRequestHandler = func(req transports.RequestMessage, replyTo string) transports.ResponseMessage {
 		assert.Fail(t, "unexpected")
-		return nil
+		return req.CreateResponse(nil, errors.New("unexpected request"))
 	}
 
 	err := cm.AddConnection(c1)
 	require.NoError(t, err)
 
 	// publish
-	cm.PublishEvent(dThingID, evName, nil, "", agent1ID)
-	cm.PublishProperty(dThingID, propName, nil, "", agent1ID)
+	notif1 := transports.NewNotificationMessage(wot.HTOpEvent, dThingID, evName, nil)
+	notif1.SenderID = agent1ID
+	cm.PublishNotification(notif1)
+	notif2 := transports.NewNotificationMessage(wot.HTOpUpdateProperty, dThingID, propName, nil)
+	notif2.SenderID = agent1ID
+	cm.PublishNotification(notif2)
 
 	time.Sleep(time.Millisecond * 10)
 	// should receive 1 event and 1 property message

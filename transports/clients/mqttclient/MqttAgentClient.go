@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"github.com/eclipse/paho.golang/paho"
 	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"time"
 )
@@ -130,30 +129,27 @@ func (cl *MqttAgentClient) SetRequestHandler(cb transports.RequestHandler) {
 // Initialize the client
 func (cl *MqttAgentClient) Init(fullURL string, clientID string,
 	clientCert *tls.Certificate, caCert *x509.Certificate,
-	getForm func(op string) td.Form,
 	timeout time.Duration) {
 
 	cl.MqttConsumerClient.Init(
-		fullURL, clientID, clientCert, caCert, getForm, timeout)
+		fullURL, clientID, clientCert, caCert, nil, timeout)
 
 	//cl.BaseHandleMessage = cl.HandleAgentMessage
 }
 
-// NewMqttAgentTransport creates a new instance of the mqtt binding client
+// NewMqttAgentClient creates a new instance of the mqtt binding client
 //
 //	fullURL of broker to connect to, including the schema
 //	clientID to connect as
 //	clientCert optional client certificate to connect with
 //	caCert of the server to validate the server or nil to not check the server cert
-//	getForm is the handler that provides a form for the given operation
 //	timeout for waiting for response. 0 to use the default.
-func NewMqttAgentTransport(fullURL string, clientID string,
+func NewMqttAgentClient(fullURL string, clientID string,
 	clientCert *tls.Certificate, caCert *x509.Certificate,
-	getForm func(op string) td.Form,
 	timeout time.Duration) *MqttAgentClient {
 
 	cl := MqttAgentClient{}
-	cl.Init(fullURL, clientID, clientCert, caCert, getForm, timeout)
+	cl.Init(fullURL, clientID, clientCert, caCert, timeout)
 
 	return &cl
 }

@@ -25,45 +25,32 @@ const TokenFileExt = ".token"
 
 var DefaultTimeout = time.Second * 3
 
-// ClientFactory is a factory to create client connections
-type ClientFactory struct {
-	caCert *x509.Certificate
-}
-
-// NewHubClientFactory creates a new client factory for connecting to the hiveot hub
-func NewHubClientFactory(certsDir string) (*ClientFactory, error) {
-	// obtain the CA public cert to verify the server
-	caCertFile := path.Join(certsDir, certs.DefaultCaCertFile)
-	caCert, err := certs.LoadX509CertFromPEM(caCertFile)
-	if err != nil {
-		return nil, err
-	}
-
-	cf := &ClientFactory{
-		caCert: caCert,
-	}
-	return cf, nil
-}
-
-// ConnectToHub helper function to connect to the hiveot Hub using existing token and key files.
-// This assumes that CA cert, user keys and auth token have already been set up and
-// are available in the certDir.
-// The key-pair file is named {certDir}/{clientID}.key
+// ConnectConsumerToHub helper function to connect a consumer to the hiveot Hub,
+// using existing token and key files.
+//
+// This assumes that CA cert and optionally an auth token file have already been
+// set up and are available in the certDir.
+// The CA cert is named caCert.pem
 // The token file is named {certDir}/{clientID}.token
 //
 // 1. If no fullURL is given then use discovery to determine the URL
-// 2. Determine the core to use
-// 3. Load the CA cert
-// 4. Create a hub client
-// 5. Connect using token and key files
+// 2. Load the CA cert from the cert dir and token file if it exists.
+// 3. Create a hub client
+// 4. Connect using token file or given password
+//
+// getForm is optional and intended to be interoperable with Forms. When connecting
+// to the HiveOT hub this can be nil as it will fall back to the build-in messaging
+// protocol that uses only request, response and notification message envelopes.
 //
 //	fullURL is the scheme://addr:port/[wspath] the server is listening on. "" for auto discovery
-//	clientID to connect as. Also used for the key and token file names
-//	certDir is the credentials directory containing the CA cert (caCert.pem) and key/token files ({clientID}.token)
-//	core optional core selection. Fallback is to auto determine based on URL.
+//	clientID to connect as. Also used as the token file name prefix.
+//	certDir is the credentials directory containing the CA cert (caCert.pem) and token files ({clientID}.token)
 //	password optional for a user login instead of a token
-func ConnectToHub(fullURL string, clientID string, certDir string, password string) (
-	hc transports.IAgentConnection, err error) {
+//	getForm is the consumer's handler to retrieve the Form for an operation on a Thing
+func ConnectConsumerToHub(
+	fullURL string, clientID string, certDir string, password string,
+	getForm func(op string) *td.Form) (
+	hc transports.IConsumerConnection, err error) {
 
 	// 1. determine the actual address
 	if fullURL == "" {
@@ -83,7 +70,7 @@ func ConnectToHub(fullURL string, clientID string, certDir string, password stri
 		return nil, err
 	}
 	// 3. Determine which protocol to use and setup the key and token filenames
-	hc, _ = NewTransportClient(fullURL, clientID, caCert, nil, 0)
+	hc, _ = NewConsumerClient(fullURL, clientID, caCert, getForm, 0)
 	if hc == nil {
 		return nil, fmt.Errorf("unable to create hub client for URL: %s", fullURL)
 	}
@@ -103,10 +90,10 @@ func ConnectToHub(fullURL string, clientID string, certDir string, password stri
 }
 
 // ConnectWithTokenFile is a convenience function to read token and key
-// from file and connect to the server.
+// from file and connect to the server. Also used by agents.
 //
 // keysDir is the directory with the {clientID}.key and {clientID}.token files.
-func ConnectWithTokenFile(hc transports.IAgentConnection, keysDir string) error {
+func ConnectWithTokenFile(hc transports.IConsumerConnection, keysDir string) error {
 	var kp keys.IHiveKey
 
 	clientID := hc.GetClientID()
@@ -130,7 +117,7 @@ func ConnectWithTokenFile(hc transports.IAgentConnection, keysDir string) error 
 	return err
 }
 
-// NewTransportClient returns a new client protocol instance
+// NewConsumerClient returns a new client instance for consumers
 //
 // FullURL contains the full server address as provided by discovery:
 //
@@ -149,10 +136,10 @@ func ConnectWithTokenFile(hc transports.IAgentConnection, keysDir string) error 
 // the hiveot hub, this is optional as the protocolType automatically selects the generic form.
 //
 // timeout is optional maximum wait time for connecting or waiting for responses. Use 0 for default.
-func NewTransportClient(
+func NewConsumerClient(
 	fullURL string, clientID string, caCert *x509.Certificate,
-	getForm func(op string) td.Form, timeout time.Duration) (
-	bc transports.IAgentConnection, err error) {
+	getForm func(op string) *td.Form, timeout time.Duration) (
+	bc transports.IConsumerConnection, err error) {
 
 	// determine the protocol to use from the URL
 	protocolType := transports.ProtocolTypeWSS
@@ -183,7 +170,7 @@ func NewTransportClient(
 		//	fullURL, clientID, nil, caCert, getForm, timeout)
 
 	case transports.ProtocolTypeMQTTS:
-		bc = mqttclient.NewMqttAgentTransport(
+		bc = mqttclient.NewMqttConsumerClient(
 			fullURL, clientID, nil, caCert, getForm, timeout)
 
 	// the default SSE creates a connection for each subscription and observation
@@ -192,11 +179,11 @@ func NewTransportClient(
 		panic("sse client is not yet supported")
 
 	case transports.ProtocolTypeSSESC:
-		bc = sseclient.NewSsescAgentTransport(
+		bc = sseclient.NewSsescConsumerClient(
 			fullURL, clientID, nil, caCert, getForm, timeout)
 
 	case transports.ProtocolTypeWSS:
-		bc = wssclient.NewWssAgentTransport(
+		bc = wssclient.NewWssConsumerClient(
 			fullURL, clientID, nil, caCert, getForm, timeout)
 
 	default:

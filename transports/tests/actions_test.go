@@ -46,7 +46,7 @@ func TestInvokeActionFromConsumerToServer(t *testing.T) {
 
 	// 2. connect a client
 	cl1 := NewConsumer(testClientID1, srv.GetForm)
-	token, err := cl1.ConnectWithPassword(testClientPassword1)
+	token, err := cl1.ConnectWithPassword(testClientID1)
 	defer cl1.Disconnect()
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
@@ -107,7 +107,7 @@ func TestInvokeActionFromServerToAgent(t *testing.T) {
 	ctx1, cancelFn1 := context.WithTimeout(context.Background(), time.Minute)
 	defer cancelFn1()
 	// server receives agent response
-	responseHandler := func(agentID string, resp transports.ResponseMessage) error {
+	responseHandler := func(resp transports.ResponseMessage) error {
 		var responseData string
 		// The server receives a response message from the agent
 		// (which normally is forwarded to the remote consumer; but not in this test)
@@ -126,12 +126,13 @@ func TestInvokeActionFromServerToAgent(t *testing.T) {
 		return nil
 	}
 	srv, cancelFn2, cm2 := StartTransportServer(nil, responseHandler, nil)
+	_ = srv
 	cm = cm2
 	defer cancelFn2()
 
 	// 2a. connect as an agent
-	ag1client := NewAgent(testAgentID1, srv.GetForm)
-	token, err := ag1client.ConnectWithPassword(testAgentPassword1)
+	ag1client := NewAgent(testAgentID1)
+	token, err := ag1client.ConnectWithPassword(testAgentID1)
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
 	defer ag1client.Disconnect()
@@ -215,7 +216,7 @@ func TestQueryActions(t *testing.T) {
 
 	// 2. connect as a consumer
 	cl1 := NewConsumer(testClientID1, srv.GetForm)
-	_, err := cl1.ConnectWithPassword(testClientPassword1)
+	_, err := cl1.ConnectWithPassword(testClientID1)
 	require.NoError(t, err)
 	defer cl1.Disconnect()
 

@@ -26,7 +26,7 @@ func (svc *HttpTransportServer) HandleNotification(op string, w http.ResponseWri
 	if svc.serverNotificationHandler == nil {
 		slog.Error("HandleNotification not registered")
 	} else {
-		svc.serverNotificationHandler(rp.ClientID, msg)
+		svc.serverNotificationHandler(msg)
 	}
 	svc.writeReply(w, nil, "", err)
 }
@@ -122,6 +122,7 @@ func (svc *HttpTransportServer) HandleActionStatus(w http.ResponseWriter, r *htt
 		ThingID:     rp.ThingID,
 		Name:        rp.Name,
 		RequestID:   rp.RequestID,
+		SenderID:    rp.ClientID,
 		Status:      actionStatus.Status, // todo map names (they are the same)
 		Error:       actionStatus.Error,
 		Output:      actionStatus.Output,
@@ -132,7 +133,7 @@ func (svc *HttpTransportServer) HandleActionStatus(w http.ResponseWriter, r *htt
 		slog.Error("No response handler registered",
 			"op", response.Operation)
 	} else {
-		err = svc.serverResponseHandler(rp.ClientID, response)
+		err = svc.serverResponseHandler(response)
 	}
 	svc.writeReply(w, nil, "", err)
 }
