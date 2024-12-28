@@ -21,23 +21,23 @@ type AgentHandler struct {
 }
 
 func (agent *AgentHandler) InvokeMethod(
-	method interface{}, msg *transports.ThingMessage) (output any, err error) {
+	method interface{}, msg *transports.RequestMessage) (output any, err error) {
 
-	respData, err := HandleRequestMessage(msg.SenderID, method, msg.Data)
+	respData, err := HandleRequestMessage(msg.SenderID, method, msg.Input)
 	return respData, err
 }
 
-func (agent *AgentHandler) HandleRequest(msg *transports.ThingMessage) (output any, err error) {
-	if msg.ThingID == agent.thingID {
-		method, found := agent.methods[msg.Name]
+func (agent *AgentHandler) HandleRequest(req transports.RequestMessage) transports.ResponseMessage {
+	if req.ThingID == agent.thingID {
+		method, found := agent.methods[req.Name]
 		if found {
-			output, err = agent.InvokeMethod(method, msg)
-			return output, err
+			output, err := agent.InvokeMethod(method, &req)
+			return req.CreateResponse(output, err)
 		}
 	}
-	err = fmt.Errorf(
-		"agent for service '%s' does not have method '%s'", agent.thingID, msg.Name)
-	return nil, err
+	err := fmt.Errorf(
+		"agent for service '%s' does not have method '%s'", agent.thingID, req.Name)
+	return req.CreateResponse(nil, err)
 }
 
 func NewAgentHandler(thingID string, methods map[string]interface{}) *AgentHandler {

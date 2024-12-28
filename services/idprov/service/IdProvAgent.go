@@ -14,7 +14,7 @@ import (
 //
 //	svc is the service whose capabilities to expose
 //	hc is the optional message client connected to the server protocol
-func StartIdProvAgent(svc *ManageIdProvService, hc transports.IClientConnection) *hubagent.AgentHandler {
+func StartIdProvAgent(svc *ManageIdProvService, hc transports.IAgentConnection) *hubagent.AgentHandler {
 
 	methods := map[string]interface{}{
 		idprovapi.ApproveRequestMethod:    svc.ApproveRequest,

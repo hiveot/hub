@@ -58,7 +58,7 @@ type CursorArgs struct {
 // CursorSingleResp contains a single response value to a cursor request
 type CursorSingleResp struct {
 	// The value at the new cursor position or nil if not valid
-	Value *transports.ThingMessage `json:"value"`
+	Value *transports.NotificationMessage `json:"value"`
 	// The current position holds a valid value
 	Valid bool `json:"valid"`
 }
@@ -77,7 +77,7 @@ type CursorNArgs struct {
 type CursorNResp struct {
 	// Returns up to 'Limit' iterated values.
 	// This will be an empty list when trying to read past the last value.
-	Values []*transports.ThingMessage `json:"values"`
+	Values []*transports.NotificationMessage `json:"values"`
 	// There are still items remaining.
 	ItemsRemaining bool `json:"itemsRemaining"`
 }
@@ -129,7 +129,7 @@ type ReadHistoryArgs struct {
 type ReadHistoryResp struct {
 	// Returns up to 'Limit' iterated values.
 	// This will be an empty list when trying to read past the last value.
-	Values []*transports.ThingMessage `json:"values"`
+	Values []*transports.NotificationMessage `json:"values"`
 	// There are still items remaining.
 	ItemsRemaining bool `json:"itemsRemaining"`
 }

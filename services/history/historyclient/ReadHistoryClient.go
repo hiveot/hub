@@ -12,7 +12,7 @@ import (
 type ReadHistoryClient struct {
 	// ThingID of the service providing the read history capability
 	dThingID string
-	cc       transports.IClientConnection
+	cc       transports.IConsumerConnection
 }
 
 // GetCursor returns an iterator for ThingMessage objects containing historical events,tds or actions
@@ -28,7 +28,7 @@ func (cl *ReadHistoryClient) GetCursor(thingID string, filterOnName string) (
 		FilterOnName: filterOnName,
 	}
 	resp := historyapi.GetCursorResp{}
-	err = cl.cc.SendRequest(wot.OpInvokeAction, cl.dThingID, historyapi.GetCursorMethod, &args, &resp)
+	err = cl.cc.Rpc(wot.OpInvokeAction, cl.dThingID, historyapi.GetCursorMethod, &args, &resp)
 	cursor = NewHistoryCursorClient(cl.cc, resp.CursorKey)
 	return cursor, cursor.Release, err
 }
@@ -46,7 +46,7 @@ func (cl *ReadHistoryClient) GetCursor(thingID string, filterOnName string) (
 // to continue reading the next page.
 func (cl *ReadHistoryClient) ReadHistory(thingID string, filterOnName string,
 	timestamp time.Time, duration time.Duration, limit int) (
-	batch []*transports.ThingMessage, itemsRemaining bool, err error) {
+	batch []*transports.NotificationMessage, itemsRemaining bool, err error) {
 
 	args := historyapi.ReadHistoryArgs{
 		ThingID:      thingID,
@@ -56,14 +56,14 @@ func (cl *ReadHistoryClient) ReadHistory(thingID string, filterOnName string,
 		Limit:        limit,
 	}
 	resp := historyapi.ReadHistoryResp{}
-	err = cl.cc.SendRequest(wot.OpInvokeAction, cl.dThingID, historyapi.ReadHistoryMethod, &args, &resp)
+	err = cl.cc.Rpc(wot.OpInvokeAction, cl.dThingID, historyapi.ReadHistoryMethod, &args, &resp)
 	return resp.Values, resp.ItemsRemaining, err
 }
 
 // NewReadHistoryClient returns an instance of the read history client using the given connection
 //
 //	invokeAction is the TD invokeAction for the invoke-action operation of the history service
-func NewReadHistoryClient(cc transports.IClientConnection) *ReadHistoryClient {
+func NewReadHistoryClient(cc transports.IConsumerConnection) *ReadHistoryClient {
 	agentID := historyapi.AgentID
 	histCl := ReadHistoryClient{
 		cc:       cc,

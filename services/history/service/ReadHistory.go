@@ -47,9 +47,9 @@ func (svc *ReadHistory) GetCursor(
 // internal read history function
 func (svc *ReadHistory) readHistory(
 	thingID string, filterOnKey string, timestamp string, durationSec int, limit int) (
-	values []*transports.ThingMessage, itemsRemaining bool, err error) {
+	values []*transports.NotificationMessage, itemsRemaining bool, err error) {
 
-	values = make([]*transports.ThingMessage, 0)
+	values = make([]*transports.NotificationMessage, 0)
 
 	if limit <= 0 {
 		limit = historyapi.DefaultLimit
@@ -70,7 +70,7 @@ func (svc *ReadHistory) readHistory(
 		// item0 is nil when seek afer the last available item
 		values = append(values, item0)
 	}
-	var batch []*transports.ThingMessage
+	var batch []*transports.NotificationMessage
 	until := ts.Add(time.Duration(durationSec) * time.Second)
 	if durationSec > 0 {
 		// read forward in time

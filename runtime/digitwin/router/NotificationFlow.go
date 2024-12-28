@@ -12,9 +12,9 @@ import (
 
 // HandleNotification routes notifications from agents to clients
 // This updates the last event/property value in the digital twin store.
-func (svc *DigitwinRouter) HandleNotification(agentID string, notif transports.NotificationMessage) {
+func (svc *DigitwinRouter) HandleNotification(notif transports.NotificationMessage) {
 	// convert the ThingID to that of the digital twin
-	dThingID := td.MakeDigiTwinThingID(agentID, notif.ThingID)
+	dThingID := td.MakeDigiTwinThingID(notif.SenderID, notif.ThingID)
 	notif.ThingID = dThingID
 
 	if notif.Operation == wot.HTOpEvent {
@@ -34,7 +34,7 @@ func (svc *DigitwinRouter) HandleNotification(agentID string, notif transports.N
 
 	} else if notif.Operation == wot.HTOpUpdateTD {
 		tdJSON := notif.ToString()
-		svc.dtwService.DirSvc.UpdateTD(agentID, tdJSON)
+		svc.dtwService.DirSvc.UpdateTD(notif.SenderID, tdJSON)
 
 		// Don't forward the notification.
 		//Only digitwin TDs should be published. These have updated forms.

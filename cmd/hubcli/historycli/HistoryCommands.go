@@ -25,7 +25,7 @@ import (
 //	}
 //}
 
-func HistoryListCommand(hc transports.IClientConnection) *cli.Command {
+func HistoryListCommand(hc *transports.IConsumerConnection) *cli.Command {
 	limit := 100
 	return &cli.Command{
 		Name:      "hev",
@@ -110,11 +110,11 @@ func HistoryListCommand(hc transports.IClientConnection) *cli.Command {
 //}
 
 // HandleListEvents lists the history content
-func HandleListEvents(hc transports.IClientConnection, dThingID string, name string, limit int) error {
+func HandleListEvents(hc transports.IConsumerConnection, dThingID string, name string, limit int) error {
 	// FIXME: hc has a bootstrap algo to read the needed TD
-	histTD := hc.GetTD(historyapi.ReadHistoryServiceID)
-	f := histTD.GetForm(wot.OpInvokeAction)
-	rd := historyclient.NewReadHistoryClient(f, hc)
+	//histTD := hc.GetTD(historyapi.ReadHistoryServiceID)
+	//f := histTD.GetForm(wot.OpInvokeAction)
+	rd := historyclient.NewReadHistoryClient(hc)
 
 	cursor, releaseFn, err := rd.GetCursor(dThingID, name)
 	defer releaseFn()

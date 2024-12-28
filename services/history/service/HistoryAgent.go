@@ -16,7 +16,7 @@ import (
 //
 //	svc is the history service whose capabilities to expose
 //	hc is the optional message client connected to the server protocol
-func StartHistoryAgent(svc *HistoryService, hc transports.IClientConnection) {
+func StartHistoryAgent(svc *HistoryService, hc transports.IAgentConnection) {
 
 	// TODO: load latest retention rules from state store
 	manageHistoryMethods := map[string]interface{}{
@@ -40,26 +40,25 @@ func StartHistoryAgent(svc *HistoryService, hc transports.IClientConnection) {
 	mah := hubagent.NewAgentHandler(historyapi.ManageHistoryServiceID, manageHistoryMethods)
 
 	// receive subscribed updates for events and properties
-	hc.SetNotificationHandler(func(msg *transports.ThingMessage) {
+	hc.SetNotificationHandler(func(msg transports.NotificationMessage) {
 		if msg.Operation == vocab.HTOpPublishEvent {
-			_ = svc.addHistory.AddEvent(msg)
+			_ = svc.addHistory.AddEvent(&msg)
 		} else if msg.Operation == vocab.HTOpUpdateProperty {
-			_ = svc.addHistory.AddProperty(msg)
+			_ = svc.addHistory.AddProperty(&msg)
 		} else {
 			//ignore the rest
 		}
 	})
 
 	// handle service requests
-	hc.SetRequestHandler(func(msg *transports.ThingMessage) (output any, err error) {
-		if msg.Operation == vocab.OpInvokeAction {
-			if msg.ThingID == historyapi.ReadHistoryServiceID {
-				return rah.HandleRequest(msg)
-			} else if msg.ThingID == historyapi.ManageHistoryServiceID {
-				return mah.HandleRequest(msg)
+	hc.SetRequestHandler(func(req transports.RequestMessage) transports.ResponseMessage {
+		if req.Operation == vocab.OpInvokeAction {
+			if req.ThingID == historyapi.ReadHistoryServiceID {
+				return rah.HandleRequest(req)
+			} else if req.ThingID == historyapi.ManageHistoryServiceID {
+				return mah.HandleRequest(req)
 			}
 		}
-		err = fmt.Errorf("Unhandled message")
-		return nil, err
+		return req.CreateResponse(nil, fmt.Errorf("Unhandled message"))
 	})
 }

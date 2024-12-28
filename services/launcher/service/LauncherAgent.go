@@ -14,7 +14,7 @@ import (
 //
 //	svc is the service whose capabilities to expose
 //	hc is the optional message client connected to the server protocol
-func StartLauncherAgent(svc *LauncherService, hc transports.IClientConnection) *hubagent.AgentHandler {
+func StartLauncherAgent(svc *LauncherService, hc transports.IAgentConnection) *hubagent.AgentHandler {
 
 	methods := map[string]interface{}{
 		launcherapi.ListMethod:            svc.List,

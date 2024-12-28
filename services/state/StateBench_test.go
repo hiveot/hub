@@ -57,7 +57,7 @@ func addRecords(stateCl *stateclient.StateClient, count int) {
 //   - the capnp RPC over Unix Domain Sockets call overhead is around 0.13 msec.
 //
 // With the digitwin http RPC transport (round trip)
-//   - the http RPC over http call overhead is around 0.8 msec, so numbers are 8 times higher
+//   - the http RPC over http call overhead is around 0.74 msec, so numbers are 7 times higher
 var DataSizeTable = []struct {
 	dataSize int
 	nrSets   int

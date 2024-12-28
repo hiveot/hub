@@ -13,7 +13,7 @@ type LauncherClient struct {
 	// ID of the launcher service that handles the requests
 	dThingID string // capability
 	//serviceID string
-	hc transports.IClientConnection
+	hc transports.IConsumerConnection
 }
 
 // List services
@@ -78,7 +78,7 @@ func (cl *LauncherClient) StopAllPlugins() error {
 //
 //	launcherID is the optional ID of the launcher to use. Default is 'launcher'
 //	hc is the hub client connection to use.
-func NewLauncherClient(agentID string, hc transports.IClientConnection) *LauncherClient {
+func NewLauncherClient(agentID string, hc transports.IConsumerConnection) *LauncherClient {
 	if agentID == "" {
 		agentID = launcherapi.AgentID
 	}

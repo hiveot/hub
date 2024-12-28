@@ -1,13 +1,12 @@
 package pubsubcli
 
 import (
-	"errors"
 	"fmt"
 	"github.com/hiveot/hub/transports"
 	"github.com/urfave/cli/v2"
 )
 
-func PubActionCommand(hc *transports.IClientConnection) *cli.Command {
+func PubActionCommand(hc *transports.IConsumerConnection) *cli.Command {
 	return &cli.Command{
 		Name:      "pub",
 		Usage:     "Publish action for Thing",
@@ -30,17 +29,17 @@ func PubActionCommand(hc *transports.IClientConnection) *cli.Command {
 	}
 }
 
-func HandlePubActions(hc transports.IClientConnection,
+func HandlePubActions(hc transports.IConsumerConnection,
 	dThingID string, action string, args string) error {
 
 	var reply interface{}
-	stat := hc.InvokeAction(dThingID, action, args, &reply, "")
-	if stat.Error == "" {
+	err := hc.Rpc(dThingID, action, args, &reply, "")
+	if err == nil {
 		fmt.Printf("Successfully published action '%s' to Thing '%s'\n", action, dThingID)
 		if reply != nil {
 			fmt.Printf("\n%v\n", reply)
 		}
 		return nil
 	}
-	return errors.New(stat.Error)
+	return err
 }

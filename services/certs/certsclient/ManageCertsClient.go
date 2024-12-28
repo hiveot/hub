@@ -12,7 +12,7 @@ type CertsClient struct {
 	// dThingID digital twin service ID of the certificate management
 	dThingID string
 	// Connection to the hub
-	hc transports.IClientConnection
+	hc transports.IConsumerConnection
 }
 
 //// helper for publishing a rpc request to the certs service
@@ -95,7 +95,7 @@ func (cl *CertsClient) VerifyCert(
 // NewCertsClient returns a certs service client for managing certificates
 //
 //	hc is the hub client connection to use
-func NewCertsClient(hc transports.IClientConnection) *CertsClient {
+func NewCertsClient(hc transports.IConsumerConnection) *CertsClient {
 	agentID := certsapi.CertsAdminAgentID
 
 	cl := CertsClient{

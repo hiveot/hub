@@ -26,11 +26,11 @@ import (
 // 4: Remove the active request from the cache.
 //
 // If the message is no longer in the active cache then it is ignored.
-func (svc *DigitwinRouter) HandleResponse(agentID string, resp transports.ResponseMessage) error {
+func (svc *DigitwinRouter) HandleResponse(resp transports.ResponseMessage) error {
 	var err error
 
 	// Convert the agent ThingID to that of the digital twin
-	dThingID := td.MakeDigiTwinThingID(agentID, resp.ThingID)
+	dThingID := td.MakeDigiTwinThingID(resp.SenderID, resp.ThingID)
 	resp.ThingID = dThingID
 
 	if resp.RequestID == "" {
@@ -51,23 +51,23 @@ func (svc *DigitwinRouter) HandleResponse(agentID string, resp transports.Respon
 	if !found {
 		err = fmt.Errorf(
 			"HandleResponse: Message '%s' from agent '%s' not in action cache. It is ignored",
-			resp.RequestID, agentID)
+			resp.RequestID, resp.SenderID)
 		slog.Warn(err.Error())
 		return nil
 	}
 
 	// the sender (agents) must be the agent hat handled the action
-	if agentID != as.AgentID {
+	if resp.SenderID != as.AgentID {
 		err = fmt.Errorf("HandleActionResponse: response ID '%s' of thing '%s' "+
 			"does not come from agent '%s' but from '%s'. Response ignored",
-			resp.RequestID, resp.ThingID, as.AgentID, agentID)
+			resp.RequestID, resp.ThingID, as.AgentID, resp.SenderID)
 		slog.Warn(err.Error())
 		return nil
 	}
 
 	// 2: Update the response status in the digital twin action record and log errors
 	// not all requests are tracked.
-	_, _ = svc.dtwStore.UpdateActionStatus(agentID, resp)
+	_, _ = svc.dtwStore.UpdateActionStatus(resp.SenderID, resp)
 
 	// 3: Forward the response to the sender of the request
 	c := svc.cm.GetConnectionByConnectionID(as.ReplyTo)

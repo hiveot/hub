@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/lib/utils"
-	transports2 "github.com/hiveot/hub/transports"
-	utils2 "github.com/hiveot/hub/transports/utils"
+	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 	"time"
@@ -15,7 +15,7 @@ import (
 )
 
 // SubTDCommand shows TD publications
-func SubTDCommand(hc *transports2.IClientConnection) *cli.Command {
+func SubTDCommand(hc *transports.IConsumerConnection) *cli.Command {
 	return &cli.Command{
 		Name:     "subtd",
 		Usage:    "SubscribeEvent to TD publications",
@@ -27,7 +27,7 @@ func SubTDCommand(hc *transports2.IClientConnection) *cli.Command {
 	}
 }
 
-func SubEventsCommand(hc *transports2.IClientConnection) *cli.Command {
+func SubEventsCommand(hc *transports.IConsumerConnection) *cli.Command {
 	return &cli.Command{
 		Name:      "subev",
 		Usage:     "SubscribeEvent to Thing events",
@@ -53,13 +53,13 @@ func SubEventsCommand(hc *transports2.IClientConnection) *cli.Command {
 }
 
 // HandleSubTD subscribes and prints TD publications
-func HandleSubTD(hc transports2.IClientConnection) error {
+func HandleSubTD(hc transports.IConsumerConnection) error {
 
 	err := hc.Subscribe(digitwin.DirectoryDThingID, digitwin.DirectoryEventThingUpdated)
 	if err != nil {
 		return err
 	}
-	hc.SetNotificationHandler(func(msg *transports2.ThingMessage) {
+	hc.SetNotificationHandler(func(msg transports.NotificationMessage) {
 		// only look for TD events, ignore directed events
 		if msg.Name != digitwin.DirectoryEventThingUpdated {
 			return
@@ -67,13 +67,13 @@ func HandleSubTD(hc transports2.IClientConnection) error {
 
 		var td td.TD
 		//fmt.Printf("%s\n", event.ValueJSON)
-		err := utils2.DecodeAsObject(msg.Data, &td)
+		err := tputils.DecodeAsObject(msg.Data, &td)
 
 		if err == nil {
 			modifiedTime, _ := dateparse.ParseAny(td.Modified) // can be in any TZ
 			timeStr := utils.FormatMSE(modifiedTime.In(time.Local).UnixMilli(), false)
 			fmt.Printf("%-20.20s %-35.35s %-30.30s %-30.30s %-30.30s\n",
-				msg.SenderID, msg.ThingID, td.Title, td.AtType, timeStr)
+				"", msg.ThingID, td.Title, td.AtType, timeStr)
 		}
 		return
 	})
@@ -85,18 +85,18 @@ func HandleSubTD(hc transports2.IClientConnection) error {
 }
 
 // HandleSubEvents subscribes and prints events
-func HandleSubEvents(hc transports2.IClientConnection, thingID string, name string) error {
+func HandleSubEvents(hc transports.IConsumerConnection, thingID string, name string) error {
 	fmt.Printf("Subscribing to  thingID: '%s', name: '%s'\n\n", thingID, name)
 
 	fmt.Printf("Time             Agent ID        Thing ID                       Event Name                     Value\n")
 	fmt.Printf("---------------  --------------- -----------------------------  -----------------------------  ---------\n")
 
 	err := hc.Subscribe(thingID, name)
-	hc.SetNotificationHandler(func(msg *transports2.ThingMessage) {
+	hc.SetNotificationHandler(func(msg transports.NotificationMessage) {
 		createdTime, _ := dateparse.ParseAny(msg.Created)
 		timeStr := createdTime.Format("15:04:05.000")
 
-		valueStr := msg.DataAsText()
+		valueStr := msg.ToString()
 
 		//if msg.Name == vocab.EventNameProperties {
 		//	var props map[string]interface{}
@@ -113,14 +113,14 @@ func HandleSubEvents(hc transports2.IClientConnection, thingID string, name stri
 		//}
 		if msg.ThingID == digitwin.DirectoryDThingID && msg.Name == digitwin.DirectoryEventThingUpdated {
 			var td td.TD
-			tdJSON := msg.DataAsText()
+			tdJSON := msg.ToString()
 			jsoniter.UnmarshalFromString(tdJSON, &td)
 			valueStr = fmt.Sprintf("{title:%s, type:%s, nrProps=%d, nrEvents=%d, nrActions=%d}",
 				td.Title, td.AtType, len(td.Properties), len(td.Events), len(td.Actions))
 		}
 
 		fmt.Printf("%-16.16s %-15.15s %-30.30s %-30.30s %-40.40s\n",
-			timeStr, msg.SenderID, msg.ThingID, msg.Name, valueStr)
+			timeStr, "", msg.ThingID, msg.Name, valueStr)
 		return
 	})
 	if err != nil {

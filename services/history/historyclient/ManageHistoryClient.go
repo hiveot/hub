@@ -10,9 +10,7 @@ import (
 type ManageHistoryClient struct {
 	// service providing the history management capability
 	dThingID string
-	cc       transports.IClientConnection
-	// invokeAction is the invokeAction from the service TD with the invoke-action operation
-	invokeAction td.Form
+	cc       transports.IConsumerConnection
 }
 
 // GetRetentionRule returns the retention configuration of an event by name
@@ -21,7 +19,9 @@ type ManageHistoryClient struct {
 //
 //	dThingID
 //	eventName whose retention to return
-func (cl *ManageHistoryClient) GetRetentionRule(dThingID string, name string) (*historyapi.RetentionRule, error) {
+func (cl *ManageHistoryClient) GetRetentionRule(
+	dThingID string, name string) (*historyapi.RetentionRule, error) {
+
 	args := historyapi.GetRetentionRuleArgs{
 		ThingID: dThingID,
 		Name:    name,
@@ -46,13 +46,11 @@ func (cl *ManageHistoryClient) SetRetentionRules(rules historyapi.RetentionRuleS
 }
 
 // NewManageHistoryClient creates a new instance of the manage history client for use by authorized clients
-// invokeAction is the invokeAction from the service TD with the invoke-action operation
-func NewManageHistoryClient(invokeAction td.Form, cc transports.IClientConnection) *ManageHistoryClient {
+func NewManageHistoryClient(cc transports.IConsumerConnection) *ManageHistoryClient {
 	agentID := historyapi.AgentID
 	mngCl := &ManageHistoryClient{
-		dThingID:     td.MakeDigiTwinThingID(agentID, historyapi.ManageHistoryServiceID),
-		cc:           cc,
-		invokeAction: invokeAction,
+		dThingID: td.MakeDigiTwinThingID(agentID, historyapi.ManageHistoryServiceID),
+		cc:       cc,
 	}
 	return mngCl
 }

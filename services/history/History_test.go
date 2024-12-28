@@ -30,11 +30,10 @@ import (
 
 const thingIDPrefix = "things-"
 
-// recommended store for history is pebble
+// recommended store for history is Pebble
 const historyStoreBackend = buckets.BackendPebble
 
 const testClientID = "operator1"
-const serviceUsesWSS = true
 
 // the following are set by the testmain
 var ts *testenv.TestServer
@@ -49,7 +48,6 @@ func startHistoryService(clean bool) (
 
 	ts = testenv.StartTestServer(clean)
 
-	//svcConfig := config.NewHistoryConfig(ts.TestDir)
 	histStore, err := bucketstore.NewBucketStore(
 		ts.TestDir, "hist", historyStoreBackend)
 	if err == nil {
@@ -62,19 +60,14 @@ func startHistoryService(clean bool) (
 	// the service needs a server connection
 	hc, _ := ts.AddConnectService(historyapi.AgentID)
 	svc = service.NewHistoryService(histStore)
-	if err == nil {
-		err = svc.Start(hc)
-	}
+
+	err = svc.Start(hc)
 	if err != nil {
 		panic("Failed starting the state service: " + err.Error())
 	}
 
 	// create an end user client for testing
 	cl1, _ := ts.AddConnectConsumer(testClientID, authz.ClientRoleOperator)
-	if err != nil {
-		panic("can't connect operator")
-	}
-	//invokeActionForm := ts.GetForm(wot.OpInvokeAction, cl1.GetProtocolType())
 	histCl := historyclient.NewReadHistoryClient(cl1)
 
 	return svc, histCl, func() {
@@ -95,10 +88,10 @@ func startHistoryService(clean bool) (
 // generate a random batch of property and event values for testing
 // timespanSec is the range of timestamps up until now
 func makeValueBatch(agentID string, nrValues, nrThings, timespanSec int) (
-	batch []*transports.ThingMessage, highest map[string]*transports.ThingMessage) {
+	batch []*transports.NotificationMessage, highest map[string]*transports.NotificationMessage) {
 
-	highest = make(map[string]*transports.ThingMessage)
-	valueBatch := make([]*transports.ThingMessage, 0, nrValues)
+	highest = make(map[string]*transports.NotificationMessage)
+	valueBatch := make([]*transports.NotificationMessage, 0, nrValues)
 	for j := 0; j < nrValues; j++ {
 		randomID := rand.Intn(nrThings)
 		randomName := rand.Intn(10)
@@ -110,32 +103,31 @@ func makeValueBatch(agentID string, nrValues, nrThings, timespanSec int) (
 		dThingID := td.MakeDigiTwinThingID(agentID, thingID)
 
 		randomMsgType := rand.Intn(2)
-		messageType := vocab.HTOpPublishEvent
+		op := vocab.HTOpPublishEvent
 		if randomMsgType == 1 {
-			messageType = vocab.HTOpUpdateProperty
+			op = vocab.HTOpUpdateProperty
 		}
 
-		msg := transports.NewThingMessage(messageType,
-			dThingID, names[randomName],
-			fmt.Sprintf("%2.3f", randomValue), "",
-		)
+		msg := transports.NewNotificationMessage(op, dThingID, names[randomName],
+			fmt.Sprintf("%2.3f", randomValue))
 		msg.SenderID = agentID
-		msg.Timestamp = randomTime.Format(wot.RFC3339Milli)
+		msg.Created = randomTime.Format(wot.RFC3339Milli)
 
 		// track the actual most recent event for the name for things 3
 		if randomID == 0 {
 			if _, exists := highest[msg.Name]; !exists ||
-				highest[msg.Name].Timestamp < msg.Timestamp {
-				highest[msg.Name] = msg
+				highest[msg.Name].Created < msg.Created {
+				highest[msg.Name] = &msg
 			}
 		}
-		valueBatch = append(valueBatch, msg)
+		valueBatch = append(valueBatch, &msg)
 	}
 	return valueBatch, highest
 }
 
 // add some history to the store. This bypasses the check for thingID to exist.
-func addBulkHistory(svc *service.HistoryService, agentID string, count int, nrThings int, timespanSec int) (highest map[string]*transports.ThingMessage) {
+func addBulkHistory(svc *service.HistoryService, agentID string, count int, nrThings int,
+	timespanSec int) (highest map[string]*transports.NotificationMessage) {
 
 	var batchSize = 1000
 	if batchSize > count {
@@ -167,7 +159,7 @@ func TestMain(m *testing.M) {
 // Test creating and deleting the history database
 // This requires a local unsecured MongoDB instance
 func TestStartStop(t *testing.T) {
-	t.Log("--- TestStartStop ---")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 
 	store, readHist, stopFn := startHistoryService(true)
 	defer stopFn()
@@ -176,7 +168,7 @@ func TestStartStop(t *testing.T) {
 }
 
 func TestAddGetEvent(t *testing.T) {
-	t.Log("--- TestAddGetEvent ---")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	const id1 = "thing1"
 	const id2 = "thing2"
 	const agent1ID = "agent1"
@@ -195,37 +187,37 @@ func TestAddGetEvent(t *testing.T) {
 	// add thing1 temperature from 5 minutes ago
 	addHist := svc.GetAddHistory()
 	dThing1ID := td.MakeDigiTwinThingID(agent1ID, thing1ID)
-	ev1_1 := &transports.ThingMessage{
+	ev1_1 := &transports.NotificationMessage{
 		Operation: vocab.HTOpPublishEvent,
 		SenderID:  agent1ID, ThingID: dThing1ID, Name: evTemperature,
-		Data: "12.5", Timestamp: fivemago.Format(wot.RFC3339Milli),
+		Data: "12.5", Created: fivemago.Format(wot.RFC3339Milli),
 	}
 	err := addHist.AddEvent(ev1_1)
 	assert.NoError(t, err)
 	// add thing1 humidity from 55 minutes ago
-	ev1_2 := &transports.ThingMessage{
+	ev1_2 := &transports.NotificationMessage{
 		Operation: vocab.HTOpPublishEvent,
 		SenderID:  agent1ID, ThingID: dThing1ID, Name: evHumidity,
-		Data: "70", Timestamp: fiftyfivemago.Format(wot.RFC3339Milli),
+		Data: "70", Created: fiftyfivemago.Format(wot.RFC3339Milli),
 	}
 	err = addHist.AddEvent(ev1_2)
 	assert.NoError(t, err)
 
 	// add thing2 humidity from 5 minutes ago
 	dThing2ID := td.MakeDigiTwinThingID(agent1ID, thing2ID)
-	ev2_1 := &transports.ThingMessage{
+	ev2_1 := &transports.NotificationMessage{
 		Operation: vocab.HTOpPublishEvent,
 		SenderID:  agent1ID, ThingID: dThing2ID, Name: evHumidity,
-		Data: "50", Timestamp: fivemago.Format(wot.RFC3339Milli),
+		Data: "50", Created: fivemago.Format(wot.RFC3339Milli),
 	}
 	err = addHist.AddEvent(ev2_1)
 	assert.NoError(t, err)
 
 	// add thing2 temperature from 55 minutes ago
-	ev2_2 := &transports.ThingMessage{
+	ev2_2 := &transports.NotificationMessage{
 		Operation: vocab.HTOpPublishEvent,
 		SenderID:  agent1ID, ThingID: dThing2ID, Name: evTemperature,
-		Data: "17.5", Timestamp: fiftyfivemago.Format(wot.RFC3339Milli),
+		Data: "17.5", Created: fiftyfivemago.Format(wot.RFC3339Milli),
 	}
 	err = addHist.AddEvent(ev2_2)
 	assert.NoError(t, err)
@@ -257,7 +249,7 @@ func TestAddGetEvent(t *testing.T) {
 	if assert.True(t, valid) {
 		assert.Equal(t, dThing1ID, tv3.ThingID)  // must match the filtered id1
 		assert.Equal(t, evTemperature, tv3.Name) // must match evTemperature from 5 minutes ago
-		assert.Equal(t, fivemago.Format(wot.RFC3339Milli), tv3.Timestamp)
+		assert.Equal(t, fivemago.Format(wot.RFC3339Milli), tv3.Created)
 	}
 	c1Release()
 	// Stop the service before phase 2
@@ -279,7 +271,7 @@ func TestAddGetEvent(t *testing.T) {
 }
 
 func TestAddProperties(t *testing.T) {
-	t.Log("--- TestAddPropertiesEvent ---")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	//const clientID = "device0"
 	const thing1ID = thingIDPrefix + "0" // matches a percentage of the random things
 	const agent1 = "device1"
@@ -290,21 +282,21 @@ func TestAddProperties(t *testing.T) {
 	defer closeFn()
 
 	dThing1ID := td.MakeDigiTwinThingID(agent1, thing1ID)
-	action1 := &transports.ThingMessage{
+	action1 := &transports.NotificationMessage{
 		SenderID:  agent1,
 		ThingID:   dThing1ID,
 		Name:      vocab.ActionSwitchOnOff,
 		Data:      "on",
 		Operation: vocab.OpInvokeAction,
 	}
-	event1 := &transports.ThingMessage{
+	event1 := &transports.NotificationMessage{
 		SenderID:  agent1,
 		ThingID:   dThing1ID,
 		Name:      vocab.PropEnvTemperature,
 		Data:      temp1,
 		Operation: vocab.HTOpPublishEvent,
 	}
-	badEvent1 := &transports.ThingMessage{
+	badEvent1 := &transports.NotificationMessage{
 		SenderID:  agent1,
 		ThingID:   dThing1ID,
 		Name:      "", // missing name
@@ -317,14 +309,14 @@ func TestAddProperties(t *testing.T) {
 	//	Name:      "name",
 	//	Operation: vocab.HTOpPublishEvent,
 	//}
-	badEvent3 := &transports.ThingMessage{
+	badEvent3 := &transports.NotificationMessage{
 		SenderID:  agent1,
 		ThingID:   dThing1ID,
 		Name:      "baddate",
-		Timestamp: "-1",
+		Created:   "-1",
 		Operation: vocab.HTOpPublishEvent,
 	}
-	badEvent4 := &transports.ThingMessage{
+	badEvent4 := &transports.NotificationMessage{
 		SenderID: agent1,
 		ThingID:  "", // missing ID
 		Name:     "temperature",
@@ -333,7 +325,7 @@ func TestAddProperties(t *testing.T) {
 	propsList[vocab.PropDeviceBattery] = battTemp
 	propsList[vocab.PropEnvCpuload] = 30
 	propsList[vocab.PropSwitchOnOff] = "off"
-	props1 := &transports.ThingMessage{
+	props1 := &transports.NotificationMessage{
 		SenderID:  agent1,
 		ThingID:   dThing1ID,
 		Name:      "", // property list
@@ -391,7 +383,7 @@ func TestAddProperties(t *testing.T) {
 }
 
 func TestGetInfo(t *testing.T) {
-	t.Log("--- TestGetInfo ---")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	const agentID = "agent1"
 	//const thing0ID = thingIDPrefix + "0"
 	//var dThing0ID = things.MakeDigiTwinThingID(agentID, thing0ID)
@@ -412,7 +404,7 @@ func TestGetInfo(t *testing.T) {
 }
 
 func TestPrevNext(t *testing.T) {
-	t.Log("--- TestPrevNext ---")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	const count = 1000
 	const agentID = "agent1"
 	const thing0ID = thingIDPrefix + "0" // matches a percentage of the random things
@@ -452,7 +444,7 @@ func TestPrevNext(t *testing.T) {
 	item0b, valid, err := cursor.Prev()
 	require.NoError(t, err)
 	assert.True(t, valid)
-	assert.Equal(t, item0.Timestamp, item0b.Timestamp)
+	assert.Equal(t, item0.Created, item0b.Created)
 
 	// can't skip before the beginning of time
 	iteminv, valid, err := cursor.Prev()
@@ -462,7 +454,7 @@ func TestPrevNext(t *testing.T) {
 
 	// seek to item11 should succeed
 	item11 := items2to11[9]
-	timeStamp, _ := dateparse.ParseAny(item11.Timestamp)
+	timeStamp, _ := dateparse.ParseAny(item11.Created)
 	item11b, valid, err := cursor.Seek(timeStamp)
 	require.NoError(t, err)
 	assert.True(t, valid)
@@ -471,7 +463,7 @@ func TestPrevNext(t *testing.T) {
 
 // filter on property name
 func TestPrevNextFiltered(t *testing.T) {
-	t.Log("--- TestPrevNextFiltered ---")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	const count = 1000
 	const agentID = "agent1"
 	const thing0ID = thingIDPrefix + "0" // matches a percentage of the random things
@@ -497,6 +489,7 @@ func TestPrevNextFiltered(t *testing.T) {
 	// further steps should still only return propName
 	item1, valid, err := cursor.Next()
 	assert.True(t, valid)
+	require.Nil(t, err)
 	assert.Equal(t, propName, item1.Name)
 	items2to11, itemsRemaining, err := cursor.NextN(10, "")
 	assert.True(t, itemsRemaining)
@@ -511,7 +504,8 @@ func TestPrevNextFiltered(t *testing.T) {
 	// reached first item
 	item0b, valid, err := cursor.Prev()
 	assert.True(t, valid)
-	assert.Equal(t, item0.Timestamp, item0b.Timestamp)
+	require.Nil(t, err)
+	assert.Equal(t, item0.Created, item0b.Created)
 	assert.Equal(t, propName, item0b.Name)
 
 	// can't skip before the beginning of time
@@ -521,21 +515,23 @@ func TestPrevNextFiltered(t *testing.T) {
 
 	// seek to item11 should succeed
 	item11 := items2to11[9]
-	timeStamp, _ := dateparse.ParseAny(item11.Timestamp)
+	timeStamp, _ := dateparse.ParseAny(item11.Created)
 	item11b, valid, err := cursor.Seek(timeStamp)
 	assert.True(t, valid)
+	require.Nil(t, err)
 	assert.Equal(t, item11.Name, item11b.Name)
 
 	// last item should be of the name
 	lastItem, valid, err := cursor.Last()
 	assert.True(t, valid)
+	require.Nil(t, err)
 	assert.Equal(t, propName, lastItem.Name)
 
 	cursor.Release()
 }
 
 func TestNextPrevUntil(t *testing.T) {
-	t.Log("--- TestNextUntil ---")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	const count = 1000
 	const agentID = "agent1"
 	const thing0ID = thingIDPrefix + "0" // matches a percentage of the random things
@@ -544,7 +540,7 @@ func TestNextPrevUntil(t *testing.T) {
 	store, readHist, closeFn := startHistoryService(true)
 	defer closeFn()
 
-	// 1 sensors -> 1000/24 hours is approx 41/hour
+	// 1 sensor -> 1000/24 hours is approx 41/hour
 	_ = addBulkHistory(store, agentID, count, 1, 3600*24)
 
 	cursor, releaseFn, _ := readHist.GetCursor(dThing0ID, "")
@@ -575,7 +571,7 @@ func TestNextPrevUntil(t *testing.T) {
 }
 
 func TestReadHistory(t *testing.T) {
-	t.Log("--- TestReadHistory ---")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	const count = 1000
 	const agentID = "device1"
 	const thing0ID = thingIDPrefix + "0" // matches a percentage of the random things
@@ -598,7 +594,7 @@ func TestReadHistory(t *testing.T) {
 
 	// start 19 hours ago and read back in time
 	startTime = time.Now().Add(-19 * time.Hour)
-	duration = time.Duration(-1 * time.Hour)
+	duration = -1 * time.Hour
 	items, remaining, err = readHist.ReadHistory(dThing0ID, "", startTime, duration, 60)
 	require.NoError(t, err)
 	assert.False(t, remaining)
@@ -610,7 +606,7 @@ func TestReadHistory(t *testing.T) {
 func TestPubEvents(t *testing.T) {
 	const agent1ID = "device1"
 
-	t.Log("--- TestPubSub ---")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 
 	_, readHist, stopFn := startHistoryService(true)
 	defer stopFn()
@@ -637,7 +633,8 @@ func TestPubEvents(t *testing.T) {
 		val := strconv.Itoa(i + 1)
 		// events are published by the agent using their native thingID
 		name := names[i]
-		err := ag1.SendNotification(wot.HTOpPublishEvent, thing0ID, name, val)
+		notif := transports.NewNotificationMessage(wot.HTOpEvent, thing0ID, name, val)
+		err := ag1.SendNotification(notif)
 		//err := ag1.PubEvent(f1, thing0ID, name, val, "")
 		assert.NoError(t, err)
 		// make sure timestamp differs
@@ -663,7 +660,7 @@ func TestPubEvents(t *testing.T) {
 }
 
 func TestManageRetention(t *testing.T) {
-	t.Log("--- TestManageRetention ---")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	const client1ID = "admin"
 	const agentID = "agent1" // should not match existing test devices
 	const event1Name = "event1"
@@ -681,8 +678,7 @@ func TestManageRetention(t *testing.T) {
 
 	// connect as an admin user
 	cl1, _ := ts.AddConnectConsumer(client1ID, authz.ClientRoleAdmin)
-	invokeActionForm := ts.GetForm(wot.OpInvokeAction, cl1.GetProtocolType())
-	mngHist := historyclient.NewManageHistoryClient(invokeActionForm, cl1)
+	mngHist := historyclient.NewManageHistoryClient(cl1)
 
 	// should be able to read the current retention rules. Expect the default rules.
 	rules1, err := mngHist.GetRetentionRules()
@@ -712,9 +708,11 @@ func TestManageRetention(t *testing.T) {
 	ag1, _ := ts.AddConnectService(agentID)
 	require.NoError(t, err)
 	defer ag1.Disconnect()
-	err = ag1.SendNotification(wot.HTOpPublishEvent, td0.ID, event1Name, "event one")
+	notif1 := transports.NewNotificationMessage(wot.HTOpEvent, td0.ID, event1Name, "event one")
+	err = ag1.SendNotification(notif1)
 	assert.NoError(t, err)
-	err = ag1.SendNotification(wot.HTOpPublishEvent, td0.ID, event2Name, "event two")
+	notif2 := transports.NewNotificationMessage(wot.HTOpEvent, td0.ID, event2Name, "event two")
+	err = ag1.SendNotification(notif2)
 	assert.NoError(t, err)
 	// give it some time to persist the bucket
 	time.Sleep(time.Millisecond * 100)

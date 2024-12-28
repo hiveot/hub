@@ -30,7 +30,7 @@ type SelfSignedCertsService struct {
 	caCertPool *x509.CertPool
 
 	// messaging client for receiving requests
-	hc transports.IClientConnection
+	hc transports.IAgentConnection
 }
 
 // _createDeviceCert internal function to create a CA signed certificate for mutual authentication by IoT devices
@@ -200,7 +200,7 @@ func (svc *SelfSignedCertsService) CreateUserCert(
 // Start the service and listen for requests
 //
 //	hc is the connection to the hub with a service role. For testing it can be nil.
-func (svc *SelfSignedCertsService) Start(hc transports.IClientConnection) (err error) {
+func (svc *SelfSignedCertsService) Start(hc transports.IAgentConnection) (err error) {
 	slog.Info("Starting certs service", "serviceID", hc.GetClientID())
 	// for testing, hc can be nil
 	svc.hc = hc

@@ -13,7 +13,7 @@ type IDigitwinRouter interface {
 	// separately to the connection with the ID of replyTo
 	HandleRequest(msg transports.RequestMessage, replyTo string) transports.ResponseMessage
 
-	HandleResponse(agentID string, resp transports.ResponseMessage) error
+	HandleResponse(resp transports.ResponseMessage) error
 
-	HandleNotification(agentID string, notif transports.NotificationMessage)
+	HandleNotification(notif transports.NotificationMessage)
 }

@@ -13,6 +13,7 @@ import (
 )
 
 // IdProvHttpServer serves the provisioning requests
+// This runs its own server, separate from the Hub.
 type IdProvHttpServer struct {
 	tlsServer *tlsserver.TLSServer
 	mng       *ManageIdProvService

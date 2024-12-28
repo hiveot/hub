@@ -38,8 +38,8 @@ type LauncherService struct {
 	// list of started commands in startup order
 	cmds []*exec.Cmd
 
-	// hub messaging client
-	hc transports.IClientConnection
+	// agent messaging client
+	hc transports.IAgentConnection
 
 	// mutex to keep things safe
 	mux sync.Mutex
@@ -201,8 +201,7 @@ func (svc *LauncherService) Start() error {
 
 	// 3: a connection to the hub is needed to receive requests
 	if svc.hc == nil {
-		svc.hc, err = clients.ConnectToHub(
-			svc.serverURL, svc.clientID, svc.certsDir, "")
+		svc.hc, err = clients.ConnectAgentToHub(svc.serverURL, svc.clientID, svc.certsDir)
 		if err != nil {
 			err = fmt.Errorf("failed starting launcher service: %w", err)
 			return err

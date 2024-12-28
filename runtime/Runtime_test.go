@@ -44,7 +44,26 @@ func TestStartStop(t *testing.T) {
 	//time.Sleep(time.Millisecond * 100)
 }
 
-func TestLogin(t *testing.T) {
+func TestLoginAsAgent(t *testing.T) {
+	const agentID = "agent1"
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+
+	r := startRuntime()
+	ag, token := ts.AddConnectAgent(agentID)
+	_ = token
+	t2, err := ag.RefreshToken(token)
+	require.NoError(t, err)
+	assert.NotEmpty(t, t2)
+	// use the refresh token
+	t3, err := ag.RefreshToken(t2)
+	_ = t3
+	require.NoError(t, err)
+
+	ag.Disconnect()
+	r.Stop()
+	//time.Sleep(time.Millisecond * 100)
+}
+func TestLoginAsConsumer(t *testing.T) {
 	const clientID = "user1"
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 
@@ -64,7 +83,7 @@ func TestLogin(t *testing.T) {
 	//time.Sleep(time.Millisecond * 100)
 }
 
-// test many connections from a single client and confirm they open close and receive messages properly.
+// test many connections from a single consumer and confirm they open close and receive messages properly.
 func TestMultiConnectSingleClient(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	const clientID1 = "user1"
@@ -99,7 +118,7 @@ func TestMultiConnectSingleClient(t *testing.T) {
 	}
 	// 2: connect and subscribe clients and verify
 	for range testConnections {
-		cl := ts.GetConnection(clientID1, ts.ConsumerProtocol)
+		cl := ts.GetConsumerConnection(clientID1, ts.ConsumerProtocol)
 		cl.SetConnectHandler(onConnection)
 		cl.SetNotificationHandler(onNotification)
 		token, err := cl.ConnectWithToken(token1)

@@ -69,16 +69,25 @@ type TestServer struct {
 	ConsumerProtocol string
 }
 
-// GetConnection returns a hub connection for a client and protocol.
+// GetAgentConnection returns a hub connection for an agent and protocol.
 // This sets 'getForm' to the handler provided by the protocol server. For testing only.
-func (test *TestServer) GetConnection(clientID string, protocolName string) transports.IAgentConnection {
-	getForm := func(op string) td.Form {
+func (test *TestServer) GetAgentConnection(agentID string, protocolName string) transports.IAgentConnection {
+	connectURL := test.Runtime.TransportsMgr.GetConnectURL(protocolName)
+
+	cl, _ := clients.NewAgentClient(connectURL, agentID, test.Certs.CaCert, test.ConnectTimeout)
+	return cl
+}
+
+// GetConsumerConnection returns a hub connection for a consumer and protocol.
+// This sets 'getForm' to the handler provided by the protocol server. For testing only.
+func (test *TestServer) GetConsumerConnection(clientID string, protocolName string) transports.IConsumerConnection {
+	getForm := func(op string) *td.Form {
 		return test.Runtime.GetForm(op, protocolName)
 	}
 
 	connectURL := test.Runtime.TransportsMgr.GetConnectURL(protocolName)
 
-	cl, _ := clients.NewTransportClient(connectURL, clientID, test.Certs.CaCert, getForm, test.ConnectTimeout)
+	cl, _ := clients.NewConsumerClient(connectURL, clientID, test.Certs.CaCert, getForm, test.ConnectTimeout)
 	return cl
 }
 
@@ -99,7 +108,7 @@ func (test *TestServer) AddConnectConsumer(
 		panic("Failed adding client:" + err.Error())
 	}
 
-	cl = test.GetConnection(clientID, test.ConsumerProtocol)
+	cl = test.GetConsumerConnection(clientID, test.ConsumerProtocol)
 	token, err = cl.ConnectWithPassword(password)
 
 	if err != nil {
@@ -123,7 +132,7 @@ func (test *TestServer) AddConnectAgent(agentID string) (cl transports.IAgentCon
 	if err != nil {
 		panic("AddConnectAgent: Failed adding client:" + err.Error())
 	}
-	cl = test.GetConnection(agentID, test.AgentProtocol)
+	cl = test.GetAgentConnection(agentID, test.AgentProtocol)
 
 	newToken, err := cl.ConnectWithToken(token)
 	if err != nil {
@@ -154,7 +163,7 @@ func (test *TestServer) AddConnectService(serviceID string) (
 	if err != nil {
 		panic("AddConnectService: Failed adding client:" + err.Error())
 	}
-	cl = test.GetConnection(serviceID, test.ServiceProtocol)
+	cl = test.GetAgentConnection(serviceID, test.ServiceProtocol)
 	_, err = cl.ConnectWithToken(token)
 	if err != nil {
 		panic("AddConnectService: Failed connecting using token. serviceID=" + serviceID)
@@ -230,7 +239,7 @@ func (test *TestServer) CreateTestTD(i int) (tdi *td.TD) {
 }
 
 // GetForm returns the form for the given operation and transport protocol binding
-func (test *TestServer) GetForm(op string, protocol string) td.Form {
+func (test *TestServer) GetForm(op string, protocol string) *td.Form {
 	return test.Runtime.GetForm(op, protocol)
 }
 

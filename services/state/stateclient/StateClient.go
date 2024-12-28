@@ -8,12 +8,12 @@ import (
 	jsoniter "github.com/json-iterator/go"
 )
 
-// StateClient is a the friendly client for service messages using a provided hub connection.
+// StateClient is  the friendly client for service messages using a provided hub connection.
 type StateClient struct {
 	// dThingID digital twin service ID of the state management
 	dThingID string
 	// Connection to the hub
-	hc transports.IClientConnection
+	hc transports.IConsumerConnection
 }
 
 // Delete removes the record with the given key.
@@ -69,11 +69,11 @@ func (cl *StateClient) SetMultiple(kv map[string]string) error {
 
 // NewStateClient returns a client to access state.
 //
-// This assumes the agentID used to access the service is: stateapi.StateAgentID.
+// This assumes the agentID used to access the service is: stateapi.AgentID.
 //
 //	hc is the hub client connection to use.
 //	agentID is the instance name of the state agent. Use "" for default.
-func NewStateClient(hc transports.IClientConnection) *StateClient {
+func NewStateClient(hc transports.IConsumerConnection) *StateClient {
 	agentID := stateapi.AgentID
 	cl := StateClient{
 		hc:       hc,

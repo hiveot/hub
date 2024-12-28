@@ -37,7 +37,7 @@ var ts *testenv.TestServer
 
 // return the form with href for login operations to the hiveoview server
 // these must match the paths in hiveoview CreateRoutes.
-func getHiveoviewForm(op string) td.Form {
+func getHiveoviewForm(op string) *td.Form {
 	var href string
 	var method string
 	switch op {
@@ -58,7 +58,7 @@ func getHiveoviewForm(op string) td.Form {
 	}
 	f := td.NewForm(op, href)
 	f.SetMethodName(method)
-	return f
+	return &f
 }
 
 // Helper function to login as a web client and sse listener
@@ -67,9 +67,9 @@ func getHiveoviewForm(op string) td.Form {
 // This returns a client. Call Close() when done.
 func WebLogin(fullURL string, clientID string,
 	onConnection func(bool, error),
-	onMessage func(message *transports.ThingMessage),
-	onRequest func(message *transports.ThingMessage) (output any, err error)) (
-	cl transports.IClientConnection, err error) {
+	onNotification func(message transports.NotificationMessage),
+	onRequest func(message transports.RequestMessage) transports.ResponseMessage) (
+	cl transports.IConsumerConnection, err error) {
 
 	//sseCl := clients.NewHubClient(fullURL, clientID, ts.Certs.CaCert)
 	// websocket client
@@ -78,10 +78,11 @@ func WebLogin(fullURL string, clientID string,
 	// or sse-sc client
 
 	// use the hub's SSE client to connect to the hiveoview server
-	sseCl := sseclient.NewSsescTransportClient(
-		fullURL, clientID, nil, ts.Certs.CaCert, getHiveoviewForm, time.Minute)
+	sseCl := sseclient.NewSsescConsumerClient(
+		fullURL, clientID, nil, ts.Certs.CaCert,
+		getHiveoviewForm, time.Minute)
 	sseCl.SetConnectHandler(onConnection)
-	sseCl.SetNotificationHandler(onMessage)
+	sseCl.SetNotificationHandler(onNotification)
 	sseCl.SetRequestHandler(onRequest)
 
 	//err = sseCl.ConnectWithLoginForm(clientID)
@@ -259,7 +260,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	const agentID = "agent1"
 	const testConnections = int32(1)
 	const eventName = "event1"
-	var webClients = make([]transports.IClientConnection, 0)
+	var webClients = make([]transports.IConsumerConnection, 0)
 	var connectCount atomic.Int32
 	var disConnectCount atomic.Int32
 	var messageCount atomic.Int32
@@ -299,7 +300,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 		}
 	}
 	// handler for web connection messages
-	onMessage := func(msg *transports.ThingMessage) {
+	onNotification := func(msg transports.NotificationMessage) {
 		// the UI expects this format for triggering htmx
 		expectedType := fmt.Sprintf("dtw:%s:%s/%s", agentID, td1.ID, eventName)
 		if expectedType == msg.Operation {
@@ -313,7 +314,8 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	// The hiveoview server only supports SSE
 	hiveoviewURL := svc.GetServerURL()
 	for range testConnections {
-		sseCl, err := WebLogin(hiveoviewURL, clientID1, onConnection, onMessage, nil)
+		sseCl, err := WebLogin(
+			hiveoviewURL, clientID1, onConnection, onNotification, nil)
 		require.NoError(t, err)
 		require.NotNil(t, sseCl)
 		webClients = append(webClients, sseCl)
@@ -327,7 +329,8 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	require.Equal(t, testConnections, nrSessions)
 
 	// 3: agent publishes an event, which should be received N times
-	err = ag1.SendNotification(wot.HTOpPublishEvent, td1.ID, eventName, "a value")
+	notif1 := transports.NewNotificationMessage(wot.HTOpEvent, td1.ID, eventName, "a value")
+	err = ag1.SendNotification(notif1)
 	require.NoError(t, err)
 
 	// event should have been received N times
@@ -348,9 +351,9 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	time.Sleep(waitamoment)
 	require.Equal(t, testConnections, disConnectCount.Load(), "disconnect count mismatch")
 
-	//	// 5: no more messages should be received after disconnecting
+	// 5: no more messages should be received after disconnecting
 	messageCount.Store(0)
-	err = ag1.SendNotification(wot.HTOpPublishEvent, td1.ID, eventName, "a value")
+	err = ag1.SendNotification(notif1)
 	require.NoError(t, err)
 
 	// zero events should have been received

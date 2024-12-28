@@ -14,7 +14,7 @@ import (
 
 // StateAgent agent for the state storage services
 type StateAgent struct {
-	hc  transports.IClientConnection
+	hc  transports.IAgentConnection
 	svc *StateService
 }
 
@@ -96,66 +96,66 @@ func (agent StateAgent) CreateTD() *td.TD {
 }
 
 // HandleRequest dispatches requests to the service capabilities
-func (agent *StateAgent) HandleRequest(msg *transports.ThingMessage) (output any, err error) {
-	if msg.ThingID == stateapi.StorageServiceID {
-		switch msg.Name {
+func (agent *StateAgent) HandleRequest(req transports.RequestMessage) transports.ResponseMessage {
+	if req.Operation == wot.OpInvokeAction && req.ThingID == stateapi.StorageServiceID {
+		switch req.Name {
 		case stateapi.DeleteMethod:
-			return agent.Delete(msg)
+			return agent.Delete(req)
 		case stateapi.GetMethod:
-			return agent.Get(msg)
+			return agent.Get(req)
 		case stateapi.GetMultipleMethod:
-			return agent.GetMultiple(msg)
+			return agent.GetMultiple(req)
 		case stateapi.SetMethod:
-			return agent.Set(msg)
+			return agent.Set(req)
 		case stateapi.SetMultipleMethod:
-			return agent.SetMultiple(msg)
+			return agent.SetMultiple(req)
 		}
 	}
-	err = fmt.Errorf("unknown action '%s' for service '%s'", msg.Name, msg.ThingID)
-	return nil, err
+	err := fmt.Errorf("unknown action '%s' for service '%s'", req.Name, req.ThingID)
+	return req.CreateResponse(nil, err)
 }
-func (agent *StateAgent) Delete(msg *transports.ThingMessage) (output any, err error) {
-	args := stateapi.DeleteArgs{}
-	err = tputils.DecodeAsObject(msg.Data, &args)
+func (agent *StateAgent) Delete(req transports.RequestMessage) transports.ResponseMessage {
+	input := stateapi.DeleteArgs{}
+	err := tputils.DecodeAsObject(req.Input, &input)
 	if err == nil {
-		err = agent.svc.Delete(msg.SenderID, args.Key)
+		err = agent.svc.Delete(req.SenderID, input.Key)
 	}
-	return nil, err
+	return req.CreateResponse(nil, err)
 }
-func (agent *StateAgent) Get(msg *transports.ThingMessage) (output any, err error) {
-	args := stateapi.GetArgs{}
-	resp := stateapi.GetResp{}
-	err = tputils.DecodeAsObject(msg.Data, &args)
+func (agent *StateAgent) Get(req transports.RequestMessage) transports.ResponseMessage {
+	input := stateapi.GetArgs{}
+	output := stateapi.GetResp{}
+	err := tputils.DecodeAsObject(req.Input, &input)
 	if err == nil {
-		resp.Key = args.Key
-		resp.Value, resp.Found, err = agent.svc.Get(msg.SenderID, args.Key)
+		output.Key = input.Key
+		output.Value, output.Found, err = agent.svc.Get(req.SenderID, input.Key)
 	}
-	return resp, err
+	return req.CreateResponse(output, err)
 }
-func (agent *StateAgent) GetMultiple(msg *transports.ThingMessage) (output any, err error) {
-	args := stateapi.GetMultipleArgs{}
-	resp := stateapi.GetMultipleResp{}
-	err = tputils.DecodeAsObject(msg.Data, &args)
+func (agent *StateAgent) GetMultiple(req transports.RequestMessage) transports.ResponseMessage {
+	input := stateapi.GetMultipleArgs{}
+	output := stateapi.GetMultipleResp{}
+	err := tputils.DecodeAsObject(req.Input, &input)
 	if err == nil {
-		resp.KV, err = agent.svc.GetMultiple(msg.SenderID, args.Keys)
+		output.KV, err = agent.svc.GetMultiple(req.SenderID, input.Keys)
 	}
-	return resp, err
+	return req.CreateResponse(output, err)
 }
-func (agent *StateAgent) Set(msg *transports.ThingMessage) (output any, err error) {
-	args := stateapi.SetArgs{}
-	err = tputils.DecodeAsObject(msg.Data, &args)
+func (agent *StateAgent) Set(req transports.RequestMessage) transports.ResponseMessage {
+	input := stateapi.SetArgs{}
+	err := tputils.DecodeAsObject(req.Input, &input)
 	if err == nil {
-		err = agent.svc.Set(msg.SenderID, args.Key, args.Value)
+		err = agent.svc.Set(req.SenderID, input.Key, input.Value)
 	}
-	return nil, err
+	return req.CreateResponse(nil, err)
 }
-func (agent *StateAgent) SetMultiple(msg *transports.ThingMessage) (output any, err error) {
-	args := stateapi.SetMultipleArgs{}
-	err = tputils.DecodeAsObject(msg.Data, &args)
+func (agent *StateAgent) SetMultiple(req transports.RequestMessage) transports.ResponseMessage {
+	input := stateapi.SetMultipleArgs{}
+	err := tputils.DecodeAsObject(req.Input, &input)
 	if err == nil {
-		err = agent.svc.SetMultiple(msg.SenderID, args.KV)
+		err = agent.svc.SetMultiple(req.SenderID, input.KV)
 	}
-	return nil, err
+	return req.CreateResponse(nil, err)
 }
 
 // NewStateAgent returns a new instance of the communication agent for the state service.
@@ -173,15 +173,16 @@ func NewStateAgent(svc *StateService) *StateAgent {
 //
 //	svc is the state service whose capabilities to expose
 //	hc is the messaging client used to register a message handler
-func StartStateAgent(svc *StateService, hc transports.IClientConnection) *StateAgent {
+func StartStateAgent(svc *StateService, hc transports.IAgentConnection) *StateAgent {
 	agent := StateAgent{hc: hc, svc: svc}
 	if hc != nil {
 		hc.SetRequestHandler(agent.HandleRequest)
 
-		// but the service TD
+		// publish the service TD
 		tdi := agent.CreateTD()
 		tdJSON, _ := jsoniter.Marshal(tdi)
-		err := hc.SendNotification(wot.HTOpUpdateTD, tdi.ID, "", string(tdJSON))
+		notif := transports.NewNotificationMessage(wot.HTOpUpdateTD, tdi.ID, "", string(tdJSON))
+		err := hc.SendNotification(notif)
 		if err != nil {
 			slog.Error("Failed publishing the TD", "err", err.Error())
 		}

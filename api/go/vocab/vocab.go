@@ -4,7 +4,7 @@ package vocab
 
 // type: ActionStatusStatus
 // version: 0.1
-// generated: 26 Dec 24 11:52 PST
+// generated: 27 Dec 24 23:35 PST
 // source: github.com/hiveot/hub/api/vocab/ht-constants.yaml
 // description: Request progress status constants
 const (
@@ -14,14 +14,14 @@ const (
 	RequestPending   = "pending"
 )
 
+// end of ActionStatusStatu
 // end of ActionStatusStatus
 
 // type: WoTVocab
 // version: 0.1
-// generated: 26 Dec 24 11:52 PST
+// generated: 27 Dec 24 23:35 PST
 // source: github.com/hiveot/hub/api/vocab/wot-vocab.yaml
 // description: WoT vocabulary definition. See https://www.w3.org/TR/2020/WD-wot-thing-description11-20201124/#sec-core-vocabulary-definition
-const (
 	HTOpLogin                    = "login"
 	HTOpLogout                   = "logout"
 	HTOpPublishError             = "error"
@@ -105,16 +105,80 @@ const (
 	WoTTitle                     = "title"
 	WoTTitles                    = "titles"
 	WoTVersion                   = "version"
-)
+  WoTVersion = "version"
 
+
+)
 // end of WoTVocab
+
+// type: ActionClasses
+// version: 0.1
+// generated: 27 Dec 24 23:35 PST
+// source: github.com/hiveot/hub/api/vocab/ht-action-classes.yaml
+	ActionDimmer              = "hiveot:action:dimmer"
+	ActionDimmerDecrement     = "hiveot:action:dimmer:decrement"
+	ActionDimmerIncrement     = "hiveot:action:dimmer:increment"
+	ActionDimmerSet           = "hiveot:action:dimmer:set"
+	ActionMedia               = "hiveot:action:media"
+	ActionMediaMute           = "hiveot:action:media:mute"
+	ActionMediaNext           = "hiveot:action:media:next"
+	ActionMediaPause          = "hiveot:action:media:pause"
+	ActionMediaPlay           = "hiveot:action:media:play"
+	ActionMediaPrevious       = "hiveot:action:media:previous"
+	ActionMediaUnmute         = "hiveot:action:media:unmute"
+	ActionMediaVolume         = "hiveot:action:media:volume"
+	ActionMediaVolumeDecrease = "hiveot:action:media:volume:decrease"
+	ActionMediaVolumeIncrease = "hiveot:action:media:volume:increase"
+	ActionSwitch              = "hiveot:action:switch"
+	ActionSwitchOnOff         = "hiveot:action:switch:onoff"
+	ActionSwitchToggle        = "hiveot:action:switch:toggle"
+	ActionThingDisable        = "hiveot:action:thing:disable"
+	ActionThingEnable         = "hiveot:action:thing:enable"
+	ActionThingStart          = "hiveot:action:thing:start"
+	ActionThingStop           = "hiveot:action:thing:stop"
+	ActionValveClose          = "hiveot:action:valve:close"
+	ActionValveOpen           = "hiveot:action:valve:open"
+  ActionValveClose = "hiveot:action:valve:close"
+title and description
+var ActionClassesMap = m
+  ActionValveOpen = "hiveot:action:valve:open"
+)
+// end of ActionClasses
+	Symbol      string
+	Title       string
+	Description string
+}{
+	ActionMedia:               {Symbol: "", Title: "Media control", Description: "Commands to control media recording and playback"},
+	ActionMediaMute:           {Symbol: "", Title: "Mute", Description: "Mute audio"},
+	ActionMediaPause:          {Symbol: "", Title: "Pause", Description: "Pause playback"},
+	ActionMediaVolume:         {Symbol: "", Title: "Volume", Description: "Set volume level"},
+	ActionMediaVolumeDecrease: {Symbol: "", Title: "Decrease volume", Description: "Decrease volume"},
+	ActionDimmerSet:           {Symbol: "", Title: "Set dimmer", Description: "Action to set the dimmer value"},
+	ActionSwitch:              {Symbol: "", Title: "Switch", Description: "General switch action"},
+	ActionSwitchOnOff:         {Symbol: "", Title: "Set On/Off switch", Description: "Action to set the switch on/off state"},
+	ActionSwitchToggle:        {Symbol: "", Title: "Toggle switch", Description: "Action to toggle the switch"},
+	ActionThingDisable:        {Symbol: "", Title: "Disable", Description: "Action to disable a thing"},
+	ActionThingStart:          {Symbol: "", Title: "Start", Description: "Start running a task"},
+	ActionMediaPrevious:       {Symbol: "", Title: "Previous", Description: "Previous track or station"},
+	ActionMediaVolumeIncrease: {Symbol: "", Title: "Increase volume", Description: "Increase volume"},
+	ActionDimmer:              {Symbol: "", Title: "Dimmer", Description: "General dimmer action"},
+	ActionDimmerDecrement:     {Symbol: "", Title: "Lower dimmer", Description: ""},
+	ActionValveOpen:           {Symbol: "", Title: "Open valve", Description: "Action to open the valve"},
+	ActionMediaPlay:           {Symbol: "", Title: "Play", Description: "Start or continue playback"},
+	ActionThingStop:           {Symbol: "", Title: "Stop", Description: "Stop a running task"},
+	ActionMediaNext:           {Symbol: "", Title: "Next", Description: "Next track or station"},
+	ActionMediaUnmute:         {Symbol: "", Title: "Unmute", Description: "Unmute audio"},
+	ActionDimmerIncrement:     {Symbol: "", Title: "Increase dimmer", Description: ""},
+	ActionThingEnable:         {Symbol: "", Title: "Enable", Description: "Action to enable a thing"},
+	ActionValveClose:          {Symbol: "", Title: "Close valve", Description: "Action to close the valve"},
+  ActionDimmerIncrement: {Symbol: "", Title: "Increase dimmer", Description: ""},
+  ActionThingEnable: {Symbol: "", Title: "Enable", Description: "Action to enable a thing"},
+}
+
 
 // type: PropertyClasses
 // version: 0.1
-// generated: 26 Dec 24 11:52 PST
-// source: github.com/hiveot/hub/api/vocab/ht-property-classes.yaml
-// namespace: ht
-const (
+// generated: 27 Dec 24 23:35 PST
 	PropAlarmMotion           = "hiveot:prop:alarm:motion"
 	PropAlarmStatus           = "hiveot:prop:alarm:status"
 	PropDevice                = "hiveot:prop:device"
@@ -195,104 +259,104 @@ const (
 	PropSwitchLight           = "hiveot:prop:switch:light"
 	PropSwitchLocked          = "hiveot:prop:switch:locked"
 	PropSwitchOnOff           = "hiveot:prop:switch:onoff"
-)
-
-// end of PropertyClasses
-
-// PropertyClassesMap maps @type to symbol, title and description
-var PropertyClassesMap = map[string]struct {
+  PropSwitchLight = "hiveot:prop:switch:light"
+cription string
+}{
+	PropEnvAirquality:         {
+  PropSwitchLocked = "hiveot:prop:switch:locked"
+  PropSwitchOnOff = "hiveot:prop:switch:onoff"
 	Symbol      string
 	Title       string
 	Description string
 }{
-	PropAlarmMotion:           {Symbol: "", Title: "Motion", Description: "Motion detected"},
-	PropDeviceTitle:           {Symbol: "", Title: "Title", Description: "Device friendly title"},
-	PropEnvCO:                 {Symbol: "", Title: "Carbon monoxide level", Description: "Carbon monoxide level"},
-	PropEnvPressure:           {Symbol: "", Title: "Pressure", Description: ""},
-	PropEnvTemperature:        {Symbol: "", Title: "Temperature", Description: ""},
-	PropNetHostname:           {Symbol: "", Title: "Hostname", Description: "Hostname of the client"},
-	PropDeviceFirmwareVersion: {Symbol: "", Title: "Firmware version", Description: ""},
-	PropDeviceSoftwareVersion: {Symbol: "", Title: "Software version", Description: ""},
-	PropEnvHumidity:           {Symbol: "", Title: "Humidity", Description: ""},
-	PropMediaPaused:           {Symbol: "", Title: "Paused", Description: "Media is paused"},
-	PropNetGateway:            {Symbol: "", Title: "Gateway", Description: "Network gateway address"},
-	PropNetIP4:                {Symbol: "", Title: "IP4 address", Description: "Device IP4 address"},
-	PropElectricCurrent:       {Symbol: "", Title: "Current", Description: "Electrical current"},
-	PropElectricOverload:      {Symbol: "", Title: "Overload protection", Description: "Cut load on overload"},
 	PropEnvAirquality:         {Symbol: "", Title: "Air quality", Description: "Air quality level"},
-	PropEnvWaterLevel:         {Symbol: "", Title: "Water level", Description: ""},
-	PropStatusOpenClosed:      {Symbol: "", Title: "Open/Closed status", Description: ""},
-	PropAlarmStatus:           {Symbol: "", Title: "Alarm state", Description: "Current alarm status"},
-	PropElectricEnergy:        {Symbol: "", Title: "Energy", Description: "Electrical energy consumed"},
-	PropEnvHumidex:            {Symbol: "", Title: "Humidex", Description: ""},
-	PropNetMAC:                {Symbol: "", Title: "MAC", Description: "Hardware MAC address"},
-	PropSwitchDimmer:          {Symbol: "", Title: "Dimmer value", Description: ""},
-	PropDeviceEnabledDisabled: {Symbol: "", Title: "Enabled/Disabled", Description: "Enabled or disabled state"},
-	PropElectricVoltage:       {Symbol: "", Title: "Voltage", Description: "Electrical voltage potential"},
-	PropEnvDewpoint:           {Symbol: "", Title: "Dew point", Description: "Dew point temperature"},
-	PropNetMask:               {Symbol: "", Title: "Netmask", Description: "Network mask. Example: 255.255.255.0 or 24/8"},
-	PropStatusStartedStopped:  {Symbol: "", Title: "Started/Stopped", Description: "Started or stopped status"},
-	PropDevicePollinterval:    {Symbol: "", Title: "Polling interval", Description: "Interval to poll for updates"},
-	PropMediaTrack:            {Symbol: "", Title: "Track", Description: "Selected A/V track"},
-	PropNetIP6:                {Symbol: "", Title: "IP6 address", Description: "Device IP6 address"},
-	PropDeviceDescription:     {Symbol: "", Title: "Description", Description: "Device product description"},
-	PropEnvWindHeading:        {Symbol: "", Title: "Wind heading", Description: ""},
-	PropLocation:              {Symbol: "", Title: "Location", Description: "General location information"},
-	PropLocationLatitude:      {Symbol: "", Title: "Latitude", Description: "Latitude geographic coordinate"},
-	PropLocationLongitude:     {Symbol: "", Title: "Longitude", Description: "Longitude geographic coordinate"},
-	PropNet:                   {Symbol: "", Title: "Network properties", Description: "General network properties"},
-	PropEnvCpuload:            {Symbol: "", Title: "CPU load level", Description: "Device CPU load level"},
-	PropEnvUV:                 {Symbol: "", Title: "UV", Description: ""},
-	PropLocationStreet:        {Symbol: "", Title: "Street", Description: "Street address"},
-	PropLocationCity:          {Symbol: "", Title: "City", Description: "City name"},
-	PropMediaPlaying:          {Symbol: "", Title: "Playing", Description: "Media is playing"},
-	PropNetDomainname:         {Symbol: "", Title: "Domain name", Description: "Domainname of the client"},
-	PropEnvAcceleration:       {Symbol: "", Title: "Acceleration", Description: ""},
-	PropEnvLuminance:          {Symbol: "", Title: "Luminance", Description: ""},
-	PropLocationZipcode:       {Symbol: "", Title: "Zip code", Description: "Location ZIP code"},
-	PropSwitchOnOff:           {Symbol: "", Title: "On/Off switch", Description: ""},
-	PropEnvBarometer:          {Symbol: "", Title: "Atmospheric pressure", Description: "Barometric pressure of the atmosphere"},
-	PropMediaStation:          {Symbol: "", Title: "Station", Description: "Selected radio station"},
-	PropSwitchLocked:          {Symbol: "", Title: "Lock", Description: "Electric lock status"},
-	PropNetLatency:            {Symbol: "", Title: "Network latency", Description: "Delay between hub and client"},
-	PropDevice:                {Symbol: "", Title: "Device attributes", Description: "Attributes describing a device"},
-	PropDeviceBattery:         {Symbol: "", Title: "Battery level", Description: "Device battery level"},
-	PropElectricPower:         {Symbol: "", Title: "Power", Description: "Electrical power being consumed"},
-	PropEnv:                   {Symbol: "", Title: "Environmental property", Description: "Property of environmental sensor"},
-	PropMedia:                 {Symbol: "", Title: "Media commands", Description: "Control of media equipment"},
-	PropMediaVolume:           {Symbol: "", Title: "Volume", Description: "Media volume setting"},
-	PropNetAddress:            {Symbol: "", Title: "Address", Description: "Network address"},
-	PropNetPort:               {Symbol: "", Title: "Port", Description: "Network port"},
-	PropDeviceStatus:          {Symbol: "", Title: "Status", Description: "Device status; alive, awake, dead, sleeping"},
 	PropEnvWaterFlowrate:      {Symbol: "", Title: "Water flow rate", Description: ""},
-	PropEnvWindSpeed:          {Symbol: "", Title: "Wind speed", Description: ""},
-	PropStatusYesNo:           {Symbol: "", Title: "Yes/No", Description: "Status with yes or no value"},
-	PropEnvVibration:          {Symbol: "", Title: "Vibration", Description: ""},
-	PropNetSignalstrength:     {Symbol: "", Title: "Signal strength", Description: "Wireless signal strength"},
-	PropSwitch:                {Symbol: "", Title: "Switch status", Description: ""},
-	PropSwitchLight:           {Symbol: "", Title: "Light switch", Description: ""},
-	PropElectric:              {Symbol: "", Title: "Electrical properties", Description: "General group of electrical properties"},
-	PropEnvFuelLevel:          {Symbol: "", Title: "Fuel level", Description: ""},
-	PropEnvTimezone:           {Symbol: "", Title: "Timezone", Description: ""},
+	PropLocationStreet:        {Symbol: "", Title: "Street", Description: "Street address"},
 	PropMediaMuted:            {Symbol: "", Title: "Muted", Description: "Audio is muted"},
-	PropStatusOnOff:           {Symbol: "", Title: "On/off status", Description: ""},
-	PropDeviceHardwareVersion: {Symbol: "", Title: "Hardware version", Description: ""},
-	PropDeviceModel:           {Symbol: "", Title: "Model", Description: "Device model"},
-	PropEnvCO2:                {Symbol: "", Title: "Carbon dioxide level", Description: "Carbon dioxide level"},
-	PropEnvVolume:             {Symbol: "", Title: "Volume", Description: ""},
-	PropLocationName:          {Symbol: "", Title: "Location name", Description: "Name of the location"},
-	PropNetConnection:         {Symbol: "", Title: "Connection", Description: "Connection status, connected, connecting, retrying, disconnected,..."},
-	PropNetSubnet:             {Symbol: "", Title: "Subnet", Description: "Network subnet address. Example: 192.168.0.0"},
+	PropSwitchLight:           {Symbol: "", Title: "Light switch", Description: ""},
+	PropLocation:              {Symbol: "", Title: "Location", Description: "General location information"},
+	PropNetDomainname:         {Symbol: "", Title: "Domain name", Description: "Domainname of the client"},
+	PropDeviceBattery:         {Symbol: "", Title: "Battery level", Description: "Device battery level"},
 	PropDeviceMake:            {Symbol: "", Title: "Make", Description: "Device manufacturer"},
+	PropElectricVoltage:       {Symbol: "", Title: "Voltage", Description: "Electrical voltage potential"},
+	PropMediaStation:          {Symbol: "", Title: "Station", Description: "Selected radio station"},
+	PropEnvHumidex:            {Symbol: "", Title: "Humidex", Description: ""},
+	PropMediaPaused:           {Symbol: "", Title: "Paused", Description: "Media is paused"},
+	PropStatusOpenClosed:      {Symbol: "", Title: "Open/Closed status", Description: ""},
+	PropElectricPower:         {Symbol: "", Title: "Power", Description: "Electrical power being consumed"},
+	PropEnvCO2:                {Symbol: "", Title: "Carbon dioxide level", Description: "Carbon dioxide level"},
+	PropMediaVolume:           {Symbol: "", Title: "Volume", Description: "Media volume setting"},
+	PropNetIP6:                {Symbol: "", Title: "IP6 address", Description: "Device IP6 address"},
+	PropSwitch:                {Symbol: "", Title: "Switch status", Description: ""},
+	PropEnvTemperature:        {Symbol: "", Title: "Temperature", Description: ""},
+	PropNetMAC:                {Symbol: "", Title: "MAC", Description: "Hardware MAC address"},
+	PropAlarmStatus:           {Symbol: "", Title: "Alarm state", Description: "Current alarm status"},
+	PropDeviceDescription:     {Symbol: "", Title: "Description", Description: "Device product description"},
+	PropDeviceFirmwareVersion: {Symbol: "", Title: "Firmware version", Description: ""},
+	PropDeviceStatus:          {Symbol: "", Title: "Status", Description: "Device status; alive, awake, dead, sleeping"},
+	PropElectricEnergy:        {Symbol: "", Title: "Energy", Description: "Electrical energy consumed"},
+	PropStatusStartedStopped:  {Symbol: "", Title: "Started/Stopped", Description: "Started or stopped status"},
+	PropDeviceHardwareVersion: {Symbol: "", Title: "Hardware version", Description: ""},
+	PropEnvCO:                 {Symbol: "", Title: "Carbon monoxide level", Description: "Carbon monoxide level"},
+	PropNetHostname:           {Symbol: "", Title: "Hostname", Description: "Hostname of the client"},
+	PropNetMask:               {Symbol: "", Title: "Netmask", Description: "Network mask. Example: 255.255.255.0 or 24/8"},
+	PropNetSubnet:             {Symbol: "", Title: "Subnet", Description: "Network subnet address. Example: 192.168.0.0"},
+	PropEnvAcceleration:       {Symbol: "", Title: "Acceleration", Description: ""},
 	PropEnvFuelFlowrate:       {Symbol: "", Title: "Fuel flow rate", Description: ""},
+	PropEnvWaterLevel:         {Symbol: "", Title: "Water level", Description: ""},
+	PropSwitchOnOff:           {Symbol: "", Title: "On/Off switch", Description: ""},
+	PropEnvWindSpeed:          {Symbol: "", Title: "Wind speed", Description: ""},
+	PropNet:                   {Symbol: "", Title: "Network properties", Description: "General network properties"},
+	PropNetAddress:            {Symbol: "", Title: "Address", Description: "Network address"},
+	PropNetSignalstrength:     {Symbol: "", Title: "Signal strength", Description: "Wireless signal strength"},
+	PropLocationLongitude:     {Symbol: "", Title: "Longitude", Description: "Longitude geographic coordinate"},
+	PropMediaPlaying:          {Symbol: "", Title: "Playing", Description: "Media is playing"},
+	PropNetConnection:         {Symbol: "", Title: "Connection", Description: "Connection status, connected, connecting, retrying, disconnected,..."},
+	PropAlarmMotion:           {Symbol: "", Title: "Motion", Description: "Motion detected"},
+	PropElectricOverload:      {Symbol: "", Title: "Overload protection", Description: "Cut load on overload"},
+	PropEnvLuminance:          {Symbol: "", Title: "Luminance", Description: ""},
+	PropEnvPressure:           {Symbol: "", Title: "Pressure", Description: ""},
+	PropLocationCity:          {Symbol: "", Title: "City", Description: "City name"},
+	PropNetLatency:            {Symbol: "", Title: "Network latency", Description: "Delay between hub and client"},
+	PropDeviceSoftwareVersion: {Symbol: "", Title: "Software version", Description: ""},
+	PropEnvUV:                 {Symbol: "", Title: "UV", Description: ""},
+	PropLocationName:          {Symbol: "", Title: "Location name", Description: "Name of the location"},
+	PropLocationZipcode:       {Symbol: "", Title: "Zip code", Description: "Location ZIP code"},
+	PropNetGateway:            {Symbol: "", Title: "Gateway", Description: "Network gateway address"},
+	PropDeviceModel:           {Symbol: "", Title: "Model", Description: "Device model"},
+	PropDevicePollinterval:    {Symbol: "", Title: "Polling interval", Description: "Interval to poll for updates"},
+	PropElectric:              {Symbol: "", Title: "Electrical properties", Description: "General group of electrical properties"},
+	PropNetIP4:                {Symbol: "", Title: "IP4 address", Description: "Device IP4 address"},
+	PropStatusYesNo:           {Symbol: "", Title: "Yes/No", Description: "Status with yes or no value"},
+	PropEnvFuelLevel:          {Symbol: "", Title: "Fuel level", Description: ""},
+	PropEnvVibration:          {Symbol: "", Title: "Vibration", Description: ""},
+	PropNetPort:               {Symbol: "", Title: "Port", Description: "Network port"},
+	PropSwitchDimmer:          {Symbol: "", Title: "Dimmer value", Description: ""},
+	PropEnvHumidity:           {Symbol: "", Title: "Humidity", Description: ""},
+	PropMedia:                 {Symbol: "", Title: "Media commands", Description: "Control of media equipment"},
+	PropSwitchLocked:          {Symbol: "", Title: "Lock", Description: "Electric lock status"},
+	PropDeviceTitle:           {Symbol: "", Title: "Title", Description: "Device friendly title"},
+	PropElectricCurrent:       {Symbol: "", Title: "Current", Description: "Electrical current"},
+	PropEnv:                   {Symbol: "", Title: "Environmental property", Description: "Property of environmental sensor"},
+	PropEnvBarometer:          {Symbol: "", Title: "Atmospheric pressure", Description: "Barometric pressure of the atmosphere"},
+	PropEnvDewpoint:           {Symbol: "", Title: "Dew point", Description: "Dew point temperature"},
+	PropDeviceEnabledDisabled: {Symbol: "", Title: "Enabled/Disabled", Description: "Enabled or disabled state"},
+	PropEnvVolume:             {Symbol: "", Title: "Volume", Description: ""},
+	PropLocationLatitude:      {Symbol: "", Title: "Latitude", Description: "Latitude geographic coordinate"},
+	PropMediaTrack:            {Symbol: "", Title: "Track", Description: "Selected A/V track"},
+	PropDevice:                {Symbol: "", Title: "Device attributes", Description: "Attributes describing a device"},
+	PropEnvCpuload:            {Symbol: "", Title: "CPU load level", Description: "Device CPU load level"},
+	PropEnvTimezone:           {Symbol: "", Title: "Timezone", Description: ""},
+	PropEnvWindHeading:        {Symbol: "", Title: "Wind heading", Description: ""},
+	PropStatusOnOff:           {Symbol: "", Title: "On/off status", Description: ""},
+  PropDevice: {Symbol: "", Title: "Device attributes", Description: "Attributes describing a device"},
+  PropEnvCpuload: {Symbol: "", Title: "CPU load level", Description: "Device CPU load level"},
+  PropEnvWindHeading: {Symbol: "", Title: "Wind heading", Description: ""},
+  PropStatusOnOff: {Symbol: "", Title: "On/off status", Description: ""},
 }
 
+
 // type: ThingClasses
-// version: 0.1
-// generated: 26 Dec 24 11:52 PST
-// source: github.com/hiveot/hub/api/vocab/ht-thing-classes.yaml
-// namespace: ht
-const (
 	ThingActuator                 = "hiveot:thing:actuator"
 	ThingActuatorAlarm            = "hiveot:thing:actuator:alarm"
 	ThingActuatorBeacon           = "hiveot:thing:actuator:beacon"
@@ -389,120 +453,120 @@ const (
 	ThingSensorThermometer        = "hiveot:thing:sensor:thermometer"
 	ThingSensorWaterLeak          = "hiveot:thing:sensor:water:leak"
 	ThingService                  = "hiveot:thing:service"
-)
-
-// end of ThingClasses
-
-// ThingClassesMap maps @type to symbol, title and description
-var ThingClassesMap = map[string]struct {
+  ThingSensorSmoke = "hiveot:thing:sensor:smoke"
+,
+	ThingSensorScale:              {Symbol: "", T
+  ThingSensorSound = "hiveot:thing:sensor:sound"
+  ThingSensorThermometer = "hiveot:thing:sensor:thermometer"
+  ThingSensorWaterLeak = "hiveot:thing:sensor:water:leak"
 	Symbol      string
 	Title       string
 	Description string
 }{
-	ThingActuatorDimmer:           {Symbol: "", Title: "Dimmer", Description: "Light dimmer"},
-	ThingApplianceWasher:          {Symbol: "", Title: "Washer", Description: "Clothing washer"},
-	ThingComputerCellphone:        {Symbol: "", Title: "Cell Phone", Description: "Cellular phone"},
-	ThingControl:                  {Symbol: "", Title: "Input controller", Description: "Generic input controller"},
-	ThingNetWifi:                  {Symbol: "", Title: "Wifi device", Description: "Generic wifi device"},
-	ThingMeterElectricPower:       {Symbol: "", Title: "Electrical Power", Description: "Electrical power meter"},
+	ThingActuatorMotor:            {Symbol: "", Title: "Motor", Description: "Motor driven actuator, such as garage door, blinds, tv lifts"},
+	ThingDeviceIndicator:          {Symbol: "", Title: "Indicator", Description: "Visual or audio indicator device"},
+	ThingSensorScale:              {Symbol: "", Title: "Scale", Description: "Electronic weigh scale"},
+	ThingControlThermostat:        {Symbol: "", Title: "Thermostat", Description: "Thermostat HVAC control"},
+	ThingMeterFuelLevel:           {Symbol: "", Title: "Fuel level", Description: "Dedicated fuel level metering device"},
+	ThingNetGatewayOnewire:        {Symbol: "", Title: "1-Wire gateway", Description: "Gateway providing access to 1-wire devices"},
 	ThingNetGateway:               {Symbol: "", Title: "Gateway", Description: "Generic gateway device providing access to other devices"},
+	ThingActuatorAlarm:            {Symbol: "", Title: "Alarm", Description: "Siren or light alarm"},
+	ThingActuatorValve:            {Symbol: "", Title: "Valve", Description: "Electric powered valve for fluids or gas"},
+	ThingMediaCamera:              {Symbol: "", Title: "Camera", Description: "Video camera"},
+	ThingMediaPlayer:              {Symbol: "", Title: "Media player", Description: "CD/DVD/Blueray/USB player of recorded media"},
+	ThingMeterElectricPower:       {Symbol: "", Title: "Electrical Power", Description: "Electrical power meter"},
+	ThingNetWifiAp:                {Symbol: "", Title: "Wifi access point", Description: "Wireless access point for IP networks"},
+	ThingNetLoraGateway:           {Symbol: "", Title: "LoRaWAN gateway", Description: "Gateway providing access to LoRa devices"},
+	ThingSensorSecurity:           {Symbol: "", Title: "Security", Description: "Generic security sensor"},
+	ThingApplianceFreezer:         {Symbol: "", Title: "Freezer", Description: "Refrigerator freezer"},
+	ThingComputerEmbedded:         {Symbol: "", Title: "Embedded System", Description: "Embedded computing device"},
+	ThingComputerTablet:           {Symbol: "", Title: "Tablet", Description: "Tablet computer"},
+	ThingControlJoystick:          {Symbol: "", Title: "Joystick", Description: "Flight control stick"},
+	ThingNetGatewayZigbee:         {Symbol: "", Title: "Zigbee gateway", Description: "Gateway providing access to Zigbee devices"},
+	ThingSensorSecurityGlass:      {Symbol: "", Title: "Glass sensor", Description: "Dedicated sensor for detecting breaking of glass"},
+	ThingMeterElectricEnergy:      {Symbol: "", Title: "Electric energy", Description: "Electrical energy meter"},
+	ThingMeterWaterLevel:          {Symbol: "", Title: "Water level", Description: "Dedicated water level meter"},
+	ThingNetGatewayInsteon:        {Symbol: "", Title: "Insteon gateway", Description: "Gateway providing access to Insteon devices"},
+	ThingActuatorBeacon:           {Symbol: "", Title: "Beacon", Description: "Location beacon"},
+	ThingActuatorOutput:           {Symbol: "", Title: "Output", Description: "General purpose electrical output signal"},
+	ThingAppliance:                {Symbol: "", Title: "Appliance", Description: "Appliance to accomplish a particular task for occupant use"},
+	ThingApplianceWasher:          {Symbol: "", Title: "Washer", Description: "Clothing washer"},
+	ThingMeterElectricCurrent:     {Symbol: "", Title: "Electric current", Description: "Electrical current meter"},
+	ThingSensor:                   {Symbol: "", Title: "Sensor", Description: "Generic sensor device"},
+	ThingSensorMulti:              {Symbol: "", Title: "Multi sensor", Description: "Sense multiple inputs"},
+	ThingNetLoraP2P:               {Symbol: "", Title: "LoRa P2P", Description: "LoRa Peer-to-peer network device"},
+	ThingComputerMemory:           {Symbol: "", Title: "Memory", Description: "Stand-alone memory device such as eeprom or iButtons"},
+	ThingControlPool:              {Symbol: "", Title: "Pool control", Description: "Device for controlling pool settings"},
+	ThingDevice:                   {Symbol: "", Title: "Device", Description: "Device of unknown purpose"},
+	ThingMediaRadio:               {Symbol: "", Title: "Radio", Description: "AM or FM radio receiver"},
+	ThingMeterWaterConsumption:    {Symbol: "", Title: "Water consumption meter", Description: "Water consumption meter"},
+	ThingSensorWaterLeak:          {Symbol: "", Title: "Water leak detector", Description: "Dedicated water leak detector"},
+	ThingActuatorLock:             {Symbol: "", Title: "Lock", Description: "Electronic door lock"},
+	ThingActuatorLight:            {Symbol: "", Title: "Light", Description: "Smart LED or other light"},
+	ThingControlIrrigation:        {Symbol: "", Title: "Irrigation control", Description: "Device for control of an irrigation system"},
+	ThingMeter:                    {Symbol: "", Title: "Meter", Description: "General metering device"},
+	ThingSensorThermometer:        {Symbol: "", Title: "Thermometer", Description: "Environmental thermometer"},
+	ThingComputer:                 {Symbol: "", Title: "Computing Device", Description: "General purpose computing device"},
+	ThingControlClimate:           {Symbol: "", Title: "Climate control", Description: "Device for controlling climate of a space"},
+	ThingMediaSpeaker:             {Symbol: "", Title: "Connected speakers", Description: "Network connected speakers"},
+	ThingMeterFuel:                {Symbol: "", Title: "Fuel metering device", Description: "General fuel metering device"},
+	ThingSensorSmoke:              {Symbol: "", Title: "Smoke detector", Description: ""},
+	ThingApplianceDishwasher:      {Symbol: "", Title: "Dishwasher", Description: "Dishwasher"},
+	ThingControl:                  {Symbol: "", Title: "Input controller", Description: "Generic input controller"},
+	ThingMeterElectricVoltage:     {Symbol: "", Title: "Voltage", Description: "Electrical voltage meter"},
+	ThingNetLora:                  {Symbol: "", Title: "LoRa network device", Description: "Generic Long Range network protocol device"},
+	ThingSensorInput:              {Symbol: "", Title: "Input sensor", Description: "General purpose electrical input sensor"},
+	ThingActuatorValveFuel:        {Symbol: "", Title: "Fuel valve", Description: "Electric powered fuel valve"},
+	ThingControlDimmer:            {Symbol: "", Title: "Dimmer", Description: "Light dimmer input device"},
+	ThingControlPushbutton:        {Symbol: "", Title: "Momentary switch", Description: "Momentary push button control input"},
+	ThingControlSwitch:            {Symbol: "", Title: "Input switch", Description: "On or off switch input control"},
+	ThingDeviceBatteryMonitor:     {Symbol: "", Title: "Battery Monitor", Description: "Battery monitor and charge controller"},
+	ThingMeterWaterFlow:           {Symbol: "", Title: "Water flow", Description: "Dedicated water flow-rate meter"},
+	ThingSensorSound:              {Symbol: "", Title: "Sound detector", Description: ""},
+	ThingComputerSatPhone:         {Symbol: "", Title: "Satellite phone", Description: ""},
+	ThingControlKeypad:            {Symbol: "", Title: "Keypad", Description: "Multi-key pad for command input"},
+	ThingMediaAmplifier:           {Symbol: "", Title: "Audio amplifier", Description: "Audio amplifier with volume controls"},
 	ThingActuator:                 {Symbol: "", Title: "Actuator", Description: "Generic actuator"},
+	ThingActuatorDimmer:           {Symbol: "", Title: "Dimmer", Description: "Light dimmer"},
+	ThingActuatorSwitch:           {Symbol: "", Title: "Switch", Description: "An electric powered on/off switch for powering circuits"},
+	ThingActuatorValveWater:       {Symbol: "", Title: "Water valve", Description: "Electric powered water valve"},
+	ThingComputerCellphone:        {Symbol: "", Title: "Cell Phone", Description: "Cellular phone"},
+	ThingNet:                      {Symbol: "", Title: "Network device", Description: "Generic network device"},
+	ThingService:                  {Symbol: "", Title: "Service", Description: "General service for processing data and offering features of interest"},
+	ThingComputerPotsPhone:        {Symbol: "", Title: "Land Line", Description: "Plain Old Telephone System, aka landline"},
+	ThingMediaReceiver:            {Symbol: "", Title: "Receiver", Description: "Audio/video receiver and player"},
+	ThingMeterWind:                {Symbol: "", Title: "Wind", Description: "Dedicated wind meter"},
+	ThingNetBluetooth:             {Symbol: "", Title: "Bluetooth", Description: "Bluetooth radio"},
+	ThingSensorSecurityMotion:     {Symbol: "", Title: "Motion sensor", Description: "Dedicated security sensor detecting motion"},
+	ThingComputerVoipPhone:        {Symbol: "", Title: "VoIP Phone", Description: "Voice over IP phone"},
+	ThingDeviceTime:               {Symbol: "", Title: "Clock", Description: "Time tracking device such as clocks and time chips"},
+	ThingMedia:                    {Symbol: "", Title: "A/V media", Description: "Generic device for audio/video media record or playback"},
+	ThingNetGatewayZwave:          {Symbol: "", Title: "ZWave gateway", Description: "Gateway providing access to ZWave devices"},
+	ThingSensorSecurityDoorWindow: {Symbol: "", Title: "Door/Window sensor", Description: "Dedicated door/window opening security sensor"},
+	ThingMeterFuelFlow:            {Symbol: "", Title: "Fuel flow rate", Description: "Dedicated fuel flow rate metering device"},
+	ThingMeterWater:               {Symbol: "", Title: "Water metering device", Description: "General water metering device"},
+	ThingNetRouter:                {Symbol: "", Title: "Network router", Description: "IP ThingNetwork router providing access to other IP networks"},
+	ThingActuatorRanged:           {Symbol: "", Title: "Ranged actuator", Description: "Generic ranged actuator with a set point"},
+	ThingComputerPC:               {Symbol: "", Title: "PC/Laptop", Description: "Personal computer/laptop"},
+	ThingMediaMicrophone:          {Symbol: "", Title: "Microphone", Description: "Microphone for capturing audio"},
+	ThingMediaTV:                  {Symbol: "", Title: "TV", Description: "Network connected television"},
+	ThingMeterElectric:            {Symbol: "", Title: "", Description: ""},
+	ThingNetSwitch:                {Symbol: "", Title: "Network switch", Description: "Network switch to connect computer devices to the network"},
+	ThingNetWifi:                  {Symbol: "", Title: "Wifi device", Description: "Generic wifi device"},
+	ThingSensorEnvironment:        {Symbol: "", Title: "Environmental sensor", Description: "Environmental sensor with one or more features such as temperature, humidity, etc"},
 	ThingActuatorRelay:            {Symbol: "", Title: "Relay", Description: "Generic relay electrical switch"},
 	ThingApplianceDryer:           {Symbol: "", Title: "Dryer", Description: "Clothing dryer"},
-	ThingControlJoystick:          {Symbol: "", Title: "Joystick", Description: "Flight control stick"},
-	ThingMediaPlayer:              {Symbol: "", Title: "Media player", Description: "CD/DVD/Blueray/USB player of recorded media"},
-	ThingMediaReceiver:            {Symbol: "", Title: "Receiver", Description: "Audio/video receiver and player"},
-	ThingNetWifiAp:                {Symbol: "", Title: "Wifi access point", Description: "Wireless access point for IP networks"},
-	ThingSensorSecurityDoorWindow: {Symbol: "", Title: "Door/Window sensor", Description: "Dedicated door/window opening security sensor"},
-	ThingComputerPotsPhone:        {Symbol: "", Title: "Land Line", Description: "Plain Old Telephone System, aka landline"},
-	ThingMediaCamera:              {Symbol: "", Title: "Camera", Description: "Video camera"},
-	ThingSensorWaterLeak:          {Symbol: "", Title: "Water leak detector", Description: "Dedicated water leak detector"},
-	ThingAppliance:                {Symbol: "", Title: "Appliance", Description: "Appliance to accomplish a particular task for occupant use"},
-	ThingControlPool:              {Symbol: "", Title: "Pool control", Description: "Device for controlling pool settings"},
-	ThingMediaSpeaker:             {Symbol: "", Title: "Connected speakers", Description: "Network connected speakers"},
-	ThingMeterWaterConsumption:    {Symbol: "", Title: "Water consumption meter", Description: "Water consumption meter"},
-	ThingNetRouter:                {Symbol: "", Title: "Network router", Description: "IP ThingNetwork router providing access to other IP networks"},
-	ThingSensor:                   {Symbol: "", Title: "Sensor", Description: "Generic sensor device"},
-	ThingActuatorAlarm:            {Symbol: "", Title: "Alarm", Description: "Siren or light alarm"},
 	ThingApplianceFridge:          {Symbol: "", Title: "Fridge", Description: "Refrigerator appliance"},
-	ThingComputerSatPhone:         {Symbol: "", Title: "Satellite phone", Description: ""},
-	ThingNetGatewayZigbee:         {Symbol: "", Title: "Zigbee gateway", Description: "Gateway providing access to Zigbee devices"},
-	ThingSensorScale:              {Symbol: "", Title: "Scale", Description: "Electronic weigh scale"},
-	ThingSensorSecurityMotion:     {Symbol: "", Title: "Motion sensor", Description: "Dedicated security sensor detecting motion"},
-	ThingActuatorBeacon:           {Symbol: "", Title: "Beacon", Description: "Location beacon"},
-	ThingActuatorValve:            {Symbol: "", Title: "Valve", Description: "Electric powered valve for fluids or gas"},
-	ThingComputerMemory:           {Symbol: "", Title: "Memory", Description: "Stand-alone memory device such as eeprom or iButtons"},
-	ThingMediaMicrophone:          {Symbol: "", Title: "Microphone", Description: "Microphone for capturing audio"},
-	ThingMeterFuelLevel:           {Symbol: "", Title: "Fuel level", Description: "Dedicated fuel level metering device"},
-	ThingMeterWaterLevel:          {Symbol: "", Title: "Water level", Description: "Dedicated water level meter"},
-	ThingActuatorMotor:            {Symbol: "", Title: "Motor", Description: "Motor driven actuator, such as garage door, blinds, tv lifts"},
-	ThingDeviceTime:               {Symbol: "", Title: "Clock", Description: "Time tracking device such as clocks and time chips"},
-	ThingNetLoraP2P:               {Symbol: "", Title: "LoRa P2P", Description: "LoRa Peer-to-peer network device"},
-	ThingSensorSecurity:           {Symbol: "", Title: "Security", Description: "Generic security sensor"},
-	ThingSensorSound:              {Symbol: "", Title: "Sound detector", Description: ""},
-	ThingActuatorLock:             {Symbol: "", Title: "Lock", Description: "Electronic door lock"},
-	ThingDeviceBatteryMonitor:     {Symbol: "", Title: "Battery Monitor", Description: "Battery monitor and charge controller"},
-	ThingMediaTV:                  {Symbol: "", Title: "TV", Description: "Network connected television"},
-	ThingNetGatewayCoap:           {Symbol: "", Title: "CoAP gateway", Description: "Gateway providing access to CoAP devices"},
-	ThingSensorMulti:              {Symbol: "", Title: "Multi sensor", Description: "Sense multiple inputs"},
-	ThingSensorSecurityGlass:      {Symbol: "", Title: "Glass sensor", Description: "Dedicated sensor for detecting breaking of glass"},
-	ThingNetLoraGateway:           {Symbol: "", Title: "LoRaWAN gateway", Description: "Gateway providing access to LoRa devices"},
-	ThingComputer:                 {Symbol: "", Title: "Computing Device", Description: "General purpose computing device"},
-	ThingDevice:                   {Symbol: "", Title: "Device", Description: "Device of unknown purpose"},
-	ThingMeter:                    {Symbol: "", Title: "Meter", Description: "General metering device"},
-	ThingMeterWaterFlow:           {Symbol: "", Title: "Water flow", Description: "Dedicated water flow-rate meter"},
-	ThingMeterWind:                {Symbol: "", Title: "Wind", Description: "Dedicated wind meter"},
-	ThingNetSwitch:                {Symbol: "", Title: "Network switch", Description: "Network switch to connect computer devices to the network"},
-	ThingSensorSmoke:              {Symbol: "", Title: "Smoke detector", Description: ""},
-	ThingActuatorOutput:           {Symbol: "", Title: "Output", Description: "General purpose electrical output signal"},
-	ThingActuatorValveWater:       {Symbol: "", Title: "Water valve", Description: "Electric powered water valve"},
-	ThingComputerVoipPhone:        {Symbol: "", Title: "VoIP Phone", Description: "Voice over IP phone"},
-	ThingMeterFuel:                {Symbol: "", Title: "Fuel metering device", Description: "General fuel metering device"},
-	ThingMeterFuelFlow:            {Symbol: "", Title: "Fuel flow rate", Description: "Dedicated fuel flow rate metering device"},
-	ThingNetGatewayZwave:          {Symbol: "", Title: "ZWave gateway", Description: "Gateway providing access to ZWave devices"},
-	ThingActuatorValveFuel:        {Symbol: "", Title: "Fuel valve", Description: "Electric powered fuel valve"},
-	ThingMediaRadio:               {Symbol: "", Title: "Radio", Description: "AM or FM radio receiver"},
-	ThingActuatorRanged:           {Symbol: "", Title: "Ranged actuator", Description: "Generic ranged actuator with a set point"},
-	ThingActuatorSwitch:           {Symbol: "", Title: "Switch", Description: "An electric powered on/off switch for powering circuits"},
-	ThingComputerEmbedded:         {Symbol: "", Title: "Embedded System", Description: "Embedded computing device"},
-	ThingDeviceIndicator:          {Symbol: "", Title: "Indicator", Description: "Visual or audio indicator device"},
-	ThingSensorEnvironment:        {Symbol: "", Title: "Environmental sensor", Description: "Environmental sensor with one or more features such as temperature, humidity, etc"},
-	ThingNet:                      {Symbol: "", Title: "Network device", Description: "Generic network device"},
-	ThingNetBluetooth:             {Symbol: "", Title: "Bluetooth", Description: "Bluetooth radio"},
-	ThingComputerTablet:           {Symbol: "", Title: "Tablet", Description: "Tablet computer"},
-	ThingControlIrrigation:        {Symbol: "", Title: "Irrigation control", Description: "Device for control of an irrigation system"},
 	ThingControlToggle:            {Symbol: "", Title: "Toggle switch", Description: "Toggle switch input control"},
-	ThingMeterElectric:            {Symbol: "", Title: "", Description: ""},
-	ThingMeterElectricEnergy:      {Symbol: "", Title: "Electric energy", Description: "Electrical energy meter"},
-	ThingMeterElectricVoltage:     {Symbol: "", Title: "Voltage", Description: "Electrical voltage meter"},
-	ThingNetGatewayInsteon:        {Symbol: "", Title: "Insteon gateway", Description: "Gateway providing access to Insteon devices"},
-	ThingNetLora:                  {Symbol: "", Title: "LoRa network device", Description: "Generic Long Range network protocol device"},
-	ThingSensorThermometer:        {Symbol: "", Title: "Thermometer", Description: "Environmental thermometer"},
-	ThingApplianceFreezer:         {Symbol: "", Title: "Freezer", Description: "Refrigerator freezer"},
-	ThingComputerPC:               {Symbol: "", Title: "PC/Laptop", Description: "Personal computer/laptop"},
-	ThingControlSwitch:            {Symbol: "", Title: "Input switch", Description: "On or off switch input control"},
-	ThingControlThermostat:        {Symbol: "", Title: "Thermostat", Description: "Thermostat HVAC control"},
-	ThingMeterWater:               {Symbol: "", Title: "Water metering device", Description: "General water metering device"},
-	ThingNetGatewayOnewire:        {Symbol: "", Title: "1-Wire gateway", Description: "Gateway providing access to 1-wire devices"},
-	ThingService:                  {Symbol: "", Title: "Service", Description: "General service for processing data and offering features of interest"},
-	ThingControlDimmer:            {Symbol: "", Title: "Dimmer", Description: "Light dimmer input device"},
-	ThingControlKeypad:            {Symbol: "", Title: "Keypad", Description: "Multi-key pad for command input"},
-	ThingMedia:                    {Symbol: "", Title: "A/V media", Description: "Generic device for audio/video media record or playback"},
-	ThingMediaAmplifier:           {Symbol: "", Title: "Audio amplifier", Description: "Audio amplifier with volume controls"},
-	ThingMeterElectricCurrent:     {Symbol: "", Title: "Electric current", Description: "Electrical current meter"},
-	ThingActuatorLight:            {Symbol: "", Title: "Light", Description: "Smart LED or other light"},
-	ThingApplianceDishwasher:      {Symbol: "", Title: "Dishwasher", Description: "Dishwasher"},
-	ThingControlClimate:           {Symbol: "", Title: "Climate control", Description: "Device for controlling climate of a space"},
-	ThingControlPushbutton:        {Symbol: "", Title: "Momentary switch", Description: "Momentary push button control input"},
-	ThingSensorInput:              {Symbol: "", Title: "Input sensor", Description: "General purpose electrical input sensor"},
+	ThingNetGatewayCoap:           {Symbol: "", Title: "CoAP gateway", Description: "Gateway providing access to CoAP devices"},
+  ThingSensorEnvironment: {Symbol: "", Title: "Environmental sensor", Description: "Environmental sensor with one or more features such as temperature, humidity, etc"},
+  ThingActuatorRelay: {Symbol: "", Title: "Relay", Description: "Generic relay electrical switch"},
+  ThingApplianceFridge: {Symbol: "", Title: "Fridge", Description: "Refrigerator appliance"},
+  ThingControlToggle: {Symbol: "", Title: "Toggle switch", Description: "Toggle switch input control"},
+  ThingNetGatewayCoap: {Symbol: "", Title: "CoAP gateway", Description: "Gateway providing access to CoAP devices"},
 }
 
-// type: UnitClasses
-// version: 0.1
-// generated: 26 Dec 24 11:52 PST
-// source: github.com/hiveot/hub/api/vocab/ht-unit-classes.yaml
-// namespace: ht
-const (
+
 	UnitAmpere           = "hiveot:unit:ampere"
 	UnitCandela          = "hiveot:unit:candela"
 	UnitCelcius          = "hiveot:unit:celcius"
@@ -534,109 +598,51 @@ const (
 	UnitSecond           = "hiveot:unit:second"
 	UnitVolt             = "hiveot:unit:volt"
 	UnitWatt             = "hiveot:unit:watt"
-)
-
-// end of UnitClasses
-
-// UnitClassesMap maps @type to symbol, title and description
-var UnitClassesMap = map[string]struct {
+  UnitPound = "hiveot:unit:pound"
+ of measurement for amount of
+  UnitPpm = "hiveot:unit:ppm"
+  UnitRadian = "hiveot:unit:radian"
+  UnitSecond = "hiveot:unit:second"
+  UnitVolt = "hiveot:unit:volt"
 	Symbol      string
 	Title       string
 	Description string
 }{
-	UnitKilogram:         {Symbol: "kg", Title: "Kilogram", Description: ""},
-	UnitRadian:           {Symbol: "", Title: "Radian", Description: "Angle in 0-2pi"},
-	UnitLux:              {Symbol: "lx", Title: "Lux", Description: "SI unit illuminance. Equal to 1 lumen per square meter."},
-	UnitMilliSecond:      {Symbol: "ms", Title: "millisecond", Description: "Unit of time in milli-seconds. Equal to 1/1000 of a second."},
-	UnitAmpere:           {Symbol: "A", Title: "Ampere", Description: "Electrical current in Amperes based on the elementary charge flow per second"},
-	UnitKelvin:           {Symbol: "K", Title: "Kelvin", Description: "SI unit of thermodynamic temperature. 0 K represents absolute zero, the absence of all heat. 0 C equals +273.15K"},
-	UnitLumen:            {Symbol: "lm", Title: "Lumen", Description: "SI unit luminous flux. Measure of perceived power of visible light. 1lm = 1 cd steradian"},
-	UnitSecond:           {Symbol: "s", Title: "Second", Description: "SI unit of time based on caesium frequency"},
-	UnitKilowattHour:     {Symbol: "kWh", Title: "Kilowatt-hour", Description: "non-SI unit of energy equivalent to 3.6 megajoules."},
-	UnitMillibar:         {Symbol: "mbar", Title: "millibar", Description: "Metric unit of pressure. 1/1000th of a bar. Equal to 100 pascals. Amount of force it takes to move an object weighing a gram, one centimeter in one second."},
-	UnitPSI:              {Symbol: "PSI", Title: "PSI", Description: "Unit of pressure. Pounds of force per square inch. 1PSI equals 6984 Pascals."},
-	UnitLiter:            {Symbol: "l", Title: "Liter", Description: "SI unit of volume equivalent to 1 cubic decimeter."},
-	UnitPound:            {Symbol: "lbs", Title: "Pound", Description: "Imperial unit of weight. Equivalent to 0.453592 Kg. 1 Kg is 2.205 lbs"},
-	UnitWatt:             {Symbol: "W", Title: "Watt", Description: "SI unit of power. Equal to 1 joule per second; or work performed when a current of 1 ampere flows across an electric potential of one volt."},
-	UnitVolt:             {Symbol: "V", Title: "Volt", Description: "SI unit of electric potential; Energy consumption of 1 joule per electric charge of one coulomb"},
-	UnitCount:            {Symbol: "(N)", Title: "Count", Description: ""},
-	UnitFoot:             {Symbol: "ft", Title: "Foot", Description: "Imperial unit of distance. 1 foot equals 0.3048 meters"},
-	UnitMilesPerHour:     {Symbol: "mph", Title: "Miles per hour", Description: "Speed in miles per hour"},
-	UnitMercury:          {Symbol: "Hg", Title: "Mercury", Description: "Unit of atmospheric pressure in the United States. 1 Hg equals 33.8639 mbar."},
-	UnitPercent:          {Symbol: "%", Title: "Percent", Description: "Fractions of 100"},
-	UnitCelcius:          {Symbol: "°C", Title: "Celcius", Description: "Temperature in Celcius"},
-	UnitCandela:          {Symbol: "cd", Title: "Candela", Description: "SI unit of luminous intensity in a given direction. Roughly the same brightness as the common candle."},
 	UnitDegree:           {Symbol: "degree", Title: "Degree", Description: "Angle in 0-360 degrees"},
-	UnitMeter:            {Symbol: "m", Title: "Meter", Description: "Distance in meters. 1m=c/299792458"},
-	UnitMeterPerSecond:   {Symbol: "m/s", Title: "Meters per second", Description: "SI unit of speed in meters per second"},
+	UnitMillibar:         {Symbol: "mbar", Title: "millibar", Description: "Metric unit of pressure. 1/1000th of a bar. Equal to 100 pascals. Amount of force it takes to move an object weighing a gram, one centimeter in one second."},
+	UnitWatt:             {Symbol: "W", Title: "Watt", Description: "SI unit of power. Equal to 1 joule per second; or work performed when a current of 1 ampere flows across an electric potential of one volt."},
+	UnitKelvin:           {Symbol: "K", Title: "Kelvin", Description: "SI unit of thermodynamic temperature. 0 K represents absolute zero, the absence of all heat. 0 C equals +273.15K"},
 	UnitMole:             {Symbol: "mol", Title: "Mole", Description: "SI unit of measurement for amount of substance. Eg, molecules."},
-	UnitPascal:           {Symbol: "Pa", Title: "Pascal", Description: "SI unit of pressure. Equal to 1 newton of force applied over 1 square meter."},
-	UnitPpm:              {Symbol: "ppm", Title: "PPM", Description: "Parts per million"},
-	UnitFahrenheit:       {Symbol: "F", Title: "Fahrenheit", Description: "Temperature in Fahrenheit"},
-	UnitGallon:           {Symbol: "gl", Title: "Gallon", Description: "Unit of volume. 1 Imperial gallon is 4.54609 liters. 1 US liquid gallon is 3.78541 liters. 1 US dry gallon is 4.405 liters. "},
+	UnitPSI:              {Symbol: "PSI", Title: "PSI", Description: "Unit of pressure. Pounds of force per square inch. 1PSI equals 6984 Pascals."},
+	UnitSecond:           {Symbol: "s", Title: "Second", Description: "SI unit of time based on caesium frequency"},
+	UnitCount:            {Symbol: "(N)", Title: "Count", Description: ""},
+	UnitKilogram:         {Symbol: "kg", Title: "Kilogram", Description: ""},
 	UnitKilometerPerHour: {Symbol: "kph", Title: "Km per hour", Description: "Speed in kilometers per hour"},
-}
-
-// type: ActionClasses
-// version: 0.1
-// generated: 26 Dec 24 11:52 PST
-// source: github.com/hiveot/hub/api/vocab/ht-action-classes.yaml
-// namespace: ht
-const (
-	ActionDimmer              = "hiveot:action:dimmer"
-	ActionDimmerDecrement     = "hiveot:action:dimmer:decrement"
-	ActionDimmerIncrement     = "hiveot:action:dimmer:increment"
-	ActionDimmerSet           = "hiveot:action:dimmer:set"
-	ActionMedia               = "hiveot:action:media"
-	ActionMediaMute           = "hiveot:action:media:mute"
-	ActionMediaNext           = "hiveot:action:media:next"
-	ActionMediaPause          = "hiveot:action:media:pause"
-	ActionMediaPlay           = "hiveot:action:media:play"
-	ActionMediaPrevious       = "hiveot:action:media:previous"
-	ActionMediaUnmute         = "hiveot:action:media:unmute"
-	ActionMediaVolume         = "hiveot:action:media:volume"
-	ActionMediaVolumeDecrease = "hiveot:action:media:volume:decrease"
-	ActionMediaVolumeIncrease = "hiveot:action:media:volume:increase"
-	ActionSwitch              = "hiveot:action:switch"
-	ActionSwitchOnOff         = "hiveot:action:switch:onoff"
-	ActionSwitchToggle        = "hiveot:action:switch:toggle"
-	ActionThingDisable        = "hiveot:action:thing:disable"
-	ActionThingEnable         = "hiveot:action:thing:enable"
-	ActionThingStart          = "hiveot:action:thing:start"
-	ActionThingStop           = "hiveot:action:thing:stop"
-	ActionValveClose          = "hiveot:action:valve:close"
-	ActionValveOpen           = "hiveot:action:valve:open"
-)
-
-// end of ActionClasses
-
-// ActionClassesMap maps @type to symbol, title and description
-var ActionClassesMap = map[string]struct {
-	Symbol      string
-	Title       string
-	Description string
-}{
-	ActionMediaVolumeIncrease: {Symbol: "", Title: "Increase volume", Description: "Increase volume"},
-	ActionMediaVolumeDecrease: {Symbol: "", Title: "Decrease volume", Description: "Decrease volume"},
-	ActionThingEnable:         {Symbol: "", Title: "Enable", Description: "Action to enable a thing"},
-	ActionValveOpen:           {Symbol: "", Title: "Open valve", Description: "Action to open the valve"},
-	ActionMediaPause:          {Symbol: "", Title: "Pause", Description: "Pause playback"},
-	ActionMediaPlay:           {Symbol: "", Title: "Play", Description: "Start or continue playback"},
-	ActionMediaVolume:         {Symbol: "", Title: "Volume", Description: "Set volume level"},
-	ActionMediaUnmute:         {Symbol: "", Title: "Unmute", Description: "Unmute audio"},
-	ActionThingStart:          {Symbol: "", Title: "Start", Description: "Start running a task"},
-	ActionValveClose:          {Symbol: "", Title: "Close valve", Description: "Action to close the valve"},
-	ActionDimmerDecrement:     {Symbol: "", Title: "Lower dimmer", Description: ""},
-	ActionDimmerIncrement:     {Symbol: "", Title: "Increase dimmer", Description: ""},
-	ActionDimmerSet:           {Symbol: "", Title: "Set dimmer", Description: "Action to set the dimmer value"},
-	ActionSwitch:              {Symbol: "", Title: "Switch", Description: "General switch action"},
-	ActionSwitchOnOff:         {Symbol: "", Title: "Set On/Off switch", Description: "Action to set the switch on/off state"},
-	ActionMedia:               {Symbol: "", Title: "Media control", Description: "Commands to control media recording and playback"},
-	ActionMediaNext:           {Symbol: "", Title: "Next", Description: "Next track or station"},
-	ActionMediaPrevious:       {Symbol: "", Title: "Previous", Description: "Previous track or station"},
-	ActionThingDisable:        {Symbol: "", Title: "Disable", Description: "Action to disable a thing"},
-	ActionThingStop:           {Symbol: "", Title: "Stop", Description: "Stop a running task"},
-	ActionMediaMute:           {Symbol: "", Title: "Mute", Description: "Mute audio"},
-	ActionDimmer:              {Symbol: "", Title: "Dimmer", Description: "General dimmer action"},
-	ActionSwitchToggle:        {Symbol: "", Title: "Toggle switch", Description: "Action to toggle the switch"},
+	UnitMeter:            {Symbol: "m", Title: "Meter", Description: "Distance in meters. 1m=c/299792458"},
+	UnitGallon:           {Symbol: "gl", Title: "Gallon", Description: "Unit of volume. 1 Imperial gallon is 4.54609 liters. 1 US liquid gallon is 3.78541 liters. 1 US dry gallon is 4.405 liters. "},
+	UnitLux:              {Symbol: "lx", Title: "Lux", Description: "SI unit illuminance. Equal to 1 lumen per square meter."},
+	UnitPpm:              {Symbol: "ppm", Title: "PPM", Description: "Parts per million"},
+	UnitRadian:           {Symbol: "", Title: "Radian", Description: "Angle in 0-2pi"},
+	UnitCelcius:          {Symbol: "°C", Title: "Celcius", Description: "Temperature in Celcius"},
+	UnitPercent:          {Symbol: "%", Title: "Percent", Description: "Fractions of 100"},
+	UnitPound:            {Symbol: "lbs", Title: "Pound", Description: "Imperial unit of weight. Equivalent to 0.453592 Kg. 1 Kg is 2.205 lbs"},
+	UnitVolt:             {Symbol: "V", Title: "Volt", Description: "SI unit of electric potential; Energy consumption of 1 joule per electric charge of one coulomb"},
+	UnitKilowattHour:     {Symbol: "kWh", Title: "Kilowatt-hour", Description: "non-SI unit of energy equivalent to 3.6 megajoules."},
+	UnitLiter:            {Symbol: "l", Title: "Liter", Description: "SI unit of volume equivalent to 1 cubic decimeter."},
+	UnitMilliSecond:      {Symbol: "ms", Title: "millisecond", Description: "Unit of time in milli-seconds. Equal to 1/1000 of a second."},
+	UnitFahrenheit:       {Symbol: "F", Title: "Fahrenheit", Description: "Temperature in Fahrenheit"},
+	UnitMercury:          {Symbol: "Hg", Title: "Mercury", Description: "Unit of atmospheric pressure in the United States. 1 Hg equals 33.8639 mbar."},
+	UnitMilesPerHour:     {Symbol: "mph", Title: "Miles per hour", Description: "Speed in miles per hour"},
+	UnitPascal:           {Symbol: "Pa", Title: "Pascal", Description: "SI unit of pressure. Equal to 1 newton of force applied over 1 square meter."},
+	UnitAmpere:           {Symbol: "A", Title: "Ampere", Description: "Electrical current in Amperes based on the elementary charge flow per second"},
+	UnitCandela:          {Symbol: "cd", Title: "Candela", Description: "SI unit of luminous intensity in a given direction. Roughly the same brightness as the common candle."},
+	UnitFoot:             {Symbol: "ft", Title: "Foot", Description: "Imperial unit of distance. 1 foot equals 0.3048 meters"},
+	UnitLumen:            {Symbol: "lm", Title: "Lumen", Description: "SI unit luminous flux. Measure of perceived power of visible light. 1lm = 1 cd steradian"},
+	UnitMeterPerSecond:   {Symbol: "m/s", Title: "Meters per second", Description: "SI unit of speed in meters per second"},
+  UnitPascal: {Symbol: "Pa", Title: "Pascal", Description: "SI unit of pressure. Equal to 1 newton of force applied over 1 square meter."},
+  UnitAmpere: {Symbol: "A", Title: "Ampere", Description: "Electrical current in Amperes based on the elementary charge flow per second"},
+  UnitCandela: {Symbol: "cd", Title: "Candela", Description: "SI unit of luminous intensity in a given direction. Roughly the same brightness as the common candle."},
+  UnitFoot: {Symbol: "ft", Title: "Foot", Description: "Imperial unit of distance. 1 foot equals 0.3048 meters"},
+  UnitLumen: {Symbol: "lm", Title: "Lumen", Description: "SI unit luminous flux. Measure of perceived power of visible light. 1lm = 1 cd steradian"},
+  UnitMeterPerSecond: {Symbol: "m/s", Title: "Meters per second", Description: "SI unit of speed in meters per second"},
 }

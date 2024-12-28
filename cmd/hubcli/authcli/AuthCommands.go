@@ -1,17 +1,14 @@
 package authcli
 
 import (
-	"errors"
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/wot/protocolclients"
+	"github.com/hiveot/hub/transports"
 	"golang.org/x/exp/rand"
 	"log/slog"
-	"os"
-	"path"
 	"strings"
 	"time"
 
@@ -19,7 +16,7 @@ import (
 )
 
 // AuthAddUserCommand adds a user
-func AuthAddUserCommand(hc *clients.IConsumer) *cli.Command {
+func AuthAddUserCommand(hc *transports.IConsumerConnection) *cli.Command {
 	displayName := ""
 	role := ""
 	rolesTxt := fmt.Sprintf("%s, %s, %s, %s",
@@ -60,7 +57,7 @@ func AuthAddUserCommand(hc *clients.IConsumer) *cli.Command {
 }
 
 // AuthAddServiceCommand adds a service with key and auth token
-func AuthAddServiceCommand(hc *clients.IConsumer, certsDir *string) *cli.Command {
+func AuthAddServiceCommand(hc *transports.IConsumerConnection, certsDir *string) *cli.Command {
 	displayName := ""
 
 	return &cli.Command{
@@ -89,7 +86,7 @@ func AuthAddServiceCommand(hc *clients.IConsumer, certsDir *string) *cli.Command
 }
 
 // AuthListClientsCommand lists user profiles
-func AuthListClientsCommand(hc *clients.IConsumer) *cli.Command {
+func AuthListClientsCommand(hc *transports.IConsumerConnection) *cli.Command {
 	return &cli.Command{
 		Name:     "lu",
 		Usage:    "List users",
@@ -106,7 +103,7 @@ func AuthListClientsCommand(hc *clients.IConsumer) *cli.Command {
 }
 
 // AuthRemoveClientCommand removes a user
-func AuthRemoveClientCommand(hc *clients.IConsumer) *cli.Command {
+func AuthRemoveClientCommand(hc *transports.IConsumerConnection) *cli.Command {
 	return &cli.Command{
 		Name:      "rmu",
 		Usage:     "Remove a user. (careful, no confirmation)",
@@ -125,7 +122,7 @@ func AuthRemoveClientCommand(hc *clients.IConsumer) *cli.Command {
 }
 
 // AuthSetPasswordCommand sets a client's password
-func AuthSetPasswordCommand(hc *clients.IConsumer) *cli.Command {
+func AuthSetPasswordCommand(hc *transports.IConsumerConnection) *cli.Command {
 	return &cli.Command{
 		Name:      "setpass",
 		Usage:     "Set password. (careful, no confirmation)",
@@ -146,7 +143,7 @@ func AuthSetPasswordCommand(hc *clients.IConsumer) *cli.Command {
 }
 
 // AuthRoleCommand changes a user's role
-func AuthRoleCommand(hc *clients.IConsumer) *cli.Command {
+func AuthRoleCommand(hc *transports.IConsumerConnection) *cli.Command {
 	return &cli.Command{
 		Name:      "setrole",
 		Usage:     "Set a new role",
@@ -167,7 +164,7 @@ func AuthRoleCommand(hc *clients.IConsumer) *cli.Command {
 
 // HandleAddUser adds a user and displays a temporary password
 func HandleAddUser(
-	hc clients.IConsumer, loginID string, displayName string, role string) (err error) {
+	hc transports.IConsumerConnection, loginID string, displayName string, role string) (err error) {
 
 	newPassword := GeneratePassword(9, true)
 
@@ -192,24 +189,24 @@ func HandleAddUser(
 //	displayName is optional
 //	certsDir with directory to store keys/token
 func HandleAddService(
-	hc clients.IConsumer, serviceID string, displayName string, certsDir string) (err error) {
+	hc transports.IConsumerConnection, serviceID string, displayName string, certsDir string) (err error) {
 	var kp keys.IHiveKey
 	//TODO: use standardized extensions from launcher
-	keyFile := serviceID + ".key"
+	//keyFile := serviceID + ".key"
 
 	// if a key exists, use it
-	keyPath := path.Join(certsDir, keyFile)
-	if _, err = os.Stat(keyPath); errors.Is(err, os.ErrNotExist) {
-		kp = hc.CreateKeyPair()
-		err = kp.ExportPrivateToFile(keyPath)
-		pubKeyPath := path.Join(certsDir, serviceID+".pub")
-		err = kp.ExportPublicToFile(pubKeyPath)
-		fmt.Printf("New private/public keys written to file '%s'\n", keyPath)
-	} else {
-		kp = hc.CreateKeyPair()
-		err = kp.ImportPrivateFromFile(keyPath)
-		fmt.Printf("Private key loaded from file '%s'\n", keyPath)
-	}
+	//keyPath := path.Join(certsDir, keyFile)
+	//if _, err = os.Stat(keyPath); errors.Is(err, os.ErrNotExist) {
+	//	kp = hc.CreateKeyPair()
+	//	err = kp.ExportPrivateToFile(keyPath)
+	//	pubKeyPath := path.Join(certsDir, serviceID+".pub")
+	//	err = kp.ExportPublicToFile(pubKeyPath)
+	//	fmt.Printf("New private/public keys written to file '%s'\n", keyPath)
+	//} else {
+	//	kp = hc.CreateKeyPair()
+	//	err = kp.ImportPrivateFromFile(keyPath)
+	//	fmt.Printf("Private key loaded from file '%s'\n", keyPath)
+	//}
 	if err != nil {
 		slog.Error("Failed creating or loading key", "err", err.Error())
 		return
@@ -242,7 +239,7 @@ func HandleAddService(
 }
 
 // HandleListClients shows a list of user profiles
-func HandleListClients(hc clients.IConsumer) (err error) {
+func HandleListClients(hc transports.IConsumerConnection) (err error) {
 
 	profileList, err := authn.AdminGetProfiles(hc)
 
@@ -277,7 +274,7 @@ func HandleListClients(hc clients.IConsumer) (err error) {
 }
 
 // HandleRemoveClient removes a user
-func HandleRemoveClient(hc clients.IConsumer, clientID string) (err error) {
+func HandleRemoveClient(hc transports.IConsumerConnection, clientID string) (err error) {
 	err = authn.AdminRemoveClient(hc, clientID)
 
 	if err != nil {
@@ -293,7 +290,7 @@ func HandleRemoveClient(hc clients.IConsumer, clientID string) (err error) {
 //
 //	loginID is the ID or email of the user
 //	newPassword can be empty to auto-generate a password
-func HandleSetPassword(hc clients.IConsumer, loginID string, newPassword string) error {
+func HandleSetPassword(hc transports.IConsumerConnection, loginID string, newPassword string) error {
 	if newPassword == "" {
 		newPassword = GeneratePassword(9, true)
 	}
@@ -311,7 +308,7 @@ func HandleSetPassword(hc clients.IConsumer, loginID string, newPassword string)
 //
 //	loginID is the ID or email of the user
 //	newPassword can be empty to auto-generate a password
-func HandleSetRole(hc clients.IConsumer, loginID string, newRole string) error {
+func HandleSetRole(hc transports.IConsumerConnection, loginID string, newRole string) error {
 	err := authz.AdminSetClientRole(hc, loginID, authz.ClientRole(newRole))
 
 	if err != nil {

@@ -30,7 +30,7 @@ import (
 type IdProvService struct {
 
 	// Hub connection
-	hc transports.IClientConnection
+	hc transports.IAgentConnection
 	// the manage service
 	ManageIdProv *ManageIdProvService
 
@@ -50,7 +50,7 @@ type IdProvService struct {
 // 3. Start the http request server
 // 4. start the security check for rogue DNS-SD records
 // 5. start DNS-SD discovery server
-func (svc *IdProvService) Start(hc transports.IClientConnection) (err error) {
+func (svc *IdProvService) Start(hc transports.IAgentConnection) (err error) {
 	slog.Info("Starting the provisioning service", "clientID", hc.GetClientID())
 	svc.hc = hc
 	//svc.Stop()

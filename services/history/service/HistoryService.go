@@ -24,7 +24,7 @@ type HistoryService struct {
 
 	agentID string
 	// the pubsub service to subscribe to event
-	hc transports.IClientConnection
+	hc transports.IAgentConnection
 	// optional handling of pubsub events. nil if not used
 	//subEventHandler *PubSubEventHandler
 	// handler that adds history to the store
@@ -38,7 +38,7 @@ func (svc *HistoryService) GetAddHistory() *AddHistory {
 }
 
 // Start using the history service
-func (svc *HistoryService) Start(hc transports.IClientConnection) (err error) {
+func (svc *HistoryService) Start(hc transports.IAgentConnection) (err error) {
 	slog.Info("Starting HistoryService", "clientID", hc.GetClientID())
 
 	// setup
