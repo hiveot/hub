@@ -22,9 +22,11 @@ func GenThingConstantsFromTD(l *utils.SL, thingTitleID string, td1 *td.TD) {
 	// thing identifiers
 	l.Add("// %sAgentID is the account ID of the agent managing the Thing.", thingTitleID)
 	l.Add("const %sAgentID = \"%s\"", thingTitleID, agentID)
+	l.Add("")
 	l.Add("// %sServiceID is the thingID of the device/service as used by agents.", thingTitleID)
 	l.Add("// Agents use this to publish events and subscribe to actions")
 	l.Add("const %sServiceID = \"%s\"", thingTitleID, serviceID)
+	l.Add("")
 	l.Add("// %sDThingID is the Digitwin thingID as used by consumers. Digitwin adds the dtw:{agent} prefix to the serviceID", thingTitleID)
 	l.Add("// Consumers use this to publish actions and subscribe to events")
 	l.Add("const %sDThingID = \"%s\"", thingTitleID, dThingID)

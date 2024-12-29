@@ -99,10 +99,10 @@ func (test *TestServer) AddConnectConsumer(
 
 	password := clientID
 	err := test.Runtime.AuthnSvc.AdminSvc.AddConsumer(clientID,
-		authn.AdminAddConsumerArgs{clientID, "my name", password})
+		authn.AdminAddConsumerArgs{ClientID: clientID, DisplayName: "my name", Password: password})
 	if err == nil {
 		err = test.Runtime.AuthzSvc.SetClientRole(clientID,
-			authz.AdminSetClientRoleArgs{clientID, clientRole})
+			authz.AdminSetClientRoleArgs{ClientID: clientID, Role: clientRole})
 	}
 	if err != nil {
 		panic("Failed adding client:" + err.Error())
@@ -123,11 +123,11 @@ func (test *TestServer) AddConnectConsumer(
 func (test *TestServer) AddConnectAgent(agentID string) (cl transports.IAgentConnection, token string) {
 
 	token, err := test.Runtime.AuthnSvc.AdminSvc.AddAgent(agentID,
-		authn.AdminAddAgentArgs{agentID, "agent name", ""})
+		authn.AdminAddAgentArgs{ClientID: agentID, DisplayName: "agent name"})
 
 	if err == nil {
 		err = test.Runtime.AuthzSvc.SetClientRole(agentID,
-			authz.AdminSetClientRoleArgs{agentID, authz.ClientRoleAgent})
+			authz.AdminSetClientRoleArgs{ClientID: agentID, Role: authz.ClientRoleAgent})
 	}
 	if err != nil {
 		panic("AddConnectAgent: Failed adding client:" + err.Error())
@@ -155,10 +155,10 @@ func (test *TestServer) AddConnectService(serviceID string) (
 	cl transports.IAgentConnection, token string) {
 
 	token, err := test.Runtime.AuthnSvc.AdminSvc.AddService(serviceID,
-		authn.AdminAddServiceArgs{serviceID, "service name", ""})
+		authn.AdminAddServiceArgs{ClientID: serviceID, DisplayName: "service name"})
 	if err == nil {
 		err = test.Runtime.AuthzSvc.SetClientRole(serviceID,
-			authz.AdminSetClientRoleArgs{serviceID, authz.ClientRoleService})
+			authz.AdminSetClientRoleArgs{ClientID: serviceID, Role: authz.ClientRoleService})
 	}
 	if err != nil {
 		panic("AddConnectService: Failed adding client:" + err.Error())
