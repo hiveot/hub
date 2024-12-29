@@ -1,11 +1,12 @@
 package service
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
+	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot/exposedthing"
+	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -363,10 +364,9 @@ func (igw *IsyGatewayThing) MakeTD() *td.TD {
 //}
 
 // PubTD read and publishes the gateway's TD
-func (svc *IsyGatewayThing) PubTD(hc clients.IAgent) (err error) {
+func (svc *IsyGatewayThing) PubTD(hc transports.IAgentConnection) (err error) {
 	td := svc.MakeTD()
-	tdJSON, _ := json.Marshal(td)
-	err = hc.PubTD(td.ID, string(tdJSON))
+	err = hc.PubTD(td)
 	if err != nil {
 		err = fmt.Errorf("failed publishing ISY gateway TD: %w", err)
 		slog.Error(err.Error())

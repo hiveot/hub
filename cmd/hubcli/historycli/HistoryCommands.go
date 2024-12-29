@@ -2,10 +2,8 @@ package historycli
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/services/history/historyapi"
 	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/wot"
 	"github.com/urfave/cli/v2"
 )
 
@@ -126,17 +124,18 @@ func HandleListEvents(hc transports.IConsumerConnection, dThingID string, name s
 	count := 0
 	for msg, valid, err := cursor.Last(); err == nil && valid && count < limit; msg, valid, err = cursor.Prev() {
 		count++
-		value := msg.DataAsText()
+		value := msg.ToString()
 		// show number of properties
 		//if msg.Name == vocab.EventNameProperties {
 		//	props := make(map[string]interface{})
 		//	_ = utils.DecodeAsObject(msg.Data, &props)
 		//	value = fmt.Sprintf("(%d properties)", len(props))
 		//}
-
+		// FIXME: reformat timestmp
+		updated := msg.Created
 		fmt.Printf("%-30s %-30s %-20.20s %-30.30s\n",
 			msg.ThingID,
-			msg.GetUpdated(),
+			updated,
 			msg.Name,
 			value,
 		)

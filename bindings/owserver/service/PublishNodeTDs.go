@@ -1,9 +1,9 @@
 package service
 
 import (
-	"encoding/json"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
+	"github.com/hiveot/hub/wot/td"
 )
 
 // CreateTDFromNode converts the 1-wire node into a TD that describes the node.
@@ -66,7 +66,7 @@ func (svc *OWServerBinding) CreateTDFromNode(node *eds.OneWireNode) (tdoc *td.TD
 			// non-sensors are attributes. Writable attributes are configuration.
 			prop.ReadOnly = !attr.Writable
 			if attrInfo.Enum != nil {
-				prop.SetEnumValues(attrInfo.Enum)
+				prop.OneOf = attrInfo.Enum
 			}
 		}
 		if attrInfo.IsEvent {
@@ -126,9 +126,8 @@ func (svc *OWServerBinding) PollNodes() ([]*eds.OneWireNode, error) {
 // This returns an error if the publications fail
 func (svc *OWServerBinding) PublishNodeTD(node *eds.OneWireNode) (err error) {
 	td := svc.CreateTDFromNode(node)
-	tdJSON, _ := json.Marshal(td)
 	svc.things[td.ID] = td
-	err = svc.hc.PubTD(td.ID, string(tdJSON))
+	err = svc.hc.PubTD(td)
 	return err
 }
 

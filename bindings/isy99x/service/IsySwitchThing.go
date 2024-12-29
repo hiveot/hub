@@ -5,8 +5,9 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
 	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/utils"
+	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot"
+	"github.com/hiveot/hub/wot/td"
 )
 
 // IsySwitchThing is a general-purpose on/off switch
@@ -28,37 +29,37 @@ func (it *IsySwitchThing) GetPropValues(onlyChanges bool) map[string]any {
 // HandleActionRequest handles request to execute an action on this device
 // actionID string as defined in the action affordance
 // newValue is not used as these actions do not carry a parameter
-func (it *IsySwitchThing) HandleActionRequest(action *transports.ThingMessage) (err error) {
+func (it *IsySwitchThing) HandleActionRequest(req transports.RequestMessage) transports.ResponseMessage {
 	var restPath = ""
 	var newValue = ""
-	// FIXME: action keys are the raw keys, not @type
+	// FIXME: req keys are the raw keys, not @type
 	// supported actions: on, off
-	if action.Name == "ST" {
-		newValueBool := tputils.DecodeAsBool(action.Data)
+	if req.Name == "ST" {
+		newValueBool := tputils.DecodeAsBool(req.Input)
 		newValue = "DOF"
 		if newValueBool {
 			newValue = "DON"
 		}
-		//} else if action.Name == vocab.ActionSwitchToggle {
+		//} else if req.Name == vocab.ActionSwitchToggle {
 		//	newValue = "DOF"
-		//	oldValue, found := it.propValues.GetValue(action.Name)
+		//	oldValue, found := it.propValues.GetValue(req.Name)
 		//	if !found || oldValue == "DOF" {
 		//		newValue = "DON"
 		//	}
 	} else {
-		// unknown action
+		// unknown req
 		newValue = ""
-		err = fmt.Errorf("HandleActionRequest. Unknown action: %s", action.Name)
-		return err
+		err := fmt.Errorf("HandleRequest. Unknown req: %s", req.Name)
+		return req.CreateResponse(nil, err)
 	}
 
 	restPath = fmt.Sprintf("/rest/nodes/%s/cmd/%s", it.nodeID, newValue)
-	err = it.isyAPI.SendRequest("GET", restPath, "", nil)
+	err := it.isyAPI.SendRequest("GET", restPath, "", nil)
 	if err == nil {
 		// TODO: handle event from gateway using websockets. For now just assume this worked.
-		//err = it.HandleValueUpdate(action.Name, "", newValue)
+		//err = it.HandleValueUpdate(req.Name, "", newValue)
 	}
-	return err
+	return req.CreateResponse(nil, err)
 }
 
 // HandleValueUpdate receives a new value for the given property
@@ -86,14 +87,14 @@ func (it *IsySwitchThing) Init(ic *isy.IsyAPI, thingID string, node *isy.IsyNode
 }
 
 func (it *IsySwitchThing) MakeTD() *td.TD {
-	td := it.IsyThing.MakeTD()
+	tdi := it.IsyThing.MakeTD()
 	// value of switch property ID "ST" is "0" or "255"
 	// TODO: support for switch events
 	//td.AddEvent("ST", "On/Off", "",
 	//	&tdd.DataSchema{Type: vocab.WoTDataTypeBool}).
 	//	SetAtType(vocab.ActionSwitchOnOff)
 
-	td.AddAction("ST", "Switch on/off", "",
+	tdi.AddAction("ST", "Switch on/off", "",
 		&td.DataSchema{
 			AtType: vocab.ActionSwitchOnOff,
 			Type:   wot.WoTDataTypeBool,
@@ -103,7 +104,7 @@ func (it *IsySwitchThing) MakeTD() *td.TD {
 	//td.AddSwitchAction(vocab.ActionSwitchOff, "Switch off")
 	//td.AddSwitchAction(vocab.ActionSwitchToggle, "Toggle switch")
 
-	return td
+	return tdi
 }
 
 // NewIsySwitchThing creates a new instance of an ISY switch.

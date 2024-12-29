@@ -6,6 +6,7 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot"
+	"github.com/hiveot/hub/wot/td"
 )
 
 // IsyDimmerThing is a general-purpose dimmer switch
@@ -21,12 +22,12 @@ func (it *IsyDimmerThing) GetValues(onlyChanges bool) map[string]any {
 }
 
 func (it *IsyDimmerThing) MakeTD() *td.TD {
-	td := it.IsyThing.MakeTD()
+	tdi := it.IsyThing.MakeTD()
 	// AddSwitchEvent is short for adding an event for a switch
 	// TODO: add dimmer change events
 	//td.AddDimmerEvent(vocab.PropSwitchDimmer)
 
-	a := td.AddAction(vocab.ActionDimmerSet, "Set Dimmer", "",
+	a := tdi.AddAction(vocab.ActionDimmerSet, "Set Dimmer", "",
 		&td.DataSchema{Type: wot.WoTDataTypeInteger},
 	)
 	a.SetAtType(vocab.ActionDimmer)
@@ -44,42 +45,41 @@ func (it *IsyDimmerThing) MakeTD() *td.TD {
 	//a.Input.NumberMinimum = 0
 	//a.Input.NumberMaximum = 100
 
-	return td
+	return tdi
 }
 
-func (it *IsyDimmerThing) HandleConfigRequest(action *transports.ThingMessage) (err error) {
-	return errors.New("unknown config: " + action.Name)
+func (it *IsyDimmerThing) HandleConfigRequest(req transports.RequestMessage) transports.ResponseMessage {
+	return req.CreateResponse(nil, errors.New("unknown config: "+req.Name))
 }
 
 // HandleActionRequest handles request to execute an action on this device
 // actionID string as defined in the action affordance
 // newValue is not used as these actions do not carry a parameter
-func (it *IsyDimmerThing) HandleActionRequest(action *transports.ThingMessage) (err error) {
+func (it *IsyDimmerThing) HandleActionRequest(req transports.RequestMessage) transports.ResponseMessage {
 	var restPath = ""
 	var newValue = ""
-	// FIXME: action keys are node attributes keys, not vocab @types (or are they?)
+	// FIXME: req keys are node attributes keys, not vocab @types (or are they?)
 	// supported actions: on, off
-	if action.Name == vocab.ActionDimmerSet {
-		newValue = action.DataAsText()
+	if req.Name == vocab.ActionDimmerSet {
+		newValue = req.ToString()
 		restPath = fmt.Sprintf("/rest/nodes/%s/cmd/%s", it.nodeID, newValue)
 
-		//} else if action.Name == vocab.VocabActionDecrement {
+		//} else if req.Name == vocab.VocabActionDecrement {
 		//	restPath = fmt.Sprintf("/rest/nodes/%s/cmd/%s", it.nodeID, newValue)
-		//} else if action.Name == vocab.VocabActionIncrement {
+		//} else if req.Name == vocab.VocabActionIncrement {
 		//	restPath = fmt.Sprintf("/rest/nodes/%s/cmd/%s", it.nodeID, newValue)
 	} else {
-		// unknown action
-		err = fmt.Errorf("HandleActionRequest. Unknown action: '%s'", action.Name)
-		return err
+		// unknown req
+		err := fmt.Errorf("HandleRequest. Unknown req: '%s'", req.Name)
+		return req.CreateResponse(nil, err)
 	}
 
-	err = it.isyAPI.SendRequest("GET", restPath, "", nil)
+	err := it.isyAPI.SendRequest("GET", restPath, "", nil)
 	if err == nil {
 		// TODO: handle event from gateway using websockets. For now just assume this worked.
-		err = it.HandleValueUpdate(action.Name, "", newValue)
+		err = it.HandleValueUpdate(req.Name, "", newValue)
 	}
-
-	return err
+	return req.CreateResponse(nil, err)
 }
 
 // NewIsyDimmerThing creates a new instance of an ISY dimmer.

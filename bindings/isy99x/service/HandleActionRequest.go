@@ -3,39 +3,42 @@ package service
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/transports"
 	"log/slog"
 )
 
-// HandleActionRequest passes the action request to the associated Thing.
-func (svc *IsyBinding) handleActionRequest(action *transports.ThingMessage) (stat transports.RequestStatus) {
-	if action.Operation == vocab.OpWriteProperty {
-		return svc.handleConfigRequest(action)
+// HandleRequest passes the action request to the associated Thing.
+func (svc *IsyBinding) handleRequest(req transports.RequestMessage) (resp transports.ResponseMessage) {
+	if req.Operation == vocab.OpWriteProperty {
+		return svc.handleConfigRequest(req)
 	}
 
 	slog.Info("handleActionRequest",
-		slog.String("thingID", action.ThingID),
-		slog.String("name", action.Name),
-		slog.String("senderID", action.SenderID))
+		slog.String("thingID", req.ThingID),
+		slog.String("name", req.Name),
+		slog.String("senderID", req.SenderID))
 
 	if !svc.isyAPI.IsConnected() {
-		slog.Warn(stat.Error)
-		stat.Failed(action, fmt.Errorf("No connection with the gateway"))
+		resp = req.CreateResponse(nil, fmt.Errorf("No connection with the gateway"))
+		slog.Warn(resp.Error)
 		return
 	}
-	isyThing := svc.IsyGW.GetIsyThing(action.ThingID)
+	isyThing := svc.IsyGW.GetIsyThing(req.ThingID)
 	if isyThing == nil {
-		stat.Completed(action, nil, fmt.Errorf("handleActionRequest: thing '%s' not found", action.ThingID))
-		slog.Warn(stat.Error)
+		err := fmt.Errorf("handleActionRequest: thing '%s' not found", req.ThingID)
+		resp = req.CreateResponse(nil, err)
+		slog.Warn(resp.Error)
 		return
 	}
-	err := isyThing.HandleActionRequest(action)
-	stat.Completed(action, nil, err)
+	resp = isyThing.HandleActionRequest(req)
+
 	// publish any changes that are the result of the action
 	go func() {
+		thingID := req.ThingID
 		values := isyThing.GetPropValues(true)
-		if len(values) > 0 {
-			_ = svc.hc.PubMultipleProperties(isyThing.GetID(), values)
+		for k, v := range values {
+			_ = svc.hc.PubProperty(thingID, k, v)
 		}
 	}()
-	return stat
+	return resp
 }

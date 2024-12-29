@@ -1,6 +1,7 @@
 package ipnet
 
 import (
+	"fmt"
 	"github.com/hiveot/hub/bindings/ipnet/config"
 	"github.com/hiveot/hub/bindings/ipnet/service"
 	"github.com/hiveot/hub/lib/logging"
@@ -38,14 +39,14 @@ func TestMain(m *testing.M) {
 }
 
 func TestStartStop(t *testing.T) {
-	t.Log("--- TestStartStop ---")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	const device1ID = "device1"
 	cfg := config.NewIPNetConfig()
 	cfg.PortScan = false
 	cfg.ScanAsRoot = false
 
 	svc := service.NewIpNetBinding(cfg)
-	ag, _ := ts.AddConnectService("ipnet", agentUsesWSS)
+	ag, _ := ts.AddConnectService("ipnet")
 	defer ag.Disconnect()
 	err := svc.Start(ag)
 

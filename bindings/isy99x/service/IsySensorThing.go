@@ -2,6 +2,8 @@ package service
 
 import (
 	"errors"
+	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/wot/td"
 )
 
 // IsySensorThing is a general-purpose sensor
@@ -15,9 +17,9 @@ func (it *IsySensorThing) GetPropValues(onlyChanges bool) map[string]any {
 	return propValues
 }
 
-func (it *IsySensorThing) HandleConfigRequest(action *transports.ThingMessage) (err error) {
+func (it *IsySensorThing) HandleConfigRequest(req transports.RequestMessage) transports.ResponseMessage {
 	// TODO: sensor configuration
-	return errors.New("unknown config: " + action.Name)
+	return req.CreateResponse(nil, errors.New("unknown config: "+req.Name))
 }
 
 // MakeTD returns the TD document representing the node

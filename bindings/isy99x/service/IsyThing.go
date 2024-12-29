@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
+	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot/exposedthing"
+	"github.com/hiveot/hub/wot/td"
 	"strings"
 	"sync"
 )
@@ -25,7 +27,7 @@ var deviceCatMap = map[string]string{
 }
 
 // IsyEventHandler is the callback to notify the binding of thing events
-type IsyEventHandler func(thingID, name string, value any, requestID string)
+type IsyEventHandler func(thingID, name string, value any)
 
 // IIsyThing is the interface implemented by nodes that are things
 type IIsyThing interface {
@@ -34,9 +36,9 @@ type IIsyThing interface {
 	// GetPropValues returns the property values of the thing
 	GetPropValues(onlyChanges bool) map[string]any
 	// HandleActionRequest passes incoming actions to the Thing for execution
-	HandleActionRequest(tv *transports.ThingMessage) (err error)
+	HandleActionRequest(tv transports.RequestMessage) transports.ResponseMessage
 	// HandleConfigRequest passes configuration changes to the Thing for execution
-	HandleConfigRequest(tv *transports.ThingMessage) (err error)
+	HandleConfigRequest(tv transports.RequestMessage) transports.ResponseMessage
 	// HandleValueUpdate updates the Thing properties with value obtained via the ISY gateway
 	HandleValueUpdate(propID string, uom string, newValue string) error
 	// Init assigns the ISY connection and node this Thing represents
@@ -93,25 +95,25 @@ func (it *IsyThing) GetPropValues(onlyChanges bool) map[string]any {
 //}
 
 // HandleActionRequest invokes the action handler of the specialized thing
-func (it *IsyThing) HandleActionRequest(tv *transports.ThingMessage) (err error) {
-	err = fmt.Errorf("HandleActionRequest not supported for this thing")
-	return err
+func (it *IsyThing) HandleActionRequest(req transports.RequestMessage) transports.ResponseMessage {
+	err := fmt.Errorf("HandleRequest not supported for this thing")
+	return req.CreateResponse(nil, err)
 }
 
 // HandleConfigRequest invokes the config handler of the specialized thing
-func (it *IsyThing) HandleConfigRequest(action *transports.ThingMessage) (err error) {
+func (it *IsyThing) HandleConfigRequest(req transports.RequestMessage) transports.ResponseMessage {
 	// The title is the friendly name of the node
-	if action.Name == vocab.PropDeviceTitle {
-		newName := action.DataAsText()
-		err = it.isyAPI.Rename(it.nodeID, newName)
+	if req.Name == vocab.PropDeviceTitle {
+		newName := req.ToString()
+		err := it.isyAPI.Rename(it.nodeID, newName)
 		if err == nil {
 			// TODO: use WebSocket to receive confirmation of change
 			_ = it.HandleValueUpdate(vocab.PropDeviceTitle, "", newName)
 		}
-		return err
+		return req.CreateResponse(nil, err)
 	}
-	err = fmt.Errorf("HandleConfigRequest not supported for this thing")
-	return err
+	err := fmt.Errorf("HandleConfigRequest not supported for this thing")
+	return req.CreateResponse(nil, err)
 }
 
 // HandleValueUpdate provides an update of the Thing's value.

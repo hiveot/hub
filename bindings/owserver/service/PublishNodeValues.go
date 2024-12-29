@@ -2,6 +2,7 @@ package service
 
 import (
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"math"
 	"strconv"
@@ -79,7 +80,7 @@ func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode, force bo
 						slog.Info("PublishThingValues: PubEvent",
 							slog.String("attrID", attrID),
 							slog.String("value", attr.Value))
-						err = svc.hc.PubEvent(nodeTD.ID, attrID, value, "")
+						err = svc.hc.PubEvent(nodeTD.ID, attrID, value)
 						evCount++
 					}
 				}
@@ -95,7 +96,7 @@ func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode, force bo
 			slog.Info("PublishThingValues: PubMultipleProperties",
 				slog.Int("count", len(propMap)),
 			)
-			err = svc.hc.PubMultipleProperties(thingID, propMap)
+			err = svc.hc.PubProperties(thingID, propMap)
 			propCount += len(propMap)
 		}
 	}

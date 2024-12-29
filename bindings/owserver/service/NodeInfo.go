@@ -2,7 +2,7 @@ package service
 
 import (
 	"github.com/hiveot/hub/api/go/vocab"
-	thing "github.com/hiveot/hub/wot/tdd"
+	"github.com/hiveot/hub/wot/td"
 )
 
 // define 1-wire node information
@@ -74,7 +74,7 @@ type AttrConversion struct {
 	DataType string
 	// the amount of change that should trigger an event
 	ChangeNotify float64
-	Enum         []thing.DataSchema
+	Enum         []td.DataSchema
 	// ignore the attribute
 	Ignore bool
 	// IsActuator defines the attribute as an action
@@ -228,7 +228,7 @@ var AttrConfig = map[string]AttrConversion{
 		IsProp:   true,
 		Title:    "LED function control",
 		DataType: vocab.WoTDataTypeInteger, ChangeNotify: 1,
-		Enum: []thing.DataSchema{
+		Enum: []td.DataSchema{
 			{Const: "0", Title: "On with alarms, off with no alarms"},
 			{Const: "1", Title: "On with alarms, Off with clear alarms command"},
 			{Const: "2", Title: "On/Off under command"},
@@ -302,7 +302,7 @@ var AttrConfig = map[string]AttrConversion{
 		VocabType: vocab.PropStatusOnOff,
 		Title:     "Relay function control",
 		DataType:  vocab.WoTDataTypeInteger, ChangeNotify: 1,
-		Enum: []thing.DataSchema{
+		Enum: []td.DataSchema{
 			{Const: "0", Title: "On with alarms, off with no alarms"},
 			{Const: "1", Title: "On with alarms, Off with clear alarms command"},
 			{Const: "2", Title: "On/Off under command"},

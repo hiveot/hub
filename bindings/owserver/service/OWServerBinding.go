@@ -1,13 +1,14 @@
 package service
 
 import (
-	"encoding/json"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/owserver/config"
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/services/state/stateclient"
+	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"sync"
 	"time"
@@ -34,7 +35,7 @@ type OWServerBinding struct {
 	edsAPI *eds.EdsAPI
 
 	// hub client to publish TDs and values and receive actions
-	hc clients.IAgent
+	hc transports.IAgentConnection
 
 	// The discovered and publishable things, containing instructions on
 	// if and how properties and events are published
@@ -118,7 +119,7 @@ func (svc *OWServerBinding) SaveState() error {
 // This publishes a TD for this binding, starts a background heartbeat.
 //
 //	hc is the connection with the hubClient to use.
-func (svc *OWServerBinding) Start(hc clients.IAgent) (err error) {
+func (svc *OWServerBinding) Start(hc transports.IAgentConnection) (err error) {
 	slog.Info("Starting OWServer binding")
 	if svc.config.LogLevel != "" {
 		logging.SetLogging(svc.config.LogLevel, "")
@@ -130,7 +131,7 @@ func (svc *OWServerBinding) Start(hc clients.IAgent) (err error) {
 		svc.config.OWServerURL, svc.config.OWServerLogin, svc.config.OWServerPassword)
 
 	// subscribe to action and configuration requests
-	svc.hc.SetRequestHandler(svc.HandleActionRequest)
+	svc.hc.SetRequestHandler(svc.HandleRequest)
 
 	// load custom settings
 	err = svc.LoadState()
@@ -141,14 +142,13 @@ func (svc *OWServerBinding) Start(hc clients.IAgent) (err error) {
 	// publish this binding's TD document
 	td := svc.CreateBindingTD()
 	svc.things[td.ID] = td
-	tdJSON, _ := json.Marshal(td)
-	err = svc.hc.PubTD(td.ID, string(tdJSON))
+	err = svc.hc.PubTD(td)
 	if err != nil {
 		slog.Error("failed publishing service TD. Continuing...",
 			slog.String("err", err.Error()))
 	} else {
 		props := svc.GetBindingPropValues()
-		err = hc.PubMultipleProperties(td.ID, props)
+		err = hc.PubProperties(td.ID, props)
 	}
 
 	// last, start polling heartbeat
@@ -176,7 +176,7 @@ func (svc *OWServerBinding) startHeartBeat() (stopFn func()) {
 			// Since this can take some time, check if client is closed before using it.
 			nodes, err := svc.PollNodes()
 			svc.mux.RLock()
-			isConnected, _, _ := svc.hc.GetConnectionStatus()
+			isConnected := svc.hc.IsConnected()
 			svc.mux.RUnlock()
 			if err == nil && isConnected {
 				if tdCountDown <= 0 {

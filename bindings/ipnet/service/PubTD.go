@@ -1,8 +1,8 @@
 package service
 
 import (
-	"encoding/json"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 )
 
@@ -50,8 +50,7 @@ func (svc *IPNetBinding) MakeDeviceTD(deviceInfo *IPDeviceInfo) *td.TD {
 
 func (svc *IPNetBinding) PubBindingTD() error {
 	td := svc.MakeBindingTD()
-	tdJSON, _ := json.Marshal(td)
-	err := svc.hc.PubTD(td.ID, string(tdJSON))
+	err := svc.hc.PubTD(td)
 	if err != nil {
 		slog.Error("failed publishing service TD. Continuing...",
 			slog.String("err", err.Error()))
@@ -61,8 +60,7 @@ func (svc *IPNetBinding) PubBindingTD() error {
 
 func (svc *IPNetBinding) PubDeviceTD(deviceInfo *IPDeviceInfo) error {
 	td := svc.MakeDeviceTD(deviceInfo)
-	tdJSON, _ := json.Marshal(td)
-	err := svc.hc.PubTD(td.ID, string(tdJSON))
+	err := svc.hc.PubTD(td)
 	if err != nil {
 		slog.Error("failed publishing device TD. Continuing...",
 			slog.String("deviceID", deviceInfo.IP4),

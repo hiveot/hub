@@ -107,3 +107,5 @@ Each binding instance on the network must have a unique serviceID. This allows f
 
 OMG the pain!
 You'd hope that intellij allows you to just run it, but no such luck.
+
+Run the 'debugtsx' from the intellij debug  

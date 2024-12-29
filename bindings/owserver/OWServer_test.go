@@ -6,7 +6,9 @@ import (
 	"github.com/hiveot/hub/bindings/owserver/config"
 	"github.com/hiveot/hub/bindings/owserver/service"
 	"github.com/hiveot/hub/lib/testenv"
-	"github.com/hiveot/hub/transports/utils"
+	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/tputils"
+	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"os"
 	"path"
@@ -29,7 +31,9 @@ var ts *testenv.TestServer
 
 const agentUsesWSS = false
 const agentID = "owserver"
-const device1ID = "2A000003BB170B28" // <-- from the simulation file
+
+// const device1ID = "2A000003BB170B28" // <-- from the simulation file
+const device1ID = "C100100000267C7E" // <-- from the simulation file
 
 // TestMain run test server and use the project test folder as the home folder.
 // All tests are run using the simulation file.
@@ -67,8 +71,8 @@ func TestStartStop(t *testing.T) {
 
 	svc := service.NewOWServerBinding(&owsConfig)
 
-	hc, _ := ts.AddConnectAgent(agentID, agentUsesWSS)
-	connected, _, _ := hc.GetConnectionStatus()
+	hc, _ := ts.AddConnectAgent(agentID)
+	connected := hc.IsConnected()
 	require.Equal(t, true, connected)
 	defer hc.Disconnect()
 
@@ -84,7 +88,7 @@ func TestPoll(t *testing.T) {
 	const userID = "user1"
 
 	t.Log("--- TestPoll (without state service)  ---")
-	ag1, _ := ts.AddConnectAgent(agentID, agentUsesWSS)
+	ag1, _ := ts.AddConnectAgent(agentID)
 	defer ag1.Disconnect()
 	cl1, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
 	defer cl1.Disconnect()
@@ -94,7 +98,7 @@ func TestPoll(t *testing.T) {
 	err := cl1.ObserveProperty("", "")
 	err = cl1.Subscribe("", "")
 	require.NoError(t, err)
-	cl1.SetNotificationHandler(func(msg *transports.ThingMessage) {
+	cl1.SetNotificationHandler(func(msg transports.NotificationMessage) {
 		slog.Info("received message", "MessageType", msg.Operation, "id", msg.Name)
 		var value interface{}
 		err2 := tputils.DecodeAsObject(msg.Data, &value)
@@ -120,14 +124,14 @@ func TestPoll(t *testing.T) {
 	dThingID := td.MakeDigiTwinThingID(agentID, device1ID)
 	events, err := digitwin.ValuesReadAllEvents(cl1, dThingID)
 	require.NoError(t, err)
-	// only 1 event (temperature) is expected
-	require.True(t, len(events) == 1)
+	// this thing has 5 sensors
+	require.True(t, len(events) == 5)
 }
 
 func TestPollInvalidEDSAddress(t *testing.T) {
 	t.Log("--- TestPollInvalidEDSAddress ---")
 
-	hc, _ := ts.AddConnectAgent(agentID, agentUsesWSS)
+	hc, _ := ts.AddConnectAgent(agentID)
 	defer hc.Disconnect()
 
 	badConfig := owsConfig // copy
@@ -152,7 +156,7 @@ func TestAction(t *testing.T) {
 	var actionName = "RelayFunction" // the action attribute as defined by the device
 	var actionValue = "1"
 
-	hc, _ := ts.AddConnectAgent(agentID, agentUsesWSS)
+	hc, _ := ts.AddConnectAgent(agentID)
 	defer hc.Disconnect()
 
 	svc := service.NewOWServerBinding(&owsConfig)
@@ -167,7 +171,9 @@ func TestAction(t *testing.T) {
 	hc2, _ := ts.AddConnectConsumer(user1ID, authz.ClientRoleOperator)
 	require.NoError(t, err)
 	defer hc2.Disconnect()
-	err = hc2.SendRequest(dThingID, actionName, &actionValue, nil)
+	err = hc2.WriteProperty(dThingID, actionName, &actionValue, true)
+
+	//err = hc2.SendRequest(dThingID, actionName, &actionValue, nil)
 	// can't write to a simulation
 	assert.Error(t, err)
 
@@ -177,10 +183,10 @@ func TestAction(t *testing.T) {
 func TestConfig(t *testing.T) {
 	t.Log("--- TestConfig (without state service)  ---")
 	const user1ID = "manager1"
-	var configName = "LEDFunction"
-	var configValue = ([]byte)("1")
+	var configName = "LEDState"
+	var configValue = "1"
 
-	hc, _ := ts.AddConnectAgent(agentID, agentUsesWSS)
+	hc, _ := ts.AddConnectAgent(agentID)
 	defer hc.Disconnect()
 
 	svc := service.NewOWServerBinding(&owsConfig)
@@ -195,8 +201,9 @@ func TestConfig(t *testing.T) {
 	hc2, _ := ts.AddConnectConsumer(user1ID, authz.ClientRoleManager)
 	defer hc2.Disconnect()
 	dThingID := td.MakeDigiTwinThingID(agentID, device1ID)
-	err = hc2.SendRequest(dThingID, configName, &configValue, nil)
-	// can't write to a simulation. How to test for real?
+	err = hc2.WriteProperty(dThingID, configName, &configValue, true)
+
+	// can't write to a simulation file. Write should fail.
 	assert.Error(t, err)
 
 	//time.Sleep(time.Second*10)  // debugging delay
