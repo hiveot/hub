@@ -173,6 +173,8 @@ func (svc *LauncherService) _startPlugin(pluginName string) (pi launcherapi.Plug
 		err = startStatus
 	}
 
+	// TODO: publish an started event
+
 	// last, update the CPU and memory status
 	svc.updateStatus(pluginInfo)
 	if err != nil {
@@ -246,6 +248,7 @@ func (svc *LauncherService) StopAllPlugins(args *launcherapi.StopAllPluginsArgs)
 			slog.Info("Not stopping the core", "path", c.Path)
 		} else {
 			err = Stop(c.Path, c.Process.Pid)
+			// TODO: publish a stopped event
 		}
 	}
 	time.Sleep(time.Millisecond)
@@ -263,6 +266,7 @@ func (svc *LauncherService) StopPlugin(args launcherapi.StopPluginArgs) (resp la
 		return resp, err
 	}
 	err = Stop(pluginInfo.Name, pluginInfo.PID)
+	// TODO: publish a stopped event
 
 	svc.mux.Lock()
 	defer svc.mux.Unlock()

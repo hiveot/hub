@@ -65,7 +65,7 @@ var agentPermissions = RolePermission{
 	Operations: []string{
 		vocab.HTOpPublishError,
 		vocab.HTOpPublishEvent,
-		vocab.HTOpUpdateActionStatus,
+		//vocab.HTOpUpdateActionStatus,
 		vocab.HTOpUpdateMultipleProperties,
 		vocab.HTOpUpdateProperties,
 		vocab.HTOpUpdateProperty,
@@ -80,7 +80,7 @@ var servicePermissions = RolePermission{
 	Operations: []string{
 		vocab.HTOpPublishError,
 		vocab.HTOpPublishEvent,
-		vocab.HTOpUpdateActionStatus,
+		//vocab.HTOpUpdateActionStatus,
 		vocab.HTOpUpdateTD,
 		vocab.HTOpUpdateMultipleProperties,
 		vocab.HTOpUpdateProperties,

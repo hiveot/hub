@@ -18,7 +18,7 @@ func SubmitDeleteTD(w http.ResponseWriter, r *http.Request) {
 	thingID := chi.URLParam(r, "thingID")
 	tdJSON := ""
 	tdi := td.TD{}
-	var hc transports.IClientConnection
+	var hc transports.IConsumerConnection
 
 	// get the hub client connection and read the existing TD
 	_, sess, err := session2.GetSessionFromContext(r)

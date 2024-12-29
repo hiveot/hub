@@ -37,7 +37,7 @@ type Runtime struct {
 // GetForm returns the form for an operation using a transport protocol binding
 // These forms point to the use of a digital twin via the hub runtime.
 // If the protocol is not found this returns a nil and might cause a panic
-func (r *Runtime) GetForm(op string, protocol string) (f *td.Form) {
+func (r *Runtime) GetForm(op string, protocol string) (f td.Form) {
 	return r.TransportsMgr.GetForm(op, protocol)
 }
 

@@ -37,9 +37,23 @@ func (f Form) GetMethodName() (method string, found bool) {
 	return "", found
 }
 
+// GetSubprotocol returns the form's subprotoco field
+func (f Form) GetSubprotocol() (subp string, found bool) {
+	val, found := f["subprotocol"]
+	if val != nil {
+		return val.(string), found
+	}
+	return "", found
+}
+
 // SetMethodName sets the form's HTTP "htv:methodName" field
 func (f Form) SetMethodName(method string) {
 	f["htv:methodName"] = method
+}
+
+// SetSubprotocol sets the form's subprotocol field
+func (f Form) SetSubprotocol(subp string) {
+	f["subprotocol"] = subp
 }
 
 func NewForm(operation string, href string) Form {

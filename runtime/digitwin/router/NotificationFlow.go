@@ -32,13 +32,17 @@ func (svc *DigitwinRouter) HandleNotification(notif transports.NotificationMessa
 			svc.cm.PublishNotification(notif)
 		}
 
+	} else if notif.Operation == wot.HTOpUpdateMultipleProperties {
+		svc.HandleUpdateMultipleProperties(notif)
+
 	} else if notif.Operation == wot.HTOpUpdateTD {
 		tdJSON := notif.ToString()
-		svc.dtwService.DirSvc.UpdateTD(notif.SenderID, tdJSON)
-
+		err := svc.dtwService.DirSvc.UpdateTD(notif.SenderID, tdJSON)
+		if err != nil {
+			slog.Warn(err.Error())
+		}
 		// Don't forward the notification.
 		//Only digitwin TDs should be published. These have updated forms.
-		//svc.cm.PublishNotification(notif)
 
 	} else {
 		err := fmt.Errorf("Unknown notification '%s'", notif.Operation)
@@ -64,18 +68,22 @@ func (svc *DigitwinRouter) HandleNotification(notif transports.NotificationMessa
 // agentID is the ID of the agent sending the update
 // thingID is the ID of the original thing as managed by the agent.
 // propMap map of property key-values
-func (svc *DigitwinRouter) HandleUpdateMultipleProperties(msg transports.NotificationMessage) {
+func (svc *DigitwinRouter) HandleUpdateMultipleProperties(notif transports.NotificationMessage) {
 	propMap := make(map[string]any)
-	err := tputils.Decode(msg.Data, &propMap)
+	err := tputils.Decode(notif.Data, &propMap)
 	if err != nil {
-		slog.Warn("HandleUpdateMultipleProperties: error decoding property map", "err", err.Error())
+		slog.Warn("HandleUpdateMultipleProperties: error decoding property map",
+			"op", notif.Operation,
+			"clientID", notif.SenderID,
+			"thingID", notif.ThingID,
+			"err", err.Error())
 		return
 	}
 	// update the property in the digitwin and notify observers for each change
-	changes, err := svc.dtwStore.UpdateProperties(msg.ThingID, propMap, "")
+	changes, err := svc.dtwStore.UpdateProperties(notif.ThingID, propMap, "")
 	if len(changes) > 0 {
 		for k, v := range changes {
-			notif := transports.NewNotificationMessage(wot.HTOpUpdateProperty, msg.ThingID, k, v)
+			notif := transports.NewNotificationMessage(wot.HTOpUpdateProperty, notif.ThingID, k, v)
 			svc.cm.PublishNotification(notif)
 		}
 	}

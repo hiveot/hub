@@ -25,7 +25,7 @@ func StartLauncherAgent(svc *LauncherService, hc transports.IAgentConnection) *h
 	}
 
 	ah := hubagent.NewAgentHandler(launcherapi.ManageServiceID, methods)
-
+	// todo: publish service TD
 	hc.SetRequestHandler(ah.HandleRequest)
 	return ah
 }

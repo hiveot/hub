@@ -4,6 +4,8 @@ package httpclient
 import (
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/servers/httpserver"
+	"github.com/hiveot/hub/wot"
+	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 	"net/http"
 )
@@ -13,6 +15,39 @@ import (
 // This implements the IAgentTransport interface.
 type HttpAgentClient struct {
 	consumerTransport *HttpConsumerClient
+}
+
+// PubEvent helper for agents to publish an event
+// This is short for SendNotification( ... wot.OpEvent ...)
+func (cl *HttpAgentClient) PubEvent(thingID string, name string, value any) error {
+	notif := transports.NewNotificationMessage(wot.HTOpEvent, thingID, name, value)
+	return cl.SendNotification(notif)
+}
+
+// PubProperty helper for agents to publish a property value update
+// This is short for SendNotification( ... wot.OpProperty ...)
+func (cl *HttpAgentClient) PubProperty(thingID string, name string, value any) error {
+
+	notif := transports.NewNotificationMessage(wot.HTOpUpdateProperty, thingID, name, value)
+	return cl.SendNotification(notif)
+}
+
+// PubProperties helper for agents to publish a map of property values
+// TODO: support multiple properties?
+func (cl *HttpAgentClient) PubProperties(thingID string, propMap map[string]any) error {
+
+	notif := transports.NewNotificationMessage(wot.HTOpUpdateMultipleProperties, thingID, "", propMap)
+	err := cl.SendNotification(notif)
+	return err
+}
+
+// PubTD helper for agents to publish a TD update
+// This is short for SendNotification( ... wot.HTOpTD ...)
+func (cl *HttpAgentClient) PubTD(td *td.TD) error {
+	// JSON must be encoded as string
+	tdJson, _ := jsoniter.MarshalToString(td)
+	notif := transports.NewNotificationMessage(wot.HTOpUpdateTD, td.ID, "", tdJson)
+	return cl.SendNotification(notif)
 }
 
 // SendNotification publishes a notification to subscribers using the hiveot protocol

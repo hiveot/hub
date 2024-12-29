@@ -16,7 +16,7 @@ type ITransportServer interface {
 	//	{op} for operation
 	// 	{thingID} the ID of the thing
 	//	{name} the name of the property, event or action affordance
-	GetForm(op string) *td.Form
+	GetForm(op string) td.Form
 
 	// GetConnectURL returns the URL to connect to this server
 	GetConnectURL() string

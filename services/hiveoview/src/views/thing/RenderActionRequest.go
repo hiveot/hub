@@ -37,7 +37,7 @@ type ActionRequestTemplateData struct {
 	InputValue *consumedthing.InteractionOutput
 
 	// the previous action request record
-	LastActionRecord *digitwin.ActionValue
+	LastActionRecord *digitwin.ActionStatus
 	// input value with previous action input (if any)
 	LastActionInput consumedthing.DataSchemaValue
 	// previous action timestamp (formatted)
@@ -50,7 +50,7 @@ type ActionRequestTemplateData struct {
 }
 
 // Return the action affordance
-func getActionAff(hc transports.IClientConnection, thingID string, name string) (
+func getActionAff(hc transports.IConsumerConnection, thingID string, name string) (
 	td *td.TD, actionAff *td.ActionAffordance, err error) {
 
 	tdJson, err := digitwin.DirectoryReadTD(hc, thingID)
@@ -114,7 +114,7 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 	if err == nil && actionVal.Name != "" {
 		data.LastActionRecord = &actionVal
 		//data.PrevValue = &lastActionRecord
-		updatedTime, _ := dateparse.ParseAny(data.LastActionRecord.Updated)
+		updatedTime, _ := dateparse.ParseAny(data.LastActionRecord.TimeUpdated)
 		data.LastActionTime = updatedTime.Format(time.RFC1123)
 		data.LastActionAge = tputils.Age(updatedTime)
 		data.LastActionInput = consumedthing.NewDataSchemaValue(data.LastActionRecord.Input)

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/services/hiveoview/src"
+	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
@@ -35,7 +36,8 @@ func (svc *HiveovService) PublishServiceTD() error {
 	myTD := svc.CreateHiveoviewTD()
 	tdJSON, _ := json.Marshal(myTD)
 	//err := svc.hc.PubTD(myTD.ID, string(tdJSON))
-	err := svc.hc.SendNotification(wot.HTOpUpdateTD, myTD.ID, "", string(tdJSON))
+	notif := transports.NewNotificationMessage(wot.HTOpUpdateTD, myTD.ID, "", string(tdJSON))
+	err := svc.hc.SendNotification(notif)
 
 	if err != nil {
 		slog.Error("failed to publish the hiveoview service TD", "err", err.Error())
@@ -45,9 +47,9 @@ func (svc *HiveovService) PublishServiceTD() error {
 
 // PublishServiceProps publishes the service properties
 func (svc *HiveovService) PublishServiceProps() error {
-	err := svc.hc.SendNotification(
+	notif := transports.NewNotificationMessage(
 		wot.HTOpUpdateProperty, src.HiveoviewServiceID, vocab.PropNetPort, svc.port)
-
+	err := svc.hc.SendNotification(notif)
 	if err != nil {
 		slog.Error("failed to publish the hiveoview service properties", "err", err.Error())
 	}

@@ -45,7 +45,7 @@ type HiveovService struct {
 
 	// hc hub client of this service.
 	// This client's CA and URL is also used to establish client sessions.
-	hc transports.IClientConnection
+	hc transports.IAgentConnection
 
 	// cookie signing
 	signingKey ed25519.PrivateKey
@@ -68,7 +68,7 @@ func (svc *HiveovService) GetSM() *session.WebSessionManager {
 
 // Start the web server and publish the service's own TD.
 // domainName is the listening domain name that matches the server certificate.
-func (svc *HiveovService) Start(hc transports.IClientConnection) error {
+func (svc *HiveovService) Start(hc transports.IAgentConnection) error {
 	slog.Info("Starting HiveovService", "clientID", hc.GetClientID())
 	svc.hc = hc
 
@@ -85,7 +85,8 @@ func (svc *HiveovService) Start(hc transports.IClientConnection) error {
 	// Setup the handling of incoming web sessions
 	// re-use the runtime connection manager
 	hubURL := hc.GetServerURL()
-	svc.sm = session.NewWebSessionManager(hubURL, svc.signingKey, svc.caCert, hc, svc.noState)
+	svc.sm = session.NewWebSessionManager(
+		hubURL, svc.signingKey, svc.caCert, hc, svc.noState)
 
 	// parse the templates
 	svc.tm.ParseAllTemplates()

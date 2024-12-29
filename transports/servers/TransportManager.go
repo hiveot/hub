@@ -51,7 +51,7 @@ func (svc *TransportManager) AddTDForms(td *td.TD) (err error) {
 
 // GetForm returns the form for an operation using a transport protocol binding.
 // If the protocol is not found this returns a nil and might cause a panic
-func (svc *TransportManager) GetForm(op string, protocol string) (form *td.Form) {
+func (svc *TransportManager) GetForm(op string, protocol string) (form td.Form) {
 	switch protocol {
 	case transports.ProtocolTypeHTTPS, transports.ProtocolTypeSSESC:
 		form = svc.httpsTransport.GetForm(op)

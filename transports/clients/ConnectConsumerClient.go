@@ -49,7 +49,7 @@ var DefaultTimeout = time.Second * 3
 //	getForm is the consumer's handler to retrieve the Form for an operation on a Thing
 func ConnectConsumerToHub(
 	fullURL string, clientID string, certDir string, password string,
-	getForm func(op string) *td.Form) (
+	getForm func(op, thingID, name string) td.Form) (
 	hc transports.IConsumerConnection, err error) {
 
 	// 1. determine the actual address
@@ -138,7 +138,8 @@ func ConnectWithTokenFile(hc transports.IConsumerConnection, keysDir string) err
 // timeout is optional maximum wait time for connecting or waiting for responses. Use 0 for default.
 func NewConsumerClient(
 	fullURL string, clientID string, caCert *x509.Certificate,
-	getForm func(op string) *td.Form, timeout time.Duration) (
+	getForm func(op, thingID, name string) td.Form,
+	timeout time.Duration) (
 	bc transports.IConsumerConnection, err error) {
 
 	// determine the protocol to use from the URL

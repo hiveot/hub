@@ -59,6 +59,10 @@ type BaseClient struct {
 	// the application's request handler set with SetRequestHandler
 	// intended for sub-protocols that can receive requests. (agents)
 	appRequestHandler transports.RequestHandler
+
+	// getForm obtains the form for sending a request or notification
+	// if nil, then the hiveot protocol envelope and URL are used as fallback
+	BaseGetForm transports.GetFormHandler
 }
 
 // GetClientID returns the client's account ID
@@ -314,6 +318,11 @@ func (cl *BaseClient) SetNotificationHandler(cb transports.NotificationHandler) 
 	cl.BaseMux.Lock()
 	cl.appNotificationHandler = cb
 	cl.BaseMux.Unlock()
+}
+
+// Set the form lookup handler
+func (cl *BaseClient) SetGetForm(getForm transports.GetFormHandler) {
+	cl.BaseGetForm = getForm
 }
 
 // SetRequestHandler set the application handler for incoming requests

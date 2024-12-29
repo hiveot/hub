@@ -6,6 +6,7 @@ import (
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/clients"
+	"github.com/hiveot/hub/transports/servers/httpserver"
 	"github.com/hiveot/hub/wot"
 	"log/slog"
 	"net/http"
@@ -31,14 +32,15 @@ type WebSessionManager struct {
 	// Hub CA certificate
 	caCert *x509.Certificate
 	// hub client for publishing events
-	hc transports.IClientConnection
+	hc transports.IAgentConnection
 	// disable persistence from state service (for testing)
 	noState bool
 }
 
 // add a new session with the given clientID and send a session count event
+// This sets the getForm handler for the client for using this session TD directory
 func (sm *WebSessionManager) _addSession(
-	r *http.Request, cid string, hc transports.IClientConnection) (
+	r *http.Request, cid string, hc transports.IConsumerConnection) (
 	cs *WebClientSession, err error) {
 
 	// if the browser does not provide a CID until after the first connection,
@@ -84,6 +86,7 @@ func (sm *WebSessionManager) _addSession(
 		)
 	}
 	sm.sessions[cs.clcid] = cs
+	hc.SetGetForm(cs.GetForm)
 	nrSessions := len(sm.sessions)
 	sm.mux.Unlock()
 
@@ -92,7 +95,8 @@ func (sm *WebSessionManager) _addSession(
 	//err = SetSessionCookie(w, clientID, newToken, maxAge, sm.signingKey)
 
 	// publish the new nr of sessions
-	sm.hc.SendNotification(wot.HTOpPublishEvent, src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions)
+	notif := transports.NewNotificationMessage(wot.HTOpEvent, src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions)
+	_ = sm.hc.SendNotification(notif)
 	return cs, err
 }
 
@@ -125,7 +129,10 @@ func (sm *WebSessionManager) _removeSession(cs *WebClientSession) {
 	sm.mux.Unlock()
 
 	// 5. publish the new nr of sessions
-	go sm.hc.SendNotification(wot.HTOpPublishEvent, src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions)
+	go func() {
+		notif := transports.NewNotificationMessage(wot.HTOpEvent, src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions)
+		_ = sm.hc.SendNotification(notif)
+	}()
 }
 
 // disconnect all the web client sessions by disconnecting the client side
@@ -166,15 +173,17 @@ func (sm *WebSessionManager) onClose(cs *WebClientSession) {
 //	}
 //}
 
-// ConnectWithPassword logs-in to the hub using the given password.
+// ConnectWithPassword logs a consumer in to the hub using the given password.
 // If successful this updates the secure cookie with a new auth token and also
 // returns this token.
 // If a cid is provided in the headers it will create a session using it.
 func (sm *WebSessionManager) ConnectWithPassword(w http.ResponseWriter, r *http.Request,
 	loginID string, password string, cid string) (newToken string, err error) {
 
-	hc := clients.NewTransportClient(sm.hubURL, loginID, sm.caCert)
-	newToken, err = hc.ConnectWithPassword(password)
+	hc, err := clients.NewConsumerClient(sm.hubURL, loginID, sm.caCert, nil, 0)
+	if err == nil {
+		newToken, err = hc.ConnectWithPassword(password)
+	}
 	if err == nil {
 		if cid != "" {
 			_, err = sm._addSession(r, cid, hc)
@@ -212,9 +221,12 @@ func (sm *WebSessionManager) ConnectWithToken(
 	slog.Info("ConnectWithToken",
 		"clientID", loginID, "cid", cid, "remoteAddr", r.RemoteAddr,
 		"nr websessions", len(sm.sessions))
+	var newToken string
 
-	hc := clients.NewTransportClient(sm.hubURL, loginID, sm.caCert)
-	newToken, err := hc.ConnectWithToken(authToken)
+	hc, err := clients.NewConsumerClient(sm.hubURL, loginID, sm.caCert, nil, 0)
+	if err == nil {
+		newToken, err = hc.ConnectWithToken(authToken)
+	}
 	if err == nil {
 		cs, err = sm._addSession(r, cid, hc)
 		// Update the session cookie with the new auth token (default 14 days)
@@ -268,7 +280,7 @@ func (sm *WebSessionManager) GetSessionFromCookie(r *http.Request) (
 	// sse-connect ignores the hx-header that contains the cid. As a workaround
 	// also check query parameters.
 	// lets face it though, it is time to ditch SSE and switch to websockets :/
-	cid = r.Header.Get(transports.ConnectionIDHeader)
+	cid = r.Header.Get(httpserver.ConnectionIDHeader)
 	if cid == "" {
 		cid = r.URL.Query().Get("cid")
 	}
@@ -283,9 +295,10 @@ func (sm *WebSessionManager) GetSessionFromCookie(r *http.Request) (
 }
 
 // signingKey for use with session cookies
+// Create a new instance of the hiveoview service session manager
 func NewWebSessionManager(hubURL string,
 	signingKey ed25519.PrivateKey, caCert *x509.Certificate,
-	hc transports.IClientConnection, noState bool) *WebSessionManager {
+	hc transports.IAgentConnection, noState bool) *WebSessionManager {
 	sm := &WebSessionManager{
 		sessions:   make(map[string]*WebClientSession),
 		mux:        sync.RWMutex{},

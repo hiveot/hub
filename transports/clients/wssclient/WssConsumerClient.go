@@ -12,7 +12,6 @@ import (
 	"github.com/hiveot/hub/transports/servers/httpserver"
 	"github.com/hiveot/hub/transports/servers/wssserver"
 	"github.com/hiveot/hub/transports/tputils/tlsclient"
-	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"sync/atomic"
 	"time"
@@ -321,7 +320,7 @@ func (cl *WssConsumerClient) _send(wssMsg any) (err error) {
 //	timeout for waiting for response. 0 to use the default.
 func (cl *WssConsumerClient) Init(fullURL string, clientID string,
 	clientCert *tls.Certificate, caCert *x509.Certificate,
-	getForm func(op string) *td.Form,
+	getForm transports.GetFormHandler,
 	timeout time.Duration) {
 
 	cl.HttpConsumerClient.Init(
@@ -338,7 +337,7 @@ func (cl *WssConsumerClient) Init(fullURL string, clientID string,
 // NewWssConsumerClient creates a new instance of the websocket hub client.
 func NewWssConsumerClient(fullURL string, clientID string,
 	clientCert *tls.Certificate, caCert *x509.Certificate,
-	getForm func(op string) *td.Form,
+	getForm transports.GetFormHandler,
 	timeout time.Duration) *WssConsumerClient {
 
 	cl := WssConsumerClient{}

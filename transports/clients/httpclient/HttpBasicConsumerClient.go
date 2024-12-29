@@ -36,10 +36,6 @@ import (
 type HttpConsumerClient struct {
 	base.BaseClient
 
-	// getForm obtains the form for sending a request or notification
-	// if nil, then the hiveot protocol envelope and URL are used as fallback
-	getForm func(op string) *td.Form
-
 	// http2 client for posting messages
 	httpClient *http.Client
 	// authentication bearer token if authenticated
@@ -182,13 +178,13 @@ func (cl *HttpConsumerClient) _send(method string, methodPath string,
 
 // GetDefaultForm return the default http form for the operation
 // This simply returns nil for anything else than login.
-func (cl *HttpConsumerClient) GetDefaultForm(op string) (f *td.Form) {
+func (cl *HttpConsumerClient) GetDefaultForm(op, thingID, name string) (f td.Form) {
 	// login has its own URL as it is unauthenticated
 	if op == wot.HTOpLogin {
 		href := httpserver.HttpPostLoginPath
 		nf := td.NewForm(op, href)
 		nf.SetMethodName(http.MethodPost)
-		f = &nf
+		f = nf
 	}
 	// everything else has no default form, so falls back to hiveot protocol endpoints
 	return f
@@ -239,7 +235,7 @@ func (cl *HttpConsumerClient) PubRequest(req transports.RequestMessage) error {
 
 	// the getForm callback provides the method and URL to invoke for this operation.
 	// use the hiveot fallback if not available
-	f := cl.getForm(req.Operation)
+	f := cl.BaseGetForm(req.Operation, req.ThingID, req.Name)
 	if f != nil {
 		method, _ = f.GetMethodName()
 		href, _ = f.GetHRef()
@@ -343,7 +339,7 @@ func (cl *HttpConsumerClient) PubRequest(req transports.RequestMessage) error {
 
 func (cl *HttpConsumerClient) Init(
 	fullURL string, clientID string, clientCert *tls.Certificate, caCert *x509.Certificate,
-	getForm func(op string) *td.Form,
+	getForm transports.GetFormHandler,
 	timeout time.Duration) {
 	baseHostPort := ""
 	caCertPool := x509.NewCertPool()
@@ -382,7 +378,7 @@ func (cl *HttpConsumerClient) Init(
 		getForm = cl.GetDefaultForm
 	}
 	//
-	cl.getForm = getForm
+	cl.BaseGetForm = getForm
 	cl.headers = make(map[string]string)
 	// TODO: Should this use NewTLSClient, which adds a cookie-jar?
 	//  This would the client to remember auth tokens in cookies
@@ -403,7 +399,7 @@ func (cl *HttpConsumerClient) Init(
 //	timeout for waiting for response. 0 to use the default.
 func NewHttpTransportClient(
 	fullURL string, clientID string, clientCert *tls.Certificate, caCert *x509.Certificate,
-	getForm func(op string) *td.Form,
+	getForm transports.GetFormHandler,
 	timeout time.Duration) *HttpConsumerClient {
 
 	cl := HttpConsumerClient{}

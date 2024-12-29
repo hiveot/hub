@@ -55,7 +55,7 @@ func (svc *HttpTransportServer) AddTDForms(td *td.TD) error {
 
 // GetForm returns a new HTTP form for the given operation
 // Intended for Thing level operations
-func (svc *HttpTransportServer) GetForm(op string) *td.Form {
+func (svc *HttpTransportServer) GetForm(op string) td.Form {
 
 	// all operations use URI variables for selecting things
 	// HTTP operations
@@ -63,7 +63,7 @@ func (svc *HttpTransportServer) GetForm(op string) *td.Form {
 		if httpOp.op == op {
 			form := td.NewForm(op, httpOp.url)
 			form["htv:methodName"] = httpOp.method
-			return &form
+			return form
 		}
 	}
 

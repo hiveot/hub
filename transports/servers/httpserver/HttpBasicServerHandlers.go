@@ -85,7 +85,7 @@ func (svc *HttpTransportServer) HandleRequestMessage(op string, w http.ResponseW
 	replyHeader := w.Header()
 	if replyHeader == nil {
 		// this happened a few times during testing. perhaps a broken connection while debugging?
-		err = fmt.Errorf("HandleActionRequest: Can't return result."+
+		err = fmt.Errorf("HandleRequest: Can't return result."+
 			" Write header is nil. This is unexpected. clientID='%s", rp.ClientID)
 		svc.writeError(w, err, http.StatusInternalServerError)
 		return

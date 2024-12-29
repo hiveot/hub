@@ -49,7 +49,7 @@ func (svc *SseScTransportServer) AddTDForms(tdi *td.TD) error {
 
 // GetForm returns a new SSE form for the given operation
 // this returns the http form
-func (svc *SseScTransportServer) GetForm(op string) *td.Form {
+func (svc *SseScTransportServer) GetForm(op string) td.Form {
 	// forms are handled through the http binding
 	return svc.httpTransport.GetForm(op)
 }
@@ -259,20 +259,20 @@ func StartSseScTransportServer(
 	//httpTransport.AddGetOp(nil, SSEOpPing,
 	//	ssePath+"/ping", b.HandlePing)
 	httpTransport.AddPostOp(nil, wot.OpObserveAllProperties,
-		ssePath+"/digitwin/observe/{thingID}", b.HandleObserveAllProperties)
+		ssePath+"/observe/{thingID}", b.HandleObserveAllProperties)
 	httpTransport.AddPostOp(nil, wot.OpSubscribeAllEvents,
-		ssePath+"/digitwin/subscribe/{thingID}", b.HandleSubscribeAllEvents)
+		ssePath+"/subscribe/{thingID}", b.HandleSubscribeAllEvents)
 	httpTransport.AddPostOp(nil, wot.OpSubscribeEvent,
-		ssePath+"/digitwin/subscribe/{thingID}/{name}", b.HandleSubscribeEvent)
+		ssePath+"/subscribe/{thingID}/{name}", b.HandleSubscribeEvent)
 	httpTransport.AddPostOp(nil, wot.OpObserveProperty,
-		ssePath+"/digitwin/observe/{thingID}/{name}", b.HandleObserveProperty)
+		ssePath+"/observe/{thingID}/{name}", b.HandleObserveProperty)
 	httpTransport.AddPostOp(nil, wot.OpUnobserveAllProperties,
-		ssePath+"/digitwin/unobserve/{thingID}", b.HandleUnobserveAllProperties)
+		ssePath+"/unobserve/{thingID}", b.HandleUnobserveAllProperties)
 	httpTransport.AddPostOp(nil, wot.OpUnobserveProperty,
-		ssePath+"/digitwin/unobserve/{thingID}/{name}", b.HandleUnobserveProperty)
+		ssePath+"/unobserve/{thingID}/{name}", b.HandleUnobserveProperty)
 	httpTransport.AddPostOp(nil, wot.OpUnsubscribeAllEvents,
-		ssePath+"/digitwin/unsubscribe/{thingID}", b.HandleUnsubscribeAllEvents)
+		ssePath+"/unsubscribe/{thingID}", b.HandleUnsubscribeAllEvents)
 	httpTransport.AddPostOp(nil, wot.OpUnsubscribeEvent,
-		ssePath+"/digitwin/unsubscribe/{thingID}/{name}", b.HandleUnsubscribeEvent)
+		ssePath+"/unsubscribe/{thingID}/{name}", b.HandleUnsubscribeEvent)
 	return b
 }

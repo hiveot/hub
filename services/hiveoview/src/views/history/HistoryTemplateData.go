@@ -9,7 +9,6 @@ import (
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/consumedthing"
 	"github.com/hiveot/hub/wot/td"
-	"strconv"
 	"time"
 )
 
@@ -25,7 +24,7 @@ type HistoryTemplateData struct {
 	Timestamp      time.Time
 	TimestampStr   string
 	DurationSec    int
-	Values         []*transports.ThingMessage
+	Values         []*transports.NotificationMessage
 	ItemsRemaining bool // for paging, if supported
 	Stepped        bool // stepped graph
 
@@ -50,7 +49,7 @@ func (ht HistoryTemplateData) AsJSON() string {
 	for _, m := range ht.Values {
 		yValue := m.Data
 		if ht.DataSchema.Type == vocab.WoTDataTypeBool {
-			boolValue, _ := strconv.ParseBool(m.DataAsText())
+			boolValue := m.ToBool()
 			yValue = 0
 			if boolValue {
 				yValue = 1
@@ -58,7 +57,7 @@ func (ht HistoryTemplateData) AsJSON() string {
 
 		}
 		dataList = append(dataList,
-			HistoryDataPoint{X: m.Timestamp, Y: yValue})
+			HistoryDataPoint{X: m.Created, Y: yValue})
 	}
 	dataJSON, _ := json.Marshal(dataList)
 	return string(dataJSON)

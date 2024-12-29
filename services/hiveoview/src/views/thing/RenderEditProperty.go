@@ -29,7 +29,7 @@ type RenderEditPropertyTemplateData struct {
 	SubmitPropertyPath string
 }
 
-func getPropAff(hc transports.IClientConnection, thingID string, name string) (
+func getPropAff(hc transports.IConsumerConnection, thingID string, name string) (
 	td *td.TD, propAff *td.PropertyAffordance, err error) {
 
 	tdJson, err := digitwin.DirectoryReadTD(hc, thingID)
@@ -50,7 +50,7 @@ func getPropAff(hc transports.IClientConnection, thingID string, name string) (
 // obtain a schema value instance from a thingID and key
 // this pulls the TD from the server (todo: consider using a local cache)
 func getConfigValue(
-	hc transports.IClientConnection, thingID string, name string) (sv RenderEditPropertyTemplateData, err error) {
+	hc transports.IConsumerConnection, thingID string, name string) (sv RenderEditPropertyTemplateData, err error) {
 
 	td, propAff, err := getPropAff(hc, thingID, name)
 	_ = td

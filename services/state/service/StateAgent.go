@@ -8,7 +8,6 @@ import (
 	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
-	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 )
 
@@ -180,9 +179,7 @@ func StartStateAgent(svc *StateService, hc transports.IAgentConnection) *StateAg
 
 		// publish the service TD
 		tdi := agent.CreateTD()
-		tdJSON, _ := jsoniter.Marshal(tdi)
-		notif := transports.NewNotificationMessage(wot.HTOpUpdateTD, tdi.ID, "", string(tdJSON))
-		err := hc.SendNotification(notif)
+		err := hc.PubTD(tdi)
 		if err != nil {
 			slog.Error("Failed publishing the TD", "err", err.Error())
 		}

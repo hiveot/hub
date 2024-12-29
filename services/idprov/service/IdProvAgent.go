@@ -25,6 +25,6 @@ func StartIdProvAgent(svc *ManageIdProvService, hc transports.IAgentConnection) 
 	}
 	ah := hubagent.NewAgentHandler(idprovapi.ManageServiceID, methods)
 	hc.SetRequestHandler(ah.HandleRequest)
-
+	// TODO: publish service TD
 	return ah
 }

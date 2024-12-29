@@ -61,4 +61,6 @@ func StartHistoryAgent(svc *HistoryService, hc transports.IAgentConnection) {
 		}
 		return req.CreateResponse(nil, fmt.Errorf("Unhandled message"))
 	})
+
+	// TODO: publish the TD
 }

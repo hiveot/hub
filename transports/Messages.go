@@ -2,6 +2,7 @@
 package transports
 
 import (
+	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot"
 	"github.com/teris-io/shortid"
@@ -73,9 +74,25 @@ type NotificationMessage struct {
 	MessageID string `json:"messageID"`
 }
 
+// GetUpdated is a helper to provide a human readable timestamp
+// This uses the time presentation format RFC822 ("02 Jan 06 15:04 MST")
+func (req *NotificationMessage) GetUpdated() string {
+	created, err := dateparse.ParseAny(req.Created)
+	if err != nil {
+		return req.Created // can't parse, return as-is
+	}
+	created = created.Local()
+	return created.Format(time.RFC822)
+}
+
 // ToString is a helper to easily read the request input as a string
 func (req *NotificationMessage) ToString() string {
 	return tputils.DecodeAsString(req.Data)
+}
+
+// ToBool is a helper to easily return the result as boolean
+func (req *NotificationMessage) ToBool() bool {
+	return tputils.DecodeAsBool(req.Data)
 }
 
 // RequestMessage for sending a request for an operation on a Thing.
@@ -214,9 +231,20 @@ type ResponseMessage struct {
 	MessageID string `json:"messageID"`
 }
 
+// GetUpdated is a helper to provide a human readable timestamp
+// This uses the time presentation format RFC822 ("02 Jan 06 15:04 MST")
+func (resp *ResponseMessage) GetUpdated() string {
+	created, err := dateparse.ParseAny(resp.Updated)
+	if err != nil {
+		return resp.Updated // can't parse, return as-is
+	}
+	created = created.Local()
+	return created.Format(time.RFC822)
+}
+
 // ToString is a helper to easily read the response output as a string
-func (req *ResponseMessage) ToString() string {
-	return tputils.DecodeAsString(req.Output)
+func (resp *ResponseMessage) ToString() string {
+	return tputils.DecodeAsString(resp.Output)
 }
 
 // NewRequestMessage creates a new RequestMessage instance.

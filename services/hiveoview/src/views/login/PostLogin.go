@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
-	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/servers/httpserver"
 	jsoniter "github.com/json-iterator/go"
 	"io"
 	"log/slog"
@@ -32,7 +32,7 @@ func PostLoginFormHandler(sm *session.WebSessionManager) http.HandlerFunc {
 			//w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		cid := r.Header.Get(transports.ConnectionIDHeader)
+		cid := r.Header.Get(httpserver.ConnectionIDHeader)
 		slog.Info("PostLoginFormHandler",
 			"loginID", loginID,
 			"cid", cid)
@@ -90,7 +90,7 @@ func PostLoginHandler(sm *session.WebSessionManager) http.HandlerFunc {
 			//w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		cid := r.Header.Get(transports.ConnectionIDHeader)
+		cid := r.Header.Get(httpserver.ConnectionIDHeader)
 		slog.Info("PostLoginHandler",
 			"loginID", loginID,
 			"cid", cid)

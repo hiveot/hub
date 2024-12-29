@@ -1,11 +1,9 @@
 package thing
 
 import (
-	"errors"
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
-	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"net/http"
@@ -25,7 +23,7 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 	newValue = valueStr
 	reply := ""
 
-	stat := transports.ActionStatus{}
+	//stat := transports.ActionStatus{}
 	//
 	_, sess, err := session.GetSessionFromContext(r)
 	if err != nil {
@@ -52,9 +50,7 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 		//stat = hc.HandleActionFlow(thingID, actionName, newValue)
 		var resp interface{}
 		err = sess.GetHubClient().InvokeAction(thingID, actionName, newValue, &resp)
-		if stat.Error != "" {
-			err = errors.New(stat.Error)
-		} else if resp != nil {
+		if resp != nil {
 			// stringify the reply for presenting in the notification
 			reply = fmt.Sprintf("%v", resp)
 		}

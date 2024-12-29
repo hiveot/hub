@@ -149,7 +149,7 @@ func NewInteractionOutputFromValueList(values []digitwin.ThingValue, td *td.TD) 
 }
 
 // NewInteractionOutputFromMessage creates a new immutable interaction output from
-// a ThingMessage and optionally its associated TD.
+// a NotificationMessage (event,property) and optionally its associated TD.
 //
 // If no td is available, this value conversion will still be usable but it won't
 // contain any schema information.
@@ -163,13 +163,13 @@ func NewInteractionOutputFromValueList(values []digitwin.ThingValue, td *td.TD) 
 //	tm contains the received ThingMessage data
 //	td is the associated thing description
 func NewInteractionOutputFromMessage(
-	msg *transports.ThingMessage, td *td.TD) *InteractionOutput {
+	msg *transports.NotificationMessage, td *td.TD) *InteractionOutput {
 
 	io := &InteractionOutput{
 		ThingID:  td.ID,
 		Name:     msg.Name,
 		SenderID: msg.SenderID,
-		Updated:  msg.Timestamp,
+		Updated:  msg.Created,
 		Value:    NewDataSchemaValue(msg.Data),
 		Err:      nil,
 	}

@@ -8,6 +8,7 @@ import (
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot/consumedthing"
+	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"net/http"
 	"sync"
@@ -67,7 +68,7 @@ type WebClientSession struct {
 	lastError    error
 
 	// The associated hub client for pub/sub
-	hc transports.IClientConnection
+	hc transports.IConsumerConnection
 	// session mutex for updating sse and activity
 	mux sync.RWMutex
 
@@ -115,8 +116,13 @@ func (sess *WebClientSession) GetClientData() *ClientDataModel {
 	return sess.clientData
 }
 
+// GetForm returns the form for an operation on a Thing
+func (sess *WebClientSession) GetForm(op, thingID, name string) td.Form {
+	return sess.cts.GetForm(op, thingID, name)
+}
+
 // GetHubClient returns the hub client connection for use in pub/sub
-func (sess *WebClientSession) GetHubClient() transports.IClientConnection {
+func (sess *WebClientSession) GetHubClient() transports.IConsumerConnection {
 	return sess.hc
 }
 
@@ -288,19 +294,36 @@ func (sess *WebClientSession) onHubConnectionChange(connected bool, err error) {
 	}
 }
 
-// onMessage notifies SSE clients of incoming messages from the Hub
-// This is intended for notifying the client UI of the update to props, events or actions.
+// onResponse notifies SSE clients of incoming response to a request.
+// This is intended for notifying the client UI of the update to actions.
 // The consumed thing itself is already updated.
-func (sess *WebClientSession) onMessage(msg *transports.ThingMessage) {
+func (sess *WebClientSession) onResponse(msg *transports.ResponseMessage) {
 
-	slog.Debug("received message",
+	if msg.Operation == vocab.OpInvokeAction {
+		// TODO: figure out a way to replace the existing notification popup if the requestID
+		//  is the same (status changes from applied to delivered)
+		if msg.Error != "" {
+			sess.SendNotify(NotifyError, msg.Error)
+		} else if msg.Status == transports.StatusCompleted {
+			sess.SendNotify(NotifySuccess, "Action successful")
+		} else {
+			sess.SendNotify(NotifyWarning, "Action progress: "+msg.Status)
+		}
+	}
+}
+
+// onNotification notifies SSE clients of incoming notifications from the Hub
+// This is intended for notifying the client UI of the update to props or events.
+// The consumed thing itself is already updated.
+func (sess *WebClientSession) onNotification(msg *transports.NotificationMessage) {
+
+	slog.Debug("received notification",
 		slog.String("operation", msg.Operation),
 		slog.String("thingID", msg.ThingID),
 		slog.String("name", msg.Name),
 		//slog.Any("data", msg.Data),
 		slog.String("senderID", msg.SenderID),
 		slog.String("receiver cid", sess.cid),
-		slog.String("requestID", msg.RequestID),
 	)
 	if msg.Operation == vocab.HTOpUpdateProperty {
 		// Publish a sse event for each property
@@ -313,35 +336,6 @@ func (sess *WebClientSession) onMessage(msg *transports.ThingMessage) {
 		sess.SendSSE(thingAddr, propVal)
 		thingAddr = fmt.Sprintf("%s/%s/updated", msg.ThingID, msg.Name)
 		sess.SendSSE(thingAddr, msg.GetUpdated())
-	} else if msg.Operation == vocab.HTOpUpdateActionStatus {
-		// report unhandled delivery updates
-		// for now just pass it to the notification toaster
-		stat := transports.ActionStatus{}
-		_ = tputils.DecodeAsObject(msg.Data, &stat)
-
-		// TODO: figure out a way to replace the existing notification if the requestID
-		//  is the same (status changes from applied to delivered)
-		if stat.Error != "" {
-			sess.SendNotify(NotifyError, stat.Error)
-		} else if stat.Status == vocab.RequestCompleted {
-			sess.SendNotify(NotifySuccess, "Action successful")
-		} else {
-			sess.SendNotify(NotifyWarning, "Action delivery: "+stat.Status)
-		}
-		//} else if msg.MessageType == vocab.HTOpPublishEvent &&
-		//	msg.ThingID == digitwin.DirectoryDThingID &&
-		//	msg.Name == digitwin.DirectoryEventThingUpdated {
-
-		//// Update the TD in the consumed-thing if it exists
-		//cts := sess.GetConsumedThingsDirectory()
-		//td := cts.UpdateTD(msg.Data)
-		//
-		//// Publish sse event to the UI to update their TD.
-		//// The UI that displays this event can use this as a trigger to reload the
-		//// fragment that displays this TD:
-		////    hx-trigger="sse:{{.Thing.ThingID}}"
-		//thingAddr := td.ID
-		//sess.SendSSE(thingAddr, "")
 	} else {
 		// Publish sse event indicating the event affordance or value has changed.
 		// The UI that displays this event can use this as a trigger to reload the
@@ -349,7 +343,7 @@ func (sess *WebClientSession) onMessage(msg *transports.ThingMessage) {
 		//    hx-trigger="sse:{{.Thing.ThingID}}/{{$k}}"
 		// where $k is the event ID
 		eventName := fmt.Sprintf("%s/%s", msg.ThingID, msg.Name)
-		sess.SendSSE(eventName, msg.DataAsText())
+		sess.SendSSE(eventName, msg.ToString())
 		eventName = fmt.Sprintf("%s/%s/updated", msg.ThingID, msg.Name)
 		sess.SendSSE(eventName, msg.GetUpdated())
 	}
@@ -357,11 +351,11 @@ func (sess *WebClientSession) onMessage(msg *transports.ThingMessage) {
 
 // ReplaceConnection replaces the hub connection in this session.
 // This closes the old connection and ignores the callback it gives.
-func (sess *WebClientSession) ReplaceConnection(hc transports.IClientConnection) {
+func (sess *WebClientSession) ReplaceConnection(hc transports.IConsumerConnection) {
 	oldHC := sess.hc
 	sess.hc = hc
 	hc.SetConnectHandler(sess.onHubConnectionChange)
-	//hc.SetNotificationHandler(sess.onMessage)
+	//hc.SetNotificationHandler(sess.onNotification)
 	oldHC.SetConnectHandler(nil)
 	oldHC.SetNotificationHandler(nil)
 	oldHC.Disconnect()
@@ -481,7 +475,7 @@ func (sess *WebClientSession) WritePage(w http.ResponseWriter, buff *bytes.Buffe
 //	remoteAddr is the web client remote address
 //	onClose is the callback to invoke when this session is closed.
 func NewWebClientSession(
-	cid string, hc transports.IClientConnection, remoteAddr string, noState bool,
+	cid string, hc transports.IConsumerConnection, remoteAddr string, noState bool,
 	onClosed func(*WebClientSession)) *WebClientSession {
 	var err error
 
@@ -501,10 +495,10 @@ func NewWebClientSession(
 		cts:      cts,
 		onClosed: onClosed,
 	}
-	//hc.SetNotificationHandler(cs.onMessage)
+	//hc.SetNotificationHandler(cs.onNotification)
 	hc.SetConnectHandler(cs.onHubConnectionChange)
-	// onMessage is called with updates from the consumed thing
-	cts.SetEventHandler(cs.onMessage)
+	// onNotification is called with updates from the consumed thing
+	cts.SetEventHandler(cs.onNotification)
 
 	isConnected := hc.IsConnected()
 	cs.isActive.Store(isConnected)

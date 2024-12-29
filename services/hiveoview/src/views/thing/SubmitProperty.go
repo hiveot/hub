@@ -3,22 +3,20 @@ package thing
 import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
-	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
-	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"net/http"
 )
 
-// SubmitProperty handles posting of a new thing property value
+// SubmitProperty handles writing of a new thing property value
 // The posted form value contains a 'value' field
 // TODO: use the form method from the TD - once forms are added
 func SubmitProperty(w http.ResponseWriter, r *http.Request) {
 	var newValue any
 	var tdi *td.TD
 	var propAff *td.PropertyAffordance
-	stat := transports.ActionStatus{}
+	//stat := transports.ActionStatus{}
 	thingID := chi.URLParam(r, "thingID")
 	propName := chi.URLParam(r, "name")
 	valueStr := r.FormValue(propName)
@@ -37,7 +35,7 @@ func SubmitProperty(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		newValue, err = td.ConvertToNative(valueStr, &propAff.DataSchema)
 
-		err = sess.GetHubClient().WriteProperty(thingID, propName, newValue, true)
+		err = sess.GetHubClient().WriteProperty(thingID, propName, newValue, false)
 	}
 	if err != nil {
 		sess.SendNotify(session.NotifyError, "Property update failed: "+err.Error())
@@ -53,13 +51,8 @@ func SubmitProperty(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if stat.Status == vocab.RequestCompleted {
-		notificationText := fmt.Sprintf("Configuration changed.")
-		sess.SendNotify(session.NotifySuccess, notificationText)
-	} else {
-		notificationText := fmt.Sprintf("Configuration request sent.")
-		sess.SendNotify(session.NotifyInfo, notificationText)
-	}
+	notificationText := fmt.Sprintf("Configuration changed.")
+	sess.SendNotify(session.NotifySuccess, notificationText)
 
 	// the async reply will contain status update
 	w.WriteHeader(http.StatusOK)

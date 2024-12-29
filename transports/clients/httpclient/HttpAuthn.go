@@ -27,7 +27,7 @@ func (cl *HttpConsumerClient) ConnectWithLoginForm(
 	formMock.Add("password", password)
 
 	var loginHRef string
-	f := cl.getForm(wot.HTOpLoginWithForm)
+	f := cl.BaseGetForm(wot.HTOpLoginWithForm, "", "")
 	if f != nil {
 		loginHRef, _ = f.GetHRef()
 	}
@@ -84,7 +84,7 @@ func (cl *HttpConsumerClient) ConnectWithPassword(password string) (newToken str
 	}
 	// FIXME: can't use sendrequest as it needs an established connection
 	//err = cl.SendOperation(wot.HTOpLogin, "", "", loginMessage, &token)
-	f := cl.getForm(wot.HTOpLogin)
+	f := cl.BaseGetForm(wot.HTOpLogin, "", "")
 	if f == nil {
 		err = fmt.Errorf("missing form for login operation")
 		slog.Error(err.Error())

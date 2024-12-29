@@ -18,7 +18,7 @@ const ReadDirLimit = 1000
 // This maintains a single instance of each ConsumedThing and updates it when
 // an event and action progress updates are received.
 type ConsumedThingsDirectory struct {
-	cc transports.IClientConnection
+	cc transports.IConsumerConnection
 	// Things used by the client
 	consumedThings map[string]*ConsumedThing
 	// directory of TD documents
@@ -26,7 +26,7 @@ type ConsumedThingsDirectory struct {
 	// the full directory has been read in this session
 	fullDirectoryRead bool
 	// additional handler of events for forwarding to other consumers
-	eventHandler func(msg *transports.ThingMessage)
+	eventHandler func(msg *transports.NotificationMessage)
 	mux          sync.RWMutex
 }
 
@@ -61,13 +61,12 @@ func (cts *ConsumedThingsDirectory) Consume(thingID string) (ct *ConsumedThing, 
 	return ct, nil
 }
 
-// handleMessage updates the consumed things from subscriptions
-func (cts *ConsumedThingsDirectory) handleMessage(msg *transports.ThingMessage) {
+// handleNotification updates the consumed things from subscriptions
+func (cts *ConsumedThingsDirectory) handleNotification(msg transports.NotificationMessage) {
 
-	slog.Debug("CTS.handleMessage",
+	slog.Debug("CTS.handleNotification",
 		slog.String("senderID", msg.SenderID),
 		slog.String("operation", msg.Operation),
-		slog.String("requestID", msg.RequestID),
 		slog.String("thingID", msg.ThingID),
 		slog.String("name", msg.Name),
 		slog.String("clientID (me)", cts.cc.GetClientID()),
@@ -75,29 +74,30 @@ func (cts *ConsumedThingsDirectory) handleMessage(msg *transports.ThingMessage) 
 
 	// if an event is received from an unknown Thing then (re)load its TD
 	// progress updates don't count
-	if msg.Operation != wot.HTOpUpdateActionStatus {
-		cts.mux.RLock()
-		_, found := cts.directory[msg.ThingID]
-		cts.mux.RUnlock()
-		if !found {
-			// FIXME: the digitwin directory TD should be readable. It isnt.
-			_, err := cts.ReadTD(msg.ThingID)
-			if err != nil {
-				slog.Error("Received message with thingID that doesn't exist",
-					"operation", msg.Operation, "requestID", msg.RequestID,
-					"thingID", msg.ThingID, "name", msg.Name, "senderID", msg.SenderID)
-			}
-		}
-	}
+	// FIXME: delivery updates are no longer notifications
+	//if msg.Operation != wot.HTOpUpdateActionStatus {
+	//	cts.mux.RLock()
+	//	_, found := cts.directory[msg.ThingID]
+	//	cts.mux.RUnlock()
+	//	if !found {
+	//		// FIXME: the digitwin directory TD should be readable. It isnt.
+	//		_, err := cts.ReadTD(msg.ThingID)
+	//		if err != nil {
+	//			slog.Error("Received message with thingID that doesn't exist",
+	//				"operation", msg.Operation, "requestID", msg.RequestID,
+	//				"thingID", msg.ThingID, "name", msg.Name, "senderID", msg.SenderID)
+	//		}
+	//	}
+	//}
 	// update the TD of consumed things
 	// the directory service publishes TD updates as events
 	// FIXME: use the WoT discovery/directory definition instead of using a digitwin dependency
-	if msg.Operation == wot.HTOpPublishEvent &&
+	if msg.Operation == wot.HTOpEvent &&
 		msg.ThingID == digitwin.DirectoryDThingID &&
 		msg.Name == digitwin.DirectoryEventThingUpdated {
 		// decode the TD
 		td := &td.TD{}
-		err := jsoniter.UnmarshalFromString(msg.DataAsText(), &td)
+		err := jsoniter.UnmarshalFromString(msg.ToString(), &td)
 		if err != nil {
 			slog.Error("invalid payload for TD event. Ignored",
 				"thingID", msg.ThingID)
@@ -120,14 +120,15 @@ func (cts *ConsumedThingsDirectory) handleMessage(msg *transports.ThingMessage) 
 		if found {
 			ct.OnPropertyUpdate(msg)
 		}
-	} else if msg.Operation == wot.HTOpUpdateActionStatus {
-		// delivery status updates refer to actions
-		cts.mux.RLock()
-		ct, found := cts.consumedThings[msg.ThingID]
-		cts.mux.RUnlock()
-		if found {
-			ct.OnDeliveryUpdate(msg)
-		}
+		//} else if msg.Operation == wot.HTOpUpdateActionStatus {
+		//	// FIXME: action updates are no longer notifications
+		//	// delivery status updates refer to actions
+		//	cts.mux.RLock()
+		//	ct, found := cts.consumedThings[msg.ThingID]
+		//	cts.mux.RUnlock()
+		//	if found {
+		//		ct.OnDeliveryUpdate(msg)
+		//	}
 	} else {
 		// this is a regular value event
 		cts.mux.RLock()
@@ -140,8 +141,15 @@ func (cts *ConsumedThingsDirectory) handleMessage(msg *transports.ThingMessage) 
 	}
 	// pass it on to chained handler
 	if cts.eventHandler != nil {
-		cts.eventHandler(msg)
+		cts.eventHandler(&msg)
 	}
+}
+
+// GetForm returns the form for an operation on a Thing
+func (cts *ConsumedThingsDirectory) GetForm(op, thingID, name string) td.Form {
+	tdi := cts.GetTD(thingID)
+	f := tdi.GetForm(op, name, "")
+	return f
 }
 
 // IsActive returns whether the session has a connection to the Hub or is in the process of connecting.
@@ -155,8 +163,8 @@ func (cts *ConsumedThingsDirectory) handleMessage(msg *transports.ThingMessage) 
 func (cts *ConsumedThingsDirectory) GetTD(thingID string) *td.TD {
 	cts.mux.RLock()
 	defer cts.mux.RUnlock()
-	td := cts.directory[thingID]
-	return td
+	tdi := cts.directory[thingID]
+	return tdi
 }
 
 // ReadDirectory loads and decodes Thing Description documents from the directory.
@@ -219,7 +227,7 @@ func (cts *ConsumedThingsDirectory) ReadTD(thingID string) (*td.TD, error) {
 // Intended for consumers such that need to pass all messages on, for example to
 // a UI frontend.
 // Currently only a single handler is supported.
-func (cts *ConsumedThingsDirectory) SetEventHandler(handler func(message *transports.ThingMessage)) {
+func (cts *ConsumedThingsDirectory) SetEventHandler(handler func(message *transports.NotificationMessage)) {
 	cts.mux.Lock()
 	defer cts.mux.Unlock()
 	cts.eventHandler = handler
@@ -253,13 +261,13 @@ func (cts *ConsumedThingsDirectory) UpdateTD(tdJSON string) *ConsumedThing {
 // consumed Things through a client connection.
 //
 // This will subscribe to events from the Hub using the provided hub client.
-func NewConsumedThingsSession(hc transports.IClientConnection) *ConsumedThingsDirectory {
+func NewConsumedThingsSession(hc transports.IConsumerConnection) *ConsumedThingsDirectory {
 	ctm := ConsumedThingsDirectory{
 		cc:             hc,
 		consumedThings: make(map[string]*ConsumedThing),
 		directory:      make(map[string]*td.TD),
 	}
 	//hc.Subscribe("", "") TODO: where to subscribe?
-	hc.SetNotificationHandler(ctm.handleMessage)
+	hc.SetNotificationHandler(ctm.handleNotification)
 	return &ctm
 }

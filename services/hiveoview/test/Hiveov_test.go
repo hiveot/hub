@@ -37,7 +37,7 @@ var ts *testenv.TestServer
 
 // return the form with href for login operations to the hiveoview server
 // these must match the paths in hiveoview CreateRoutes.
-func getHiveoviewForm(op string) *td.Form {
+func getHiveoviewForm(op, thingID, name string) td.Form {
 	var href string
 	var method string
 	switch op {
@@ -58,7 +58,7 @@ func getHiveoviewForm(op string) *td.Form {
 	}
 	f := td.NewForm(op, href)
 	f.SetMethodName(method)
-	return &f
+	return f
 }
 
 // Helper function to login as a web client and sse listener

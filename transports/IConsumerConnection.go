@@ -1,6 +1,11 @@
 // Package transports with the interface of a client transport connection
 package transports
 
+import "github.com/hiveot/hub/wot/td"
+
+// GetFormHandler is the handler that provides the client with the form needed to invoke an operation
+type GetFormHandler func(op string, thingID string, name string) td.Form
+
 // IConsumerConnection defines the client interface of a consumer client connection
 type IConsumerConnection interface {
 	// ConnectWithClientCert connects to the server using a client certificate.
@@ -52,7 +57,7 @@ type IConsumerConnection interface {
 	GetServerURL() string
 
 	// InvokeAction sends an action request and waits for a response or until timeout.
-	// This is short for SendRequest(wot.OpInvokeAction, ...)
+	// This is a simple helper that uses SendRequest(wot.OpInvokeAction, ...)
 	InvokeAction(dThingID, name string, input any, output any) error
 
 	// IsConnected returns true when the connection is active
@@ -86,6 +91,11 @@ type IConsumerConnection interface {
 	// This replaces any previously set handler.
 	SetConnectHandler(cb func(connected bool, err error))
 
+	// SetGetForm sets the handler for retrieving a thing form.
+	// Intended for use when the TD directory isn't available when the connection
+	// is first created
+	SetGetForm(cb GetFormHandler)
+
 	// SetNotificationHandler [consumer] sets the callback for receiving notifications.
 	// This replaces any previously set handler.
 	SetNotificationHandler(cb NotificationHandler)
@@ -117,6 +127,6 @@ type IConsumerConnection interface {
 	//	thingID is the thing whose property to write
 	//	name is the property affordance name
 	//	input is the value to write as per affordance dataschema
-	//	async is true to return after submitting the request or false to wait for a response
-	WriteProperty(thingID, name string, input any, async bool) error
+	//	wait is true to wait for a response or false to return after submitting the request
+	WriteProperty(thingID, name string, input any, wait bool) error
 }
