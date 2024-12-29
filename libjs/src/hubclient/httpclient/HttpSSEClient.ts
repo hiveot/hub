@@ -249,7 +249,7 @@ export class HttpSSEClient implements IAgentClient {
     }
 
     // Handle incoming event or property messages from the hub and pass them to handler
-    onMessage(msg: ThingMessage): void {
+    onMessage(msg: NotificationMessage): void {
         try {
             if (msg.operation == OpInvokeAction && this.actionHandler) {
                 this.actionHandler(msg)

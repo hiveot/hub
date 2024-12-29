@@ -81,7 +81,7 @@ func (test *TestServer) GetAgentConnection(agentID string, protocolName string) 
 // GetConsumerConnection returns a hub connection for a consumer and protocol.
 // This sets 'getForm' to the handler provided by the protocol server. For testing only.
 func (test *TestServer) GetConsumerConnection(clientID string, protocolName string) transports.IConsumerConnection {
-	getForm := func(op string) *td.Form {
+	getForm := func(op, thingID, name string) td.Form {
 		return test.Runtime.GetForm(op, protocolName)
 	}
 
@@ -239,7 +239,7 @@ func (test *TestServer) CreateTestTD(i int) (tdi *td.TD) {
 }
 
 // GetForm returns the form for the given operation and transport protocol binding
-func (test *TestServer) GetForm(op string, protocol string) *td.Form {
+func (test *TestServer) GetForm(op string, protocol string) td.Form {
 	return test.Runtime.GetForm(op, protocol)
 }
 
