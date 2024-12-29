@@ -161,23 +161,23 @@ func NewInteractionOutputFromValueList(values []digitwin.ThingValue, td *td.TD) 
 // includes metadata such as a timestamp when it was last updated and who updated it.
 //
 //	tm contains the received ThingMessage data
-//	td is the associated thing description
+//	tdi is the associated thing description
 func NewInteractionOutputFromMessage(
-	msg *transports.NotificationMessage, td *td.TD) *InteractionOutput {
+	notif *transports.NotificationMessage, tdi *td.TD) *InteractionOutput {
 
 	io := &InteractionOutput{
-		ThingID:  td.ID,
-		Name:     msg.Name,
-		SenderID: msg.SenderID,
-		Updated:  msg.Created,
-		Value:    NewDataSchemaValue(msg.Data),
+		//ThingID:  tdi.ID,
+		Name:     notif.Name,
+		SenderID: notif.SenderID,
+		Updated:  notif.Created,
+		Value:    NewDataSchemaValue(notif.Data),
 		Err:      nil,
 	}
-	if td == nil {
+	if tdi == nil {
 		return io
 	}
-	io.ThingID = td.ID
-	io.setSchemaFromTD(td)
+	io.ThingID = tdi.ID
+	io.setSchemaFromTD(tdi)
 	return io
 }
 
@@ -193,21 +193,21 @@ func NewInteractionOutputFromMessage(
 //	tv contains the received ThingValue data
 //	td is the associated thing description
 func NewInteractionOutputFromValue(
-	tv *digitwin.ThingValue, td *td.TD) *InteractionOutput {
+	tv *digitwin.ThingValue, tdi *td.TD) *InteractionOutput {
 
 	io := &InteractionOutput{
-		ThingID:  td.ID,
+		ThingID:  tdi.ID,
 		Name:     tv.Name,
 		SenderID: tv.SenderID,
 		Updated:  tv.Updated,
 		Value:    NewDataSchemaValue(tv.Data),
 		Err:      nil,
 	}
-	if td == nil {
+	if tdi == nil {
 		return io
 	}
-	io.ThingID = td.ID
-	io.setSchemaFromTD(td)
+	io.ThingID = tdi.ID
+	io.setSchemaFromTD(tdi)
 	return io
 }
 

@@ -35,6 +35,9 @@ type WebSessionManager struct {
 	hc transports.IAgentConnection
 	// disable persistence from state service (for testing)
 	noState bool
+
+	// timeout for hub connections
+	timeout time.Duration
 }
 
 // add a new session with the given clientID and send a session count event
@@ -180,7 +183,7 @@ func (sm *WebSessionManager) onClose(cs *WebClientSession) {
 func (sm *WebSessionManager) ConnectWithPassword(w http.ResponseWriter, r *http.Request,
 	loginID string, password string, cid string) (newToken string, err error) {
 
-	hc, err := clients.NewConsumerClient(sm.hubURL, loginID, sm.caCert, nil, 0)
+	hc, err := clients.NewConsumerClient(sm.hubURL, loginID, sm.caCert, nil, sm.timeout)
 	if err == nil {
 		newToken, err = hc.ConnectWithPassword(password)
 	}
@@ -223,7 +226,7 @@ func (sm *WebSessionManager) ConnectWithToken(
 		"nr websessions", len(sm.sessions))
 	var newToken string
 
-	hc, err := clients.NewConsumerClient(sm.hubURL, loginID, sm.caCert, nil, 0)
+	hc, err := clients.NewConsumerClient(sm.hubURL, loginID, sm.caCert, nil, sm.timeout)
 	if err == nil {
 		newToken, err = hc.ConnectWithToken(authToken)
 	}
@@ -279,7 +282,6 @@ func (sm *WebSessionManager) GetSessionFromCookie(r *http.Request) (
 	// The UI is supposed to supply a cid header in sse requests. However,
 	// sse-connect ignores the hx-header that contains the cid. As a workaround
 	// also check query parameters.
-	// lets face it though, it is time to ditch SSE and switch to websockets :/
 	cid = r.Header.Get(httpserver.ConnectionIDHeader)
 	if cid == "" {
 		cid = r.URL.Query().Get("cid")
@@ -294,11 +296,18 @@ func (sm *WebSessionManager) GetSessionFromCookie(r *http.Request) (
 	return cs, clientID, cid, authToken, nil
 }
 
-// signingKey for use with session cookies
-// Create a new instance of the hiveoview service session manager
+// NewWebSessionManager creates a new instance of the hiveoview service
+// session manager.
+//
+//	signingKey for use with session cookies
+//	caCert of the hub
+//	hc is the agent service connection for reporting notifications and handling config
+//	noState do not try to persist state with the state service (for testing)
+//	timeout of hub connections
 func NewWebSessionManager(hubURL string,
 	signingKey ed25519.PrivateKey, caCert *x509.Certificate,
-	hc transports.IAgentConnection, noState bool) *WebSessionManager {
+	hc transports.IAgentConnection, noState bool,
+	timeout time.Duration) *WebSessionManager {
 	sm := &WebSessionManager{
 		sessions:   make(map[string]*WebClientSession),
 		mux:        sync.RWMutex{},
@@ -308,6 +317,7 @@ func NewWebSessionManager(hubURL string,
 		caCert:     caCert,
 		hc:         hc,
 		noState:    noState,
+		timeout:    timeout,
 	}
 	return sm
 }

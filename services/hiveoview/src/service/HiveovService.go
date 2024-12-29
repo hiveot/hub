@@ -54,6 +54,8 @@ type HiveovService struct {
 	debug bool
 	// don't use the state store for persistence
 	noState bool
+	// timeout of hub client connections
+	timeout time.Duration
 }
 
 func (svc *HiveovService) GetServerURL() string {
@@ -67,7 +69,9 @@ func (svc *HiveovService) GetSM() *session.WebSessionManager {
 }
 
 // Start the web server and publish the service's own TD.
-// domainName is the listening domain name that matches the server certificate.
+//
+//	hc is the service agent connection to the hub for publishing notifications
+//	timeout for client hub connections
 func (svc *HiveovService) Start(hc transports.IAgentConnection) error {
 	slog.Info("Starting HiveovService", "clientID", hc.GetClientID())
 	svc.hc = hc
@@ -86,7 +90,7 @@ func (svc *HiveovService) Start(hc transports.IAgentConnection) error {
 	// re-use the runtime connection manager
 	hubURL := hc.GetServerURL()
 	svc.sm = session.NewWebSessionManager(
-		hubURL, svc.signingKey, svc.caCert, hc, svc.noState)
+		hubURL, svc.signingKey, svc.caCert, hc, svc.noState, svc.timeout)
 
 	// parse the templates
 	svc.tm.ParseAllTemplates()
@@ -160,10 +164,11 @@ func (svc *HiveovService) Stop() {
 //	serverCert server TLS certificate
 //	caCert server CA certificate
 //	noState flag to not use the state service for persistance. Intended for testing.
+//	timeout of client hub connections
 func NewHiveovService(serverPort int, debug bool,
 	signingKey ed25519.PrivateKey, rootPath string,
 	serverCert *tls.Certificate, caCert *x509.Certificate,
-	noState bool,
+	noState bool, timeout time.Duration,
 ) *HiveovService {
 	templatePath := rootPath
 	if rootPath != "" {
@@ -183,6 +188,7 @@ func NewHiveovService(serverPort int, debug bool,
 		serverCert:   serverCert,
 		caCert:       caCert,
 		noState:      noState,
+		timeout:      timeout,
 	}
 	return &svc
 }

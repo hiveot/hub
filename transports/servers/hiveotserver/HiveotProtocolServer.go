@@ -15,7 +15,7 @@ import (
 
 // HiveotProtocolServer is an application protocol server that runs on top of existing
 // transport protocols.
-// This is IMHO the protocol that would simplify the use of WoT and forms as it
+// This is (IMHO) the protocol that would simplify the use of WoT and forms as it
 // only has three messages: request, response and notifications.
 //
 // This protocol server hooks into the http/ssesc, wss and mqtt transport servers,
@@ -25,7 +25,7 @@ import (
 // supporting agents in WoT.
 //
 // Subscription is requested through the subscribe/observe operations in the request
-// message. This affects the return channels of the transport protocols.
+// message. This is applied to the return channels of the underlying transport protocols.
 type HiveotProtocolServer struct {
 	authenticator transports.IAuthenticator
 
@@ -219,6 +219,8 @@ func (svc *HiveotProtocolServer) Stop() {
 // TODO: Using the given transport server is a temporary messy hook so it can
 // register the hiveot http endpoints for Requests, Responses and Notifications. Once the
 // dust settles this needs cleanup.
+//
+// TODO: also handle WSS and MQTT transported messages
 //
 // This adds http methods for (un)subscribing to events and properties and
 // add new connections to the connection manager for callbacks.

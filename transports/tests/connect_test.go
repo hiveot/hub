@@ -79,7 +79,7 @@ func NewAgent(clientID string) transports.IAgentConnection {
 // This uses the clientID as password
 // This panics if a client cannot be created
 // ClientID is only used for logging
-func NewConsumer(clientID string, getForm func(op string) *td.Form) transports.IConsumerConnection {
+func NewConsumer(clientID string, getForm transports.GetFormHandler) transports.IConsumerConnection {
 	fullURL := testServerHttpURL
 
 	authenticator.AddClient(clientID, clientID)
@@ -106,8 +106,8 @@ func NewConsumer(clientID string, getForm func(op string) *td.Form) transports.I
 
 // Create a new form for the given operation
 // This uses the default protocol binding server to generate the Form
-func NewForm(op string) *td.Form {
-	form := transportServer.GetForm(op)
+func NewForm(op, thingID, name string) td.Form {
+	form := transportServer.GetForm(op, thingID, name)
 	return form
 }
 
@@ -139,7 +139,8 @@ func StartTransportServer(
 			rqh, rph, nth)
 		transportServer = ssescserver.StartSseScTransportServer("", cm, httpTransportServer)
 		// add support for hiveot protocol in http/ssesc
-		hiveotserver.StartHiveotProtocolServer(cm, httpTransportServer, rqh, rph, nth)
+		hiveotserver.StartHiveotProtocolServer(
+			authenticator, cm, httpTransportServer, rqh, rph, nth)
 
 	case transports.ProtocolTypeWSS:
 		httpTransportServer, err = httpserver.StartHttpTransportServer(
@@ -451,7 +452,7 @@ func TestBadForm(t *testing.T) {
 	_, cancelFn, _ := StartTransportServer(nil, nil, nil)
 	defer cancelFn()
 
-	form := NewForm("badoperation")
+	form := NewForm("badoperation", "", "")
 	assert.Nil(t, form)
 }
 

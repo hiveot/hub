@@ -268,7 +268,8 @@ func (sess *WebClientSession) NewSseChan() chan SSEEvent {
 		close(sess.sseChan)
 		slog.Error("The session already has a return channel. Disconnecting the initial connection.")
 	}
-	sess.sseChan = make(chan SSEEvent, 0)
+	// need 1+ deep so that writing isn't blocked before reading it
+	sess.sseChan = make(chan SSEEvent, 1)
 	return sess.sseChan
 }
 

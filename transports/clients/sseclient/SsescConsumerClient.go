@@ -43,18 +43,23 @@ type SsescConsumerClient struct {
 	agentRequestHandler func(raw string)
 }
 
-// helper to establish an sse connection using the given bearer token
+// helper to establish the sse connection using the given bearer token
+// cl.handleSseEvent will set 'connected' status when the first ping event is
+// received from the server. (go-sse doesn't have a connected callback)
 func (cl *SsescConsumerClient) connectSSE(token string) (err error) {
 	if cl.ssePath == "" {
 		return fmt.Errorf("connectSSE: Missing SSE path")
 	}
-	// create a second client to establish the sse connection if a path is set
+	// establish the SSE connection for the return channel
 	sseURL := fmt.Sprintf("https://%s%s", cl.BaseHostPort, cl.ssePath)
 	cl.sseCancelFn, err = ConnectSSE(
-		cl.GetClientID(), cl.GetConnectionID(),
+		cl.GetClientID(),
+		cl.GetConnectionID(),
 		sseURL, token, cl.BaseCaCert,
 		cl.GetTlsClient(),
-		cl.handleSSEConnect, cl.handleSseEvent)
+		cl.handleSSEConnect,
+		cl.handleSseEvent,
+		cl.BaseTimeout)
 
 	return err
 }
@@ -179,13 +184,6 @@ func (cl *SsescConsumerClient) handleSSEConnect(connected bool, err error) {
 // notifications have an operations and no requestID
 func (cl *SsescConsumerClient) handleSseEvent(event sse.Event) {
 
-	// WORKAROUND since go-sse has no callback for a successful (re)connect, simulate one here.
-	// As soon as a connection is established the server could send a 'ping' event.
-	if !cl.IsConnected() {
-		// success!
-		slog.Info("handleSSEEvent: connection (re)established; setting connected to true")
-		cl.handleSSEConnect(true, nil)
-	}
 	slog.Info("handleSSEEvent; received SSE event",
 		slog.String("event type", event.Type))
 	// no further processing of a ping needed
@@ -203,10 +201,17 @@ func (cl *SsescConsumerClient) handleSseEvent(event sse.Event) {
 		_ = jsoniter.UnmarshalFromString(event.Data, &resp)
 		// don't block the receiver flow
 		go cl.OnResponse(resp)
-	} else {
-		// everything is a notification
+	} else if event.Type == transports.MessageTypeNotification {
 		notif := transports.NotificationMessage{}
 		_ = jsoniter.UnmarshalFromString(event.Data, &notif)
+		// don't block the receiver flow
+		go cl.OnNotification(notif)
+	} else {
+		// everything else is in a different format. Attempt to deliver for
+		// compatibility with other protocols (such has hiveoview test client)
+		notif := transports.NotificationMessage{}
+		notif.Data = event.Data
+		notif.Operation = event.Type
 		// don't block the receiver flow
 		go cl.OnNotification(notif)
 	}

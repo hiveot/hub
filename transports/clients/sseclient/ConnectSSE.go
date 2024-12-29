@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hiveot/hub/transports/servers/httpserver"
+	"github.com/hiveot/hub/transports/servers/ssescserver"
 	"github.com/tmaxmax/go-sse"
 	"log/slog"
 	"net/http"
@@ -18,11 +19,14 @@ import (
 // go-sse allows this increase of allocation size on receiving messages
 const maxSSEMessageSize = 1024 * 1024 * 10
 
-// ConnectSSE establishes a new sse connection.
+// ConnectSSE establishes a new sse connection using the given http client.
 //
 // If the connection is interrupted, the sse connection retries with backoff period.
 // If an authentication error occurs then the onDisconnect handler is invoked with an error.
 // If the connection is cancelled then the onDisconnect is invoked without error
+//
+// This invokes onConnect when the connection is lost. The caller must handle the
+// connection established when the first ping is received after successful connection.
 func ConnectSSE(
 	clientID string, cid string,
 	sseURL string, bearerToken string,
@@ -30,19 +34,10 @@ func ConnectSSE(
 	httcl *http.Client,
 	onConnect func(bool, error),
 	onMessage func(event sse.Event),
+	timeout time.Duration,
 ) (cancelFn func(), err error) {
 
-	// separate client with a long timeout for sse
-	// use a new http client instance to set an indefinite timeout for the sse connection
-	//httpClient := tlsclient.NewHttp2TLSClient(caCert, nil, 0)
-	//_ = httpClient
-	//slog.Info("ConnectSSE (to hub) - establish SSE connection to server",
-	//	slog.String("URL", sseURL),
-	//	slog.String("clientID", clientID),
-	//	slog.String("cid", cid),
-	//)
-
-	// use context to disconnect the client
+	// use context to disconnect the client on Close
 	sseCtx, sseCancelFn := context.WithCancel(context.Background())
 	bodyReader := bytes.NewReader([]byte{})
 	req, err := http.NewRequestWithContext(sseCtx, http.MethodGet, sseURL, bodyReader)
@@ -55,7 +50,6 @@ func ConnectSSE(
 	parts, _ := url.Parse(sseURL)
 	origin := fmt.Sprintf("%s://%s", parts.Scheme, parts.Host)
 	req.Header.Add("Origin", origin)
-	//req.Header.Add("Connection", "keep-alive")
 
 	sseClient := &sse.Client{
 		//HTTPClient: httpClient,
@@ -79,6 +73,17 @@ func ConnectSSE(
 	conn.Buffer(newBuf, maxSSEMessageSize)
 	remover := conn.SubscribeToAll(onMessage)
 
+	// Wait for max 3 seconds to detect a connection
+	connectCtx, connectedCancelFn := context.WithTimeout(context.Background(), timeout)
+	conn.SubscribeEvent(ssescserver.SSEPingEvent, func(event sse.Event) {
+		// WORKAROUND since go-sse has no callback for a successful (re)connect, simulate one here.
+		// As soon as a connection is established the server could send a 'ping' event.
+		// success!
+		slog.Info("handleSSEEvent: connection (re)established; setting connected to true")
+		onConnect(true, nil)
+		connectedCancelFn()
+	})
+
 	go func() {
 		// connect and wait until the connection ends
 		// and report an error if connection ends due to reason other than context cancelled
@@ -98,21 +103,21 @@ func ConnectSSE(
 			err = nil
 		}
 		onConnect(false, err)
-		// test if we're still receiving events after context is closed
 		_ = remover
-		//remover() // remove subscriptions connection
-		//req.Close()
-		//
 	}()
 
 	// wait for the SSE connection to be established
-	// If an RPC action is sent too early then no reply will be received.
-	time.Sleep(time.Millisecond * 10)
-
+	<-connectCtx.Done()
+	e := connectCtx.Err()
+	if errors.Is(e, context.DeadlineExceeded) {
+		err = fmt.Errorf("ConnectSSE: Timeout connecting to the server")
+		slog.Warn(err.Error())
+		connectedCancelFn()
+		sseCancelFn()
+	}
 	closeSSEFn := func() {
 		// any other cleanup?
 		sseCancelFn()
 	}
-
-	return closeSSEFn, nil
+	return closeSSEFn, err
 }

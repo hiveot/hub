@@ -1,24 +1,29 @@
-package session
+package service
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/services/hiveoview/src/session"
+	"github.com/hiveot/hub/transports/servers/ssescserver"
 	"log/slog"
 	"net/http"
 )
 
-// SseHandler handles incoming SSE connections, eg. one per browser tab.
+// SseServe serves incoming SSE connections, eg. one per browser tab.
 // This subscribes to the user's session sse channel and sends messages to the browser.
 // Sse requests are refused if no auth info is found.
-func SseHandler(w http.ResponseWriter, r *http.Request) {
+//
+// When the connection is established this sends a ping message so the client
+// can confirm it is connected.
+func SseServe(w http.ResponseWriter, r *http.Request) {
 	// Set headers for SSE response
 	//w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Expose-Headers", "Content-Type")
 	w.Header().Set("Cache-Control", "private, no-cache, no-store, must-revalidate, max-age=0, no-transform")
-	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Content-Type", "text/event-stream")
 
 	// An active session is required before accepting the request
-	_, cs, err := GetSessionFromContext(r)
+	_, cs, err := session.GetSessionFromContext(r)
 	if cs == nil || err != nil {
 		slog.Warn("SSE Connection attempt but no session exists. Delay retry to 10 seconds",
 			"remoteAddr", r.RemoteAddr)
@@ -36,11 +41,16 @@ func SseHandler(w http.ResponseWriter, r *http.Request) {
 
 	// request the session event channel
 	sseChan := cs.NewSseChan()
+	// _send a ping event as the go-sse client doesn't have a 'connected callback'
+	// (borrow the event name from the transports SSE server)
+	pingEvent := session.SSEEvent{Event: ssescserver.SSEPingEvent}
+	sseChan <- pingEvent
+
 	clientID := cs.GetHubClient().GetClientID()
 
-	slog.Debug("SseHandler. New SSE incoming connection",
+	slog.Debug("SseServe. New SSE incoming connection",
 		slog.String("clientID", clientID),
-		slog.String("clcid", cs.clcid),
+		slog.String("clcid", cs.GetCLCID()),
 		slog.String("RemoteAddr", r.RemoteAddr),
 	)
 	//var sseMsg SSEEvent
@@ -63,7 +73,7 @@ func SseHandler(w http.ResponseWriter, r *http.Request) {
 		// wait for message, or writer closing
 		select {
 		case sseMsg, ok := <-sseChan: // received event
-			slog.Debug("SseHandler: received event from sseChan",
+			slog.Debug("SseServe: received event from sseChan",
 				slog.String("remote", r.RemoteAddr),
 				slog.String("clientID", clientID),
 				slog.String("event", sseMsg.Event),
@@ -86,7 +96,7 @@ func SseHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	//slog.Info("SseHandler: sse connection closed",
+	//slog.Info("SseServe: sse connection closed",
 	//	slog.String("remote", r.RemoteAddr),
 	//	slog.String("clientID", clientID),
 	//)

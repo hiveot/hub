@@ -6,6 +6,7 @@ import (
 	vocab2 "github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/bucketstore"
+	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"math/rand"
 	"os"
@@ -62,14 +63,14 @@ func openNewStore() (store buckets.IBucketStore, err error) {
 
 // Create a TD document
 func createTD(id string) *td.TD {
-	td := &td.TD{
+	tdi := &td.TD{
 		ID:         id,
 		Title:      fmt.Sprintf("test TD %s", id),
 		AtType:     vocab2.ThingSensor,
 		Properties: make(map[string]*td.PropertyAffordance),
 		Events:     make(map[string]*td.EventAffordance),
 	}
-	td.Properties[vocab2.PropDeviceTitle] = &td.PropertyAffordance{
+	tdi.Properties[vocab2.PropDeviceTitle] = &td.PropertyAffordance{
 		DataSchema: td.DataSchema{
 			Title:       "Sensor title",
 			Description: "This is a smart sensor",
@@ -77,7 +78,7 @@ func createTD(id string) *td.TD {
 			Default:     "Default value",
 		},
 	}
-	td.Properties[vocab2.PropDeviceSoftwareVersion] = &td.PropertyAffordance{
+	tdi.Properties[vocab2.PropDeviceSoftwareVersion] = &td.PropertyAffordance{
 		DataSchema: td.DataSchema{
 			Title:       "Version",
 			Description: "Embedded firmware",
@@ -86,7 +87,7 @@ func createTD(id string) *td.TD {
 			Const:       "v1.0",
 		},
 	}
-	td.Events[vocab2.PropEnvTemperature] = &td.EventAffordance{
+	tdi.Events[vocab2.PropEnvTemperature] = &td.EventAffordance{
 		Title:       "Event 1",
 		Description: "ID of this event",
 		Data: &td.DataSchema{
@@ -95,7 +96,7 @@ func createTD(id string) *td.TD {
 			Title:       "Event name data",
 			Description: "String with friendly name of the event"},
 	}
-	td.Events[vocab2.PropDeviceBattery] = &td.EventAffordance{
+	tdi.Events[vocab2.PropDeviceBattery] = &td.EventAffordance{
 		Title: "Event 2",
 		Data: &td.DataSchema{
 			Type:        vocab2.WoTDataTypeInteger,
@@ -103,7 +104,7 @@ func createTD(id string) *td.TD {
 			Unit:        vocab2.UnitPercent,
 			Description: "Battery level update in % of device"},
 	}
-	return td
+	return tdi
 }
 
 // AddDocs adds documents doc1, doc2 and given nr additional docs

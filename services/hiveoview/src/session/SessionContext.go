@@ -32,6 +32,8 @@ func AddSessionToContext(sm *WebSessionManager) func(next http.Handler) http.Han
 				//	slog.String("remoteAdd", r.RemoteAddr),
 				//	slog.String("path", r.URL.String()))
 
+				// FIXME: the sse connection needs the login session cookie; either that or fix bearer token auth
+
 				// set retry to a large number
 				// see https://javascript.info/server-sent-events#reconnection
 				errMsg := fmt.Sprintf("retry: %s\nevent:%s\n\n",

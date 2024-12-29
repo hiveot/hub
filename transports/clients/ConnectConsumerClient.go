@@ -138,7 +138,7 @@ func ConnectWithTokenFile(hc transports.IConsumerConnection, keysDir string) err
 // timeout is optional maximum wait time for connecting or waiting for responses. Use 0 for default.
 func NewConsumerClient(
 	fullURL string, clientID string, caCert *x509.Certificate,
-	getForm func(op, thingID, name string) td.Form,
+	getForm transports.GetFormHandler,
 	timeout time.Duration) (
 	bc transports.IConsumerConnection, err error) {
 

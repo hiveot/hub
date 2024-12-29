@@ -29,6 +29,7 @@ const servicePort = 9999
 
 // set to true to test without state service
 const noState = true
+const timeout = time.Second * 100
 
 var testFolder = path.Join(os.TempDir(), "test-hiveoview")
 
@@ -62,8 +63,7 @@ func getHiveoviewForm(op, thingID, name string) td.Form {
 }
 
 // Helper function to login as a web client and sse listener
-// This will set its cookie to allow for further requests.
-// Run the TestLogin test before using this.
+// The TestLogin test must succeed before using this.
 // This returns a client. Call Close() when done.
 func WebLogin(fullURL string, clientID string,
 	onConnection func(bool, error),
@@ -78,9 +78,15 @@ func WebLogin(fullURL string, clientID string,
 	// or sse-sc client
 
 	// use the hub's SSE client to connect to the hiveoview server
+	// FIXME: hiveoview server uses different SSE event payload than hiveoview
+	// the 'event' ID contains thingID etc. We can't change this because
+	// htmx sse triggers rely on this format. (for now)
+	// FIXME: can htmx sse trigger using additional fields (type=notification, thingID/name=blah?)
+	// or is this too painful in htmx.
 	sseCl := sseclient.NewSsescConsumerClient(
 		fullURL, clientID, nil, ts.Certs.CaCert,
 		getHiveoviewForm, time.Minute)
+	sseCl.SetSSEPath(service.WebSsePath)
 	sseCl.SetConnectHandler(onConnection)
 	sseCl.SetNotificationHandler(onNotification)
 	sseCl.SetRequestHandler(onRequest)
@@ -90,7 +96,7 @@ func WebLogin(fullURL string, clientID string,
 	// hiveoview uses a different login path as the hub
 	_, err = sseCl.ConnectWithPassword(clientID)
 
-	time.Sleep(time.Second * 10)
+	//time.Sleep(time.Second * 10)
 	return sseCl, err
 }
 
@@ -116,7 +122,7 @@ func TestStartStop(t *testing.T) {
 	t.Log("--- TestStartStop ---")
 
 	svc := service.NewHiveovService(servicePort, true, nil, "",
-		ts.Certs.ServerCert, ts.Certs.CaCert, noState)
+		ts.Certs.ServerCert, ts.Certs.CaCert, noState, timeout)
 	hc1, _ := ts.AddConnectService(serviceID)
 
 	err := svc.Start(hc1)
@@ -131,8 +137,8 @@ func TestLogin(t *testing.T) {
 
 	// 1: setup: start a runtime and service; this generates an error that
 	//    the state service isnt found. ignore it.
-	svc := service.NewHiveovService(servicePort, true,
-		nil, "", ts.Certs.ServerCert, ts.Certs.CaCert, noState)
+	svc := service.NewHiveovService(servicePort, true, nil,
+		"", ts.Certs.ServerCert, ts.Certs.CaCert, noState, timeout)
 	avcAg, _ := ts.AddConnectService(serviceID)
 	require.NotNil(t, avcAg)
 	defer avcAg.Disconnect()
@@ -204,8 +210,8 @@ func TestLoginForm(t *testing.T) {
 
 	// 1: setup: start a runtime and service; this generates an error that
 	//    the state service isnt found. ignore it.
-	svc := service.NewHiveovService(servicePort, true,
-		nil, "", ts.Certs.ServerCert, ts.Certs.CaCert, noState)
+	svc := service.NewHiveovService(servicePort, true, nil,
+		"", ts.Certs.ServerCert, ts.Certs.CaCert, noState, timeout)
 	avcAg, _ := ts.AddConnectService(serviceID)
 	require.NotNil(t, avcAg)
 	defer avcAg.Disconnect()
@@ -214,9 +220,8 @@ func TestLoginForm(t *testing.T) {
 	require.NoError(t, err)
 	defer svc.Stop()
 
-	// make sure the client to login as exists
+	// make sure the test client exists
 	cl1, token1 := ts.AddConnectConsumer(clientID1, authz.ClientRoleOperator)
-	//defer cl1.Disconnect()
 	cl1.Disconnect()
 
 	_ = token1
@@ -242,11 +247,12 @@ func TestLoginForm(t *testing.T) {
 	resp, err := cl2.GetHttpClient().PostForm(fullURL, formMock)
 	cl2.Close()
 	require.NoError(t, err)
-	// this should redirect to /dashboard
+
+	// 3. login should have redirected to /dashboard. It contained an auth cookie
 	assert.Equal(t, 200, resp.StatusCode)
 	assert.Equal(t, "/dashboard", resp.Request.URL.Path)
 
-	// result contains html
+	// result contains html of the dashboard page
 	body, err := io.ReadAll(resp.Body)
 	_ = resp.Body.Close()
 	assert.NoError(t, err)
@@ -258,7 +264,7 @@ func TestLoginForm(t *testing.T) {
 func TestMultiConnectDisconnect(t *testing.T) {
 	const clientID1 = "user1"
 	const agentID = "agent1"
-	const testConnections = int32(1)
+	const testConnections = 1
 	const eventName = "event1"
 	var webClients = make([]transports.IConsumerConnection, 0)
 	var connectCount atomic.Int32
@@ -269,8 +275,8 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	logging.SetLogging("info", "")
 	// 1: setup: start a runtime and service; this generates an error that
 	//    the state service isnt found. ignore it.
-	svc := service.NewHiveovService(servicePort, true,
-		nil, "", ts.Certs.ServerCert, ts.Certs.CaCert, noState)
+	svc := service.NewHiveovService(servicePort, true, nil,
+		"", ts.Certs.ServerCert, ts.Certs.CaCert, noState, timeout)
 	avcAg, _ := ts.AddConnectService(serviceID)
 	err := svc.Start(avcAg)
 
@@ -282,16 +288,18 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	_ = ag1
 	td1 := ts.AddTD(agentID, nil)
 	_ = td1
+
 	// create the user account this test is going to connect as.
+	// no notifications are expected as it doesnt subscribe
 	// hiveoview server only supports HTTP/SSE
 	cl1, token1 := ts.AddConnectConsumer(clientID1, authz.ClientRoleOperator)
 	defer cl1.Disconnect()
-	err = cl1.Subscribe("", "")
+	//err = cl1.Subscribe("", "")
 	require.NoError(t, err)
 	time.Sleep(waitamoment)
 
 	_ = token1
-	//handler for web connections
+	//handler for web connection notifications
 	onConnection := func(connected bool, err error) {
 		if connected {
 			connectCount.Add(1)
@@ -299,11 +307,11 @@ func TestMultiConnectDisconnect(t *testing.T) {
 			disConnectCount.Add(1)
 		}
 	}
-	// handler for web connection messages
+	// handler hiveoview SSE notifications
 	onNotification := func(msg transports.NotificationMessage) {
 		// the UI expects this format for triggering htmx
 		expectedType := fmt.Sprintf("dtw:%s:%s/%s", agentID, td1.ID, eventName)
-		if expectedType == msg.Operation {
+		if msg.Operation == expectedType {
 			messageCount.Add(1)
 		}
 	}
@@ -323,7 +331,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	}
 	// connection notification should have been received N times
 	time.Sleep(time.Second * 1)
-	require.Equal(t, testConnections, connectCount.Load(), "connect count mismatch")
+	assert.Equal(t, testConnections, int(connectCount.Load()), "connect count mismatch")
 	// the hiveoview session manager should have corresponding connections
 	nrSessions := svc.GetSM().GetNrSessions()
 	require.Equal(t, testConnections, nrSessions)
@@ -335,7 +343,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 
 	// event should have been received N times
 	time.Sleep(time.Millisecond * 100)
-	assert.Equal(t, testConnections, messageCount.Load(), "missing events")
+	assert.Equal(t, testConnections, int(messageCount.Load()), "missing events")
 
 	// 4: disconnect
 	//sm := svc.GetSM()
@@ -349,7 +357,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	t.Log("All user1 connections should have been closed")
 	// disconnection notification should have been received N times
 	time.Sleep(waitamoment)
-	require.Equal(t, testConnections, disConnectCount.Load(), "disconnect count mismatch")
+	require.Equal(t, testConnections, int(disConnectCount.Load()), "disconnect count mismatch")
 
 	// 5: no more messages should be received after disconnecting
 	messageCount.Store(0)

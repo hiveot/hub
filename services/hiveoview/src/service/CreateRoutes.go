@@ -73,7 +73,7 @@ func (svc *HiveovService) CreateRoutes(router *chi.Mux, rootPath string) http.Ha
 		// these routes must be authenticated otherwise redirect to /login
 		r.Use(session.AddSessionToContext(svc.sm))
 
-		r.Get(WebSsePath, session.SseHandler)
+		r.Get(WebSsePath, SseServe)
 
 		// see also:https://medium.com/gravel-engineering/i-find-it-hard-to-reuse-root-template-in-go-htmx-so-i-made-my-own-little-tools-to-solve-it-df881eed7e4d
 		// these render full page or fragments for non hx-boost hx-requests

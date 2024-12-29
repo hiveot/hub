@@ -15,7 +15,7 @@ func (svc *WssTransportServer) AddTDForms(tdi *td.TD) error {
 
 // GetForm returns a new form for a websocket supported operation
 // Intended for Thing level operations
-func (svc *WssTransportServer) GetForm(op string) td.Form {
+func (svc *WssTransportServer) GetForm(op, thingID, name string) td.Form {
 	// map operations to message type
 
 	msgType, found := svc.op2MsgType[op]

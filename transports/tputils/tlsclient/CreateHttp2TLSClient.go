@@ -4,9 +4,13 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"golang.org/x/net/http2"
+	"golang.org/x/net/publicsuffix"
+	"log/slog"
 	"net"
 	"net/http"
+	"net/http/cookiejar"
 	"time"
 )
 
@@ -37,8 +41,18 @@ func NewHttp2TLSClient(caCert *x509.Certificate, clientCert *tls.Certificate, ti
 		},
 		TLSClientConfig: tlsConfig,
 	}
-	return &http.Client{
+	// add a cookie jar for storing cookies
+	cjarOpts := &cookiejar.Options{PublicSuffixList: publicsuffix.List}
+	cjar, err := cookiejar.New(cjarOpts)
+	if err != nil {
+		err = fmt.Errorf("NewHttp2TLSClient: error creating cookiejar. Continuing anyways: %w", err)
+		slog.Error(err.Error())
+		err = nil
+	}
+	httpClient := &http.Client{
 		Transport: tlsTransport,
 		Timeout:   timeout,
+		Jar:       cjar,
 	}
+	return httpClient
 }

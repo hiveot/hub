@@ -5,11 +5,9 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"golang.org/x/net/publicsuffix"
 	"io"
 	"log/slog"
 	"net/http"
-	"net/http/cookiejar"
 	"time"
 )
 
@@ -287,16 +285,16 @@ func NewTLSClient(hostPort string, clientCert *tls.Certificate, caCert *x509.Cer
 	}
 	// create the client
 	httpClient := NewHttp2TLSClient(caCert, clientCert, timeout)
-
-	// add a cookie jar for storing cookies
-	cjarOpts := &cookiejar.Options{PublicSuffixList: publicsuffix.List}
-	cjar, err := cookiejar.New(cjarOpts)
-	if err != nil {
-		err = fmt.Errorf("NewTLSClient: error setting cookiejar. The use of auth cookie might not persist. Continuing: %w", err)
-		slog.Error(err.Error())
-		err = nil
-	}
-	httpClient.Jar = cjar
+	// this has moved to NewHttp2TlsClient
+	//// add a cookie jar for storing cookies
+	//cjarOpts := &cookiejar.Options{PublicSuffixList: publicsuffix.List}
+	//cjar, err := cookiejar.New(cjarOpts)
+	//if err != nil {
+	//	err = fmt.Errorf("NewTLSClient: error setting cookiejar. The use of auth cookie might not persist. Continuing: %w", err)
+	//	slog.Error(err.Error())
+	//	err = nil
+	//}
+	//httpClient.Jar = cjar
 
 	cl := &TLSClient{
 		hostPort:   hostPort,

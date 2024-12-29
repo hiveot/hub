@@ -126,13 +126,6 @@ func (cl *HttpConsumerClient) _send(method string, methodPath string,
 		return nil, nil, err
 	}
 
-	if httpResp.Header != nil {
-		setCookie := httpResp.Header.Get("Set-Cookie")
-		if setCookie != "" {
-			// TO set the cookie with the result
-		}
-		// TODO: add to cookie-jar
-	}
 	respBody, err := io.ReadAll(httpResp.Body)
 	//respRequestID = httpResp.Header.Get(HTTPMessageIDHeader)
 	// response body MUST be closed
@@ -380,9 +373,6 @@ func (cl *HttpConsumerClient) Init(
 	//
 	cl.BaseGetForm = getForm
 	cl.headers = make(map[string]string)
-	// TODO: Should this use NewTLSClient, which adds a cookie-jar?
-	//  This would the client to remember auth tokens in cookies
-	//  between requests. Alternative to bearer token.
 	cl.httpClient = tlsclient.NewHttp2TLSClient(caCert, clientCert, timeout)
 	cl.BasePubRequest = cl.PubRequest
 }

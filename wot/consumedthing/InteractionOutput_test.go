@@ -17,8 +17,8 @@ func TestNilSchema(t *testing.T) {
 	slog.Info("--- TestNilSchema ---")
 	data1 := "text"
 
-	tv := &transports.NotificationMessage{Name: key1ID, Data: data1}
-	io := NewInteractionOutputFromMessage(tv, nil)
+	notif := &transports.NotificationMessage{Name: key1ID, Data: data1}
+	io := NewInteractionOutputFromMessage(notif, nil)
 
 	asValue := io.Value.Text()
 	assert.Equal(t, data1, asValue)

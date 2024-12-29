@@ -54,11 +54,11 @@ func (svc *TransportManager) AddTDForms(td *td.TD) (err error) {
 func (svc *TransportManager) GetForm(op string, protocol string) (form td.Form) {
 	switch protocol {
 	case transports.ProtocolTypeHTTPS, transports.ProtocolTypeSSESC:
-		form = svc.httpsTransport.GetForm(op)
+		form = svc.httpsTransport.GetForm(op, "", "")
 	case transports.ProtocolTypeWSS:
-		form = svc.wssTransport.GetForm(op)
+		form = svc.wssTransport.GetForm(op, "", "")
 	case transports.ProtocolTypeMQTTS:
-		form = svc.mqttsTransport.GetForm(op)
+		form = svc.mqttsTransport.GetForm(op, "", "")
 	}
 	return form
 }
