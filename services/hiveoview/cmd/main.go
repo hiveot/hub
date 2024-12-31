@@ -80,7 +80,7 @@ func main() {
 		return
 	}
 	svc := service.NewHiveovService(
-		serverPort, false, signingKey, rootPath, serverCert, env.CaCert, false)
+		serverPort, false, signingKey, rootPath, serverCert, env.CaCert, false, time.Second*3)
 
 	// StartPlugin will connect to the hub and wait for signal to end
 	plugin.StartPlugin(svc, env.ClientID, env.CertsDir)

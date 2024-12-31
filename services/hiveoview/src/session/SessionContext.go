@@ -3,7 +3,6 @@ package session
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/teris-io/shortid"
 	"log/slog"
 	"net/http"
@@ -28,19 +27,21 @@ func AddSessionToContext(sm *WebSessionManager) func(next http.Handler) http.Han
 			// get the current connection object
 			cs, clientID, cid, authToken, err := sm.GetSessionFromCookie(r)
 			if err != nil {
+				// FIXME: if this is an SSE connection request then ask to back off
 				//slog.Warn("AddSessionToContext: No valid authentication. Redirect to login.",
 				//	slog.String("remoteAdd", r.RemoteAddr),
 				//	slog.String("path", r.URL.String()))
 
 				// FIXME: the sse connection needs the login session cookie; either that or fix bearer token auth
 
-				// set retry to a large number
-				// see https://javascript.info/server-sent-events#reconnection
-				errMsg := fmt.Sprintf("retry: %s\nevent:%s\n\n",
-					"10000", "logout")
-				http.Error(w, errMsg, http.StatusUnauthorized)
-				w.(http.Flusher).Flush()
+				//// set retry to a large number
+				//// see https://javascript.info/server-sent-events#reconnection
+				//errMsg := fmt.Sprintf("retry: %s\nevent:%s\n\n",
+				//	"10000", "logout")
+				//http.Error(w, errMsg, http.StatusUnauthorized)
+				//w.(http.Flusher).Flush()
 				time.Sleep(time.Second)
+				SessionLogout(w, r)
 				return
 			}
 			if cs != nil {

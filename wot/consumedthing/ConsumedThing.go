@@ -221,34 +221,35 @@ func (ct *ConsumedThing) ReadEvent(name string) *InteractionOutput {
 	ct.mux.RLock()
 	iout, _ := ct.eventValues[name]
 	ct.mux.RUnlock()
-	//// if there is no known value, read it now
-	//if iout == nil {
-	//	ct.mux.RLock()
-	//	aff, _ := ct.td.Events[name]
-	//	ct.mux.RUnlock()
-	//	if aff == nil {
-	//		return nil
-	//	}
-	//	td := ct.GetThingDescription()
-	//	var raw any
-	//	err := ct._rpc(wot.HTOpReadEvent, name, nil, &raw)
-	//	iout := NewInteractionOutput(ct.td.ID, name, schema, raw, "")
-	//	iout.setSchemaFromTD(ct.td)
-	//
-	//	//tv, err := ct.cc.ReadEvent(ct.td.ID, name)
-	//	form := td.GetForm(wot.HTOpReadEvent, name, ct.cc.GetProtocolType())
-	//	var eventValue any
-	//	err := ct.cc.SendRequest(form, ct.td.ID, name, nil, &eventValue)
-	//
-	//	if err == nil {
-	//		iout = NewInteractionOutputFromMessage(&tv, td)
-	//	} else {
-	//		iout = NewInteractionOutput(td.ID, name, aff.Data, nil, "")
-	//	}
-	//	ct.mux.Lock()
-	//	ct.eventValues[name] = iout
-	//	ct.mux.Unlock()
-	//}
+	// if there is no known value, read it now
+	if iout == nil {
+		ct.mux.RLock()
+		aff, _ := ct.td.Events[name]
+		ct.mux.RUnlock()
+		if aff == nil {
+			return nil // not a known event
+		}
+		tdi := ct.GetThingDescription()
+		var raw any
+		err := ct._rpc(wot.HTOpReadEvent, name, nil, &raw)
+		_ = err
+		iout = NewInteractionOutput(tdi, AffordanceTypeEvent, name, raw, "")
+		iout.setSchemaFromTD(ct.td)
+
+		//tv, err := ct.cc.ReadEvent(ct.td.ID, name)
+		//form := td.GetForm(wot.HTOpReadEvent, name, ct.cc.GetProtocolType())
+		//	var eventValue any
+		//	err := ct.cc.SendRequest(form, ct.td.ID, name, nil, &eventValue)
+		//
+		//if err == nil {
+		//	iout = NewInteractionOutputFromMessage(&tv, td)
+		//} else {
+		//	iout = NewInteractionOutput(td.ID, name, aff.Data, nil, "")
+		//}
+		ct.mux.Lock()
+		ct.eventValues[name] = iout
+		ct.mux.Unlock()
+	}
 	return iout
 }
 

@@ -94,8 +94,7 @@ func (cl *HttpConsumerClient) ConnectWithPassword(password string) (newToken str
 	href, _ := f.GetHRef()
 
 	dataJSON := cl.Marshal(loginMessage)
-	outputRaw, _, err := cl._send(
-		method, href, "", "", "", dataJSON, "")
+	outputRaw, _, err := cl._send(method, href, dataJSON, "")
 
 	if err != nil {
 		slog.Warn("ConnectWithPassword failed", "err", err.Error())
@@ -147,6 +146,6 @@ func (cl *HttpConsumerClient) Logout() error {
 	// TODO: can this be derived from a form?
 	slog.Info("Logout",
 		slog.String("clientID", cl.GetClientID()))
-	_, _, err := cl._send(http.MethodPost, httpserver.HttpPostLogoutPath, "", "", "", nil, "")
+	_, _, err := cl._send(http.MethodPost, httpserver.HttpPostLogoutPath, nil, "")
 	return err
 }

@@ -62,8 +62,8 @@ func (svc *HiveovService) CreateRoutes(router *chi.Mux, rootPath string) http.Ha
 		r.Get("/static/*", staticFileServer.ServeHTTP)
 		r.Get("/webcomp/*", staticFileServer.ServeHTTP)
 		r.Get("/login", login.RenderLogin)
-		r.Post("/login", login.PostLoginHandler(svc.sm))
-		r.Post("/loginForm", login.PostLoginFormHandler(svc.sm))
+		//r.Post("/login", login.PostLoginHandler(svc.sm))
+		r.Post(src.UIPostLoginPath, login.PostLoginFormHandler(svc.sm))
 		r.Get("/logout", session.SessionLogout)
 	})
 

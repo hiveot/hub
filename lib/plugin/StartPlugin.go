@@ -1,12 +1,10 @@
 package plugin
 
 import (
-	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/clients"
 	"log/slog"
 	"os"
-	"path"
 )
 
 type PluginConfig struct {
@@ -36,11 +34,12 @@ type IPlugin interface {
 func StartPlugin(plugin IPlugin, clientID string, certsDir string) {
 
 	// locate the hub, load CA certificate, load service key and token and connect
-	caCertFile := path.Join(certsDir, certs.DefaultCaCertFile)
-	caCert, err := certs.LoadX509CertFromPEM(caCertFile)
+	//caCertFile := path.Join(certsDir, certs.DefaultCaCertFile)
+	//caCert, err := certs.LoadX509CertFromPEM(caCertFile)
 
 	// FIXME: the plugin needs a bootstrap form to connect to the server
-	hc, err := clients.NewAgentClient("", clientID, caCert, 0)
+	//hc, err := clients.NewAgentClient("", clientID, caCert, 0)
+	hc, err := clients.ConnectAgentToHub("", clientID, certsDir)
 
 	if err != nil {
 		slog.Error("Failed connecting to the Hub", "err", err)

@@ -21,7 +21,7 @@
 		{{range .Values}}
 				<li>
 						<div>{{.GetUpdated "WT"}}</div>
-						<div>{{.DataAsText}} {{$.DataSchema.UnitSymbol}}</div>
+						<div>{{.ToString}} {{$.DataSchema.UnitSymbol}}</div>
 				</li>
 		{{end}}
 </ul>

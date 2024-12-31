@@ -240,11 +240,11 @@ func StartHiveotProtocolServer(
 		serverResponseHandler:     handleResponse,
 		serverNotificationHandler: handleNotification,
 	}
-	httpTransport.AddPostOp(nil, "request",
-		httpserver.HiveOTPostRequestHRef, b.HandleHttpRequest)
-	httpTransport.AddPostOp(nil, "response",
-		httpserver.HiveOTPostResponseHRef, b.HandleHttpResponse)
-	httpTransport.AddPostOp(nil, "notification",
-		httpserver.HiveOTPostNotificationHRef, b.HandleHttpNotification)
+	httpTransport.AddOps(nil, []string{"request"},
+		http.MethodPost, httpserver.HiveOTPostRequestHRef, b.HandleHttpRequest)
+	httpTransport.AddOps(nil, []string{"response"},
+		http.MethodPost, httpserver.HiveOTPostResponseHRef, b.HandleHttpResponse)
+	httpTransport.AddOps(nil, []string{"notification"},
+		http.MethodPost, httpserver.HiveOTPostNotificationHRef, b.HandleHttpNotification)
 	return b
 }

@@ -14,15 +14,56 @@ import (
 	"net/http"
 )
 
+// HandleActionStatus handles a received action status message from an agent client
+// and forwards this as a ResponseMessage to the server response handler.
+//func (svc *HttpTransportServer) HandleActionStatus(w http.ResponseWriter, r *http.Request) {
+//	//svc.HandleNotification(wot.HTOpActionStatus, w, r)
+//	rp, err := GetRequestParams(r)
+//	if err != nil {
+//		slog.Error(err.Error())
+//		w.WriteHeader(http.StatusUnauthorized)
+//		return
+//	}
+//	actionStatus := HttpActionStatus{}
+//	err = tputils.Decode(rp.Data, &actionStatus)
+//	if err != nil {
+//		slog.Warn("HandleActionStatus. Payload is not an HttpActionStatus object",
+//			"agentID", rp.ClientID,
+//			"requestID", rp.RequestID)
+//	}
+//	// on the server the action status is handled using a standardized ResponseMessage instance
+//	// This is converted to the transport protocol used to send it to the client.
+//	response := transports.ResponseMessage{
+//		MessageType: transports.MessageTypeResponse,
+//		Operation:   wot.OpInvokeAction,
+//		ThingID:     rp.ThingID,
+//		Name:        rp.Name,
+//		RequestID:   rp.RequestID,
+//		SenderID:    rp.ClientID,
+//		Status:      actionStatus.Status, // todo map names (they are the same)
+//		Error:       actionStatus.Error,
+//		Output:      actionStatus.Output,
+//		Received:    actionStatus.TimeRequested,
+//		Updated:     actionStatus.TimeEnded,
+//	}
+//	if svc.serverResponseHandler == nil {
+//		slog.Error("No response handler registered",
+//			"op", response.Operation)
+//	} else {
+//		err = svc.serverResponseHandler(response)
+//	}
+//	svc.writeReply(w, nil, "", err)
+//}
+
 // HandleNotification receive a notification message from an agent and pass it on to the server handler.
-func (svc *HttpTransportServer) HandleNotification(op string, w http.ResponseWriter, r *http.Request) {
+func (svc *HttpTransportServer) HandleNotification(w http.ResponseWriter, r *http.Request) {
 	rp, err := GetRequestParams(r)
 	if err != nil {
 		slog.Error(err.Error())
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	msg := transports.NewNotificationMessage(op, rp.ThingID, rp.Name, rp.Data)
+	msg := transports.NewNotificationMessage(rp.Op, rp.ThingID, rp.Name, rp.Data)
 	if svc.serverNotificationHandler == nil {
 		slog.Error("HandleNotification not registered")
 	} else {
@@ -38,7 +79,7 @@ func (svc *HttpTransportServer) HandleNotification(op string, w http.ResponseWri
 //
 // Note: If result is async then the response will be sent separately by agent using an
 // ActionStatus message.
-func (svc *HttpTransportServer) HandleRequestMessage(op string, w http.ResponseWriter, r *http.Request) {
+func (svc *HttpTransportServer) HandleRequestMessage(w http.ResponseWriter, r *http.Request) {
 
 	var response transports.ResponseMessage
 	rp, err := GetRequestParams(r)
@@ -48,15 +89,11 @@ func (svc *HttpTransportServer) HandleRequestMessage(op string, w http.ResponseW
 		return
 	}
 
-	if op == "" {
-		op = rp.Op
-	}
-
 	// an action request should have a cid when used with SSE.
 	// without a connection-id this request can not receive an async reply
 	if r.Header.Get(ConnectionIDHeader) == "" {
 		slog.Info("HandleRequestMessage request has no 'cid' header.",
-			"clientID", rp.ClientID, "op", op)
+			"clientID", rp.ClientID, "op", rp.Op)
 	}
 
 	// pass the event to the digitwin service for further processing
@@ -65,11 +102,11 @@ func (svc *HttpTransportServer) HandleRequestMessage(op string, w http.ResponseW
 		requestID = shortid.MustGenerate()
 	}
 
-	request := transports.NewRequestMessage(op, rp.ThingID, rp.Name, rp.Data, requestID)
+	request := transports.NewRequestMessage(rp.Op, rp.ThingID, rp.Name, rp.Data, requestID)
 	request.SenderID = rp.ClientID
 
 	// ping is handled internally
-	if op == wot.HTOpPing {
+	if rp.Op == wot.HTOpPing {
 		// regular http server returns with pong -
 		// used only when no sub-protocol is used as return channel
 		response = request.CreateResponse("pong", nil)
@@ -97,57 +134,16 @@ func (svc *HttpTransportServer) HandleRequestMessage(op string, w http.ResponseW
 	svc.writeReply(w, response.Output, response.Status, err)
 }
 
-// HandleActionStatus handles a received action status message from an agent client
-// and forwards this as a ResponseMessage to the server response handler.
-func (svc *HttpTransportServer) HandleActionStatus(w http.ResponseWriter, r *http.Request) {
-	//svc.HandleNotification(wot.HTOpActionStatus, w, r)
-	rp, err := GetRequestParams(r)
-	if err != nil {
-		slog.Error(err.Error())
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
-	actionStatus := HttpActionStatus{}
-	err = tputils.Decode(rp.Data, &actionStatus)
-	if err != nil {
-		slog.Warn("HandleActionStatus. Payload is not an HttpActionStatus object",
-			"agentID", rp.ClientID,
-			"requestID", rp.RequestID)
-	}
-	// on the server the action status is handled using a standardized ResponseMessage instance
-	// This is converted to the transport protocol used to send it to the client.
-	response := transports.ResponseMessage{
-		MessageType: transports.MessageTypeResponse,
-		Operation:   wot.OpInvokeAction,
-		ThingID:     rp.ThingID,
-		Name:        rp.Name,
-		RequestID:   rp.RequestID,
-		SenderID:    rp.ClientID,
-		Status:      actionStatus.Status, // todo map names (they are the same)
-		Error:       actionStatus.Error,
-		Output:      actionStatus.Output,
-		Received:    actionStatus.TimeRequested,
-		Updated:     actionStatus.TimeEnded,
-	}
-	if svc.serverResponseHandler == nil {
-		slog.Error("No response handler registered",
-			"op", response.Operation)
-	} else {
-		err = svc.serverResponseHandler(response)
-	}
-	svc.writeReply(w, nil, "", err)
-}
-
 // HandleInvokeAction requests an action from the digital twin.
 // NOTE: This returns a header with a dataschema if a schema from
 // additionalResponses is returned.
 //
 // The sender must include the connection-id header of the connection it wants to
 // receive the response.
-func (svc *HttpTransportServer) HandleInvokeAction(w http.ResponseWriter, r *http.Request) {
-
-	svc.HandleRequestMessage(wot.OpInvokeAction, w, r)
-}
+//func (svc *HttpTransportServer) HandleInvokeAction(w http.ResponseWriter, r *http.Request) {
+//
+//	svc.HandleRequestMessage(wot.OpInvokeAction, w, r)
+//}
 
 // HandleLogin handles a login request, posted by a consumer.
 //
@@ -220,77 +216,77 @@ func (svc *HttpTransportServer) HandlePing(w http.ResponseWriter, r *http.Reques
 	//svc.HandleRequestMessage(wot.HTOpPing, w, r)
 }
 
-// HandlePublishEvent update digitwin with event published by agent
-// FIXME: remove from http basic? this only works with sse[-sc]
-func (svc *HttpTransportServer) HandlePublishEvent(w http.ResponseWriter, r *http.Request) {
-	svc.HandleNotification(wot.HTOpEvent, w, r)
-}
+//// HandlePublishEvent update digitwin with event published by agent
+//// FIXME: remove from http basic? this only works agents
+//func (svc *HttpTransportServer) HandlePublishEvent(w http.ResponseWriter, r *http.Request) {
+//	svc.HandleNotification(wot.HTOpEvent, w, r)
+//}
 
-// HandleQueryAction returns a list of latest action requests of a Thing
-// Parameters: thingID
-func (svc *HttpTransportServer) HandleQueryAction(w http.ResponseWriter, r *http.Request) {
-	svc.HandleRequestMessage(wot.OpQueryAction, w, r)
-}
-
-// HandleQueryAllActions returns a list of latest action requests of a Thing
-// Parameters: thingID
-func (svc *HttpTransportServer) HandleQueryAllActions(w http.ResponseWriter, r *http.Request) {
-	svc.HandleRequestMessage(wot.OpQueryAllActions, w, r)
-}
-
-// HandleReadAllEvents returns a list of latest event values from a Thing
-// Parameters: thingID
-func (svc *HttpTransportServer) HandleReadAllEvents(w http.ResponseWriter, r *http.Request) {
-	svc.HandleRequestMessage(wot.HTOpReadAllEvents, w, r)
-}
-
-// HandleReadAllProperties was added to the top level TD form. Handle it here.
-func (svc *HttpTransportServer) HandleReadAllProperties(w http.ResponseWriter, r *http.Request) {
-	svc.HandleRequestMessage(wot.OpReadAllProperties, w, r)
-}
-
-// HandleReadEvent returns the latest event value from a Thing
-// Parameters: {thingID}, {name}
-func (svc *HttpTransportServer) HandleReadEvent(w http.ResponseWriter, r *http.Request) {
-	svc.HandleRequestMessage(wot.HTOpReadEvent, w, r)
-}
-
-func (svc *HttpTransportServer) HandleReadProperty(w http.ResponseWriter, r *http.Request) {
-	svc.HandleRequestMessage(wot.OpReadProperty, w, r)
-}
-
-// HandleReadTD returns the TD of a thing in the directory
-// URL parameter {thingID}
-func (svc *HttpTransportServer) HandleReadTD(w http.ResponseWriter, r *http.Request) {
-	svc.HandleRequestMessage(wot.HTOpReadTD, w, r)
-}
+//// HandleQueryAction returns a list of latest action requests of a Thing
+//// Parameters: thingID
+//func (svc *HttpTransportServer) HandleQueryAction(w http.ResponseWriter, r *http.Request) {
+//	svc.HandleRequestMessage(wot.OpQueryAction, w, r)
+//}
+//
+//// HandleQueryAllActions returns a list of latest action requests of a Thing
+//// Parameters: thingID
+//func (svc *HttpTransportServer) HandleQueryAllActions(w http.ResponseWriter, r *http.Request) {
+//	svc.HandleRequestMessage(wot.OpQueryAllActions, w, r)
+//}
+//
+//// HandleReadAllEvents returns a list of latest event values from a Thing
+//// Parameters: thingID
+//func (svc *HttpTransportServer) HandleReadAllEvents(w http.ResponseWriter, r *http.Request) {
+//	svc.HandleRequestMessage(wot.HTOpReadAllEvents, w, r)
+//}
+//
+//// HandleReadAllProperties was added to the top level TD form. Handle it here.
+//func (svc *HttpTransportServer) HandleReadAllProperties(w http.ResponseWriter, r *http.Request) {
+//	svc.HandleRequestMessage(wot.OpReadAllProperties, w, r)
+//}
+//
+//// HandleReadEvent returns the latest event value from a Thing
+//// Parameters: {thingID}, {name}
+//func (svc *HttpTransportServer) HandleReadEvent(w http.ResponseWriter, r *http.Request) {
+//	svc.HandleRequestMessage(wot.HTOpReadEvent, w, r)
+//}
+//
+//func (svc *HttpTransportServer) HandleReadProperty(w http.ResponseWriter, r *http.Request) {
+//	svc.HandleRequestMessage(wot.OpReadProperty, w, r)
+//}
+//
+//// HandleReadTD returns the TD of a thing in the directory
+//// URL parameter {thingID}
+//func (svc *HttpTransportServer) HandleReadTD(w http.ResponseWriter, r *http.Request) {
+//	svc.HandleRequestMessage(wot.HTOpReadTD, w, r)
+//}
 
 // HandleReadAllTDs returns the list of digital twin TDs in the directory.
 // this is a REST api for convenience. Consider using directory action instead.
-func (svc *HttpTransportServer) HandleReadAllTDs(w http.ResponseWriter, r *http.Request) {
-	svc.HandleRequestMessage(wot.HTOpReadAllTDs, w, r)
-}
-
-// HandlePublishMultipleProperties agent sends a map with multiple property
-// FIXME: remove from http basic? this only works with sse[-sc]
-func (svc *HttpTransportServer) HandlePublishMultipleProperties(w http.ResponseWriter, r *http.Request) {
-	svc.HandleNotification(wot.HTOpUpdateMultipleProperties, w, r)
-}
-
-// HandlePublishProperty agent sends single or multiple property updates
-// FIXME: remove from http basic? this only works with sse[-sc]
-func (svc *HttpTransportServer) HandlePublishProperty(w http.ResponseWriter, r *http.Request) {
-	// this
-	svc.HandleNotification(wot.HTOpUpdateProperty, w, r)
-}
-
-// HandlePublishTD agent sends a new TD document
-// FIXME: remove from http basic? this only works with hiveot
-func (svc *HttpTransportServer) HandlePublishTD(w http.ResponseWriter, r *http.Request) {
-	svc.HandleNotification(wot.HTOpUpdateTD, w, r)
-}
+//func (svc *HttpTransportServer) HandleReadAllTDs(w http.ResponseWriter, r *http.Request) {
+//	svc.HandleRequestMessage(wot.HTOpReadAllTDs, w, r)
+//}
+//
+//// HandlePublishMultipleProperties agent sends a map with multiple property
+//// FIXME: remove from http basic? this only works with sse[-sc]
+//func (svc *HttpTransportServer) HandlePublishMultipleProperties(w http.ResponseWriter, r *http.Request) {
+//	svc.HandleNotification(wot.HTOpUpdateMultipleProperties, w, r)
+//}
+//
+//// HandlePublishProperty agent sends single or multiple property updates
+//// FIXME: remove from http basic? this only works with sse[-sc]
+//func (svc *HttpTransportServer) HandlePublishProperty(w http.ResponseWriter, r *http.Request) {
+//	// this
+//	svc.HandleNotification(wot.HTOpUpdateProperty, w, r)
+//}
+//
+//// HandlePublishTD agent sends a new TD document
+//// FIXME: remove from http basic? this only works with hiveot
+//func (svc *HttpTransportServer) HandlePublishTD(w http.ResponseWriter, r *http.Request) {
+//	svc.HandleNotification(wot.HTOpUpdateTD, w, r)
+//}
 
 // HandleWriteProperty consumer requests to update a Thing property
-func (svc *HttpTransportServer) HandleWriteProperty(w http.ResponseWriter, r *http.Request) {
-	svc.HandleRequestMessage(wot.OpWriteProperty, w, r)
-}
+//func (svc *HttpTransportServer) HandleWriteProperty(w http.ResponseWriter, r *http.Request) {
+//	svc.HandleRequestMessage(wot.OpWriteProperty, w, r)
+//}

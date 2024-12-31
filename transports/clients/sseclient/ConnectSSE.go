@@ -74,14 +74,14 @@ func ConnectSSE(
 	remover := conn.SubscribeToAll(onMessage)
 
 	// Wait for max 3 seconds to detect a connection
-	connectCtx, connectedCancelFn := context.WithTimeout(context.Background(), timeout)
+	waitConnectCtx, waitConnectCancelFn := context.WithTimeout(context.Background(), timeout)
 	conn.SubscribeEvent(ssescserver.SSEPingEvent, func(event sse.Event) {
 		// WORKAROUND since go-sse has no callback for a successful (re)connect, simulate one here.
 		// As soon as a connection is established the server could send a 'ping' event.
 		// success!
 		slog.Info("handleSSEEvent: connection (re)established; setting connected to true")
 		onConnect(true, nil)
-		connectedCancelFn()
+		waitConnectCancelFn()
 	})
 
 	go func() {
@@ -107,12 +107,12 @@ func ConnectSSE(
 	}()
 
 	// wait for the SSE connection to be established
-	<-connectCtx.Done()
-	e := connectCtx.Err()
+	<-waitConnectCtx.Done()
+	e := waitConnectCtx.Err()
 	if errors.Is(e, context.DeadlineExceeded) {
 		err = fmt.Errorf("ConnectSSE: Timeout connecting to the server")
 		slog.Warn(err.Error())
-		connectedCancelFn()
+		waitConnectCancelFn()
 		sseCancelFn()
 	}
 	closeSSEFn := func() {

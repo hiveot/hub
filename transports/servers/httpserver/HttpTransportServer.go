@@ -50,47 +50,23 @@ type HttpTransportServer struct {
 	cm *connections.ConnectionManager
 }
 
-// AddGetOp adds a protocol binding operation with a path and handler
+// AddOps adds one or more protocol binding operations with a path and handler
 // This will be added as a protected route that requires authentication.
 // Intended for adding operations for http routes and for sub-protocol bindings.
-//
-// This is used to add Forms to the digitwin TDs
-func (svc *HttpTransportServer) AddGetOp(
-	r chi.Router, op string, opURL string, handler http.HandlerFunc) {
+func (svc *HttpTransportServer) AddOps(
+	r chi.Router, ops []string, method string, opURL string, handler http.HandlerFunc) {
 
 	if r == nil {
 		r = svc.protectedRoutes
 	}
 	svc.operations = append(svc.operations, HttpOperation{
-		op:      op,
-		method:  http.MethodGet,
+		ops:     ops,
+		method:  method,
 		url:     opURL,
 		handler: handler,
 		//isThingLevel: thingLevel,
 	})
-	r.Get(opURL, handler)
-}
-
-// AddPostOp adds protocol binding operation with a URL and handler
-// This will be added as a protected route that requires authentication.
-// Intended for adding operations for http routes and for sub-protocol bindings.
-//
-// This is used to add Forms to the digitwin TDs
-func (svc *HttpTransportServer) AddPostOp(
-	r chi.Router,
-	op string, opURL string, handler http.HandlerFunc) {
-
-	if r == nil {
-		r = svc.protectedRoutes
-	}
-	svc.operations = append(svc.operations, HttpOperation{
-		op:      op,
-		method:  http.MethodPost,
-		url:     opURL,
-		handler: handler,
-		//isThingLevel: isThingLevel,
-	})
-	r.Post(opURL, handler)
+	r.Method(method, opURL, handler)
 }
 
 // GetConnectionByConnectionID returns the client connection for sending messages to a client
@@ -104,21 +80,6 @@ func (svc *HttpTransportServer) GetConnectURL() string {
 	return baseURL
 }
 
-// GetProtocolInfo returns info on the protocol supported by this binding
-//func (svc *HttpTransportServer) GetProtocolInfo() transports.ProtocolInfo {
-//	//hostName := svc.config.Host
-//	//if hostName == "" {
-//	//	hostName = "localhost"
-//	//}
-//	baseURL := fmt.Sprintf("https://%s:%d", svc.hostName, svc.port)
-//	inf := transports.ProtocolInfo{
-//		BaseURL:   baseURL,
-//		Schema:    "https",
-//		Transport: "https",
-//	}
-//	return inf
-//}
-
 // SendNotification broadcast an event or property change to subscribers clients
 func (svc *HttpTransportServer) SendNotification(msg transports.NotificationMessage) {
 	cList := svc.cm.GetConnectionByProtocol(transports.ProtocolTypeHTTPS)
@@ -131,10 +92,7 @@ func (svc *HttpTransportServer) SendNotification(msg transports.NotificationMess
 func (svc *HttpTransportServer) Stop() {
 	slog.Info("Stopping HttpTransportServer")
 
-	// Shutdown remaining sessions to avoid hanging.
-	// (closing the TLS server does not shut down active connections)
-	//sm := sessions.GetSessionManager()
-	//sm.RemoveAll()
+	// Note: closing the TLS server does not shut down active connections
 	svc.httpServer.Stop()
 }
 

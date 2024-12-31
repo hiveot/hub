@@ -298,7 +298,7 @@ func NewTestServer() *TestServer {
 		AgentProtocol:    transports.ProtocolTypeSSESC,
 		ServiceProtocol:  transports.ProtocolTypeSSESC,
 		ConsumerProtocol: transports.ProtocolTypeSSESC,
-		ConnectTimeout:   time.Second * 300, // testing extra long
+		ConnectTimeout:   time.Second * 120, // testing extra long
 	}
 
 	return &srv

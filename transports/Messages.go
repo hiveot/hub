@@ -75,14 +75,27 @@ type NotificationMessage struct {
 }
 
 // GetUpdated is a helper to provide a human readable timestamp
-// This uses the time presentation format RFC822 ("02 Jan 06 15:04 MST")
-func (req *NotificationMessage) GetUpdated() string {
+//
+// format is optional format or "" to use the default format RFC822 ("02 Jan 06 15:04 MST")
+// use "WT" for weekday, time (Mon, 14:31:01 PDT)
+func (req *NotificationMessage) GetUpdated(format string) string {
 	created, err := dateparse.ParseAny(req.Created)
 	if err != nil {
 		return req.Created // can't parse, return as-is
 	}
-	created = created.Local()
-	return created.Format(time.RFC822)
+	createdTime := created.Local()
+	if format == "WT" {
+		// Format weekday, time if less than a week old
+		age := time.Now().Sub(createdTime)
+		if age < time.Hour*24*7 {
+			format = "Mon, 15:04:05 MST"
+		} else {
+			format = time.RFC822
+		}
+	} else {
+		format = time.RFC822
+	}
+	return createdTime.Format(format)
 }
 
 // ToString is a helper to easily read the request input as a string

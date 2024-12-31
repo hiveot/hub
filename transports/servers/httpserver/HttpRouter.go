@@ -26,6 +26,7 @@ const (
 	HttpPostLoginPath   = "/authn/login"
 	HttpPostLogoutPath  = "/authn/logout"
 	HttpPostRefreshPath = "/authn/refresh"
+	HttpGetDigitwinPath = "/digitwin/{operation}/{thingID}/{name}"
 
 	// paths for HTTP subprotocols
 	DefaultWSSPath   = "/wss"
@@ -79,10 +80,11 @@ func (svc *HttpTransportServer) createRoutes(router chi.Router) http.Handler {
 
 		//r.Get("/static/*", staticFileServer.ServeHTTP)
 		// build-in REST API for easy login to obtain a token
-		svc.AddPostOp(r, wot.HTOpLogin, HttpPostLoginPath, svc.HandleLogin)
+		svc.AddOps(r, []string{wot.HTOpLogin}, http.MethodPost, HttpPostLoginPath, svc.HandleLogin)
 	})
 
 	//--- private routes that requires authentication (as published in the TD)
+	// general format for digital twins: /digitwin/{operation}/{thingID}/{name}
 	router.Group(func(r chi.Router) {
 		r.Use(middleware.Compress(5,
 			"text/html", "text/css", "text/javascript", "image/svg+xml"))
@@ -92,27 +94,50 @@ func (svc *HttpTransportServer) createRoutes(router chi.Router) http.Handler {
 
 		// the following are protected http routes
 		svc.protectedRoutes = r
-		svc.AddGetOp(r, wot.HTOpPing, "/ping", svc.HandlePing)
+		svc.AddOps(r, []string{wot.HTOpPing}, http.MethodGet, "/ping", svc.HandlePing)
 
 		//- direct methods for digital twins
-		svc.AddGetOp(r, wot.OpReadAllProperties,
-			"/digitwin/readallproperties/{thingID}", svc.HandleReadAllProperties)
-		svc.AddGetOp(r, wot.OpReadProperty,
-			"/digitwin/readproperty/{thingID}/{name}", svc.HandleReadProperty)
-		svc.AddPostOp(r, wot.OpWriteProperty,
-			"/digitwin/writeproperty/{thingID}/{name}", svc.HandleWriteProperty)
+		svc.AddOps(r, []string{
+			wot.HTOpReadAllEvents,
+			wot.HTOpReadAllTDs,
+			wot.OpReadAllProperties,
+			wot.OpQueryAllActions},
+			http.MethodGet, "/digitwin/{operation}/{thingID}", svc.HandleRequestMessage)
+		svc.AddOps(r, []string{
+			wot.HTOpReadEvent,
+			wot.HTOpReadTD,
+			wot.OpReadProperty,
+			wot.OpQueryAction},
+			http.MethodGet, "/digitwin/{operation}/{thingID}/{name}", svc.HandleRequestMessage)
+		svc.AddOps(r, []string{
+			wot.OpWriteProperty,
+			wot.OpInvokeAction},
+			http.MethodPost, "/digitwin/{operation}/{thingID}/{name}", svc.HandleRequestMessage)
 
-		svc.AddGetOp(r, wot.HTOpReadAllEvents,
-			"/digitwin/readallevents/{thingID}", svc.HandleReadAllEvents)
-		svc.AddGetOp(r, wot.HTOpReadEvent,
-			"/digitwin/readevent/{thingID}/{eventID}", svc.HandleReadEvent)
+		// authn service actions
+		svc.AddOps(r, []string{wot.HTOpRefresh},
+			http.MethodPost, HttpPostRefreshPath, svc.HandleLoginRefresh)
+		svc.AddOps(r, []string{wot.HTOpLogout},
+			http.MethodPost, HttpPostLogoutPath, svc.HandleLogout)
 
-		svc.AddGetOp(r, wot.OpQueryAllActions,
-			"/digitwin/queryallactions/{thingID}", svc.HandleQueryAllActions)
-		svc.AddGetOp(r, wot.OpQueryAction,
-			"/digitwin/queryaction/{thingID}/{name}", svc.HandleQueryAction)
-		svc.AddPostOp(r, wot.OpInvokeAction,
-			"/digitwin/invokeaction/{thingID}/{name}", svc.HandleInvokeAction)
+		//svc.AddGetOp(r, wot.OpReadAllProperties,
+		//	"/digitwin/readallproperties/{thingID}", svc.HandleReadAllProperties)
+		//svc.AddGetOp(r, wot.OpReadProperty,
+		//	"/digitwin/readproperty/{thingID}/{name}", svc.HandleReadProperty)
+		//svc.AddPostOp(r, wot.OpWriteProperty,
+		//	"/digitwin/writeproperty/{thingID}/{name}", svc.HandleWriteProperty)
+
+		//svc.AddGetOp(r, wot.HTOpReadAllEvents,
+		//	"/digitwin/readallevents/{thingID}", svc.HandleReadAllEvents)
+		//svc.AddGetOp(r, wot.HTOpReadEvent,
+		//	"/digitwin/readevent/{thingID}/{eventID}", svc.HandleReadEvent)
+
+		//svc.AddGetOp(r, wot.OpQueryAllActions,
+		//	"/digitwin/queryallactions/{thingID}", svc.HandleQueryAllActions)
+		//svc.AddGetOp(r, wot.OpQueryAction,
+		//	"/digitwin/queryaction/{thingID}/{name}", svc.HandleQueryAction)
+		//svc.AddPostOp(r, wot.OpInvokeAction,
+		//	"/digitwin/invokeaction/{thingID}/{name}", svc.HandleInvokeAction)
 
 		//if svc.sse != nil {
 		//// sse subprotocol routes
@@ -122,19 +147,13 @@ func (svc *HttpTransportServer) createRoutes(router chi.Router) http.Handler {
 		//	"/sse/digitwin/observe/{thingID}", svc.sse.HandleObserveAllProperties)
 		//}
 		// digitwin directory actions. These are just for convenience as actions are normally used
-		svc.AddGetOp(r, wot.HTOpReadTD,
-			"/digitwin/readtd/{thingID}", svc.HandleReadTD)
-		svc.AddGetOp(r, wot.HTOpReadAllTDs,
-			"/digitwin/readalltds", svc.HandleReadAllTDs) // query params: offset,limit
+		//svc.AddGetOp(r, wot.HTOpReadTD,
+		//	"/digitwin/readtd/{thingID}", svc.HandleReadTD)
+		//svc.AddGetOp(r, wot.HTOpReadAllTDs,
+		//	"/digitwin/readalltds", svc.HandleReadAllTDs) // query params: offset,limit
 
 		// handlers for other services. Operations to invoke actions.
 		// TODO: these probably belong with the digitwin service TD
-
-		// authn/authz service actions
-		svc.AddPostOp(r, wot.HTOpRefresh,
-			HttpPostRefreshPath, svc.HandleLoginRefresh)
-		svc.AddPostOp(r, wot.HTOpLogout,
-			HttpPostLogoutPath, svc.HandleLogout)
 
 		// HiveOT messaging API using standardized envelopes. This can be used instead
 		// of Forms. Only 3 endpoints are needed. Please try me :)

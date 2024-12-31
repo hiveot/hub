@@ -146,9 +146,11 @@ func (cts *ConsumedThingsDirectory) handleNotification(msg transports.Notificati
 }
 
 // GetForm returns the form for an operation on a Thing
-func (cts *ConsumedThingsDirectory) GetForm(op, thingID, name string) td.Form {
+func (cts *ConsumedThingsDirectory) GetForm(op, thingID, name string) (f td.Form) {
 	tdi := cts.GetTD(thingID)
-	f := tdi.GetForm(op, name, "")
+	if tdi != nil {
+		f = tdi.GetForm(op, name, "")
+	}
 	return f
 }
 

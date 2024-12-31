@@ -78,6 +78,7 @@ func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode, force bo
 					value, changed := svc.GetValueChange(attrID, attr.Value, info, nodeTD)
 					if changed || force {
 						slog.Info("PublishThingValues: PubEvent",
+							slog.String("thingID", thingID),
 							slog.String("attrID", attrID),
 							slog.String("value", attr.Value))
 						err = svc.hc.PubEvent(nodeTD.ID, attrID, value)
@@ -94,6 +95,7 @@ func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode, force bo
 		}
 		if len(propMap) > 0 {
 			slog.Info("PublishThingValues: PubMultipleProperties",
+				slog.String("thingID", thingID),
 				slog.Int("count", len(propMap)),
 			)
 			err = svc.hc.PubProperties(thingID, propMap)

@@ -6,6 +6,7 @@ import (
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/connections"
 	"github.com/hiveot/hub/transports/servers/httpserver"
+	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -28,12 +29,50 @@ type WssTransportServer struct {
 	opList []string
 }
 
+// GetForm returns a new form for a websocket supported operation
+// Intended for Thing level operations
+func (svc *WssTransportServer) GetForm(op, thingID, name string) td.Form {
+	// map operations to message type
+
+	msgType, found := svc.op2MsgType[op]
+	if !found {
+		slog.Error("GetForm. Operation doesn't have corresponding message type",
+			"op", op)
+		return nil
+	}
+	form := td.Form{}
+	form["op"] = op
+	form["subprotocol"] = "websocket"
+	form["contentType"] = "application/json"
+	form["href"] = svc.wssPath
+	form["messageType"] = msgType
+
+	return form
+}
+
 // GetConnectURL returns base path of the server with the wss connection path
 func (svc *WssTransportServer) GetConnectURL() string {
 	baseURL := svc.httpTransport.GetConnectURL()
 	parts, _ := url.Parse(baseURL)
 	wssURL, _ := url.JoinPath("wss://", parts.Host, svc.wssPath)
 	return wssURL
+}
+
+func (svc *WssTransportServer) AddTDForms(tdi *td.TD) error {
+
+	// apparently you can just add 1 form containing all operations...
+	// still struggling with this stuff.
+	form := td.Form{}
+	form["op"] = svc.opList
+	form["subprotocol"] = "websocket"
+	form["contentType"] = "application/json"
+	form["href"] = svc.wssPath
+	tdi.Forms = append(tdi.Forms, form)
+
+	//svc.AddPropertiesForms(tdi)
+	//svc.AddEventsForms(tdi)
+	//svc.AddActionForms(tdi)
+	return nil
 }
 
 // SendNotification broadcast an event or property change to subscribers clients
@@ -175,7 +214,7 @@ func StartWssTransportServer(wssPath string, cm *connections.ConnectionManager,
 		handleNotification: handleNotification,
 	}
 	// add the WSS routes
-	httpTransport.AddGetOp(nil, WSSOpConnect, wssPath, b.Serve)
+	httpTransport.AddOps(nil, []string{WSSOpConnect}, http.MethodGet, wssPath, b.Serve)
 	//httpTransport.AddGetOp(nil, WSSOpPing, wssPath, b.Serve)
 
 	return b

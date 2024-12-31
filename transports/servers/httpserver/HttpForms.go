@@ -2,13 +2,15 @@ package httpserver
 
 import (
 	"github.com/hiveot/hub/transports/tputils"
+	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
+	"golang.org/x/exp/slices"
 	"log/slog"
 	"net/http"
 )
 
 type HttpOperation struct {
-	op          string
+	ops         []string
 	method      string
 	subprotocol string
 	url         string
@@ -46,6 +48,7 @@ type HttpOperation struct {
 //
 // ```
 func (svc *HttpTransportServer) AddTDForms(td *td.TD) error {
+	svc.AddDigitwinForms(td)
 	svc.AddThingLevelForms(td)
 	//svc.AddPropertiesForms(td)
 	//svc.AddEventsForms(td)
@@ -60,7 +63,7 @@ func (svc *HttpTransportServer) GetForm(op, thingID, name string) td.Form {
 	// all operations use URI variables for selecting things
 	// HTTP operations
 	for _, httpOp := range svc.operations {
-		if httpOp.op == op {
+		if slices.Contains(httpOp.ops, op) {
 			form := td.NewForm(op, httpOp.url)
 			form["htv:methodName"] = httpOp.method
 			return form
@@ -136,6 +139,31 @@ func (svc *HttpTransportServer) GetForm(op, thingID, name string) td.Form {
 //}
 //}
 
+// AddDigitwinForms adds Thing level forms for all digitwin read and write operations
+func (svc *HttpTransportServer) AddDigitwinForms(tdi *td.TD) {
+	methodPath := HttpGetDigitwinPath
+	f := td.Form{
+		"op": []string{
+			wot.OpReadProperty, wot.OpReadAllProperties,
+			wot.HTOpReadEvent, wot.HTOpReadAllEvents,
+			wot.OpQueryAction, wot.OpQueryAllActions,
+			wot.HTOpReadTD, wot.HTOpReadAllTDs,
+		},
+		"href":           methodPath,
+		"contentType":    "application/json",
+		"htv:methodName": http.MethodGet,
+	}
+	tdi.Forms = append(tdi.Forms, f)
+	methodPath = HttpGetDigitwinPath
+	f = td.Form{
+		"op":             []string{wot.OpInvokeAction, wot.OpWriteProperty},
+		"href":           methodPath,
+		"contentType":    "application/json",
+		"htv:methodName": http.MethodPost,
+	}
+	tdi.Forms = append(tdi.Forms, f)
+}
+
 // AddThingLevelForms adds forms with protocol info to the TD, and its properties, events and actions
 // HiveOT mostly uses top level forms.
 func (svc *HttpTransportServer) AddThingLevelForms(tdi *td.TD) {
@@ -144,7 +172,7 @@ func (svc *HttpTransportServer) AddThingLevelForms(tdi *td.TD) {
 	for _, opInfo := range svc.operations {
 		methodPath := tputils.Substitute(opInfo.url, params)
 		f := td.Form{
-			"op":             opInfo.op, // not a WoT operation
+			"op":             opInfo.ops, // not a WoT operation
 			"href":           methodPath,
 			"contentType":    "application/json",
 			"htv:methodName": opInfo.method,

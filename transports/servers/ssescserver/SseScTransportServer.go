@@ -128,97 +128,28 @@ func (svc *SseScTransportServer) HandleConnect(w http.ResponseWriter, r *http.Re
 //	_ = c._send(transports.MessageTypeResponse, resp)
 //}
 
-// HandleObserveAllProperties adds a property subscription
-func (svc *SseScTransportServer) HandleObserveAllProperties(w http.ResponseWriter, r *http.Request) {
-	svc.HandleObserveProperty(w, r)
-}
-
-// HandleObserveProperty handles a property observe request for one or all properties
-func (svc *SseScTransportServer) HandleObserveProperty(w http.ResponseWriter, r *http.Request) {
+// HandleSubscriptions (un)subscribe events or (un)observe properties
+func (svc *SseScTransportServer) HandleSubscriptions(w http.ResponseWriter, r *http.Request) {
 	rp, err := httpserver.GetRequestParams(r)
 	if err != nil {
-		slog.Warn("HandleObserveProperty", "err", err.Error())
+		slog.Warn("HandleSubscriptions", "err", err.Error())
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	slog.Info("HandleObserveProperty",
-		slog.String("clientID", rp.ClientID),
-		slog.String("thingID", rp.ThingID),
-		slog.String("name", rp.Name))
-
 	c := svc.GetSseConnection(rp.ConnectionID)
-	if c != nil {
-		c.ObserveProperty(rp.ThingID, rp.Name)
-	} else {
-		slog.Error("HandleObserveProperty: no matching connection found",
-			"clientID", rp.ClientID, "connectionID", rp.ConnectionID)
-	}
-}
-
-// HandleSubscribeAllEvents adds a subscription to all events
-func (svc *SseScTransportServer) HandleSubscribeAllEvents(w http.ResponseWriter, r *http.Request) {
-	svc.HandleSubscribeEvent(w, r)
-}
-
-// HandleSubscribeEvent handles a subscription request for one or all events
-func (svc *SseScTransportServer) HandleSubscribeEvent(w http.ResponseWriter, r *http.Request) {
-	rp, err := httpserver.GetRequestParams(r)
-	if err != nil {
-		slog.Warn("HandleSubscribe", "err", err.Error())
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	slog.Info("HandleSubscribe",
-		slog.String("clientID", rp.ClientID),
-		slog.String("connectionID", rp.ConnectionID),
-		slog.String("thingID", rp.ThingID),
-		slog.String("name", rp.Name))
-
-	c := svc.GetSseConnection(rp.ConnectionID)
-	if c != nil {
-		c.SubscribeEvent(rp.ThingID, rp.Name)
-	} else {
+	if c == nil {
 		slog.Error("HandleSubscribeEvent: no matching connection found",
 			"clientID", rp.ClientID, "connID", rp.ConnectionID)
 	}
-}
-
-// HandleUnobserveAllProperties handles removal of all property observe subscriptions
-func (svc *SseScTransportServer) HandleUnobserveAllProperties(w http.ResponseWriter, r *http.Request) {
-	svc.HandleUnobserveProperty(w, r)
-}
-
-// HandleUnobserveProperty handles removal of one property observe subscriptions
-func (svc *SseScTransportServer) HandleUnobserveProperty(w http.ResponseWriter, r *http.Request) {
-	slog.Info("HandleUnobserveProperty")
-	rp, err := httpserver.GetRequestParams(r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	c := svc.GetSseConnection(rp.ConnectionID)
-	if c != nil {
-		c.UnobserveProperty(rp.ThingID, rp.Name)
-	}
-}
-
-// HandleUnsubscribeAllEvents removes the subscription
-func (svc *SseScTransportServer) HandleUnsubscribeAllEvents(w http.ResponseWriter, r *http.Request) {
-	svc.HandleUnsubscribeEvent(w, r)
-}
-
-// HandleUnsubscribeEvent handles removal of one or all event subscriptions
-func (svc *SseScTransportServer) HandleUnsubscribeEvent(w http.ResponseWriter, r *http.Request) {
-	slog.Info("HandleUnsubscribeEvent")
-	rp, err := httpserver.GetRequestParams(r)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	c := svc.GetSseConnection(rp.ConnectionID)
-	if c != nil {
+	switch rp.Op {
+	case wot.OpSubscribeEvent, wot.OpSubscribeAllEvents:
+		c.SubscribeEvent(rp.ThingID, rp.Name)
+	case wot.OpUnsubscribeEvent, wot.OpUnsubscribeAllEvents:
 		c.UnsubscribeEvent(rp.ThingID, rp.Name)
+	case wot.OpObserveProperty, wot.OpObserveAllProperties:
+		c.ObserveProperty(rp.ThingID, rp.Name)
+	case wot.OpUnobserveProperty, wot.OpUnobserveAllProperties:
+		c.UnobserveProperty(rp.ThingID, rp.Name)
 	}
 }
 
@@ -254,25 +185,14 @@ func StartSseScTransportServer(
 		cm:            cm,
 		httpTransport: httpTransport,
 	}
-	httpTransport.AddGetOp(nil, SSEOpConnect,
-		ssePath, b.HandleConnect)
-	//httpTransport.AddGetOp(nil, SSEOpPing,
-	//	ssePath+"/ping", b.HandlePing)
-	httpTransport.AddPostOp(nil, wot.OpObserveAllProperties,
-		ssePath+"/observe/{thingID}", b.HandleObserveAllProperties)
-	httpTransport.AddPostOp(nil, wot.OpSubscribeAllEvents,
-		ssePath+"/subscribe/{thingID}", b.HandleSubscribeAllEvents)
-	httpTransport.AddPostOp(nil, wot.OpSubscribeEvent,
-		ssePath+"/subscribe/{thingID}/{name}", b.HandleSubscribeEvent)
-	httpTransport.AddPostOp(nil, wot.OpObserveProperty,
-		ssePath+"/observe/{thingID}/{name}", b.HandleObserveProperty)
-	httpTransport.AddPostOp(nil, wot.OpUnobserveAllProperties,
-		ssePath+"/unobserve/{thingID}", b.HandleUnobserveAllProperties)
-	httpTransport.AddPostOp(nil, wot.OpUnobserveProperty,
-		ssePath+"/unobserve/{thingID}/{name}", b.HandleUnobserveProperty)
-	httpTransport.AddPostOp(nil, wot.OpUnsubscribeAllEvents,
-		ssePath+"/unsubscribe/{thingID}", b.HandleUnsubscribeAllEvents)
-	httpTransport.AddPostOp(nil, wot.OpUnsubscribeEvent,
-		ssePath+"/unsubscribe/{thingID}/{name}", b.HandleUnsubscribeEvent)
+	httpTransport.AddOps(nil, []string{SSEOpConnect},
+		http.MethodGet, ssePath, b.HandleConnect)
+	httpTransport.AddOps(nil, []string{
+		wot.OpObserveProperty, wot.OpObserveAllProperties,
+		wot.OpSubscribeEvent, wot.OpSubscribeAllEvents,
+		wot.OpUnobserveProperty, wot.OpUnobserveAllProperties,
+		wot.OpUnsubscribeEvent, wot.OpUnsubscribeAllEvents},
+		http.MethodPost, ssePath+"/{operation}/{thingID}", b.HandleSubscriptions)
+
 	return b
 }

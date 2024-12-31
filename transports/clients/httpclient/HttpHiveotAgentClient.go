@@ -60,8 +60,7 @@ func (cl *HttpAgentClient) SendNotification(notification transports.Notification
 	method := http.MethodPost
 
 	payload, _ = jsoniter.Marshal(notification)
-	_, _, err := cl.consumerTransport._send(
-		method, href, "", "", "", payload, "")
+	_, _, err := cl.consumerTransport._send(method, href, payload, "")
 	return err
 }
 
@@ -87,8 +86,7 @@ func (cl *HttpAgentClient) HttpHiveotPubRequest(req transports.RequestMessage) e
 
 	payload, _ = jsoniter.Marshal(req)
 
-	outputRaw, headers, err := cl.consumerTransport._send(
-		method, href, "", "", "", payload, "")
+	outputRaw, headers, err := cl.consumerTransport._send(method, href, payload, "")
 	_ = headers
 	// optional synchronous response
 	if err == nil && outputRaw != nil {
@@ -143,8 +141,7 @@ func (cl *HttpAgentClient) SendResponse(resp transports.ResponseMessage) error {
 	method := http.MethodPost
 
 	payload, _ = jsoniter.Marshal(resp)
-	_, _, err := cl.consumerTransport._send(
-		method, href, "", "", "", payload, resp.RequestID)
+	_, _, err := cl.consumerTransport._send(method, href, payload, resp.RequestID)
 	return err
 }
 

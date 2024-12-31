@@ -237,7 +237,7 @@ func (c *SseScServerConnection) Serve(w http.ResponseWriter, r *http.Request) {
 				// ending the read loop and returning will close the connection
 				break
 			}
-			slog.Info("SseConnection: sending sse event to client",
+			slog.Debug("SseConnection: sending sse event to client",
 				//slog.String("sessionID", c.sessionID),
 				slog.String("clientID", c.clientID),
 				slog.String("connectionID", c.connectionID),

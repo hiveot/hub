@@ -336,7 +336,7 @@ func (sess *WebClientSession) onNotification(msg *transports.NotificationMessage
 		propVal := tputils.DecodeAsString(msg.Data)
 		sess.SendSSE(thingAddr, propVal)
 		thingAddr = fmt.Sprintf("%s/%s/updated", msg.ThingID, msg.Name)
-		sess.SendSSE(thingAddr, msg.GetUpdated())
+		sess.SendSSE(thingAddr, msg.GetUpdated(""))
 	} else {
 		// Publish sse event indicating the event affordance or value has changed.
 		// The UI that displays this event can use this as a trigger to reload the
@@ -346,7 +346,7 @@ func (sess *WebClientSession) onNotification(msg *transports.NotificationMessage
 		eventName := fmt.Sprintf("%s/%s", msg.ThingID, msg.Name)
 		sess.SendSSE(eventName, msg.ToString())
 		eventName = fmt.Sprintf("%s/%s/updated", msg.ThingID, msg.Name)
-		sess.SendSSE(eventName, msg.GetUpdated())
+		sess.SendSSE(eventName, msg.GetUpdated(""))
 	}
 }
 

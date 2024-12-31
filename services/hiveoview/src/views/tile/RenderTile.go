@@ -48,7 +48,7 @@ func (dt RenderTileTemplateData) GetHistory(thingID string, name string) *histor
 	return hsd
 }
 
-// GetValue return the latest value of a tile source or nil if not found
+// GetValue return the latest value of a tile source or n/a if not found
 //
 //  1. If name is an event then use the latest event value. (read-only)
 //  2. If name is not an event but a property then use the property value. (read/write)
@@ -74,6 +74,10 @@ func (d RenderTileTemplateData) GetValue(thingID string, name string) (iout *con
 		// if not an event get its property. properties might not update immediately
 		// so events are preferred.
 		iout = ct.ReadProperty(name)
+	}
+	// something went wrong but don't crash
+	if iout == nil {
+		iout = consumedthing.NewInteractionOutput(tdi, consumedthing.AffordanceTypeEvent, name, "n/a", "")
 	}
 	// obtain the value to display from either event or property
 	if iout != nil {

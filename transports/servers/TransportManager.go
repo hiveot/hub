@@ -172,7 +172,7 @@ func StartProtocolManager(cfg *pm.ProtocolsConfig,
 	}
 	// FIXME: how to support multiple URLs in discovery. See the WoT discovery spec.
 	if cfg.EnableDiscovery {
-		serverURL := svc.GetConnectURL(transports.ProtocolTypeHTTPS)
+		serverURL := svc.GetConnectURL(transports.ProtocolTypeSSESC)
 		svc.discoveryTransport = discotransport.StartDiscoveryTransport(
 			cfg.Discovery, serverURL)
 	}

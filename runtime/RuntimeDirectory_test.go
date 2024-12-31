@@ -54,7 +54,7 @@ func TestAddRemoveTD(t *testing.T) {
 	notif := transports.NewNotificationMessage(wot.HTOpUpdateTD, "", "", string(td1JSON))
 	err = ag1.SendNotification(notif)
 	assert.NoError(t, err)
-
+	time.Sleep(time.Second * 2)
 	// Get returns a serialized TD object
 	// use the helper directory client rpc method
 	time.Sleep(time.Millisecond)

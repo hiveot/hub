@@ -49,9 +49,9 @@ func NewHttp2TLSClient(caCert *x509.Certificate, clientCert *tls.Certificate, ti
 		slog.Error(err.Error())
 		err = nil
 	}
+	// Dont set a timeout here as it will end the connection
 	httpClient := &http.Client{
 		Transport: tlsTransport,
-		Timeout:   timeout,
 		Jar:       cjar,
 	}
 	return httpClient

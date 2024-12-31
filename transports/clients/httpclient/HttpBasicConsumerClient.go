@@ -60,7 +60,6 @@ type HttpConsumerClient struct {
 //
 // This returns the raw serialized response data, a response message ID, return status code or an error
 func (cl *HttpConsumerClient) _send(method string, methodPath string,
-	contentType string, thingID string, name string,
 	body []byte, requestID string) (
 	resp []byte, headers http.Header, err error) {
 
@@ -68,32 +67,16 @@ func (cl *HttpConsumerClient) _send(method string, methodPath string,
 		err = fmt.Errorf("_send: '%s'. Client is not started", methodPath)
 		return nil, nil, err
 	}
-	// use + as wildcard for thingID to avoid a 404
-	// while it not recommended, it is allowed to subscribe/observe all things
-	if thingID == "" {
-		thingID = "+"
-	}
-	// use + as wildcard for affordance name to avoid a 404
-	// this should not happen very often but it is allowed
-	if name == "" {
-		name = "+"
-	}
-
-	// substitute URI variables in the path
-	vars := map[string]string{
-		"thingID": thingID,
-		"name":    name}
-	reqPath := tputils.Substitute(methodPath, vars)
-
 	// Caution! a double // in the path causes a 301 and changes post to get
 	bodyReader := bytes.NewReader(body)
 	serverURL := cl.GetServerURL()
 	parts, _ := url.Parse(serverURL)
-	parts.Path = reqPath
+	parts.Path = methodPath
 	fullURL := parts.String()
 	//fullURL := parts.cl.GetServerURL() + reqPath
 	req, err := http.NewRequest(method, fullURL, bodyReader)
 	if err != nil {
+		err = fmt.Errorf("_send %s %s failed: %w", method, fullURL, err)
 		return nil, nil, err
 	}
 
@@ -108,10 +91,7 @@ func (cl *HttpConsumerClient) _send(method string, methodPath string,
 	}
 
 	// set other headers
-	if contentType == "" {
-		contentType = "application/json"
-	}
-	req.Header.Set("Content-Type", contentType)
+	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set(httpserver.ConnectionIDHeader, cl.GetConnectionID())
 	if requestID != "" {
 		req.Header.Set(httpserver.RequestIDHeader, requestID)
@@ -135,15 +115,15 @@ func (cl *HttpConsumerClient) _send(method string, methodPath string,
 	if httpStatus == 401 {
 		err = fmt.Errorf("%s", httpResp.Status)
 	} else if httpStatus >= 400 && httpStatus < 500 {
-		err = fmt.Errorf("%s: %s", httpResp.Status, respBody)
+		err = fmt.Errorf("%s: %s", httpResp.Status, fullURL)
 		if httpResp.Status == "" {
 			err = fmt.Errorf("%d (%s): %s", httpResp.StatusCode, httpResp.Status, respBody)
 		}
 	} else if httpStatus >= 500 {
 		err = fmt.Errorf("Error %d (%s): %s", httpStatus, httpResp.Status, respBody)
-		slog.Error("_send returned internal server error", "reqPath", reqPath, "err", err.Error())
+		slog.Error("_send returned internal server error", "reqPath", methodPath, "err", err.Error())
 	} else if err != nil {
-		err = fmt.Errorf("_send: Error %s %s: %w", method, reqPath, err)
+		err = fmt.Errorf("_send: Error %s %s: %w", method, methodPath, err)
 	}
 	return respBody, httpResp.Header, err
 }
@@ -263,8 +243,7 @@ func (cl *HttpConsumerClient) PubRequest(req transports.RequestMessage) error {
 
 	// note, if the request is the hiveot fallback path with RequestMessage, then
 	// the response will be the ResponseMessage envelope instead of the raw payload.
-	outputRaw, headers, err := cl._send(
-		method, reqPath, "", req.ThingID, req.Name, dataJSON, req.RequestID)
+	outputRaw, headers, err := cl._send(method, reqPath, dataJSON, req.RequestID)
 
 	// Unfortunately the http binding has no deterministic result format
 	// types of responses:
@@ -373,6 +352,7 @@ func (cl *HttpConsumerClient) Init(
 	//
 	cl.BaseGetForm = getForm
 	cl.headers = make(map[string]string)
+
 	cl.httpClient = tlsclient.NewHttp2TLSClient(caCert, clientCert, timeout)
 	cl.BasePubRequest = cl.PubRequest
 }

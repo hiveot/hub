@@ -1,12 +1,9 @@
 package login
 
 import (
-	"encoding/json"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/transports/servers/httpserver"
-	jsoniter "github.com/json-iterator/go"
-	"io"
 	"log/slog"
 	"net/http"
 )
@@ -25,7 +22,7 @@ func PostLoginFormHandler(sm *session.WebSessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// obtain login form fields
 
-		loginID := r.FormValue("loginID")
+		loginID := r.FormValue("login")
 		password := r.FormValue("password")
 		if loginID == "" && password == "" {
 			http.Redirect(w, r, src.RenderLoginPath, http.StatusBadRequest)
@@ -65,41 +62,38 @@ func PostLoginFormHandler(sm *session.WebSessionManager) http.HandlerFunc {
 	}
 }
 
-// PostLoginHandler lets a client login using a password and returns a token.
+// PostLoginHandler lets a client login using a login ID and password,
+// and returns an auth token.
 //
 // This requires a transports.ConnectionIDHeader (connection-id header)
 // for a session to be retained.
 // This returns a new authentication token that can be used as bearer token instead
 // of logging in again.
-func PostLoginHandler(sm *session.WebSessionManager) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			return
-		}
-		loginMessage := map[string]string{}
-		err = json.Unmarshal(body, &loginMessage)
-		//	"login":    cl.GetClientID(),
-		//	"password": password,
-		//}
-		// FIXME: use a shared login message struct
-		loginID := loginMessage["login"]
-		password := loginMessage["password"]
-		if loginID == "" && password == "" {
-			http.Redirect(w, r, src.RenderLoginPath, http.StatusBadRequest)
-			//w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		cid := r.Header.Get(httpserver.ConnectionIDHeader)
-		slog.Info("PostLoginHandler",
-			"loginID", loginID,
-			"cid", cid)
-
-		newToken, err := sm.ConnectWithPassword(w, r, loginID, password, cid)
-
-		// this will prevent a redirect from working
-		newTokenJSON, _ := jsoniter.Marshal(newToken)
-		w.Write(newTokenJSON)
-
-	}
-}
+//func PostLoginHandler(sm *session.WebSessionManager) http.HandlerFunc {
+//	return func(w http.ResponseWriter, r *http.Request) {
+//		body, err := io.ReadAll(r.Body)
+//		if err != nil {
+//			return
+//		}
+//		loginMessage := map[string]string{}
+//		err = json.Unmarshal(body, &loginMessage)
+//		// FIXME: use a shared login message struct
+//		loginID := loginMessage["login"]
+//		password := loginMessage["password"]
+//		if loginID == "" && password == "" {
+//			http.Redirect(w, r, src.RenderLoginPath, http.StatusBadRequest)
+//			return
+//		}
+//		cid := r.Header.Get(httpserver.ConnectionIDHeader)
+//		slog.Info("PostLoginHandler",
+//			"loginID", loginID,
+//			"cid", cid)
+//
+//		newToken, err := sm.ConnectWithPassword(w, r, loginID, password, cid)
+//
+//		// this will prevent a redirect from working
+//		newTokenJSON, _ := jsoniter.Marshal(newToken)
+//		w.Write(newTokenJSON)
+//
+//	}
+//}
