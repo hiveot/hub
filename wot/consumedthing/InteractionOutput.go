@@ -196,12 +196,12 @@ func NewInteractionOutputFromValue(
 	tv *digitwin.ThingValue, tdi *td.TD) *InteractionOutput {
 
 	io := &InteractionOutput{
-		ThingID:  tdi.ID,
-		Name:     tv.Name,
-		SenderID: tv.SenderID,
-		Updated:  tv.Updated,
-		Value:    NewDataSchemaValue(tv.Data),
-		Err:      nil,
+		ThingID: tdi.ID,
+		Name:    tv.Name,
+		//SenderID: tv.SenderID,
+		Updated: tv.Created,
+		Value:   NewDataSchemaValue(tv.Data),
+		Err:     nil,
 	}
 	if tdi == nil {
 		return io
@@ -221,27 +221,33 @@ func NewInteractionOutputFromValue(
 //	affType is one of AffordanceTypeAction, event or property
 //	name is the interaction affordance name the output belongs to
 //	raw is the raw data
-//	created is the timestamp the data is created
-func NewInteractionOutput(tdi *td.TD, affType string, name string, raw any, created string) *InteractionOutput {
+//	updated is the timestamp the data is last updated
+func NewInteractionOutput(tdi *td.TD, affType string, name string, raw any, updated string) *InteractionOutput {
+
 	var schema *td.DataSchema
+	var title string
+
 	switch affType {
 	case AffordanceTypeAction:
 		aff := tdi.Actions[name]
 		if aff == nil {
 			break
 		}
+		title = aff.Title
 		schema = aff.Output
 	case AffordanceTypeEvent:
 		aff := tdi.Events[name]
 		if aff == nil {
 			break
 		}
+		title = aff.Title
 		schema = aff.Data
 	case AffordanceTypeProperty:
 		aff := tdi.Properties[name]
 		if aff == nil {
 			break
 		}
+		title = aff.Title
 		schema = &aff.DataSchema
 	}
 	if schema == nil {
@@ -249,10 +255,14 @@ func NewInteractionOutput(tdi *td.TD, affType string, name string, raw any, crea
 			Title: "unknown schema",
 		}
 	}
+	if title == "" {
+		title = schema.Title
+	}
 	io := &InteractionOutput{
 		ThingID: tdi.ID,
 		Name:    name,
-		Updated: created,
+		Title:   title,
+		Updated: updated,
 		Schema:  *schema,
 		Value:   NewDataSchemaValue(raw),
 	}

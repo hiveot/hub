@@ -213,7 +213,7 @@ func TestLoginRefresh(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	const thingID1 = "thing1"
 
-	srv, cancelFn, _ := StartTransportServer(nil, nil, nil)
+	srv, cancelFn, cm := StartTransportServer(nil, nil, nil)
 	defer cancelFn()
 	cl1 := NewConsumer(testClientID1, srv.GetForm)
 	defer cl1.Disconnect()
@@ -224,7 +224,15 @@ func TestLoginRefresh(t *testing.T) {
 	token, err := cl1.ConnectWithPassword(testClientID1)
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
-	//time.Sleep(time.Millisecond * 1)
+
+	// check if both client and server have the connection ID
+	// the server prefixes it with clientID- to ensure no client can steal another's ID
+	cid1 := cl1.GetConnectionID()
+	assert.NotEmpty(t, cid1)
+	srvConn := cm.GetConnectionByClientID(testClientID1)
+	require.NotNil(t, srvConn)
+	cid1server := srvConn.GetConnectionID()
+	assert.Equal(t, testClientID1+"-"+cid1, cid1server)
 
 	err = cl1.Ping()
 	require.NoError(t, err)

@@ -1,6 +1,8 @@
 package api
 
-import "github.com/hiveot/hub/api/go/digitwin"
+import (
+	"github.com/hiveot/hub/api/go/digitwin"
+)
 
 // ActionListToMap creates a map from a digitwin action value list
 func ActionListToMap(valueList []digitwin.ActionStatus) map[string]digitwin.ActionStatus {

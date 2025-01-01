@@ -28,7 +28,7 @@ func SubmitIdProvRequest(clientID string, pubKey string, mac string, tlsClient *
 		MAC:      mac,
 	}
 	reqData, _ := jsoniter.Marshal(req)
-	respData, _, _, err := tlsClient.Post(idprovapi.ProvisionRequestPath, reqData, "")
+	respData, _, err := tlsClient.Post(idprovapi.ProvisionRequestPath, reqData)
 	resp := idprovapi.ProvisionRequestResp{}
 	err = jsoniter.Unmarshal(respData, &resp)
 	return resp.Status, resp.Token, err

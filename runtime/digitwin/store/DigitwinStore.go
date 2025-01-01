@@ -124,7 +124,7 @@ func (svc *DigitwinStore) QueryAllActions(dThingID string) (
 	return actMap, err
 }
 
-// ReadAllEvents returns all last known action invocation status of the given thing
+// ReadAllEvents returns all last received events of the given thing
 func (svc *DigitwinStore) ReadAllEvents(dThingID string) (
 	v map[string]digitwin.ThingValue, err error) {
 
@@ -476,77 +476,61 @@ func (svc *DigitwinStore) UpdateActionStatus(agentID string, resp transports.Res
 // This does accept event values that are not defined in the TD.
 // This is intentional.
 //
-// dThingID is the ID of the digital twin whose event is submitted.
-// data is the event payload
-// eventName is the name of the event whose value is updated.
-func (svc *DigitwinStore) UpdateEventValue(dThingID string, eventName string, data any) error {
+// ev is the received notification of the event update
+func (svc *DigitwinStore) UpdateEventValue(ev digitwin.ThingValue) error {
 	svc.cacheMux.Lock()
 	defer svc.cacheMux.Unlock()
 
-	dtw, found := svc.dtwCache[dThingID]
+	dtw, found := svc.dtwCache[ev.ThingID]
 	if !found {
-		err := fmt.Errorf("dThing with ID '%s' not found", dThingID)
-		slog.Warn("UpdateEventValue Can't update state of an unknown Thing. Event ignored.", "dThingID", dThingID)
+		err := fmt.Errorf("dThing with ID '%s' not found", ev.ThingID)
+		slog.Warn("UpdateEventValue Unknown Thing. Event ignored.", "dThingID", ev.ThingID)
 		return err
 	}
-	eventValue := digitwin.ThingValue{
-		Data:    data,
-		Updated: time.Now().Format(wot.RFC3339Milli),
-		//MessageID: messageID,
-		Name: eventName,
-	}
-	dtw.EventValues[eventName] = eventValue
-	svc.changedThings[dThingID] = true
+	dtw.EventValues[ev.Name] = ev
+	svc.changedThings[ev.ThingID] = true
 
 	return nil
 }
 
 // UpdatePropertyValue updates the last known thing property value.
 //
-// dThingID is the ID of the digital twin Thing
-// propName is the name of the property whose value is updated
 // newValue of the property
-// requestID provided by the agent, in response to an action or write
 //
 // This returns a flag indicating whether the property value has changed.
-func (svc *DigitwinStore) UpdatePropertyValue(
-	dThingID string, propName string, newValue any, requestID string) (
+func (svc *DigitwinStore) UpdatePropertyValue(newValue digitwin.ThingValue) (
 	hasChanged bool, err error) {
 
 	svc.cacheMux.Lock()
 	defer svc.cacheMux.Unlock()
 
-	dtw, found := svc.dtwCache[dThingID]
+	dtw, found := svc.dtwCache[newValue.ThingID]
 	if !found {
-		err := fmt.Errorf("dThing with ID '%s' not found", dThingID)
+		err := fmt.Errorf("dThing with ID '%s' not found", newValue.ThingID)
 		return false, err
 	}
 	if svc.strict {
-		aff := dtw.DtwTD.GetProperty(propName)
+		aff := dtw.DtwTD.GetProperty(newValue.Name)
 		if aff == nil {
 			return false,
-				fmt.Errorf("UpdatePropertyValue: unknown property '%s' for thing '%s'", propName, dThingID)
+				fmt.Errorf("UpdatePropertyValue: unknown property '%s' for thing '%s'",
+					newValue.Name, newValue.ThingID)
 		}
 	}
-	propValue, found := dtw.PropValues[propName]
+	propValue, found := dtw.PropValues[newValue.Name]
 	if !found {
-		propValue = digitwin.ThingValue{}
+		hasChanged = true
+	} else {
+		hasChanged = propValue.Data != newValue.Data
 	}
-	oldValue := propValue.Data
-	hasChanged = oldValue != propValue
-
-	propValue.Data = newValue
-	propValue.RequestID = requestID
-	propValue.Name = propName
-	propValue.Updated = time.Now().Format(wot.RFC3339Milli)
-
-	dtw.PropValues[propName] = propValue
-	svc.changedThings[dThingID] = hasChanged
+	dtw.PropValues[newValue.Name] = newValue
+	svc.changedThings[newValue.ThingID] = hasChanged
 
 	return hasChanged, nil
 }
 
-// UpdateProperties updates the last known thing property values.
+// UpdateProperties updates the last known thing property values with a new
+// property value notification.
 //
 // This will bulk update all properties in the map. They are stored separately.
 //
@@ -556,15 +540,23 @@ func (svc *DigitwinStore) UpdatePropertyValue(
 // requestID provided by the agent, in response to an action or write
 //
 // This returns a map with changed property values.
-func (svc *DigitwinStore) UpdateProperties(
-	dThingID string, propMap map[string]any, requestID string) (
+func (svc *DigitwinStore) UpdateProperties(dThingID string, created string, propMap map[string]any) (
 	changes map[string]any, err error) {
 
 	changes = make(map[string]any)
-	for propName, newValue := range propMap {
-		changed, _ := svc.UpdatePropertyValue(dThingID, propName, newValue, requestID)
+	for k, v := range propMap {
+		newValue := digitwin.ThingValue{
+			Created: created,
+			Data:    v,
+			Name:    k,
+			ThingID: dThingID,
+		}
+
+		//	wot.HTOpUpdateProperty, dThingID, k, v)
+		//}
+		changed, _ := svc.UpdatePropertyValue(newValue)
 		if changed {
-			changes[propName] = newValue
+			changes[k] = newValue
 		}
 	}
 	return changes, nil
@@ -575,23 +567,23 @@ func (svc *DigitwinStore) UpdateProperties(
 //
 //	dThingID is the digital twin ID
 //	tv is the new thing value of the property
-func (svc *DigitwinStore) WriteProperty(dThingID string, tv digitwin.ThingValue) error {
-	svc.cacheMux.Lock()
-	defer svc.cacheMux.Unlock()
-
-	dtw, found := svc.dtwCache[dThingID]
-	if !found {
-		err := fmt.Errorf("dThing with ID '%s' not found", dThingID)
-		return err
-	}
-	if tv.Updated == "" {
-		tv.Updated = time.Now().Format(wot.RFC3339Milli)
-	}
-	dtw.PropValues[tv.Name] = tv
-	svc.changedThings[dThingID] = true
-
-	return nil
-}
+//func (svc *DigitwinStore) WriteProperty(dThingID string, tv digitwin.ThingValue) error {
+//	svc.cacheMux.Lock()
+//	defer svc.cacheMux.Unlock()
+//
+//	dtw, found := svc.dtwCache[dThingID]
+//	if !found {
+//		err := fmt.Errorf("dThing with ID '%s' not found", dThingID)
+//		return err
+//	}
+//	if tv.Updated == "" {
+//		tv.Updated = time.Now().Format(wot.RFC3339Milli)
+//	}
+//	dtw.PropValues[tv.Name] = tv
+//	svc.changedThings[dThingID] = true
+//
+//	return nil
+//}
 
 // OpenDigitwinStore initializes the digitwin store using the given storage bucket.
 // This will load the digitwin directory into a memory cache.

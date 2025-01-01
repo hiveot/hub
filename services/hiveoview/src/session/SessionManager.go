@@ -180,7 +180,8 @@ func (sm *WebSessionManager) onClose(cs *WebClientSession) {
 // If successful this updates the secure cookie with a new auth token and also
 // returns this token.
 // If a cid is provided in the headers it will create a session using it.
-func (sm *WebSessionManager) ConnectWithPassword(w http.ResponseWriter, r *http.Request,
+func (sm *WebSessionManager) ConnectWithPassword(
+	w http.ResponseWriter, r *http.Request,
 	loginID string, password string, cid string) (newToken string, err error) {
 
 	hc, err := clients.NewConsumerClient(sm.hubURL, loginID, sm.caCert, nil, sm.timeout)
@@ -284,6 +285,7 @@ func (sm *WebSessionManager) GetSessionFromCookie(r *http.Request) (
 	// also check query parameters.
 	cid = r.Header.Get(httpserver.ConnectionIDHeader)
 	if cid == "" {
+		//slog.Error("GetSessionFromCookie: Missing CID")
 		cid = r.URL.Query().Get("cid")
 	}
 

@@ -16,7 +16,7 @@ const (
 	RequestIDHeader = "request-id"
 	// ConnectionIDHeader identifies the client's connection in case of multiple
 	// connections from the same client.
-	ConnectionIDHeader = "connection-id"
+	ConnectionIDHeader = "cid"
 	// DataSchemaHeader to indicate which  'additionalresults' dataschema being returned.
 	DataSchemaHeader = "dataschema"
 

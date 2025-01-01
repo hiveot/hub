@@ -101,7 +101,13 @@
 			"title": "Thing Value",
 			"description": "Property or event value",
 			"type": "object",
+			"comment": "fixme: this has the same fields as a transports ThingValue",
 			"properties": {
+				"created": {
+					"title": "Updated time",
+					"description": "Time the value was last updated",
+					"type": "dateTime"
+				},
 				"data": {
 					"title": "Payload",
 					"description": "Data in format as described by the thing's property affordance",
@@ -112,19 +118,9 @@
 					"description":"Name of the property holding the value",
 					"type": "string"
 				},
-				"requestID": {
-					"title": "Message ID",
-					"description": "link to property write or action that caused the value to change",
-					"type": "string"
-				},
-				"updated": {
-					"title": "Updated time",
-					"description": "Time the value was last updated",
-					"type": "dateTime"
-				},
-				"senderID": {
-					"title": "Sender ID",
-					"description": "ID of the sender updating the value",
+				"thingID": {
+					"title": "Thing ID",
+					"description": "Digital twin Thing ID",
 					"type": "string"
 				}
 			}

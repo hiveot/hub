@@ -86,12 +86,10 @@ func (cl *WssConsumerClient) ConnectWithPassword(password string) (newToken stri
 	}
 	// TODO: this is part of the http binding, not the websocket binding
 	// a sacrificial client to get a token
-	tlsClient := tlsclient.NewTLSClient(
-		loginURL, nil, cl.BaseCaCert, cl.BaseTimeout, "")
+	tlsClient := tlsclient.NewTLSClient(loginURL, nil, cl.BaseCaCert, cl.BaseTimeout)
 	argsJSON, _ := json.Marshal(loginMessage)
 	defer tlsClient.Close()
-	resp, _, statusCode, _, err2 := tlsClient.Invoke(
-		"POST", loginURL, argsJSON, "", nil)
+	resp, statusCode, err2 := tlsClient.Post(loginURL, argsJSON)
 	if err2 != nil {
 		err = fmt.Errorf("%d: Login failed: %s", statusCode, err2)
 		return "", err
@@ -161,11 +159,6 @@ func (cl *WssConsumerClient) Disconnect() {
 	cl.BaseMux.Unlock()
 }
 
-// InvokeAction invokes an action on a thing and wait for the response
-//func (cl *WssConsumerClient) InvokeAction(dThingID, name string, input any, output any) error {
-//	return cl.SendOperation(wot.OpInvokeAction, dThingID, name, input, output, requestID)
-//}
-
 // Logout from the server and end the session.
 // This is specific to the Hiveot Hub.
 func (cl *WssConsumerClient) Logout() error {
@@ -174,14 +167,12 @@ func (cl *WssConsumerClient) Logout() error {
 	slog.Info("Logout", slog.String("clientID", cl.BaseClientID))
 
 	// Use a sacrificial http client to logout
-	tlsClient := tlsclient.NewTLSClient(
-		cl.BaseHostPort, nil, cl.BaseCaCert, cl.BaseTimeout, "")
+	tlsClient := tlsclient.NewTLSClient(cl.BaseHostPort, nil, cl.BaseCaCert, cl.BaseTimeout)
 	tlsClient.SetAuthToken(cl.token)
 	defer tlsClient.Close()
 
 	logoutURL := fmt.Sprintf("https://%s%s", cl.BaseHostPort, httpserver.HttpPostLogoutPath)
-	_, _, _, _, err2 := tlsClient.Invoke(
-		"POST", logoutURL, nil, "", nil)
+	_, _, err2 := tlsClient.Post(logoutURL, nil)
 	if err2 != nil {
 		err := fmt.Errorf("logout failed: %s", err2)
 		return err
@@ -223,13 +214,12 @@ func (cl *WssConsumerClient) RefreshToken(oldToken string) (newToken string, err
 	// TODO: this is part of the http binding, not the websocket binding
 	// a sacrificial client to get a token
 	tlsClient := tlsclient.NewTLSClient(
-		cl.BaseHostPort, nil, cl.BaseCaCert, cl.BaseTimeout, "")
+		cl.BaseHostPort, nil, cl.BaseCaCert, cl.BaseTimeout)
 	tlsClient.SetAuthToken(oldToken)
 	defer tlsClient.Close()
 
 	argsJSON, _ := json.Marshal(oldToken)
-	resp, _, statusCode, _, err2 := tlsClient.Invoke(
-		"POST", refreshURL, argsJSON, "", nil)
+	resp, statusCode, err2 := tlsClient.Post(refreshURL, argsJSON)
 	if err2 != nil {
 		err = fmt.Errorf("%d: Refresh failed: %s", statusCode, err2)
 		return "", err
@@ -325,12 +315,9 @@ func (cl *WssConsumerClient) Init(fullURL string, clientID string,
 
 	cl.HttpConsumerClient.Init(
 		fullURL, clientID, clientCert, caCert, getForm, timeout)
-	// subclasses (eg: agent) replace BaseHandleMessage with the agent handler
-	//cl.BaseHandleMessage = cl.HandleConsumerMessage
 
 	// max delay 3 seconds before a response is expected
 	cl.maxReconnectAttempts = 0 // 1 attempt per second
-	//cl.BaseSendMessage = cl.SendMessage
 	cl.BasePubRequest = cl.PubRequest
 }
 

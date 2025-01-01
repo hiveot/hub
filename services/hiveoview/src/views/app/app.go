@@ -34,6 +34,8 @@ func RenderAppPages(r *http.Request) (buff *bytes.Buffer, err error) {
 		cs := ctxClientSession.(*session.WebClientSession)
 		cid = cs.GetCID()
 	}
+	// This Cid field must match the one in app.gohtml hx-headers=...
+	// app.gohtml:6  sse-connect="/websse?cid={{.Cid}}"
 	data := map[string]string{"Cid": cid}
 	return views.TM.RenderFull(AppTemplate, data)
 }

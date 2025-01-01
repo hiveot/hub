@@ -1,9 +1,13 @@
 package login
 
 import (
+	"encoding/json"
+	"fmt"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/transports/servers/httpserver"
+	jsoniter "github.com/json-iterator/go"
+	"io"
 	"log/slog"
 	"net/http"
 )
@@ -21,7 +25,7 @@ import (
 func PostLoginFormHandler(sm *session.WebSessionManager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// obtain login form fields
-
+		err := r.ParseForm()
 		loginID := r.FormValue("login")
 		password := r.FormValue("password")
 		if loginID == "" && password == "" {
@@ -29,11 +33,19 @@ func PostLoginFormHandler(sm *session.WebSessionManager) http.HandlerFunc {
 			//w.WriteHeader(http.StatusBadRequest)
 			return
 		}
+		// hx-headers doesnt work on posting a form so use query instead to pass a CID
 		cid := r.Header.Get(httpserver.ConnectionIDHeader)
+		if cid == "" {
+			cid = r.URL.Query().Get(httpserver.ConnectionIDHeader)
+		}
+		if cid == "" {
+			slog.Error("PostLoginFormHandler: Missing CID for client. Disconnecting", "loginID", loginID)
+			http.Error(w, "missing CID", http.StatusBadRequest)
+			return
+		}
 		slog.Info("PostLoginFormHandler",
 			"loginID", loginID,
 			"cid", cid)
-
 		newToken, err := sm.ConnectWithPassword(w, r, loginID, password, cid)
 		_ = newToken
 		if err != nil {
@@ -58,42 +70,54 @@ func PostLoginFormHandler(sm *session.WebSessionManager) http.HandlerFunc {
 		header := w.Header()
 		header.Add("Cache-Control", "no-cache, max-age=0, must-revalidate, no-store")
 		// prevent the browser from re-posting on back button or refresh (POST-Redirect-GET) pattern
-		http.Redirect(w, r, src.RenderDashboardRootPath, http.StatusSeeOther)
+
+		// A redirect apparently cannot include the custom CID header.
+		header.Add(httpserver.ConnectionIDHeader, cid) // this doesn't work
+		// fall back to query params
+		redirPath := fmt.Sprintf("%s?%s=%s",
+			src.RenderDashboardRootPath, httpserver.ConnectionIDHeader, cid)
+		http.Redirect(w, r, redirPath, http.StatusSeeOther)
 	}
 }
 
-// PostLoginHandler lets a client login using a login ID and password,
+// PostLoginHandler lets a client login using a login ID and password object,
 // and returns an auth token.
+//
+// # Intended primarily for testing using the hub sse client
 //
 // This requires a transports.ConnectionIDHeader (connection-id header)
 // for a session to be retained.
 // This returns a new authentication token that can be used as bearer token instead
 // of logging in again.
-//func PostLoginHandler(sm *session.WebSessionManager) http.HandlerFunc {
-//	return func(w http.ResponseWriter, r *http.Request) {
-//		body, err := io.ReadAll(r.Body)
-//		if err != nil {
-//			return
-//		}
-//		loginMessage := map[string]string{}
-//		err = json.Unmarshal(body, &loginMessage)
-//		// FIXME: use a shared login message struct
-//		loginID := loginMessage["login"]
-//		password := loginMessage["password"]
-//		if loginID == "" && password == "" {
-//			http.Redirect(w, r, src.RenderLoginPath, http.StatusBadRequest)
-//			return
-//		}
-//		cid := r.Header.Get(httpserver.ConnectionIDHeader)
-//		slog.Info("PostLoginHandler",
-//			"loginID", loginID,
-//			"cid", cid)
-//
-//		newToken, err := sm.ConnectWithPassword(w, r, loginID, password, cid)
-//
-//		// this will prevent a redirect from working
-//		newTokenJSON, _ := jsoniter.Marshal(newToken)
-//		w.Write(newTokenJSON)
-//
-//	}
-//}
+func PostLoginHandler(sm *session.WebSessionManager) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			return
+		}
+		loginMessage := map[string]string{}
+		err = json.Unmarshal(body, &loginMessage)
+		// FIXME: use a shared login message struct
+		loginID := loginMessage["login"]
+		password := loginMessage["password"]
+		if loginID == "" && password == "" {
+			http.Redirect(w, r, src.RenderLoginPath, http.StatusBadRequest)
+			return
+		}
+		cid := r.Header.Get(httpserver.ConnectionIDHeader)
+		if cid == "" {
+			slog.Error("ConnectWithPassword: Missing CID for client. Disconnecting", "loginID", loginID)
+			http.Error(w, "missing CID", http.StatusBadRequest)
+			return
+		}
+		slog.Info("PostLoginHandler",
+			"loginID", loginID,
+			"cid", cid)
+		newToken, err := sm.ConnectWithPassword(w, r, loginID, password, cid)
+
+		// this will prevent a redirect from working
+		newTokenJSON, _ := jsoniter.Marshal(newToken)
+		w.Write(newTokenJSON)
+
+	}
+}

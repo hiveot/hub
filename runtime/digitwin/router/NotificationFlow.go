@@ -3,6 +3,7 @@ package router
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot"
@@ -18,16 +19,26 @@ func (svc *DigitwinRouter) HandleNotification(notif transports.NotificationMessa
 	notif.ThingID = dThingID
 
 	if notif.Operation == wot.HTOpEvent {
-
-		err := svc.dtwStore.UpdateEventValue(dThingID, notif.Name, notif.Data)
+		tv := digitwin.ThingValue{
+			Created: notif.Created,
+			Data:    notif.Data,
+			Name:    notif.Name,
+			ThingID: notif.ThingID,
+		}
+		err := svc.dtwStore.UpdateEventValue(tv)
 		if err == nil {
 			// broadcast the event to subscribers of the digital twin
 			go svc.cm.PublishNotification(notif)
 		}
 	} else if notif.Operation == wot.HTOpUpdateProperty {
 
-		changed, _ := svc.dtwStore.UpdatePropertyValue(
-			notif.ThingID, notif.Name, notif.Data, "")
+		tv := digitwin.ThingValue{
+			Created: notif.Created,
+			Data:    notif.Data,
+			Name:    notif.Name,
+			ThingID: notif.ThingID,
+		}
+		changed, _ := svc.dtwStore.UpdatePropertyValue(tv)
 		if changed {
 			svc.cm.PublishNotification(notif)
 		}
@@ -80,7 +91,7 @@ func (svc *DigitwinRouter) HandleUpdateMultipleProperties(notif transports.Notif
 		return
 	}
 	// update the property in the digitwin and notify observers for each change
-	changes, err := svc.dtwStore.UpdateProperties(notif.ThingID, propMap, "")
+	changes, err := svc.dtwStore.UpdateProperties(notif.ThingID, notif.Created, propMap)
 	if len(changes) > 0 {
 		for k, v := range changes {
 			notif := transports.NewNotificationMessage(wot.HTOpUpdateProperty, notif.ThingID, k, v)

@@ -57,11 +57,11 @@ type NotificationMessage struct {
 	// Data for the notification as described in the TD affordance dataschema.
 	// If the operation is one of the Thing level operations, the input is specified
 	// by the operation's dataschema.
-	Data any `json:"input,omitempty"` // native
+	Data any `json:"data,omitempty"` // native
 
 	// Created holds the date-time the notification was created. using RFC3339milli
 	// This MUST be set by the protocol binding if not provided.
-	Created string `json:"timestamp"`
+	Created string `json:"created"`
 
 	// AgentID contains the Agent ID that published the notification
 	// The protocol server MUST set this to the authenticated client.

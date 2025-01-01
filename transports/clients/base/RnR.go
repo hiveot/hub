@@ -56,8 +56,8 @@ func (rnr *RnRChan) CloseAll() {
 // If a timeout passes while writing is block the write is released.
 func (rnr *RnRChan) HandleResponse(msg transports.ResponseMessage) bool {
 	rnr.mux.Lock()
-	defer rnr.mux.Unlock()
 	rChan, isRPC := rnr.correlData[msg.RequestID]
+	rnr.mux.Unlock()
 	if isRPC {
 		ctx, cancelFn := context.WithTimeout(context.Background(), rnr.writeTimeout)
 		select {

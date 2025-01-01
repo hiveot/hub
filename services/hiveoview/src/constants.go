@@ -18,10 +18,11 @@ const (
 
 // Router paths
 const (
-	RenderAboutPath   = "/about"
-	RenderAppHeadPath = "/app/appHead"
-	RenderLoginPath   = "/login"
-	UIPostLoginPath   = "/login"
+	RenderAboutPath     = "/about"
+	RenderAppHeadPath   = "/app/appHead"
+	RenderLoginPath     = "/login"
+	UIPostLoginPath     = "/login"
+	UIPostFormLoginPath = "/loginForm"
 
 	// action paths
 	RenderActionRequestPath     = "/action/{thingID}/{name}/request"

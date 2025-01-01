@@ -139,7 +139,7 @@ func TestReadTDsRest(t *testing.T) {
 	ts.AddTDs(agentID, 100)
 
 	serverURL := ts.GetServerURL(authn.ClientTypeConsumer)
-	cl2 := tlsclient.NewTLSClient(serverURL, nil, ts.Certs.CaCert, time.Second*30, "")
+	cl2 := tlsclient.NewTLSClient(serverURL, nil, ts.Certs.CaCert, time.Second*30)
 	cl2.SetAuthToken(token)
 
 	tdJSONList, err := digitwin.DirectoryReadAllTDs(cl, 100, 0)

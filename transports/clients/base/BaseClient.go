@@ -19,7 +19,7 @@ import (
 type BaseClient struct {
 	// ID of this client
 	BaseClientID string
-	// unique connectionID start with the clientID
+	// unique connectionID starting with the clientID.
 	BaseConnectionID string
 
 	// CA certificate to verify the server with
@@ -251,7 +251,7 @@ func (cl *BaseClient) SendRequest(req transports.RequestMessage, waitForCompleti
 	resp transports.ResponseMessage, err error) {
 
 	t0 := time.Now()
-	slog.Info("SendRequest",
+	slog.Debug("SendRequest",
 		slog.String("op", req.Operation),
 		slog.String("dThingID", req.ThingID),
 		slog.String("name", req.Name),
@@ -297,7 +297,7 @@ func (cl *BaseClient) SendRequest(req transports.RequestMessage, waitForCompleti
 			slog.String("requestID", req.RequestID),
 			slog.String("error", err.Error()))
 	} else {
-		slog.Info("SendRequest: success",
+		slog.Debug("SendRequest: success",
 			slog.String("op", req.Operation),
 			slog.Float64("duration msec", float64(duration.Microseconds())/1000),
 			slog.String("requestID", req.RequestID))

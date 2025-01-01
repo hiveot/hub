@@ -338,7 +338,7 @@ func (cl *HttpConsumerClient) Init(
 	cl.BaseClient = base.BaseClient{
 		BaseCaCert:       caCert,
 		BaseClientID:     clientID,
-		BaseConnectionID: clientID + "." + shortid.MustGenerate(),
+		BaseConnectionID: "http-" + shortid.MustGenerate(),
 		BaseProtocolType: transports.ProtocolTypeHTTPS,
 		BaseFullURL:      fullURL,
 		BaseHostPort:     baseHostPort,

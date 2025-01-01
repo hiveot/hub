@@ -12,13 +12,11 @@ import (
 	"github.com/hiveot/hub/transports/tputils/tlsclient"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
-	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"io"
-	"net/url"
 	"os"
 	"path"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -86,6 +84,7 @@ func WebLogin(fullURL string, clientID string,
 	sseCl := sseclient.NewSsescConsumerClient(
 		fullURL, clientID, nil, ts.Certs.CaCert,
 		getHiveoviewForm, time.Minute)
+	// hiveoview uses a different login path as the hub
 	sseCl.SetSSEPath(service.WebSsePath)
 	sseCl.SetConnectHandler(onConnection)
 	sseCl.SetNotificationHandler(onNotification)
@@ -93,7 +92,6 @@ func WebLogin(fullURL string, clientID string,
 
 	//err = sseCl.ConnectWithLoginForm(clientID)
 	// FIXME: password is clientID
-	// hiveoview uses a different login path as the hub
 	_, err = sseCl.ConnectWithPassword(clientID)
 
 	//time.Sleep(time.Second * 10)
@@ -156,107 +154,27 @@ func TestLogin(t *testing.T) {
 	// 2: login using plain TLS connection and a form
 	hostPort := fmt.Sprintf("localhost:%d", servicePort)
 	cl2 := tlsclient.NewTLSClient(
-		hostPort, nil, ts.Certs.CaCert, time.Second*60, "cid1")
+		hostPort, nil, ts.Certs.CaCert, time.Second*60)
 
 	// try login. The test user password is the clientID
 	// authenticate the connection with the hiveot http/sse service (not the hub server)
 	// the service will in turn forward the request to the hub.
-	loginMessage := map[string]string{
+	formData := map[string]string{
 		"login":    clientID1,
 		"password": clientID1,
 	}
 	// this login will set an auth cookie
-	loginJSON, _ := jsoniter.Marshal(loginMessage)
-	_ = loginJSON
-	resp, _, statusCode, err := cl2.Post("/login", loginJSON, "cid2")
+	resp, statusCode, err := cl2.PostForm(src.UIPostFormLoginPath, formData)
 	//resp holds the serialized new token
 	cl2.Close()
 	require.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
 
-	// result contains the new paseto auth token (v4.public.*)
-	var newToken string
-	err = jsoniter.Unmarshal(resp, &newToken)
-	assert.NotEmpty(t, newToken)
-	assert.NoError(t, err)
-	clientID, sessID, err := ts.Runtime.AuthnSvc.SessionAuth.ValidateToken(newToken)
-	_ = clientID
-	_ = sessID
-	require.NoError(t, err)
+	// login should have redirected to /dashboard. It contained an auth cookie
+	//assert.Equal(t, "/dashboard", resp.Request.URL.Path)
 
-	// retrieving about should succeed
-	data, statusCode, err := cl2.Get(src.RenderAboutPath)
-	_ = statusCode
-	assert.NoError(t, err)
-	assert.NotEmpty(t, data)
-	// todo verify the redirect to /about
-
-	// request using a new client and the given auth token
-	//cl3 := tlsclient.NewTLSClient(
-	//	hostPort, nil, ts.Certs.CaCert, time.Second*60, "cid3")
-	//cl3.SetAuthToken(newToken)
-	//data, statusCode, err = cl3.Get(src.RenderAboutPath)
-	//_ = statusCode
-	//assert.NoError(t, err)
-	//assert.NotEmpty(t, data)
-	// todo verify the result is the about path, not a redirect to login
-
-	t.Log("TestLogin completed")
-}
-
-// test login from a client using forms
-func TestLoginForm(t *testing.T) {
-	const clientID1 = "user1"
-
-	// 1: setup: start a runtime and service; this generates an error that
-	//    the state service isnt found. ignore it.
-	svc := service.NewHiveovService(servicePort, true, nil,
-		"", ts.Certs.ServerCert, ts.Certs.CaCert, noState, timeout)
-	avcAg, _ := ts.AddConnectService(serviceID)
-	require.NotNil(t, avcAg)
-	defer avcAg.Disconnect()
-	err := svc.Start(avcAg)
-
-	require.NoError(t, err)
-	defer svc.Stop()
-
-	// make sure the test client exists
-	cl1, token1 := ts.AddConnectConsumer(clientID1, authz.ClientRoleOperator)
-	cl1.Disconnect()
-
-	_ = token1
-
-	ccount, _ := ts.Runtime.CM.GetNrConnections()
-	_ = ccount
-	time.Sleep(time.Millisecond * 10)
-
-	// 2: login using plain TLS connection and a form
-	hostPort := fmt.Sprintf("localhost:%d", servicePort)
-	cl2 := tlsclient.NewTLSClient(
-		hostPort, nil, ts.Certs.CaCert, time.Second*60, "cid1")
-
-	// try login. The test user password is the clientID
-	// the client should receive a cookie with a token
-	formMock := url.Values{}
-	formMock.Add("loginID", clientID1)
-	formMock.Add("password", clientID1)
-	fullURL := fmt.Sprintf("https://%s/loginForm", hostPort)
-
-	// authenticate the connection with the hiveot http/sse service (not the hub server)
-	// the service will in turn forward the request to the hub.
-	resp, err := cl2.GetHttpClient().PostForm(fullURL, formMock)
-	cl2.Close()
-	require.NoError(t, err)
-
-	// 3. login should have redirected to /dashboard. It contained an auth cookie
-	assert.Equal(t, 200, resp.StatusCode)
-	assert.Equal(t, "/dashboard", resp.Request.URL.Path)
-
-	// result contains html of the dashboard page
-	body, err := io.ReadAll(resp.Body)
-	_ = resp.Body.Close()
-	assert.NoError(t, err)
-	assert.NotEmpty(t, body)
+	// result contains a redirected web page
+	assert.True(t, strings.HasPrefix(string(resp), "<!DOCTYPE html>"))
 	t.Log("TestLogin completed")
 }
 
