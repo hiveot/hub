@@ -65,19 +65,19 @@ func (c *WssServerConnection) SendNotification(notif transports.NotificationMess
 //
 //// SendError sends an error response to the client.
 //func (c *WssServerConnection) SendError(
-//	thingID, name string, errResponse string, requestID string) {
+//	thingID, name string, errResponse string, correlationID string) {
 //
-//	if requestID == "" {
-//		slog.Error("SendError without requestID", "clientID", c.clientID)
+//	if correlationID == "" {
+//		slog.Error("SendError without correlationID", "clientID", c.clientID)
 //	} else {
 //		slog.Warn("SendError", "clientID", c.clientID,
-//			"errResponse", errResponse, "requestID", requestID)
+//			"errResponse", errResponse, "correlationID", correlationID)
 //	}
 //	msg := ErrorMessage{
 //		ThingID:     thingID,
 //		MessageType: MsgTypeError,
 //		Title:       name + " error",
-//		RequestID:   requestID,
+//		CorrelationID:   correlationID,
 //		Detail:      errResponse,
 //		//Timestamp:   time.Now().Format(wot.RFC3339Milli),
 //	}
@@ -89,7 +89,7 @@ func (c *WssServerConnection) SendNotification(notif transports.NotificationMess
 // If this returns an error then no request was sent.
 func (c *WssServerConnection) SendRequest(req transports.RequestMessage) error {
 	wssMsg, err := OpToMessage(req.Operation, req.ThingID, req.Name, nil,
-		req.Input, req.RequestID, req.SenderID)
+		req.Input, req.CorrelationID, req.SenderID)
 	if err != nil {
 		return err
 	}
@@ -105,16 +105,16 @@ func (c *WssServerConnection) SendResponse(resp transports.ResponseMessage) (err
 
 	slog.Info("SendResponse",
 		slog.String("clientID", c.clientID),
-		slog.String("requestID", resp.RequestID),
+		slog.String("correlationID", resp.CorrelationID),
 		slog.String("operation", resp.Operation))
 
 	if resp.Error != "" {
 		msg := ErrorMessage{
-			ThingID:     resp.ThingID,
-			MessageType: MsgTypeError,
-			Title:       resp.Error,
-			RequestID:   resp.RequestID,
-			Detail:      fmt.Sprintf("%v", resp.Output),
+			ThingID:       resp.ThingID,
+			MessageType:   MsgTypeError,
+			Title:         resp.Error,
+			CorrelationID: resp.CorrelationID,
+			Detail:        fmt.Sprintf("%v", resp.Output),
 			//Timestamp:   time.Now().Format(wot.RFC3339Milli),
 		}
 		_ = c._send(msg)
@@ -122,12 +122,12 @@ func (c *WssServerConnection) SendResponse(resp transports.ResponseMessage) (err
 		// for now turn all response types into an action status message
 		// FIXME: return the result of property, event, action queries
 		msg := ActionStatusMessage{
-			ThingID:     resp.ThingID,
-			MessageType: MsgTypeActionStatus,
-			Name:        resp.Name,
-			RequestID:   resp.RequestID,
-			Output:      resp.Output,
-			Timestamp:   time.Now().Format(wot.RFC3339Milli),
+			ThingID:       resp.ThingID,
+			MessageType:   MsgTypeActionStatus,
+			Name:          resp.Name,
+			CorrelationID: resp.CorrelationID,
+			Output:        resp.Output,
+			Timestamp:     time.Now().Format(wot.RFC3339Milli),
 		}
 		err = c._send(msg)
 	}

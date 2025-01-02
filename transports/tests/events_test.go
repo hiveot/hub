@@ -122,7 +122,7 @@ func TestPublishEventsByAgent(t *testing.T) {
 	notificationHandler := func(msg transports.NotificationMessage) {
 		evVal.Store(msg.Data)
 	}
-	srv, cancelFn, _ := StartTransportServer(nil, nil, notificationHandler)
+	srv, cancelFn, _ := StartTransportServer(notificationHandler, nil, nil)
 	_ = srv
 	defer cancelFn()
 

@@ -56,11 +56,11 @@ type HttpConsumerClient struct {
 //	thingID optional path URI variable
 //	name optional path URI variable containing affordance name
 //	body contains the raw serialized request body
-//	requestID: optional requestID header value
+//	correlationID: optional correlationID header value
 //
 // This returns the raw serialized response data, a response message ID, return status code or an error
 func (cl *HttpConsumerClient) _send(method string, methodPath string,
-	body []byte, requestID string) (
+	body []byte, correlationID string) (
 	resp []byte, headers http.Header, err error) {
 
 	if cl.httpClient == nil {
@@ -93,8 +93,8 @@ func (cl *HttpConsumerClient) _send(method string, methodPath string,
 	// set other headers
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set(httpserver.ConnectionIDHeader, cl.GetConnectionID())
-	if requestID != "" {
-		req.Header.Set(httpserver.RequestIDHeader, requestID)
+	if correlationID != "" {
+		req.Header.Set(httpserver.CorrelationIDHeader, correlationID)
 	}
 	for k, v := range cl.headers {
 		req.Header.Set(k, v)
@@ -107,7 +107,7 @@ func (cl *HttpConsumerClient) _send(method string, methodPath string,
 	}
 
 	respBody, err := io.ReadAll(httpResp.Body)
-	//respRequestID = httpResp.Header.Get(HTTPMessageIDHeader)
+	//respCorrelationID = httpResp.Header.Get(HTTPMessageIDHeader)
 	// response body MUST be closed
 	_ = httpResp.Body.Close()
 	httpStatus := httpResp.StatusCode
@@ -200,8 +200,8 @@ func (cl *HttpConsumerClient) PubRequest(req transports.RequestMessage) error {
 	var href string
 	var output any
 
-	if req.Operation == "" && req.RequestID == "" {
-		err := fmt.Errorf("SendMessage: missing both operation and requestID")
+	if req.Operation == "" && req.CorrelationID == "" {
+		err := fmt.Errorf("SendMessage: missing both operation and correlationID")
 		slog.Error(err.Error())
 		return err
 	}
@@ -243,7 +243,7 @@ func (cl *HttpConsumerClient) PubRequest(req transports.RequestMessage) error {
 
 	// note, if the request is the hiveot fallback path with RequestMessage, then
 	// the response will be the ResponseMessage envelope instead of the raw payload.
-	outputRaw, headers, err := cl._send(method, reqPath, dataJSON, req.RequestID)
+	outputRaw, headers, err := cl._send(method, reqPath, dataJSON, req.CorrelationID)
 
 	// Unfortunately the http binding has no deterministic result format
 	// types of responses:
@@ -267,7 +267,7 @@ func (cl *HttpConsumerClient) PubRequest(req transports.RequestMessage) error {
 		// responsemessage envelope already. Pass it to the handler of responses.
 		resp := transports.ResponseMessage{}
 		err = jsoniter.Unmarshal(outputRaw, &resp)
-		resp.RequestID = req.RequestID // just to be sure
+		resp.CorrelationID = req.CorrelationID // just to be sure
 		go func() {
 			cl.OnResponse(resp)
 		}()
@@ -291,7 +291,7 @@ func (cl *HttpConsumerClient) PubRequest(req transports.RequestMessage) error {
 				// the caller will have to read the response channel. (caller doesn't know if the result is
 				// immediately or asynchronously)
 				resp := transports.NewResponseMessage(
-					req.Operation, req.ThingID, req.Name, output, nil, req.RequestID)
+					req.Operation, req.ThingID, req.Name, output, nil, req.CorrelationID)
 				// pass a response to the sync or asyncn handler of responses
 				cl.OnResponse(resp)
 			}()

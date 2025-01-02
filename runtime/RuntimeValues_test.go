@@ -39,7 +39,7 @@ func TestQueryActions(t *testing.T) {
 	td1JSON, _ := json.Marshal(td1)
 	var dThing1ID = td.MakeDigiTwinThingID(agentID, td1.ID)
 	ag1.SetRequestHandler(func(msg transports.RequestMessage) transports.ResponseMessage {
-		slog.Info("request: "+msg.Operation, "requestID", msg.RequestID)
+		slog.Info("request: "+msg.Operation, "correlationID", msg.CorrelationID)
 		return msg.CreateResponse(data, nil)
 	})
 	cl1.SetNotificationHandler(func(msg transports.NotificationMessage) {
@@ -69,7 +69,7 @@ func TestQueryActions(t *testing.T) {
 	//require.NoError(t, err)
 	//valueMap := api.ActionListToMap(valueList)
 
-	// value must match that of the action in step 1 and match its requestID
+	// value must match that of the action in step 1 and match its correlationID
 	//actVal := valueMap[actionID]
 	//assert.Equal(t, data, actVal.Input)
 }

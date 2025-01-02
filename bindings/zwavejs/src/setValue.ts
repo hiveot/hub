@@ -2,8 +2,8 @@
 import {SetValueStatus, TranslatedValueID, ValueMetadataNumeric, ZWaveNode} from "zwave-js";
 import * as tslog from 'tslog';
 import {getEnumFromMemberName, getVidValue,  ZWAPI} from "@zwavejs/ZWAPI";
-import {ActionStatus} from "@hivelib/hubclient/ActionStatus";
 import {RequestDelivered, RequestFailed, RequestCompleted} from "@hivelib/api/vocab/vocab";
+import {ResponseMessage, StatusCompleted, StatusFailed, StatusRunning} from "@hivelib/transports/Messages";
 
 const log = new tslog.Logger()
 
@@ -14,10 +14,12 @@ const log = new tslog.Logger()
 // @param vid: valueID parameter to set
 // @param value: native value to set, if any
 // this returns a delivery status for returning to the hub
-export async function setValue(node: ZWaveNode, vid: TranslatedValueID, value: any): Promise<ActionStatus> {
-    return new Promise<ActionStatus>( (resolve, reject) => {
+export async function setValue(node: ZWaveNode, vid: TranslatedValueID, value: any): Promise<string> {
+    return new Promise<string>( (resolve, reject) => {
         let dataToSet: unknown
-        let stat = new ActionStatus()
+        let progress = StatusFailed
+        let err:  Error|undefined
+
         try {
             let vidMeta = node.getValueMetadata(vid)
             dataToSet = value
@@ -47,26 +49,30 @@ export async function setValue(node: ZWaveNode, vid: TranslatedValueID, value: a
                     // 0xff: success
                     switch (res.status) {
                         case SetValueStatus.Working:
-                            stat.progress = RequestDelivered
+                            progress = StatusRunning
                             break;
                         // TODO progress updates
                         case SetValueStatus.Success:
                         case SetValueStatus.SuccessUnsupervised:
-                            stat.progress = RequestCompleted
+                            progress = StatusCompleted
                             break;
                         case SetValueStatus.EndpointNotFound:
                         case SetValueStatus.NotImplemented:
-                            stat.progress = RequestFailed
-                            stat.error = res.message
+                            progress = StatusFailed
+                            err = res.message
                             break;
                         case SetValueStatus.InvalidValue:
-                            stat.progress = RequestCompleted
-                            stat.error = res.message
+                            progress = StatusFailed
+                            err = res.message
                             break
                         default:
-                            stat.progress = RequestDelivered
+                            progress = StatusRunning
                     }
-                    resolve(stat)
+                    if (err) {
+                        log.error(err)
+                        reject(err)
+                    }
+                    resolve(progress)
                 })
         } catch (reason) {
             log.error(`Failed setting value. Reason: ${reason}`)

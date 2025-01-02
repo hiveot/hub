@@ -61,7 +61,7 @@
 					"description": "",
 					"type": "any"
 				},
-				"requestID": {
+				"correlationID": {
 					"title": "Request ID",
 					"description": "The action request identifier",
 					"type": "string"
@@ -150,7 +150,7 @@
 						"comment": "This is the requested write value and can differ from the current value if status is not completed",
 						"type": "any"
 					},
-					"requestID": {
+					"correlationID": {
 						"title": "Message ID",
 						"description": "link to action or property write that triggered the update",
 						"type": "string"

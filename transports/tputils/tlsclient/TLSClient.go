@@ -209,7 +209,7 @@ func (cl *TLSClient) PostForm(path string, formData map[string]string) (
 //
 //	path to invoke
 //	body contains the serialized request body
-//	requestID optional field to link async requests and responses
+//	correlationID optional field to link async requests and responses
 func (cl *TLSClient) Put(path string, body []byte) (
 	resp []byte, statusCode int, err error) {
 

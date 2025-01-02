@@ -47,19 +47,17 @@ func (cl *HttpConsumerClient) ConnectWithLoginForm(
 	if err != nil {
 		return "", err
 	}
-	// FIXME: where are the cookies?
-	if err == nil {
-		// get the session token from the cookie
-		//cookie := resp.Request.Header.Get("cookie")
-		cookie := resp.Header.Get("cookie")
-		kvList := strings.Split(cookie, ",")
 
-		for _, kv := range kvList {
-			kvParts := strings.SplitN(kv, "=", 2)
-			if kvParts[0] == "session" {
-				cl.bearerToken = kvParts[1]
-				break
-			}
+	// get the session token from the cookie
+	//cookie := resp.Request.Header.Get("cookie")
+	cookie := resp.Header.Get("cookie")
+	kvList := strings.Split(cookie, ",")
+
+	for _, kv := range kvList {
+		kvParts := strings.SplitN(kv, "=", 2)
+		if kvParts[0] == "session" {
+			cl.bearerToken = kvParts[1]
+			break
 		}
 	}
 	if cl.bearerToken == "" {
@@ -82,8 +80,6 @@ func (cl *HttpConsumerClient) ConnectWithPassword(password string) (newToken str
 		"login":    cl.GetClientID(),
 		"password": password,
 	}
-	// FIXME: can't use sendrequest as it needs an established connection
-	//err = cl.SendOperation(wot.HTOpLogin, "", "", loginMessage, &token)
 	f := cl.BaseGetForm(wot.HTOpLogin, "", "")
 	if f == nil {
 		err = fmt.Errorf("missing form for login operation")

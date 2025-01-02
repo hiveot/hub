@@ -14,18 +14,18 @@ package digitwin_test
 //}
 
 //func (dummy *DummyTransportServer) InvokeAction(
-//	agentID string, thingID string, name string, value any, requestID string, consumerID string) (
+//	agentID string, thingID string, name string, value any, correlationID string, consumerID string) (
 //	status string, output any, err error) {
 //
 //	return vocab.RequestPending, nil, nil
 //}
 //
 //func (dummy *DummyTransportServer) PublishEvent(
-//	dThingID string, name string, value any, requestID string, agentID string) {
+//	dThingID string, name string, value any, correlationID string, agentID string) {
 //}
 //
 //func (dummy *DummyTransportServer) PublishProperty(
-//	dThingID string, name string, value any, requestID string, agentID string) {
+//	dThingID string, name string, value any, correlationID string, agentID string) {
 //}
 //func (dummy *DummyTransportServer) PublishProgressUpdate(
 //	connectionID string, stat transports2.ActionStatus, agentID string) (bool, error) {

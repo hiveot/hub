@@ -112,11 +112,13 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	// the protocol manager receives messages from clients (source) and
 	// sends messages to connected clients (sink)
 	r.TransportsMgr, err = servers.StartProtocolManager(
-		&r.cfg.Transports,
+		&r.cfg.RtConfig,
 		r.cfg.ServerCert,
 		r.cfg.CaCert,
 		r.AuthnSvc.SessionAuth,
-		r.DigitwinRouter,
+		r.DigitwinRouter.HandleNotification,
+		r.DigitwinRouter.HandleRequest,
+		r.DigitwinRouter.HandleResponse,
 		r.CM,
 	)
 	if err != nil {

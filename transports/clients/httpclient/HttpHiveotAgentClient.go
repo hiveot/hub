@@ -111,14 +111,14 @@ func (cl *HttpAgentClient) HttpHiveotPubRequest(req transports.RequestMessage) e
 //
 //	payload, _ := jsoniter.Marshal(req)
 //	respData, _, err := cl.consumerTransport._send(
-//		method, href, "", "", "", payload, resp.RequestID)
+//		method, href, "", "", "", payload, resp.CorrelationID)
 //
 //	if err == nil {
 //		err = jsoniter.Unmarshal(respData, &resp)
 //	} else {
 //		// make sure the response has the critical fields
 //		resp.Operation = req.Operation
-//		resp.RequestID = req.RequestID
+//		resp.CorrelationID = req.CorrelationID
 //		resp.Status = transports.StatusFailed
 //		resp.Error = err.Error()
 //	}
@@ -141,7 +141,7 @@ func (cl *HttpAgentClient) SendResponse(resp transports.ResponseMessage) error {
 	method := http.MethodPost
 
 	payload, _ = jsoniter.Marshal(resp)
-	_, _, err := cl.consumerTransport._send(method, href, payload, resp.RequestID)
+	_, _, err := cl.consumerTransport._send(method, href, payload, resp.CorrelationID)
 	return err
 }
 

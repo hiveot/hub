@@ -29,7 +29,7 @@ func TestPublishTDByAgent(t *testing.T) {
 	}
 
 	// 1. start the transport
-	_, cancelFn, _ := StartTransportServer(nil, nil, notificationHandler)
+	_, cancelFn, _ := StartTransportServer(notificationHandler, nil, nil)
 	defer cancelFn()
 
 	// 2. connect as an agent
@@ -95,7 +95,7 @@ func TestReadTD(t *testing.T) {
 	}
 
 	// 1. start the transport
-	srv, cancelFn, _ := StartTransportServer(requestHandler, nil, nil)
+	srv, cancelFn, _ := StartTransportServer(nil, requestHandler, nil)
 	defer cancelFn()
 
 	// 2. add forms

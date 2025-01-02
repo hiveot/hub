@@ -110,18 +110,18 @@ func StartMqttTransportServer(host string, tcpPort int, wssPort int,
 	caCert *x509.Certificate,
 	authenticator transports.IAuthenticator,
 	cm *connections.ConnectionManager,
+	handleNotification transports.ServerNotificationHandler,
 	handleRequest transports.ServerRequestHandler,
 	handleResponse transports.ServerResponseHandler,
-	handleNotification transports.ServerNotificationHandler,
 ) (*MqttTransportServer, error) {
 	svc := &MqttTransportServer{
 		serverCert:         serverCert,
 		caCert:             caCert,
 		authenticator:      authenticator,
 		cm:                 cm,
+		handleNotification: handleNotification,
 		handleRequest:      handleRequest,
 		handleResponse:     handleResponse,
-		handleNotification: handleNotification,
 	}
 	return svc, fmt.Errorf("Not yet implemented")
 }

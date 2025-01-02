@@ -82,7 +82,7 @@ type IConsumerConnection interface {
 	Rpc(operation, thingID, name string, input any, output any) error
 
 	// SendRequest sends a request message.
-	// If waitForCompletion is true and no requestID is provided then a requestID will
+	// If waitForCompletion is true and no correlationID is provided then a correlationID will
 	// be generated to wait for completion.
 	// If waitForCompletion is false then return immediately and the response will go to the response handler
 	SendRequest(msg RequestMessage, waitForCompletion bool) (ResponseMessage, error)

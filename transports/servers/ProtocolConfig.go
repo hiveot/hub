@@ -1,4 +1,4 @@
-package pm
+package servers
 
 import (
 	"github.com/hiveot/hub/transports"

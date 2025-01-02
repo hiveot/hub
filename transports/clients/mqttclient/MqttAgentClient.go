@@ -87,7 +87,7 @@ func (cl *MqttAgentClient) PubTD(td *td.TD) error {
 // SendResponse sends the action response message
 func (cl *MqttAgentClient) SendResponse(resp transports.ResponseMessage) error {
 	// FIXME: in paho, the response needs a reply-to address from the request
-	// option 1: include this in the requestID
+	// option 1: include this in the correlationID
 	// option 2: use context to pass it
 	//err = cl._send(resp)
 	//return err

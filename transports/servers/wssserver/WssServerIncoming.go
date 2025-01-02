@@ -20,10 +20,10 @@ func (c *WssServerConnection) ObserveProperty(thingID, name string) {
 func (c *WssServerConnection) HandlePing(wssMsg *BaseMessage) {
 	// return an action response
 	pongMessage := ActionStatusMessage{
-		MessageType: MsgTypePong,
-		Output:      "pong",
-		Timestamp:   time.Now().Format(wot.RFC3339Milli),
-		RequestID:   wssMsg.RequestID,
+		MessageType:   MsgTypePong,
+		Output:        "pong",
+		Timestamp:     time.Now().Format(wot.RFC3339Milli),
+		CorrelationID: wssMsg.CorrelationID,
 	}
 	c._send(pongMessage)
 }
@@ -69,7 +69,7 @@ func (c *WssServerConnection) WssServerHandleMessage(raw []byte) {
 	slog.Info("WssServerHandleMessage: Received message",
 		slog.String("messageType", baseMsg.MessageType),
 		slog.String("senderID", c.clientID),
-		slog.String("requestID", baseMsg.RequestID))
+		slog.String("correlationID", baseMsg.CorrelationID))
 
 	switch baseMsg.MessageType {
 
@@ -79,7 +79,7 @@ func (c *WssServerConnection) WssServerHandleMessage(raw []byte) {
 		wssMsg := ActionStatusMessage{}
 		_ = c.Unmarshal(raw, &wssMsg)
 		resp := transports.NewResponseMessage(wot.OpInvokeAction,
-			wssMsg.ThingID, wssMsg.Name, wssMsg.Output, nil, wssMsg.RequestID)
+			wssMsg.ThingID, wssMsg.Name, wssMsg.Output, nil, wssMsg.CorrelationID)
 		resp.Error = wssMsg.Error
 		resp.Status = wssMsg.Status // todo: convert from wss to global names
 		resp.Updated = wssMsg.TimeEnded
@@ -94,7 +94,7 @@ func (c *WssServerConnection) WssServerHandleMessage(raw []byte) {
 		wssMsg := ActionMessage{}
 		_ = c.Unmarshal(raw, &wssMsg)
 		req := transports.NewRequestMessage(
-			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, wssMsg.RequestID)
+			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, wssMsg.CorrelationID)
 		req.SenderID = c.GetClientID()
 		req.Created = wssMsg.Timestamp
 		_ = c.requestHandler(req, c.GetConnectionID())
@@ -106,7 +106,7 @@ func (c *WssServerConnection) WssServerHandleMessage(raw []byte) {
 		wssMsg := EventMessage{}
 		_ = c.Unmarshal(raw, &wssMsg)
 		req := transports.NewRequestMessage(
-			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, wssMsg.RequestID)
+			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, wssMsg.CorrelationID)
 		req.SenderID = c.GetClientID()
 		req.Created = wssMsg.Timestamp
 		_ = c.requestHandler(req, c.GetConnectionID())
@@ -133,7 +133,7 @@ func (c *WssServerConnection) WssServerHandleMessage(raw []byte) {
 		_ = c.Unmarshal(raw, &wssMsg)
 		// FIXME: readmultiple has an array of names
 		req := transports.NewRequestMessage(
-			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, wssMsg.RequestID)
+			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, wssMsg.CorrelationID)
 		req.SenderID = c.GetClientID()
 		req.Created = wssMsg.Timestamp
 		_ = c.requestHandler(req, c.GetConnectionID())
@@ -146,7 +146,7 @@ func (c *WssServerConnection) WssServerHandleMessage(raw []byte) {
 		_ = c.Unmarshal(raw, &wssMsg)
 		// FIXME: readmultiple has an array of names
 		resp := transports.NewResponseMessage(
-			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, nil, wssMsg.RequestID)
+			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, nil, wssMsg.CorrelationID)
 		resp.Updated = wssMsg.Timestamp
 		resp.SenderID = c.GetClientID()
 		_ = c.responseHandler(resp)
@@ -156,7 +156,7 @@ func (c *WssServerConnection) WssServerHandleMessage(raw []byte) {
 		wssMsg := TDMessage{}
 		_ = c.Unmarshal(raw, &wssMsg)
 		req := transports.NewRequestMessage(
-			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, wssMsg.RequestID)
+			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, wssMsg.CorrelationID)
 		req.SenderID = c.GetClientID()
 		req.Created = wssMsg.Timestamp
 		_ = c.requestHandler(req, c.GetConnectionID())
@@ -198,7 +198,7 @@ func (c *WssServerConnection) WssServerHandleMessage(raw []byte) {
 			"ThingID", wssMsg.ThingID,
 			"error", wssMsg.Title)
 		resp := transports.NewResponseMessage(
-			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Detail, nil, wssMsg.RequestID)
+			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Detail, nil, wssMsg.CorrelationID)
 		resp.Updated = wssMsg.Timestamp
 		resp.Error = wssMsg.Title
 		resp.SenderID = c.GetClientID()
@@ -210,7 +210,7 @@ func (c *WssServerConnection) WssServerHandleMessage(raw []byte) {
 		c.HandlePing(&wssMsg)
 
 	default:
-		// FIXME: a no-operation with requestID is a response
+		// FIXME: a no-operation with correlationID is a response
 		slog.Warn("_receive: unknown operation",
 			"messageType", baseMsg.MessageType)
 	}

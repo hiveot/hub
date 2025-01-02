@@ -301,7 +301,7 @@ func (sess *WebClientSession) onHubConnectionChange(connected bool, err error) {
 func (sess *WebClientSession) onResponse(msg *transports.ResponseMessage) {
 
 	if msg.Operation == vocab.OpInvokeAction {
-		// TODO: figure out a way to replace the existing notification popup if the requestID
+		// TODO: figure out a way to replace the existing notification popup if the correlationID
 		//  is the same (status changes from applied to delivered)
 		if msg.Error != "" {
 			sess.SendNotify(NotifyError, msg.Error)

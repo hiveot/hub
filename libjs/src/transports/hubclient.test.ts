@@ -1,10 +1,9 @@
 import process from "node:process";
 import * as tslog from 'tslog';
-import {ActionStatus} from './ActionStatus';
-import {ThingMessage} from "../things/ThingMessage";
-import {ConnectToHub} from "@hivelib/hubclient/ConnectToHub";
-import {HTOpUpdateActionStatus, OpInvokeAction} from "@hivelib/api/vocab/vocab.js";
+import {ConnectToHub} from "@hivelib/transports/ConnectToHub";
+import { OpInvokeAction} from "@hivelib/api/vocab/vocab.js";
 import {RequestCompleted, RequestDelivered} from "@hivelib/api/vocab/vocab.js";
+import {NotificationMessage, RequestMessage, ResponseMessage} from "@hivelib/transports/Messages";
 
 const log = new tslog.Logger({name: "HCTest"})
 
@@ -76,11 +75,10 @@ async function test3() {
     try {
         token = await hc.connectWithPassword(testPass)
 
-        hc.setActionHandler((tm: ThingMessage):ActionStatus => {
-            log.info("Received message: type="+tm.operation+"; key=" + tm.name)
-            let stat = new ActionStatus()
-            stat.completed(tm)
-            return stat
+        hc.setRequestHandler((req: RequestMessage):ResponseMessage => {
+            log.info("Received message: type="+req.operation+"; key=" + req.name)
+            let resp = req.createResponse("")
+            return resp
         })
         token = await hc.refreshToken()
     } catch (err) {
@@ -93,8 +91,7 @@ async function test3() {
         await hc.subscribe("", "")
 
         // publish an action request
-        let requestID = "test3a"
-        let stat = await hc.invokeAction(thingID, "action1",requestID, "1")
+        let stat = await hc.invokeAction(thingID, "action1", "1")
         if (stat.error != "") {
             throw ("pubAction failed: " + stat.error)
         }
@@ -106,7 +103,7 @@ async function test3() {
     }
     // rpc request
     try {
-        let reply = await hc.rpc( "cap1", "method1", "data")
+        let reply = await hc.rpc( OpInvokeAction, "cap1", "method1", "data")
         if (reply != "rpc") {
             throw ("unexpected rpc reply")
         }
@@ -124,7 +121,7 @@ async function test4() {
     let clToken = ""
     let ev1Count = 0
     let actionCount = 0
-    let actionDelivery: ActionStatus | undefined
+    let actionDelivery: ResponseMessage | undefined
 
     // connect a service that sends events
     let hcSvc = await ConnectToHub(baseURL, testSvcID, caCertPEM, true)
@@ -148,27 +145,30 @@ async function test4() {
     try {
         await hcCl.subscribe("dtw:testsvc:thing1", "")
         // await hcCl.subscribe("","")
-        hcCl.setActionHandler((tm: ThingMessage): ActionStatus => {
-            let stat = new ActionStatus()
-            if (tm.thingID == "dtw:testsvc:thing1") {
-                log.info("Received event: " + tm.name + "; data=" + tm.data)
-                ev1Count++
-            } else if (tm.operation == HTOpUpdateActionStatus) {
-                // FIXME: why is data base64 encoded? => data type in golang was []byte; changed to string
-                // let data = Buffer.from(tm.data,"base64").toString()
-                actionDelivery = JSON.parse(tm.data)
-            } else if (tm.operation == OpInvokeAction) {
+        hcCl.setRequestHandler((req: RequestMessage): ResponseMessage => {
                 actionCount++
-                stat.reply = "success"
-            }
-            stat.completed(tm)
-            return stat
+                let resp = req.createResponse("success")
+            return resp
         })
-    } catch (e) {
-        log.error("test1: Failed: " + e)
-    }
 
-    // time for background to start listening
+        hcCl.setNotificationHandler( (notif:NotificationMessage)=>{
+    if (notif.thingID == "dtw:testsvc:thing1") {
+        log.info("Received event: " + notif.name + "; data=" + notif.data)
+        ev1Count++
+    }
+        })
+
+
+        hcCl.setResponseHandler( (resp:ResponseMessage)=>{
+            actionDelivery = JSON.parse(resp.output)
+        })
+
+        } catch (e) {
+            log.error("test1: Failed: " + e)
+        }
+
+
+        // time for background to start listening
     await new Promise(resolve => setTimeout(resolve, 100));
 
     // round 3, send a test event
@@ -180,24 +180,25 @@ async function test4() {
     }
     // round 4, send an action to the digitwin thing of the test service
     try {
-        hcSvc.setActionHandler((msg: ThingMessage): ActionStatus => {
-            let stat = new ActionStatus()
+        hcSvc.setRequestHandler((req: RequestMessage): ResponseMessage => {
+            let resp: ResponseMessage
             // agents receive the thingID without prefix
-            if (msg.thingID == "thing1") {
+            if (req.thingID == "thing1") {
+                resp = req.createResponse("success!")
                 console.info("success!")
             } else {
+                resp = req.createResponse("", Error("not receiving action"))
                 console.error("not receiving action")
             }
-            return stat
+            return resp
         })
 
         let dtwThing1ID = "dtw:" + testSvcID + ":thing1"
-        let requestID = "test4a"
-        let stat2 = await hcCl.invokeAction(dtwThing1ID, "action1", requestID, "how are you")
-        if (stat2.error) {
-            log.error("failed publishing action: " + stat2.error)
-        } else if (stat2.progress != RequestDelivered) {
-            log.error("unexpected reply: " + stat2.progress)
+        let resp2 = await hcCl.invokeAction(dtwThing1ID, "action1",  "how are you")
+        if (resp2.error) {
+            log.error("failed publishing action: " + resp2.error)
+        } else if (resp2.status != RequestDelivered) {
+            log.error("unexpected status: " + resp2.status)
         }
     } catch (e) {
         console.log("invokeAction failed")
@@ -214,7 +215,7 @@ async function test4() {
         }
         if (actionCount != 1) {
             log.error("received " + actionCount + " actions. Expected 1")
-        } else if (!actionDelivery || actionDelivery.progress != RequestCompleted) {
+        } else if (!actionDelivery || actionDelivery.status != RequestCompleted) {
             log.error("test4 action sent but missing delivery confirmation")
         } else {
             log.info("test4 action success. Received an action confirmation")

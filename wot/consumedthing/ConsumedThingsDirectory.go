@@ -84,7 +84,7 @@ func (cts *ConsumedThingsDirectory) handleNotification(msg transports.Notificati
 	//		_, err := cts.ReadTD(msg.ThingID)
 	//		if err != nil {
 	//			slog.Error("Received message with thingID that doesn't exist",
-	//				"operation", msg.Operation, "requestID", msg.RequestID,
+	//				"operation", msg.Operation, "correlationID", msg.CorrelationID,
 	//				"thingID", msg.ThingID, "name", msg.Name, "senderID", msg.SenderID)
 	//		}
 	//	}

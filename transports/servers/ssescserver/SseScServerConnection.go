@@ -58,7 +58,7 @@ type SseScServerConnection struct {
 }
 
 //type HttpActionStatus struct {
-//	RequestID string `json:"request_id"`
+//	CorrelationID string `json:"request_id"`
 //	ThingID   string `json:"thingID"`
 //	Name      string `json:"name"`
 //	Data      any    `json:"data"`
@@ -294,9 +294,9 @@ func (c *SseScServerConnection) UnobserveProperty(dThingID string, name string) 
 
 // WriteProperty sends the property change request to the agent
 //func (c *SseScServerConnection) WriteProperty(
-//	thingID, name string, data any, requestID string, senderID string) (status string, err error) {
+//	thingID, name string, data any, correlationID string, senderID string) (status string, err error) {
 //
-//	status, err = c._send(vocab.OpWriteProperty, thingID, name, data, requestID, senderID)
+//	status, err = c._send(vocab.OpWriteProperty, thingID, name, data, correlationID, senderID)
 //	return status, err
 //}
 

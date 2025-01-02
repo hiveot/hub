@@ -240,12 +240,12 @@ func (cl *WssConsumerClient) PubRequest(req transports.RequestMessage) error {
 		slog.String("clientID", cl.GetClientID()),
 		slog.String("dThingID", req.ThingID),
 		slog.String("name", req.Name),
-		slog.String("requestID", req.RequestID),
+		slog.String("correlationID", req.CorrelationID),
 	)
 
 	// convert the operation into a websocket message
 	wssMsg, err := wssserver.OpToMessage(req.Operation, req.ThingID, req.Name, nil, req.Input,
-		req.RequestID, cl.GetClientID())
+		req.CorrelationID, cl.GetClientID())
 	if err != nil {
 		slog.Error("PubRequest: unknown operation", "op", req.Operation)
 		return err
@@ -270,19 +270,19 @@ func (cl *WssConsumerClient) _send(wssMsg any) (err error) {
 }
 
 //func (cl *WssConsumerClient) SendOperation(
-//	operation string, dThingID, name string, data any, requestID string) error {
+//	operation string, dThingID, name string, data any, correlationID string) error {
 //
 //	slog.Info("SendMessage",
 //		slog.String("operation", operation),
 //		slog.String("clientID", cl.GetClientID()),
 //		slog.String("dThingID", dThingID),
 //		slog.String("name", name),
-//		slog.String("requestID", requestID),
+//		slog.String("correlationID", correlationID),
 //	)
 //
 //	// convert the operation into a websocket message and send it to the server
 //	msg, err := wssserver.OpToMessage(operation, dThingID, name, nil, data,
-//		requestID, cl.GetClientID())
+//		correlationID, cl.GetClientID())
 //	if err != nil {
 //		slog.Error("SendOperation: unknown operation", "op", operation)
 //		return err

@@ -33,7 +33,7 @@ type DigitwinRouter struct {
 	authzAction    transports.RequestHandler
 	hasPermission  PermissionHandler
 
-	// in-memory cache of active actions lookup by requestID
+	// in-memory cache of active actions lookup by correlationID
 	activeCache map[string]ActiveRequestRecord
 	// cache map usage mux
 	mux sync.Mutex

@@ -185,14 +185,14 @@ func (cl *BaseClient) OnResponse(resp transports.ResponseMessage) {
 			"operation", resp.Operation,
 			"thingID", resp.ThingID,
 			"name", resp.Name,
-			"requestID", resp.RequestID)
+			"correlationID", resp.CorrelationID)
 	}
 }
 
 // Ping the server and wait for a pong response
 func (cl *BaseClient) Ping() error {
-	requestID := shortid.MustGenerate()
-	req := transports.NewRequestMessage(wot.HTOpPing, "", "", "", requestID)
+	correlationID := shortid.MustGenerate()
+	req := transports.NewRequestMessage(wot.HTOpPing, "", "", "", correlationID)
 	resp, err := cl.SendRequest(req, true)
 	if err != nil {
 		return err
@@ -225,8 +225,8 @@ func (cl *BaseClient) RefreshToken(oldToken string) (newToken string, err error)
 // Rpc sends a request message and waits for a response.
 // This returns an error if the request fails or if the response contains an error
 func (cl *BaseClient) Rpc(operation, thingID, name string, input any, output any) error {
-	requestID := shortid.MustGenerate()
-	req := transports.NewRequestMessage(operation, thingID, name, input, requestID)
+	correlationID := shortid.MustGenerate()
+	req := transports.NewRequestMessage(operation, thingID, name, input, correlationID)
 	resp, err := cl.SendRequest(req, true)
 	if err == nil {
 		if resp.Status == transports.StatusFailed {
@@ -244,7 +244,7 @@ func (cl *BaseClient) Rpc(operation, thingID, name string, input any, output any
 }
 
 // SendRequest sends an operation request and optionally waits for completion or timeout.
-// If waitForCompletion is true and no requestID is provided then a requestID will
+// If waitForCompletion is true and no correlationID is provided then a correlationID will
 // be generated to wait for completion.
 // If waitForCompletion is false then the response will go to the response handler
 func (cl *BaseClient) SendRequest(req transports.RequestMessage, waitForCompletion bool) (
@@ -255,7 +255,7 @@ func (cl *BaseClient) SendRequest(req transports.RequestMessage, waitForCompleti
 		slog.String("op", req.Operation),
 		slog.String("dThingID", req.ThingID),
 		slog.String("name", req.Name),
-		slog.String("requestID", req.RequestID),
+		slog.String("correlationID", req.CorrelationID),
 	)
 	// if not waiting then return asap with a pending response
 	if !waitForCompletion {
@@ -265,11 +265,11 @@ func (cl *BaseClient) SendRequest(req transports.RequestMessage, waitForCompleti
 		return resp, err
 	}
 
-	if req.RequestID == "" {
-		req.RequestID = shortid.MustGenerate()
+	if req.CorrelationID == "" {
+		req.CorrelationID = shortid.MustGenerate()
 	}
 	// open a return channel for the response
-	rChan := cl.BaseRnrChan.Open(req.RequestID)
+	rChan := cl.BaseRnrChan.Open(req.CorrelationID)
 
 	err = cl.BasePubRequest(req)
 
@@ -277,16 +277,16 @@ func (cl *BaseClient) SendRequest(req transports.RequestMessage, waitForCompleti
 		slog.Warn("SendRequest: failed sending request",
 			"dThingID", req.ThingID,
 			"name", req.Name,
-			"requestID", req.RequestID,
+			"correlationID", req.CorrelationID,
 			"err", err.Error())
-		cl.BaseRnrChan.Close(req.RequestID)
+		cl.BaseRnrChan.Close(req.CorrelationID)
 		return resp, err
 	}
 	// hmm, not pretty but during login the connection status can be ignored
 	// the alternative is not to use SendRequest but plain TLS post
 	ignoreDisconnect := req.Operation == wot.HTOpLogin || req.Operation == wot.HTOpRefresh
 
-	resp, err = cl.WaitForCompletion(rChan, req.Operation, req.RequestID, ignoreDisconnect)
+	resp, err = cl.WaitForCompletion(rChan, req.Operation, req.CorrelationID, ignoreDisconnect)
 
 	t1 := time.Now()
 	duration := t1.Sub(t0)
@@ -294,13 +294,13 @@ func (cl *BaseClient) SendRequest(req transports.RequestMessage, waitForCompleti
 		slog.Info("SendRequest: failed",
 			slog.String("op", req.Operation),
 			slog.Int64("duration msec", duration.Milliseconds()),
-			slog.String("requestID", req.RequestID),
+			slog.String("correlationID", req.CorrelationID),
 			slog.String("error", err.Error()))
 	} else {
 		slog.Debug("SendRequest: success",
 			slog.String("op", req.Operation),
 			slog.Float64("duration msec", float64(duration.Microseconds())/1000),
-			slog.String("requestID", req.RequestID))
+			slog.String("correlationID", req.CorrelationID))
 	}
 	return resp, err
 }
@@ -382,13 +382,13 @@ func (cl *BaseClient) Unsubscribe(thingID string, name string) error {
 }
 
 // WaitForCompletion waits for a completed or failed response message on the
-// given requestID channel, or until N seconds passed, or the connection drops.
+// given correlationID channel, or until N seconds passed, or the connection drops.
 //
 // If a proper response is received it is written to the given output and nil
 // (no error) is returned.
 // If anything goes wrong, an error is returned
 func (cl *BaseClient) WaitForCompletion(
-	rChan chan transports.ResponseMessage, operation, requestID string, ignoreDisconnect bool) (
+	rChan chan transports.ResponseMessage, operation, correlationID string, ignoreDisconnect bool) (
 	resp transports.ResponseMessage, err error) {
 
 	waitCount := 0
@@ -417,7 +417,7 @@ func (cl *BaseClient) WaitForCompletion(
 				slog.Int("count", waitCount),
 				slog.String("clientID", cl.GetClientID()),
 				slog.String("operation", operation),
-				slog.String("requestID", requestID),
+				slog.String("correlationID", correlationID),
 			)
 		}
 		hasResponse, resp = cl.BaseRnrChan.WaitForResponse(rChan, time.Second)
@@ -430,11 +430,11 @@ func (cl *BaseClient) WaitForCompletion(
 	}
 
 	// ending the wait
-	cl.BaseRnrChan.Close(requestID)
+	cl.BaseRnrChan.Close(correlationID)
 	slog.Debug("WaitForCompletion (result)",
 		slog.String("clientID", cl.GetClientID()),
 		slog.String("operation", operation),
-		slog.String("requestID", requestID),
+		slog.String("correlationID", correlationID),
 	)
 
 	// check for errors
@@ -449,8 +449,8 @@ func (cl *BaseClient) WaitForCompletion(
 
 // WriteProperty is a helper to send a write property request
 func (cl *BaseClient) WriteProperty(thingID string, name string, input any, wait bool) error {
-	requestID := shortid.MustGenerate()
-	req := transports.NewRequestMessage(wot.OpWriteProperty, thingID, name, input, requestID)
+	correlationID := shortid.MustGenerate()
+	req := transports.NewRequestMessage(wot.OpWriteProperty, thingID, name, input, correlationID)
 	resp, err := cl.SendRequest(req, wait)
 	_ = resp
 	return err

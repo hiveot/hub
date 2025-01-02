@@ -11,13 +11,13 @@ import (
 
 // RequestParams contains the parameters read from the HTTP request
 type RequestParams struct {
-	ClientID     string
-	ThingID      string // the thing ID if defined in the URL as {thingID}
-	RequestID    string
-	Name         string // the affordance name if defined in the URL as {name}
-	Data         any
-	ConnectionID string
-	Op           string // the operation if defined in the URL as {op}
+	ClientID      string
+	ThingID       string // the thing ID if defined in the URL as {thingID}
+	CorrelationID string
+	Name          string // the affordance name if defined in the URL as {name}
+	Data          any
+	ConnectionID  string
+	Op            string // the operation if defined in the URL as {op}
 }
 
 // GetRequestParams reads the client session, URL parameters and body payload from the
@@ -51,7 +51,7 @@ func GetRequestParams(r *http.Request) (reqParam RequestParams, err error) {
 
 	// the connection ID is the clientID + provided clcid
 	reqParam.ConnectionID = reqParam.ClientID + "-" + headerCID
-	reqParam.RequestID = r.Header.Get(RequestIDHeader)
+	reqParam.CorrelationID = r.Header.Get(CorrelationIDHeader)
 
 	// build a message from the URL and payload
 	// URLParam names are defined by the path variables set in the router.

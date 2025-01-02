@@ -188,9 +188,9 @@ func (svc *WssTransportServer) Stop() {
 //	httpTransport to attach to
 func StartWssTransportServer(wssPath string, cm *connections.ConnectionManager,
 	httpTransport *httpserver.HttpTransportServer,
+	handleNotification transports.ServerNotificationHandler,
 	handleRequest transports.ServerRequestHandler,
 	handleResponse transports.ServerResponseHandler,
-	handleNotification transports.ServerNotificationHandler,
 ) *WssTransportServer {
 
 	if wssPath == "" {

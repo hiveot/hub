@@ -91,9 +91,9 @@ Answer: encoding is handled in the transport protocol. The forms in the TD conta
 * Workaround: Return the wire format and provide an unmarshal method to the client where the client can provide the expected data type.
 
 17. How to include metadata (thingID, name, clientID) in SSE messages? [Non-WoT workaround]
-* use-case: agent receives an action for a Thing via its SSE connection (agents connect to the Hub). The SSE data is the input data as per TDD, but how to convey the thingID, action name and requestID?
+* use-case: agent receives an action for a Thing via its SSE connection (agents connect to the Hub). The SSE data is the input data as per TDD, but how to convey the thingID, action name and correlationID?
 * Workaround 1: Encapsulate the message in an evelope and use the additionalResponses field in a Form to define the envelope schema. However this has to be repeated for every single action/property/event which is *very* wordy.
-* Workaround 2: Push this to the transport protocol. In case of SSE use the ID field: {thingID}/{name}/{requestID}. However, how can this be described in a Form? (chosen workaround)
+* Workaround 2: Push this to the transport protocol. In case of SSE use the ID field: {thingID}/{name}/{correlationID}. However, how can this be described in a Form? (chosen workaround)
 
 18. How to describe a map of objects in the action output dataschema? [Workaround]
 * Workaround: don't use maps, use arrays.

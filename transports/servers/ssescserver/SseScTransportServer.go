@@ -124,7 +124,7 @@ func (svc *SseScTransportServer) HandleConnect(w http.ResponseWriter, r *http.Re
 //		http.Error(w, "Missing or unknown connection ID", http.StatusBadRequest)
 //		return
 //	}
-//	resp := transports.NewResponseMessage(wot.HTOpPong, "", "", "pon", nil, rp.RequestID)
+//	resp := transports.NewResponseMessage(wot.HTOpPong, "", "", "pon", nil, rp.CorrelationID)
 //	_ = c._send(transports.MessageTypeResponse, resp)
 //}
 

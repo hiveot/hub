@@ -106,11 +106,8 @@ WoTVocab:
     # Until then define them as HiveOT operations
     HTOpPublishError : "error"
     HTOpPublishEvent : "event"
-    HTOpUpdateActionStatus : "actionstatus"
-    HTOpUpdateActionStatuses : "actionstatuses"
     HTOpUpdateTD: "updatetd"  # Maybe better through a discovery method?
     HTOpUpdateProperty : "updateproperty"  # belongs in protocol binding - observe
     HTOpUpdateProperties : "updateproperties" # belongs in protocol binding - observe
-    HTOpUpdateMultipleProperties : "updatemultipleproperties"
 
 

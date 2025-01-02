@@ -41,7 +41,7 @@ func TestInvokeActionFromConsumerToServer(t *testing.T) {
 		return req.CreateResponse(nil, errors.New("unexpected request"))
 	}
 	// 1. start the servers
-	srv, cancelFn, _ := StartTransportServer(requestHandler, nil, nil)
+	srv, cancelFn, _ := StartTransportServer(nil, requestHandler, nil)
 	defer cancelFn()
 
 	// 2. connect a client
@@ -111,7 +111,7 @@ func TestInvokeActionFromServerToAgent(t *testing.T) {
 		var responseData string
 		// The server receives a response message from the agent
 		// (which normally is forwarded to the remote consumer; but not in this test)
-		assert.NotEmpty(t, resp.RequestID)
+		assert.NotEmpty(t, resp.CorrelationID)
 		assert.Equal(t, wot.OpInvokeAction, resp.Operation)
 
 		slog.Info("serverHandler: Received action response from agent",
@@ -125,7 +125,7 @@ func TestInvokeActionFromServerToAgent(t *testing.T) {
 		cancelFn1()
 		return nil
 	}
-	srv, cancelFn2, cm2 := StartTransportServer(nil, responseHandler, nil)
+	srv, cancelFn2, cm2 := StartTransportServer(nil, nil, responseHandler)
 	_ = srv
 	cm = cm2
 	defer cancelFn2()
@@ -153,7 +153,7 @@ func TestInvokeActionFromServerToAgent(t *testing.T) {
 	require.NotNil(t, ag1Server)
 	req := transports.NewRequestMessage(wot.OpInvokeAction, thingID, actionKey, testMsg1, corrID)
 	req.SenderID = testClientID1
-	req.RequestID = "rpc-TestInvokeActionFromServerToAgent"
+	req.CorrelationID = "rpc-TestInvokeActionFromServerToAgent"
 	err = ag1Server.SendRequest(req)
 	require.NoError(t, err)
 
@@ -179,21 +179,21 @@ func TestQueryActions(t *testing.T) {
 	requestHandler := func(req transports.RequestMessage, replyTo string) transports.ResponseMessage {
 
 		assert.NotNil(t, replyTo)
-		assert.NotNil(t, req.RequestID)
+		assert.NotNil(t, req.CorrelationID)
 		if req.Operation == wot.OpQueryAction {
 			// reply a response carrying the queried action response
 			actStat := transports.ResponseMessage{
-				ThingID:   req.ThingID,
-				Name:      req.Name,
-				RequestID: req.RequestID,
-				Status:    transports.StatusCompleted,
-				Output:    testMsg1,
-				Received:  req.Created,
-				Updated:   time.Now().Format(wot.RFC3339Milli),
+				ThingID:       req.ThingID,
+				Name:          req.Name,
+				CorrelationID: req.CorrelationID,
+				Status:        transports.StatusCompleted,
+				Output:        testMsg1,
+				Received:      req.Created,
+				Updated:       time.Now().Format(wot.RFC3339Milli),
 			}
 			return req.CreateResponse(actStat, nil)
 
-			//replyTo.SendResponse(msg.ThingID, msg.Name, output, msg.RequestID)
+			//replyTo.SendResponse(msg.ThingID, msg.Name, output, msg.CorrelationID)
 		} else if req.Operation == wot.OpQueryAllActions {
 			actStat := make([]transports.ResponseMessage, 2)
 			actStat[0].ThingID = thingID
@@ -201,17 +201,17 @@ func TestQueryActions(t *testing.T) {
 			actStat[0].Output = testMsg1
 			actStat[1].ThingID = thingID
 			actStat[1].Name = actionKey
-			actStat[1].RequestID = "requestID-123"
+			actStat[1].CorrelationID = "correlationID-123"
 			actStat[1].Status = transports.StatusCompleted
 			resp := req.CreateResponse(actStat, nil)
 			return resp
-			//replyTo.SendResponse(msg.ThingID, msg.Name, actStat, msg.RequestID)
+			//replyTo.SendResponse(msg.ThingID, msg.Name, actStat, msg.CorrelationID)
 		}
 		return req.CreateResponse(nil, errors.New("unexpected response "+req.Operation))
 	}
 
 	// 1. start the servers
-	srv, cancelFn, _ := StartTransportServer(requestHandler, nil, nil)
+	srv, cancelFn, _ := StartTransportServer(nil, requestHandler, nil)
 	defer cancelFn()
 
 	// 2. connect as a consumer

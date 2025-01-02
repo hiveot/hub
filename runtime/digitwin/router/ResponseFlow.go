@@ -33,25 +33,25 @@ func (svc *DigitwinRouter) HandleResponse(resp transports.ResponseMessage) error
 	dThingID := td.MakeDigiTwinThingID(resp.SenderID, resp.ThingID)
 	resp.ThingID = dThingID
 
-	if resp.RequestID == "" {
-		slog.Warn("Received a response without a requestID. This is ignored")
+	if resp.CorrelationID == "" {
+		slog.Warn("Received a response without a correlationID. This is ignored")
 		return nil
 	}
 
 	slog.Info("HandleResponse",
 		slog.String("ThingID", resp.ThingID),
 		slog.String("Name", resp.Name),
-		slog.String("RequestID", resp.RequestID),
+		slog.String("CorrelationID", resp.CorrelationID),
 	)
 
 	// 1: The response must be an active request
 	svc.mux.Lock()
-	as, found := svc.activeCache[resp.RequestID]
+	as, found := svc.activeCache[resp.CorrelationID]
 	svc.mux.Unlock()
 	if !found {
 		err = fmt.Errorf(
 			"HandleResponse: Message '%s' from agent '%s' not in action cache. It is ignored",
-			resp.RequestID, resp.SenderID)
+			resp.CorrelationID, resp.SenderID)
 		slog.Warn(err.Error())
 		return nil
 	}
@@ -60,7 +60,7 @@ func (svc *DigitwinRouter) HandleResponse(resp transports.ResponseMessage) error
 	if resp.SenderID != as.AgentID {
 		err = fmt.Errorf("HandleActionResponse: response ID '%s' of thing '%s' "+
 			"does not come from agent '%s' but from '%s'. Response ignored",
-			resp.RequestID, resp.ThingID, as.AgentID, resp.SenderID)
+			resp.CorrelationID, resp.ThingID, as.AgentID, resp.SenderID)
 		slog.Warn(err.Error())
 		return nil
 	}
@@ -85,7 +85,7 @@ func (svc *DigitwinRouter) HandleResponse(resp transports.ResponseMessage) error
 			slog.String("thingID", as.ThingID),
 			slog.String("replyTo", as.ReplyTo),
 			slog.String("err", err.Error()),
-			slog.String("RequestID", as.RequestID),
+			slog.String("CorrelationID", as.CorrelationID),
 		)
 		err = nil
 	}
@@ -94,7 +94,7 @@ func (svc *DigitwinRouter) HandleResponse(resp transports.ResponseMessage) error
 	if resp.Status == transports.StatusCompleted || resp.Status == transports.StatusFailed {
 		svc.mux.Lock()
 		defer svc.mux.Unlock()
-		delete(svc.activeCache, as.RequestID)
+		delete(svc.activeCache, as.CorrelationID)
 	}
 	return nil
 }

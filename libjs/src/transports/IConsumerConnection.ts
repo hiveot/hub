@@ -1,6 +1,4 @@
-import type {IHiveKey} from "@keys/IHiveKey";
-import {ThingMessage} from "@hivelib/things/ThingMessage";
-import {ActionStatus} from "@hivelib/hubclient/ActionStatus";
+import {NotificationMessage, RequestMessage, ResponseMessage} from "@hivelib/transports/Messages";
 
 
 export enum ConnectionStatus {
@@ -12,64 +10,57 @@ export enum ConnectionStatus {
     Unauthorized = "unauthorized"
 }
 
-export type ActionHandler = (msg:ThingMessage)=>ActionStatus;
-export type EventHandler = (msg:ThingMessage)=>void;
-export type PropertyHandler = (msg:ThingMessage)=>void;
 export type ConnectionHandler = (status: ConnectionStatus)=>void;
-export type ProgressHandler = (progress:ActionStatus)=>void;
+export type NotificationHandler = (msg: NotificationMessage)=>void;
+export type RequestHandler = (msg: RequestMessage)=>ResponseMessage;
+export type ResponseHandler = (resp: ResponseMessage)=>void;
 
-// IAgentClient defines the interface of the hub agent transport.
-export interface IConsumerClient  {
+// IConsumerConnection defines the interface of the consumer facing protocol binding.
+export interface IConsumerConnection {
 
     // ConnectWithPassword connects to the hub using password authentication.
     // @param password is created when registering the user with the auth service.
     // This returns an authentication token that can be used in refresh and connectWithToken.
-    connectWithPassword(password: string): Promise<string>;
+    connectWithPassword(password: string): Promise<string>
 
     // ConnectWithToken connects to the messaging server using an authentication token
     // and pub/private keys provided when creating an instance of the hub client.
     // @param token is created by the auth service.
-    connectWithToken(token: string): Promise<string>;
+    connectWithToken(token: string): Promise<string>
 
-    // CreateKeyPair returns a new key for authentication and signing.
-    // @returns key contains the public/private key pair.
-    createKeyPair(): IHiveKey|undefined;
 
-    // Disconnect from the message bus.
+    // Disconnect from the messaging server.
     disconnect(): void;
 
     // getStatus returns the current transport connection status
     // getStatus(): TransportStatus
 
-    // invokeAction publishes an action request and returns as soon as the request is delivered
-    // to the Hub inbox.
+    // invokeAction sends an action request and waits for a response or until timeout.
+    // This is a simple helper that uses sendRequest(wot.OpInvokeAction, ...)
     //
     //	@param dThingID the digital twin ID for whom the action is intended
     //	@param name is the action or method name of the action to invoke
-    //	@param payload to publish in native format as per TD
+    //	@param input data to publish in native format as per TD
     //
-    invokeAction(dThingID: string, name: string, requestID: string, payload: any): Promise<ActionStatus>;
+    invokeAction(dThingID: string, name: string, input: any): Promise<ResponseMessage>
 
     // RefreshToken refreshes the authentication token
     // The resulting token can be used with 'ConnectWithJWT'
     refreshToken(): Promise<string>
 
-    // Rpc makes a RPC call using an action and waits for a delivery confirmation event.
+    // Rpc sends a request message and waits for a response.
     //
-    // This is equivalent to use PubAction to send the request, use SetMessageHandler
-    // to receive the delivery confirmation event and match the 'requestID' from the
-    // delivery status event with the status returned by the action request.
-    //
-    // The arguments and responses are defined in structs (same approach as gRPC) which are
-    // defined in the service api. This struct can also be generated from the TD document
-    // if available at build time. See cmd/genapi for the CLI.
-    //
+    //  operation to request
     //	dThingID is the digital twin ID of the service providing the RPC method
     //	key is the ID of the RPC method as described in the service TD action affordance
-    //	args is the address of a struct containing the arguments to marshal
+    //	input is the value containing the input arguments sent
     //
     // This returns the data or throws an error if failed
-    rpc(dThingID: string, key: string, args: any): Promise<any>
+    rpc(operation: string, dThingID: string, key: string, input: any): Promise<any>
+
+    // sendRequest sends a request message and returns a response on completion or error.
+    // if no response is received within a time period a timeout response is returned.
+    sendRequest(msg: RequestMessage): Promise<ResponseMessage>
 
     // set handler that is notified of changes in connection status and an error in
     // case of an  unintentional disconnect.
@@ -85,27 +76,20 @@ export interface IConsumerClient  {
     // call disconnect(), followed by connectWithXyz().
     setConnectHandler(handler: (status: ConnectionStatus) => void): void
 
-    // Set the action handler for incoming requests.
+    // Set the notification handler
     // This replaces any previously set handler.
-    setActionHandler(handler: ActionHandler):void
+    setNotificationHandler(handler: NotificationHandler):void
 
-    // Set the event handler
-    // This replaces any previously set handler.
-    setEventHandler(handler: EventHandler):void
-
-    // Set the property handler for incoming requests.
-    // This replaces any previously set handler.
-    setPropertyHandler(handler: PropertyHandler):void
 
     // Set the progress handler
     // This replaces any previously set handler.
-    setProgressHandler(handler: ProgressHandler):void
+    setResponseHandler(handler: ResponseHandler):void
 
     // Subscribe adds a subscription for events from the given ThingID.
     //
     //  dThingID is the digital twin ID of the Thing to subscribe to. ""  for any
     //	name is the event name to subscribe to or "" for all events, "" for any
-    subscribe(dThingID: string, name:string): void;
+    subscribe(dThingID: string, name:string): void
 
 // Unsubscribe removes a previous event subscription.
 // No more events or requests will be received after Unsubscribe.
@@ -115,5 +99,5 @@ export interface IConsumerClient  {
     //  @param dThingID is the digitwin thingID is provided by the directory
     //	@param name ID of the property
     //	@param payload to publish in native format as per TD
-    writeProperty(dThingID: string, name: string, payload: any):void;
+    writeProperty(dThingID: string, name: string, payload: any):void
 }

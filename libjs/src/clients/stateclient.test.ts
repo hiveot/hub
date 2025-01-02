@@ -1,9 +1,9 @@
 import { HttpSSEClient } from "@hivelib/hubclient/httpclient/HttpSSEClient"
-import { IAgentClient } from "@hivelib/hubclient/IAgentClient"
+import { IAgentConnection } from "@hivelib/hubclient/IAgentConnection"
 import { StateClient } from "./stateclient"
 
-let hc: IAgentClient
-let tp: IAgentClient
+let hc: IAgentConnection
+let tp: IAgentConnection
 // const testURL = "https://127.0.0.1:"+8444
 const testURL = "https://localhost:"+8444
 
@@ -12,7 +12,7 @@ process.on("uncaughtException", (err: any) => {
     console.error("uncaughtException", err)
 })
 
-async function connect(): Promise<IAgentClient> {
+async function connect(): Promise<IAgentConnection> {
     // the server must have a test client 
     const clientID = "test"
     const testPass = "test22"

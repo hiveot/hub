@@ -17,7 +17,7 @@ func TestUpdateReadProperty(t *testing.T) {
 	const propName = "prop1"
 	const propValue = 25
 	const propValue2 = 52
-	const requestID = "request-1"
+	const correlationID = "request-1"
 	dThing1ID := td.MakeDigiTwinThingID(agent1ID, thing1ID)
 
 	svc, dtwStore, stopFunc := startService(true)
@@ -32,7 +32,8 @@ func TestUpdateReadProperty(t *testing.T) {
 	//
 
 	// agent has provided a new property value
-	changed, err := dtwStore.UpdatePropertyValue(dThing1ID, propName, propValue, "")
+	changed, err := dtwStore.UpdatePropertyValue(
+		digitwin.ThingValue{ThingID: dThing1ID, Name: propName, Data: propValue})
 	assert.NoError(t, err)
 	assert.True(t, changed)
 
@@ -48,7 +49,9 @@ func TestUpdateReadProperty(t *testing.T) {
 	assert.NoError(t, err)
 
 	// next write a new value
-	changed, err = dtwStore.UpdatePropertyValue(dThing1ID, propName, propValue2, "")
+	changed, err = dtwStore.UpdatePropertyValue(
+		digitwin.ThingValue{ThingID: dThing1ID, Name: propName, Data: propValue2})
+
 	assert.NoError(t, err)
 	assert.True(t, changed)
 	v3, err := svc.ValuesSvc.ReadProperty(user1ID, digitwin.ValuesReadPropertyArgs{
@@ -97,20 +100,22 @@ func TestPropertyUpdateFail(t *testing.T) {
 	err := svc.DirSvc.UpdateTD(agentID, string(tdDoc1Json))
 	require.NoError(t, err)
 
-	changed, err := dtwStore.UpdatePropertyValue(dBadThingID, propName, 123, "")
+	changed, err := dtwStore.UpdatePropertyValue(
+		digitwin.ThingValue{ThingID: dBadThingID, Name: propName, Data: 123})
 	assert.Error(t, err)
 	assert.False(t, changed)
 	//property names not in the TD are accepted
-	changed, err = dtwStore.UpdatePropertyValue(dThing1ID, "unknownprop", 123, "")
+	changed, err = dtwStore.UpdatePropertyValue(
+		digitwin.ThingValue{ThingID: dThing1ID, Name: "unknownprop", Data: 123})
 	assert.NoError(t, err)
 	assert.True(t, changed)
 
-	//can't write a property that doesn't exist
-	dThingID := td.MakeDigiTwinThingID(agentID, thingID)
-	err = dtwStore.WriteProperty(dThingID, digitwin.ThingValue{
-		Name:     "unknownprop",
-		Data:     123,
-		SenderID: "user1",
-	})
-	assert.NoError(t, err)
+	//can't update a property that doesn't exist
+	//dThingID := td.MakeDigiTwinThingID(agentID, thingID)
+	//err = dtwStore.WriteProperty(dThingID, digitwin.ThingValue{
+	//	Name:     "unknownprop",
+	//	Data:     123,
+	//	SenderID: "user1",
+	//})
+	//assert.NoError(t, err)
 }

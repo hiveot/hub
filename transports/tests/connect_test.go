@@ -114,9 +114,10 @@ func NewForm(op, thingID, name string) td.Form {
 // start the default transport server
 // This panics if the server cannot be created
 func StartTransportServer(
-	rqh transports.ServerRequestHandler,
-	rph transports.ServerResponseHandler,
-	nth transports.ServerNotificationHandler) (
+	notifHandler transports.ServerNotificationHandler,
+	reqHandler transports.ServerRequestHandler,
+	respHandler transports.ServerResponseHandler,
+) (
 
 	srv transports.ITransportServer, cancelFunc func(), cm *connections.ConnectionManager) {
 	var err error
@@ -131,16 +132,18 @@ func StartTransportServer(
 		// http only, no subprotocol bindings
 		httpTransportServer, err = httpserver.StartHttpTransportServer(
 			"localhost", testServerHttpPort, serverCert, caCert, authenticator, cm,
-			rqh, rph, nth)
+			notifHandler, reqHandler, respHandler)
 
 	case transports.ProtocolTypeSSESC:
 		httpTransportServer, err = httpserver.StartHttpTransportServer(
 			"localhost", testServerHttpPort, serverCert, caCert, authenticator, cm,
-			rqh, rph, nth)
+			notifHandler, reqHandler, respHandler)
+
 		transportServer = ssescserver.StartSseScTransportServer("", cm, httpTransportServer)
 		// add support for hiveot protocol in http/ssesc
 		hiveotserver.StartHiveotProtocolServer(
-			authenticator, cm, httpTransportServer, rqh, rph, nth)
+			authenticator, cm, httpTransportServer,
+			notifHandler, reqHandler, respHandler)
 
 	case transports.ProtocolTypeWSS:
 		httpTransportServer, err = httpserver.StartHttpTransportServer(
@@ -149,7 +152,7 @@ func StartTransportServer(
 			nil, nil, nil)
 		transportServer = wssserver.StartWssTransportServer(
 			"", cm, httpTransportServer,
-			rqh, rph, nth)
+			notifHandler, reqHandler, respHandler)
 	default:
 		err = errors.New("unknown protocol name: " + defaultProtocol)
 	}
@@ -174,7 +177,7 @@ func StartTransportServer(
 //func DummyNotificationHandler(notification transports.NotificationMessage) {
 //
 //	slog.Info("DummyNotificationHandler: Received notification", "op", notification.Operation)
-//	//replyTo.SendResponse(msg.ThingID, msg.Name, "result", msg.RequestID)
+//	//replyTo.SendResponse(msg.ThingID, msg.Name, "result", msg.CorrelationID)
 //}
 //func DummyRequestHandler(request transports.RequestMessage, replyTo string) transports.ResponseMessage {
 //
@@ -394,7 +397,7 @@ func TestReconnect(t *testing.T) {
 		return req.CreateResponse("", err)
 	}
 	// start the servers and connect as a client
-	srv, cancelFn, cm := StartTransportServer(handleRequest, nil, nil)
+	srv, cancelFn, cm := StartTransportServer(nil, handleRequest, nil)
 	connMgr = cm
 	defer cancelFn()
 

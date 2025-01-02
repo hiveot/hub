@@ -2,13 +2,13 @@
 
 The HiveOT transports package has two main objectives:
 1. Support any protocol to exchange messages between consumers and agents.
-2. Standardize the messaging for consumers and agents regardless the protocol used.
+2. Standardize the messaging for consumers and agents regardless the transport used.
 
-Consumers are end-users of IoT devices and services. WoT specifies protocol bindings to describe how consumers interact with Things. Unfortunately these protocol bindings each differ in the message envelopes used. HiveOT bindings therefore map from the protocol binding to the standardized hiveot message format while remaining compatible with the WoT specification, where possible. 
+Consumers are end-users of IoT devices and services. WoT specifies protocol bindings to describe how consumers interact with Things. Unfortunately these protocol bindings each differ in the message envelopes used. HiveOT bindings therefore maps between the standardized hiveot message format and that of the protocol binding, while remaining compatible with the WoT specification where possible. 
 
-Agents are services that expose a Thing to consumer. HiveOT uses an agent model where agents are clients of a Hub, just like consumers. WoT only addresses consumer-server interaction, so agent-server messaging is not specified. Since WoT isn't providing any specifications for this, HiveOT makes a best effort to use WoT concepts and vocabulary as far as they exists.
+Agents are services that expose a Thing to consumers. HiveOT uses an agent model where agents are clients of a Hub, just like consumers. WoT only addresses consumer-server interaction, so agent-server messaging is not specified. Since WoT isn't providing any specifications for this, HiveOT makes a best effort to use WoT concepts and vocabulary as far as they exists.
 
-HiveOT bindings also supports the three hiveOT standardized message envelopes over the http, sse, ws and mqtt transports: These envelopes match the message flow for requests, responses and notifications, and are passed as-is over the underlying transport. This is used as the fallback in case forms are not available. This effectively act as a WoT application protocol that provides easy message exchange regardless the underlying transport. 
+HiveOT bindings supports the three hiveOT standardized message envelopes over the http, sse, ws and mqtt transports: These envelopes match the message flow for requests, responses and notifications, and are passed as-is over the underlying transport. This is used as the fallback in case forms are not available. This effectively act as a WoT application protocol that provides easy message exchange regardless the underlying transport. 
 
 
 ## Messaging on HiveOT
@@ -16,6 +16,29 @@ HiveOT bindings also supports the three hiveOT standardized message envelopes ov
 Hiveot APIs uses standardized message envelopes to provided a simple and consistent API regardless the protocol binding in use. Protocol bindings effectively map between the protocol specific messages and the hiveot standardized messages. The hiveot messages become the application level protocol that is missing in the WoT standard. It is the hope of HiveOT that this or a similar standard will be adopted by the WoT to provide a unified messaging interface for all protocol bindings.
 
 This approach builds on top of the WoT definition for 'operations' and adds operations for use by agents, supporting agents as clients of a hub or gateway. 
+
+### Notification Message
+
+Notifications serve to notify subscribers of a change as identified by the operation, thingID and affordance name. Notifications are intended for any number of subscribers (or observers) and do not receive a response.
+
+All notifications use the same message envelope as implemented in NotificationMessage struct (golang, JS, Python). Protocol bindings can use this envelope directly or map from their protocol equivalent to this message format.
+
+The following operations are considered notifications:
+* property:  Update of a property value, sent by a Thing agent to observers of a property.
+* event:  Notification of event to subscribers.
+* td: Update of a TD by the directory (hiveot extension)
+
+| name              | data type | description                                                                                                                                        | required  |
+|-------------------|-----------|----------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
+| type              | string    | "notification". Identifies the message as a notification message                                                                                   | mandatory |
+| operation         | string    | Identification of the notification                                                                                                                 | mandatory |
+| data              | any       | notification data as specified by the operation                                                                                                    | optional  |
+| correlationID | string | optional correlation with the request that caused the notification, such as subscriptions or message streams                                       | optional  |
+| created           | string    | Timestamp the notification was created                                                                                                             | optional  |
+| thingID           | string    | ID of the thing the notification applies to                                                                                                        | optional  |
+| name              | string    | Name of the affordance the notification applies to, if applicable. The type of affordance (event, action, property) is determined by the operation | optional  |
+| messageID         | string    | Unique identification of the message.                                                                                                              | optional  |
+
 
 ### Request Message
 
@@ -39,7 +62,7 @@ The request message defines the following fields:
 | thingID   | string| ID of the thing the request applies to                                                                                                                                  | optional  |
 | name      | string| Name of the affordance the request applies to if applicable. The type of affordance (event, action, property) is determined by the operation                            | optional  |
 | input     | any   | Input data of the request as described by the operation. invokeaction refers to the action affordance while other operations define the input as part of the operation  | optional  |
-| requestID | string| Unique identifier of the request. This must be included in the response. If no requestID is provided then the request will still be handled by no response is returned. | required  |
+| correlationID | string| Unique identifier of the request. This must be included in the response. If no correlationID is provided then the request will still be handled by no response is returned. | optional  |
 | senderID  | string| Authenticated sender of the request.                                                                                                                                    | optional  |
 | messageID | string| Unique identification of the message.                                                                                                                                   | optional  |
 
@@ -53,38 +76,16 @@ Response message payload is determined by the request operation. Therefore the r
 | name      | data type   | description                                                                                                                                                                                  | required  |
 |-----------|--------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
 | type      | string | "response". Identifies the message as a response message                                                                                                                                     | mandatory |
-| operation | string | The request operation this is a response to.                                                                                                                                                 | mandatory |
-| requestID | string | identifies the request this is a response to.                                                                                                                                                | required  |
+| correlationID | string | identifies the request this is a response to.                                                                                                                                                | required  |
 | status    | string | Status of the request processing: "pending", "running", "completed" or "failed"                                                                                                              | required  |
 | output    | any    | Result of processing the request if status is "completed" as defined in the dataschema of the action or operation. If status is "failed" then this can contain additional error information. | optional  |
 | error     | string | Error title if status is "failed".                                                                                                                                                           | optional  |
 | received  | string | Timestamp the request was received by the Thing (or its agent)                                                                                                                               | optional  |
 | updated   | string | Timestamp the status was updated                                                                                                                                                             | optional  |
-| thingID   | string | ID of the thing the request applies to                                                                                                                                                       | optional  |
+| operation | string | The request operation this is a response to, to aid in debugging.                                                                                                                            | optional  |
+| thingID   | string | ID of the thing the request applies to aid in debugging.                                                                                                                                     | optional  |
 | name      | string | Name of the affordance the request applies to if applicable. The type of affordance (event, action, property) is determined by the operation                                                 | optional  |
 | messageID | string | Unique identification of the message.                                                                                                                                                        | optional  |
-
-### Notification Message
-
-Notifications serve to notify subscribers of a change as identified by the operation, thingID and affordance name. Notifications are intended for any number of subscribers (or observers) and do not receive a response. 
-
-All notifications use the same message envelope as implemented in NotificationMessage struct (golang, JS, Python). Protocol bindings can use this envelope directly or map from their protocol equivalent to this message format.
-
-The following operations are considered notifications:
-* property:  Update of a property value, sent by a Thing agent to observers of a property.
-* event:  Notification of event to subscribers. 
-* td: Update of a TD by the directory (hiveot extension)
-
-| name      | data type   | description   | required  |
-|-----------|--------|---------------|-----------|
-| type      | string | "notification". Identifies the message as a notification message                                                                                   | mandatory |
-| operation | string | Identification of the notification                                                                                                                 | mandatory |
-| data      | any    | notification data as specified by the operation                                                                                                    | optional  |
-| created   | string | Timestamp the notification was created                                                                                                             | optional  |
-| thingID   | string | ID of the thing the notification applies to                                                                                                        | optional  |
-| name      | string | Name of the affordance the notification applies to, if applicable. The type of affordance (event, action, property) is determined by the operation | optional  |
-| messageID | string | Unique identification of the message.                                                                                                              | optional  |
-
 
 ### Behavior
 
@@ -94,15 +95,15 @@ The server can be an agent for a thing or a hub or gateway.
 
 Hub or gateways will forward requests to the Thing agent. If the agent is not reachable at this point they return the error response or a pending response if there is support for queuing requests.
 
-Thing agents will process the request. They SHOULD send a response with one of three statuses: running, completed or failed. If a request is received without a request ID then no response is sent.
+Thing agents will process the request. They SHOULD send a response with one of the statuses: pending, running, completed or failed. If a request is received without a request ID then no response is sent.
 
 If a 'running' response is send, agents MUST also send a completed or failed response once the operation has finished.
 
 If a hub or gateway is used then the response is received by the hub/gateway, which in turn forwards it to the client that sent the request. If the client is no longer reachable then the response can be queued or discarded, depending on the capabilities of the hub or gateway.
 
-Clients will receive a response message containing the original requestID, the payload an any error information. Client implementations can choose to wait for a response (with timeout) or handle it as a separate callback.
+Clients will receive a response message containing the original correlationID, the payload an any error information. Client implementations can choose to wait for a response (with timeout) or handle it as a separate callback.
 
-Agents can sent notifications to subscribers. The notification message includes an operation that identifies the type of notification. A hub or gateway can implement their own subscription mechanism for consumers and ask agents to send all notifications.
+Agents can also sent notifications to subscribers. The notification message includes an operation that identifies the type of notification. A correlationID is optional to link the notification to a subscription request. A hub or gateway can implement their own subscription mechanism for consumers and ask agents to send all notifications.
 
 
 
@@ -260,9 +261,9 @@ HTTP methods are used to (un)subscribe events and (un)observe properties. These 
 
 Limitations:
 1. This is not a WoT SSE subprotocol specification (maybe it should be)
-2. A non-wot message envelope is used to include extra information such as operation, thingID, affordance name, senderID and requestID.
+2. A non-wot message envelope is used to include extra information such as operation, thingID, affordance name, senderID and correlationID.
 3. HTTP headers are used to define a connection ID ["cid"] to correlate http requests with the SSE connection that sends the replies.
-4. HTTP headers are used to include a requestID ["requestID"] in requests and responses. (this name is subject to change)
+4. HTTP headers are used to include a correlationID ["correlationID"] in requests and responses. (this name is subject to change)
 
 Example:
 
@@ -275,7 +276,7 @@ Forms to connect, subscribe and unsubscribe events of a Thing could look like:
       "href": "/ssesc/subscribeallevents/dtw:agent1:thing1",
       "htv:methodName": "GET",
       "subprotocol": "ssesc",
-      "headers": ["cid", "requestID"]
+      "headers": ["cid", "correlationID"]
     },
     {
       "op": "observerproperty",
@@ -292,7 +293,7 @@ To subscribe to events, post to the subscribe endpoint with the thingID. This re
 
 Include a 'cid' header field containing a connection-id. This is required for linking the subscription to the SSE connection that receives the events or property updates. .
 
-Once a request is received, an agent has to send a response. When the agent is another client, as in hiveot, the response has to be linked to the request. When the agent sends a response message it must therefore include the requestID provided with the request. The response operation field must be empty unless it contains a known response operation, such as actionstatus. In hiveot this is used to send a response to the consumer that send the request.
+Once a request is received, an agent has to send a response. When the agent is another client, as in hiveot, the response has to be linked to the request. When the agent sends a response message it must therefore include the correlationID provided with the request. The response operation field must be empty unless it contains a known response operation, such as actionstatus. In hiveot this is used to send a response to the consumer that send the request.
 
 
 

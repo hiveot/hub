@@ -8,14 +8,13 @@ import {logVid} from "./logVid";
 import {getPropName} from "./getPropName";
 import * as vocab from "@hivelib/api/vocab/vocab.js";
 import fs from "fs";
-import {ThingMessage} from "@hivelib/things/ThingMessage";
 import {BindingConfig} from "./BindingConfig";
 import * as tslog from 'tslog';
 import {handleInvokeAction} from "@zwavejs/handleInvokeAction";
 import {ValueID} from "@zwave-js/core";
-import {IAgentClient} from "@hivelib/hubclient/IAgentClient";
-import {ActionStatus} from "@hivelib/hubclient/ActionStatus";
 import {getVidAffordance} from "@zwavejs/getVidAffordance";
+import {IAgentConnection} from "@hivelib/transports/IAgentConnection";
+import {RequestMessage, ResponseMessage} from "@hivelib/transports/Messages";
 
 const log = new tslog.Logger()
 
@@ -31,7 +30,7 @@ const log = new tslog.Logger()
 //
 export class ZwaveJSBinding {
     // id: string = "zwave";
-    hc: IAgentClient;
+    hc: IAgentConnection;
     zwapi: ZWAPI;
     // the last received values for each node by deviceID
     lastValues = new Map<string, NodeValues>(); // nodeId: ValueMap
@@ -42,7 +41,7 @@ export class ZwaveJSBinding {
 
     // @param hc: Hub client to publish and subscribe
     // @param config: binding configuration
-    constructor(hc: IAgentClient, config: BindingConfig) {
+    constructor(hc: IAgentConnection, config: BindingConfig) {
         this.hc = hc;
         this.config = config
         log.settings.minLevel = 3 // info
@@ -172,13 +171,9 @@ export class ZwaveJSBinding {
             this.vidCsvFD = fs.openSync(this.config.vidCsvFile, "w+", 0o640)
             logVid(this.vidCsvFD)
         }
-        this.hc.setActionHandler( (msg:ThingMessage):ActionStatus => {
-            let stat = handleInvokeAction(msg,this.zwapi, this.hc)
-            return stat
-        })
-        this.hc.setPropertyHandler( (msg:ThingMessage):void => {
-            // todo, separate hadnler
-            handleInvokeAction(msg,this.zwapi, this.hc)
+        this.hc.setRequestHandler( (msg:RequestMessage):ResponseMessage => {
+            let resp = handleInvokeAction(msg,this.zwapi, this.hc)
+            return resp
         })
 
         await this.zwapi.connectLoop(this.config);

@@ -156,9 +156,9 @@ func StartHttpTransportServer(host string, port int,
 	caCert *x509.Certificate,
 	authenticator transports.IAuthenticator,
 	cm *connections.ConnectionManager,
+	handleNotification transports.ServerNotificationHandler,
 	handleRequest transports.ServerRequestHandler,
 	handleResponse transports.ServerResponseHandler,
-	handleNotification transports.ServerNotificationHandler,
 ) (*HttpTransportServer, error) {
 
 	httpServer, httpRouter := tlsserver.NewTLSServer(

@@ -116,7 +116,7 @@ func TestPublishPropertyByAgent(t *testing.T) {
 	}
 
 	// 1. start the transport
-	srv, cancelFn, _ := StartTransportServer(nil, nil, notificationHandler)
+	srv, cancelFn, _ := StartTransportServer(notificationHandler, nil, nil)
 	_ = srv
 	defer cancelFn()
 

@@ -30,7 +30,7 @@ func (c *DummyConnection) GetProtocolType() string { return "dummy" }
 
 //func (c *DummyConnection) GetSessionID() string    { return c.sessID }
 
-//func (c *DummyConnection) InvokeAction(thingID string, name string, input any, requestID string, senderID string) (
+//func (c *DummyConnection) InvokeAction(thingID string, name string, input any, correlationID string, senderID string) (
 //	status string, output any, err error) {
 //	return transports2.RequestCompleted, nil, nil
 //}
@@ -70,7 +70,7 @@ func (c *DummyConnection) UnobserveProperty(dThingID, name string) {
 	c.observations.Unsubscribe(dThingID, name)
 }
 
-//func (c *DummyConnection) WriteProperty(thingID, name string, value any, requestID string, senderID string) (status string, err error) {
+//func (c *DummyConnection) WriteProperty(thingID, name string, value any, correlationID string, senderID string) (status string, err error) {
 //	return "", nil
 //}
 

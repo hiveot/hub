@@ -179,9 +179,9 @@ func (cl *SsescConsumerClient) handleSSEConnect(connected bool, err error) {
 
 // handleSSEEvent processes the push-event received from the hub.
 // This splits the message into notification, response and request
-// requests have an operation and requestID
-// responses have no operations and a requestID
-// notifications have an operations and no requestID
+// requests have an operation and correlationID
+// responses have no operations and a correlationID
+// notifications have an operations and no correlationID
 func (cl *SsescConsumerClient) handleSseEvent(event sse.Event) {
 
 	slog.Info("handleSSEEvent; received SSE event",

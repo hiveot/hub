@@ -64,7 +64,7 @@ func decodeValue(bucketID string, storageKey string, raw []byte) (
 	if len(parts) > 3 {
 		senderID = parts[3]
 	}
-	// FIXME: keep the requestID? serialize the NotificationMessage
+	// FIXME: keep the correlationID? serialize the NotificationMessage
 	var data interface{}
 	err = jsoniter.Unmarshal(raw, &data)
 	if err != nil {

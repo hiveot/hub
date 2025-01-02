@@ -2,48 +2,26 @@ import * as tslog from 'tslog';
 import {
     ConnectionHandler,
     ConnectionStatus,
-    ActionHandler,
-    EventHandler,
-    ProgressHandler
-} from "@hivelib/hubclient/IConsumerClient";
+    NotificationHandler, RequestHandler, ResponseHandler
+} from "@hivelib/transports/IConsumerConnection";
 
-import {ThingMessage} from "@hivelib/things/ThingMessage";
 import EventSource from 'eventsource'
-import {ActionStatus} from "@hivelib/hubclient/ActionStatus";
 import {
     OpInvokeAction,
-    HTOpUpdateActionStatus,
     HTOpPublishEvent,
     HTOpUpdateProperty
 } from "@hivelib/api/vocab/vocab";
+import {NotificationMessage, RequestMessage, ResponseMessage, MessageTypeNotification} from "@hivelib/transports/Messages";
 
 const hclog = new tslog.Logger()
 
-export type MessageHandler = (msg:ThingMessage)=>void;
-
-
-function parseSSEEvent(e: MessageEvent) : ThingMessage {
-    let tm = new ThingMessage()
-
-    let sseEventID = e.lastEventId
-    let parts = sseEventID.split("/")
-    tm.thingID =parts[0]
-    if (parts.length > 1) {
-        tm.name = parts[1]
-    }
-    if (parts.length > 2) {
-        tm.senderID = parts[2]
-    }
-    if (parts.length > 3) {
-        tm.requestID = parts[3]
-    }
-    // server json-encodes data
-    if (e.data) {
-        tm.data = JSON.parse(e.data)
-    }
-    tm.operation = e.type
-    return tm
-}
+// function parseSSERequest(e: MessageEvent) : RequestMessage {
+//     let tm = new RequestMessage()
+//     if (e.data) {
+//         tm = JSON.parse(e.data)
+//     }
+//     return tm
+// }
 
 // Connect an EventSource to the SSE server and handle SSE events
 // cid is the connection id field as used in all http requests. (eg, without the clientid)
@@ -52,8 +30,9 @@ export async function  connectSSE(
     ssePath:string,
     authToken:string,
     cid:string,
-    onMessage: MessageHandler,
-    onProgress: ProgressHandler,
+    onNotification: NotificationHandler,
+    onRequest: RequestHandler,
+    onResponse: ResponseHandler,
     onConnection: ConnectionHandler ):Promise<EventSource> {
 
     return new Promise((resolve, reject): void => {
@@ -82,22 +61,20 @@ export async function  connectSSE(
         source.addEventListener("ping",(e:any)=>{
             hclog.info("received ping", e)
         })
-
-        source.addEventListener(HTOpUpdateActionStatus,(e:any)=>{
-            let stat: ActionStatus = JSON.parse(e.data)
-            onProgress(stat)
+        source.addEventListener(MessageTypeNotification,(e:any)=>{
+            hclog.info("received notification", e)
+            let req: NotificationMessage = JSON.parse(e.data)
+            onNotification(req)
         })
-        source.addEventListener(OpInvokeAction,(e:MessageEvent)=>{
-           let msg = parseSSEEvent(e)
-            onMessage(msg)
+        source.addEventListener("request",(e:any)=>{
+            hclog.info("received request", e)
+            let req: RequestMessage = JSON.parse(e.data)
+            onRequest(req)
         })
-        source.addEventListener(HTOpPublishEvent,(e:any)=>{
-            let msg = parseSSEEvent(e)
-            onMessage(msg)
-        })
-        source.addEventListener(HTOpUpdateProperty,(e:any)=>{
-            let msg = parseSSEEvent(e)
-            onMessage(msg)
+        source.addEventListener("response",(e:any)=>{
+            hclog.info("received response", e)
+            let req: ResponseMessage = JSON.parse(e.data)
+            onResponse(req)
         })
         source.addEventListener("close",(e:any)=>{
             hclog.info("On close", e)

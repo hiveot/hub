@@ -11,7 +11,7 @@ import (
 // The signature is: NewHandle<ThingID>Action(service I...Service) *HandleRequest
 //
 //	func (agent *...)NewHandleAction(
-//	  consumerID string, dThingID string, actionName string, input any, requestID string
+//	  consumerID string, dThingID string, actionName string, input any, correlationID string
 func GenServiceHandler(l *utils.SL, serviceTitle string, td1 *td.TD) {
 	// ServiceType is the type of the service implementation that handles the messages
 	//serviceType := ToTitle(td1.GetID()) + "Service"

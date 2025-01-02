@@ -29,7 +29,7 @@ import (
 //	if err != nil {
 //		slog.Warn("HandleActionStatus. Payload is not an HttpActionStatus object",
 //			"agentID", rp.ClientID,
-//			"requestID", rp.RequestID)
+//			"correlationID", rp.CorrelationID)
 //	}
 //	// on the server the action status is handled using a standardized ResponseMessage instance
 //	// This is converted to the transport protocol used to send it to the client.
@@ -38,7 +38,7 @@ import (
 //		Operation:   wot.OpInvokeAction,
 //		ThingID:     rp.ThingID,
 //		Name:        rp.Name,
-//		RequestID:   rp.RequestID,
+//		CorrelationID:   rp.CorrelationID,
 //		SenderID:    rp.ClientID,
 //		Status:      actionStatus.Status, // todo map names (they are the same)
 //		Error:       actionStatus.Error,
@@ -73,7 +73,7 @@ func (svc *HttpTransportServer) HandleNotification(w http.ResponseWriter, r *htt
 }
 
 // HandleRequestMessage handles requests that expect a response.
-// This first builds a ThingMessage instance containing the connectionID, requestID,
+// This first builds a ThingMessage instance containing the connectionID, correlationID,
 // operation and payload; Next it passes this to the registered handler for processing.
 // Finally, the result is included in the response payload.
 //
@@ -97,12 +97,12 @@ func (svc *HttpTransportServer) HandleRequestMessage(w http.ResponseWriter, r *h
 	}
 
 	// pass the event to the digitwin service for further processing
-	requestID := r.Header.Get(RequestIDHeader)
-	if requestID == "" {
-		requestID = shortid.MustGenerate()
+	correlationID := r.Header.Get(CorrelationIDHeader)
+	if correlationID == "" {
+		correlationID = shortid.MustGenerate()
 	}
 
-	request := transports.NewRequestMessage(rp.Op, rp.ThingID, rp.Name, rp.Data, requestID)
+	request := transports.NewRequestMessage(rp.Op, rp.ThingID, rp.Name, rp.Data, correlationID)
 	request.SenderID = rp.ClientID
 
 	// ping is handled internally
@@ -128,7 +128,7 @@ func (svc *HttpTransportServer) HandleRequestMessage(w http.ResponseWriter, r *h
 		return
 	}
 	// hiveot used headers
-	replyHeader.Set(RequestIDHeader, requestID)
+	replyHeader.Set(CorrelationIDHeader, correlationID)
 
 	// progress is complete, return the default output
 	svc.writeReply(w, response.Output, response.Status, err)
@@ -210,7 +210,7 @@ func (svc *HttpTransportServer) HandlePing(w http.ResponseWriter, r *http.Reques
 	// simply return a pong message
 	rp, err := GetRequestParams(r)
 	replyHeader := w.Header()
-	replyHeader.Set(RequestIDHeader, rp.RequestID)
+	replyHeader.Set(CorrelationIDHeader, rp.CorrelationID)
 	svc.writeReply(w, "pong", transports.StatusCompleted, err)
 
 	//svc.HandleRequestMessage(wot.HTOpPing, w, r)

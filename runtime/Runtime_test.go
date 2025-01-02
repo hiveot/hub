@@ -205,7 +205,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 		// option2: extend the websocket InvokeAction message format with a SenderID
 		//assert.Equal(t, cl1.GetClientID(), msg.SenderID)
 		//stat.Failed(msg, fmt.Errorf("failuretest"))
-		slog.Info("TestActionWithDeliveryConfirmation: agent1 delivery complete", "requestID", req.RequestID)
+		slog.Info("TestActionWithDeliveryConfirmation: agent1 delivery complete", "correlationID", req.CorrelationID)
 		return req.CreateResponse(reply, nil)
 	}
 	ag1.SetRequestHandler(agentRequestHandler)
@@ -257,7 +257,7 @@ func TestServiceReconnect(t *testing.T) {
 		rxMsg.Store(&msg)
 		_ = tputils.DecodeAsObject(msg.Input, &req)
 		output := req + ".reply"
-		slog.Info("agent1 delivery complete", "requestID", msg.RequestID)
+		slog.Info("agent1 delivery complete", "correlationID", msg.CorrelationID)
 		return msg.CreateResponse(output, nil)
 	})
 

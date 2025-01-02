@@ -12,15 +12,15 @@ const (
 	// HTTP protoocol constants
 	// StatusHeader contains the result of the request, eg Pending, Completed or Failed
 	StatusHeader = "status"
-	// RequestIDHeader for transports that support headers can include a message-ID
-	RequestIDHeader = "request-id"
+	// CorrelationIDHeader for transports that support headers can include a message-ID
+	CorrelationIDHeader = "correlation-id"
 	// ConnectionIDHeader identifies the client's connection in case of multiple
 	// connections from the same client.
 	ConnectionIDHeader = "cid"
 	// DataSchemaHeader to indicate which  'additionalresults' dataschema being returned.
 	DataSchemaHeader = "dataschema"
 
-	// HTTP Paths for auth. - FIXME MOVE TO HTTP implementation
+	// HTTP Paths for auth.
 	// THIS WILL BE REMOVED AFTER THE PROTOCOL BINDING PUBLISHES THESE IN THE TDD.
 	// The hub client will need the TD (ConsumedThing) to determine the paths.
 	HttpPostLoginPath   = "/authn/login"

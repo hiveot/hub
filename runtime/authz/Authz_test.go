@@ -84,7 +84,7 @@ func TestHasPermission(t *testing.T) {
 	const client1Role = authz2.ClientRoleOperator
 	const thingID = ""
 	const key = ""
-	const requestID = "req-1"
+	const correlationID = "req-1"
 	cfg := authz.NewAuthzConfig()
 	cfg.Setup(testDir)
 	authnStore := authnstore.NewAuthnFileStore(passwordFile, "")
@@ -99,13 +99,13 @@ func TestHasPermission(t *testing.T) {
 	err = svc.SetClientRole(operatorID, authz2.AdminSetClientRoleArgs{operatorID, client1Role})
 	assert.NoError(t, err)
 	// consumers have permission to publish actions and write-property requests
-	msg := transports.NewRequestMessage(vocab.OpInvokeAction, thingID, key, nil, requestID)
+	msg := transports.NewRequestMessage(vocab.OpInvokeAction, thingID, key, nil, correlationID)
 	msg.SenderID = operatorID
 	hasPerm := svc.HasPermission(msg.SenderID, msg.Operation, msg.ThingID)
 	assert.True(t, hasPerm)
 
 	// operators cannot publish property values
-	msg = transports.NewRequestMessage(vocab.HTOpUpdateProperty, thingID, key, nil, requestID)
+	msg = transports.NewRequestMessage(vocab.HTOpUpdateProperty, thingID, key, nil, correlationID)
 	msg.SenderID = operatorID
 	hasPerm = svc.HasPermission(msg.SenderID, msg.Operation, msg.ThingID)
 	assert.False(t, hasPerm)

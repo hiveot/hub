@@ -83,7 +83,7 @@ type BaseMessage struct {
 	ThingID     string `json:"thingId"`
 	MessageType string `json:"messageType"`
 	//MessageID   string `json:"messageId,omitempty"`
-	RequestID string `json:"requestId,omitempty"`
+	CorrelationID string `json:"correlationID,omitempty"`
 }
 
 type ActionMessage struct {
@@ -96,9 +96,9 @@ type ActionMessage struct {
 	// FIXME: under discussions. href has nothing to do with tracking actions
 	HRef string `json:"href,omitempty"`
 	//
-	// The requestID is not in the spec but needed to be able to correlate a response
+	// The correlationID is not in the spec but needed to be able to correlate a response
 	// message.
-	RequestID string `json:"requestId,omitempty"`
+	CorrelationID string `json:"correlationID,omitempty"`
 	// The senderID is not in the spec but it is needed for some services to
 	// identify who is sending the action. It can't be a parameter because that
 	// wouldnt be secure.
@@ -125,7 +125,7 @@ type ActionStatusMessage struct {
 	//
 	Timestamp string `json:"timestamp"` // timestamp of this update
 	//MessageID string `json:"messageId,omitempty"`
-	RequestID string `json:"requestId,omitempty"`
+	CorrelationID string `json:"correlationID,omitempty"`
 }
 
 // See also https://www.rfc-editor.org/rfc/rfc9457
@@ -146,7 +146,7 @@ type ErrorMessage struct {
 	// Error code, eg 404, 405, 500, ... (yes http codes)
 	Status string `json:"status"`
 	// Link to request that is in error
-	RequestID string `json:"requestId,omitempty"`
+	CorrelationID string `json:"correlationID,omitempty"`
 	// Time of the error
 	Timestamp string `json:"timestamp"`
 }
@@ -162,8 +162,8 @@ type EventMessage struct {
 	// subscription only
 	LastEvent string `json:"lastEvent,omitempty"` // OpSubscribe...
 
-	Timestamp string `json:"timestamp"`
-	RequestID string `json:"requestId,omitempty"`
+	Timestamp     string `json:"timestamp"`
+	CorrelationID string `json:"correlationID,omitempty"`
 }
 
 type PropertyMessage struct {
@@ -175,15 +175,15 @@ type PropertyMessage struct {
 	LastTimestamp string   `json:"lastPropertyReading,omitempty"`
 	Timestamp     string   `json:"timestamp,omitempty"`
 	//
-	RequestID string `json:"requestId,omitempty"`
+	CorrelationID string `json:"correlationID,omitempty"`
 }
 
 type TDMessage struct {
 	ThingID     string `json:"thingId"`
 	MessageType string `json:"messageType"`
 
-	Name      string `json:"event"`
-	Data      any    `json:"data,omitempty"` // JSON TD or list of JSON TDs
-	Timestamp string `json:"timestamp"`
-	RequestID string `json:"requestId,omitempty"`
+	Name          string `json:"event"`
+	Data          any    `json:"data,omitempty"` // JSON TD or list of JSON TDs
+	Timestamp     string `json:"timestamp"`
+	CorrelationID string `json:"correlationID,omitempty"`
 }

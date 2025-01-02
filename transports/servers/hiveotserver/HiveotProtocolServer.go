@@ -18,11 +18,15 @@ import (
 // This is (IMHO) the protocol that would simplify the use of WoT and forms as it
 // only has three messages: request, response and notifications.
 //
-// This protocol server hooks into the http/ssesc, wss and mqtt transport servers,
-// and handles messages for each of them.
+// This protocol server currently hooks into the http/ssesc, wss and mqtt transport
+// servers and uses these as transports. Note that this involves quite a bit of
+// mapping between message formats.
 //
-// Currently this protocol is used by agents as there are no operations and forms
-// supporting agents in WoT.
+// In future this is intended to become its own server using simple transports
+// over http, wss, mqtt containing just the 3 message types.
+//
+// Currently this protocol is only used by agents as there are no operations and
+// forms supporting agents in WoT.
 //
 // Subscription is requested through the subscribe/observe operations in the request
 // message. This is applied to the return channels of the underlying transport protocols.
@@ -228,17 +232,17 @@ func StartHiveotProtocolServer(
 	authenticator transports.IAuthenticator,
 	cm *connections.ConnectionManager,
 	httpTransport *httpserver.HttpTransportServer,
+	handleNotification transports.ServerNotificationHandler,
 	handleRequest transports.ServerRequestHandler,
 	handleResponse transports.ServerResponseHandler,
-	handleNotification transports.ServerNotificationHandler,
 ) *HiveotProtocolServer {
 	b := &HiveotProtocolServer{
 		authenticator:             authenticator,
 		cm:                        cm,
 		httpTransport:             httpTransport,
+		serverNotificationHandler: handleNotification,
 		serverRequestHandler:      handleRequest,
 		serverResponseHandler:     handleResponse,
-		serverNotificationHandler: handleNotification,
 	}
 	httpTransport.AddOps(nil, []string{"request"},
 		http.MethodPost, httpserver.HiveOTPostRequestHRef, b.HandleHttpRequest)

@@ -1,14 +1,19 @@
 // ZWaveJSBinding.ts holds the entry point to the ZWave binding along with its configuration
 import {InterviewStage,  ZWaveNode} from "zwave-js";
 import {getPropVid} from "./getPropName";
-import {ThingMessage} from "@hivelib/things/ThingMessage";
 import * as tslog from 'tslog';
-import { IAgentClient} from "@hivelib/hubclient/IAgentClient";
+import { IAgentConnection} from "@hivelib/transports/IAgentConnection";
 import {getVidValue, ZWAPI} from "@zwavejs/ZWAPI";
-import {HTOpUpdateProperty} from "@hivelib/api/vocab/vocab.js";
+import {OpWriteProperty} from "@hivelib/api/vocab/vocab.js";
 import {handleWriteProperty} from "@zwavejs/handleWriteProperty";
 import {setValue} from "@zwavejs/setValue";
-import {ActionStatus} from "@hivelib/hubclient/ActionStatus";
+import {
+    RequestMessage,
+    ResponseMessage,
+    StatusCompleted,
+    StatusPending,
+    StatusRunning
+} from "@hivelib/transports/Messages";
 
 const log = new tslog.Logger()
 
@@ -18,35 +23,27 @@ const log = new tslog.Logger()
 // Normally this returns the delivery status to the caller.
 // If delivery is in progress then use 'hc' to send further status updates.
 export function  handleInvokeAction(
-    msg: ThingMessage, zwapi: ZWAPI, hc: IAgentClient): ActionStatus {
+    req: RequestMessage, zwapi: ZWAPI, hc: IAgentConnection): ResponseMessage {
 
-    let stat = new ActionStatus()
-    let errMsg: string = ""
-    let actionLower = msg.name.toLowerCase()
+    let err: Error|undefined
+    let output: any
+    let status = StatusCompleted
+
+    let actionLower = req.name.toLowerCase()
     let targetNode: ZWaveNode | undefined
-    let node = zwapi.getNodeByDeviceID(msg.thingID)
+    let node = zwapi.getNodeByDeviceID(req.thingID)
     if (node == undefined) {
-        let errMsg = new Error("handleActionRequest: node for thingID" + msg.thingID + "does not exist")
-        stat.failed(msg, errMsg)
+        let errMsg = new Error("handleActionRequest: node for thingID" + req.thingID + "does not exist")
         log.error(errMsg)
-        return stat
+        return req.createResponse(null,errMsg)
     }
-    if (msg.operation == HTOpUpdateProperty) {
-        return handleWriteProperty(msg, node, zwapi, hc)
+    if (req.operation == OpWriteProperty) {
+        return handleWriteProperty(req, node, zwapi, hc)
     }
-    // unmarshal the payload
-    // FIXME: who does the (un)marshalling? If the form defines the
-    //  contentCoding and contentType then
-    // is this up to the protocol client? (as multiple protocols can be supported)
-    // argument encoding?
-    // response encoding? hiveot wraps the reply in a delivery status message with a reply field
-    // what happens when consumer and agent use different protocol encodings?
 
-
-    let actionValue = msg.data
-    log.info("action: " + msg.name + " - value: " + msg.data)
+    let actionValue = req.input
+    log.info("action: " + req.name + " - value: " + req.input)
     // be optimistic :)
-    stat.completed(msg)
     // controller specific commands (see parseController)
     switch (actionLower) {
         case "begininclusion":
@@ -69,19 +66,19 @@ export function  handleInvokeAction(
             zwapi.driver.controller.stopRebuildingRoutes()
             break;
         case "getnodeneighbors": // param nodeID
-            targetNode = zwapi.getNodeByDeviceID(msg.thingID)
+            targetNode = zwapi.getNodeByDeviceID(req.thingID)
             if (targetNode) {
                 zwapi.driver.controller.getNodeNeighbors(targetNode.id).then();
             }
             break;
         case "rebuildnoderoutes": // param nodeID
-            targetNode = zwapi.getNodeByDeviceID(msg.thingID)
+            targetNode = zwapi.getNodeByDeviceID(req.thingID)
             if (targetNode) {
                 zwapi.driver.controller.rebuildNodeRoutes(targetNode.id).then();
             }
             break;
         case "removefailednode": // param nodeID
-            targetNode = zwapi.getNodeByDeviceID(msg.thingID)
+            targetNode = zwapi.getNodeByDeviceID(req.thingID)
             if (targetNode) {
                 zwapi.driver.controller.removeFailedNode(targetNode.id).then();
             }
@@ -94,24 +91,38 @@ export function  handleInvokeAction(
             node.checkLifelineHealth().then()
             break;
         case "ping":
-            stat.delivered(msg)
+            status = StatusRunning // async response
+            // ping a node. The response is sent async
             let startTime = performance.now()
             node.ping().then((success:boolean)=>{
                 let endTime = performance.now()
                 let msec = Math.round(endTime-startTime)
-                stat.completed(msg, msec)
-                log.info("ping '"+msg.thingID+"': "+msec+" msec")
-                hc.pubProgressUpdate(stat)
+                let resp = req.createResponse(msec)
+                log.info("ping '"+req.thingID+"': "+msec+" msec")
+                hc.sendResponse(resp)
             })
             break;
         case "refreshinfo":
-            // do not use when node interview is not yet complete
+            // doc warning: do not call refreshInfo when node interview is not yet complete
             if (node.interviewStage == InterviewStage.Complete) {
+                // TODO: should we send a running response?
                 node.refreshInfo({waitForWakeup: true}).then()
+            } else {
+                // a previous request was still running.
+                err = new Error("refreshinfo is already running")
             }
             break;
         case "refreshvalues":
-            node.refreshValues().then()
+            status = StatusRunning
+            node.refreshValues().then(()=>{
+                let resp = req.createResponse(null)
+                log.info("refreshvalues completed")
+                hc.sendResponse(resp)
+            }).catch(err =>{
+                log.info("refreshvalues failed: ", err)
+                let resp = req.createResponse(null,err)
+                hc.sendResponse(resp)
+            })
             break;
         default:
             let found = false
@@ -119,29 +130,32 @@ export function  handleInvokeAction(
             //  currently propertyIDs are also accepted.
             // FIXME: only allow defined actions
             // FIXME: convert actionValue to expected type
-            let propVid = getPropVid(msg.name)
+            let propVid = getPropVid(req.name)
             if (propVid) {
+                status = StatusRunning
                 setValue(node, propVid, actionValue)
-                    .then(stat => {
-                        stat.requestID = msg.requestID
-                        // async update
-                        hc.pubProgressUpdate(stat)
+                    .then(progress => {
                         let newValue = getVidValue(node, propVid)
+                        resp = req.createResponse(newValue)
+                        resp.status = progress
+                        hc.sendResponse(newValue)
                         zwapi.onValueUpdate(node, propVid, newValue)
                     })
                     .catch(err => {
-                        errMsg = err.toString()
+                        resp = req.createResponse(null,err)
+                        hc.sendResponse(resp)
                     })
                 found = true
                 break;
             }
             if (!found) {
-                errMsg = "action '" + msg.name + "' is not a known action for thing '" + msg.thingID + "'"
+                err = new Error("action '" + req.name + "' is not a known action for thing '" +
+                    req.thingID + "'")
             }
     }
-    if (errMsg) {
-        stat.error = errMsg
-        log.error(errMsg)
+    let resp = req.createResponse(output,err)
+    if (err) {
+        log.error(err)
     }
-    return stat
+    return resp
 }

@@ -89,7 +89,7 @@ type IServerConnection interface {
 	// SendRequest sends a request (action, write property) to the connecting agent.
 	//
 	// A ResponseMessage MUST be sent by the client when the request is handled,
-	// including the provided requestID.
+	// including the provided correlationID.
 	//
 	// msg contains the request information
 	// This returns an error if the agent isn't reachable

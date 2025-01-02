@@ -1,4 +1,4 @@
-import {IAgentClient} from "@hivelib/hubclient/IAgentClient";
+import {IAgentConnection} from "@hivelib/hubclient/IAgentConnection";
 import {ActionStatus} from "@hivelib/hubclient/ActionStatus";
 
 // duplicated from stateapi.go
@@ -13,10 +13,10 @@ const SetMultipleMethod = "setMultiple"
 
 // Marshaller for invoke state service method using the given hub client
 export class StateClient {
-    hc: IAgentClient
+    hc: IAgentConnection
     serviceID: string // digitwin ID of the state service
 
-    constructor(hc: IAgentClient) {
+    constructor(hc: IAgentConnection) {
         this.hc = hc
         // this.serviceID = makeDigiTwinThingID(AgentID, StateStoreID)
         this.serviceID = "dtw:"+AgentID+":"+ StateStoreID

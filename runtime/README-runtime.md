@@ -72,12 +72,12 @@ Todo phase 1 - refactor digital twin design
 8a. How to track the action progress?
    stages: pending, delivered, completed, aborted, failed
    * digitwin starts with pending, upgrades to delivered when request is passed to agent; agent sends progress update message completed, failed, or in-progress.
-   * use 'requestID' to link progress update messages with the action
+   * use 'correlationID' to link progress update messages with the action
    * this requires a ActionStatus message type - non standard?
      * protocol binding detail?
 8b. How to track property write progress?
    * not at the moment. consumer watches for property updates
-      pro: no need for requestID 
+      pro: no need for correlationID 
       con: exposed thing must define a property for every (unsafe) action
 
 9. How to integrate agents with the Hub

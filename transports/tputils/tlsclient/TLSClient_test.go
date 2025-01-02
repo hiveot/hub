@@ -225,8 +225,8 @@ func TestAuthJWT(t *testing.T) {
 		require.NoError(t, err)
 		err = json.Unmarshal(body, &authMsg)
 
-		// expect a requestID
-		//msgID := req.Header.Get(tlsclient.HTTPRequestIDHeader)
+		// expect a correlationID
+		//msgID := req.Header.Get(tlsclient.HTTPCorrelationIDHeader)
 		assert.NoError(t, err)
 		assert.Equal(t, user1, authMsg.ClientID)
 		assert.Equal(t, password1, authMsg.Password)
@@ -243,7 +243,7 @@ func TestAuthJWT(t *testing.T) {
 			token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 			newToken, err := token.SignedString(secret)
 			assert.NoError(t, err)
-			//resp.Header().Set(tlsclient.HTTPRequestIDHeader, msgID)
+			//resp.Header().Set(tlsclient.HTTPCorrelationIDHeader, msgID)
 			data, _ := json.Marshal(newToken)
 			_, _ = resp.Write(data)
 		} else {

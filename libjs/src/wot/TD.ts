@@ -106,6 +106,16 @@ export class PropertyAffordance extends DataSchema {
 }
 
 
+// Form that describes an operation on a thing
+export class TDForm {
+    public operation: string = ""
+    public href: string = ""
+    public subprotocol : string|undefined
+
+    // return the href in this form
+    getHRef() {return this.href}
+}
+
 /** Thing description document
  */
 export class TD extends Object {
@@ -152,6 +162,7 @@ export class TD extends Object {
     /** Human-readable title for ui representation */
     public title: string = "";
 
+    public forms: TDForm[]|undefined
 
     /**
      * Collection of properties of a thing

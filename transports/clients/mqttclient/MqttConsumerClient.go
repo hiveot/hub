@@ -212,7 +212,7 @@ func (cl *MqttConsumerClient) GetServerURL() string {
 //		cl.handlePongMessage(rxMsg)
 //	default:
 //		// response to a read operation or notification of property or events
-//		// no requestID means this is just a notification without a response expected
+//		// no correlationID means this is just a notification without a response expected
 //		cl.handleNotificationMessage(rxMsg)
 //	}
 //}
@@ -241,21 +241,21 @@ func (cl *MqttConsumerClient) handlePahoMessage(m *paho.Publish) {
 
 	// run this in the background to allow for reentrancy
 	go func() {
-		requestID := ""
+		correlationID := ""
 		if m.Properties.CorrelationData != nil {
-			requestID = string(m.Properties.CorrelationData)
+			correlationID = string(m.Properties.CorrelationData)
 		}
 
 		// handle the response to a request from this consumer
 		// responses have topic starting with the inbox prefix
-		if strings.HasPrefix(m.Topic, INBOX_PREFIX) && requestID != "" {
+		if strings.HasPrefix(m.Topic, INBOX_PREFIX) && correlationID != "" {
 			resp := transports.ResponseMessage{}
 			// mqtt payload are straight hiveot messages (for now)
 			err := cl.Unmarshal(m.Payload, &resp)
 			if err != nil {
 				slog.Warn("handlePahoMessage. Payload unmarshal failed",
 					"topic", m.Topic,
-					"requestID", requestID)
+					"correlationID", correlationID)
 			} else {
 				cl.OnResponse(resp)
 			}
@@ -263,7 +263,7 @@ func (cl *MqttConsumerClient) handlePahoMessage(m *paho.Publish) {
 		}
 		// handle request message from consumer (move to agent)
 		replyTo := m.Properties.ResponseTopic
-		if replyTo != "" && requestID != "" {
+		if replyTo != "" && correlationID != "" {
 			if cl.agentRequestHandler == nil {
 				slog.Error("handlePahoMessage: received request but this is a consumer")
 			} else {
@@ -278,7 +278,7 @@ func (cl *MqttConsumerClient) handlePahoMessage(m *paho.Publish) {
 		if err != nil {
 			slog.Warn("handlePahoMessage. Notification unmarshal failed",
 				"topic", m.Topic,
-				"requestID", requestID)
+				"correlationID", correlationID)
 		} else {
 			cl.OnNotification(notif)
 		}
@@ -479,7 +479,7 @@ func (cl *MqttConsumerClient) RefreshToken(oldToken string) (newToken string, er
 }
 
 // Send a request message to a topic
-func (cl *MqttConsumerClient) _send(topic string, msg any, requestID string) error {
+func (cl *MqttConsumerClient) _send(topic string, msg any, correlationID string) error {
 
 	slog.Info("_send", slog.String("topic", topic))
 
@@ -491,7 +491,7 @@ func (cl *MqttConsumerClient) _send(topic string, msg any, requestID string) err
 		Topic:   topic,
 		Payload: payload,
 		Properties: &paho.PublishProperties{
-			CorrelationData: []byte(requestID),
+			CorrelationData: []byte(correlationID),
 			ResponseTopic:   cl.inboxTopic,
 			ContentType:     "json",
 			User: paho.UserProperties{{
@@ -555,7 +555,7 @@ func (cl *MqttConsumerClient) UnsubscribeFromTopic(topic string) {
 //
 //// SendResponse [agent] sends a operation response to the server.
 //// (todo)
-//func (cl *MqttTransportClient) SendResponse(requestID string, data any) {
+//func (cl *MqttTransportClient) SendResponse(correlationID string, data any) {
 //	topic := ""
 //	payload, _ := jsoniter.Marshal(data)
 //	cl._send(topic, payload)

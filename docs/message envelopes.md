@@ -24,7 +24,7 @@ Standardize these fields:
    * data: containing the message payload as per interaction affordance dataschema. [required]
    * name: name of the TD interaction affordance that describes the data format. [required]
      * How to differentiate between property, event, and action?
-   * requestID: ID of the message for tracking progress. [optional] 
+   * correlationID: ID of the message for tracking progress. [optional] 
    * timestamp: time the message was created. Useful if the message delivery is delayed for devices that are asleep and handle message expiry. [optional]
    * expires: time the message expires. Useful for delayed delivery of short lived messages. [optional]
    * reply-to: Sender ID of the message sender. Intended for routing result messages directly to the sender instead of broadcasting. Similar to the inbox in MQTT-5. [optional]

@@ -418,7 +418,7 @@ func (svc *DigitwinStore) NewActionStart(req transports.RequestMessage) (stored 
 	actionStatus.Input = req.Input
 	actionStatus.Status = transports.StatusPending
 	actionStatus.TimeRequested = req.Created
-	actionStatus.RequestID = req.RequestID
+	actionStatus.CorrelationID = req.CorrelationID
 	dtw.ActionStatuses[req.Name] = actionStatus
 	svc.changedThings[req.ThingID] = true
 
@@ -537,7 +537,7 @@ func (svc *DigitwinStore) UpdatePropertyValue(newValue digitwin.ThingValue) (
 // agentID is the ID of the agent sending the update.
 // dThingID is the ID of the digital twin.
 // propMap map of property name-value pairs
-// requestID provided by the agent, in response to an action or write
+// correlationID provided by the agent, in response to an action or write
 //
 // This returns a map with changed property values.
 func (svc *DigitwinStore) UpdateProperties(dThingID string, created string, propMap map[string]any) (

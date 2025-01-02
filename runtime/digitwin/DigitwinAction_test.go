@@ -21,7 +21,7 @@ func TestActionFlow(t *testing.T) {
 	const consumerID = "user1"
 	const actionName = "action1"
 	const actionValue = 25
-	const requestID = "req-1"
+	const correlationID = "req-1"
 	dThingID := td.MakeDigiTwinThingID(agentID, thingID)
 
 	svc, dtwStore, stopFunc := startService(true)
@@ -37,7 +37,7 @@ func TestActionFlow(t *testing.T) {
 
 	// update the action
 	req := transports.NewRequestMessage(
-		wot.OpInvokeAction, dThingID, actionName, actionValue, requestID)
+		wot.OpInvokeAction, dThingID, actionName, actionValue, correlationID)
 	stored, err := dtwStore.NewActionStart(req)
 	require.NoError(t, err)
 	require.True(t, stored)
@@ -49,14 +49,14 @@ func TestActionFlow(t *testing.T) {
 	require.NoError(t, err)
 	inputVal := tputils.DecodeAsInt(as.Input)
 	require.Equal(t, actionValue, inputVal)
-	require.Equal(t, requestID, as.RequestID)
+	require.Equal(t, correlationID, as.CorrelationID)
 
 	// complete the action
 	resp := transports.NewResponseMessage(
-		wot.OpInvokeAction, dThingID, actionName, actionValue, nil, requestID)
+		wot.OpInvokeAction, dThingID, actionName, actionValue, nil, correlationID)
 	as, err = dtwStore.UpdateActionStatus(agentID, resp)
 	require.NoError(t, err)
-	require.Equal(t, requestID, as.RequestID)
+	require.Equal(t, correlationID, as.CorrelationID)
 
 	// read action status
 	as, err = svc.ValuesSvc.QueryAction(consumerID, digitwin.ValuesQueryActionArgs{
@@ -109,7 +109,7 @@ func TestInvokeActionErrors(t *testing.T) {
 	const consumerID = "user1"
 	const actionName = "action1"
 	const actionValue = 25
-	const requestID = "request-1"
+	const correlationID = "request-1"
 	dThingID := td.MakeDigiTwinThingID(agentID, thingID)
 
 	svc, dtwStore, stopFunc := startService(true)
@@ -125,7 +125,7 @@ func TestInvokeActionErrors(t *testing.T) {
 
 	// invoke the action with the wrong thing
 	req := transports.NewRequestMessage(
-		wot.OpInvokeAction, "badThingID", actionName, actionValue, requestID)
+		wot.OpInvokeAction, "badThingID", actionName, actionValue, correlationID)
 	stored, err := dtwStore.NewActionStart(req)
 
 	// unknown thingIDs are still allowed for now.
@@ -134,7 +134,7 @@ func TestInvokeActionErrors(t *testing.T) {
 
 	// invoke the action with the wrong name
 	req = transports.NewRequestMessage(
-		wot.OpInvokeAction, dThingID, "badName", actionValue, requestID)
+		wot.OpInvokeAction, dThingID, "badName", actionValue, correlationID)
 	stored, err = dtwStore.NewActionStart(req)
 	// same as above
 	assert.NoError(t, err)
@@ -142,7 +142,7 @@ func TestInvokeActionErrors(t *testing.T) {
 
 	// complete the action on wrong thing
 	resp := transports.NewResponseMessage(
-		wot.OpInvokeAction, "badThingID", actionName, actionValue, nil, requestID)
+		wot.OpInvokeAction, "badThingID", actionName, actionValue, nil, correlationID)
 	resp.Status = transports.StatusPending
 	_, err = dtwStore.UpdateActionStatus(agentID, resp)
 	assert.Error(t, err)
@@ -161,7 +161,7 @@ func TestDigitwinAgentAction(t *testing.T) {
 	const consumerID = "user1"
 	const actionName = "action1"
 	const actionValue = 25
-	const requestID = "request-1"
+	const correlationID = "request-1"
 
 	dThingID := td.MakeDigiTwinThingID(agentID, thingID)
 
@@ -185,7 +185,7 @@ func TestDigitwinAgentAction(t *testing.T) {
 	ag := service.NewDigitwinAgent(svc)
 	req := transports.NewRequestMessage(vocab.OpInvokeAction,
 		digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, dThingID, consumerID)
-	req.RequestID = requestID
+	req.CorrelationID = correlationID
 	resp := ag.HandleRequest(req)
 	require.Empty(t, resp.Error)
 	require.NotEmpty(t, resp.Output)
@@ -193,21 +193,21 @@ func TestDigitwinAgentAction(t *testing.T) {
 	// a non-existing TD should fail
 	req = transports.NewRequestMessage(vocab.OpInvokeAction,
 		digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, "badid", consumerID)
-	req.RequestID = requestID
+	req.CorrelationID = correlationID
 	resp = ag.HandleRequest(req)
 	require.NotEmpty(t, resp.Error)
 
 	// a non-existing method name should fail
 	req = transports.NewRequestMessage(vocab.OpInvokeAction,
 		digitwin.DirectoryDThingID, "badMethod", dThingID, consumerID)
-	req.RequestID = requestID
+	req.CorrelationID = correlationID
 	resp = ag.HandleRequest(req)
 	require.NotEmpty(t, resp.Error)
 
 	// a non-existing serviceID should fail
 	req = transports.NewRequestMessage(vocab.OpInvokeAction,
 		"badservicename", digitwin.DirectoryReadTDMethod, dThingID, consumerID)
-	req.RequestID = requestID
+	req.CorrelationID = correlationID
 	resp = ag.HandleRequest(req)
 	require.NotEmpty(t, resp.Error)
 

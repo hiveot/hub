@@ -1,12 +1,11 @@
 // ZWaveJSBinding.ts holds the entry point to the zwave binding along with its configuration
-import {SetValueStatus, TranslatedValueID, ValueMetadataNumeric, ZWaveNode} from "zwave-js";
+import {ZWaveNode} from "zwave-js";
 import {getPropVid} from "./getPropName";
-import {ThingMessage} from "@hivelib/things/ThingMessage";
 import * as tslog from 'tslog';
-import {IAgentClient} from "@hivelib/hubclient/IAgentClient";
+import {IAgentConnection} from "@hivelib/transports/IAgentConnection";
 import {getEnumFromMemberName, getVidValue,  ZWAPI} from "@zwavejs/ZWAPI";
 import {setValue} from "@zwavejs/setValue";
-import {ActionStatus} from "@hivelib/hubclient/ActionStatus";
+import {RequestMessage, ResponseMessage} from "@hivelib/transports/Messages";
 
 const log = new tslog.Logger()
 
@@ -15,14 +14,12 @@ const log = new tslog.Logger()
 // handle configuration write request as defined in the TD
 // @param msg is the incoming message with the 'key' containing the property to set
 export function handleWriteProperty(
-    msg: ThingMessage, node: ZWaveNode, zwapi: ZWAPI, hc: IAgentClient):  ActionStatus {
-    let stat = new ActionStatus()
-    let errMsg: Error | undefined
+    req: RequestMessage, node: ZWaveNode, zwapi: ZWAPI, hc: IAgentConnection):  ResponseMessage {
 
-    let propKey = msg.name
-    let propValue = msg.data
+    let err: Error | undefined
 
-    stat.delivered(msg)
+    let propKey = req.name
+    let propValue = req.input
 
     log.info("handleConfigRequest: node '" + node.nodeId + "' setting prop '" + propKey + "' to value: " + propValue)
 
@@ -32,40 +29,40 @@ export function handleWriteProperty(
     // only option for now is to set the node name/location locally.
     let propVid = getPropVid(propKey)
     if (!propVid) {
-        errMsg = new Error("failed: unknown config: " + propKey)
+        err = new Error("failed: unknown config: " + propKey)
     } else if (propVid?.commandClass == 119 && propVid.property == "name") {
         // note that this title change requires the TD to be republished so it shows up.
         node.name = propValue
-        stat.completed(msg)
         // this also changes the title of the TD, so resend the TD
         zwapi.onNodeUpdate(node)
     } else if (propVid?.commandClass == 119 && propVid.property == "location") {
         // TODO: use CC to set location as per doc. Doc doesn't say how though.
         node.location = propValue
-        stat.completed(msg)
         // zwapi.onValueUpdate(node, propKey, node.location)
     } else {
         // convert the value if this is an enum
+        // async update
         setValue(node, propVid, propValue)
-            .then(stat => {
-                stat.requestID = msg.requestID
-                // notify the sender of the update (with requestID)
-                hc.pubProgressUpdate(stat)
-                // notify everyone else (no requestID)
+            .then(progress => {
                 let newValue = getVidValue(node, propVid)
+
+                let resp = req.createResponse(newValue)
+                resp.status=progress
+                // notify the sender of the update (with correlationID)
+                hc.sendResponse(resp)
+                // notify everyone else (no correlationID)
                 // zwapi.onValueUpdate(node, propValue, newValue)
                 zwapi.onValueUpdate(node, propVid, newValue)
-
-                // TODO: intercept the value update and send it as a status update
+            })
+            .catch(reqerr=>{
+                err = new Error(reqerr)
             })
     }
 
-
     // delivery completed with error
-    if (errMsg) {
-        log.error(errMsg)
-        stat.completed(msg, undefined, errMsg)
+    if (err) {
+        log.error(err)
     }
-    return stat
+    return req.createResponse(null,err)
 }
 

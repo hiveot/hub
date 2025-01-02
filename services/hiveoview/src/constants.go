@@ -26,7 +26,7 @@ const (
 
 	// action paths
 	RenderActionRequestPath     = "/action/{thingID}/{name}/request"
-	RenderActionStatusPath      = "/status/action/{requestID}"
+	RenderActionStatusPath      = "/status/action/{correlationID}"
 	RenderThingPropertyEditPath = "/property/{thingID}/{name}/edit"
 	PostActionRequestPath       = "/action/{thingID}/{name}"
 	PostThingPropertyEditPath   = "/property/{thingID}/{name}"

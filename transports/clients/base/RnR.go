@@ -13,14 +13,14 @@ import (
 //
 // Usage:
 //  1. create a request ID: shortid.MustGenerate()
-//  2. register the request ID: c := Open(requestID)
-//  3. Send the request message in the client, passing the requestID
+//  2. register the request ID: c := Open(correlationID)
+//  3. Send the request message in the client, passing the correlationID
 //  4. Wait for a response: completed, data := WaitForResponse(c, timeout)
-//  5. Handle response message (in client callback): HandleResponse(requestID,data)
+//  5. Handle response message (in client callback): HandleResponse(correlationID,data)
 type RnRChan struct {
 	mux sync.RWMutex
 
-	// map of requestID to delivery status update channel
+	// map of correlationID to delivery status update channel
 	correlData map[string]chan transports.ResponseMessage
 
 	//timeout write to a response channel
@@ -28,12 +28,12 @@ type RnRChan struct {
 }
 
 // Close removes the request channel
-func (rnr *RnRChan) Close(requestID string) {
+func (rnr *RnRChan) Close(correlationID string) {
 	rnr.mux.Lock()
 	defer rnr.mux.Unlock()
-	rChan, found := rnr.correlData[requestID]
+	rChan, found := rnr.correlData[correlationID]
 	if found {
-		delete(rnr.correlData, requestID)
+		delete(rnr.correlData, correlationID)
 		close(rChan)
 	}
 }
@@ -51,12 +51,12 @@ func (rnr *RnRChan) CloseAll() {
 
 // HandleResponse writes a reply to the request channel.
 //
-// This returns true on success or false if requestID is unknown (no-one is waiting)
+// This returns true on success or false if correlationID is unknown (no-one is waiting)
 //
 // If a timeout passes while writing is block the write is released.
 func (rnr *RnRChan) HandleResponse(msg transports.ResponseMessage) bool {
 	rnr.mux.Lock()
-	rChan, isRPC := rnr.correlData[msg.RequestID]
+	rChan, isRPC := rnr.correlData[msg.CorrelationID]
 	rnr.mux.Unlock()
 	if isRPC {
 		ctx, cancelFn := context.WithTimeout(context.Background(), rnr.writeTimeout)
@@ -83,11 +83,11 @@ func (rnr *RnRChan) Len() int {
 //
 // This returns a reply channel on which the data is received. Use
 // WaitForResponse(rChan)
-func (rnr *RnRChan) Open(requestID string) chan transports.ResponseMessage {
+func (rnr *RnRChan) Open(correlationID string) chan transports.ResponseMessage {
 	// todo: is there a use-case for a buffer?
 	rChan := make(chan transports.ResponseMessage)
 	rnr.mux.Lock()
-	rnr.correlData[requestID] = rChan
+	rnr.correlData[correlationID] = rChan
 	rnr.mux.Unlock()
 	return rChan
 }

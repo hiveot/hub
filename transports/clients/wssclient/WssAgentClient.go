@@ -79,11 +79,11 @@ func (cl *WssAgentTransport) wssToRequest(
 	isRequest = true
 
 	msgType := baseMsg.MessageType
-	requestID := baseMsg.RequestID
+	correlationID := baseMsg.CorrelationID
 	slog.Info("WssClientHandleMessage",
 		slog.String("clientID", cl.GetClientID()),
 		slog.String("msgType", msgType),
-		slog.String("requestID", requestID),
+		slog.String("correlationID", correlationID),
 	)
 	operation, _ := wssserver.MsgTypeToOp[baseMsg.MessageType]
 
@@ -96,7 +96,7 @@ func (cl *WssAgentTransport) wssToRequest(
 		wssMsg := wssserver.ActionMessage{}
 		err = cl.Unmarshal(raw, &wssMsg)
 		req = transports.NewRequestMessage(
-			wot.OpInvokeAction, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, wssMsg.RequestID)
+			wot.OpInvokeAction, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, wssMsg.CorrelationID)
 		req.Created = wssMsg.Timestamp
 
 	// agent receivess read event or property requests
@@ -108,14 +108,14 @@ func (cl *WssAgentTransport) wssToRequest(
 		wssMsg := wssserver.EventMessage{}
 		err = cl.Unmarshal(raw, &wssMsg)
 		req = transports.NewRequestMessage(
-			operation, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, wssMsg.RequestID)
+			operation, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, wssMsg.CorrelationID)
 		req.Created = wssMsg.Timestamp
 
 	case wssserver.MsgTypeWriteProperty, wssserver.MsgTypeWriteMultipleProperties:
 		wssMsg := wssserver.EventMessage{}
 		err = cl.Unmarshal(raw, &wssMsg)
 		req = transports.NewRequestMessage(
-			operation, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, wssMsg.RequestID)
+			operation, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, wssMsg.CorrelationID)
 		req.Created = wssMsg.Timestamp
 
 	default:
@@ -145,14 +145,14 @@ func (cl *WssAgentTransport) HandleAgentMessage(baseMsg wssserver.BaseMessage, r
 		slog.Info("HandleAgentMessage: not a request. Ignored",
 			slog.String("clientID", cl.GetClientID()),
 			slog.String("msgType", baseMsg.MessageType),
-			slog.String("requestID", baseMsg.RequestID),
+			slog.String("correlationID", baseMsg.CorrelationID),
 		)
 		return
 	}
 	slog.Info("HandleAgentMessage",
 		slog.String("clientID", cl.GetClientID()),
 		slog.String("msgType", baseMsg.MessageType),
-		slog.String("requestID", baseMsg.RequestID),
+		slog.String("correlationID", baseMsg.CorrelationID),
 	)
 
 	resp := cl.AppRequestHandler(req)
@@ -211,7 +211,7 @@ func (cl *WssAgentTransport) SendResponse(resp transports.ResponseMessage) (err 
 		slog.String("agentID", cl.BaseClientID),
 		slog.String("thingID", resp.ThingID),
 		slog.String("name", resp.Name),
-		slog.String("requestID", resp.RequestID))
+		slog.String("correlationID", resp.CorrelationID))
 
 	// convert the operation into a websocket message
 	if resp.Error == "" {
@@ -220,14 +220,14 @@ func (cl *WssAgentTransport) SendResponse(resp transports.ResponseMessage) (err 
 			"", cl.GetClientID())
 	} else {
 		wssMsg = wssserver.ErrorMessage{
-			ThingID:     resp.ThingID,
-			Name:        resp.Name,
-			MessageType: wssserver.MsgTypeError,
-			Title:       resp.Error,
-			Detail:      fmt.Sprintf("%v", resp.Output),
-			Status:      transports.StatusFailed,
-			RequestID:   resp.RequestID,
-			Timestamp:   resp.Updated,
+			ThingID:       resp.ThingID,
+			Name:          resp.Name,
+			MessageType:   wssserver.MsgTypeError,
+			Title:         resp.Error,
+			Detail:        fmt.Sprintf("%v", resp.Output),
+			Status:        transports.StatusFailed,
+			CorrelationID: resp.CorrelationID,
+			Timestamp:     resp.Updated,
 		}
 	}
 	err = cl._send(wssMsg)

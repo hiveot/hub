@@ -10,14 +10,14 @@ import {
     ZWavePlusRoleType
 } from "zwave-js";
 import {CommandClasses, InterviewStage} from '@zwave-js/core';
-import {ActionAffordance, EventAffordance, PropertyAffordance, TD} from "@hivelib/things/TD";
+import {ActionAffordance, EventAffordance, PropertyAffordance, TD} from "@hivelib/wot/TD";
 import * as vocab from "@hivelib/api/vocab/vocab";
 import type {ZWAPI} from "./ZWAPI";
 import {logVid} from "./logVid";
 import {getPropName} from "./getPropName";
 import {getVidAffordance, VidAffordance} from "./getVidAffordance";
 import {getDeviceType} from "./getDeviceType";
-import {DataSchema} from "@hivelib/things/dataSchema";
+import {DataSchema} from "@hivelib/wot/dataSchema";
 import {
     WoTDataTypeAnyURI,
     WoTDataTypeArray,

@@ -1,72 +1,83 @@
-import {TD} from '../../things/TD.js';
+import {TD, TDForm} from '../../wot/TD.js';
 import {
-    IAgentClient,
-} from "../IAgentClient.js";
+    IAgentConnection,
+} from "../IAgentConnection.js";
 import type {IHiveKey} from "@keys/IHiveKey";
 import * as tslog from 'tslog';
 import {
-     HTOpUpdateActionStatus,
-    OpInvokeAction, HTOpPublishEvent, HTOpUpdateProperty,
+    OpInvokeAction,
+    HTOpPublishEvent,
+    HTOpUpdateProperty,
+    OpWriteProperty,
+    HTOpUpdateProperties,
+    OpSubscribeEvent,
+    OpSubscribeAllEvents, OpUnsubscribeAllEvents, OpUnsubscribeEvent,
 } from "@hivelib/api/vocab/vocab.js";
 import * as http2 from "node:http2";
-import {connectSSE} from "@hivelib/hubclient/httpclient/connectSSE";
-import {ThingMessage} from "@hivelib/things/ThingMessage";
-import * as https from "node:https";
-import {ActionStatus} from "@hivelib/hubclient/ActionStatus";
+import {connectSSE} from "@hivelib/transports/httpclient/connectSSE";
 import {
-    ActionHandler,
-    ConnectionStatus,
-    EventHandler,
-    ProgressHandler,
-    PropertyHandler
-} from "@hivelib/hubclient/IConsumerClient";
+    RequestHandler,
+    ConnectionHandler,
+    NotificationHandler,
+    ResponseHandler, ConnectionStatus
+} from "@hivelib/transports/IConsumerConnection";
 import {nanoid} from "nanoid";
 import EventSource from "eventsource";
+import {NotificationMessage, RequestMessage, ResponseMessage} from "@hivelib/transports/Messages";
 
 // FIXME: import from vocab is not working
 const RequestCompleted = "completed"
 const RequestFailed = "failed"
 
 
-// Form paths that apply to all TDs at the top level
-// SYNC with HttpSSEClient.go
-// These are intended for use by agents - use forms instead
+// HTTP protocol and subprotocol constants
+// These should eventually be phased out in favor of forms, where possible.
+
+// Keep this in sync with transports/servers/httpserver/HttpRouter.go
 //
 // FIXME: THESE WILL BE REMOVED WHEN SWITCHING TO FORMS
-//
-const ConnectSSEPath      = "/ssesc"
-const PostSubscribeEventPath   = "/ssesc/digitwin/subscribe/{thingID}/{name}"
-const PostUnsubscribeEventPath = "/ssesc/digitwin/unsubscribe/{thingID}/{name}"
 
-// paths for accessing TDD directory
-// const GetThingPath= "/digitwin/directory/{thingID}"
-// const GetAllThingsPath= "/digitwin/directory" // query param offset=, limit=
-// const PostThingPath    = "/agent/tdd/{thingID}"
 
-// paths for accessing actions
-const PostInvokeActionPath   = "/digitwin/actions/{thingID}/{name}"
 
-// paths for use by agents - TODO: agents should use forms from the digitwin agent TD
-const PostAgentPublishEventPath    = "/agent/event/{thingID}/{name}"
-const PostAgentPublishProgressPath  = "/agent/progress"
-const PostAgentUpdatePropertyPath   = "/agent/property/{thingID}/{name}"
-const PostAgentUpdateMultiplePropertiesPath = "/agent/properties/{thingID}"
-const PostAgentUpdateTDDPath                = "/agent/tdd/{thingID}"
+// HTTP protoocol constants
+// StatusHeader contains the result of the request, eg Pending, Completed or Failed
+const StatusHeader = "status"
+// CorrelationIDHeader for transports that support headers can include a message-ID
+const CorrelationIDHeader = "correlation-id"
+// ConnectionIDHeader identifies the client's connection in case of multiple
+// connections from the same client.
+const ConnectionIDHeader = "cid"
+// DataSchemaHeader to indicate which  'additionalresults' dataschema being returned.
+const DataSchemaHeader = "dataschema"
 
-// paths for accessing properties - TODO: MUST USE FORMS
-const PostWritePropertyPath = "/digitwin/properties/{thingID}/{name}"
 
-// authn service - used in authn
-const PostLoginPath   = "/authn/login"
-const PostLogoutPath  = "/authn/logout"
-const PostRefreshPath = "/authn/refresh"
+// HTTP Paths for auth.
+// THIS WILL BE REMOVED AFTER THE PROTOCOL BINDING PUBLISHES THESE IN THE TDD.
+// The hub client will need the TD (ConsumedThing) to determine the paths.
+const HttpPostLoginPath   = "/authn/login"
+const HttpPostLogoutPath  = "/authn/logout"
+const HttpPostRefreshPath = "/authn/refresh"
+const HttpGetDigitwinPath = "/digitwin/{operation}/{thingID}/{name}"
+
+// paths for HTTP subprotocols
+const DefaultWSSPath   = "/wss"
+const DefaultSSEPath   = "/sse"
+const DefaultSSESCPath = "/ssesc"
+
+// Generic form href that maps to all operations for the http client, using URI variables
+// Generic HiveOT HTTP urls when Forms are not available. The payload is a
+// corresponding standardized message.
+const HiveOTPostNotificationHRef = "/hiveot/notification"
+const HiveOTPostRequestHRef      = "/hiveot/request"
+const HiveOTPostResponseHRef     = "/hiveot/response"
+
 
 
 const hclog = new tslog.Logger()
 
 // HubClient implements the javascript client for connecting to the hub
-// using HTTPS and SSE for the return channel.
-export class HttpSSEClient implements IAgentClient {
+// using HTTPS and SSE-SC for the return channel.
+export class HttpSSEClient implements IAgentConnection {
     _clientID: string;
     _baseURL: string;
     _caCertPem: string;
@@ -82,18 +93,19 @@ export class HttpSSEClient implements IAgentClient {
     authToken: string;
 
     // client handler for connection status change
-    connectHandler: ((status: ConnectionStatus) => void) | null = null
-    // action handler for incoming messages from the hub.
-    actionHandler: ActionHandler | null = null;
-    // event handler
-    eventHandler: EventHandler | null = null;
-    // property write request (as agent) or property update (as consumer) handler
-    propertyHandler: PropertyHandler | null = null;
-    // progress handler receiving progress updates from agents
-    progressHandler: ProgressHandler | null = null;
+    connectHandler?: (status: ConnectionStatus) => void;
+    // notification handler for handling event and property update notifications
+    notificationHandler?: NotificationHandler;
+    // request handler (agents only) for received action and property write requests.
+    requestHandler?: RequestHandler;
+    // response handler for receiving responses to non-rpc requests
+    responseHandler?: ResponseHandler;
 
-    // map of requestID to delivery status update channel
-    _correlData: Map<string,(stat: ActionStatus)=>void>
+    // the provider of forms for an operation
+    getForm?: (op: string) => TDForm;
+
+    // map of correlationID to response handlers update channel
+    _correlData: Map<string,(resp: ResponseMessage)=>void>
 
     // Instantiate the Hub Client.
     //
@@ -109,7 +121,7 @@ export class HttpSSEClient implements IAgentClient {
         this._caCertPem = caCertPem;
         this._clientID = clientID;
         this._disableCertCheck = disableCertCheck;
-        this._ssePath = ConnectSSEPath;
+        this._ssePath = DefaultSSESCPath;
         this.connStatus = ConnectionStatus.Disconnected;
         this.authToken = "";
         this._correlData = new Map();
@@ -172,21 +184,18 @@ export class HttpSSEClient implements IAgentClient {
         await this.connect()
         // invoke a login request
         let loginArgs = {
-            "clientID": this._clientID,
+            "login": this._clientID,
             "password": password,
         }
-        let loginResp = {
-            sessionID: "",
-            token: ""
-        }
-        let resp = await this.pubMessage("POST", PostLoginPath,"", loginArgs)
-        loginResp = JSON.parse(resp)
+        let resp = await this.pubMessage("POST", HttpPostLoginPath,loginArgs,"")
+        let loginResp = JSON.parse(resp)
         this.authToken = loginResp.token
         // with the new auth token a SSE return channel can be established
         this._sseClient = await connectSSE(
             this._baseURL, this._ssePath, this.authToken, this._cid,
-            this.onMessage.bind(this),
-            this.onProgress.bind(this),
+            this.onNotification.bind(this),
+            this.onRequest.bind(this),
+            this.onResponse.bind(this),
             this.onConnection.bind(this))
 
         return loginResp.token
@@ -199,16 +208,13 @@ export class HttpSSEClient implements IAgentClient {
         await this.connect()
         this._sseClient = await connectSSE(
             this._baseURL, this._ssePath, this.authToken, this._cid,
-            this.onMessage.bind(this),
-            this.onProgress.bind(this),
-            this.onConnection.bind(this) )
+            this.onNotification.bind(this),
+            this.onRequest.bind(this),
+            this.onResponse.bind(this),
+            this.onConnection.bind(this))
         return ""
     }
 
-    createKeyPair(): IHiveKey | undefined {
-        // FIXME:todo
-        return
-    }
 
     // disconnect if connected
     async disconnect() {
@@ -239,35 +245,47 @@ export class HttpSSEClient implements IAgentClient {
             // todo: retry connecting
         }
     }
-    onProgress(stat:ActionStatus):void{
-        let cb = this._correlData.get(stat.requestID)
-        if (cb) {
-            cb(stat)
-        } else if (this.progressHandler ) {
-            this.progressHandler(stat)
+
+    // Handle incoming event or property notifications and pass them to the handler
+    onNotification(msg: NotificationMessage): void {
+        try {
+            if (this.notificationHandler) {
+                this.notificationHandler(msg)
+            } else {
+                hclog.warn(`onNotification: received notification but no handler registered: ${msg.operation}`)
+            }
+        } catch (e) {
+            let errText = `Error handling hub notification sender=${msg.senderID}, messageType=${msg.operation}, thingID=${msg.thingID}, name=${msg.name}, error=${e}`
+            hclog.warn(errText)
         }
     }
 
-    // Handle incoming event or property messages from the hub and pass them to handler
-    onMessage(msg: NotificationMessage): void {
+    // Handle incoming request (as an agent) and pass them to the registered handler
+    onRequest(req: RequestMessage):  ResponseMessage {
+        let resp: ResponseMessage
         try {
-            if (msg.operation == OpInvokeAction && this.actionHandler) {
-                this.actionHandler(msg)
-            } else if (msg.operation == HTOpPublishEvent && this.eventHandler) {
-                this.eventHandler(msg)
-            } else if (msg.operation == HTOpUpdateProperty && this.propertyHandler) {
-                 this.propertyHandler(msg)
+            if (this.requestHandler) {
+                resp = this.requestHandler(req)
             } else {
-                hclog.warn(`onMessage unknown message type: ${msg.operation}`)
+                let err = Error(`onRequest: received request but no handler registered: ${req.operation}`)
+                hclog.warn(err)
+                resp = req.createResponse(null, err)
             }
         } catch (e) {
-            let errText = `Error handling hub message sender=${msg.senderID}, messageType=${msg.operation}, thingID=${msg.thingID}, name=${msg.name}, error=${e}`
-            hclog.warn(errText)
-            if (msg.operation == OpInvokeAction) {
-                let stat = new ActionStatus()
-                stat.failed(msg, errText)
-                this.pubProgressUpdate(stat)
-            }
+            let err = Error(`Error handling request sender=${req.senderID}, messageType=${req.operation}, thingID=${req.thingID}, name=${req.name}, error=${e}`)
+            hclog.warn(err)
+            resp = req.createResponse(null,err)
+        }
+        return resp
+    }
+
+    // Handle response to previous sent request
+    onResponse(resp:ResponseMessage):void{
+        let cb = this._correlData.get(resp.correlationID)
+        if (cb) {
+            cb(resp)
+        } else if (this.responseHandler ) {
+            this.responseHandler(resp)
         }
     }
 
@@ -298,7 +316,7 @@ export class HttpSSEClient implements IAgentClient {
 
     // publish a request to the path with the given data
     // if the http/2 connection is closed, then try to initialize it again.
-    async pubMessage(methodName: string, path: string, requestID:string, data: any):Promise<string> {
+    async pubMessage(methodName: string, path: string, data: any, correlationID?:string):Promise<string> {
         // if the session is invalid, restart it
         if (!this._http2Session || this._http2Session.closed) {
             // this._http2Client.
@@ -323,7 +341,7 @@ export class HttpSSEClient implements IAgentClient {
                     ":method": methodName,
                     "content-type": "application/json",
                     "content-length": Buffer.byteLength(payload),
-                    "message-id": requestID,
+                    "message-id": correlationID,
                     "cid": this._cid,
                 })
 
@@ -363,30 +381,33 @@ export class HttpSSEClient implements IAgentClient {
     }
 
     // invokeAction publishes a request for action from a Thing.
+    // This is a simple helper that uses sendRequest(wot.OpInvokeAction, ...)
     //
     //	@param agentID: of the device or service that handles the action.
     //	@param thingID: is the destination thingID to whom the action applies.
     //	name is the name of the action as described in the Thing's TD
-    //  requestID to include in the header
-    //	payload is the optional action arguments to be serialized and transported
+    //	input is the optional action input to be serialized and transported
     //
-    // This returns the serialized reply data or null in case of no reply data
-    async invokeAction(thingID: string, name: string, requestID:string,
-                       payload: any): Promise<ActionStatus> {
+    // This returns the response message
+    async invokeAction(thingID: string, name: string, input: any): Promise<ResponseMessage> {
 
         hclog.info("pubAction. thingID:", thingID, ", name:", name)
-
-        let actionPath = PostInvokeActionPath.replace("{thingID}", thingID)
-        actionPath = actionPath.replace("{name}", name)
-
-        let resp = await this.pubMessage("POST",actionPath, requestID, payload)
-        let stat: ActionStatus = JSON.parse(resp)
-        return stat
+        let req = new RequestMessage(OpInvokeAction, thingID,name,input)
+        return this.sendRequest(req)
+        //
+        // let actionPath = PostInvokeActionPath.replace("{thingID}", thingID)
+        // actionPath = actionPath.replace("{name}", name)
+        //
+        // let resp = await this.pubMessage("POST",actionPath, correlationID, payload)
+        // let stat: ActionStatus = JSON.parse(resp)
+        // return stat
     }
 
 
-    // PubEvent publishes a Thing event. The payload is an event value as per TD document.
-    // Intended for devices and services to notify of changes to the Things they are the agent for.
+    // PubEvent - Agent publishes a Thing event.
+    // The payload is an event value as per event affordance.
+    // Intended for agents of devices and services to notify of changes to the Things
+    // they are the agent for.
     //
     // thingID is the ID of the 'thing' whose event to publish.
     // This is the ID under which the TD document is published that describes
@@ -399,54 +420,114 @@ export class HttpSSEClient implements IAgentClient {
     //	@param thingID: of the Thing whose event is published
     //	@param eventName: is one of the predefined events as described in the Thing TD
     //	@param payload: is the serialized event value, or nil if the event has no value
-    pubEvent(thingID: string, name: string, payload: any) {
+    pubEvent(thingID: string, name: string, data: any) {
+
         hclog.info("pubEvent. thingID:", thingID, ", name:", name)
+        let msg = new NotificationMessage(HTOpPublishEvent, thingID,name,data)
+        return this.sendNotification(msg)
 
-        let eventPath = PostAgentPublishEventPath.replace("{thingID}", thingID)
-        eventPath = eventPath.replace("{name}", name)
-
-        this.pubMessage("POST",eventPath, "", payload)
-            .catch((e)=> {
-                hclog.warn("failed publishing event", e)
-            }
-        )
+        // let eventPath = PostAgentPublishEventPath.replace("{thingID}", thingID)
+        // eventPath = eventPath.replace("{name}", name)
+        //
+        // this.pubMessage("POST",eventPath, "", payload)
+        //     .catch((e)=> {
+        //         hclog.warn("failed publishing event", e)
+        //     }
+        // )
     }
 
-
-    // pubProgressUpdate sends a delivery status update back to the sender of the action
-    // @param msg: action message that was received
-    // @param stat: status to return
-    pubProgressUpdate(stat: ActionStatus) {
-        this.pubMessage(
-            "POST",PostAgentPublishProgressPath, stat.requestID, stat)
-            .then().catch()
-    }
 
     // Publish batch of property values
     pubMultipleProperties(thingID: string, propMap: { [key: string]: any }) {
-        let postPath = PostAgentUpdateMultiplePropertiesPath.replace("{thingID}", thingID)
 
-        this.pubMessage("POST",postPath, "", propMap)
-            .then().catch()
+        hclog.info("pubMultipleProperties. thingID:", thingID)
+        let msg = new NotificationMessage(HTOpUpdateProperties, thingID,"",propMap)
+        return this.sendNotification(msg)
     }
 
     // Publish thing property value update
     pubProperty(thingID: string, name:string, value: any) {
-        let postPath = PostAgentUpdatePropertyPath.replace("{thingID}", thingID)
-         postPath = postPath.replace("{name}", name)
-
-        this.pubMessage("POST",postPath, name, value)
-            .then().catch()
+        hclog.info("pubProperty. thingID:", thingID)
+        let msg = new NotificationMessage(HTOpUpdateProperty, thingID,name,value)
+        return this.sendNotification(msg)
     }
 
     // PubTD publishes an event with a Thing TD document.
     // This serializes the TD into JSON as per WoT specification
     pubTD(td: TD) {
-        // FIXME: use action on the directory?
+        hclog.info("pubTD. thingID:", td.id)
         let tdJSON = JSON.stringify(td, null, ' ');
+        let msg = new NotificationMessage(HTOpUpdateProperty, td.id,"",tdJSON)
+        return this.sendNotification(msg)
+    }
 
-        let postPath = PostAgentUpdateTDDPath.replace("{thingID}", td.id)
-        this.pubMessage("POST",postPath, "", tdJSON)
+    // obtain a new token
+    async refreshToken(): Promise<string> {
+
+        let refreshPath = HttpPostRefreshPath.replace("{thingID}", "authn")
+        refreshPath = refreshPath.replace("{name}", "refreshMethod")
+        // TODO use generated API
+        let args = {
+            clientID: this.clientID,
+            oldToken: this.authToken,
+        }
+        try {
+            let resp = await this.pubMessage("POST",refreshPath, args,"");
+            this.authToken = JSON.parse(resp)
+            return this.authToken
+        } catch (e) {
+            hclog.error("refreshToken failed: ", e)
+            throw e
+        }
+    }
+
+    // sendNotification [agent] sends a notification message to the hub.
+    // @param msg: notification to send
+    sendNotification(notif: NotificationMessage) {
+        // notifications can only be send to the fixed endpoint
+        this.pubMessage(
+            "POST",HiveOTPostNotificationHRef, notif)
+            .then().catch()
+    }
+
+    // sendResponse [agent] sends a response status message to the hub.
+    // @param resp: response to send
+   async sendRequest(req: RequestMessage):Promise<ResponseMessage> {
+        return new Promise((resolve, reject): void => {
+            // use forms for requests for interoperability
+            let href: string | undefined
+            let input: any
+            let f: TDForm | undefined
+            if (this.getForm) {
+                f = this.getForm(req.operation)
+            }
+            if (f) {
+                href = f.getHRef()
+            }
+            if (href) {
+                this.pubMessage("POST", href, req.input, req.correlationID)
+                    .then((reply: string) => {
+                        let output = JSON.parse(reply)
+                        let resp = new ResponseMessage(
+                            req.operation, req.thingID, req.name, output, "", "")
+                        resolve(resp)
+                    })
+            } else {
+                this.pubMessage("POST", HiveOTPostRequestHRef, input, req.correlationID)
+                    .then((reply: string) => {
+                        let resp: ResponseMessage = JSON.parse(reply)
+                        resolve(resp)
+                    })
+            }
+        })
+    }
+
+    // sendResponse [agent] sends a response status message to the hub.
+    // @param resp: response to send
+    sendResponse(resp: ResponseMessage) {
+        // responses can only be send to the fixed endpoint
+        this.pubMessage(
+            "POST",HiveOTPostResponseHRef, resp,resp.correlationID)
             .then().catch()
     }
 
@@ -457,32 +538,29 @@ export class HttpSSEClient implements IAgentClient {
     async rpc(dThingID: string, methodName: string, args: any): Promise<any> {
         return new Promise((resolve, reject) => {
 
-            // a requestID is needed before the action is published in order to match it with the reply
-            let requestID = "rpc-" + nanoid()
+            // a correlationID is needed before the action is published in order to match it with the reply
+            let correlationID = "rpc-" + nanoid()
 
             // handle timeout
             let t1 = setTimeout(() => {
-                this._correlData.delete(requestID)
+                this._correlData.delete(correlationID)
                 console.error("RPC",dThingID,methodName,"failed with timeout")
                 reject("timeout")
             }, 30000)
 
-            // set the handler for progress messages
-            this._correlData.set(requestID, (stat:ActionStatus):void=> {
+            // set the handler for response messages
+            this._correlData.set(correlationID, (resp:ResponseMessage):void=> {
                 // console.log("delivery progress",stat.progress)
                 // Remove the rpc wait hook and resolve the rpc
                 clearTimeout(t1)
-                this._correlData.delete(requestID)
-                resolve(stat.reply)
+                this._correlData.delete(correlationID)
+                resolve(resp)
             })
-            this.invokeAction(dThingID, methodName, requestID, args)
-                .then((stat: ActionStatus) => {
+            this.invokeAction(dThingID, methodName, args)
+                .then((resp: ResponseMessage) => {
                     // complete the request if the result is returned, otherwise wait for
                     // the callback from _correlData
-                    if (stat.progress == RequestCompleted || stat.progress == RequestFailed) {
-                        this._correlData.delete(requestID)
-                        resolve(stat.reply)
-                    }
+                    resolve(resp.output)
                 })
                 .catch((e) => {
                     console.error("RPC failed", e);
@@ -491,12 +569,6 @@ export class HttpSSEClient implements IAgentClient {
         })
     }
 
-    async waitForResponse(requestID:string): Promise<ActionStatus> {
-        let stat = new ActionStatus()
-        stat.progress = RequestFailed
-        stat.error = "no response"
-        return stat
-    }
 
     // Read Thing definitions from the directory
     // @param publisherID whose things to read or "" for all publishers
@@ -506,48 +578,21 @@ export class HttpSSEClient implements IAgentClient {
     // }
 
 
-    // obtain a new token
-    async refreshToken(): Promise<string> {
-
-        let refreshPath = PostRefreshPath.replace("{thingID}", "authn")
-        refreshPath = refreshPath.replace("{name}", "refreshMethod")
-        // TODO use generated API
-        let args = {
-            clientID: this.clientID,
-            oldToken: this.authToken,
-        }
-        try {
-            let resp = await this.pubMessage("POST",refreshPath, "", args);
-            this.authToken = JSON.parse(resp)
-            return this.authToken
-        } catch (e) {
-            hclog.error("refreshToken failed: ", e)
-            throw e
-        }
-    }
-
     setConnectHandler(handler: (status: ConnectionStatus) => void): void {
         this.connectHandler = handler
     }
+    setNotificationHandler(handler: NotificationHandler) {
+        this.notificationHandler = handler
+    }
 
-    // set the handler of incoming messages such as action requests or events
+    // set the handler of incoming requests such as action or property write requests
     //
-    // The handler should return a DeliveryStatus containing the delivery progress.
-    // This is ignored for events.
-    //
-    // Event messages are not received until the subscribe method is invoked with
-    // the event keys to subscribe to.
-    setActionHandler(handler: ActionHandler) {
-        this.actionHandler = handler
+    // The handler should return a ResponseMessage containing the handling status.
+    setRequestHandler(handler: RequestHandler) {
+        this.requestHandler = handler
     }
-    setEventHandler(handler: EventHandler) {
-        this.eventHandler = handler
-    }
-    setPropertyHandler(handler: PropertyHandler) {
-        this.propertyHandler = handler
-    }
-    setProgressHandler(handler: ProgressHandler) {
-        this.progressHandler = handler
+    setResponseHandler(handler: ResponseHandler) {
+        this.responseHandler = handler
     }
 
     // Subscribe to events from things.
@@ -561,29 +606,22 @@ export class HttpSSEClient implements IAgentClient {
     // @param dThingID: optional filter of the thing whose events are published; "" for all things
     // @param name: optional filter on the event name; "" for all event names.
     subscribe(dThingID: string, name: string):void {
-        if (!dThingID) {
-            dThingID = "+"
-        }
+        let op = OpSubscribeEvent
         if (!name) {
-            name = "+"
+            op = OpSubscribeAllEvents
         }
-        // FIXME: a connectionID is required for subscriptions over SSE
-        let subscribePath = PostSubscribeEventPath.replace("{thingID}", dThingID)
-        subscribePath = subscribePath.replace("{name}", name)
-        this.pubMessage("POST", subscribePath,"", "")
+        let req = new RequestMessage(op, dThingID, name,null)
+        this.sendRequest(req)
             .then().catch()
     }
 
     unsubscribe(dThingID: string, name: string) {
-        if (!dThingID) {
-            dThingID = "+"
-        }
+        let op = OpUnsubscribeEvent
         if (!name) {
-            name = "+"
+            op = OpUnsubscribeAllEvents
         }
-        let subscribePath = PostUnsubscribeEventPath.replace("{thingID}", dThingID)
-        subscribePath = subscribePath.replace("{name}", name)
-        this.pubMessage("POST", subscribePath, "", "")
+        let req = new RequestMessage(op, dThingID, name,null)
+        this.sendRequest(req)
             .then().catch()
     }
 
@@ -592,11 +630,7 @@ export class HttpSSEClient implements IAgentClient {
     writeProperty(thingID: string, name: string, propValue: any) {
         hclog.info("writeProperty. thingID:", thingID, ", name:", name)
 
-        // TODO: use url from TD forms
-        let propPath = PostWritePropertyPath.replace("{thingID}", thingID)
-        propPath = propPath.replace("{name}", name)
-
-        this.pubMessage("POST",propPath, "",propValue)
-            .then().catch()
+        let req = new RequestMessage(OpWriteProperty, thingID,name,propValue)
+        return this.sendRequest(req)
     }
 }

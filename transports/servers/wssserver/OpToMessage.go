@@ -24,10 +24,10 @@ func opToMessageType(op string) string {
 // OpToMessage creates a websocket message for an operation
 func OpToMessage(
 	op string, dThingID string, name string, names []string,
-	data any, requestID string, senderID string) (msg any, err error) {
+	data any, correlationID string, senderID string) (msg any, err error) {
 
-	if requestID == "" {
-		requestID = shortid.MustGenerate()
+	if correlationID == "" {
+		correlationID = shortid.MustGenerate()
 	}
 	msgType := opToMessageType(op)
 	timestamp := time.Now().Format(wot.RFC3339Milli)
@@ -35,13 +35,13 @@ func OpToMessage(
 	switch op {
 	case wot.OpInvokeAction, wot.OpQueryAllActions, wot.OpQueryAction:
 		msg = ActionMessage{
-			ThingID:     dThingID,
-			MessageType: msgType,
-			Name:        name,
-			RequestID:   requestID,
-			SenderID:    senderID,
-			Data:        data,
-			Timestamp:   timestamp,
+			ThingID:       dThingID,
+			MessageType:   msgType,
+			Name:          name,
+			CorrelationID: correlationID,
+			SenderID:      senderID,
+			Data:          data,
+			Timestamp:     timestamp,
 		}
 	//case wot.HTOpActionStatus:
 	//	msg = ActionStatusMessage{
@@ -49,7 +49,7 @@ func OpToMessage(
 	//		MessageType: msgType,
 	//		Status:      "completed",
 	//		Name:        name,
-	//		RequestID:   requestID,
+	//		CorrelationID:   correlationID,
 	//		Output:      data,
 	//		Timestamp:   timestamp,
 	//	}
@@ -59,13 +59,13 @@ func OpToMessage(
 		wot.OpReadAllProperties, wot.OpReadProperty, wot.OpReadMultipleProperties,
 		wot.OpWriteProperty, wot.HTOpUpdateProperty:
 		msg = PropertyMessage{
-			ThingID:     dThingID,
-			MessageType: msgType,
-			Name:        name,
-			Names:       names,
-			Data:        data,
-			RequestID:   requestID,
-			Timestamp:   timestamp,
+			ThingID:       dThingID,
+			MessageType:   msgType,
+			Name:          name,
+			Names:         names,
+			Data:          data,
+			CorrelationID: correlationID,
+			Timestamp:     timestamp,
 		}
 	case wot.HTOpReadAllEvents, wot.HTOpReadEvent,
 		//wot.HTOpReadMultipleEvents,
@@ -74,23 +74,23 @@ func OpToMessage(
 		wot.HTOpEvent,
 		wot.HTOpPing, wot.HTOpPong:
 		msg = EventMessage{
-			ThingID:     dThingID,
-			MessageType: msgType,
-			Name:        name,
-			Names:       names,
-			Data:        data,
-			RequestID:   requestID,
-			Timestamp:   timestamp,
+			ThingID:       dThingID,
+			MessageType:   msgType,
+			Name:          name,
+			Names:         names,
+			Data:          data,
+			CorrelationID: correlationID,
+			Timestamp:     timestamp,
 		}
 	case wot.HTOpReadTD, wot.HTOpReadAllTDs,
 		wot.HTOpUpdateTD:
 		msg = TDMessage{
-			ThingID:     dThingID,
-			MessageType: msgType,
-			Name:        name,
-			Data:        data,
-			RequestID:   requestID,
-			Timestamp:   timestamp,
+			ThingID:       dThingID,
+			MessageType:   msgType,
+			Name:          name,
+			Data:          data,
+			CorrelationID: correlationID,
+			Timestamp:     timestamp,
 		}
 	default:
 		err = errors.New("Unknown operation")

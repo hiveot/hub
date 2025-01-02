@@ -3,8 +3,6 @@ package servers
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"github.com/hiveot/hub/runtime/api"
-	"github.com/hiveot/hub/runtime/pm"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/connections"
 	"github.com/hiveot/hub/transports/servers/discotransport"
@@ -21,7 +19,7 @@ import (
 // the connection and session management.
 //
 // This implements the ITransportBinding interface like the protocols it manages.
-// Incoming messages without an ID are assigned a new requestID
+// Incoming messages without an ID are assigned a new correlationID
 type TransportManager struct {
 	// protocol transport bindings for events, actions and rpc requests
 	// The embedded binding can be used directly with embedded services
@@ -109,11 +107,13 @@ func (svc *TransportManager) Stop() {
 // to be used to register embedded services.
 //
 // The transport manager implements the ITransportBinding API.
-func StartProtocolManager(cfg *pm.ProtocolsConfig,
+func StartProtocolManager(cfg *ProtocolsConfig,
 	serverCert *tls.Certificate,
 	caCert *x509.Certificate,
 	authenticator transports.IAuthenticator,
-	digitwinRouter api.IDigitwinRouter,
+	handleNotification transports.ServerNotificationHandler,
+	handleRequest transports.ServerRequestHandler,
+	handleResponse transports.ServerResponseHandler,
 	cm *connections.ConnectionManager,
 ) (svc *TransportManager, err error) {
 
@@ -130,9 +130,9 @@ func StartProtocolManager(cfg *pm.ProtocolsConfig,
 			serverCert, caCert,
 			authenticator,
 			cm,
-			digitwinRouter.HandleRequest,
-			digitwinRouter.HandleResponse,
-			digitwinRouter.HandleNotification,
+			handleNotification,
+			handleRequest,
+			handleResponse,
 		)
 		err = err2
 		svc.httpsTransport = httpServer
@@ -146,17 +146,18 @@ func StartProtocolManager(cfg *pm.ProtocolsConfig,
 				authenticator,
 				cm,
 				httpServer,
-				digitwinRouter.HandleRequest,
-				digitwinRouter.HandleResponse,
-				digitwinRouter.HandleNotification)
+				handleNotification,
+				handleRequest,
+				handleResponse,
+			)
 		}
 		if cfg.EnableWSS {
 			svc.wssTransport = wssserver.StartWssTransportServer(
 				"", cm,
 				svc.httpsTransport,
-				digitwinRouter.HandleRequest,
-				digitwinRouter.HandleResponse,
-				digitwinRouter.HandleNotification,
+				handleNotification,
+				handleRequest,
+				handleResponse,
 			)
 		}
 	}
@@ -165,9 +166,9 @@ func StartProtocolManager(cfg *pm.ProtocolsConfig,
 			cfg.MqttHost, cfg.MqttTcpPort, cfg.MqttWssPort,
 			serverCert, caCert,
 			authenticator, cm,
-			digitwinRouter.HandleRequest,
-			digitwinRouter.HandleResponse,
-			digitwinRouter.HandleNotification,
+			handleNotification,
+			handleRequest,
+			handleResponse,
 		)
 	}
 	// FIXME: how to support multiple URLs in discovery. See the WoT discovery spec.

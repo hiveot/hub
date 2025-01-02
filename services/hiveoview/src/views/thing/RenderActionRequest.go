@@ -132,7 +132,7 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 //
 //	@param thingID this is the URL parameter
 func RenderActionStatus(w http.ResponseWriter, r *http.Request) {
-	requestID := chi.URLParam(r, "requestID")
+	correlationID := chi.URLParam(r, "correlationID")
 	//action := thing.ActionAffordance{}
-	_ = requestID
+	_ = correlationID
 }

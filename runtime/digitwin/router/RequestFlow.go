@@ -16,15 +16,15 @@ import (
 
 // ActiveRequestRecord holds active requests
 type ActiveRequestRecord struct {
-	Operation string    // The operation being tracked, invoke action or write property
-	RequestID string    // RequestID of the ongoing action
-	AgentID   string    // Agent that is handling the action request
-	ThingID   string    // thingID as provided by the agent the action is for
-	Name      string    // name of the action as described in the TD
-	SenderID  string    // action sender that will receive progress messages
-	Progress  string    // current progress of the action:
-	Updated   time.Time // timestamp to handle expiry
-	ReplyTo   string    // Action reply address. Typically the sender's connection-id
+	Operation     string    // The operation being tracked, invoke action or write property
+	CorrelationID string    // CorrelationID of the ongoing action
+	AgentID       string    // Agent that is handling the action request
+	ThingID       string    // thingID as provided by the agent the action is for
+	Name          string    // name of the action as described in the TD
+	SenderID      string    // action sender that will receive progress messages
+	Progress      string    // current progress of the action:
+	Updated       time.Time // timestamp to handle expiry
+	ReplyTo       string    // Action reply address. Typically the sender's connection-id
 }
 
 // HandleRequest routes requests from clients to agents.
@@ -118,7 +118,7 @@ func (svc *DigitwinRouter) HandleInvokeAction(
 	//slog.Debug("HandleInvokeAction",
 	//	slog.String("dThingID", req.ThingID),
 	//	slog.String("actionName", req.Name),
-	//	slog.String("requestID", req.RequestID),
+	//	slog.String("correlationID", req.CorrelationID),
 	//	slog.String("senderID", req.SenderID),
 	//)
 	// internal services return instant result
@@ -147,7 +147,7 @@ func (svc *DigitwinRouter) HandleInvokeRemoteAgent(
 	slog.Info("HandleInvokeRemoteAgent (to agent)",
 		slog.String("dThingID", req.ThingID),
 		slog.String("actionName", req.Name),
-		slog.String("requestID", req.RequestID),
+		slog.String("correlationID", req.CorrelationID),
 		slog.String("senderID", req.SenderID),
 	)
 
@@ -173,16 +173,16 @@ func (svc *DigitwinRouter) HandleInvokeRemoteAgent(
 
 	// track the action progress so async responses can be returned to the client (replyTo)
 	actionRecord := ActiveRequestRecord{
-		AgentID:   agentID,
-		Name:      req.Name,
-		Operation: req.Operation,
-		ReplyTo:   replyTo,
-		RequestID: req.RequestID,
-		SenderID:  req.SenderID,
-		ThingID:   thingID,
+		AgentID:       agentID,
+		Name:          req.Name,
+		Operation:     req.Operation,
+		ReplyTo:       replyTo,
+		CorrelationID: req.CorrelationID,
+		SenderID:      req.SenderID,
+		ThingID:       thingID,
 	}
 	svc.mux.Lock()
-	svc.activeCache[actionRecord.RequestID] = actionRecord
+	svc.activeCache[actionRecord.CorrelationID] = actionRecord
 	svc.mux.Unlock()
 
 	// forward the request to the agent using the ThingID of the agent, not the
@@ -199,12 +199,12 @@ func (svc *DigitwinRouter) HandleInvokeRemoteAgent(
 		slog.Warn("HandleInvokeRemoteAgent - failed",
 			slog.String("dThingID", req.ThingID),
 			slog.String("actionName", req.Name),
-			slog.String("requestID", req.RequestID),
+			slog.String("correlationID", req.CorrelationID),
 			slog.String("err", err.Error()))
 
 		// cleanup as the record is no longer needed
 		svc.mux.Lock()
-		delete(svc.activeCache, req.RequestID)
+		delete(svc.activeCache, req.CorrelationID)
 		svc.mux.Unlock()
 
 		resp = req.CreateResponse(nil, err)

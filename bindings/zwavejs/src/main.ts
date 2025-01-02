@@ -2,11 +2,11 @@
 import {env, exit} from "process";
 import {ZwaveJSBinding} from "./ZWaveJSBinding";
 import path from "path";
-import {locateHub} from "@hivelib/hubclient/locateHub";
+import {locateHub} from "@hivelib/transports/locateHub";
 import fs from "fs";
 import {BindingConfig} from "./BindingConfig";
 import * as tslog from 'tslog';
-import {ConnectToHub} from "@hivelib/hubclient/ConnectToHub";
+import {ConnectToHub} from "@hivelib/transports/ConnectToHub";
 
 const log = new tslog.Logger({name: "zwavejs"})
 

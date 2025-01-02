@@ -59,11 +59,11 @@ func (cl *WssConsumerClient) wssToResponse(baseMsg wssserver.BaseMessage, raw []
 			err = errors.New(wssMsg.Error)
 		}
 		resp = transports.NewResponseMessage(wot.OpInvokeAction,
-			wssMsg.ThingID, wssMsg.Name, wssMsg.Output, err, baseMsg.RequestID)
+			wssMsg.ThingID, wssMsg.Name, wssMsg.Output, err, baseMsg.CorrelationID)
 
 	case wssserver.MsgTypePong:
 		resp = transports.NewResponseMessage(wot.HTOpPong,
-			"", "", nil, nil, baseMsg.RequestID)
+			"", "", nil, nil, baseMsg.CorrelationID)
 
 	case wssserver.MsgTypeError:
 		wssMsg := wssserver.ErrorMessage{}
@@ -72,20 +72,20 @@ func (cl *WssConsumerClient) wssToResponse(baseMsg wssserver.BaseMessage, raw []
 			err = errors.New(wssMsg.Title)
 		}
 		resp = transports.NewResponseMessage(wot.OpInvokeAction,
-			wssMsg.ThingID, wssMsg.Name, wssMsg.Detail, err, baseMsg.RequestID)
+			wssMsg.ThingID, wssMsg.Name, wssMsg.Detail, err, baseMsg.CorrelationID)
 
 	case wssserver.MsgTypePropertyReading:
 		wssMsg := wssserver.PropertyMessage{}
 		err := cl.Unmarshal(raw, &wssMsg)
 		resp = transports.NewResponseMessage(wot.OpReadProperty,
-			wssMsg.ThingID, wssMsg.Name, wssMsg.Data, err, baseMsg.RequestID)
+			wssMsg.ThingID, wssMsg.Name, wssMsg.Data, err, baseMsg.CorrelationID)
 		resp.Updated = wssMsg.Timestamp
 
 	case wssserver.MsgTypePropertyReadings:
 		wssMsg := wssserver.PropertyMessage{}
 		err := cl.Unmarshal(raw, &wssMsg)
 		resp = transports.NewResponseMessage(wot.OpReadAllProperties,
-			wssMsg.ThingID, wssMsg.Name, wssMsg.Data, err, baseMsg.RequestID)
+			wssMsg.ThingID, wssMsg.Name, wssMsg.Data, err, baseMsg.CorrelationID)
 		resp.Updated = wssMsg.Timestamp
 	default:
 		isResponse = false
@@ -97,11 +97,11 @@ func (cl *WssConsumerClient) wssToResponse(baseMsg wssserver.BaseMessage, raw []
 func (cl *WssConsumerClient) HandleWssMessage(baseMsg wssserver.BaseMessage, raw []byte) {
 	var err error
 	msgType := baseMsg.MessageType
-	requestID := baseMsg.RequestID
+	correlationID := baseMsg.CorrelationID
 	slog.Info("WssClientHandleMessage",
 		slog.String("clientID", cl.GetClientID()),
 		slog.String("msgType", msgType),
-		slog.String("requestID", requestID),
+		slog.String("correlationID", correlationID),
 	)
 	operation := wssserver.MsgTypeToOp[baseMsg.MessageType]
 

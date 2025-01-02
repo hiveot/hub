@@ -196,8 +196,8 @@ func NewInteractionOutputFromValue(
 	tv *digitwin.ThingValue, tdi *td.TD) *InteractionOutput {
 
 	io := &InteractionOutput{
-		ThingID: tdi.ID,
-		Name:    tv.Name,
+		//ThingID: tdi.ID,
+		Name: tv.Name,
 		//SenderID: tv.SenderID,
 		Updated: tv.Created,
 		Value:   NewDataSchemaValue(tv.Data),

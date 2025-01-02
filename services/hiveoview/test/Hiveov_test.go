@@ -9,11 +9,13 @@ import (
 	"github.com/hiveot/hub/services/hiveoview/src/service"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/clients/sseclient"
+	"github.com/hiveot/hub/transports/servers/httpserver"
 	"github.com/hiveot/hub/transports/tputils/tlsclient"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/teris-io/shortid"
 	"os"
 	"path"
 	"strings"
@@ -155,6 +157,9 @@ func TestLogin(t *testing.T) {
 	hostPort := fmt.Sprintf("localhost:%d", servicePort)
 	cl2 := tlsclient.NewTLSClient(
 		hostPort, nil, ts.Certs.CaCert, time.Second*60)
+
+	// hiveot http requires a connection-id to link the return channel.
+	cl2.SetHeader(httpserver.ConnectionIDHeader, shortid.MustGenerate())
 
 	// try login. The test user password is the clientID
 	// authenticate the connection with the hiveot http/sse service (not the hub server)
