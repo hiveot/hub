@@ -77,7 +77,9 @@ func (ct *ConsumedThing) buildInteractionOutput(tm *transports.NotificationMessa
 //
 // This returns an empty InteractionOutput if not found
 func (ct *ConsumedThing) GetPropValue(name string) (iout *InteractionOutput) {
+	ct.mux.RLock()
 	iout, found := ct.propValues[name]
+	ct.mux.RUnlock()
 	_ = found
 	if iout == nil {
 		// not a known prop value so create an empty io with a schema from the td
@@ -95,7 +97,9 @@ func (ct *ConsumedThing) GetPropValue(name string) (iout *InteractionOutput) {
 //
 // This returns an empty InteractionOutput if not found
 func (ct *ConsumedThing) GetEventValue(name string) (iout *InteractionOutput) {
+	ct.mux.RLock()
 	iout, found := ct.eventValues[name]
+	ct.mux.RUnlock()
 	_ = found
 	if iout == nil {
 		// not a known event value so create an empty io with a schema from the td
@@ -178,8 +182,11 @@ func (ct *ConsumedThing) ObserveProperty(name string, listener InteractionListen
 //	the objective is to remove the need for it.
 func (ct *ConsumedThing) OnEvent(msg transports.NotificationMessage) {
 	io := ct.buildInteractionOutput(&msg)
+	ct.mux.Lock()
 	ct.eventValues[msg.Name] = io
 	subscr, found := ct.subscribers[msg.Name]
+	ct.mux.Unlock()
+
 	if found {
 		subscr(io)
 	}
@@ -194,8 +201,10 @@ func (ct *ConsumedThing) OnEvent(msg transports.NotificationMessage) {
 //	the objective is to remove the need for it.
 func (ct *ConsumedThing) OnPropertyUpdate(msg transports.NotificationMessage) {
 	io := ct.buildInteractionOutput(&msg)
+	ct.mux.Lock()
 	ct.propValues[msg.Name] = io
 	observer, found := ct.observers[msg.Name]
+	ct.mux.Unlock()
 	if found {
 		observer(io)
 	}
@@ -286,7 +295,8 @@ func (ct *ConsumedThing) ReadProperty(name string) *InteractionOutput {
 func (ct *ConsumedThing) ReadAllEvents() map[string]*InteractionOutput {
 	var err error
 	var evList []transports.NotificationMessage
-
+	ct.mux.Lock()
+	defer ct.mux.Unlock()
 	err = ct._rpc(wot.HTOpReadAllEvents, "", nil, &evList)
 	if err != nil {
 		return nil
@@ -309,6 +319,9 @@ func (ct *ConsumedThing) ReadAllProperties() map[string]*InteractionOutput {
 	if err != nil {
 		return nil
 	}
+	ct.mux.Lock()
+	defer ct.mux.Unlock()
+
 	for _, v := range propList {
 		io := NewInteractionOutput(
 			ct.td, AffordanceTypeProperty, v.Name, v.Data, v.Created)

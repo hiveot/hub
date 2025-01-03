@@ -330,7 +330,7 @@ func TestAddProperties(t *testing.T) {
 		ThingID:   dThing1ID,
 		Name:      "", // property list
 		Data:      propsList,
-		Operation: vocab.HTOpUpdateProperties,
+		Operation: vocab.HTOpUpdateMultipleProperties,
 	}
 
 	// in total add 5 properties

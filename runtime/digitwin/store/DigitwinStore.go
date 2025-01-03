@@ -518,11 +518,14 @@ func (svc *DigitwinStore) UpdatePropertyValue(newValue digitwin.ThingValue) (
 		}
 	}
 	propValue, found := dtw.PropValues[newValue.Name]
-	if !found {
-		hasChanged = true
-	} else {
-		hasChanged = propValue.Data != newValue.Data
-	}
+	//if !found {
+	//	hasChanged = true
+	//} else {
+	//  this explodes if types differ; why bother though
+	//	hasChanged = propValue.Data != newValue.Data
+	//}
+	_ = propValue
+	hasChanged = true
 	dtw.PropValues[newValue.Name] = newValue
 	svc.changedThings[newValue.ThingID] = hasChanged
 

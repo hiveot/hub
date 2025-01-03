@@ -67,9 +67,9 @@ WoTVocab:
     OpObserveAllProperties : "observeallproperties"
     OpObserveProperty        : "observeproperty"
     OpReadAllProperties      : "readallproperties"
-    OpReadMultipleProperties : "readmultipleproperties"
+#    OpReadMultipleProperties : "readmultipleproperties"
     OpReadProperty           : "readproperty"
-    OpWriteMultipleProperties : "writemultipleproperties"
+#    OpWriteMultipleProperties : "writemultipleproperties"
     OpWriteProperty          : "writeproperty"
     OpUnobserveAllProperties : "unobserveallproperties"
     OpUnobserveProperty      : "unobserveroperty"
@@ -85,6 +85,12 @@ WoTVocab:
     OpInvokeAction : "invokeaction"
     OpQueryAllActions : "queryallactions"
     OpQueryAction : "queryaction"
+
+    # Request statuses
+#    StatusCompleted: "completed"
+#    StatusFailed: "failed"
+#    StatusPending: "pending"
+#    StatusRunning: "running"
 
     #--- non wot-standard operations ---
 
@@ -104,10 +110,10 @@ WoTVocab:
     # FIXME: figure out how to perform Thing to Hub operations operations in the
     # protocol binding instead of defining them as Form operations.
     # Until then define them as HiveOT operations
-    HTOpPublishError : "error"
+#    HTOpPublishError : "error"
     HTOpPublishEvent : "event"
     HTOpUpdateTD: "updatetd"  # Maybe better through a discovery method?
-    HTOpUpdateProperty : "updateproperty"  # belongs in protocol binding - observe
-    HTOpUpdateProperties : "updateproperties" # belongs in protocol binding - observe
+    HTOpUpdateProperty : "updateproperty"
+    HTOpUpdateMultipleProperties : "updatemultipleproperties"
 
 

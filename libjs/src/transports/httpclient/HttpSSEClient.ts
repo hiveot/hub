@@ -8,7 +8,7 @@ import {
     HTOpPublishEvent,
     HTOpUpdateProperty,
     OpWriteProperty,
-    HTOpUpdateProperties,
+    HTOpUpdateMultipleProperties,
     OpSubscribeEvent,
     OpSubscribeAllEvents, OpUnsubscribeAllEvents, OpUnsubscribeEvent, HTOpUpdateTD,
 } from "@hivelib/api/vocab/vocab.js";
@@ -453,7 +453,7 @@ export class HttpSSEClient implements IAgentConnection {
     pubMultipleProperties(thingID: string, propMap: { [key: string]: any }) {
 
         hclog.info("pubMultipleProperties. thingID:", thingID)
-        let msg = new NotificationMessage(HTOpUpdateProperties, thingID,"",propMap)
+        let msg = new NotificationMessage(HTOpUpdateMultipleProperties, thingID,"",propMap)
         return this.sendNotification(msg)
     }
 

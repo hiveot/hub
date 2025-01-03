@@ -4,8 +4,10 @@ package router
 import (
 	"fmt"
 	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
+	"time"
 )
 
 // HandleResponse update the action status with the agent response.
@@ -32,6 +34,10 @@ func (svc *DigitwinRouter) HandleResponse(resp transports.ResponseMessage) error
 	// Convert the agent ThingID to that of the digital twin
 	dThingID := td.MakeDigiTwinThingID(resp.SenderID, resp.ThingID)
 	resp.ThingID = dThingID
+	// ensure the updated time is set
+	if resp.Updated == "" {
+		resp.Updated = time.Now().Format(wot.RFC3339Milli)
+	}
 
 	if resp.CorrelationID == "" {
 		slog.Warn("Received a response without a correlationID. This is ignored")

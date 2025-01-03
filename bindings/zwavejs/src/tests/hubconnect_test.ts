@@ -3,8 +3,8 @@
 import process from "node:process";
 import * as tslog from 'tslog';
 import {connect} from 'node:http2';
-import {HttpSSEClient} from "@hivelib/hubclient/httpclient/HttpSSEClient.js";
-import {ConnectToHub} from "@hivelib/hubclient/ConnectToHub";
+import {HttpSSEClient} from "@hivelib/transports/httpclient/HttpSSEClient.js";
+import {ConnectToHub} from "@hivelib/transports/ConnectToHub";
 import ky from 'ky';
 
 process.on("uncaughtException", (err: Error) => {
@@ -41,15 +41,15 @@ async function test2() {
     let token = await hc.connectWithPassword(testPass)
 
     // sending read directory request
-    let stat = await hc.invokeAction(
-        "dtw:digitwin:directory", "ReadTDs", "",'{"limit":10}')
+    let resp = await hc.invokeAction(
+        "dtw:digitwin:directory", "ReadTDs", '{"limit":10}')
 
-    if (stat.correlationID == "") {
+    if (resp.correlationID == "") {
         log.error("readTDs didn't return a correlationID")
-    } else if (!stat.reply)  {
+    } else if (!resp.output)  {
         log.error("readTDs didn't return any data")
     } else {
-        let tdList = JSON.parse(stat.reply)
+        let tdList = JSON.parse(resp.output)
         if (tdList.length == 0) {
             log.error("Didnt receive any TDs")
         } else {

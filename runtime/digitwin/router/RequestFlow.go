@@ -9,6 +9,7 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"time"
@@ -36,6 +37,10 @@ type ActiveRequestRecord struct {
 // reply-to address for handling responses to pending requests.
 func (svc *DigitwinRouter) HandleRequest(
 	req transports.RequestMessage, replyTo string) (resp transports.ResponseMessage) {
+	// ensure the created time is set
+	if req.Created == "" {
+		req.Created = time.Now().Format(wot.RFC3339Milli)
+	}
 
 	// middleware: authorize the request.
 	// TODO: use a middleware chain
@@ -51,7 +56,7 @@ func (svc *DigitwinRouter) HandleRequest(
 	// Responses are send asynchronously to the replyTo address.
 	case vocab.OpInvokeAction:
 		resp = svc.HandleInvokeAction(req, replyTo)
-	case vocab.OpWriteProperty, vocab.OpWriteMultipleProperties:
+	case vocab.OpWriteProperty:
 		resp = svc.HandleWriteProperty(req, replyTo)
 
 	// authentication requests are handled immediately and return a response

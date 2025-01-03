@@ -33,6 +33,8 @@ export class NotificationMessage extends Object {
         this.thingID = thingID
         this.name = name
         this.data = data
+        let dt = new Date()
+
     }
     // MessageType identifies this message payload as a notification
     // Intended to identify this message envelope.
@@ -57,7 +59,7 @@ export class NotificationMessage extends Object {
 
     // Created holds the date-time the notification was created. using RFC3339milli
     // This MUST be set by the protocol binding if not provided.
-    public created: string=""
+    public created?: string
 
     // Timestamp the value was created in unix time, msec since Epoch Jan 1st,1970 00:00 utc
     // public createdMSec: number = 0
@@ -197,7 +199,8 @@ export class ResponseMessage extends Object {
     public received: string = ""
 
     // Timestamp the status was updated in this response
-    public updated: string = ""
+    // This will be set by the Hub if not provided.
+    public updated?: string
 
     // SenderID is the account ID of the agent sending the response.
     // The protocol server MUST set this to the authenticated client.

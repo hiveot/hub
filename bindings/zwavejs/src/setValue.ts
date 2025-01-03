@@ -2,8 +2,7 @@
 import {SetValueStatus, TranslatedValueID, ValueMetadataNumeric, ZWaveNode} from "zwave-js";
 import * as tslog from 'tslog';
 import {getEnumFromMemberName, getVidValue,  ZWAPI} from "@zwavejs/ZWAPI";
-import {RequestDelivered, RequestFailed, RequestCompleted} from "@hivelib/api/vocab/vocab";
-import {ResponseMessage, StatusCompleted, StatusFailed, StatusRunning} from "@hivelib/transports/Messages";
+import {StatusCompleted, StatusFailed, StatusRunning} from "@hivelib/transports/Messages";
 
 const log = new tslog.Logger()
 

@@ -63,10 +63,8 @@ type RolePermission struct {
 // and subscribe to their own actions and config
 var agentPermissions = RolePermission{
 	Operations: []string{
-		vocab.HTOpPublishError,
 		vocab.HTOpPublishEvent,
-		vocab.HTOpUpdateProperties,
-		vocab.HTOpUpdateProperties,
+		vocab.HTOpUpdateMultipleProperties,
 		vocab.HTOpUpdateProperty,
 		vocab.HTOpUpdateTD,
 		vocab.OpInvokeAction,
@@ -77,14 +75,19 @@ var agentPermissions = RolePermission{
 var servicePermissions = RolePermission{
 
 	Operations: []string{
-		vocab.HTOpPublishError,
 		vocab.HTOpPublishEvent,
-		vocab.HTOpUpdateTD,
-		vocab.HTOpUpdateProperties,
+		vocab.HTOpUpdateMultipleProperties,
 		vocab.HTOpUpdateProperty,
+		vocab.HTOpUpdateTD,
 		vocab.OpInvokeAction,
 		vocab.OpObserveProperty,
 		vocab.OpObserveAllProperties,
+		vocab.OpReadAllProperties,
+		vocab.OpReadProperty,
+		vocab.HTOpReadAllEvents,
+		vocab.HTOpReadEvent,
+		vocab.HTOpReadAllTDs,
+		vocab.HTOpReadTD,
 		vocab.OpSubscribeEvent,
 		vocab.OpSubscribeAllEvents,
 	},
@@ -97,7 +100,6 @@ var viewerPermissions = RolePermission{
 		vocab.OpSubscribeEvent,
 		// digitwin
 		vocab.OpReadAllProperties,
-		vocab.OpReadMultipleProperties,
 		vocab.OpReadProperty,
 		vocab.HTOpReadAllEvents,
 		vocab.HTOpReadEvent,
@@ -117,7 +119,6 @@ var operatorPermissions = RolePermission{
 		vocab.OpSubscribeAllEvents,
 		// digitwin
 		vocab.OpReadAllProperties,
-		vocab.OpReadMultipleProperties,
 		vocab.OpReadProperty,
 		vocab.HTOpReadAllEvents,
 		vocab.HTOpReadEvent,
@@ -137,7 +138,6 @@ var managerPermissions = RolePermission{
 		vocab.OpWriteProperty,
 		// digitwin
 		vocab.OpReadAllProperties,
-		vocab.OpReadMultipleProperties,
 		vocab.OpReadProperty,
 		vocab.HTOpReadAllEvents,
 		vocab.HTOpReadEvent,

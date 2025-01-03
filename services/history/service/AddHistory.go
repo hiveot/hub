@@ -136,7 +136,7 @@ func (svc *AddHistory) AddMessage(msg *transports.NotificationMessage) error {
 	if msg.Operation == vocab.OpInvokeAction {
 		return svc.AddAction(msg)
 	}
-	if msg.Operation == vocab.HTOpUpdateProperty || msg.Operation == vocab.HTOpUpdateProperties {
+	if msg.Operation == vocab.HTOpUpdateProperty || msg.Operation == vocab.HTOpUpdateMultipleProperties {
 		return svc.AddProperty(msg)
 	}
 	if msg.Operation == vocab.HTOpPublishEvent {

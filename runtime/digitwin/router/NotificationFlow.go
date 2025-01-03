@@ -9,14 +9,19 @@ import (
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
+	"time"
 )
 
 // HandleNotification routes notifications from agents to clients
 // This updates the last event/property value in the digital twin store.
 func (svc *DigitwinRouter) HandleNotification(notif transports.NotificationMessage) {
 	// convert the ThingID to that of the digital twin
+	// ensure a 'created' time is set
 	dThingID := td.MakeDigiTwinThingID(notif.SenderID, notif.ThingID)
 	notif.ThingID = dThingID
+	if notif.Created == "" {
+		notif.Created = time.Now().Format(wot.RFC3339Milli)
+	}
 
 	if notif.Operation == wot.HTOpEvent {
 		tv := digitwin.ThingValue{
