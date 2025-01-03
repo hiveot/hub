@@ -1,6 +1,5 @@
 import {IAgentConnection} from "@hivelib/transports/IAgentConnection";
 import {locateHub} from "@hivelib/transports/locateHub";
-import path from "path";
 import {HttpSSEClient} from "@hivelib/transports/httpclient/HttpSSEClient";
 
 
@@ -17,24 +16,25 @@ import {HttpSSEClient} from "@hivelib/transports/httpclient/HttpSSEClient";
 // 4. Create a hub client
 // 5. Connect using token and key files
 //
-//	fullURL is the scheme://addr:port/[wspath] the server is listening on
+//	fullURL is the scheme://addr:port/[path] the server is listening on
 //	clientID to connect as. Also used for the key and token file names
 //	certDir is the location of the CA cert and key/token files
 // This throws an error if a connection cannot be made
 export async function ConnectToHub(
-    baseURL: string, clientID: string, caCertPem: string, disableCertCheck: boolean): Promise<IAgentConnection> {
+    fullURL: string|undefined, clientID: string, caCertPem: string, disableCertCheck: boolean): Promise<IAgentConnection> {
 
     // 1. determine the actual address
-    if (baseURL == "") {
+    if (fullURL == "") {
         // return after first result
         let uc = await locateHub()
-        baseURL = uc.hubURL
+        // currently only supporting SSE on this client
+        fullURL = uc.sseScURL
     }
-    if (clientID == ""||baseURL == "") {
+    if (!clientID || !fullURL) {
         throw("Missing clientID or hub URL")
     }
     // 2. Determine the client protocol to use
     // TODO: support multiple client protocols
-    let hc = new HttpSSEClient(baseURL, clientID, caCertPem, disableCertCheck)
+    let hc = new HttpSSEClient(fullURL, clientID, caCertPem, disableCertCheck)
     return hc
 }

@@ -58,7 +58,12 @@ async function main() {
     // } else {
     //     fs.writeFileSync(appConfig.keyFile, kp.exportPrivate())
     // }
-    await hc.connectWithToken(appConfig.loginToken)
+    try {
+        await hc.connectWithToken(appConfig.loginToken)
+    } catch(e) {
+        log.error("Unable to connect to the Hub:",e)
+        exit(1)
+    }
 
     //--- Step 3: Start the binding and zwavejs driver
     let binding = new ZwaveJSBinding(hc, appConfig);

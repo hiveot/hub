@@ -119,7 +119,7 @@ Todo phase 2 - bindings for consumed things
         * support observerproperty(ies)
         * support subscribeevent(s)
         * update consumed thing
-5. Rework runtime http binding to use sse-sc as a custom sub-protocol
+5. Rework runtime http binding to use ssesc as a custom sub-protocol
    * add to TDs
    * config option to enable/disable
    * change to use headers for subscription

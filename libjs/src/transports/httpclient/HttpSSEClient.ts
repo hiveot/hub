@@ -2,7 +2,6 @@ import {TD, TDForm} from '../../wot/TD.js';
 import {
     IAgentConnection,
 } from "../IAgentConnection.js";
-import type {IHiveKey} from "@keys/IHiveKey";
 import * as tslog from 'tslog';
 import {
     OpInvokeAction,
@@ -11,13 +10,12 @@ import {
     OpWriteProperty,
     HTOpUpdateProperties,
     OpSubscribeEvent,
-    OpSubscribeAllEvents, OpUnsubscribeAllEvents, OpUnsubscribeEvent,
+    OpSubscribeAllEvents, OpUnsubscribeAllEvents, OpUnsubscribeEvent, HTOpUpdateTD,
 } from "@hivelib/api/vocab/vocab.js";
 import * as http2 from "node:http2";
 import {connectSSE} from "@hivelib/transports/httpclient/connectSSE";
 import {
     RequestHandler,
-    ConnectionHandler,
     NotificationHandler,
     ResponseHandler, ConnectionStatus
 } from "@hivelib/transports/IConsumerConnection";
@@ -76,7 +74,7 @@ const HiveOTPostResponseHRef     = "/hiveot/response"
 const hclog = new tslog.Logger()
 
 // HubClient implements the javascript client for connecting to the hub
-// using HTTPS and SSE-SC for the return channel.
+// using HTTPS and SSESC for the return channel.
 export class HttpSSEClient implements IAgentConnection {
     _clientID: string;
     _baseURL: string;
@@ -112,20 +110,24 @@ export class HttpSSEClient implements IAgentConnection {
     // The flag disableCertCheck is intended for use with self-signed certificate
     // on the local network where the CA is not available.
     //
-    // @param hostPort: of server to connect to or empty for auto-discovery
+    // @param fullURL: of HTTP/SSESC server to connect to or empty for auto-discovery
     // @param clientID: connected as this client
     // @param caCertPem: verify server against this CA certificate
     // @param disableCertCheck: don't check the (self signed) server certificate
-    constructor(hostPort: string, clientID: string, caCertPem: string, disableCertCheck: boolean) {
-        this._baseURL = hostPort;
+    constructor(fullURL: string, clientID: string, caCertPem: string, disableCertCheck: boolean) {
+        // this._baseURL = hostPort;
         this._caCertPem = caCertPem;
         this._clientID = clientID;
         this._disableCertCheck = disableCertCheck;
-        this._ssePath = DefaultSSESCPath;
+        // this._ssePath = DefaultSSESCPath;
         this.connStatus = ConnectionStatus.Disconnected;
         this.authToken = "";
         this._correlData = new Map();
         this._cid = nanoid() // connection id
+
+        let url = new URL(fullURL)
+        this._baseURL = url.origin
+        this._ssePath = url.pathname
     }
 
     // ClientID the client is authenticated as to the server
@@ -152,6 +154,7 @@ export class HttpSSEClient implements IAgentConnection {
         if (!!this._caCertPem) {
             opts.ca = this._caCertPem
         }
+        // http connection
         this._http2Session = http2.connect(this._baseURL, opts)
 
         // When an error occurs, show it.
@@ -275,13 +278,17 @@ export class HttpSSEClient implements IAgentConnection {
             let err = Error(`Error handling request sender=${req.senderID}, messageType=${req.operation}, thingID=${req.thingID}, name=${req.name}, error=${e}`)
             hclog.warn(err)
             resp = req.createResponse(null,err)
+            resp.received = req.created
         }
         return resp
     }
 
     // Handle response to previous sent request
     onResponse(resp:ResponseMessage):void{
-        let cb = this._correlData.get(resp.correlationID)
+        let cb: ResponseHandler|undefined
+        if (resp.correlationID) {
+            cb = this._correlData.get(resp.correlationID)
+        }
         if (cb) {
             cb(resp)
         } else if (this.responseHandler ) {
@@ -392,7 +399,12 @@ export class HttpSSEClient implements IAgentConnection {
     async invokeAction(thingID: string, name: string, input: any): Promise<ResponseMessage> {
 
         hclog.info("pubAction. thingID:", thingID, ", name:", name)
-        let req = new RequestMessage(OpInvokeAction, thingID,name,input)
+        let req = new RequestMessage({
+            operation:OpInvokeAction,
+            thingID:thingID,
+            name:name,
+            input:input
+        })
         return this.sendRequest(req)
         //
         // let actionPath = PostInvokeActionPath.replace("{thingID}", thingID)
@@ -457,7 +469,7 @@ export class HttpSSEClient implements IAgentConnection {
     pubTD(td: TD) {
         hclog.info("pubTD. thingID:", td.id)
         let tdJSON = JSON.stringify(td, null, ' ');
-        let msg = new NotificationMessage(HTOpUpdateProperty, td.id,"",tdJSON)
+        let msg = new NotificationMessage(HTOpUpdateTD, td.id,"",tdJSON)
         return this.sendNotification(msg)
     }
 
@@ -595,7 +607,7 @@ export class HttpSSEClient implements IAgentConnection {
         this.responseHandler = handler
     }
 
-    // Subscribe to events from things.
+    // Subscribe to events from other things.
     //
     // The events will be passed to the configured onEvent handler.
     //
@@ -610,7 +622,9 @@ export class HttpSSEClient implements IAgentConnection {
         if (!name) {
             op = OpSubscribeAllEvents
         }
-        let req = new RequestMessage(op, dThingID, name,null)
+        let req = new RequestMessage({
+            operation:op, thingID:dThingID, name:name
+        })
         this.sendRequest(req)
             .then().catch()
     }
@@ -620,7 +634,9 @@ export class HttpSSEClient implements IAgentConnection {
         if (!name) {
             op = OpUnsubscribeAllEvents
         }
-        let req = new RequestMessage(op, dThingID, name,null)
+        let req = new RequestMessage({
+            operation:op, thingID:dThingID, name:name
+        })
         this.sendRequest(req)
             .then().catch()
     }
@@ -630,7 +646,9 @@ export class HttpSSEClient implements IAgentConnection {
     writeProperty(thingID: string, name: string, propValue: any) {
         hclog.info("writeProperty. thingID:", thingID, ", name:", name)
 
-        let req = new RequestMessage(OpWriteProperty, thingID,name,propValue)
+        let req = new RequestMessage({
+            operation: OpWriteProperty, thingID: thingID, name: name, input: propValue
+        })
         return this.sendRequest(req)
     }
 }

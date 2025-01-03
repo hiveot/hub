@@ -1,8 +1,8 @@
 package servers
 
 import (
+	"github.com/hiveot/hub/lib/discovery"
 	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/servers/discotransport"
 	"os"
 )
 
@@ -39,7 +39,7 @@ type ProtocolsConfig struct {
 	MqttWssPort int `yaml:"mqttWssPort"`
 
 	// each protocol binding has its own config section
-	Discovery discotransport.DiscoveryConfig `yaml:"discovery"`
+	Discovery discovery.DiscoveryConfig `yaml:"discovery"`
 }
 
 // NewProtocolsConfig creates the default configuration of communication protocols
@@ -62,7 +62,7 @@ func NewProtocolsConfig() ProtocolsConfig {
 		MqttTcpPort: transports.DefaultMqttTcpPort,
 		MqttWssPort: transports.DefaultMqttWssPort,
 
-		Discovery: discotransport.NewDiscoveryConfig(),
+		Discovery: discovery.NewDiscoveryConfig(hostName),
 	}
 	return cfg
 }

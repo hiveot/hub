@@ -606,7 +606,7 @@ func (cl *MqttConsumerClient) Init(fullURL string, clientID string,
 	cl.BaseClientID = clientID
 	cl.BaseConnectionID = "mqtt-" + shortid.MustGenerate()
 	cl.BaseTimeout = timeout
-	cl.BaseProtocolType = transports.ProtocolTypeMQTTS
+	cl.BaseProtocolType = transports.ProtocolTypeMQTTWSS
 	cl.BaseFullURL = fullURL
 	cl.BaseRnrChan = base.NewRnRChan()
 

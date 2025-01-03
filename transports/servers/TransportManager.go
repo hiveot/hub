@@ -55,8 +55,10 @@ func (svc *TransportManager) GetForm(op string, protocol string) (form td.Form) 
 		form = svc.httpsTransport.GetForm(op, "", "")
 	case transports.ProtocolTypeWSS:
 		form = svc.wssTransport.GetForm(op, "", "")
-	case transports.ProtocolTypeMQTTS:
-		form = svc.mqttsTransport.GetForm(op, "", "")
+		//case transports.ProtocolTypeMQTTCP:
+		//	form = svc.mqttTcpTransport.GetForm(op, "", "")
+		//case transports.ProtocolTypeMQTTWSS:
+		//	form = svc.mqttWssTransport.GetForm(op, "", "")
 	}
 	return form
 }
@@ -68,8 +70,10 @@ func (svc *TransportManager) GetConnectURL(protocolType string) (connectURL stri
 		connectURL = svc.wssTransport.GetConnectURL()
 	} else if protocolType == transports.ProtocolTypeSSESC && svc.ssescTransport != nil {
 		connectURL = svc.ssescTransport.GetConnectURL()
-	} else if protocolType == transports.ProtocolTypeMQTTS && svc.mqttsTransport != nil {
-		connectURL = svc.mqttsTransport.GetConnectURL()
+	} else if protocolType == transports.ProtocolTypeMQTTCP && svc.mqttsTransport != nil {
+		//connectURL = svc.mqttTcpTransport.GetConnectURL()
+	} else if protocolType == transports.ProtocolTypeMQTTWSS && svc.mqttsTransport != nil {
+		//connectURL = svc.mqttWssTransport.GetConnectURL()
 	} else {
 		connectURL = svc.httpsTransport.GetConnectURL()
 	}
@@ -173,9 +177,14 @@ func StartProtocolManager(cfg *ProtocolsConfig,
 	}
 	// FIXME: how to support multiple URLs in discovery. See the WoT discovery spec.
 	if cfg.EnableDiscovery {
-		serverURL := svc.GetConnectURL(transports.ProtocolTypeSSESC)
-		svc.discoveryTransport = discotransport.StartDiscoveryTransport(
-			cfg.Discovery, serverURL)
+		cfg.Discovery.ServerAddr = cfg.HttpHost
+		cfg.Discovery.ServerPort = cfg.HttpsPort
+		cfg.Discovery.SsescURL = svc.GetConnectURL(transports.ProtocolTypeSSESC)
+		cfg.Discovery.WssURL = svc.GetConnectURL(transports.ProtocolTypeWSS)
+		cfg.Discovery.MqttWssURL = svc.GetConnectURL(transports.ProtocolTypeMQTTWSS)
+		cfg.Discovery.MqttTcpURL = svc.GetConnectURL(transports.ProtocolTypeMQTTCP)
+
+		svc.discoveryTransport, err = discotransport.StartDiscoveryTransport(cfg.Discovery)
 	}
 	return svc, err
 }

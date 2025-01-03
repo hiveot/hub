@@ -6,13 +6,11 @@ import (
 	"github.com/hiveot/hub/lib/net"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
-	"net/url"
-	"strconv"
 )
 
 // DiscoveryTransport is a thin wrapper around the discovery service
 type DiscoveryTransport struct {
-	cfg DiscoveryConfig
+	cfg discovery.DiscoveryConfig
 	// service discovery using mDNS
 	disco *zeroconf.Server
 }
@@ -26,23 +24,24 @@ func (svc *DiscoveryTransport) Stop() {
 	svc.disco.Shutdown()
 }
 
-func StartDiscoveryTransport(cfg DiscoveryConfig, serverURL string) *DiscoveryTransport {
+func StartDiscoveryTransport(cfg discovery.DiscoveryConfig) (*DiscoveryTransport, error) {
+	var err error
 	svc := DiscoveryTransport{
 		cfg: cfg,
 	}
-	urlInfo, err := url.Parse(serverURL)
-	if err == nil {
-		port, _ := strconv.Atoi(urlInfo.Port())
-		// get the local address from outgoing address
-		obip := net.GetOutboundIP("").String()
-		svc.disco, err = discovery.ServeDiscovery(
-			"hiveot", "hiveot", obip, port,
-			map[string]string{
-				"rawurl": serverURL,
-			})
-	} else {
+	// get the local address from outgoing address
+	obip := net.GetOutboundIP("").String()
+	svc.disco, err = discovery.ServeDiscovery(
+		"hiveot", "hiveot", obip, cfg.ServerPort,
+		map[string]string{
+			discovery.HiveotSsescID:   cfg.SsescURL,
+			discovery.HiveotWssID:     cfg.WssURL,
+			discovery.HiveotMqttWssID: cfg.MqttWssURL,
+			discovery.HiveotMqttTcpID: cfg.MqttTcpURL,
+		})
+	if err != nil {
 		slog.Error("Can't start discovery. Invalid server URL",
-			"serverURL", serverURL)
+			"serverAddr", cfg.ServerAddr)
 	}
-	return &svc
+	return &svc, err
 }

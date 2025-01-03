@@ -7,11 +7,12 @@ import {
 
 import EventSource from 'eventsource'
 import {
-    OpInvokeAction,
-    HTOpPublishEvent,
-    HTOpUpdateProperty
-} from "@hivelib/api/vocab/vocab";
-import {NotificationMessage, RequestMessage, ResponseMessage, MessageTypeNotification} from "@hivelib/transports/Messages";
+    NotificationMessage,
+    RequestMessage,
+    ResponseMessage,
+    MessageTypeNotification,
+    MessageTypeResponse, MessageTypeRequest
+} from "@hivelib/transports/Messages";
 
 const hclog = new tslog.Logger()
 
@@ -66,12 +67,13 @@ export async function  connectSSE(
             let req: NotificationMessage = JSON.parse(e.data)
             onNotification(req)
         })
-        source.addEventListener("request",(e:any)=>{
+        source.addEventListener(MessageTypeRequest,(e:any)=>{
             hclog.info("received request", e)
-            let req: RequestMessage = JSON.parse(e.data)
+            let fields = JSON.parse(e.data)
+            let req = new RequestMessage(fields)
             onRequest(req)
         })
-        source.addEventListener("response",(e:any)=>{
+        source.addEventListener(MessageTypeResponse,(e:any)=>{
             hclog.info("received response", e)
             let req: ResponseMessage = JSON.parse(e.data)
             onResponse(req)
@@ -87,11 +89,12 @@ export async function  connectSSE(
         // }
         source.onerror = function (err: any) {
             // TODO: differentiate between an auth error and a broken connection
-            hclog.error("Connection error: " + err.message)
+            hclog.error("Connection error: "+baseURL+ssePath, err.message)
             // source.close()
             if (source.readyState == EventSource.CLOSED) {
                 onConnection(ConnectionStatus.Disconnected)
             }
+            reject(err)
         }
     })
 }

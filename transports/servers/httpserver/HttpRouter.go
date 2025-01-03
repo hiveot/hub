@@ -44,7 +44,7 @@ const (
 // HttpRouter contains the method to setup the HTTP binding routes
 
 // setup the chain of routes used by the service and return the router
-// this also sets the routes for the sub-protocol handlers (sse-sc and wss)
+// this also sets the routes for the sub-protocol handlers (ssesc and wss)
 func (svc *HttpTransportServer) createRoutes(router chi.Router) http.Handler {
 
 	// TODO: is there a use for a static file server?

@@ -55,9 +55,14 @@ func ConnectConsumerToHub(
 	// 1. determine the actual address
 	if fullURL == "" {
 		// return after first result
-		fullURL = discovery.LocateHub(time.Second, true)
-		if fullURL == "" {
+		disco, err := discovery.LocateHub(time.Second, true)
+		if err != nil {
 			return nil, fmt.Errorf("Hub not found")
+		}
+		// FIXME: determine best protocol to use
+		fullURL = disco.SsescURL
+		if disco.SsescURL == "" {
+			fullURL = disco.WssURL
 		}
 	}
 	if clientID == "" {
@@ -155,7 +160,7 @@ func NewConsumerClient(
 	} else if strings.HasPrefix(fullURL, "wss") {
 		protocolType = transports.ProtocolTypeWSS
 	} else if strings.HasPrefix(fullURL, "mqtts") {
-		protocolType = transports.ProtocolTypeMQTTS
+		protocolType = transports.ProtocolTypeMQTTCP
 	} else {
 		return nil, fmt.Errorf("Unknown protocol type in URL: " + fullURL)
 	}
@@ -170,7 +175,7 @@ func NewConsumerClient(
 		//bc = httpclient.NewHttpAgentTransport(
 		//	fullURL, clientID, nil, caCert, getForm, timeout)
 
-	case transports.ProtocolTypeMQTTS:
+	case transports.ProtocolTypeMQTTCP:
 		bc = mqttclient.NewMqttConsumerClient(
 			fullURL, clientID, nil, caCert, getForm, timeout)
 

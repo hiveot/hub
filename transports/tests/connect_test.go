@@ -34,7 +34,8 @@ const testServerHttpURL = "https://localhost:9445"
 const testServerSseURL = "https://localhost:9445/sse"
 const testServerSsescURL = "https://localhost:9445/ssesc"
 const testServerWssURL = "wss://localhost:9445/wss"
-const testServerMqttURL = "mqtts://localhost:9446"
+const testServerMqttTcpURL = "mqtts://localhost:9446"
+const testServerMqttWssURL = "mqttwss://localhost:9447"
 
 var defaultProtocol = transports.ProtocolTypeSSESC
 
@@ -62,8 +63,10 @@ func NewAgent(clientID string) transports.IAgentConnection {
 		fullURL = testServerSsescURL
 	case transports.ProtocolTypeWSS:
 		fullURL = testServerWssURL
-	case transports.ProtocolTypeMQTTS:
-		fullURL = testServerMqttURL
+	case transports.ProtocolTypeMQTTWSS:
+		fullURL = testServerMqttWssURL
+	case transports.ProtocolTypeMQTTCP:
+		fullURL = testServerMqttTcpURL
 	}
 	caCert := certBundle.CaCert
 	bc, err := clients.NewAgentClient(fullURL, clientID, caCert, testTimeout)
@@ -93,8 +96,10 @@ func NewConsumer(clientID string, getForm transports.GetFormHandler) transports.
 		fullURL = testServerSsescURL
 	case transports.ProtocolTypeWSS:
 		fullURL = testServerWssURL
-	case transports.ProtocolTypeMQTTS:
-		fullURL = testServerMqttURL
+	case transports.ProtocolTypeMQTTCP:
+		fullURL = testServerMqttTcpURL
+	case transports.ProtocolTypeMQTTWSS:
+		fullURL = testServerMqttWssURL
 	}
 	caCert := certBundle.CaCert
 	cc, err := clients.NewConsumerClient(fullURL, clientID, caCert, getForm, testTimeout)

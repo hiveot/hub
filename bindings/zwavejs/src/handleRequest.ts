@@ -22,7 +22,7 @@ const log = new tslog.Logger()
 // handle controller actions as defined in the TD
 // Normally this returns the delivery status to the caller.
 // If delivery is in progress then use 'hc' to send further status updates.
-export function  handleInvokeAction(
+export function  handleRequest(
     req: RequestMessage, zwapi: ZWAPI, hc: IAgentConnection): ResponseMessage {
 
     let err: Error|undefined
@@ -154,6 +154,7 @@ export function  handleInvokeAction(
             }
     }
     let resp = req.createResponse(output,err)
+    resp.status = status
     if (err) {
         log.error(err)
     }

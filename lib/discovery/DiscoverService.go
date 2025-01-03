@@ -4,12 +4,19 @@ package discovery
 import (
 	"fmt"
 	"github.com/grandcat/zeroconf"
+	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/servers/httpserver"
 	"log/slog"
 	"strings"
 	"time"
 )
 
 const HIVEOT_DNSSD_TYPE = "_hiveot._tcp"
+
+const HiveotWssID = "wss"
+const HiveotSsescID = "ssesc"
+const HiveotMqttWssID = "mqtt-wss"
+const HiveotMqttTcpID = "mqtt-tcps"
 
 // DiscoverService searches for services with the given type and returns all its instances.
 // This is a wrapper around various means of discovering services and supports the discovery of multiple
@@ -64,11 +71,11 @@ func DiscoverService(serviceType string, waitTime time.Duration, firstResult boo
 	return address, rec0.Port, params, records, nil
 }
 
-// LocateHub determines the nats URL to use.
+// LocateHub determines the available hub URLs.
 // This first checks if a local connection can be made on the default port.
 // Secondly, perform a DNS-SD search.
 // If firstResult is set then return immediately after the first result or searchTime
-func LocateHub(searchTime time.Duration, firstResult bool) (fullURL string) {
+func LocateHub(searchTime time.Duration, firstResult bool) (cfg DiscoveryConfig, err error) {
 	if searchTime <= 0 {
 		searchTime = time.Second * 3
 	}
@@ -80,15 +87,30 @@ func LocateHub(searchTime time.Duration, firstResult bool) (fullURL string) {
 	if err != nil {
 		// failed, nothing to be found
 		slog.Warn("LocateHub: Hub not found")
-		return ""
+		return cfg, err
 	}
-	fullURL, found := params["rawurl"]
-	if !found {
-		fullURL = fmt.Sprintf("tcp://%s:%d%s", addr, port, params["path"])
+	cfg = NewDiscoveryConfig(addr)
+	cfg.ServerAddr = addr
+	cfg.ServerPort = port
+	cfg.ServiceID = "hiveot"
+	cfg.WssURL = params[HiveotWssID]
+	cfg.SsescURL = params[HiveotSsescID]
+	cfg.MqttTcpURL = params[HiveotMqttTcpID]
+	cfg.MqttWssURL = params[HiveotMqttWssID]
+
+	// fallback to defaults
+	if addr == "" {
+		addr = "localhost"
+		cfg.ServerAddr = addr
+		cfg.ServerPort = transports.DefaultHttpsPort
+		cfg.WssURL = fmt.Sprintf("wss://%s:%d%s", addr, transports.DefaultHttpsPort, httpserver.DefaultWSSPath)
+		cfg.SsescURL = fmt.Sprintf("https://%s:%d%s", addr, transports.DefaultHttpsPort, httpserver.DefaultSSESCPath)
+		cfg.MqttTcpURL = fmt.Sprintf("https://%s:%d%s", addr, transports.DefaultMqttWssPort, "")
+		cfg.MqttWssURL = fmt.Sprintf("https://%s:%d%s", addr, transports.DefaultMqttTcpPort, "")
 	}
 	slog.Info("LocateHub",
 		slog.Int("Nr records", len(records)),
-		slog.String("fullURL", fullURL),
+		slog.String("addr", cfg.ServerAddr),
 	)
-	return fullURL
+	return cfg, err
 }

@@ -75,7 +75,7 @@ func WebLogin(fullURL string, clientID string,
 	// websocket client
 	//sseCl := wssclient.NewWssTransportClient(
 	//	fullURL, clientID, nil, ts.Certs.CaCert, time.Minute)
-	// or sse-sc client
+	// or ssesc client
 
 	// use the hub's SSE client to connect to the hiveoview server
 	// FIXME: hiveoview server uses different SSE event payload than hiveoview

@@ -9,12 +9,14 @@ const (
 	ProtocolTypeHTTPS = "https"
 	// SSE subprotocol return channel
 	ProtocolTypeSSE = "sse"
-	// SSE-SC subprotocol return channel
+	// SSESC subprotocol return channel
 	ProtocolTypeSSESC = "ssesc" // subprotocol of https
 	// Websocket subprotocol two-way channel
 	ProtocolTypeWSS = "wss" // subprotocol of https
-	// MQTT protocol
-	ProtocolTypeMQTTS = "mqtts"
+	// MQTT protocol over WSS
+	ProtocolTypeMQTTWSS = "mqtt-wss"
+	// MQTT protocol over TCP
+	ProtocolTypeMQTTCP = "mqtt-tcp"
 	// Internal embedded direct call, for testing
 	ProtocolTypeEmbedded = "embedded" // for testing
 )

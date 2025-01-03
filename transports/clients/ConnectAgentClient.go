@@ -37,9 +37,14 @@ func ConnectAgentToHub(fullURL string, clientID string, certDir string) (
 	// 1. determine the actual address
 	if fullURL == "" {
 		// return after first result
-		fullURL = discovery.LocateHub(time.Second, true)
-		if fullURL == "" {
+		disco, err := discovery.LocateHub(time.Second, true)
+		if err != nil {
 			return nil, fmt.Errorf("Hub not found")
+		}
+		// FIXME: pick requested protocol
+		fullURL = disco.SsescURL
+		if disco.SsescURL == "" {
+			fullURL = disco.WssURL
 		}
 	}
 	if clientID == "" {
@@ -75,7 +80,7 @@ func ConnectAgentToHub(fullURL string, clientID string, certDir string) (
 //
 //	https://addr:port/ for http without sse
 //	https://addr:port/sse for http with the sse subprotocol binding
-//	https://addr:port/ssesc for http with the sse-sc subprotocol binding
+//	https://addr:port/ssesc for http with the ssesc subprotocol binding
 //	wss://addr:port/wss for websocket over TLS
 //	mqtts://addr:port/ for mqtt over websocket over TLS
 //
@@ -105,7 +110,10 @@ func NewAgentClient(
 	} else if strings.HasPrefix(fullURL, "wss") {
 		protocolType = transports.ProtocolTypeWSS
 	} else if strings.HasPrefix(fullURL, "mqtts") {
-		protocolType = transports.ProtocolTypeMQTTS
+		protocolType = transports.ProtocolTypeMQTTCP
+	} else if strings.HasPrefix(fullURL, "mqttwss") {
+		// fixme, what is the mqtt wss prefix? how to differentiate from regular websockets
+		protocolType = transports.ProtocolTypeMQTTWSS
 	} else {
 		return nil, fmt.Errorf("Unknown protocol type in URL: " + fullURL)
 	}
@@ -116,11 +124,15 @@ func NewAgentClient(
 	// Create the client for the protocol
 	switch protocolType {
 	case transports.ProtocolTypeHTTPS:
-		panic("Don't use HTTPS protocol, use the SSE-SC or WSS subprotocol instead")
+		panic("Don't use HTTPS protocol, use the SSESC or WSS subprotocol instead")
 		//bc = httpclient.NewHttpAgentTransport(
 		//	fullURL, clientID, nil, caCert, getForm, timeout)
 
-	case transports.ProtocolTypeMQTTS:
+	//case transports.ProtocolTypeMQTTWSS:
+	//	bc = mqttclient.NewMqttAgentClient(
+	//		fullURL, clientID, nil, caCert, timeout)
+
+	case transports.ProtocolTypeMQTTCP:
 		bc = mqttclient.NewMqttAgentClient(
 			fullURL, clientID, nil, caCert, timeout)
 

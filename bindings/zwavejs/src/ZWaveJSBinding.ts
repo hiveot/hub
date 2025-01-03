@@ -10,7 +10,7 @@ import * as vocab from "@hivelib/api/vocab/vocab.js";
 import fs from "fs";
 import {BindingConfig} from "./BindingConfig";
 import * as tslog from 'tslog';
-import {handleInvokeAction} from "@zwavejs/handleInvokeAction";
+import {handleRequest} from "@zwavejs/handleRequest";
 import {ValueID} from "@zwave-js/core";
 import {getVidAffordance} from "@zwavejs/getVidAffordance";
 import {IAgentConnection} from "@hivelib/transports/IAgentConnection";
@@ -172,7 +172,7 @@ export class ZwaveJSBinding {
             logVid(this.vidCsvFD)
         }
         this.hc.setRequestHandler( (msg:RequestMessage):ResponseMessage => {
-            let resp = handleInvokeAction(msg,this.zwapi, this.hc)
+            let resp = handleRequest(msg,this.zwapi, this.hc)
             return resp
         })
 
