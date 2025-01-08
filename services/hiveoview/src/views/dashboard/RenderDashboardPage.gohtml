@@ -27,7 +27,7 @@
         <div class="grid-stack"
              hx-trigger="change"
              hx-post="{{.SubmitDashboardLayoutPath}}"
-             hx-vals='js:{layout: saveLayout()}'
+             hx-vals='js:{layout: getLayout(), size:getLayoutSize()}'
              hx-swap="none"
         >
             {{range $k,$v := .Dashboard.Tiles }}
@@ -46,11 +46,12 @@
 
 <script>
     var grid;
+    var options;
     startGridStack();
 
     function startGridStack() {
         // debugger;
-        var options = { // put in gridstack options here
+        options = { // put in gridstack options here
             animate:true,
             draggable: {
                 // handle: ".drag-target",
@@ -62,25 +63,78 @@
             staticGrid:false,   // allow resize in edit mode
             minRow: 3,
             columnOpts: {
-                layout: "moveResize",
-                breakpointForWindow:true,  // not sure what this does window vs grid size?
-                breakpoints: [{w: 300, c: 1}, {w: 600, c: 4}, {w: 800, c: 8}, {w:1200, c:12}]
-            }
+                // layout: "none", // we reload the previously saved layout for the size
+                // layout: "moveResize",
+                //  breakpointForWindow:true,  // not sure what this does window vs grid size?
+                // breakpoints: [{w: 300, c: 1}, {w: 600, c: 4}, {w: 800, c: 8}, {w:1200, c:12}]
+            },
+            // custom storage to detect resize
+            lastSize: "",
+            // local store with latest layouts without loading back from the
+            layouts:  {{.Dashboard.GridLayouts}},
         };
         grid = GridStack.init(options)//.load(serializedData);
 
-        {{if .Dashboard.GridLayout}}
-        let layout = JSON.parse("{{.Dashboard.GridLayout}}");
-        if (layout) {
-            grid.load(layout,false)
+        // htmx posts layout changes to the server but we also need these client side
+        grid.on("change", function() {
+            console.log("grid.onchange")
+            let newLayout = getLayout()
+            let size = getLayoutSize()
+            options.layouts[size] = newLayout
+        })
+
+        // listen for screen size changes to reload a new layout
+        window.onresize = function() {
+            let size = getLayoutSize()
+            console.info("onresize. size=",size)
+            if (size !== options.lastSize) {
+                options.lastSize = size
+                loadGridLayout(grid, options.layouts)
+            }
         }
+        loadGridLayout(grid, options.layouts)
+    }
+
+
+    // Return the screen size name "sm, md, lg, xl"
+    function getLayoutSize() {
+        let size = "xl"
+        let w = window.innerWidth;
+        if (w < 600) {
+            size = "sm"
+        } else if (w < 1024) {
+            size = "md"
+        } else if (w < 1280) {
+            size = "lg"
+        }
+        return size
+    }
+
+    // load the layout for the current window size into the grid.
+    function loadGridLayout(grid,layouts) {
+
+        {{if .Dashboard.GridLayouts}}
+        // TODO: reload the layout from the (state) server to avoid two devices with
+        //  different size overwriting each other.
+        //  Alteratively, save only the current size in post.
+        let size = getLayoutSize()
+
+        if (layouts) {
+            let layoutJSON = layouts[size]
+            let layout = JSON.parse(layoutJSON)
+            if (layout) {
+                grid.load(layout, false)
+            }
+        }
+        console.log("loadLayout size=", size, "layout", layout)
         {{end}}
     }
 
-    // save the current layout.
-    // TODO: include the active breakpoint setting so that each breakpoint
-    // can have its own layout.
-    function saveLayout() {
+    // return the current layout as used by the grid.
+    function getLayout() {
+        let size = getLayoutSize()
+        console.info("getLayout: size=",size)
+
         let dashData = grid.save(saveContent=false)
         if (dashData) {
             return JSON.stringify(dashData)
@@ -162,5 +216,6 @@
         border-bottom-right-radius: var(--pico-card-border-radius);
     }
 </style>
+
 <!--end of dashboard-->
 {{end}}

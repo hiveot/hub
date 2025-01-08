@@ -32,7 +32,7 @@ FIXME: The intent was to trigger a manual reload with click event, however,
 
 		// use sse connection events to update the connection status button
     function connectStatusChanged(ev) {
-        console.log("connectStatusRequestChanged", ev)
+        // console.log("connectStatusRequestChanged", ev)
         let btn = document.getElementById('headerStatusButton')
         if (ev.type === "htmx:sseError") {
             btn.style.borderColor = "red"

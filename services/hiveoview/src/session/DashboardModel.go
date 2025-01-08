@@ -72,9 +72,9 @@ type DashboardModel struct {
 	// Tiles in this dashboard
 	Tiles map[string]DashboardTile `json:"tiles"`
 
-	// Serialized layout from gridstack.js
-	// eg []{"id":,"x":,"y":,"w":,"h":}
-	GridLayout string `json:"layout"`
+	// Serialized layout from gridstack.js per size
+	// eg  "sm": []{"id":,"x":,"y":,"w":,"h":}
+	GridLayouts map[string]string `json:"layouts"`
 }
 
 // GetTile returns the dashboard tile with the given ID
@@ -126,7 +126,7 @@ func NewDashboard(
 	}
 	d.ID = "default"
 	d.Title = title
-	d.GridLayout = ""
+	d.GridLayouts = make(map[string]string)
 	d.Tiles = make(map[string]DashboardTile)
 	// add a default tile to show. This tile has the dashboard ID
 	newTile := d.NewTile(ID+"-tile", "Edit Me", TileTypeText)

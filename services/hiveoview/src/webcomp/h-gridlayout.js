@@ -51,7 +51,6 @@ template.innerHTML = `
         display: grid;
         gap: 3px;
         grid-template-columns: repeat(24,1fr);
-        grid-template-columns: repeat(24,1fr);
     }
 </style>
 `

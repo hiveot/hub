@@ -38,6 +38,9 @@ func (model *ClientDataModel) GetDashboard(id string) (d DashboardModel, found b
 	defer model.mux.RUnlock()
 	dashboard, found := model.Dashboards[id]
 	if found {
+		if dashboard.GridLayouts == nil {
+			dashboard.GridLayouts = make(map[string]string)
+		}
 		return *dashboard, found
 	}
 	return

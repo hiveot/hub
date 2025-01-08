@@ -25,8 +25,9 @@ func SubmitDashboardLayout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Update the layout of the given breakpoint if given
-	// TODO: identify breakpoint used: sm, md, lg
+	// the form variables are set through hx-vals at RenderDashboardPage.gohtml:30
 	proposedLayoutJSON := r.PostFormValue("layout")
+	layoutSize := r.PostFormValue("size")
 	if proposedLayoutJSON != "" {
 		// array of {"id":, "x":, "y": "w":, "h":}
 		// id must be an existing tile
@@ -44,19 +45,23 @@ func SubmitDashboardLayout(w http.ResponseWriter, r *http.Request) {
 			// TODO: fix unnecessary dashboard layout triggers by grid-stack
 			// probable cause is that dashboard tile switch in TextCardInput bubbles event even
 			// though hx-post is set.
-			if string(newLayoutSer) == cdc.dashboard.GridLayout {
+			existingLayoutSer := cdc.dashboard.GridLayouts[layoutSize]
+			if string(newLayoutSer) == existingLayoutSer {
 				return
 			}
-			cdc.dashboard.GridLayout = string(newLayoutSer)
+			cdc.dashboard.GridLayouts[layoutSize] = string(newLayoutSer)
 		}
 	}
 	if err != nil {
 		slog.Warn("SubmitDashboardLayout error",
-			"dashboardID", cdc.dashboard.ID, "err", err.Error())
+			slog.String("dashboardID", cdc.dashboard.ID),
+			slog.String("size", layoutSize),
+			slog.String("err", err.Error()))
 		sess.WriteError(w, err, http.StatusBadRequest)
 	}
-	slog.Info("SubmitDashboardLayout", "SenderID", cdc.clientID,
-		"dashboardID", cdc.dashboardID)
+	slog.Info("SubmitDashboardLayout",
+		slog.String("dashboardID", cdc.dashboardID),
+		slog.String("size", layoutSize))
 
 	// save the updated dashboard
 	cdc.clientModel.UpdateDashboard(&cdc.dashboard)
