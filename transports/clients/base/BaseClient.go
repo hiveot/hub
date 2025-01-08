@@ -174,19 +174,12 @@ func (cl *BaseClient) OnResponse(resp transports.ResponseMessage) {
 		return
 	}
 
-	if cl.appNotificationHandler != nil {
-		// the last resort is to pass to the notification handler
-		notif := transports.NewNotificationMessage(
-			resp.Operation, resp.ThingID, resp.Name, resp.Output)
-		cl.appNotificationHandler(notif)
-	} else {
-		// at least one of the handlers should be registered
-		slog.Error("Response received but no handler registered",
-			"operation", resp.Operation,
-			"thingID", resp.ThingID,
-			"name", resp.Name,
-			"correlationID", resp.CorrelationID)
-	}
+	// at least one of the handlers should be registered
+	slog.Error("Response received but no handler registered",
+		"operation", resp.Operation,
+		"thingID", resp.ThingID,
+		"name", resp.Name,
+		"correlationID", resp.CorrelationID)
 }
 
 // Ping the server and wait for a pong response
@@ -217,7 +210,7 @@ func (cl *BaseClient) RefreshToken(oldToken string) (newToken string, err error)
 
 	// set the new token as the bearer token
 	if err == nil {
-		newToken = tputils.DecodeAsString(resp.Output)
+		newToken = tputils.DecodeAsString(resp.Output, 0)
 	}
 	return newToken, err
 }
@@ -251,7 +244,7 @@ func (cl *BaseClient) SendRequest(req transports.RequestMessage, waitForCompleti
 	resp transports.ResponseMessage, err error) {
 
 	t0 := time.Now()
-	slog.Debug("SendRequest",
+	slog.Info("SendRequest",
 		slog.String("op", req.Operation),
 		slog.String("dThingID", req.ThingID),
 		slog.String("name", req.Name),

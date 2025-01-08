@@ -47,6 +47,22 @@ type InteractionOutput struct {
 	SenderID string
 }
 
+// FormatTime is a helper function to return the formatted time of the given ISO timestamp
+// The default format is RFC822 ("02 Jan 06 15:04 MST")
+// Optionally "WT" is weekday, time (Mon, 14:31:01 PDT)
+// or, provide the time format directly, eg: "02 Jan 06 15:04 MST" for rfc822
+func (iout *InteractionOutput) FormatTime(stamp string) (formattedTime string) {
+	createdTime, _ := dateparse.ParseAny(stamp)
+	// Format weekday, time if less than a week old
+	age := time.Now().Sub(createdTime)
+	if age < time.Hour*24*7 {
+		formattedTime = createdTime.Format("Mon, 15:04:05 MST")
+	} else {
+		formattedTime = createdTime.Format(time.RFC822)
+	}
+	return formattedTime
+}
+
 // GetUpdated is a helper function to return the formatted time the data was last updated.
 // The default format is RFC822 ("02 Jan 06 15:04 MST")
 // Optionally "WT" is weekday, time (Mon, 14:31:01 PDT)
@@ -214,9 +230,6 @@ func NewInteractionOutputFromValue(
 // NewInteractionOutput creates a new immutable interaction output from
 // schema and raw value.
 //
-// As events are used to update property values, this uses the message Name to
-// determine whether this is a property, event or action IO.
-//
 //	tdi TD instance whose output this is
 //	affType is one of AffordanceTypeAction, event or property
 //	name is the interaction affordance name the output belongs to
@@ -252,7 +265,7 @@ func NewInteractionOutput(tdi *td.TD, affType string, name string, raw any, upda
 	}
 	if schema == nil {
 		schema = &td.DataSchema{
-			Title: "unknown schema",
+			Title: "NewInteractionOutput: td has no affordance: " + name,
 		}
 	}
 	if title == "" {

@@ -152,6 +152,7 @@ export class RequestMessage extends Object {
     public createResponse(output: any, err?: Error): ResponseMessage {
         let resp = new ResponseMessage(
             this.operation, this.thingID, this.name, output, err?.message, this.correlationID)
+        resp.received = this.created
         return resp
     }
 }

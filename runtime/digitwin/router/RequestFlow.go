@@ -42,6 +42,15 @@ func (svc *DigitwinRouter) HandleRequest(
 		req.Created = time.Now().Format(wot.RFC3339Milli)
 	}
 
+	slog.Info("HandleRequest (to agent)",
+		slog.String("operation", req.Operation),
+		slog.String("dThingID", req.ThingID),
+		slog.String("name", req.Name),
+		slog.String("Input", fmt.Sprintf("%.20v", req.ToString(20))),
+		slog.String("correlationID", req.CorrelationID),
+		slog.String("senderID", req.SenderID),
+	)
+
 	// middleware: authorize the request.
 	// TODO: use a middleware chain
 	if !svc.hasPermission(req.SenderID, req.Operation, req.ThingID) {
@@ -119,13 +128,7 @@ func (svc *DigitwinRouter) HandleInvokeAction(
 	// Forward the action to the built-in services
 	agentID, thingID := td.SplitDigiTwinThingID(req.ThingID)
 	_ = thingID
-	//
-	//slog.Debug("HandleInvokeAction",
-	//	slog.String("dThingID", req.ThingID),
-	//	slog.String("actionName", req.Name),
-	//	slog.String("correlationID", req.CorrelationID),
-	//	slog.String("senderID", req.SenderID),
-	//)
+
 	// internal services return instant result
 	switch agentID {
 	case digitwin.DirectoryAgentID:
@@ -138,23 +141,16 @@ func (svc *DigitwinRouter) HandleInvokeAction(
 		resp = svc.digitwinAction(req)
 	default:
 		// Forward the action to external agents
-		resp = svc.HandleInvokeRemoteAgent(req, replyTo)
+		resp = svc.ForwardActionToRemoteAgent(req, replyTo)
 	}
 	return resp
 }
 
-// HandleInvokeRemoteAgent forwards the action to external agents
-func (svc *DigitwinRouter) HandleInvokeRemoteAgent(
+// ForwardActionToRemoteAgent forwards the action to external agents
+func (svc *DigitwinRouter) ForwardActionToRemoteAgent(
 	req transports.RequestMessage, replyTo string) (resp transports.ResponseMessage) {
 
 	agentID, thingID := td.SplitDigiTwinThingID(req.ThingID)
-
-	slog.Info("HandleInvokeRemoteAgent (to agent)",
-		slog.String("dThingID", req.ThingID),
-		slog.String("actionName", req.Name),
-		slog.String("correlationID", req.CorrelationID),
-		slog.String("senderID", req.SenderID),
-	)
 
 	// Store the action progress to be able to respond to queryAction. Only
 	// unsafe (stateful) actions are stored.
@@ -172,7 +168,7 @@ func (svc *DigitwinRouter) HandleInvokeRemoteAgent(
 		// The request cannot be delivered as the agent is not reachable
 		// For now return an error.
 		// TODO: determine the rules and use-cases for queuing a request
-		err = fmt.Errorf("HandleInvokeRemoteAgent: Agent '%s' not reachable. Ignored", agentID)
+		err = fmt.Errorf("ForwardActionToRemoteAgent: Agent '%s' not reachable. Ignored", agentID)
 		return req.CreateResponse(nil, err)
 	}
 
@@ -201,7 +197,7 @@ func (svc *DigitwinRouter) HandleInvokeRemoteAgent(
 	// if forwarding the request to the agent failed, then remove the tracking,
 	// update the action status, and return an error response
 	if err != nil {
-		slog.Warn("HandleInvokeRemoteAgent - failed",
+		slog.Warn("ForwardActionToRemoteAgent - failed",
 			slog.String("dThingID", req.ThingID),
 			slog.String("actionName", req.Name),
 			slog.String("correlationID", req.CorrelationID),
@@ -295,6 +291,6 @@ func (svc *DigitwinRouter) HandleReadAllTDs(
 func (svc *DigitwinRouter) HandleWriteProperty(
 	req transports.RequestMessage, replyTo string) transports.ResponseMessage {
 
-	resp := svc.HandleInvokeRemoteAgent(req, replyTo)
+	resp := svc.ForwardActionToRemoteAgent(req, replyTo)
 	return resp
 }

@@ -96,10 +96,10 @@ type NotificationMessage struct {
 //
 // format is optional format or "" to use the default format RFC822 ("02 Jan 06 15:04 MST")
 // use "WT" for weekday, time (Mon, 14:31:01 PDT)
-func (req *NotificationMessage) GetUpdated(format string) string {
-	created, err := dateparse.ParseAny(req.Created)
+func (notif *NotificationMessage) GetUpdated(format string) string {
+	created, err := dateparse.ParseAny(notif.Created)
 	if err != nil {
-		return req.Created // can't parse, return as-is
+		return notif.Created // can't parse, return as-is
 	}
 	createdTime := created.Local()
 	if format == "WT" {
@@ -116,14 +116,14 @@ func (req *NotificationMessage) GetUpdated(format string) string {
 	return createdTime.Format(format)
 }
 
-// ToString is a helper to easily read the request input as a string
-func (req *NotificationMessage) ToString() string {
-	return tputils.DecodeAsString(req.Data)
+// ToString is a helper to easily read the notification data as a string
+func (notif *NotificationMessage) ToString(maxlen int) string {
+	return tputils.DecodeAsString(notif.Data, maxlen)
 }
 
-// ToBool is a helper to easily return the result as boolean
-func (req *NotificationMessage) ToBool() bool {
-	return tputils.DecodeAsBool(req.Data)
+// ToBool is a helper to easily return the notification value as boolean
+func (notif *NotificationMessage) ToBool() bool {
+	return tputils.DecodeAsBool(notif.Data)
 }
 
 // RequestMessage for sending a request for an operation on a Thing or service.
@@ -201,8 +201,9 @@ func (req *RequestMessage) CreateResponse(output any, err error) (resp ResponseM
 }
 
 // ToString is a helper to easily convert the request input to a string
-func (req *RequestMessage) ToString() string {
-	return tputils.DecodeAsString(req.Input)
+// maxlen is the maximum string length or 0 for unlimited
+func (req *RequestMessage) ToString(maxlen int) string {
+	return tputils.DecodeAsString(req.Input, maxlen)
 }
 
 // ToObject is a helper to easily convert the request input to an object
@@ -278,8 +279,8 @@ func (resp *ResponseMessage) GetUpdated() string {
 }
 
 // ToString is a helper to easily read the response output as a string
-func (resp *ResponseMessage) ToString() string {
-	return tputils.DecodeAsString(resp.Output)
+func (resp *ResponseMessage) ToString(maxlen int) string {
+	return tputils.DecodeAsString(resp.Output, maxlen)
 }
 
 // NewRequestMessage creates a new RequestMessage instance.

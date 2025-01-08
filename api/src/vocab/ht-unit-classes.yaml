@@ -9,7 +9,7 @@
 UnitClasses:
   version: "0.1"
   link: "github.com/hiveot/hub/api/vocab/ht-unit-classes.yaml"
-  namespace: "ht"
+  namespace: "hiveot"
   vocab:
     UnitAmpere:
       class: "hiveot:unit:ampere"

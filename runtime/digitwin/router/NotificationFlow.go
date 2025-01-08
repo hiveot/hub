@@ -15,6 +15,7 @@ import (
 // HandleNotification routes notifications from agents to clients
 // This updates the last event/property value in the digital twin store.
 func (svc *DigitwinRouter) HandleNotification(notif transports.NotificationMessage) {
+
 	// convert the ThingID to that of the digital twin
 	// ensure a 'created' time is set
 	dThingID := td.MakeDigiTwinThingID(notif.SenderID, notif.ThingID)
@@ -22,6 +23,15 @@ func (svc *DigitwinRouter) HandleNotification(notif transports.NotificationMessa
 	if notif.Created == "" {
 		notif.Created = time.Now().Format(wot.RFC3339Milli)
 	}
+
+	slog.Info("HandleNotification",
+		slog.String("operation", notif.Operation),
+		slog.String("thingID", notif.ThingID),
+		slog.String("name", notif.Name),
+		// this is temporary
+		slog.String("data", notif.ToString(20)),
+		slog.String("created", notif.Created),
+	)
 
 	if notif.Operation == wot.HTOpEvent {
 		tv := digitwin.ThingValue{
@@ -52,7 +62,7 @@ func (svc *DigitwinRouter) HandleNotification(notif transports.NotificationMessa
 		svc.HandleUpdateMultipleProperties(notif)
 
 	} else if notif.Operation == wot.HTOpUpdateTD {
-		tdJSON := notif.ToString()
+		tdJSON := notif.ToString(0)
 		err := svc.dtwService.DirSvc.UpdateTD(notif.SenderID, tdJSON)
 		if err != nil {
 			slog.Warn(err.Error())
@@ -78,7 +88,8 @@ func (svc *DigitwinRouter) HandleNotification(notif transports.NotificationMessa
 //	return true, output, err
 //}
 
-// HandleUpdateMultipleProperties agent publishes a batch with multiple property values.
+// HandleUpdateMultipleProperties agent publishes a batch with multiple property
+// key-value pairs.
 // This sends individual property updates to observers.
 //
 // agentID is the ID of the agent sending the update

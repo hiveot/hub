@@ -74,19 +74,19 @@ func (svc *IsyBinding) HandleWriteBindingProperty(
 	// FIXME: persist this configuration
 	switch req.Name {
 	case vocab.PropNetAddress:
-		svc.config.IsyAddress = req.ToString()
+		svc.config.IsyAddress = req.ToString(0)
 		err = svc.isyAPI.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
 		if err == nil {
 			svc.IsyGW.Init(svc.isyAPI)
 		}
 	case "loginName":
-		svc.config.LoginName = req.ToString()
+		svc.config.LoginName = req.ToString(0)
 		err = svc.isyAPI.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
 		if err == nil {
 			svc.IsyGW.Init(svc.isyAPI)
 		}
 	case "password":
-		svc.config.Password = req.ToString()
+		svc.config.Password = req.ToString(0)
 		err = svc.isyAPI.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
 		if err == nil {
 			svc.IsyGW.Init(svc.isyAPI)

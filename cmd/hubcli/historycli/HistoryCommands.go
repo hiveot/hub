@@ -124,7 +124,7 @@ func HandleListEvents(hc transports.IConsumerConnection, dThingID string, name s
 	count := 0
 	for msg, valid, err := cursor.Last(); err == nil && valid && count < limit; msg, valid, err = cursor.Prev() {
 		count++
-		value := msg.ToString()
+		value := msg.ToString(30)
 		// show number of properties
 		//if msg.Name == vocab.EventNameProperties {
 		//	props := make(map[string]interface{})
@@ -133,7 +133,7 @@ func HandleListEvents(hc transports.IConsumerConnection, dThingID string, name s
 		//}
 		// FIXME: reformat timestmp
 		updated := msg.Created
-		fmt.Printf("%-30s %-30s %-20.20s %-30.30s\n",
+		fmt.Printf("%-30s %-30s %-20.20s %-30s\n",
 			msg.ThingID,
 			updated,
 			msg.Name,

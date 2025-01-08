@@ -111,7 +111,7 @@ func HandleListThing(hc transports.IConsumerConnection, thingID string) error {
 		prop, found := tdDoc.Properties[key]
 		if found && prop.ReadOnly {
 			value := propValueMap[key]
-			valueStr := tputils.DecodeAsString(value.Data)
+			valueStr := tputils.DecodeAsString(value.Data, 15)
 			fmt.Printf(" %-30s %-40.40s %s%-15.15s%s %-.80s\n",
 				key, prop.Title, utils.COGreen, valueStr, utils.COReset, prop.Description)
 		}
@@ -124,7 +124,7 @@ func HandleListThing(hc transports.IConsumerConnection, thingID string) error {
 		prop, found := tdDoc.Properties[key]
 		if found && !prop.ReadOnly {
 			value := propValueMap[key]
-			valueStr := tputils.DecodeAsString(value.Data)
+			valueStr := tputils.DecodeAsString(value.Data, 15)
 			fmt.Printf(" %-30s %-40.40s %-10.10s %s%-15.15s%s %-.80s\n",
 				key, prop.Title, prop.Type, utils.COBlue, valueStr, utils.COReset, prop.Description)
 		}
@@ -143,7 +143,7 @@ func HandleListThing(hc transports.IConsumerConnection, thingID string) error {
 			dataType = ev.Data.Type
 		}
 		value := eventValueMap[key]
-		valueStr := tputils.DecodeAsString(value.Data)
+		valueStr := tputils.DecodeAsString(value.Data, 15)
 		if ev.Data.Type != "" {
 			//initialValue = ev.Data.InitialValue
 		}
@@ -161,7 +161,7 @@ func HandleListThing(hc transports.IConsumerConnection, thingID string) error {
 		action := tdDoc.Actions[key]
 		dataType := "(n/a)"
 		value := actionValueMap[key]
-		valueStr := tputils.DecodeAsString(value.Data)
+		valueStr := tputils.DecodeAsString(value.Data, 15)
 		if action.Input != nil {
 			dataType = action.Input.Type
 			//initialValue = action.Input.InitialValue

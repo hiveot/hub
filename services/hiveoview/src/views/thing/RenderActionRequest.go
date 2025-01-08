@@ -34,12 +34,12 @@ type ActionRequestTemplateData struct {
 
 	// input value to edit
 	// This defaults to the last action input
-	InputValue *consumedthing.InteractionOutput
+	InputValue *consumedthing.InteractionInput
 
 	// the previous action request record
 	LastActionRecord *digitwin.ActionStatus
 	// input value with previous action input (if any)
-	LastActionInput consumedthing.DataSchemaValue
+	//LastActionInput consumedthing.DataSchemaValue
 	// previous action timestamp (formatted)
 	LastActionTime string
 	// previous action age (formatted)
@@ -100,8 +100,8 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 		Name:    name,
 		Action:  actionAff,
 		CT:      ct,
-		InputValue: consumedthing.NewInteractionOutput(
-			tdi, consumedthing.AffordanceTypeAction, name, nil, ""),
+		// The input value will be set to the last action value, if available
+		InputValue:  consumedthing.NewInteractionInput(tdi, name, nil),
 		Description: actionAff.Description,
 	}
 	if data.Description == "" {
@@ -117,7 +117,7 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 		updatedTime, _ := dateparse.ParseAny(data.LastActionRecord.TimeUpdated)
 		data.LastActionTime = updatedTime.Format(time.RFC1123)
 		data.LastActionAge = tputils.Age(updatedTime)
-		data.LastActionInput = consumedthing.NewDataSchemaValue(data.LastActionRecord.Input)
+		data.InputValue.Value.Raw = data.LastActionRecord.Input
 	}
 
 	pathArgs := map[string]string{"thingID": data.ThingID, "name": data.Name}

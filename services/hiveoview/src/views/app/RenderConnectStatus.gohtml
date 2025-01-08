@@ -12,29 +12,55 @@ FIXME: The intent was to trigger a manual reload with click event, however,
  hx-trigger doesnt support multiple triggers in combination with sse:connectStatus.
 
 -->
-{{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/app.AppHeadTemplateData*/ -}}
+{{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/app.ConnectStatusTemplateData*/ -}}
 
-{{if not .Status}}
+{{if not .RenderConnectStatusPath}}
 
 <button
-				hx-get="/app/connectStatus"
+				hx-get="/status/connection"
 				hx-trigger="intersect once"
 				hx-swap="outerHTML"
 				hx-target="this"
 			>
 </button>
 
+<script>
+		// this script is only injected once on first render.
+    // document.body.addEventListener('htmx:sseClose', connectStatusRequestChanged)
+    document.body.addEventListener('htmx:sseError', connectStatusChanged)
+    document.body.addEventListener('htmx:sseOpen', connectStatusChanged)
+
+		// use sse connection events to update the connection status button
+    function connectStatusChanged(ev) {
+        console.log("connectStatusRequestChanged", ev)
+        let btn = document.getElementById('headerStatusButton')
+        if (ev.type === "htmx:sseError") {
+            btn.style.borderColor = "red"
+            btn.title = "connection is lost"
+            btn.children[0].icon = "mdi:link-off"
+        } else if (ev.type === "htmx:sseOpen") {
+            btn.style.borderColor = "green"
+            btn.title = "connection restored"
+            btn.children[0].icon = "mdi:link"
+        }
+        // TODO: trigger a toast on connect/disconnect
+		    // note that an error is sent on each reconnect failure
+    }
+</script>
+
+
 {{else}}
 
-<button hx-get="/app/connectStatus"
-        hx-trigger="sse:connectStatus"
+<button id="headerStatusButton"
+				hx-get="{{.RenderConnectStatusPath}}"
         hx-swap="outerHTML"
         hx-target="this"
         class="outline h-icon-button"
-        style="border: 1px solid {{if .Status.IsConnected}}green{{else}}red{{end}};"
-        title='{{or .Status.Description "not yet connected"}}'
+        style="border: 1px solid {{if .IsConnected}}green{{else}}red{{end}};"
+        title='{{or .Description "not yet connected"}}'
 >
-	<iconify-icon icon='mdi:{{or .Status.IconName  "link-off"}}'></iconify-icon>
+	<iconify-icon icon='mdi:{{or .IconName  "link-off"}}'></iconify-icon>
 </button>
 
 {{end}}
+

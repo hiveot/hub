@@ -2,6 +2,8 @@ package consumedthing
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/api/go/digitwin"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot"
@@ -73,24 +75,18 @@ func (ct *ConsumedThing) buildInteractionOutput(tm *transports.NotificationMessa
 	return iout
 }
 
-// GetPropValue returns the interaction output of the latest property value.
+// GetActionStatus returns the action status record of the last action
 //
-// This returns an empty InteractionOutput if not found
-func (ct *ConsumedThing) GetPropValue(name string) (iout *InteractionOutput) {
-	ct.mux.RLock()
-	iout, found := ct.propValues[name]
-	ct.mux.RUnlock()
-	_ = found
-	if iout == nil {
-		// not a known prop value so create an empty io with a schema from the td
-		iout = &InteractionOutput{
-			ThingID: ct.td.ID,
-			Name:    name,
-		}
-		iout.setSchemaFromTD(ct.td)
-		slog.Debug("Value not (yet) published for property ", "name", name, "thingID", ct.td.ID)
-	}
-	return iout
+// This returns an empty ActionStatus if not found
+func (ct *ConsumedThing) GetActionStatus(name string) *digitwin.ActionStatus {
+	var stat digitwin.ActionStatus
+	err := ct._rpc(wot.OpQueryAction, name, nil, &stat)
+
+	//ct.InvokeAction(digitwin.ValuesActionQueryAction, args)
+	//actionVal, err := digitwin.ValuesQueryAction(sess.GetHubClient(), name, thingID)
+	//err = hc.Rpc("invokeaction", ValuesDThingID, ValuesQueryActionMethod, &args, &actionvalue)
+	_ = err
+	return &stat
 }
 
 // GetEventValue returns the interaction output of the latest value of an event
@@ -113,9 +109,43 @@ func (ct *ConsumedThing) GetEventValue(name string) (iout *InteractionOutput) {
 	return iout
 }
 
+// GetPropValue returns the interaction output of the latest property value.
+//
+// This returns an empty InteractionOutput if not found
+func (ct *ConsumedThing) GetPropValue(name string) (iout *InteractionOutput) {
+	ct.mux.RLock()
+	iout, found := ct.propValues[name]
+	ct.mux.RUnlock()
+	_ = found
+	if iout == nil {
+		// not a known prop value so create an empty io with a schema from the td
+		iout = &InteractionOutput{
+			ThingID: ct.td.ID,
+			Name:    name,
+		}
+		iout.setSchemaFromTD(ct.td)
+		slog.Debug("Value not (yet) published for property ", "name", name, "thingID", ct.td.ID)
+	}
+	return iout
+}
+
 // GetThingDescription return the TD document that is represented here.
 func (ct *ConsumedThing) GetThingDescription() *td.TD {
 	return ct.td
+}
+
+// GetTitle return the TD document title
+// If a title property is available return its value instead of the TD title.
+// This lets a Thing update its TD title without re-issuing a new TD.
+func (ct *ConsumedThing) GetTitle() string {
+	title := ct.td.Title
+	ct.mux.RLock()
+	iout, found := ct.propValues[vocab.PropDeviceTitle]
+	ct.mux.RUnlock()
+	if found {
+		title = iout.Value.Text()
+	}
+	return title
 }
 
 // InvokeAction requests an action on the Thing
@@ -127,7 +157,7 @@ func (ct *ConsumedThing) InvokeAction(name string, params InteractionInput) *Int
 	}
 	// find the form that describes the protocol for invoking an action
 	//stat := ct.cc.PublishFromForm(href, actionForm, params.value, "")
-	err := ct._rpc(wot.OpInvokeAction, name, params.value, &output)
+	err := ct._rpc(wot.OpInvokeAction, name, params.Value.Raw, &output)
 
 	o := NewInteractionOutput(ct.td, AffordanceTypeAction, name, output, "")
 	o.Err = err
@@ -353,11 +383,11 @@ func (ct *ConsumedThing) SubscribeEvent(name string, listener InteractionListene
 // delivery and applying the value.
 //
 // This returns a correlation ID and an error if the request cannot be delivered to the server.
-func (ct *ConsumedThing) WriteProperty(name string, value InteractionInput) (err error) {
+func (ct *ConsumedThing) WriteProperty(name string, ii InteractionInput) (err error) {
 
 	//just a simple wrapper around the transport client
 	thingID := ct.td.ID
-	raw := value.value
+	raw := ii.Value.Raw
 	err = ct.cc.WriteProperty(thingID, name, raw, true)
 
 	return err

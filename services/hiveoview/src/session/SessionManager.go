@@ -184,6 +184,7 @@ func (sm *WebSessionManager) ConnectWithPassword(
 	w http.ResponseWriter, r *http.Request,
 	loginID string, password string, cid string) (newToken string, err error) {
 
+	//
 	hc, err := clients.NewConsumerClient(sm.hubURL, loginID, sm.caCert, nil, sm.timeout)
 	if err == nil {
 		newToken, err = hc.ConnectWithPassword(password)

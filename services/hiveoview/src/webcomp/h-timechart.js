@@ -310,7 +310,7 @@ export class HTimechart extends HTMLElement {
 
         let yaxisID = dataUnit ? dataUnit : "default"
         // construct a replacement dataset
-        console.debug("setTimeSeries", timePoints.length, "items", "label=",label)
+        // console.debug("setTimeSeries", timePoints.length, "items", "label=",label)
         let dataset = {
             key:key,
             // label: label,

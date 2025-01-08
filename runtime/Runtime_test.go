@@ -199,7 +199,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	// Agent receives action request which we'll handle here
 	agentRequestHandler := func(req transports.RequestMessage) transports.ResponseMessage {
 		rxMsg = req
-		reply := tputils.DecodeAsString(req.Input) + ".reply"
+		reply := tputils.DecodeAsString(req.Input, 0) + ".reply"
 		// TODO WSS doesn't support the senderID in the message. How important is this?
 		// option1: not important - no use-case
 		// option2: extend the websocket InvokeAction message format with a SenderID

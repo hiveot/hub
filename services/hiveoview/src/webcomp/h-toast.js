@@ -13,7 +13,7 @@
  *
  * Usage:
  *   html: <h-toast top|bottom left|right horizontal|vertical duration="1000"></h-toast>
- *   JS: window.toast.showToast(type, text, 3000)
+ *   JS: window.toast.showToast(type, "", text, 3000)
  *   HTMX: <div sse-swap="info" hx-target="#toast" hx-swap="beforeend"></div>
  *   Event:  document.dispatchEvent(new CustomEvent("toast", {detail: {type: "info", text: "hello"[, duration: msec]}}))
 
@@ -32,7 +32,7 @@
  *  8. support sse 'toast' {"type":"info","text","toast text"} events
  */
 const PROGRESS_BAR_ANIMATION = "progressbar"
-const DEFAULT_DURATION = 3000  // msec showing toast
+const DEFAULT_DURATION = 10000  // msec showing toast
 const template = `
 
 <style>
@@ -295,7 +295,8 @@ class HToast extends HTMLElement {
     }
 
     constructor() {
-        super(); 
+        super();
+        console.info("new toast ")
         this.innerHTML = template;
         this.duration = DEFAULT_DURATION; // default value when not set
         if (this.id) {
@@ -308,10 +309,11 @@ class HToast extends HTMLElement {
         // handle toast events send to the dom
         document.addEventListener("toast", (ev) => {
             if (ev.detail) {
+                let duration = this.duration
                 if (!ev.detail.duration) {
                     duration = ev.detail.duration
                 }
-                this.showToast(ev.detail.type, ev.detail.text, duration)
+                this.showToast(ev.detail.type,"", ev.detail.text,duration)
             } else {
                 console.error("Received toast event but 'detail' field is empty")
             }
@@ -346,12 +348,24 @@ class HToast extends HTMLElement {
                         let node = mut.addedNodes[0]
                         if (node.nodeName !== "LI") {
                             // console.log("child added through htmx", node)
-                            // expect <type>: text
-                            let parts = node.wholeText.split(":", 1)
-                            let ttype = parts[0].trim()
-                            let remainder = node.wholeText.substring(parts[0].length + 1).trim()
+                            // expect <type>:<id>: text
+                            let parts = node.wholeText.split(":")
+                            let ttype = parts.shift().trim()
+                            let msgId = parts.shift().trim()
+                            let remainder = parts.join(":")
+                            // let ttype = parts[0].trim()
+                            // let msgID = parts[1]
+                            // let remainder = node.wholeText.substring(parts[0].length + 1).trim()
                             this.removeChild(node)
-                            this.showToast(ttype, remainder)
+
+                            let existingNode = this.findToast(msgId)
+                            if (existingNode) {
+                                this.updateToast(existingNode, ttype,msgId,remainder)
+                            } else {
+                                // if this is an existing toast (use of ID) then update it instead of adding a new toast
+                                // console.log("observechildren; adding toast; node=",node, "ttype=",ttype,"msgId",msgId,"remainder",remainder)
+                                this.showToast(ttype, msgId, remainder)
+                            }
                         }
                     }
                 })
@@ -360,10 +374,22 @@ class HToast extends HTMLElement {
         observer.observe(this, {characterData: true, subtree: true, childList: true})
     }
 
+    // locate the element with the given message ID
+    findToast = (msgId) => {
+        if (!msgId) {
+            return
+        }
+        let toastEl = this.querySelector("#"+msgId)
+        // let toastEl = this.querySelector(msgId)
+        return toastEl
+    }
+
+
     /* Show a new toast of the given type (info, warning, error, success)
      * with an optional timeout.
      */
-    showToast = (ttype, text, timeout) => {
+    showToast = (ttype, msgId, text, timeout) => {
+        console.info("showToast: type=",ttype, "; msgId=",msgId,"; text=", text, "; timeout=",timeout)
         if (!timeout) {
             // provide more time to read errors
             if (ttype === "error") {
@@ -378,6 +404,9 @@ class HToast extends HTMLElement {
         const {icon, prefix} = this.toastDetails[ttype];
         // Creating a new 'li' element for the toast
         const toast = document.createElement("li");
+        if (msgId) {
+            toast.id = msgId
+        }
         toast.className = `toast ${ttype}`; // Setting the classes for the toast
         // timeout for countdown animation
         toast.style.setProperty("--toast-duration", timeout + "ms")
@@ -398,6 +427,28 @@ class HToast extends HTMLElement {
                 this.removeToast(toast);
             }
         }
+    }
+
+
+    /* update the existing toast element. change its type and text
+      intended to update a toast instead of adding a second toast
+     */
+    updateToast =( toast, ttype, msgId, text) => {
+        console.info("updateToast: type=",ttype, "; msgId=",msgId,"; text=", text)
+        let timeout = 10000
+        const {icon, prefix} = this.toastDetails[ttype];
+
+        toast.className = `toast ${ttype}`; // Setting the classes for the toast
+        toast.style.setProperty("--toast-duration", timeout + "ms")
+
+        // Replace the inner HTML for the toast
+        toast.innerHTML =
+            `<div class="column ${ttype}">
+               <iconify-icon icon="${icon}"></iconify-icon>
+               <span>${prefix}: ${text}</span>
+             </div>
+             <iconify-icon icon="mdi:close" onclick="parentElement.removeToast(this.parentElement)"></iconify-icon>
+           `;
     }
 
     removeToast = (toast) => {

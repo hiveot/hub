@@ -89,7 +89,7 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 		unit = actionAff.Output.Unit
 	}
 	notificationText := fmt.Sprintf("Action %s: %v %s", actionTitle, reply, unit)
-	sess.SendNotify(session.NotifySuccess, notificationText)
+	sess.SendNotify(session.NotifySuccess, "", notificationText)
 
 	w.WriteHeader(http.StatusOK)
 }

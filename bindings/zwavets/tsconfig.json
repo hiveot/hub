@@ -1,0 +1,69 @@
+{
+  // typescript should generate JS files that support nodejs type loading
+  "compilerOptions": {
+    "allowJs": true,
+    "baseUrl": ".",
+    "checkJs": false,
+    // using references would be nice but it doesn't work with tsc-alias
+    // "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "esModuleInterop": true,
+    "emitDecoratorMetadata": false,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "incremental": true,
+    // Avoid runtime imports that are unnecessary
+    "lib": [
+      "es2022"
+    ],
+    "module": "ES2020",
+    "moduleResolution": "node",
+    "noEmit": false,
+    "noEmitOnError": false,
+    "noErrorTruncation": true,
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "outDir": "./build",
+    // paths avoids the need for relative paths
+    // ./hivelib is a symlink to the shared dir ../hivelib/src
+    "paths": {
+      "@hivelib/*": [
+        "./hivelib/*"
+      ],
+      "@keys/*": [
+        "./hivelib/keys/*"
+      ],
+      "@zwavejs/*": [
+        "./src/*"
+      ]
+    },
+    "preserveSymlinks": true,
+    "pretty": true,
+    "rootDir": ".",
+    "removeComments": false,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "strict": true,
+    "target": "es2020",
+    "types": [
+      "node"
+    ]
+  },
+  // tsc-alias doesn't work with references. using symlink to hivelib/src instead
+  // "references": [
+  //   {
+  //     "path": "../hivelib"
+  //   },
+  // ],
+  "include": [
+    "./src/**/*.ts",
+    "./hivelib/**/*.ts"
+  ],
+  "exclude": [
+    "./build",
+    "./node_modules",
+    "./dist"
+  ]
+}

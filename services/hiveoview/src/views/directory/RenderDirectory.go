@@ -46,7 +46,7 @@ func RenderDirectory(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		err = fmt.Errorf("unable to load directory: %w", err)
 		slog.Error(err.Error())
-		sess.SendNotify(session2.NotifyError, err.Error())
+		sess.SendNotify(session2.NotifyError, "", err.Error())
 	}
 
 	agentGroups := GroupByAgent(tdMap)

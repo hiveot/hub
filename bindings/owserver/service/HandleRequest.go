@@ -17,7 +17,7 @@ func (svc *OWServerBinding) HandleRequest(req transports.RequestMessage) (resp t
 		slog.String("op", req.Operation),
 		slog.String("thingID", req.ThingID),
 		slog.String("name", req.Name),
-		slog.String("payload", req.ToString()),
+		slog.String("payload", req.ToString(20)),
 	)
 
 	if req.Operation == wot.OpWriteProperty {
@@ -62,7 +62,7 @@ func (svc *OWServerBinding) HandleActionRequest(req transports.RequestMessage) (
 
 	// Determine the value.
 	// FIXME: when building the TD, Booleans are defined as enum integers
-	actionValue := req.ToString()
+	actionValue := req.ToString(0)
 	var err error
 
 	// the thingID is the device identifier, eg the ROMId
@@ -73,7 +73,7 @@ func (svc *OWServerBinding) HandleActionRequest(req transports.RequestMessage) (
 	_ = svc.RefreshPropertyValues(false)
 
 	// Writing the EDS is slow, retry in case it was missed
-	time.Sleep(time.Second * 4)
+	time.Sleep(time.Second * 1)
 	_ = svc.RefreshPropertyValues(false)
 
 	if err != nil {
@@ -87,11 +87,11 @@ func (svc *OWServerBinding) HandleActionRequest(req transports.RequestMessage) (
 // HandleConfigRequest handles requests to configure the service or devices
 func (svc *OWServerBinding) HandleConfigRequest(req transports.RequestMessage) (stat transports.ResponseMessage) {
 	var err error
-	valueStr := req.ToString()
+	valueStr := req.ToString(0)
 	slog.Info("HandleConfigRequest",
 		slog.String("thingID", req.ThingID),
 		slog.String("property", req.Name),
-		slog.String("payload", valueStr))
+		slog.String("payload", req.ToString(20)))
 
 	// the thingID is the ROMId of the device to configure
 	// the Name is the attributeID of the property to configure
@@ -109,8 +109,7 @@ func (svc *OWServerBinding) HandleConfigRequest(req transports.RequestMessage) (
 		go svc.SaveState()
 		// publish changed values after returning
 		go svc.hc.PubProperty(req.ThingID, vocab.PropDeviceTitle, valueStr)
-		// republish the TD as its title changed (yeah its a bit over the top)
-		go svc.PublishNodeTD(node)
+		return req.CreateResponse(valueStr, nil)
 	} else {
 		attr, found := node.Attr[req.Name]
 		if !found {
@@ -124,11 +123,13 @@ func (svc *OWServerBinding) HandleConfigRequest(req transports.RequestMessage) (
 			slog.Warn(err.Error())
 		} else {
 			err = svc.edsAPI.WriteData(req.ThingID, req.Name, valueStr)
+			// there is no output in the response as this can take some time
 		}
 		// publish changed value after returning
 		go func() {
 			// owserver is slow to update
-			time.Sleep(time.Second * 5)
+			// FIXME: track config updates
+			time.Sleep(time.Second * 1)
 			_ = svc.RefreshPropertyValues(false)
 		}()
 	}

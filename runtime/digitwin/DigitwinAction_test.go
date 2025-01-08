@@ -66,7 +66,7 @@ func TestActionFlow(t *testing.T) {
 	require.NoError(t, err)
 	outputInt := tputils.DecodeAsInt(as.Output)
 	require.Equal(t, actionValue, outputInt)
-	require.Equal(t, vocab.RequestCompleted, as.Status)
+	require.Equal(t, transports.StatusCompleted, as.Status)
 
 	// read all actions
 	//actList, err := svc.ValuesSvc.QueryAllActions(consumerID, dThingID)

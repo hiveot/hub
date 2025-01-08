@@ -85,6 +85,5 @@ func StartDigitwinService(storesDir string, cm *connections.ConnectionManager) (
 		}
 		slog.Info("Started DigitwinService")
 	}
-	//authz.UserSetPermissions(hc, authz.ThingPermissions{})
 	return svc, digitwinStore, err
 }

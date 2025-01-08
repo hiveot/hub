@@ -25,17 +25,24 @@ func Decode(value any, arg interface{}) error {
 
 // DecodeAsString converts the value to a string
 // if value is already a string then it is returned as-is
-func DecodeAsString(value any) string {
+// if maxlen is provided then limit the resulting length and add ... if exceeded
+func DecodeAsString(value any, maxlen int) string {
 	if value == nil {
 		return ""
 	}
+	asString := ""
 	switch value.(type) {
 	case string:
-		return value.(string)
+		asString = value.(string)
 	case *string:
-		return *value.(*string)
+		asString = *value.(*string)
+	default:
+		asString = fmt.Sprintf("%v", value)
 	}
-	return fmt.Sprintf("%v", value)
+	if maxlen <= 0 || len(asString) <= maxlen {
+		return asString
+	}
+	return asString[:maxlen]
 }
 
 // DecodeAsBool converts the value to a boolean.

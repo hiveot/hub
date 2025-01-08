@@ -25,7 +25,7 @@ const log = new tslog.Logger()
 export function  handleRequest(
     req: RequestMessage, zwapi: ZWAPI, hc: IAgentConnection): ResponseMessage {
 
-    let err: Error|undefined
+    let err: Error | undefined
     let output: any
     let status = StatusCompleted
 
@@ -35,7 +35,7 @@ export function  handleRequest(
     if (node == undefined) {
         let errMsg = new Error("handleActionRequest: node for thingID" + req.thingID + "does not exist")
         log.error(errMsg)
-        return req.createResponse(null,errMsg)
+        return req.createResponse(null, errMsg)
     }
     if (req.operation == OpWriteProperty) {
         return handleWriteProperty(req, node, zwapi, hc)
@@ -94,11 +94,11 @@ export function  handleRequest(
             status = StatusRunning // async response
             // ping a node. The response is sent async
             let startTime = performance.now()
-            node.ping().then((success:boolean)=>{
+            node.ping().then((success: boolean) => {
                 let endTime = performance.now()
-                let msec = Math.round(endTime-startTime)
+                let msec = Math.round(endTime - startTime)
                 let resp = req.createResponse(msec)
-                log.info("ping '"+req.thingID+"': "+msec+" msec")
+                log.info("ping '" + req.thingID + "': " + msec + " msec")
                 hc.sendResponse(resp)
             })
             break;
@@ -106,7 +106,11 @@ export function  handleRequest(
             // doc warning: do not call refreshInfo when node interview is not yet complete
             if (node.interviewStage == InterviewStage.Complete) {
                 // TODO: should we send a running response?
-                node.refreshInfo({waitForWakeup: true}).then()
+                node.refreshInfo({waitForWakeup: true}).then((result)=>{
+                    log.info("refreshinfo. Result:",result)
+                    let resp = req.createResponse(null)
+                    hc.sendResponse(resp)
+                })
             } else {
                 // a previous request was still running.
                 err = new Error("refreshinfo is already running")
@@ -114,13 +118,14 @@ export function  handleRequest(
             break;
         case "refreshvalues":
             status = StatusRunning
-            node.refreshValues().then(()=>{
+            // this can take 10-20 seconds
+            node.refreshValues().then(() => {
                 let resp = req.createResponse(null)
                 log.info("refreshvalues completed")
                 hc.sendResponse(resp)
-            }).catch(err =>{
+            }).catch(err => {
                 log.info("refreshvalues failed: ", err)
-                let resp = req.createResponse(null,err)
+                let resp = req.createResponse(null, err)
                 hc.sendResponse(resp)
             })
             break;
@@ -142,7 +147,7 @@ export function  handleRequest(
                         zwapi.onValueUpdate(node, propVid, newValue)
                     })
                     .catch(err => {
-                        resp = req.createResponse(null,err)
+                        resp = req.createResponse(null, err)
                         hc.sendResponse(resp)
                     })
                 found = true
@@ -153,7 +158,7 @@ export function  handleRequest(
                     req.thingID + "'")
             }
     }
-    let resp = req.createResponse(output,err)
+    let resp = req.createResponse(output, err)
     resp.status = status
     if (err) {
         log.error(err)

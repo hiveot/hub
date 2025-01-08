@@ -16,9 +16,9 @@
 ActionClasses:
   version: "0.1"
   link: "github.com/hiveot/hub/api/vocab/ht-action-classes.yaml"
-  namespace: "ht"
+  namespace: "hiveot"
   vocab:
-    # ht:action:media commands to control media playback
+    # hiveot:action:media commands to control media playback
     ActionMedia:
       class: "hiveot:action:media"
       title: "Media control"

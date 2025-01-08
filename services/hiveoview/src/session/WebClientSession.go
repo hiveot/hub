@@ -203,8 +203,11 @@ func (sess *WebClientSession) HandleHubConnectionClosed() {
 			sess.onClosed(sess)
 		}
 
-		// if a web connection is still there then attempt to notify
-		sess.SendNotify(NotifyWarning, "Disconnected from the Hub")
+		// Shutting down this session should first kill the hub so there might
+		// still be a web connection. Attempt to notify.
+		// TODO: these notifications should be in JS using sse
+		sess.SendNotify(NotifyWarning, "", "Disconnected from the Hub")
+		sess.SendSSE("connectStatus", "Disconnected from the Hub")
 
 		// this will call back into HandleWebConnectionClosed, which will not do
 		// anything since the channel was already cleaned up.
@@ -283,10 +286,10 @@ func (sess *WebClientSession) onHubConnectionChange(connected bool, err error) {
 		slog.String("lastError", lastErrText))
 
 	if connected {
-		sess.SendNotify(NotifySuccess, "Connection established with the Hub")
+		sess.SendNotify(NotifySuccess, "", "Connection established with the Hub")
 	} else if err != nil {
 		//  a normal disconnect?
-		sess.SendNotify(NotifyWarning, "Connection with Hub failed: "+err.Error())
+		sess.SendNotify(NotifyWarning, "", "Connection with Hub failed: "+err.Error())
 		// notify the client and close session
 		sess.HandleHubConnectionClosed()
 	} else {
@@ -300,17 +303,16 @@ func (sess *WebClientSession) onHubConnectionChange(connected bool, err error) {
 // The consumed thing itself is already updated.
 func (sess *WebClientSession) onResponse(msg *transports.ResponseMessage) {
 
-	if msg.Operation == vocab.OpInvokeAction {
-		// TODO: figure out a way to replace the existing notification popup if the correlationID
-		//  is the same (status changes from applied to delivered)
-		if msg.Error != "" {
-			sess.SendNotify(NotifyError, msg.Error)
-		} else if msg.Status == transports.StatusCompleted {
-			sess.SendNotify(NotifySuccess, "Action successful")
-		} else {
-			sess.SendNotify(NotifyWarning, "Action progress: "+msg.Status)
-		}
-	}
+	// tbd: is there any use-case for showing response progress automatically in a toast?
+	//if msg.Operation == vocab.OpInvokeAction {
+	//	if msg.Error != "" {
+	//		sess.SendNotify(NotifyError, msg.CorrelationID, msg.Error)
+	//	} else if msg.Status == transports.StatusCompleted {
+	//		sess.SendNotify(NotifySuccess, msg.CorrelationID, "Action successful")
+	//	} else {
+	//		sess.SendNotify(NotifyWarning, msg.CorrelationID, "Action progress: "+msg.Status)
+	//	}
+	//}
 }
 
 // onNotification notifies SSE clients of incoming notifications from the Hub
@@ -333,7 +335,7 @@ func (sess *WebClientSession) onNotification(msg *transports.NotificationMessage
 		//    hx-trigger="sse:{{.Thing.ThingID}}/{{k}}"
 		// notify the browser both of the property value and the timestamp
 		thingAddr := fmt.Sprintf("%s/%s", msg.ThingID, msg.Name)
-		propVal := tputils.DecodeAsString(msg.Data)
+		propVal := tputils.DecodeAsString(msg.Data, 0)
 		sess.SendSSE(thingAddr, propVal)
 		thingAddr = fmt.Sprintf("%s/%s/updated", msg.ThingID, msg.Name)
 		sess.SendSSE(thingAddr, msg.GetUpdated(""))
@@ -344,7 +346,7 @@ func (sess *WebClientSession) onNotification(msg *transports.NotificationMessage
 		//    hx-trigger="sse:{{.Thing.ThingID}}/{{$k}}"
 		// where $k is the event ID
 		eventName := fmt.Sprintf("%s/%s", msg.ThingID, msg.Name)
-		sess.SendSSE(eventName, msg.ToString())
+		sess.SendSSE(eventName, msg.ToString(0))
 		eventName = fmt.Sprintf("%s/%s/updated", msg.ThingID, msg.Name)
 		sess.SendSSE(eventName, msg.GetUpdated(""))
 	}
@@ -387,12 +389,18 @@ func (sess *WebClientSession) SaveState() error {
 // SendNotify sends a 'notify' event for showing in a toast popup.
 // To send an SSE event use SendSSE()
 //
+// The msgID is optional. If provided then a followup message with the same ID
+// will update the toast instead of adding a new one.
+//
 //	ntype is the toast notification type: "info", "error", "warning"
-func (sess *WebClientSession) SendNotify(ntype NotifyType, text string) {
+//	msgID is the notification message ID.
+//	text to include in the notification
+func (sess *WebClientSession) SendNotify(ntype NotifyType, msgID string, text string) {
 	sess.mux.RLock()
 	defer sess.mux.RUnlock()
 	if sess.sseChan != nil {
-		sess.sseChan <- SSEEvent{Event: "notify", Payload: string(ntype) + ":" + text}
+		sess.sseChan <- SSEEvent{Event: "notify",
+			Payload: string(ntype) + ":" + msgID + ":" + text}
 	} else {
 		// not neccesarily an error as a notification can be sent after the channel closes
 		//slog.Error("SendNotify. SSE channel is closed")
@@ -411,7 +419,6 @@ func (sess *WebClientSession) SendSSE(event string, content string) {
 	sess.mux.RLock()
 	defer sess.mux.RUnlock()
 	if sess.sseChan != nil {
-		// FIXME: the channel gets blocked, which should never happen
 		sess.sseChan <- SSEEvent{Event: event, Payload: content, ID: event}
 	} else {
 		// not neccesarily an error as a notification can be sent after the channel closes
@@ -431,7 +438,7 @@ func (sess *WebClientSession) WriteError(w http.ResponseWriter, err error, httpC
 		return
 	}
 	slog.Error(err.Error())
-	sess.SendNotify(NotifyError, err.Error())
+	sess.SendNotify(NotifyError, "", err.Error())
 
 	if httpCode == 0 {
 		output := "Oops: " + err.Error()
@@ -496,8 +503,9 @@ func NewWebClientSession(
 		cts:      cts,
 		onClosed: onClosed,
 	}
-	//hc.SetNotificationHandler(cs.onNotification)
 	hc.SetConnectHandler(cs.onHubConnectionChange)
+	// onResponse is called with async responses to requests
+	cts.SetResponseHandler(cs.onResponse)
 	// onNotification is called with updates from the consumed thing
 	cts.SetEventHandler(cs.onNotification)
 
@@ -510,7 +518,7 @@ func NewWebClientSession(
 		if err != nil {
 			slog.Error("unable to load client state from state service",
 				"clientID", cs.hc.GetClientID(), "err", err.Error())
-			cs.SendNotify(NotifyWarning, "Unable to restore session: "+err.Error())
+			cs.SendNotify(NotifyWarning, "", "Unable to restore session: "+err.Error())
 			cs.lastError = err
 		}
 	}

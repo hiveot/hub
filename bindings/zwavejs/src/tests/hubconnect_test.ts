@@ -25,7 +25,7 @@ async function test1() {
     // process.on("uncaughtException", (err: Error) => {
     //     log.error("uncaughtException", err)
     // })
-
+log.info("connecting to "+testURL)
     let hc = await ConnectToHub( testURL,testClient, caCertPEM,true)
     let token = await hc.connectWithPassword(testPass)
 

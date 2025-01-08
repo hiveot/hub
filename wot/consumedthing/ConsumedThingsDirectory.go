@@ -25,7 +25,9 @@ type ConsumedThingsDirectory struct {
 	directory map[string]*td.TD
 	// the full directory has been read in this session
 	fullDirectoryRead bool
-	// additional handler of events for forwarding to other consumers
+	// unhandled responses to notify with popup
+	responseHandler func(msg *transports.ResponseMessage)
+	// additional handler of notifications
 	eventHandler func(msg *transports.NotificationMessage)
 	mux          sync.RWMutex
 }
@@ -59,6 +61,30 @@ func (cts *ConsumedThingsDirectory) Consume(thingID string) (ct *ConsumedThing, 
 		cts.mux.Unlock()
 	}
 	return ct, nil
+}
+
+// GetForm returns the form for an operation on a Thing
+func (cts *ConsumedThingsDirectory) GetForm(op, thingID, name string) (f td.Form) {
+	tdi := cts.GetTD(thingID)
+	if tdi != nil {
+		f = tdi.GetForm(op, name, "")
+	}
+	return f
+}
+
+// IsActive returns whether the session has a connection to the Hub or is in the process of connecting.
+//func (cs *ConsumedThingsDirectory) IsActive() bool {
+//	status := cs.cc.GetStatus()
+//	return status.ConnectionStatus == hubclient.Connected ||
+//		status.ConnectionStatus == hubclient.Connecting
+//}
+
+// GetTD returns the TD in the session or nil if thingID isn't found
+func (cts *ConsumedThingsDirectory) GetTD(thingID string) *td.TD {
+	cts.mux.RLock()
+	defer cts.mux.RUnlock()
+	tdi := cts.directory[thingID]
+	return tdi
 }
 
 // handleNotification updates the consumed things from subscriptions
@@ -97,7 +123,7 @@ func (cts *ConsumedThingsDirectory) handleNotification(msg transports.Notificati
 		msg.Name == digitwin.DirectoryEventThingUpdated {
 		// decode the TD
 		td := &td.TD{}
-		err := jsoniter.UnmarshalFromString(msg.ToString(), &td)
+		err := jsoniter.UnmarshalFromString(msg.ToString(0), &td)
 		if err != nil {
 			slog.Error("invalid payload for TD event. Ignored",
 				"thingID", msg.ThingID)
@@ -145,28 +171,12 @@ func (cts *ConsumedThingsDirectory) handleNotification(msg transports.Notificati
 	}
 }
 
-// GetForm returns the form for an operation on a Thing
-func (cts *ConsumedThingsDirectory) GetForm(op, thingID, name string) (f td.Form) {
-	tdi := cts.GetTD(thingID)
-	if tdi != nil {
-		f = tdi.GetForm(op, name, "")
+// handleResponse
+func (cts *ConsumedThingsDirectory) handleResponse(msg transports.ResponseMessage) {
+	// pass it on to chained handler
+	if cts.responseHandler != nil {
+		cts.responseHandler(&msg)
 	}
-	return f
-}
-
-// IsActive returns whether the session has a connection to the Hub or is in the process of connecting.
-//func (cs *ConsumedThingsDirectory) IsActive() bool {
-//	status := cs.cc.GetStatus()
-//	return status.ConnectionStatus == hubclient.Connected ||
-//		status.ConnectionStatus == hubclient.Connecting
-//}
-
-// GetTD returns the TD in the session or nil if thingID isn't found
-func (cts *ConsumedThingsDirectory) GetTD(thingID string) *td.TD {
-	cts.mux.RLock()
-	defer cts.mux.RUnlock()
-	tdi := cts.directory[thingID]
-	return tdi
 }
 
 // ReadDirectory loads and decodes Thing Description documents from the directory.
@@ -235,6 +245,13 @@ func (cts *ConsumedThingsDirectory) SetEventHandler(handler func(message *transp
 	cts.eventHandler = handler
 }
 
+// SetEventHandler registers a handler to receive async response
+func (cts *ConsumedThingsDirectory) SetResponseHandler(handler func(message *transports.ResponseMessage)) {
+	cts.mux.Lock()
+	defer cts.mux.Unlock()
+	cts.responseHandler = handler
+}
+
 // UpdateTD updates the TD document of a consumed thing
 // This returns the new consumed thing
 // If the consumed thing doesn't exist then ignore this and return nil as
@@ -271,5 +288,6 @@ func NewConsumedThingsSession(hc transports.IConsumerConnection) *ConsumedThings
 	}
 	//hc.Subscribe("", "") TODO: where to subscribe?
 	hc.SetNotificationHandler(ctm.handleNotification)
+	hc.SetResponseHandler(ctm.handleResponse)
 	return &ctm
 }

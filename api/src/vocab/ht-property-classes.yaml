@@ -17,9 +17,9 @@
 PropertyClasses:
   version: "0.1"
   link: "github.com/hiveot/hub/api/vocab/ht-property-classes.yaml"
-  namespace: "ht"
+  namespace: "hiveot"
   vocab:
-    # ht:prop:alarm properties for alarm status
+    # hiveot:prop:alarm properties for alarm status
     # TODO: determine better subcategory - look into existing standards
     PropAlarmStatus:
       class: "hiveot:prop:alarm:status"
@@ -30,7 +30,7 @@ PropertyClasses:
       title: "Motion"
       description: "Motion detected"
 
-    # ht:prop:device
+    # hiveot:prop:device
     # Device attributes not covered by electrical, network or media categories
     PropDevice:
       class: "hiveot:prop:device"
@@ -89,7 +89,7 @@ PropertyClasses:
       title: "Title"
       description: "Device friendly title"
 
-    # ht:prop:electric group of electrical properties
+    # hiveot:prop:electric group of electrical properties
     PropElectric:
       class: "hiveot:prop:electric"
       title: "Electrical properties"
@@ -210,7 +210,7 @@ PropertyClasses:
       title: "Wind speed"
       description: ""
 
-    # ht:prop:location with location related properties
+    # hiveot:prop:location with location related properties
     PropLocation:
       class: "hiveot:prop:location"
       title: "Location"
@@ -240,7 +240,7 @@ PropertyClasses:
       title: "Zip code"
       description: "Location ZIP code"
 
-    # ht:prop:media  - properties with media status and configuration
+    # hiveot:prop:media  - properties with media status and configuration
     PropMedia:
       class: "hiveot:prop:media"
       title: "Media commands"
@@ -270,7 +270,7 @@ PropertyClasses:
       title: "Station"
       description: "Selected radio station"
 
-    # ht:prop:net - network related properties
+    # hiveot:prop:net - network related properties
     PropNet:
       class: "hiveot:prop:net"
       title: "Network properties"
@@ -328,7 +328,7 @@ PropertyClasses:
       title: "Subnet"
       description: "Network subnet address. Example: 192.168.0.0"
 
-    # ht:prop:status - general status values
+    # hiveot:prop:status - general status values
     PropStatusOnOff:
       class: "hiveot:prop:status:onoff"
       enum:
@@ -358,7 +358,7 @@ PropertyClasses:
       title: "Yes/No"
       description: "Status with yes or no value"
 
-    # ht:prop:switch - Switch status
+    # hiveot:prop:switch - Switch status
     PropSwitch:
       class: "hiveot:prop:switch"
       title: "Switch status"

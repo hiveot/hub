@@ -87,6 +87,8 @@ export class ZwaveJSBinding {
     // This publishes the TD and its property values
     handleNodeUpdate(node: ZWaveNode) {
         log.info("handleNodeUpdate:node:", node.id);
+
+        // FIXME: only update the node if it has changed
         let thingTD = getNodeTD(this.zwapi, node, this.vidCsvFD, this.config.maxNrScenes);
 
         if (node.isControllerNode) {

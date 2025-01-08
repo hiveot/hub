@@ -81,7 +81,7 @@ func (d RenderTileTemplateData) GetValue(thingID string, name string) (iout *con
 	}
 	// obtain the value to display from either event or property
 	if iout != nil {
-		rawValue = iout.Value.Raw()
+		rawValue = iout.Value.Raw
 		updated = iout.Updated
 	}
 

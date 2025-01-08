@@ -135,13 +135,12 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	_ = r.DigitwinSvc.DirSvc.UpdateTD(digitwin.ValuesAgentID, digitwin.ValuesTD)
 
 	// agents can update to the directory
-	// fixme: authn.AdminServiceID is not correct but will have to do for now
 	_ = r.AuthzSvc.SetPermissions(authn.AdminServiceID, authz.ThingPermissions{
 		AgentID: digitwin.DirectoryAgentID,
 		ThingID: digitwin.DirectoryServiceID,
 		Allow:   []authz.ClientRole{authz.ClientRoleAgent},
 	})
-	// anyone else can read the directory
+	// anyone else can read the directory, except those with no role
 	// FIXME: differentiate per action based on TD default?
 	_ = r.AuthzSvc.SetPermissions(authn.AdminServiceID, authz.ThingPermissions{
 		AgentID: digitwin.DirectoryAgentID,

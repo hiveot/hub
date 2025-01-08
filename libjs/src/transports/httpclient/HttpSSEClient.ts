@@ -191,6 +191,7 @@ export class HttpSSEClient implements IAgentConnection {
             "password": password,
         }
         let resp = await this.pubMessage("POST", HttpPostLoginPath,loginArgs,"")
+
         let loginResp = JSON.parse(resp)
         this.authToken = loginResp.token
         // with the new auth token a SSE return channel can be established

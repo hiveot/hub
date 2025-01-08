@@ -1,14 +1,15 @@
 package app
 
 import (
+	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"net/http"
 )
 
-const ConnectStatusTemplate = "connectStatus.gohtml"
+const ConnectStatusTemplate = "RenderConnectStatus.gohtml"
 
-// ConnectStatus describes the message bus connection status of the current session
-type ConnectStatus struct {
+// ConnectStatusTemplateData describes the message bus connection status of the current session
+type ConnectStatusTemplateData struct {
 	// the login ID which is used to connect
 	LoginID string
 	// description of the connection status
@@ -18,17 +19,19 @@ type ConnectStatus struct {
 	// optional error text if connection failed
 	Error string
 	// simple flag whether a connection is established
-	IsConnected bool
+	IsConnected             bool
+	RenderConnectStatusPath string
 }
 
 // GetConnectStatus returns the description of the connection status
-func GetConnectStatus(r *http.Request) *ConnectStatus {
+func GetConnectStatus(r *http.Request) *ConnectStatusTemplateData {
 	_, cs, _ := session.GetSessionFromContext(r)
-	status := &ConnectStatus{
-		IconName:    "link-off",
-		Description: "disconnected",
-		IsConnected: false,
-		Error:       "",
+	status := &ConnectStatusTemplateData{
+		IconName:                "link-off",
+		Description:             "disconnected",
+		IsConnected:             false,
+		Error:                   "",
+		RenderConnectStatusPath: src.RenderConnectionStatusPath,
 	}
 	if cs == nil {
 		status.Description = "Session not established"
@@ -57,13 +60,11 @@ func GetConnectStatus(r *http.Request) *ConnectStatus {
 // RenderConnectStatus renders the presentation of the client connection to the Hub message bus.
 // This only renders the fragment. On a full page refresh this renders inside the base.html
 func RenderConnectStatus(w http.ResponseWriter, r *http.Request) {
-	data := map[string]any{}
 	status := GetConnectStatus(r)
-	data["Status"] = status
 	_, sess, _ := session.GetSessionFromContext(r)
 
 	// render with base or as fragment
 	//views.TM.RenderTemplate(w, r, ConnectStatusTemplate, data)
-	buff, err := RenderAppOrFragment(r, ConnectStatusTemplate, data)
+	buff, err := RenderAppOrFragment(r, ConnectStatusTemplate, status)
 	sess.WritePage(w, buff, err)
 }

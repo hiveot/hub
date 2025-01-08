@@ -79,8 +79,12 @@ func main() {
 		slog.Error("Unable to load server certificate: " + err.Error())
 		return
 	}
+	// FIXME: currently timeout is set to 20 sec to allow slow requests to complete.
+	// However these requests should handle multiple async updates instead.
+	// for example zwavejs refresh device info can take up to 20sec
 	svc := service.NewHiveovService(
-		serverPort, false, signingKey, rootPath, serverCert, env.CaCert, false, time.Second*3)
+		serverPort, false, signingKey, rootPath, serverCert, env.CaCert,
+		false, time.Second*20)
 
 	// StartPlugin will connect to the hub and wait for signal to end
 	plugin.StartPlugin(svc, env.ClientID, env.CertsDir)

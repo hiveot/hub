@@ -33,12 +33,15 @@
                     <tr>
                         <td>Status</td>
                         <td>{{.LastActionRecord.Status}}
+                            {{if .LastActionRecord.Error}}
+                                <span>: {{.LastActionRecord.Error}}</span>
+                            {{end}}
                         </td>
                     </tr>
                     {{if .Action.Input }}
                        <tr>
                           <td>Input</td>
-                          <td>{{.LastActionInput.Text}}</td>
+                          <td>{{.InputValue.Value.Text}}</td>
                        </tr>
                     {{end}}
                 </table>

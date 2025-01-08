@@ -21,7 +21,7 @@ func SubmitDeleteDashboard(w http.ResponseWriter, r *http.Request) {
 	cdc.clientModel.DeleteDashboard(cdc.dashboardID)
 
 	msgText := fmt.Sprintf("Dashboard '%s' removed from the directory", cdc.dashboardID)
-	sess.SendNotify(session.NotifySuccess, msgText)
+	sess.SendNotify(session.NotifySuccess, "", msgText)
 
 	// navigate back to the default dashboard. Notes:
 	// 1. http.Redirect doesn't work

@@ -1,17 +1,16 @@
 {
   "name": "zwavejs",
-  "version": "0.3-alpha",
+  "version": "0.4-alpha",
   "description": "HiveOT Zwave binding using zwavejs",
   "license": "MIT",
   "main": "src/main.ts",
   "type": "commonjs",
   "scripts": {
     "build": "node esbuild.js",
-    "dev": "ZWAVEJS_EXTERNAL_CONFIG=dist/cache node --preserve-symlinks build/index.js --clientID zwavejs --home ~/bin/hiveot",
+    "devnode": "ZWAVEJS_EXTERNAL_CONFIG=dist/cache node --preserve-symlinks build/index.js --clientID zwavejs --home ~/bin/hiveot",
+    "devtsx": "ZWAVEJS_EXTERNAL_CONFIG=dist/cache tsx --preserve-symlinks src/main.ts --clientID zwavejs --home ~/bin/hiveot",
     "pkg": "./build.sh",
-    "debugtsx": "ZWAVEJS_EXTERNAL_CONFIG=dist/cache tsx --preserve-symlinks src/main.ts --clientID zwavejs --home ~/bin/hiveot",
     "distinstall": "cp dist/zwavejs ~/bin/hiveot/plugins",
-    "test": "tsc && tsc-alias && node --preserve-symlinks build/src/tests/hubconnect_test.js",
     "testtsx": "tsx --preserve-symlinks src/tests/hubconnect_test.ts",
     "testtsx2": "tsx --preserve-symlinks hivelib/hubclient/hubclient.test.ts",
     "version": "node --version"

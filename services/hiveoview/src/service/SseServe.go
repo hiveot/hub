@@ -88,8 +88,8 @@ func SseServe(w http.ResponseWriter, r *http.Request) {
 			// "Each message is sent as a block of text terminated by a pair of newlines. "
 			//https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events
 			//_, err := fmt.Fprintf(w, "event: time\ndata: <div sse-swap='time'>%s</div>\n\n", data)
-			_, _ = fmt.Fprintf(w, "event: %s\ndata: %s\n\n",
-				sseMsg.Event, sseMsg.Payload)
+			_, _ = fmt.Fprintf(w, "event: %s\nid: %s\ndata: %s\n\n",
+				sseMsg.Event, sseMsg.ID, sseMsg.Payload)
 			// ignore write errors as the channel might be closing and must
 			// be read to avoid deadlock.
 			w.(http.Flusher).Flush()

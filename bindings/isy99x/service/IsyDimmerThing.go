@@ -61,7 +61,7 @@ func (it *IsyDimmerThing) HandleActionRequest(req transports.RequestMessage) tra
 	// FIXME: req keys are node attributes keys, not vocab @types (or are they?)
 	// supported actions: on, off
 	if req.Name == vocab.ActionDimmerSet {
-		newValue = req.ToString()
+		newValue = req.ToString(0)
 		restPath = fmt.Sprintf("/rest/nodes/%s/cmd/%s", it.nodeID, newValue)
 
 		//} else if req.Name == vocab.VocabActionDecrement {

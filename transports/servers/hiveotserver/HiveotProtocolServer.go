@@ -91,7 +91,7 @@ func (svc *HiveotProtocolServer) HandleHttpRequest(w http.ResponseWriter, r *htt
 		// used only when no sub-protocol is used as return channel
 		response = request.CreateResponse("pong", nil)
 	case wot.HTOpRefresh:
-		oldToken := request.ToString()
+		oldToken := request.ToString(0)
 		newToken, err := svc.authenticator.RefreshToken(
 			request.SenderID, request.SenderID, oldToken)
 		response = request.CreateResponse(newToken, err)

@@ -1,0 +1,70 @@
+{
+  "name": "zwavejs",
+  "version": "0.3-alpha",
+  "description": "HiveOT Zwave binding using zwavejs",
+  "license": "MIT",
+  "main": "src/main.ts",
+  "type": "commonjs",
+  "scripts": {
+    "build": "tsc && tsc-alias",
+    "esbuild": "esbuild src/main.ts --bundle  --platform=node --target=node20 --preserve-symlinks --outfile=build/zwavejs-esbuild.js",
+    "pkg": "pkg package.json",
+    "dev": "tsc && tsc-alias && ZWAVEJS_EXTERNAL_CONFIG=dist/cache node --preserve-symlinks build/src/main.js --clientID testsvc --home ~/bin/hiveot",
+    "distinstall": "cp dist/zwavejs ~/bin/hiveot/plugins",
+    "test": "tsc && tsc-alias && node --preserve-symlinks build/src/tests/hubconnect_test.js",
+    "testtsx": "tsx --preserve-symlinks src/tests/hubconnect_test.ts",
+    "devtsx": "ZWAVEJS_EXTERNAL_CONFIG=dist/cache tsx --preserve-symlinks src/main.ts --clientID testsvc --home ~/bin/hiveot",
+    "version": "node --version"
+  },
+  "scriptComments": {
+    "build": "compile using tsc and tsc-alias",
+    "pkg": "build a single packaged executable for distribution. See dist/ for output",
+    "dev": "build using tsc and tsc-alias, and run the application with node. This works with debugger step-through. (Yah!). ",
+    "devtsx": "experiment. running with tsx. Its all good, except debugging into modules has incorrect line numbers and is sometimes minified.",
+    "test": "recommended way to run tests",
+    "testtsx": "experiment testing using tsx to run typescript. While tsx works as promised it doesn't support debugging imported modules",
+    "tsc-alias": "note on tsc-alias. It doesn't work with tsconfig references. alias paths in outdir are not replaced. Workaround, do not use reference but use a symlink to library."
+  },
+  "bin": "build/zwavejs-esbuild.js",
+  "pkg": {
+    "scripts": [],
+    "compress": "GZip",
+    "assets": [
+      "prebuilds/**/*",
+      "config/**/*"
+    ],
+    "targets": [
+      "node20.11-linux-x64"
+    ],
+    "outputPath": "dist"
+  },
+  "dependencies": {
+    "bonjour-service": "^1.1.1",
+    "commander": "^11.1.0",
+    "md5": "^2.3.0",
+    "mqtt": "^5.3.0",
+    "mqtt-packet": "^9.0.0",
+    "nats.ws": "^1.19.1",
+    "nkeys.js": "^1.0.5",
+    "process": "^0.11.10",
+    "serialport": "^12.0.0",
+    "tslog": "^4.9.2",
+    "ws": "^8.14.2",
+    "yaml": "^2.3.4",
+    "zwave-js": "^12.3.1"
+  },
+  "devDependencies": {
+    "@types/md5": "^2.3.5",
+    "@types/node": "^18.19.0",
+    "@types/ws": "^8.5.9",
+    "@yao-pkg/pkg": "^5.11.2",
+    "esbuild": "^0.20.0",
+    "postject": "^1.0.0-alpha.6",
+    "tsc": "^2.0.4",
+    "tsc-alias": "^1.8.8",
+    "tsx": "^4.5.0",
+    "typescript": "^5.2.2"
+  },
+  "readme": "readme - todo",
+  "_id": "zwavejs-binding"
+}

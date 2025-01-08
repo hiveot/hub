@@ -179,7 +179,7 @@ func TestTDEvent(t *testing.T) {
 
 			// decode the TD
 			td := td.TD{}
-			payload := msg.ToString()
+			payload := msg.ToString(0)
 			err := jsoniter.UnmarshalFromString(payload, &td)
 			assert.NoError(t, err)
 			tdCount.Add(1)

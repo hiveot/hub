@@ -50,7 +50,7 @@ func SubmitDeleteTD(w http.ResponseWriter, r *http.Request) {
 
 	msgText := fmt.Sprintf("Thing '%s' successfully removed from the directory", tdi.Title)
 	slog.Info(msgText, "thingID", tdi.ID)
-	sess.SendNotify(session2.NotifySuccess, msgText)
+	sess.SendNotify(session2.NotifySuccess, "", msgText)
 	// navigate back to the directory.
 	// http.Redirect doesn't work but using HX-Redirect header does.
 	// see also: https://www.reddit.com/r/htmx/comments/188oqx5/htmx_form_submission_issue_redirecting_on_success/

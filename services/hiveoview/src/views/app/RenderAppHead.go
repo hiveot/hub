@@ -30,11 +30,13 @@ type AppHeadTemplateData struct {
 	Ready               bool
 	Logo                string
 	Title               string
-	Status              *ConnectStatus
+	Status              *ConnectStatusTemplateData
 	AppHeadDashboards   []AppHeadDashboardData
 	ReRenderAppHeadPath string
 	RenderAppAboutPath  string
 	RenderDirectoryPath string
+	// needed to render the connection status button. must be empty so a fragment re-render is triggered
+	RenderConnectStatusPath string
 }
 
 // RenderAppHead renders the app header fragment

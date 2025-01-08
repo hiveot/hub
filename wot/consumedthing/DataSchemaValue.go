@@ -8,7 +8,7 @@ import (
 // DataSchemaValue represents a value provided by an InteractionOutput.
 // This differs from the WoT definition in that it includes type conversions.
 type DataSchemaValue struct {
-	raw any
+	Raw any
 }
 
 // Array returns the value as an array
@@ -22,50 +22,45 @@ type DataSchemaValue struct {
 //	string: returns a single element with string
 func (v DataSchemaValue) Array() []interface{} {
 	objArr := make([]interface{}, 0)
-	err := tputils.DecodeAsObject(v.raw, &objArr)
+	err := tputils.DecodeAsObject(v.Raw, &objArr)
 	_ = err
 	return objArr
 }
 
 // Text returns the text representation of the value
 func (v DataSchemaValue) Text() string {
-	return tputils.DecodeAsString(v.raw)
+	return tputils.DecodeAsString(v.Raw, 0)
 }
 
 func (v DataSchemaValue) Boolean() bool {
-	return tputils.DecodeAsBool(v.raw)
+	return tputils.DecodeAsBool(v.Raw)
 }
 func (v DataSchemaValue) Integer() int {
-	return tputils.DecodeAsInt(v.raw)
+	return tputils.DecodeAsInt(v.Raw)
 }
 
 // Map returns the value as a name-value map
 // Returns nil if no data was provided.
 func (v DataSchemaValue) Map() map[string]interface{} {
 	o := make(map[string]interface{})
-	err := tputils.DecodeAsObject(v.raw, &o)
+	err := tputils.DecodeAsObject(v.Raw, &o)
 	if err != nil {
-		slog.Error("Can't convert value to a map", "value", v.raw)
+		slog.Error("Can't convert value to a map", "value", v.Raw)
 	}
 	return o
 }
 
 // Number returns the value as a float32
 func (v DataSchemaValue) Number() float32 {
-	return tputils.DecodeAsNumber(v.raw)
+	return tputils.DecodeAsNumber(v.Raw)
 }
 
 // Object decodes the value to the given object.
 func (v DataSchemaValue) Object(output interface{}) error {
-	return tputils.DecodeAsObject(v.raw, output)
-}
-
-// Raw returns the raw value
-func (v DataSchemaValue) Raw() any {
-	return v.raw
+	return tputils.DecodeAsObject(v.Raw, output)
 }
 
 // NewDataSchemaValue implements a dataschema value
 func NewDataSchemaValue(value any) DataSchemaValue {
-	return DataSchemaValue{raw: value}
+	return DataSchemaValue{Raw: value}
 }

@@ -40,7 +40,7 @@ type SsescConsumerClient struct {
 	lastError   atomic.Pointer[error]
 
 	// the agent handles requests
-	agentRequestHandler func(raw string)
+	agentRequestHandler func(req transports.RequestMessage)
 }
 
 // helper to establish the sse connection using the given bearer token
@@ -184,8 +184,6 @@ func (cl *SsescConsumerClient) handleSSEConnect(connected bool, err error) {
 // notifications have an operations and no correlationID
 func (cl *SsescConsumerClient) handleSseEvent(event sse.Event) {
 
-	slog.Info("handleSSEEvent; received SSE event",
-		slog.String("event type", event.Type))
 	// no further processing of a ping needed
 	if event.Type == ssescserver.SSEPingEvent {
 		return
@@ -193,17 +191,36 @@ func (cl *SsescConsumerClient) handleSseEvent(event sse.Event) {
 
 	// Use the hiveot message envelopes for request, response and notification
 	if event.Type == transports.MessageTypeRequest {
+		req := transports.RequestMessage{}
+		_ = jsoniter.UnmarshalFromString(event.Data, &req)
+		slog.Info("handle request: ",
+			slog.String("thingID", req.ThingID),
+			slog.String("name", req.Name),
+			slog.String("created", req.Created),
+		)
 		go func() {
-			cl.agentRequestHandler(event.Data)
+			cl.agentRequestHandler(req)
 		}()
 	} else if event.Type == transports.MessageTypeResponse {
 		resp := transports.ResponseMessage{}
 		_ = jsoniter.UnmarshalFromString(event.Data, &resp)
 		// don't block the receiver flow
+		slog.Info("handle response: ",
+			slog.String("thingID", resp.ThingID),
+			slog.String("name", resp.Name),
+			slog.String("correlationID", resp.CorrelationID),
+			slog.String("created", resp.Updated),
+		)
 		go cl.OnResponse(resp)
 	} else if event.Type == transports.MessageTypeNotification {
 		notif := transports.NotificationMessage{}
 		_ = jsoniter.UnmarshalFromString(event.Data, &notif)
+		slog.Info("handle notification: ",
+			slog.String("thingID", notif.ThingID),
+			slog.String("name", notif.Name),
+			slog.String("data", notif.ToString(20)),
+			slog.String("created", notif.Created),
+		)
 		// don't block the receiver flow
 		go cl.OnNotification(notif)
 	} else {
@@ -256,7 +273,7 @@ func (cl *SsescConsumerClient) Init(fullURL string, clientID string,
 
 	parts, _ := url.Parse(fullURL)
 	cl.ssePath = parts.Path
-	cl.agentRequestHandler = func(string) {
+	cl.agentRequestHandler = func(req transports.RequestMessage) {
 		slog.Error("Request received but this isn't an agent")
 	}
 }

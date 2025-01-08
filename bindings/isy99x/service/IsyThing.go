@@ -104,7 +104,7 @@ func (it *IsyThing) HandleActionRequest(req transports.RequestMessage) transport
 func (it *IsyThing) HandleConfigRequest(req transports.RequestMessage) transports.ResponseMessage {
 	// The title is the friendly name of the node
 	if req.Name == vocab.PropDeviceTitle {
-		newName := req.ToString()
+		newName := req.ToString(0)
 		err := it.isyAPI.Rename(it.nodeID, newName)
 		if err == nil {
 			// TODO: use WebSocket to receive confirmation of change

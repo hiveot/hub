@@ -9,56 +9,45 @@ import (
 // Use NewInteractionInput to initialize
 type InteractionInput struct {
 	// The property, event or action name
-	name string
+	Name string
 	// Title with the human name provided by the interaction affordance
 	Title string
 	// Schema describing the data from property, event or action affordance
 	Schema *td.DataSchema
 	// decoded data in its native format as described by the schema
 	// eg string, int, array, object
-	value DataSchemaValue
-}
-
-// Value parses the value and returns it as the given type
-func (iin *InteractionInput) Value() DataSchemaValue {
-	// generics on methods would be nice
-	return iin.value
+	Value DataSchemaValue
 }
 
 // NewInteractionInput creates a new interaction input for property or action
 //
 //	td Thing Description document with schemas for the value. Use nil if schema is unknown.
 //	name of the input property or action
-func NewInteractionInput(td *td.TD, key string, defaultValue any) *InteractionInput {
-	io := &InteractionInput{
-		name:  key,
-		value: NewDataSchemaValue(defaultValue),
+func NewInteractionInput(td *td.TD, name string, defaultValue any) *InteractionInput {
+	ii := &InteractionInput{
+		Name:  name,
+		Value: NewDataSchemaValue(defaultValue),
 	}
 	if td == nil {
-		return io
+		return ii
 	}
 
-	actionAff, found := td.Actions[key]
+	actionAff, found := td.Actions[name]
 	if found {
-		if actionAff.Output != nil {
-			io.Schema = actionAff.Output
+		if actionAff.Input != nil {
+			ii.Schema = actionAff.Input
 		}
-		io.Title = actionAff.Title
-		return io
+		ii.Title = actionAff.Title
+		return ii
 	}
-	eventAff, found := td.Events[key]
+	propAff, found := td.Properties[name]
 	if found {
-		io.Schema = eventAff.Data
-		io.Title = eventAff.Title
-		return io
+		ii.Schema = &propAff.DataSchema
+		ii.Title = propAff.Title
+		return ii
 	}
 
-	propAff, found := td.Properties[key]
-	if found {
-		io.Schema = &propAff.DataSchema
-		io.Title = propAff.Title
-		return io
-	}
-	slog.Warn("message name not found in TD", "thingID", td.ID, "name", key)
-	return io
+	slog.Warn("NewInteractionInput: name not a property or action input in TD",
+		"thingID", td.ID, "name", name)
+	return ii
 }

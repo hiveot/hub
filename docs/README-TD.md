@@ -58,14 +58,14 @@ The TD documents contains a set of attributes to describe a Thing. The attribute
 The @context field defines the terminology used throughout the document which can be validated using JSON-LD. The WoT TD requires the presence of:
 > https://www.w3.org/2022/wot/td/v1.1
 
-While HiveOT provides a TD context extension with key "ht".
+While HiveOT provides a TD context extension with key "hiveot".
 
 ```
 {
    "@context": [
    	"https://www.w3.org/2022/wot/td/v1.1",
    	{
-   		"ht": "https://www.hiveot.net/vocab/0.1",
+   		"hiveot": "https://www.hiveot.net/vocab/0.1",
    	}
 }
 ```
@@ -78,37 +78,37 @@ HiveOT uses this field for the Thing class to help the client organize devices b
 
 To facilitate developers, each classification defines a minimum set of properties, events and actions to include in the TD. Additional properties, events and actions can freely be added to a TD regardless its classification.
 
-HiveOT classification is inspired by ETSI Saref classifications, found here: https://saref.etsi.org/core/v3.1.1/. Saref's classification hierarchy seems more of an example than a complete classification and no widely adopted classification exists. For this reason hiveot defines its own classification using the "ht" namespace.
+HiveOT classification is inspired by ETSI Saref classifications, found here: https://saref.etsi.org/core/v3.1.1/. Saref's classification hierarchy seems more of an example than a complete classification and no widely adopted classification exists. For this reason hiveot defines its own classification using the "hiveot" namespace.
 
 The basis for HiveOT's device classification is a hierarchy that can be extended with specialization terms to narrow down the classification. The full list of HiveOT device classes can be found in [api/vocab/ht-device-classes.yaml]("../api/vocab/ht-device-classes.yaml")
 
 Top level categories in the HiveOT thing classification vocabulary are:
 The vocab below is an example. Please use the vocabulary defined with the project.  
 ```
-* ht:actuator - electric device for controlling an external observable feature of interest
-* ht:appliance - class of devices for performing tasks for occupant use
-* ht:control - devices for capturing input commands from users
-* ht:computer - general purpose computing devices, including phones and tablets
-* ht:media - devices for consuming or producing audio/visual media content
-* ht:meter - metering devices for electricity, water, fuel
-* ht:net - devices to facilitate network machine communication
-* ht:sensor - devices designed to observe features of interest
-* ht:service - software that processes data and offers features of interest 
+* hiveot:actuator - electric device for controlling an external observable feature of interest
+* hiveot:appliance - class of devices for performing tasks for occupant use
+* hiveot:control - devices for capturing input commands from users
+* hiveot:computer - general purpose computing devices, including phones and tablets
+* hiveot:media - devices for consuming or producing audio/visual media content
+* hiveot:meter - metering devices for electricity, water, fuel
+* hiveot:net - devices to facilitate network machine communication
+* hiveot:sensor - devices designed to observe features of interest
+* hiveot:service - software that processes data and offers features of interest 
 ```
 
 For example:
 ```
-* ht:actuator - general purpose actuator
-	* ht:actuator:switch - electric on/off switch or relay
-* ht:net - general purpose network management and routing device
-	* ht:net:wifi:ap - wifi access point
-* ht:sensor:multi - device with properties for multiple sensors such as temperature, humidity.
+* hiveot:actuator - general purpose actuator
+	* hiveot:actuator:switch - electric on/off switch or relay
+* hiveot:net - general purpose network management and routing device
+	* hiveot:net:wifi:ap - wifi access point
+* hiveot:sensor:multi - device with properties for multiple sensors such as temperature, humidity.
 ```
 Services have their own namespace:
 ```
-* ht:service - general purpose service offering capabilities
-* ht:service:directory - directory service offering a directory of information
-* ht:service:history - history service offering stored messages
+* hiveot:service - general purpose service offering capabilities
+* hiveot:service:directory - directory service offering a directory of information
+* hiveot:service:history - history service offering stored messages
 ```
 
 For the full list of Thing classes, see [ht-thing-classes.yaml](../api/src/vocab/ht-thing-classes.yaml). Note that this list is an initial attempt for a core classification of IoT devices and services. When a more suited standard is found, it might replace this one. For this reason the vocabulary definitions are imported at runtime and mapped from their keys. See the section on vocabulary maps below.
@@ -292,7 +292,7 @@ Observation: this approach blurs the line between properties and events somewhat
 
 HiveOT protocol bindings will have a property defined for each internal state of a Thing that can be affected by an action.
 
-For example, a media player has a property of @type 'ht:prop:media:muted'. This can be used directly as a property name. When the device internal muted state changes to true, a property update is send to observers with the new state value. However, the action to mute the player could use a different ID: "hiveot:action:media:mute", since the action is only a request and does not represent the state of the device.
+For example, a media player has a property of @type 'hiveot:prop:media:muted'. This can be used directly as a property name. When the device internal muted state changes to true, a property update is send to observers with the new state value. However, the action to mute the player could use a different ID: "hiveot:action:media:mute", since the action is only a request and does not represent the state of the device.
 
 ### How to distinguish between important properties and auxiliary properties?
 
@@ -370,7 +370,7 @@ Note that it is still possible to have a protocol bindings that interacts with s
 
 HiveOT uses the Thing Description ontology from the WoT working group. WoT defines the terminology of the TD document.
 
-Since no widely accepted vocabulary for device types and properties names have been found, HiveOT defines its own in the "ht" namespace. To allow for integration with other systems, the vocabulary is stored in a map which can be embedded or loaded from file. Services are coded using the 'vocab key' which is used to lookup the device or property @type, title and description before publishing the device TD. Changes to the vocabulary only needs an update of the vocabulary map. The map can also contain definitions from other 3rd providers such as Home Assistant or others. The map can be embedded or loaded from file.
+Since no widely accepted vocabulary for device types and properties names have been found, HiveOT defines its own in the "hiveot" namespace. To allow for integration with other systems, the vocabulary is stored in a map which can be embedded or loaded from file. Services are coded using the 'vocab key' which is used to lookup the device or property @type, title and description before publishing the device TD. Changes to the vocabulary only needs an update of the vocabulary map. The map can also contain definitions from other 3rd providers such as Home Assistant or others. The map can be embedded or loaded from file.
 
 The HiveOT golang library contains a handy little map container which can load an embedded vocabulary or load it from file. It contains quick lookup functions for constructing the TD.
 

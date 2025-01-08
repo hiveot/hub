@@ -96,15 +96,12 @@ var servicePermissions = RolePermission{
 // viewers can subscribe to events from all things
 var viewerPermissions = RolePermission{
 	Operations: []string{
-		vocab.OpObserveProperty,
-		vocab.OpSubscribeEvent,
+		vocab.OpObserveProperty, vocab.OpObserveAllProperties,
+		vocab.OpSubscribeEvent, vocab.OpSubscribeAllEvents,
 		// digitwin
-		vocab.OpReadAllProperties,
-		vocab.OpReadProperty,
-		vocab.HTOpReadAllEvents,
-		vocab.HTOpReadEvent,
-		vocab.HTOpReadAllTDs,
-		vocab.HTOpReadTD,
+		vocab.OpReadProperty, vocab.OpReadAllProperties,
+		vocab.HTOpReadEvent, vocab.HTOpReadAllEvents,
+		vocab.HTOpReadTD, vocab.HTOpReadAllTDs,
 	},
 }
 
@@ -113,17 +110,13 @@ var viewerPermissions = RolePermission{
 var operatorPermissions = RolePermission{
 	Operations: []string{
 		vocab.OpInvokeAction,
-		vocab.OpObserveProperty,
-		vocab.OpObserveAllProperties,
-		vocab.OpSubscribeEvent,
-		vocab.OpSubscribeAllEvents,
+		vocab.OpObserveProperty, vocab.OpObserveAllProperties,
+		vocab.OpSubscribeEvent, vocab.OpSubscribeAllEvents,
 		// digitwin
-		vocab.OpReadAllProperties,
-		vocab.OpReadProperty,
-		vocab.HTOpReadAllEvents,
-		vocab.HTOpReadEvent,
-		vocab.HTOpReadAllTDs,
-		vocab.HTOpReadTD,
+		vocab.OpQueryAction, vocab.OpQueryAllActions,
+		vocab.OpReadProperty, vocab.OpReadAllProperties,
+		vocab.HTOpReadEvent, vocab.HTOpReadAllEvents,
+		vocab.HTOpReadTD, vocab.HTOpReadAllTDs,
 	},
 }
 
@@ -131,18 +124,14 @@ var operatorPermissions = RolePermission{
 var managerPermissions = RolePermission{
 	Operations: []string{
 		vocab.OpInvokeAction,
-		vocab.OpObserveProperty,
-		vocab.OpObserveAllProperties,
-		vocab.OpSubscribeEvent,
-		vocab.OpSubscribeAllEvents,
+		vocab.OpObserveProperty, vocab.OpObserveAllProperties,
+		vocab.OpSubscribeEvent, vocab.OpSubscribeAllEvents,
 		vocab.OpWriteProperty,
 		// digitwin
-		vocab.OpReadAllProperties,
-		vocab.OpReadProperty,
-		vocab.HTOpReadAllEvents,
-		vocab.HTOpReadEvent,
-		vocab.HTOpReadAllTDs,
-		vocab.HTOpReadTD,
+		vocab.OpQueryAction, vocab.OpQueryAllActions,
+		vocab.OpReadProperty, vocab.OpReadAllProperties,
+		vocab.HTOpReadEvent, vocab.HTOpReadAllEvents,
+		vocab.HTOpReadTD, vocab.HTOpReadAllTDs,
 	},
 }
 

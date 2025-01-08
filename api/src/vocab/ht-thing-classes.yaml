@@ -14,9 +14,9 @@
 ThingClasses:
   version: "0.1"
   link: "github.com/hiveot/hub/api/vocab/ht-thing-classes.yaml"
-  namespace: "ht"
+  namespace: "hiveot"
   vocab:
-    # ht:thing:actuator devices
+    # hiveot:thing:actuator devices
     ThingActuator:
       class: "hiveot:thing:actuator"
       title: "Actuator"
@@ -74,7 +74,7 @@ ThingClasses:
       title: "Fuel valve"
       description: "Electric powered fuel valve"
 
-    # ht:thing:appliance devices
+    # hiveot:thing:appliance devices
     ThingAppliance:
       class: "hiveot:thing:appliance"
       title: "Appliance"
@@ -101,7 +101,7 @@ ThingClasses:
       description: "Clothing washer"
 
 
-    # ht:thing:computer devices including phones
+    # hiveot:thing:computer devices including phones
     ThingComputer:
       class: "hiveot:thing:computer"
       title: "Computing Device"
@@ -139,7 +139,7 @@ ThingClasses:
       title: "VoIP Phone"
       description: "Voice over IP phone"
 
-    # ht:thing:control input devices for capturing input commands.
+    # hiveot:thing:control input devices for capturing input commands.
     # controls that directly drive outputs belong in the actuator section.
     ThingControl:
       class: "hiveot:thing:control"
@@ -203,7 +203,7 @@ ThingClasses:
       title: "Indicator"
       description: "Visual or audio indicator device"
 
-    # ht:thing:media - devices for consuming or producing audio/visual media content
+    # hiveot:thing:media - devices for consuming or producing audio/visual media content
     ThingMedia:
       class: "hiveot:thing:media"
       title: "A/V media"
@@ -241,7 +241,7 @@ ThingClasses:
       title: "TV"
       description: "Network connected television"
 
-    # ht:thing:meter - metering devices for electricity, water, fuel
+    # hiveot:thing:meter - metering devices for electricity, water, fuel
     ThingMeter:
       class: "hiveot:thing:meter"
       title: "Meter"
@@ -297,7 +297,7 @@ ThingClasses:
       title: "Wind"
       description: "Dedicated wind meter"
 
-    # ht:thing:net - devices to facilitate network machine communication
+    # hiveot:thing:net - devices to facilitate network machine communication
     ThingNet:
       class: "hiveot:thing:net"
       title: "Network device"
@@ -359,7 +359,7 @@ ThingClasses:
       title: "LoRa P2P"
       description: "LoRa Peer-to-peer network device"
 
-    # ht:thing:sensor - devices designed to observe features of interest
+    # hiveot:thing:sensor - devices designed to observe features of interest
     ThingSensor:
       class: "hiveot:thing:sensor"
       title: "Sensor"
@@ -413,7 +413,7 @@ ThingClasses:
       title: "Scale"
       description: "Electronic weigh scale"
 
-    # ht:thing:service - Software that processes data and offers features of interest
+    # hiveot:thing:service - Software that processes data and offers features of interest
     # TBD
     ThingService:
       class: "hiveot:thing:service"

@@ -18,7 +18,7 @@ const HiveOTContext = "https://www.hiveot.net/vocab/v0.1"
 // Its structure is:
 //
 //	{
-//		@context: <WoTTDContext>, {"ht":<HiveOTContext>},
+//		@context: <WoTTDContext>, {"hiveot":<HiveOTContext>},
 //		@type: <deviceType>,
 //		id: <thingID>,
 //		title: <human description>,  (why is this not a property?)
@@ -37,7 +37,7 @@ type TD struct {
 	Allow []string `json:"allow,omitempty"`
 
 	// JSON-LD keyword to define shorthand names called terms that are used throughout a TD document. Required.
-	// in order to add the "ht" namespace, the context value can be a string or map
+	// in order to add the "hiveot" namespace, the context value can be a string or map
 	// Type: anyURO or Array
 	AtContext []any `json:"@context"`
 
@@ -601,7 +601,7 @@ func (tdoc *TD) UpdateTitleDescription(title string, description string) {
 //
 //	 Its structure:
 //		{
-//		     @context: "http://www.w3.org/ns/td",{"ht":"http://hiveot.net/vocab/v..."}
+//		     @context: "http://www.w3.org/ns/td",{"hiveot":"http://hiveot.net/vocab/v..."}
 //		     @type: <deviceType>,        // required in HiveOT. See DeviceType vocabulary
 //		     id: <thingID>,              // urn:[{prefix}:]{randomID}   required in hiveot
 //		     title: string,              // required. Name of the thing
@@ -616,7 +616,7 @@ func NewTD(thingID string, title string, deviceType string) *TD {
 	td := TD{
 		AtContext: []any{
 			WoTTDContext,
-			map[string]string{"ht": HiveOTContext},
+			map[string]string{"hiveot": HiveOTContext},
 		},
 		AtType:  deviceType,
 		Actions: map[string]*ActionAffordance{},

@@ -1,0 +1,122 @@
+import * as elliptic from 'elliptic';
+const EC = elliptic.ec;
+import crypto from 'crypto'
+
+import * as keys from './testkeys'
+import {ossl_secp256k1_priv, ossl_secp256k1_pub} from "./testkeys";
+
+const wikiEC = "-----BEGIN PUBLIC KEY-----\n" +
+    "MEkwEwYHKoZIzj0CAQYIKoZIzj0DAQMDMgAE+Y+qPqI3geo2hQH8eK7Rn+YWG09T\n" +
+    "ejZ5QFoj9fmxFrUyYhFap6XmTdJtEi8myBmW\n" +
+    "-----END PUBLIC KEY-----"
+const bitcoinPubPem="-----BEGIN PUBLIC KEY-----\n" +
+    "MFYwEAYHKoZIzj0CAQYFK4EEAAoDQgAEWp9wd4EuLhIZNaoUgZxQztSjrbqgTT0w\n" +
+    "LBq8RwigNE6nOOXFEoGCjGfekugjrHWHUi8ms7bcfrowpaJKqMfZXg==\n" +
+    "-----END PUBLIC KEY-----"
+
+// test1: generate an ECDSA key pair and export to PEM
+async function test1() {
+
+    let kp = crypto.generateKeyPairSync("ec",{
+        namedCurve:"secp256k1"
+    })
+
+    let privPEM =  kp.privateKey.export( {
+        format:"pem", // pem, der or jwk
+        type:"pkcs8",  // or sec1
+    })
+    let pubPEM =  kp.publicKey.export( {
+        format:"pem", // pem, der or jwk
+        type:"spki",
+    })
+    console.log(privPEM)
+    console.log(pubPEM)
+}
+
+
+// test2: generate an ED25519 key pair and export to PEM
+async function test2() {
+
+    let kp = crypto.generateKeyPairSync("ed25519",{})
+
+    let privPEM =  kp.privateKey.export( {
+        format:"pem", // pem, der or jwk
+        type:"pkcs8",
+    })
+    let pubPEM =  kp.publicKey.export( {
+        format:"pem", // pem, der or jwk
+        type:"spki",
+    })
+    console.log(privPEM)
+    console.log(pubPEM)
+}
+
+// test1: decode openssl ecdsa (secp256k1) generated keys using crypto. Woohoo, this works!
+async function test3() {
+
+    // let testPriv = pem2der(keys.ossl_secp256k1_priv)
+    // let testPub = pem2der(keys.ossl_secp256k1_pub)
+    //
+    // this works, read private/pub key and generate a new pub in pem
+    const priv2 = crypto.createPrivateKey(ossl_secp256k1_priv)
+    const pub2 = crypto.createPublicKey(ossl_secp256k1_pub)
+    let privPEM =  priv2.export( {
+        format:"pem", // pem, der or jwk
+        type:"sec1",  //  pkcs8 or sec1  (openssl uses sec1. pkcs8 is shorter)
+    })
+    let pubPEM =  pub2.export( {
+        format:"pem", // pem, der or jwk
+        type:"spki",
+    })
+    console.log(privPEM)
+    console.log(pubPEM)
+
+}
+
+// interop test with elliptic
+// generate a key, import in elliptic and export to PEM
+async function test4() {
+    // create an ecdsa key
+    let kp = crypto.generateKeyPairSync("ec",{
+        namedCurve:"secp256k1"
+    })
+    let privDer =  kp.privateKey.export( {
+        format:"der", // pem, der or jwk
+        type:"sec1",  //  pkcs8 or sec1  (openssl uses sec1. pkcs8 is shorter)
+    })
+    let pubDer =  kp.publicKey.export( {
+        format:"der", // pem, der or jwk
+        type:"spki",  //
+    })
+
+
+    //--- test import in elliptic ---
+
+    // method 1: https://stackoverflow.com/questions/76321459/javascript-subtlecrypto-is-there-a-way-to-convert-the-ecdsa-keys-into-a-bit-mo
+    // this lets elliptic import a raw public key from a crypto subtle library generated key-pair
+    let ec = new EC('secp256k1')
+    let kp1 =await crypto.subtle.generateKey(
+        {name:"ECDSA",namedCurve:"P-256"}, true, ['sign','verify'])
+    let pub1 = kp1.publicKey
+    let pub1raw = await  crypto.subtle.exportKey("raw",pub1)
+    let pub1buf = Buffer.from(pub1raw)
+
+    // SUCCESS!, elliptic imported this key
+    let epub = ec.keyFromPublic(pub1buf)
+
+    // export to PEM?
+    // maybe: https://stackoverflow.com/questions/40314257/export-webcrypto-key-to-pem-format
+    let pub1spki = await crypto.subtle.exportKey("spki",pub1)
+
+    let body = btoa(String.fromCharCode(...new Uint8Array(pub1spki)));
+    body = body.match(/.{1,64}/g).join('\n');
+    let pem =  `-----BEGIN PUBLIC KEY-----\n${body}\n-----END PUBLIC KEY-----`;
+
+    // success, the pem can be imported by crypto
+    let pub2 = crypto.createPublicKey(pem)
+}
+
+
+test4()
+
+console.log("complete")

@@ -559,7 +559,7 @@ func (svc *DigitwinStore) UpdateProperties(dThingID string, created string, prop
 		//}
 		changed, _ := svc.UpdatePropertyValue(newValue)
 		if changed {
-			changes[k] = newValue
+			changes[k] = v
 		}
 	}
 	return changes, nil

@@ -19,7 +19,6 @@ import fs from "fs";
 import {Logger} from "tslog";
 import {CommandClasses, ValueID} from '@zwave-js/core';
 import path from "path";
-import type {SetValueResult} from "@zwave-js/cc/build/index_safe";
 
 const tslog = new Logger({ name: "ZWAPI" })
 
@@ -70,7 +69,7 @@ export class ZWAPI {
     onValueUpdate: (node: ZWaveNode, v: TranslatedValueID, newValue: unknown) => void;
 
     // discovered nodes
-    nodes: Map<string, ZWaveNode>;
+    // nodes: Map<string, ZWaveNode>;
 
     // doReconnect requests the background connection loop to re-initiate a connection with the controller
     doReconnect: boolean = false
@@ -89,7 +88,7 @@ export class ZWAPI {
         this.onNodeUpdate = onNodeUpdate;
         this.onValueUpdate = onValueUpdate;
         this.onFatalError = onFatalError;
-        this.nodes = new Map<string, ZWaveNode>();
+        // this.nodes = new Map<string, ZWaveNode>();
     }
 
     // Add a known node and subscribe to its ready event before doing anything else
@@ -361,7 +360,9 @@ export class ZWAPI {
 
         node.on("value added", (node: ZWaveNode, args: ZWaveNodeValueAddedArgs) => {
             tslog.info(`Node ${node.id}, value added: propName=${args.propertyName}, value=${args.newValue}`);
-            this.onNodeUpdate(node)
+            // FIXME: only update the node if the value is new
+            // refreshvalues triggers this a lot. we don't want to send a new TD for each value
+            // this.onNodeUpdate(node)
             this.onValueUpdate(node, args, args.newValue)
         });
 

@@ -89,7 +89,7 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		slog.Error("Failed loading Thing info",
 			"thingID", thingID, "err", err.Error())
-		sess.SendNotify(session2.NotifyError, err.Error())
+		sess.SendNotify(session2.NotifyError, "", err.Error())
 		sess.WriteError(w, err, 0)
 		return
 	}

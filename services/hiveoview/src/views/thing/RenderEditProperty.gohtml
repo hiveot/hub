@@ -7,7 +7,6 @@
 		<header class="h-row-centered" style="height: 60px">
 			<h3 style="margin:0">Edit Configuration</h3>
 		</header>
-
 		<form id="edit-config-form">
 
 			<label for="propertyDescription">Property</label>
@@ -25,7 +24,13 @@
 
 		</form>
 
-		<footer>
+		{{/* Hack to show the progress bar in the desired place*/}}
+		<span>
+			<progress id="edit-progress-bar" style="visibility:hidden; position:absolute;left:1px;width:99%;border-radius:0"></progress>
+			<p id="edit-progress-error" style="visibility:hidden; color:red">error</p>
+		</span>
+
+		<footer style="margin-top:1px">
         {{- /*close-modal is handled by h-modal component*/ -}}
 			<button id="cancelBtn"
 			        onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
@@ -35,6 +40,7 @@
 			        hx-post="{{.SubmitPropertyPath}}"
 			        hx-include="#edit-config-form"
 			        hx-swap="none"
+			        hx-on::before-request="showProgress(this)"
 			        hx-on::after-request="onSubmitCompleted(event, this)"
 			        style="margin-bottom: 0">Submit
 			</button>
@@ -45,13 +51,36 @@
 </h-modal>
 
 <script>
+		function showProgress(btn) {
+        // disable the cancel and submit buttons
+        btn.disabled = true
+        let cancelBtn = document.getElementById("cancelBtn")
+				cancelBtn.disabled = true
+
+				// show the progress bar
+        let el = document.getElementById("edit-progress-bar")
+				el.style.visibility = "visible"
+		}
     // Ugly to have to do this!
     function onSubmitCompleted(ev, btn) {
         ev.stopImmediatePropagation()
         let details = ev.detail
+		    // console.log("details",details)
         if (details.successful) {
             let closeEv = new Event('close-modal',{bubbles:true})
             btn.dispatchEvent(closeEv)
+        } else {
+            btn.disabled = false
+            let cancelBtn = document.getElementById("cancelBtn")
+            cancelBtn.disabled = false
         }
+        // hide the progress bar
+        let el = document.getElementById("edit-progress-bar")
+        el.style.visibility = "hidden"
+
+		    // show the error instead
+        let el2 = document.getElementById("edit-progress-error")
+        el2.style.visibility = "visible"
+		    el2.textContent=ev.detail.xhr.response
     }
 </script>

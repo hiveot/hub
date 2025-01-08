@@ -96,7 +96,7 @@ func HandleSubEvents(hc transports.IConsumerConnection, thingID string, name str
 		createdTime, _ := dateparse.ParseAny(msg.Created)
 		timeStr := createdTime.Format("15:04:05.000")
 
-		valueStr := msg.ToString()
+		valueStr := msg.ToString(0)
 
 		//if msg.Name == vocab.EventNameProperties {
 		//	var props map[string]interface{}
@@ -113,7 +113,7 @@ func HandleSubEvents(hc transports.IConsumerConnection, thingID string, name str
 		//}
 		if msg.ThingID == digitwin.DirectoryDThingID && msg.Name == digitwin.DirectoryEventThingUpdated {
 			var td td.TD
-			tdJSON := msg.ToString()
+			tdJSON := msg.ToString(0)
 			jsoniter.UnmarshalFromString(tdJSON, &td)
 			valueStr = fmt.Sprintf("{title:%s, type:%s, nrProps=%d, nrEvents=%d, nrActions=%d}",
 				td.Title, td.AtType, len(td.Properties), len(td.Events), len(td.Actions))

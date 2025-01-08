@@ -40,13 +40,16 @@ func (svc *DigitwinRouter) HandleResponse(resp transports.ResponseMessage) error
 	}
 
 	if resp.CorrelationID == "" {
-		slog.Warn("Received a response without a correlationID. This is ignored")
+		slog.Warn("HandleResponse: Received a response without a correlationID. This is ignored")
 		return nil
 	}
 
 	slog.Info("HandleResponse",
+		slog.String("Operation", resp.Operation),
 		slog.String("ThingID", resp.ThingID),
 		slog.String("Name", resp.Name),
+		slog.String("Status", resp.Status),
+		slog.String("Output", resp.ToString(20)),
 		slog.String("CorrelationID", resp.CorrelationID),
 	)
 

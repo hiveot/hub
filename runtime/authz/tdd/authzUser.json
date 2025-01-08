@@ -1,6 +1,6 @@
 {
   "@context":[ "https://www.w3.org/2022/wot/td/v1.1",
-    {"ht": "https://www.hiveot.net/vocab/v0.1"}
+    {"hiveot": "https://www.hiveot.net/vocab/v0.1"}
   ],
   "@type": "Service",
   "id": "dtw:authz:user",

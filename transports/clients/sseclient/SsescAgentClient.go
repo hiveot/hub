@@ -5,7 +5,6 @@ import (
 	"crypto/x509"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/clients/httpclient"
-	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"time"
 )
@@ -20,9 +19,7 @@ type SsescAgentClient struct {
 }
 
 // handle agent requests if any
-func (cl *SsescAgentClient) handleAgentRequest(raw string) {
-	req := transports.RequestMessage{}
-	_ = jsoniter.UnmarshalFromString(raw, &req)
+func (cl *SsescAgentClient) handleAgentRequest(req transports.RequestMessage) {
 	resp := cl.OnRequest(req)
 
 	// send the response to the caller

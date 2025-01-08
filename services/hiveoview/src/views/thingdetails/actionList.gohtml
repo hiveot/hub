@@ -8,12 +8,16 @@
 		<div class="h-show-sm">Stateful</div>
 		<div>Input</div>
 		<div class="h-show-md">Description</div>
+		<div class="h-show-lg">Last Action</div>
+		<div class="h-show-lg">Requested</div>
+		<div class="h-show-lg">By</div>
 	</li>
 
     {{range $name := .ActionNames }}
 				{{/* TBD: action state is kept in properties?*/}}
         {{$iout := $.CT.GetPropValue $name}}
-				{{$aff := $.TD.GetAction $name}}
+        {{$aff := $.TD.GetAction $name}}
+        {{$actionStatus := $.CT.GetActionStatus $name}}
 				<li>
 
          {{/* Action Name*/}}
@@ -40,6 +44,12 @@
 
 					<div class="h-show-md">{{$iout.Schema.Description}}</div>
 
+					<div class="h-show-lg">{{$actionStatus.Status}}</div>
+
+					<div class="h-show-lg">{{$iout.FormatTime $actionStatus.TimeRequested}}</div>
+
+					<div class="h-show-lg">{{$actionStatus.SenderID}}</div>
+
 				</li>
     {{end}}
     {{if not .TD.Actions}}
@@ -62,7 +72,7 @@
         }
     }
 
-    @media (width >= 576px) {
+    @media (width >= 576px) and (width < 768px) {
         .thing-actions {
             /*sm, show column 1,2,3 */
             grid-template-columns:
@@ -72,14 +82,28 @@
         }
     }
 
-    @media (width >= 768px) {
+    @media (width >= 768px) and (width < 1024px) {
         .thing-actions {
             /*md,show column 1,2,3,4 */
             grid-template-columns:
 				            minmax(200px, max-content) /*title*/
 				            200px   /* stateful*/
 				            minmax(100px, max-content)/*Input*/
+				            minmax(100px, 1fr); /*description*/
+        }
+    }
+
+    @media (width >= 1024px) {
+        .thing-actions {
+            /*lg, show all columns*/
+            grid-template-columns:
+				            minmax(200px, max-content) /*title*/
+				            200px   /* stateful*/
+				            minmax(100px, max-content)/*Input*/
 				            minmax(100px, 1fr) /*description*/
+		                minmax(100px, max-content) /*status*/
+		                minmax(100px, max-content) /*requested*/
+						        minmax(100px, max-content); /*by*/
         }
     }
 

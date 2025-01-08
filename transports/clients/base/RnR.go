@@ -31,6 +31,8 @@ type RnRChan struct {
 func (rnr *RnRChan) Close(correlationID string) {
 	rnr.mux.Lock()
 	defer rnr.mux.Unlock()
+
+	slog.Info("closing channel. ", "correlationID", correlationID)
 	rChan, found := rnr.correlData[correlationID]
 	if found {
 		delete(rnr.correlData, correlationID)
@@ -55,16 +57,26 @@ func (rnr *RnRChan) CloseAll() {
 //
 // If a timeout passes while writing is block the write is released.
 func (rnr *RnRChan) HandleResponse(msg transports.ResponseMessage) bool {
+	// Note: avoid a race between closing the channel and writing multiple responses.
+	// This would happen if a 'pending' response arrives after a 'completed' response,
+	// and 'wait-for-response' closes the channel while the second result is written.
+	// This would panic, so lock the lookup and writing of the response channel.
 	rnr.mux.Lock()
 	rChan, isRPC := rnr.correlData[msg.CorrelationID]
-	rnr.mux.Unlock()
+	defer rnr.mux.Unlock()
 	if isRPC {
+		slog.Info("writing response to channel. ",
+			slog.String("correlationID", msg.CorrelationID),
+			slog.String("operation", msg.Operation),
+			slog.String("status", msg.Status),
+		)
 		ctx, cancelFn := context.WithTimeout(context.Background(), rnr.writeTimeout)
 		select {
 		case rChan <- msg:
 		case <-ctx.Done():
+			// this should never happen
 			slog.Error("Response channel is full. Is no-one listening?")
-			// pass as notification as the channel isn't read
+			// recover
 			isRPC = false
 		}
 		cancelFn()
@@ -85,7 +97,10 @@ func (rnr *RnRChan) Len() int {
 // WaitForResponse(rChan)
 func (rnr *RnRChan) Open(correlationID string) chan transports.ResponseMessage {
 	// todo: is there a use-case for a buffer?
-	rChan := make(chan transports.ResponseMessage)
+	slog.Info("opening channel. ", "correlationID", correlationID)
+	// this needs to be able to buffer 1 response in case completed and pending
+	// are received out of order.
+	rChan := make(chan transports.ResponseMessage, 1)
 	rnr.mux.Lock()
 	rnr.correlData[correlationID] = rChan
 	rnr.mux.Unlock()

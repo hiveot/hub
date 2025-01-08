@@ -211,6 +211,7 @@ func (svc *AddHistory) AddProperty(msg *transports.NotificationMessage) (err err
 
 	// turn each property into a NotificationMessage object so they can be queried separately
 	for propName, propValue := range propMap {
+		// FIXME: does the  property map contain map k:v or l:NotificationMessage???
 		tv := transports.NewNotificationMessage(
 			vocab.HTOpUpdateProperty, msg.ThingID, propName, propValue)
 		tv.SenderID = msg.SenderID
