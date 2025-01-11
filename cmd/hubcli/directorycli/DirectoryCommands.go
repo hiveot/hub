@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/runtime/api"
@@ -13,7 +12,6 @@ import (
 	"github.com/hiveot/hub/wot/td"
 	"github.com/urfave/cli/v2"
 	"log/slog"
-	"time"
 )
 
 func DirectoryListCommand(hc *transports.IConsumerConnection) *cli.Command {
@@ -56,17 +54,15 @@ func HandleListDirectory(hc transports.IConsumerConnection) (err error) {
 	if err != nil || err2 != nil {
 		return err
 	}
-	fmt.Printf("Thing ID                            @type                               Title                                #props  #events #actions   GetUpdated         \n")
+	fmt.Printf("Thing ID                            @type                               Title                                #props  #events #actions   Modified         \n")
 	fmt.Printf("----------------------------------  ----------------------------------  -----------------------------------  ------  ------- --------   -----------------------------\n")
 	for _, tdDoc := range tdList {
-		var utime time.Time
+		var updatedStr = ""
 		if tdDoc.Modified != "" {
-			utime, err = dateparse.ParseAny(tdDoc.Modified)
+			updatedStr = tputils.DecodeAsDatetime(tdDoc.Modified)
 		} else if tdDoc.Created != "" {
-			utime, err = dateparse.ParseAny(tdDoc.Created)
+			updatedStr = tputils.DecodeAsDatetime(tdDoc.Created)
 		}
-		//timeStr := utime.In(time.Local).Format("02 Jan 2006 15:04:05 -0700")
-		timeStr := utils.FormatMSE(utime.In(time.Local).UnixMilli(), false)
 
 		fmt.Printf("%-35s %-35.35s %-35.35s %7d  %7d  %7d   %-30s\n",
 			tdDoc.ID,
@@ -75,7 +71,7 @@ func HandleListDirectory(hc transports.IConsumerConnection) (err error) {
 			len(tdDoc.Properties),
 			len(tdDoc.Events),
 			len(tdDoc.Actions),
-			timeStr,
+			updatedStr,
 		)
 	}
 	fmt.Println()
@@ -100,7 +96,7 @@ func HandleListThing(hc transports.IConsumerConnection, thingID string) error {
 	fmt.Printf(" title:       %s\n", tdDoc.Title)
 	fmt.Printf(" description: %s\n", tdDoc.Description)
 	fmt.Printf(" @type:       %s\n", tdDoc.AtType)
-	fmt.Printf(" modified:    %s\n", tdDoc.Modified)
+	fmt.Printf(" modified:    %s\n", tputils.DecodeAsDatetime(tdDoc.Modified))
 	fmt.Println("")
 
 	fmt.Println(utils.COGreen + "Attributes:")

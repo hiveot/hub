@@ -19,8 +19,7 @@ type StateClient struct {
 // Delete removes the record with the given key.
 func (cl *StateClient) Delete(key string) error {
 
-	req := stateapi.DeleteArgs{Key: key}
-	err := cl.hc.InvokeAction(cl.dThingID, stateapi.DeleteMethod, &req, nil)
+	err := cl.hc.InvokeAction(cl.dThingID, stateapi.DeleteMethod, key, nil)
 	return err
 }
 
@@ -28,9 +27,8 @@ func (cl *StateClient) Delete(key string) error {
 // If the key doesn't exist this returns an empty record.
 func (cl *StateClient) Get(key string, record interface{}) (found bool, err error) {
 
-	req := stateapi.GetArgs{Key: key}
 	resp := stateapi.GetResp{}
-	err = cl.hc.InvokeAction(cl.dThingID, stateapi.GetMethod, &req, &resp)
+	err = cl.hc.InvokeAction(cl.dThingID, stateapi.GetMethod, key, &resp)
 	if err != nil {
 		return false, err
 	}
@@ -43,13 +41,12 @@ func (cl *StateClient) Get(key string, record interface{}) (found bool, err erro
 // GetMultiple reads multiple serialized records with the given keys.
 func (cl *StateClient) GetMultiple(keys []string) (values map[string]string, err error) {
 
-	req := stateapi.GetMultipleArgs{Keys: keys}
 	resp := stateapi.GetMultipleResp{}
-	err = cl.hc.InvokeAction(cl.dThingID, stateapi.GetMultipleMethod, &req, &resp)
+	err = cl.hc.InvokeAction(cl.dThingID, stateapi.GetMultipleMethod, &keys, &resp)
 	if err != nil {
 		return nil, err
 	}
-	return resp.KV, err
+	return resp, err
 }
 
 // Set serializes and stores a record by the given key
@@ -62,8 +59,7 @@ func (cl *StateClient) Set(key string, record interface{}) error {
 
 // SetMultiple writes multiple serialized records
 func (cl *StateClient) SetMultiple(kv map[string]string) error {
-	req := stateapi.SetMultipleArgs{KV: kv}
-	err := cl.hc.InvokeAction(cl.dThingID, stateapi.SetMultipleMethod, &req, nil)
+	err := cl.hc.InvokeAction(cl.dThingID, stateapi.SetMultipleMethod, kv, nil)
 	return err
 }
 

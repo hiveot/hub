@@ -4,6 +4,7 @@ package td
 
 import (
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/wot"
 )
 
 // DataSchema with metadata  that describes the data format used. It can be used for validation.
@@ -164,54 +165,14 @@ func (ds *DataSchema) UnitSymbol() string {
 	return unit.Symbol
 }
 
-// FormatAsText formats the given input value according to the data schema
-// Numeric values are rounded to the given precision
-//func (ds *DataSchema) FormatAsText(rawValue string, precision int) string {
-//	var textValue string
-//	if ds.Type == vocab.WoTDataTypeNumber {
-//		valueFloat, err := strconv.ParseFloat(rawValue, 32)
-//		textValue = strconv.FormatFloat(valueFloat, 'f', precision, 32)
-//		_ = err
-//	} else if ds.Type == vocab.WoTDataTypeInteger {
-//		valueInt, err := strconv.ParseInt(rawValue, 10, 32)
-//		textValue = strconv.FormatInt(valueInt, 10)
-//		_ = err
-//	} else if ds.Type == vocab.WoTDataTypeUnsignedInt {
-//		valueUInt, err := strconv.ParseUint(rawValue, 10, 32)
-//		textValue = strconv.FormatUint(valueUInt, 10)
-//		_ = err
-//	} else if ds.Type == vocab.WoTDataTypeBool {
-//		valueBool, err := strconv.ParseBool(rawValue)
-//		textValue = strconv.FormatBool(valueBool)
-//		_ = err
-//	} else {
-//		textValue = rawValue
-//	}
-//	return textValue
-//}
-
-// FormatAsNumber formats the given input value according to the data schema
-// Numeric values are rounded to the given precision
-//func (ds *DataSchema) FormatAsNumber(rawValue string, precision int) string {
-//	var textValue string
-//	if ds.Type == vocab.WoTDataTypeNumber {
-//		valueFloat, err := strconv.ParseFloat(rawValue, 32)
-//		textValue = strconv.FormatFloat(valueFloat, 'f', precision, 32)
-//		_ = err
-//	} else if ds.Type == vocab.WoTDataTypeInteger {
-//		valueInt, err := strconv.ParseInt(rawValue, 10, 32)
-//		textValue = strconv.FormatInt(valueInt, 10)
-//		_ = err
-//	} else if ds.Type == vocab.WoTDataTypeUnsignedInt {
-//		valueUInt, err := strconv.ParseUint(rawValue, 10, 32)
-//		textValue = strconv.FormatUint(valueUInt, 10)
-//		_ = err
-//	} else if ds.Type == vocab.WoTDataTypeBool {
-//		valueBool, err := strconv.ParseBool(rawValue)
-//		textValue = strconv.FormatBool(valueBool)
-//		_ = err
-//	} else {
-//		textValue = rawValue
-//	}
-//	return textValue
-//}
+// IsNative returns true if the type is string, number, boolean
+// If type is an object or array this returns false
+// Intended for use in input forms
+func (ds *DataSchema) IsNative() bool {
+	return ds.Type == wot.WoTDataTypeAnyURI ||
+		ds.Type == wot.WoTDataTypeBool ||
+		ds.Type == wot.WoTDataTypeInteger ||
+		ds.Type == wot.WoTDataTypeUnsignedInt ||
+		ds.Type == wot.WoTDataTypeNumber ||
+		ds.Type == wot.WoTDataTypeString
+}

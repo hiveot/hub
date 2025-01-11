@@ -65,7 +65,7 @@ type WebClientSession struct {
 	remoteAddr string
 
 	lastActivity time.Time
-	lastError    error
+	//lastError    error
 
 	// The associated hub client for pub/sub
 	hc transports.IConsumerConnection
@@ -128,7 +128,7 @@ func (sess *WebClientSession) GetHubClient() transports.IConsumerConnection {
 
 // GetLastError returns the most recent error, if any
 func (sess *WebClientSession) GetLastError() error {
-	return sess.lastError
+	return sess.clientStateError
 }
 
 // GetConsumedThingsDirectory returns the directory of consumed things of this client
@@ -245,8 +245,8 @@ func (sess *WebClientSession) LoadState() error {
 	sess.mux.Lock()
 	defer sess.mux.Unlock()
 	if err != nil {
-		sess.lastError = err
-		//slog.Error("LoadState failed", "err", err.Error())
+		sess.clientStateError = err
+		slog.Error("LoadState failed", "err", err.Error())
 		return err
 	} else {
 		sess.clientData = clientData
@@ -338,7 +338,7 @@ func (sess *WebClientSession) onNotification(msg *transports.NotificationMessage
 		propVal := tputils.DecodeAsString(msg.Data, 0)
 		sess.SendSSE(thingAddr, propVal)
 		thingAddr = fmt.Sprintf("%s/%s/updated", msg.ThingID, msg.Name)
-		sess.SendSSE(thingAddr, msg.GetUpdated(""))
+		sess.SendSSE(thingAddr, tputils.DecodeAsDatetime(msg.Created))
 	} else {
 		// Publish sse event indicating the event affordance or value has changed.
 		// The UI that displays this event can use this as a trigger to reload the
@@ -348,7 +348,7 @@ func (sess *WebClientSession) onNotification(msg *transports.NotificationMessage
 		eventName := fmt.Sprintf("%s/%s", msg.ThingID, msg.Name)
 		sess.SendSSE(eventName, msg.ToString(0))
 		eventName = fmt.Sprintf("%s/%s/updated", msg.ThingID, msg.Name)
-		sess.SendSSE(eventName, msg.GetUpdated(""))
+		sess.SendSSE(eventName, tputils.DecodeAsDatetime(msg.Created))
 	}
 }
 
@@ -379,7 +379,7 @@ func (sess *WebClientSession) SaveState() error {
 	stateCl := stateclient.NewStateClient(sess.GetHubClient())
 	err := stateCl.Set(HiveOViewDataKey, &clientState)
 	if err != nil {
-		sess.lastError = err
+		//sess.lastError = err
 		return err
 	}
 	sess.clientData.SetChanged(false)
@@ -519,7 +519,6 @@ func NewWebClientSession(
 			slog.Error("unable to load client state from state service",
 				"clientID", cs.hc.GetClientID(), "err", err.Error())
 			cs.SendNotify(NotifyWarning, "", "Unable to restore session: "+err.Error())
-			cs.lastError = err
 		}
 	}
 
@@ -527,7 +526,7 @@ func NewWebClientSession(
 	err = hc.Subscribe("", "")
 	err = hc.ObserveProperty("", "")
 	if err != nil {
-		cs.lastError = err
+		//cs.lastError = err
 	}
 
 	// prevent orphaned sessions. Cleanup after 3 sec

@@ -53,11 +53,16 @@
 	         type="checkbox" role="switch" aria-invalid="false" autofocus
             {{if eq $iv "true"}} checked {{end}}
 	  />
-{{else}}
+{{else if eq .Schema.Type "string"}}
     {{/*	=== Text Input ===*/}}
 		<input id="input-{{.Name}}" name="{{.Name}}"
-		       autofocus autocomplete="off"
-		       placeholder="{{$iv}}" value="{{$iv}}"/>
-		<small>Current value: {{$iv}}</small>
+		       type="text" autofocus
+		/>
+{{else}}
+    {{/*	=== Complex Input is not supported ===*/}}
+		<input id="input-{{.Name}}" name="{{.Name}}"
+		       disabled
+		       style="color:red; border:red"
+		       value="Multi-value input forms are not yet supported" />
 {{end}}
 

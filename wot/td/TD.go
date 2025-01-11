@@ -2,7 +2,7 @@ package td
 
 import (
 	"fmt"
-	"github.com/araddon/dateparse"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/wot"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
@@ -341,16 +341,20 @@ func (tdoc *TD) GetAction(actionName string) *ActionAffordance {
 // GetAtType return the @type field as a string
 // If @type contains an array then the first value is returned.
 func (tdoc *TD) GetAtType() string {
+	atTypeValue := ""
 	switch t := tdoc.AtType.(type) {
 	case string:
-		return t
+		atTypeValue = t
 	case []string:
 		if len(t) > 0 {
-			return t[0]
+			atTypeValue = t[0]
 		}
 	}
-	//atTypeVocab, found := vocab.ThingClassesMap[tdoc.AtType]
-	return ""
+	atTypeVocab, found := vocab.ThingClassesMap[atTypeValue]
+	if !found {
+		return atTypeValue
+	}
+	return atTypeVocab.Title
 }
 
 // GetEvent returns the Schema for the event or nil if the event doesn't exist
@@ -495,17 +499,6 @@ func (tdoc *TD) GetPropertyOfVocabType(vocabType string) (string, *PropertyAffor
 		}
 	}
 	return "", nil
-}
-
-// GetUpdated is a helper function to return the formatted time the thing was last updated.
-// This uses the time format RFC822 ("02 Jan 06 15:04 MST")
-func (tdoc *TD) GetUpdated() string {
-	created, err := dateparse.ParseAny(tdoc.Modified)
-	if err != nil {
-		return tdoc.Modified
-	}
-	created = created.Local()
-	return created.Format(time.RFC822)
 }
 
 // GetID returns the ID of the things TD

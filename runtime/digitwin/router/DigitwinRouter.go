@@ -5,6 +5,7 @@ import (
 	"github.com/hiveot/hub/runtime/digitwin/store"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/connections"
+	"log/slog"
 	"sync"
 )
 
@@ -39,6 +40,15 @@ type DigitwinRouter struct {
 	mux sync.Mutex
 	// connection manager for sending messages to agent or consumer
 	cm *connections.ConnectionManager
+
+	// logging of requests and response
+	requestLogger *slog.Logger
+}
+
+func (r *DigitwinRouter) SetRequestLogger(logger *slog.Logger) {
+	r.mux.Lock()
+	defer r.mux.Unlock()
+	r.requestLogger = logger
 }
 
 // NewDigitwinRouter instantiates a new hub messaging router
@@ -64,6 +74,7 @@ func NewDigitwinRouter(
 		digitwinAction: digitwinAction,
 		dtwService:     dtwService,
 		activeCache:    make(map[string]ActiveRequestRecord),
+		requestLogger:  slog.Default(),
 	}
 	return ar
 }

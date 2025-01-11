@@ -8,13 +8,13 @@
 {{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/thing.ActionRequestTemplateData*/ -}}
 
 <h-modal show showClose showCancel showSubmit>
-    <article  style="min-width: 410px;max-width:80vw">
+    <article  style="min-width: 410px;max-width:80vw;max-height:90vh">
         <header class="h-row-centered" style="height: 60px">
             <h3>{{.Action.Title}}</h3>
         </header>
 
         <main>
-            <form id="action-input-form">
+            <form id="action-input-form"  style="overflow:auto;max-height:80vh">
                 <label>Action</label>
                 {{/* textarea doesnt resize so do this instead*/}}
                 <div style="color:gray;
@@ -23,40 +23,41 @@
                      margin-bottom: var(--pico-spacing);"
                 ><i>{{.Description}}</i></div>
 
+{{/*                Show the previous action status and input if available */}}
                 {{if .LastActionRecord}}
-                <label for="previousAction">Previous Action</label>
-                <table id="previousAction" class="prevaction">
-                    <tr>
-                        <td>Time</td>
-                        <td>{{.LastActionTime}} ({{.LastActionAge}} ago)</td>
-                    </tr>
-                    <tr>
-                        <td>Status</td>
-                        <td>{{.LastActionRecord.Status}}
-                            {{if .LastActionRecord.Error}}
-                                <span>: {{.LastActionRecord.Error}}</span>
-                            {{end}}
-                        </td>
-                    </tr>
-                    {{if .Action.Input }}
-                       <tr>
-                          <td>Input</td>
-                          <td>{{.InputValue.Value.Text}}</td>
-                       </tr>
-                    {{end}}
-                </table>
+                    <label for="previousAction">Previous Action</label>
+                    <table id="previousAction" class="prevaction">
+                        <tr>
+                            <td>Time</td>
+                            <td>{{.LastActionTime}} ({{.LastActionAge}} ago)</td>
+                        </tr>
+                        <tr>
+                            <td>Status</td>
+                            <td>{{.LastActionRecord.Status}}
+                                {{if .LastActionRecord.Error}}
+                                    <span>: {{.LastActionRecord.Error}}</span>
+                                {{end}}
+                            </td>
+                        </tr>
+                        {{if .Action.Input }}
+                           <tr>
+                              <td>Input</td>
+                              <td>{{.InputValue.Value.ToString 120}}</td>
+                           </tr>
+                        {{end}}
+                    </table>
 
                 {{end}}
 
 
-                {{/* input is required*/}}
+                {{/* if input is required*/}}
                 {{if .Action.Input}}
-                <div>
-                    {{/*FIXME: support object with multiple input fields*/}}
-                    {{/* the 'for' id must match that of RenderInputValue*/}}
-                    <label for="input-{{.Name}}">{{.InputValue.Schema.Title}}</label>
-                    {{template "RenderInputValue.gohtml" .InputValue}}
-                </div>
+                    <div >
+                        {{/*TODO: support object with multiple input fields*/}}
+                        {{/* the 'for' id must match that of RenderInputValue*/}}
+                        <label for="input-{{.Name}}">{{.InputValue.Schema.Title}}</label>
+                        {{template "RenderInputValue.gohtml" .InputValue}}
+                    </div>
                 {{end}}
             </form>
         </main>
@@ -64,10 +65,16 @@
         <footer>
             {{- /*close-modal is handled by h-modal component*/ -}}
             <button id="cancelBtn"
+                    title="cancel and close the dialog"
                     onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
                     class="secondary">Cancel
             </button>
+{{/*            FIXME: disable submit if input type is not supported*/}}
             <button type="submit"
+                    {{if and .Action.Input not .Action.Input.IsNative}}
+                        disabled
+                        title="input format not supported"
+                    {{end}}
                     hx-post="{{.SubmitActionRequestPath}}"
                     hx-include="#action-input-form"
                     hx-swap="none"

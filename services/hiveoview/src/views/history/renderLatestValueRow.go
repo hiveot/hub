@@ -5,6 +5,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
+	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot/consumedthing"
 	"net/http"
 )
@@ -58,7 +59,7 @@ func RenderLatestValueRow(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		// TODO: get unit symbol
 		fragment := fmt.Sprintf(addRowTemplate,
-			iout.GetUpdated("WT"), latestValue.Data, unit)
+			tputils.DecodeAsDatetime(iout.Updated), latestValue.Data, unit)
 
 		_, _ = w.Write([]byte(fragment))
 		return

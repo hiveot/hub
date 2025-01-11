@@ -24,14 +24,6 @@ const (
 	SetMultipleMethod = "setMultiple"
 )
 
-type DeleteArgs struct {
-	Key string `json:"key"`
-}
-
-type GetArgs struct {
-	Key string `json:"key"`
-}
-
 type GetResp struct {
 	// The returned key or "" if record wasn't found
 	Key string `json:"key"`
@@ -41,20 +33,13 @@ type GetResp struct {
 	Value string `json:"value"`
 }
 
-type GetMultipleArgs struct {
-	Keys []string `json:"keys"`
-}
+type GetMultipleArgs []string
 
-type GetMultipleResp struct {
-	// Name-values that were found
-	KV map[string]string `json:"kv"`
-}
+type GetMultipleResp map[string]string
 
 type SetArgs struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
 }
 
-type SetMultipleArgs struct {
-	KV map[string]string `json:"kv"`
-}
+type SetMultipleArgs map[string]string

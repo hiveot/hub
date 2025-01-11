@@ -8,7 +8,6 @@ import (
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
-	"log/slog"
 	"sync"
 	"time"
 )
@@ -90,42 +89,24 @@ func (ct *ConsumedThing) GetActionStatus(name string) *digitwin.ActionStatus {
 }
 
 // GetEventValue returns the interaction output of the latest value of an event
+// See also GetValue that always return an iout (for rendering purpose)
 //
-// This returns an empty InteractionOutput if not found
+// This returns nil if not found
 func (ct *ConsumedThing) GetEventValue(name string) (iout *InteractionOutput) {
 	ct.mux.RLock()
-	iout, found := ct.eventValues[name]
+	iout, _ = ct.eventValues[name]
 	ct.mux.RUnlock()
-	_ = found
-	if iout == nil {
-		// not a known event value so create an empty io with a schema from the td
-		iout = &InteractionOutput{
-			ThingID: ct.td.ID,
-			Name:    name,
-		}
-		iout.setSchemaFromTD(ct.td)
-		slog.Info("Value not (yet) found for event ", "name", name, "thingID", ct.td.ID)
-	}
 	return iout
 }
 
 // GetPropValue returns the interaction output of the latest property value.
+// See also GetValue that always return an iout (for rendering purpose)
 //
-// This returns an empty InteractionOutput if not found
+// This returns nil if not found
 func (ct *ConsumedThing) GetPropValue(name string) (iout *InteractionOutput) {
 	ct.mux.RLock()
-	iout, found := ct.propValues[name]
+	iout, _ = ct.propValues[name]
 	ct.mux.RUnlock()
-	_ = found
-	if iout == nil {
-		// not a known prop value so create an empty io with a schema from the td
-		iout = &InteractionOutput{
-			ThingID: ct.td.ID,
-			Name:    name,
-		}
-		iout.setSchemaFromTD(ct.td)
-		slog.Debug("Value not (yet) published for property ", "name", name, "thingID", ct.td.ID)
-	}
 	return iout
 }
 
@@ -146,6 +127,30 @@ func (ct *ConsumedThing) GetTitle() string {
 		title = iout.Value.Text()
 	}
 	return title
+}
+
+// GetValue returns the interaction output of the latest event or property value.
+//
+// If name is an event it is returned first, otherwise it falls back to property.
+//
+// This returns an empty InteractionOutput if not found
+func (ct *ConsumedThing) GetValue(name string) *InteractionOutput {
+	ct.mux.RLock()
+	iout, found := ct.eventValues[name]
+	if !found {
+		iout, found = ct.propValues[name]
+	}
+	ct.mux.RUnlock()
+	_ = found
+	if iout == nil {
+		// not a known prop or event value so create an empty io with a schema from the td
+		iout = &InteractionOutput{
+			ThingID: ct.td.ID,
+			Name:    name,
+		}
+		iout.setSchemaFromTD(ct.td)
+	}
+	return iout
 }
 
 // InvokeAction requests an action on the Thing
@@ -327,6 +332,12 @@ func (ct *ConsumedThing) ReadAllEvents() map[string]*InteractionOutput {
 	var evList []transports.NotificationMessage
 	ct.mux.Lock()
 	defer ct.mux.Unlock()
+	// FIXME: this sometimes returns actions as events
+	//  zwavejs D0547D32.2 37-targetValue-0 (binary switch)
+	// options for graceful recovery:
+	//   1. show 'unknown event' (current)
+	//   2. use action/property output schema if affordance is an action name
+	//   3.
 	err = ct._rpc(wot.HTOpReadAllEvents, "", nil, &evList)
 	if err != nil {
 		return nil

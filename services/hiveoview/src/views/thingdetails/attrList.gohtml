@@ -12,9 +12,9 @@
 		<div class="h-show-md">Updated</div>
 	</li>
 
-    {{/*	Iterate the sorted read-only property names */}}
+    {{/*	Iterate the sorted read-only names */}}
     {{range $name := .AttrNames}}
-	    {{$v := $.CT.GetPropValue $name}}
+	    {{$v := $.CT.GetValue $name}}
 			<li>
 				<div class="h-show-sm">{{/*icon*/}}</div>
 
@@ -40,8 +40,8 @@
 				     sse-swap="{{$.ThingID}}/{{$name}}/updated"
 				     hx-swap="innerHTML"
 				     hx-target="this"
-				     title="Updated: {{$v.GetUpdated}}">
-            {{$v.GetUpdated}}</div>
+				     title="Updated: {{datetime $v.Updated}}">
+            {{datetime $v.Updated}}</div>
 			</li>
     {{end}}
 </ul>

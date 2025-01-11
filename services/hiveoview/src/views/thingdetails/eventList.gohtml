@@ -14,7 +14,7 @@
 	</li>
 
 	{{range $name := .EventNames}}
-    {{$iout := $.CT.GetEventValue $name}}
+    {{$iout := $.CT.GetValue $name}}
 
 		{{- /*auto reload row on event changes*/ -}}
 		<li>
@@ -40,7 +40,7 @@
 			     hx-target="this"
 			     hx-swap="innerHTML"
 					 class="h-show-md" style="white-space:nowrap"
-				>{{$iout.GetUpdated}}
+				>{{datetime $iout.Updated "WT"}}
 			</div>
 
 	    {{/*history chart */}}

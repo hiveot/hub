@@ -6,7 +6,7 @@
 		</header>
 		{{$data := .}}
 
-		<main style="overflow-y:auto;  height:80vh">
+		<main style="overflow-y:auto;  max-height:80vh">
 
 				{{/* Each agent has a grouped list of things*/}}
         {{range .AgentThings}}
@@ -29,16 +29,16 @@
 									<span> ({{len .Events}} events)</span>
 								</summary>
 
-								<!--=== for EventAffordance in .TD ===-->
+								<!--=== for PropertyAffordance in .TD ===-->
 								<ul class="h-grid-table select-thing-events" striped border>
                     {{/* Header*/}}
 										<li>
-											<div>Event Name</div>
+											<div>Property Name</div>
 											<div>Value</div>
 											<div class="h-show-md">Updated</div>
 										</li>
-                    {{range $k,$v := .Events}}
-                    {{- /*gotype: github.com/hiveot/hub/wot/tdd.EventAffordance*/ -}}
+                    {{range $k,$v := .Properties}}
+                    {{- /*gotype: github.com/hiveot/hub/wot/tdd.PropertyAffordance*/ -}}
 										<li>
 											<div>
                         {{/*Get the html of the source to add to the list of sources*/}}
@@ -47,15 +47,45 @@
 											     hx-trigger="click"
 											     hx-target="#edit-tile-sources"
 											     hx-get="/tile/{{$thing.ID}}/{{$k}}/sourceRow"
+											     onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
 												>
 														{{.Title}}
 												</a>
 											</div>
-											<div>{{$data.GetValue $thing.ID $k}} {{if $v.Data}}{{$v.Data.UnitSymbol}}{{end}}</div>
+											<div>{{$data.GetValue $thing.ID $k}} {{if $v}}{{$v.UnitSymbol}}{{end}}</div>
 											<div>{{$data.GetUpdated $thing.ID $k}}</div>
 										</li>
                     {{end}}
 	            </ul>
+
+								<!--=== for EventAffordance in .TD ===-->
+								<ul class="h-grid-table select-thing-events" striped border>
+                    {{/* Header*/}}
+									<li>
+										<div>Event Name</div>
+										<div>Value</div>
+										<div class="h-show-md">Updated</div>
+									</li>
+                    {{range $k,$v := .Events}}
+                        {{- /*gotype: github.com/hiveot/hub/wot/tdd.EventAffordance*/ -}}
+												<li>
+													<div>
+                              {{/*Get the html of the source to add to the list of sources*/}}
+														<a href="#"
+														   hx-swap="beforeend scroll:bottom"
+														   hx-trigger="click"
+														   hx-target="#edit-tile-sources"
+														   hx-get="/tile/{{$thing.ID}}/{{$k}}/sourceRow"
+														   onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
+														>
+                                {{.Title}}
+														</a>
+													</div>
+													<div>{{$data.GetValue $thing.ID $k}} {{if $v.Data}}{{$v.Data.UnitSymbol}}{{end}}</div>
+													<div>{{$data.GetUpdated $thing.ID $k}}</div>
+												</li>
+                    {{end}}
+								</ul>
 
 								<!--=== for ActionAffordance in .TD ===-->
 								<ul class="h-grid-table select-thing-events" striped border>
@@ -75,6 +105,7 @@
 														   hx-trigger="click"
 														   hx-target="#edit-tile-sources"
 														   hx-get="/tile/{{$thing.ID}}/{{$k}}/sourceRow"
+														   onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
 														>
                                 {{.Title}}
 														</a>
@@ -103,7 +134,7 @@
         {{- /*close-modal is handled by h-modal component*/ -}}
 			<button id="closelBtn" type="submit"
 			        onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))">
-				Done
+				Close
 			</button>
 		</footer>
 

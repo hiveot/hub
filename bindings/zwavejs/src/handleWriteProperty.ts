@@ -1,13 +1,13 @@
 // ZWaveJSBinding.ts holds the entry point to the zwave binding along with its configuration
 import {ZWaveNode} from "zwave-js";
 import {getPropVid} from "./getPropName";
-import * as tslog from 'tslog';
 import {IAgentConnection} from "@hivelib/transports/IAgentConnection";
 import {getEnumFromMemberName, getVidValue,  ZWAPI} from "@zwavejs/ZWAPI";
 import {setValue} from "@zwavejs/setValue";
 import {RequestMessage, ResponseMessage} from "@hivelib/transports/Messages";
+import {getlogger} from "@zwavejs/getLogger";
 
-const log = new tslog.Logger()
+const log = getlogger()
 
 
 

@@ -6,7 +6,6 @@ import (
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/lib/plugin"
-	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authn/service"
 	service2 "github.com/hiveot/hub/runtime/authz/service"
 	"github.com/hiveot/hub/runtime/digitwin/router"
@@ -15,7 +14,11 @@ import (
 	"github.com/hiveot/hub/transports/servers"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/lmittmann/tint"
+	"io"
 	"log/slog"
+	"os"
+	"path"
 	"time"
 )
 
@@ -29,9 +32,12 @@ type Runtime struct {
 	AuthnAgent     *service.AuthnAgent
 	AuthzAgent     *service2.AuthzAgent
 	DigitwinSvc    *service4.DigitwinService
-	DigitwinRouter api.IDigitwinRouter
+	DigitwinRouter *router.DigitwinRouter
 	CM             *connections.ConnectionManager
 	TransportsMgr  *servers.TransportManager
+
+	// logging of request and response messages
+	RequestLogger *slog.Logger
 }
 
 // GetForm returns the form for an operation using a transport protocol binding
@@ -65,9 +71,32 @@ func (r *Runtime) GetTD(dThingID string) (td *td.TD) {
 // This uses the directory structure obtained from the app environment.
 func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	err := r.cfg.Setup(env)
-
 	if err != nil {
 		return err
+	}
+
+	// setup request logging
+	if r.cfg.RequestLog != "" {
+		var logWriter io.Writer
+		logfileName := path.Join(env.LogsDir, r.cfg.RequestLog)
+		logWriter, err2 := os.OpenFile(logfileName, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+		if r.cfg.RequestLogStdout {
+			// log stdout to stdout and to file
+			logWriter = io.MultiWriter(os.Stdout, logWriter)
+			slog.Info("attaching stdout using multiwriter")
+		}
+		if err2 == nil {
+			if r.cfg.RequestLogJson {
+				logHandler := slog.NewJSONHandler(logWriter, nil)
+				r.RequestLogger = slog.New(logHandler)
+			} else {
+				logHandler := tint.NewHandler(logWriter, &tint.Options{
+					AddSource: true, Level: slog.LevelInfo, TimeFormat: "Jan _2 15:04:05.0000"},
+				)
+				r.RequestLogger = slog.New(logHandler)
+			}
+
+		}
 	}
 
 	// startup
@@ -108,11 +137,14 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 		r.AuthzAgent.HandleAction,
 		r.AuthzAgent.HasPermission,
 		r.CM)
+	if r.RequestLogger != nil {
+		r.DigitwinRouter.SetRequestLogger(r.RequestLogger)
+	}
 
 	// the protocol manager receives messages from clients (source) and
 	// sends messages to connected clients (sink)
 	r.TransportsMgr, err = servers.StartProtocolManager(
-		&r.cfg.RtConfig,
+		&r.cfg.ProtocolConfig,
 		r.cfg.ServerCert,
 		r.cfg.CaCert,
 		r.AuthnSvc.SessionAuth,

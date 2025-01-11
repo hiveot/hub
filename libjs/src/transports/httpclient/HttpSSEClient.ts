@@ -71,7 +71,7 @@ const HiveOTPostResponseHRef     = "/hiveot/response"
 
 
 
-const hclog = new tslog.Logger()
+const hclog = new tslog.Logger({prettyLogTimeZone:"local"})
 
 // HubClient implements the javascript client for connecting to the hub
 // using HTTPS and SSESC for the return channel.
@@ -281,6 +281,7 @@ export class HttpSSEClient implements IAgentConnection {
             resp = req.createResponse(null,err)
             resp.received = req.created
         }
+        this.sendResponse(resp)
         return resp
     }
 

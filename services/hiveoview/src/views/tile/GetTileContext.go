@@ -54,7 +54,7 @@ func GetTileContext(r *http.Request, mustExist bool) (
 			err = fmt.Errorf("Tile with ID '%s' not found", ctc.tileID)
 			return sess, ctc, err
 		}
-		ctc.tile = ctc.dashboard.NewTile(ctc.tileID, "New Tile", session.TileTypeText)
+		ctc.tile = ctc.dashboard.NewTile(ctc.tileID, "New Tile", session.TileTypeCard)
 	}
 
 	return sess, ctc, nil

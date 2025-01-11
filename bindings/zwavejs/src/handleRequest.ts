@@ -1,7 +1,6 @@
 // ZWaveJSBinding.ts holds the entry point to the ZWave binding along with its configuration
 import {InterviewStage,  ZWaveNode} from "zwave-js";
 import {getPropVid} from "./getPropName";
-import * as tslog from 'tslog';
 import { IAgentConnection} from "@hivelib/transports/IAgentConnection";
 import {getVidValue, ZWAPI} from "@zwavejs/ZWAPI";
 import {OpWriteProperty} from "@hivelib/api/vocab/vocab.js";
@@ -14,8 +13,9 @@ import {
     StatusPending,
     StatusRunning
 } from "@hivelib/transports/Messages";
+import {getlogger} from "@zwavejs/getLogger";
 
-const log = new tslog.Logger()
+const log = getlogger()
 
 
 
@@ -28,6 +28,7 @@ export function  handleRequest(
     let err: Error | undefined
     let output: any
     let status = StatusCompleted
+    let resp: ResponseMessage
 
     let actionLower = req.name.toLowerCase()
     let targetNode: ZWaveNode | undefined
@@ -88,29 +89,46 @@ export function  handleRequest(
         //     node.name = params;
         //     break;
         case "checklifelinehealth":
-            node.checkLifelineHealth().then()
+            status = StatusRunning // async response
+            node.checkLifelineHealth()
+                .then((ev)=>{
+                    resp = req.createResponse(null)
+                    hc.sendResponse(resp)
+                })
+                .catch(err => {
+                    resp = req.createResponse(null, err)
+                    hc.sendResponse(resp)
+                })
+
             break;
         case "ping":
             status = StatusRunning // async response
-            // ping a node. The response is sent async
+
+            // ping a node. The 'completed' response is sent async
             let startTime = performance.now()
             node.ping().then((success: boolean) => {
                 let endTime = performance.now()
                 let msec = Math.round(endTime - startTime)
-                let resp = req.createResponse(msec)
+                resp = req.createResponse(msec)
                 log.info("ping '" + req.thingID + "': " + msec + " msec")
                 hc.sendResponse(resp)
             })
             break;
         case "refreshinfo":
+            status = StatusRunning
             // doc warning: do not call refreshInfo when node interview is not yet complete
             if (node.interviewStage == InterviewStage.Complete) {
-                // TODO: should we send a running response?
-                node.refreshInfo({waitForWakeup: true}).then((result)=>{
-                    log.info("refreshinfo. Result:",result)
-                    let resp = req.createResponse(null)
-                    hc.sendResponse(resp)
-                })
+                node.refreshInfo({waitForWakeup: true})
+                    .then((result) => {
+                        log.info("refreshinfo. StartedResult:", result)
+                        resp = req.createResponse(null)
+                        hc.sendResponse(resp) // async
+                    })
+                    .catch(err => {
+                        log.info("refreshinfo failed: ", err)
+                        resp = req.createResponse(null, err)
+                        hc.sendResponse(resp) // async
+                    })
             } else {
                 // a previous request was still running.
                 err = new Error("refreshinfo is already running")
@@ -119,14 +137,14 @@ export function  handleRequest(
         case "refreshvalues":
             status = StatusRunning
             // this can take 10-20 seconds
-            node.refreshValues().then(() => {
-                let resp = req.createResponse(null)
+            node.refreshValues().then((res) => {
+                resp = req.createResponse(null)
+                hc.sendResponse(resp) // async
                 log.info("refreshvalues completed")
-                hc.sendResponse(resp)
             }).catch(err => {
                 log.info("refreshvalues failed: ", err)
-                let resp = req.createResponse(null, err)
-                hc.sendResponse(resp)
+                resp = req.createResponse(null, err)
+                hc.sendResponse(resp) // async
             })
             break;
         default:
@@ -158,8 +176,10 @@ export function  handleRequest(
                     req.thingID + "'")
             }
     }
-    let resp = req.createResponse(output, err)
-    resp.status = status
+    resp = req.createResponse(output, err)
+    if (!err) {
+        resp.status = status
+    }
     if (err) {
         log.error(err)
     }

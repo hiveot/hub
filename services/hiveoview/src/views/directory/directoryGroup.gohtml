@@ -11,13 +11,13 @@
 	<ul class="directory-table h-grid-table" striped border>
 		<li>
 			<div class="h-show-sm"></div>
-			<div class="h-show-xl">Thing ID</div>
 			<div>Name</div>
-			<div class="h-show-md">Type</div>
+			<div class="h-show-sm">Type</div>
 			<div class="h-show-xl">Description</div>
-			<div class="h-show-lg">Events</div>
+			<div class="h-show-lg">Properties</div>
+			<div class="h-show-md">Events</div>
 			<div class="h-show-lg">Actions</div>
-			<div class="h-show-xs">TD Updated</div>
+			<div class="h-show-xxl">Thing ID</div>
 		</li>
 
 		<!--=== for TD in .Things ===-->
@@ -28,16 +28,6 @@
 							<h-device-icon deviceType={{.AtType}}></h-device-icon>
 						</div>
 
-            {{/*Show ThingID on big screens */}}
-						<div class="h-show-xl">
-							<a href="/thing/{{.ID}}/details"
-							   hx-get="/thing/{{.ID}}/details"
-						     hx-target="#detailsPage"
-						     hx-swap="innerHTML"
-						     hx-on::after-request="window.navigateTo(event,this.href)"
-							>{{.ID}}
-							</a>
-						</div>
 
 	          {{/*Title*/}}
 						<div>
@@ -51,19 +41,31 @@
 						</div>
 
             {{/*Type*/}}
-						<div class="h-show-md">{{.GetAtType}}</div>
+						<div class="h-show-sm">{{.GetAtType}}</div>
 
             {{/*Description*/}}
 						<div class="h-show-xl">{{.Description}}</div>
 
-            {{/*Outputs*/}}
-						<div class="h-show-lg">{{len .Events}} events</div>
+            {{/*Nr Properties*/}}
+					<div class="h-show-lg">{{len .Properties}} Properties</div>
 
-						{{/*Actions*/}}
+            {{/*Nr Outputs*/}}
+					<div class="h-show-md">{{len .Events}} events</div>
+
+						{{/*Nr Actions*/}}
 						<div class="h-show-lg">{{len .Actions}} actions</div>
 
-						{{/*Updated*/}}
-						<div class="h-show-xs" style="white-space:nowrap">{{.GetUpdated}}</div>
+
+            {{/*Show ThingID on big screens */}}
+					<div class="h-show-xxl">
+						<a href="/thing/{{.ID}}/details"
+						   hx-get="/thing/{{.ID}}/details"
+						   hx-target="#detailsPage"
+						   hx-swap="innerHTML"
+						   hx-on::after-request="window.navigateTo(event,this.href)"
+						>{{.ID}}
+						</a>
+					</div>
 				</li>
       {{end}}
 

@@ -37,27 +37,24 @@ type ActiveRequestRecord struct {
 // reply-to address for handling responses to pending requests.
 func (svc *DigitwinRouter) HandleRequest(
 	req transports.RequestMessage, replyTo string) (resp transports.ResponseMessage) {
-	// ensure the created time is set
+
 	if req.Created == "" {
 		req.Created = time.Now().Format(wot.RFC3339Milli)
 	}
-
-	slog.Info("HandleRequest (to agent)",
+	svc.requestLogger.Info("-> REQ:",
+		slog.String("correlationID", req.CorrelationID),
 		slog.String("operation", req.Operation),
 		slog.String("dThingID", req.ThingID),
 		slog.String("name", req.Name),
-		slog.String("Input", fmt.Sprintf("%.20v", req.ToString(20))),
-		slog.String("correlationID", req.CorrelationID),
+		slog.String("Input", req.ToString(20)),
 		slog.String("senderID", req.SenderID),
 	)
 
-	// middleware: authorize the request.
-	// TODO: use a middleware chain
+	// middleware: authorize the request. (TODO: use a middleware chain)
 	if !svc.hasPermission(req.SenderID, req.Operation, req.ThingID) {
 		err := fmt.Errorf("unauthorized. client '%s' does not have permission"+
-			" to invoke operation '%s' on Thing '%s'",
-			req.SenderID, req.Operation, req.ThingID)
-		slog.Warn(err.Error())
+			" to invoke operation '%s' on Thing '%s'", req.SenderID, req.Operation, req.ThingID)
+		svc.requestLogger.Warn(err.Error())
 		return req.CreateResponse(nil, err)
 	}
 	switch req.Operation {
@@ -99,6 +96,14 @@ func (svc *DigitwinRouter) HandleRequest(
 		slog.Warn(err.Error())
 		resp = req.CreateResponse(nil, err)
 	}
+	svc.requestLogger.Info("<- RESP",
+		slog.String("correlationID", resp.CorrelationID),
+		slog.String("operation", resp.Operation),
+		slog.String("dThingID", resp.ThingID),
+		slog.String("name", resp.Name),
+		slog.String("status", resp.Status),
+		slog.String("err", resp.Error),
+	)
 	return resp
 }
 

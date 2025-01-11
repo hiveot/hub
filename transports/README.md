@@ -13,7 +13,7 @@ HiveOT bindings supports the three hiveOT standardized message envelopes over th
 
 ## Messaging on HiveOT
 
-Hiveot APIs uses standardized message envelopes to provided a simple and consistent API regardless the protocol binding in use. Protocol bindings effectively map between the protocol specific messages and the hiveot standardized messages. The hiveot messages become the application level protocol that is missing in the WoT standard. It is the hope of HiveOT that this or a similar standard will be adopted by the WoT to provide a unified messaging interface for all protocol bindings.
+Hiveot APIs uses standardized message envelopes to provide a simple and consistent API regardless the protocol binding in use. Protocol bindings effectively map between the protocol specific messages and the hiveot standardized messages. The hiveot messages become the application level protocol for WoT consumers, services and Thing agents. It is the hope of HiveOT that this or a similar standard will be adopted by the WoT to provide a unified messaging interface for all protocol bindings.
 
 This approach builds on top of the WoT definition for 'operations' and adds operations for use by agents, supporting agents as clients of a hub or gateway. 
 
@@ -28,21 +28,21 @@ The following operations are considered notifications:
 * event:  Notification of event to subscribers.
 * td: Update of a TD by the directory (hiveot extension)
 
-| name              | data type | description                                                                                                                                        | required  |
-|-------------------|-----------|----------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
-| type              | string    | "notification". Identifies the message as a notification message                                                                                   | mandatory |
-| operation         | string    | Identification of the notification                                                                                                                 | mandatory |
-| data              | any       | notification data as specified by the operation                                                                                                    | optional  |
-| correlationID | string | optional correlation with the request that caused the notification, such as subscriptions or message streams                                       | optional  |
-| created           | string    | Timestamp the notification was created                                                                                                             | optional  |
-| thingID           | string    | ID of the thing the notification applies to                                                                                                        | optional  |
+| name              | data type | description                                                                                                                                       | required  |
+|-------------------|-----------|---------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
+| type              | string    | "notification". Identifies the message as a notification message                                                                                  | mandatory |
+| operation         | string    | Identification of the notification                                                                                                                | mandatory |
+| data              | any       | notification data as specified by the operation                                                                                                   | optional  |
+| correlationID | string | optional correlation with the request that caused the notification, such as subscriptions or message streams.                                     | optional  |
+| created           | string    | Timestamp the notification was created                                                                                                            | optional  |
+| thingID           | string    | ID of the thing the notification applies to                                                                                                       | optional  |
 | name              | string    | Name of the affordance the notification applies to, if applicable. The type of affordance (event, action, property) is determined by the operation | optional  |
-| messageID         | string    | Unique identification of the message.                                                                                                              | optional  |
+| messageID         | string    | Unique identification of the message.                                                                                                             | optional  |
 
 
 ### Request Message
 
-The purpose of the request message is for a client to send a request for an operation on a thing.  Thing agents are required to send a response when a request is received.
+The purpose of the request message is for a client to send a request for an operation on a thing. Thing agents are required to send a response when a request is received.
 
 The following operations are considered to be requests:
 * invokeaction  [WoT]
@@ -55,16 +55,16 @@ The following operations are considered to be requests:
 
 The request message defines the following fields:
 
-| name      | data type | description                                                                                                                                                             | required  |
-|-----------|-----------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
-| type      | string| "request". Identifies the message as a request message                                                                                                                  | mandatory |
-| operation | string| Describes the request to perform                                                                                                                                        | mandatory |
-| thingID   | string| ID of the thing the request applies to                                                                                                                                  | optional  |
-| name      | string| Name of the affordance the request applies to if applicable. The type of affordance (event, action, property) is determined by the operation                            | optional  |
-| input     | any   | Input data of the request as described by the operation. invokeaction refers to the action affordance while other operations define the input as part of the operation  | optional  |
-| correlationID | string| Unique identifier of the request. This must be included in the response. If no correlationID is provided then the request will still be handled by no response is returned. | optional  |
-| senderID  | string| Authenticated sender of the request.                                                                                                                                    | optional  |
-| messageID | string| Unique identification of the message.                                                                                                                                   | optional  |
+| name      | data type | description                                                                                                                                                                     | required  |
+|-----------|-----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
+| type      | string| "request". Identifies the message as a request message                                                                                                                          | mandatory |
+| operation | string| Describes the request to perform                                                                                                                                                | mandatory |
+| thingID   | string| ID of the thing the request applies to                                                                                                                                          | optional  |
+| name      | string| Name of the affordance the request applies to if applicable. The type of affordance (event, action, property) is determined by the operation                                    | optional  |
+| input     | any   | Input data of the request as described by the operation. invokeaction refers to the action affordance while other operations define the input as part of the operation          | optional  |
+| correlationID | string| Unique identifier of the request. This must be included in the response if provided in the request. | optional  |
+| senderID  | string| Authenticated sender of the request.                                                                                                                                            | optional  |
+| messageID | string| Unique identification of the message.                                                                                                                                           | optional  |
 
 
 ### Response Message

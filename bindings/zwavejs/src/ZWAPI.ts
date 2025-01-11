@@ -16,11 +16,10 @@ import {
     ZWaveNodeValueUpdatedArgs,
 } from "zwave-js";
 import fs from "fs";
-import {Logger} from "tslog";
 import {CommandClasses, ValueID} from '@zwave-js/core';
 import path from "path";
 
-const tslog = new Logger({ name: "ZWAPI" })
+import {getlogger} from "@zwavejs/getLogger";
 
 // Default keys for testing, if none are configured. Please set the keys in config/zwavejs.yaml
 const DefaultS2Authenticated = "00112233445566778899AABBCCDDEEFF"
@@ -46,6 +45,7 @@ export interface IZWaveConfig {
     cacheDir: string | undefined          // alternate storage directory
 }
 
+const log = getlogger()
 
 // ZWAPI is a wrapper around zwave-js for use by the HiveOT binding.
 // Its primary purpose is to hide the ZWave specific logic from the binding; offer a simple API to
@@ -93,9 +93,9 @@ export class ZWAPI {
 
     // Add a known node and subscribe to its ready event before doing anything else
     addNode(node: ZWaveNode) {
-        tslog.info(`Node ${node.id} - waiting for it to be ready`)
+        log.info(`Node ${node.id} - waiting for it to be ready`)
         node.on("ready", (node) => {
-            tslog.info("--- Node", node.id, "is ready. Setting up the node.");
+            log.info("--- Node", node.id, "is ready. Setting up the node.");
             this.setupNode(node);
         });
     }
@@ -110,11 +110,11 @@ export class ZWAPI {
 
         let zwPort = zwConfig.zwPort
         if (!zwPort) {
-            tslog.info("serial port not set... searching")
+            log.info("serial port not set... searching")
             zwPort = findSerialPort()
             // zwPort = "/dev/ttyACM0"
         }
-        tslog.info("connecting", "port", zwPort)
+        log.info("connecting", "port", zwPort)
 
         // These keys should be generated with "< /dev/urandom tr -dc A-F0-9 | head -c32 ;echo"
         let S2_Authenticated = zwConfig.S2_Authenticated || DefaultS2Authenticated
@@ -151,7 +151,7 @@ export class ZWAPI {
             }
 
         };
-        tslog.info("ZWaveJS config option soft_reset on startup is " + (options.features?.softReset ? "enabled" : "disabled"))
+        log.info("ZWaveJS config option soft_reset on startup is " + (options.features?.softReset ? "enabled" : "disabled"))
 
 
         // retry starting the driver until disconnect is called
@@ -187,10 +187,10 @@ export class ZWAPI {
                 this.doReconnect = false
                 this.connect(zwConfig)
                     .then(() => {
-                        tslog.info("connectLoop: connect successful")
+                        log.info("connectLoop: connect successful")
                     })
                     .catch((e) => {
-                        tslog.error("connectLoop: no connection with controller",e);
+                        log.error("connectLoop: no connection with controller",e);
                         //retry
                         this.doReconnect = true
                     })
@@ -242,8 +242,8 @@ export class ZWAPI {
         // homeID is ready after the controller interview
         // this.homeID = ctl.homeId ? ctl.homeId.toString(16).toUpperCase() : "n/a";
 
-        tslog.info("Cache Dir: ", this.driver.cacheDir);
-        tslog.info("Home ID:   ", this.driver.controller.homeId?.toString(16));
+        log.info("Cache Dir: ", this.driver.cacheDir);
+        log.info("Home ID:   ", this.driver.controller.homeId?.toString(16));
 
         ctl.nodes.forEach((node) => {
             // Subscribe to each node to catch its ready event.
@@ -252,40 +252,40 @@ export class ZWAPI {
 
         // controller emitted events
         this.driver.controller.on("exclusion failed", () => {
-            tslog.info("exclusion has failed");
+            log.info("exclusion has failed");
         });
         this.driver.controller.on("exclusion started", () => {
-            tslog.info("exclusion has started");
+            log.info("exclusion has started");
         });
         this.driver.controller.on("exclusion stopped", () => {
-            tslog.info("exclusion has stopped");
+            log.info("exclusion has stopped");
         });
 
         this.driver.controller.on("rebuild routes progress",
             (progress: ReadonlyMap<number, RebuildRoutesStatus>) => {
-                tslog.info("rebuild routes progress:", progress);
+                log.info("rebuild routes progress:", progress);
             });
         this.driver.controller.on("rebuild routes done", () => {
-            tslog.info("rebuild routes done");
+            log.info("rebuild routes done");
         });
 
         this.driver.controller.on("inclusion failed", () => {
-            tslog.info("inclusion has failed");
+            log.info("inclusion has failed");
         });
         this.driver.controller.on("inclusion started", (secure: boolean) => {
-            tslog.info("inclusion has started. secure=%v", secure);
+            log.info("inclusion has started. secure=%v", secure);
         });
         this.driver.controller.on("inclusion stopped", () => {
-            tslog.info("inclusion has stopped");
+            log.info("inclusion has stopped");
         });
 
         this.driver.controller.on("node added", (node: ZWaveNode, result: InclusionResult) => {
             result.lowSecurity
-            tslog.info(`new node added: nodeId=${node.id} lowSecurity=${result.lowSecurity}`)
+            log.info(`new node added: nodeId=${node.id} lowSecurity=${result.lowSecurity}`)
             this.setupNode(node);
         });
         this.driver.controller.on("node removed", (node: ZWaveNode, reason: RemoveNodeReason) => {
-            tslog.info(`node removed: id=${node.id}, reason=${reason}`);
+            log.info(`node removed: id=${node.id}, reason=${reason}`);
         });
 
     }
@@ -305,29 +305,29 @@ export class ZWAPI {
         this.onNodeUpdate?.(node);
 
         node.on("alive", (node: ZWaveNode, oldStatus: NodeStatus) => {
-            tslog.info(`Node ${node.id}: is alive`);
+            log.info(`Node ${node.id}: is alive`);
             if (node.status != oldStatus) {
                 this.onStateUpdate(node, "alive")
             }
         });
         node.on("dead", (node: ZWaveNode, oldStatus: NodeStatus) => {
-            tslog.info(`Node ${node.id}: is dead`);
+            log.info(`Node ${node.id}: is dead`);
             if (node.status != oldStatus) {
                 this.onStateUpdate(node, "dead")
             }
         });
 
         node.on("interview completed", (node: ZWaveNode) => {
-            tslog.info(`Node ${node.id}: interview completed`);
+            log.info(`Node ${node.id}: interview completed`);
             // event
             this.onStateUpdate(node, "interview completed")
         });
         node.on("interview failed", (node: ZWaveNode) => {
-            tslog.info(`Node ${node.id}: interview failed`);
+            log.info(`Node ${node.id}: interview failed`);
             this.onStateUpdate(node, "interview failed")
         });
         node.on("interview started", (node: ZWaveNode) => {
-            tslog.info(`Node ${node.id}: interview started`);
+            log.info(`Node ${node.id}: interview started`);
             this.onStateUpdate(node, "interview started")
         });
 
@@ -337,7 +337,7 @@ export class ZWAPI {
             // let newValue = node.getValue(args)
             let newValue = getVidValue(node,args)
             this.onValueUpdate(node, args, newValue)
-            tslog.info(`Node ${node.id} value metadata updated`,
+            log.info(`Node ${node.id} value metadata updated`,
                 "property=", args.property,
                 "propertyKeyName=", args.propertyKeyName,
                 "newValue=", newValue,
@@ -345,21 +345,21 @@ export class ZWAPI {
         });
 
         node.on("notification", (endpoint: Endpoint, cc: CommandClasses, args) => {
-            tslog.info(`Node ${endpoint.nodeId} Notification: CC=${cc}, args=${args}`)
+            log.info(`Node ${endpoint.nodeId} Notification: CC=${cc}, args=${args}`)
             // TODO: what/when is this notification providing?
         });
 
         node.on("sleep", (node: ZWaveNode) => {
-            tslog.info(`Node ${node.id}: is sleeping`);
+            log.info(`Node ${node.id}: is sleeping`);
             this.onStateUpdate(node, "sleeping")
         });
 
         // node.on("statistics updated", (node: ZWaveNode, args: NodeStatistics) => {
-        //     // tslog.info("Node ", node.id, " stats updated: args=", args);
+        //     // log.info("Node ", node.id, " stats updated: args=", args);
         // });
 
         node.on("value added", (node: ZWaveNode, args: ZWaveNodeValueAddedArgs) => {
-            tslog.info(`Node ${node.id}, value added: propName=${args.propertyName}, value=${args.newValue}`);
+            log.info(`Node ${node.id}, value added: propName=${args.propertyName}, value=${args.newValue}`);
             // FIXME: only update the node if the value is new
             // refreshvalues triggers this a lot. we don't want to send a new TD for each value
             // this.onNodeUpdate(node)
@@ -367,17 +367,17 @@ export class ZWAPI {
         });
 
         node.on("value notification", (node: ZWaveNode, vid: ZWaveNodeValueNotificationArgs) => {
-            tslog.info(`Node ${node.id}, value notification: propName=${vid.propertyName}, value=${vid.value}`);
+            log.info(`Node ${node.id}, value notification: propName=${vid.propertyName}, value=${vid.value}`);
             this.onValueUpdate(node, vid, vid.value)
         });
 
         node.on("value removed", (node: ZWaveNode, args: ZWaveNodeValueRemovedArgs) => {
-            tslog.info("Node ", node.id, " value removed for ", args.propertyName, ":", args.prevValue);
+            log.info("Node ", node.id, " value removed for ", args.propertyName, ":", args.prevValue);
             this.onValueUpdate(node, args, undefined)
         });
 
         node.on("value updated", (node: ZWaveNode, args: ZWaveNodeValueUpdatedArgs) => {
-            // tslog.debug("Node ", node.id, " value updated: args=", args);
+            // log.debug("Node ", node.id, " value updated: args=", args);
             // convert enums
             let newVidValue = getVidValue(node,args)
             this.onValueUpdate(node, args, newVidValue)
@@ -385,7 +385,7 @@ export class ZWAPI {
         });
 
         node.on("wake up", (node: ZWaveNode) => {
-            tslog.info(`Node ${node.id}: wake up`);
+            log.info(`Node ${node.id}: wake up`);
             this.onStateUpdate(node, "awake")
         });
     }
@@ -424,7 +424,7 @@ export class ZWAPI {
 //         case "number[]":
 //         case "string[]":
 //             // TODO: support of arrays
-//             tslog.error("getNewValueOfType data type '"+vidMeta.type+"' is not supported")
+//             log.error("getNewValueOfType data type '"+vidMeta.type+"' is not supported")
 //     }
 //     return value
 // }

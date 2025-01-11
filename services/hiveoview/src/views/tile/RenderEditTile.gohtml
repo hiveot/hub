@@ -27,7 +27,6 @@
 									</option>
                 {{end}}
 						</select>
-						<small>Current value: {{.GetTypeLabel .Tile.TileType}}</small>
 
 						<label  class="h-row">Sources:
 							<button type="button" class="outline h-icon-button"
@@ -61,7 +60,7 @@
 		                </button>
 				            <input name="sourceTitles" value="{{$v.Title}}"
 				                   style="margin:0"
-				                   title="{{$v.ThingID}}/{{$v.Name}}"/>
+				                   title="Edit the label here. ThingID: {{$v.ThingID}}/{{$v.Name}}"/>
 		                <div class="h-row">{{$.GetValue $v.ThingID $v.Name}}</div>
 		                <div class="h-row">{{$.GetUpdated  $v.ThingID $v.Name}}</div>
 	                </li>
@@ -92,18 +91,35 @@
 <style>
     .tile-sources-table {
         grid-template-columns:
-          max-content /*delete icon*/
-	        minmax(200px, max-content) /*Name*/
-	        minmax(200px, 1fr) /*Value*/
-	        minmax(100px, max-content); /*value*/
+          max-content                 /*delete icon*/
+	        minmax(200px, max-content)          /*Name*/
+	        minmax(100px, max-content)        /*Value*/
+	        minmax(100px, max-content); /*updated*/
     }
 
 </style>
 
 
 <script>
-		// delete the table row
-		function deleteRow(rowEl) {
+		// tileSources holds the sources currently being edited
+		let tileSources = {{.Tile.Sources}}
+
+
+				// listen for events to add a source
+				// @param ev event carrying thingID and property/event name
+				document.addEventListener("editTileAddSource", (ev)=>{
+
+				})
+
+		// add a table row
+		function addRow() {
+        let table = rowEl.parentNode;
+        table.removeChild(rowEl);
+    }
+
+
+    // delete the table row
+    function deleteRow(rowEl) {
         let table = rowEl.parentNode;
         table.removeChild(rowEl);
     }

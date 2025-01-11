@@ -67,9 +67,6 @@ func TestCreateTD(t *testing.T) {
 
 	asMap := tdoc.AsMap()
 	assert.NotNil(t, asMap)
-
-	timestamp := tdoc.GetUpdated()
-	assert.NotEmpty(t, timestamp)
 }
 
 func TestMissingAffordance(t *testing.T) {

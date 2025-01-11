@@ -16,17 +16,14 @@ TODO before alpha:
 1. Test/fix security; token expiry, bad agents or consumers, rate-limiting, role authz
 
 Roadmap:
-1. Add websockets sub-protocol binding
+1. Add websockets sub-protocol binding (in progress)
 1. Support for WoT discovery profile
 1. Support client certificate authentication
 1. Support mqtt transport protocol
 2. Rework internal TD document format to improve WoT TD compatibility
-2. Add exposed-thing golang client
-1. Javascript tdd2js client api generator
-1. Python tdd2py client api generator
 
 Future:
-1. HiveOT inter-hive bridging service
+1. HiveOT inter-hub bridging service
 2. OAuth2 support
 
 

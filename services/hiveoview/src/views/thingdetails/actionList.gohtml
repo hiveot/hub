@@ -5,17 +5,16 @@
 <ul class="h-grid-table thing-actions" striped border>
 	<li>
 		<div>Action Name</div>
-		<div class="h-show-sm">Stateful</div>
+		<div class="h-show-sm" title="changes device state">Stateful</div>
 		<div>Input</div>
 		<div class="h-show-md">Description</div>
-		<div class="h-show-lg">Last Action</div>
-		<div class="h-show-lg">Requested</div>
-		<div class="h-show-lg">By</div>
+		<div class="h-show-xl">Last Action</div>
+		<div class="h-show-xl">Status</div>
+		<div class="h-show-xl">Requested</div>
+		<div class="h-show-xl">By</div>
 	</li>
 
     {{range $name := .ActionNames }}
-				{{/* TBD: action state is kept in properties?*/}}
-        {{$iout := $.CT.GetPropValue $name}}
         {{$aff := $.TD.GetAction $name}}
         {{$actionStatus := $.CT.GetActionStatus $name}}
 				<li>
@@ -29,12 +28,12 @@
 						        hx-get="{{$.GetRenderActionPath $name}}"
 						        hx-target="#modalLevel1"
 						>
-	            {{$iout.Title}}
+	            {{$aff.Title}}
 						</button>
 					</div>
 
           {{/* 'safe' or 'unsafe' (stateful) action*/}}
-					<div class="h-show-sm">{{$aff.GetStateful}}</div>
+					<div class="h-show-sm" title="whether this changes device state">{{$aff.GetStateful}}</div>
 
           {{/* Input schema type*/}}
 					<div>
@@ -42,13 +41,17 @@
 							{{if $aff.Input}} {{$aff.Input.Type}} {{end}}
 					</div>
 
-					<div class="h-show-md">{{$iout.Schema.Description}}</div>
+					<div class="h-show-md">{{$aff.Description}}</div>
 
-					<div class="h-show-lg">{{$actionStatus.Status}}</div>
+{{/*					Limit previous input to 30 chars*/}}
 
-					<div class="h-show-lg">{{$iout.FormatTime $actionStatus.TimeRequested}}</div>
+					<div class="h-show-xl">{{substr $actionStatus.Input 30}}</div>
 
-					<div class="h-show-lg">{{$actionStatus.SenderID}}</div>
+					<div class="h-show-xl">{{$actionStatus.Status}}</div>
+
+					<div class="h-show-xl">{{datetime $actionStatus.TimeRequested "WT"}}</div>
+
+					<div class="h-show-xl">{{$actionStatus.SenderID}}</div>
 
 				</li>
     {{end}}
@@ -93,14 +96,26 @@
         }
     }
 
-    @media (width >= 1024px) {
+    @media (width >= 1024px) and (width < 1280px) {
         .thing-actions {
-            /*lg, show all columns*/
+            /*lg,show column 1,2,3,4 */
+            grid-template-columns:
+				            minmax(200px, max-content) /*title*/
+				            200px   /* stateful*/
+				            minmax(100px, max-content)/*Input*/
+				            minmax(100px, 1fr); /*description*/
+        }
+    }
+
+    @media (width >= 1280px) {
+        .thing-actions {
+            /*xl, show all columns*/
             grid-template-columns:
 				            minmax(200px, max-content) /*title*/
 				            200px   /* stateful*/
 				            minmax(100px, max-content)/*Input*/
 				            minmax(100px, 1fr) /*description*/
+		                minmax(100px, max-content) /*last action*/
 		                minmax(100px, max-content) /*status*/
 		                minmax(100px, max-content) /*requested*/
 						        minmax(100px, max-content); /*by*/

@@ -88,7 +88,7 @@ func (ht HistoryTemplateData) CompareToday() int {
 	return diff
 }
 
-// NewHistoryTemplateData reads the event history for the given time range
+// NewHistoryTemplateData reads the value history for the given time range
 //
 //	ct is the consumed thing to read the data from
 //	name of the event or property in the TD
@@ -113,13 +113,12 @@ func NewHistoryTemplateData(
 		ItemsRemaining: false,
 	}
 	// Get the current schema for the value to show
-	iout := ct.GetEventValue(name)
-	if iout != nil {
-		hs.DataSchema = iout.Schema
-		hs.Title = iout.Title + " of " + td.Title
-		hs.DataSchema.Title = hs.Title
-		hs.Stepped = (iout.Schema.Type == vocab.WoTDataTypeBool)
-	}
+	iout := ct.GetValue(name)
+
+	hs.DataSchema = iout.Schema
+	hs.Title = iout.Title + " of " + td.Title
+	hs.DataSchema.Title = hs.Title
+	hs.Stepped = (iout.Schema.Type == vocab.WoTDataTypeBool)
 
 	// TODO: (if needed) if items remaining, get the rest in an additional call
 	hs.Values, hs.ItemsRemaining, err = ct.ReadHistory(name, timestamp, duration)

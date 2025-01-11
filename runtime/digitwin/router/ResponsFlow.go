@@ -43,14 +43,14 @@ func (svc *DigitwinRouter) HandleResponse(resp transports.ResponseMessage) error
 		slog.Warn("HandleResponse: Received a response without a correlationID. This is ignored")
 		return nil
 	}
-
-	slog.Info("HandleResponse",
-		slog.String("Operation", resp.Operation),
-		slog.String("ThingID", resp.ThingID),
-		slog.String("Name", resp.Name),
-		slog.String("Status", resp.Status),
+	svc.requestLogger.Info("<- RESP",
+		slog.String("correlationID", resp.CorrelationID),
+		slog.String("operation", resp.Operation),
+		slog.String("dThingID", resp.ThingID),
+		slog.String("name", resp.Name),
+		slog.String("status", resp.Status),
 		slog.String("Output", resp.ToString(20)),
-		slog.String("CorrelationID", resp.CorrelationID),
+		slog.String("senderID", resp.SenderID),
 	)
 
 	// 1: The response must be an active request
@@ -61,7 +61,10 @@ func (svc *DigitwinRouter) HandleResponse(resp transports.ResponseMessage) error
 		err = fmt.Errorf(
 			"HandleResponse: Message '%s' from agent '%s' not in action cache. It is ignored",
 			resp.CorrelationID, resp.SenderID)
-		slog.Warn(err.Error())
+
+		svc.requestLogger.Error("Response Failed - correlationID not in action cache",
+			slog.String("correlationID", resp.CorrelationID),
+		)
 		return nil
 	}
 
@@ -70,7 +73,7 @@ func (svc *DigitwinRouter) HandleResponse(resp transports.ResponseMessage) error
 		err = fmt.Errorf("HandleActionResponse: response ID '%s' of thing '%s' "+
 			"does not come from agent '%s' but from '%s'. Response ignored",
 			resp.CorrelationID, resp.ThingID, as.AgentID, resp.SenderID)
-		slog.Warn(err.Error())
+		svc.requestLogger.Warn(err.Error())
 		return nil
 	}
 
@@ -89,12 +92,14 @@ func (svc *DigitwinRouter) HandleResponse(resp transports.ResponseMessage) error
 	}
 
 	if err != nil {
-		slog.Warn("HandleActionResponse. Forwarding to sender failed",
-			slog.String("senderID", as.SenderID),
-			slog.String("thingID", as.ThingID),
-			slog.String("replyTo", as.ReplyTo),
+		svc.requestLogger.Error("Response Failed - Forwarding to sender failed",
+			slog.String("correlationID", resp.CorrelationID),
+			slog.String("operation", resp.Operation),
+			slog.String("dThingID", resp.ThingID),
+			slog.String("name", resp.Name),
+			slog.String("senderID", resp.SenderID),
+			slog.String("status", resp.Status),
 			slog.String("err", err.Error()),
-			slog.String("CorrelationID", as.CorrelationID),
 		)
 		err = nil
 	}

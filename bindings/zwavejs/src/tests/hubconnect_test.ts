@@ -1,11 +1,11 @@
 // mqtt and nats transport testing
 
 import process from "node:process";
-import * as tslog from 'tslog';
 import {connect} from 'node:http2';
 import {HttpSSEClient} from "@hivelib/transports/httpclient/HttpSSEClient.js";
 import {ConnectToHub} from "@hivelib/transports/ConnectToHub";
 import ky from 'ky';
+import {getlogger} from "@zwavejs/getLogger";
 
 process.on("uncaughtException", (err: Error) => {
     log.error("uncaughtException", err)
@@ -17,7 +17,7 @@ const testClient = "test"
 const testPass = "test22"
 let caCertPEM = ""
 
-const log = new tslog.Logger({name: "TTT"})
+const log = getlogger()
 
 // test connect with password and refresh token
 async function test1() {

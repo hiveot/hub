@@ -263,11 +263,11 @@ func (test *TestServer) Start(clean bool) {
 	}
 	test.AppEnv = plugin.GetAppEnvironment(test.TestDir, false)
 	//
-	test.Config.RtConfig.HttpHost = "localhost"
-	test.Config.RtConfig.HttpsPort = TestHttpsPort
-	test.Config.RtConfig.MqttHost = "localhost"
-	test.Config.RtConfig.MqttTcpPort = TestMqttTcpPort
-	test.Config.RtConfig.MqttWssPort = TestMqttWssPort
+	test.Config.ProtocolConfig.HttpHost = "localhost"
+	test.Config.ProtocolConfig.HttpsPort = TestHttpsPort
+	test.Config.ProtocolConfig.MqttHost = "localhost"
+	test.Config.ProtocolConfig.MqttTcpPort = TestMqttTcpPort
+	test.Config.ProtocolConfig.MqttWssPort = TestMqttWssPort
 	test.Config.CaCert = test.Certs.CaCert
 	test.Config.CaKey = test.Certs.CaKey
 	test.Config.ServerKey = test.Certs.ServerKey

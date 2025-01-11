@@ -74,9 +74,13 @@ func (agent StateAgent) CreateTD() *td.TD {
 	// set state by key
 	a4 := tdi.AddAction(stateapi.SetMethod, "Set State", "Write a state value by key",
 		&td.DataSchema{
-			Title:       "Key",
-			Description: "The key to store state data under",
-			Type:        wot.WoTDataTypeString,
+			Title:       "Key-Value",
+			Description: "The key and value to store state data under",
+			Type:        wot.WoTDataTypeObject,
+			Properties: map[string]*td.DataSchema{
+				"key":   {Type: wot.WoTDataTypeString},
+				"value": {Type: wot.WoTDataTypeString},
+			},
 		})
 	a4.Safe = false
 	a4.Synchronous = true
@@ -114,21 +118,16 @@ func (agent *StateAgent) HandleRequest(req transports.RequestMessage) transports
 	return req.CreateResponse(nil, err)
 }
 func (agent *StateAgent) Delete(req transports.RequestMessage) transports.ResponseMessage {
-	input := stateapi.DeleteArgs{}
-	err := tputils.DecodeAsObject(req.Input, &input)
-	if err == nil {
-		err = agent.svc.Delete(req.SenderID, input.Key)
-	}
+	key := tputils.DecodeAsString(req.Input, 0)
+	err := agent.svc.Delete(req.SenderID, key)
 	return req.CreateResponse(nil, err)
 }
 func (agent *StateAgent) Get(req transports.RequestMessage) transports.ResponseMessage {
-	input := stateapi.GetArgs{}
+	var err error
 	output := stateapi.GetResp{}
-	err := tputils.DecodeAsObject(req.Input, &input)
-	if err == nil {
-		output.Key = input.Key
-		output.Value, output.Found, err = agent.svc.Get(req.SenderID, input.Key)
-	}
+	key := tputils.DecodeAsString(req.Input, 0)
+	output.Key = key
+	output.Value, output.Found, err = agent.svc.Get(req.SenderID, key)
 	return req.CreateResponse(output, err)
 }
 func (agent *StateAgent) GetMultiple(req transports.RequestMessage) transports.ResponseMessage {
@@ -136,7 +135,7 @@ func (agent *StateAgent) GetMultiple(req transports.RequestMessage) transports.R
 	output := stateapi.GetMultipleResp{}
 	err := tputils.DecodeAsObject(req.Input, &input)
 	if err == nil {
-		output.KV, err = agent.svc.GetMultiple(req.SenderID, input.Keys)
+		output, err = agent.svc.GetMultiple(req.SenderID, input)
 	}
 	return req.CreateResponse(output, err)
 }
@@ -152,7 +151,7 @@ func (agent *StateAgent) SetMultiple(req transports.RequestMessage) transports.R
 	input := stateapi.SetMultipleArgs{}
 	err := tputils.DecodeAsObject(req.Input, &input)
 	if err == nil {
-		err = agent.svc.SetMultiple(req.SenderID, input.KV)
+		err = agent.svc.SetMultiple(req.SenderID, input)
 	}
 	return req.CreateResponse(nil, err)
 }

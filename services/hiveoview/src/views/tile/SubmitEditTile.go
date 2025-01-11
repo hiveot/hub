@@ -33,7 +33,7 @@ func SubmitEditTile(w http.ResponseWriter, r *http.Request) {
 	tile, found := cdc.dashboard.GetTile(cdc.tileID)
 	if !found {
 		// this is a new tile
-		tile = cdc.dashboard.NewTile(cdc.tileID, "", session.TileTypeText)
+		tile = cdc.dashboard.NewTile(cdc.tileID, "", session.TileTypeCard)
 	}
 	tile.Title = newTitle
 	tile.TileType = tileType

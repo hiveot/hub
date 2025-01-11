@@ -11,7 +11,7 @@ import (
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/runtime/authn/config"
 	"github.com/hiveot/hub/runtime/authz"
-	rtconfig "github.com/hiveot/hub/transports/servers"
+	"github.com/hiveot/hub/transports/servers"
 	"gopkg.in/yaml.v3"
 	"log/slog"
 	"os"
@@ -29,13 +29,19 @@ const DefaultServerKeyFile = "hubKey.pem"
 type RuntimeConfig struct {
 
 	// middleware and services config. These all work out of the box with their defaults.
-	Authn    config.AuthnConfig       `yaml:"authn"`
-	Authz    authz.AuthzConfig        `yaml:"authz"`
-	RtConfig rtconfig.ProtocolsConfig `yaml:"rtconfig"`
+	Authn          config.AuthnConfig      `yaml:"authn"`
+	Authz          authz.AuthzConfig       `yaml:"authz"`
+	ProtocolConfig servers.ProtocolsConfig `yaml:"protocols"`
 
 	// Runtime logging
 	LogLevel string `yaml:"logLevel,omitempty"` // default: warn
 	LogFile  string `yaml:"logFile,omitempty"`  // default: no logfile
+
+	// RequestLog with logging of request and response messages
+	// file is <requests>-<yyyy-mm-dd>.log
+	RequestLog       string `yaml:"requestLog,omitempty"` // default: no log file
+	RequestLogStdout bool   `yaml:"requestLogStdout"`     // fork to stdout
+	RequestLogJson   bool   `yaml:"requestLogJson"`       // log output in json format
 
 	// Runtime data directory for storage of digital twins
 	DataDir string `yaml:"dataDir,omitempty"` // default is server default
@@ -280,11 +286,13 @@ func (cfg *RuntimeConfig) Setup(env *plugin.AppEnvironment) error {
 // The CA and Server certificate and keys must be set after creation.
 func NewRuntimeConfig() *RuntimeConfig {
 	cfg := &RuntimeConfig{
-		Authn:    config.NewAuthnConfig(),
-		Authz:    authz.NewAuthzConfig(),
-		RtConfig: rtconfig.NewProtocolsConfig(),
-		LogLevel: "info", // error, warning, info, debug
-		LogFile:  "",     // no logfile
+		Authn:            config.NewAuthnConfig(),
+		Authz:            authz.NewAuthzConfig(),
+		ProtocolConfig:   servers.NewProtocolsConfig(),
+		LogLevel:         "info", // error, warning, info, debug
+		LogFile:          "",     // no logfile
+		RequestLog:       "",     // no request logfile
+		RequestLogStdout: true,
 
 		CaCertFile:     certs.DefaultCaCertFile,
 		CaKeyFile:      certs.DefaultCaKeyFile,

@@ -5,10 +5,10 @@ import path from "path";
 import {locateHub} from "@hivelib/transports/locateHub";
 import fs from "fs";
 import {BindingConfig} from "./BindingConfig";
-import * as tslog from 'tslog';
 import {ConnectToHub} from "@hivelib/transports/ConnectToHub";
+import {getlogger} from "@zwavejs/getLogger";
 
-const log = new tslog.Logger({name: "zwavejs"})
+const log = getlogger()
 
 process.on("uncaughtException", (err) => {
     log.error("uncaught exception:", err)

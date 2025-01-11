@@ -244,7 +244,7 @@ func HandleListClients(hc transports.IConsumerConnection) (err error) {
 	profileList, err := authn.AdminGetProfiles(hc)
 
 	fmt.Println("Users")
-	fmt.Println("Login ID             Display Name              Role            GetUpdated")
+	fmt.Println("Login ID             Display Name              Role            Modified")
 	fmt.Println("--------             ------------              ----            -------")
 	for _, profile := range profileList {
 		if profile.ClientType == authn.ClientTypeConsumer {
@@ -259,7 +259,7 @@ func HandleListClients(hc transports.IConsumerConnection) (err error) {
 	}
 	fmt.Println()
 	fmt.Println("Devices/Services")
-	fmt.Println("SenderID             Type            GetUpdated")
+	fmt.Println("SenderID             Type            Modified")
 	fmt.Println("--------             ----            -------")
 	for _, profile := range profileList {
 		if profile.ClientType != authn.ClientTypeConsumer {

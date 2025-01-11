@@ -3,7 +3,7 @@ import { Bonjour } from 'bonjour-service';
 import * as tslog from 'tslog';
 
 const HIVEOT_HUB_SERVICE = "hiveot";
-const log = new tslog.Logger()
+const log = new  tslog.Logger({prettyLogTimeZone:"local"})
 
 // locateHub uses DNS-SD to search the hiveot record of the hub gateway for up to 5 seconds.
 // If found, it returns with the hub connection address:

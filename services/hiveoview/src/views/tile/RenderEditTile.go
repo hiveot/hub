@@ -4,6 +4,7 @@ import (
 	"github.com/hiveot/hub/services/hiveoview/src"
 	session2 "github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
+	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot/consumedthing"
 	"github.com/teris-io/shortid"
 	"net/http"
@@ -46,7 +47,7 @@ func (data EditTileTemplateData) GetUpdated(thingID, name string) string {
 	if !found {
 		return ""
 	}
-	return v.GetUpdated()
+	return tputils.DecodeAsDatetime(v.Updated)
 }
 
 // RenderEditTile renders the Tile editor dialog
@@ -67,13 +68,10 @@ func RenderEditTile(w http.ResponseWriter, r *http.Request) {
 	// the template uses "thingID/name" to obtain the value
 	values := make(map[string]*consumedthing.InteractionOutput)
 	for _, tileSource := range ctc.tile.Sources {
-		cs, err := cts.Consume(tileSource.ThingID)
+		ct, err := cts.Consume(tileSource.ThingID)
 		if err == nil {
-			val := cs.ReadEvent(tileSource.Name)
-			//v, err := vm.GetValue(tileSource.ThingID, tileSource.Name)
-			if val != nil {
-				values[tileSource.ThingID+"/"+tileSource.Name] = val
-			}
+			val := ct.GetValue(tileSource.Name)
+			values[tileSource.ThingID+"/"+tileSource.Name] = val
 		}
 	}
 	data := EditTileTemplateData{

@@ -32,6 +32,11 @@ func (v DataSchemaValue) Text() string {
 	return tputils.DecodeAsString(v.Raw, 0)
 }
 
+// ToString returns the text representation of the value with a size limit
+func (v DataSchemaValue) ToString(maxlen int) string {
+	return tputils.DecodeAsString(v.Raw, maxlen)
+}
+
 func (v DataSchemaValue) Boolean() bool {
 	return tputils.DecodeAsBool(v.Raw)
 }

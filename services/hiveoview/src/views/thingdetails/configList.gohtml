@@ -14,7 +14,7 @@
 
     {{/*	Iterate the sorted writable property names */}}
     {{range $name := .ConfigNames}}
-      {{$v := $.CT.GetPropValue $name}}
+      {{$v := $.CT.GetValue $name}}
 				<li>
 					<div class="h-show-md">{{/*icon*/}}</div>
           {{/*	Configuration Name*/}}
@@ -54,7 +54,7 @@
 					     hx-swap="innerHTML"
 					     hx-target="this"
 					>
-              {{$v.GetUpdated}}
+              {{datetime $v.Updated}}
 					</div>
 
 				</li>

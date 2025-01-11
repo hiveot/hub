@@ -9,14 +9,15 @@ import {getPropName} from "./getPropName";
 import * as vocab from "@hivelib/api/vocab/vocab.js";
 import fs from "fs";
 import {BindingConfig} from "./BindingConfig";
-import * as tslog from 'tslog';
 import {handleRequest} from "@zwavejs/handleRequest";
 import {ValueID} from "@zwave-js/core";
 import {getVidAffordance} from "@zwavejs/getVidAffordance";
 import {IAgentConnection} from "@hivelib/transports/IAgentConnection";
 import {RequestMessage, ResponseMessage} from "@hivelib/transports/Messages";
+import {getlogger} from "@zwavejs/getLogger";
 
-const log = new tslog.Logger()
+const log = getlogger()
+
 
 
 // ZWaveBinding maps ZWave nodes to Thing TDs and events, and handles actions to control node inputs.

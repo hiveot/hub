@@ -83,6 +83,7 @@ func (cts *ConsumedThingsDirectory) GetForm(op, thingID, name string) (f td.Form
 func (cts *ConsumedThingsDirectory) GetTD(thingID string) *td.TD {
 	cts.mux.RLock()
 	defer cts.mux.RUnlock()
+	// FIXME: get the TD from the server if it isn't in the cache
 	tdi := cts.directory[thingID]
 	return tdi
 }

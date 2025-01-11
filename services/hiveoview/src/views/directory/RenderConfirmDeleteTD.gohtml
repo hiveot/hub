@@ -17,7 +17,7 @@
 				<input id="thing-id" readonly value="{{.ThingID}}"/>
 
 				<label for="last-updated">Last Updated</label>
-				<input id="last-updated" readonly value="{{.TD.GetUpdated}}"/>
+				<input id="last-updated" readonly value="{{datetime .TD.Modified}}"/>
 			</fieldset>
 		</form>
 

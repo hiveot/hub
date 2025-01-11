@@ -104,14 +104,14 @@
 
 /* XS (<576) */
 @media (width < 576px) {
-    .h-show-sm, .h-show-md, .h-show-lg, .h-show-xl {
+    .h-show-sm, .h-show-md, .h-show-lg, .h-show-xl, .h-show-xxl {
         display: none !important;
     }
 }
 
 /* SM: 576-768 */
 @media (width >= 576px) and (width < 768px) {
-    .h-show-md, .h-show-lg, .h-show-xl {
+    .h-show-md, .h-show-lg, .h-show-xl, .h-show-xxl {
         display: none !important;
     }
 }
@@ -119,24 +119,30 @@
 
 /* MD: 768-1024) show on medium and above; hide on small and below;  */
 @media (width >= 768px) and (width < 1024px) {
-    .h-show-lg, .h-show-xl {
+    .h-show-lg, .h-show-xl, .h-show-xxl {
         display: none !important;
     }
 }
 
 /*  LG: 1024-1280: show on large and above; hide on medium and below */
 @media (width >= 1024px) and (width < 1280px) {
-    .h-show-xl {
+    .h-show-xl, .h-show-xxl {
         display: none !important; /*hide xs,sm,md,lg*/
     }
 }
 
-/* XL (>=1200-1536); show on XL and above  */
-@media (width >= 1280px) {
-    /* disable nothing*/
+/* XL (>=1280-1920); show on XL and above  */
+@media (width >= 1280px) and (width < 1920px) {
+    /* disable xl*/
+    .h-show-xxl {
+        display: none !important; /*hide xs,sm,md,lg*/
+    }
 }
 
-/** XXL: >= 15360*/
+/** XXL: >= 1920 */
+@media (width >= 1920px) {
+    /* disable nothing*/
+}
 
 
 /* flexbox row with items horizontally centered */

@@ -7,7 +7,7 @@ import (
 // Tile types as used in rendering templates
 // The chart types must match the types in h-timechart.js
 const (
-	TileTypeText         = "text" // table with multiple sources
+	TileTypeCard         = "card" // table with multiple sources
 	TileTypeAreaChart    = "area"
 	TileTypeBarChart     = "bar"
 	TileTypeLineChart    = "line"
@@ -17,7 +17,7 @@ const (
 )
 
 var TileTypesLabels = map[string]string{
-	TileTypeText: "Text",
+	TileTypeCard: "Card",
 	// charts
 	TileTypeLineChart:    "Line Chart",
 	TileTypeAreaChart:    "Area Chart",
@@ -48,7 +48,7 @@ type DashboardTile struct {
 	// Title of the tile
 	Title string `json:"title"`
 	// ID of type of tile that controls how it its content is displayed
-	// See TileTypeText, TileType...
+	// See TileTypeCard, TileType...
 	TileType string `json:"tileType"`
 
 	// Tile sources
@@ -129,7 +129,7 @@ func NewDashboard(
 	d.GridLayouts = make(map[string]string)
 	d.Tiles = make(map[string]DashboardTile)
 	// add a default tile to show. This tile has the dashboard ID
-	newTile := d.NewTile(ID+"-tile", "Edit Me", TileTypeText)
+	newTile := d.NewTile(ID+"-tile", "Edit Me", TileTypeCard)
 	d.UpdateTile(newTile)
 	return d
 }

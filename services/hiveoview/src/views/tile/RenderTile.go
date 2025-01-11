@@ -125,7 +125,7 @@ func (d RenderTileTemplateData) GetUpdated(thingID string, name string) string {
 	if iout == nil {
 		return "n/a"
 	}
-	val := iout.GetUpdated()
+	val := tputils.DecodeAsDatetime(iout.Updated)
 	return val
 }
 

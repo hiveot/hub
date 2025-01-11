@@ -4,6 +4,7 @@ import (
 	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"time"
@@ -34,7 +35,7 @@ type InteractionOutput struct {
 	Value DataSchemaValue
 
 	// RFC822 timestamp this was last updated.
-	// Use GetUpdated(format) to format.
+	// Use tputils.DecodeAsDatetime(Updated,format) to format.
 	Updated string
 
 	// Type of affordance: "property", "action", "event"
@@ -63,31 +64,10 @@ func (iout *InteractionOutput) FormatTime(stamp string) (formattedTime string) {
 	return formattedTime
 }
 
-// GetUpdated is a helper function to return the formatted time the data was last updated.
-// The default format is RFC822 ("02 Jan 06 15:04 MST")
-// Optionally "WT" is weekday, time (Mon, 14:31:01 PDT)
-// or, provide the time format directly, eg: "02 Jan 06 15:04 MST" for rfc822
-func (iout *InteractionOutput) GetUpdated(format ...string) (updated string) {
-	if iout.Updated == "" {
-		return ""
-	}
-	createdTime, _ := dateparse.ParseAny(iout.Updated)
-	if format != nil && len(format) == 1 {
-		if format[0] == "WT" {
-			// Format weekday, time if less than a week old
-			age := time.Now().Sub(createdTime)
-			if age < time.Hour*24*7 {
-				updated = createdTime.Format("Mon, 15:04:05 MST")
-			} else {
-				updated = createdTime.Format(time.RFC822)
-			}
-		} else {
-			updated = createdTime.Format(format[0])
-		}
-	} else {
-		updated = createdTime.Format(time.RFC822)
-	}
-	return updated
+// Substr is a simple helper that returns a substring of the given input
+func (iout *InteractionOutput) Substr(data any, maxLen int) string {
+	text := tputils.DecodeAsString(data, maxLen)
+	return text
 }
 
 // setSchemaFromTD updates the dataschema fields in this interaction output.
@@ -263,9 +243,18 @@ func NewInteractionOutput(tdi *td.TD, affType string, name string, raw any, upda
 		title = aff.Title
 		schema = &aff.DataSchema
 	}
+	// FIXME: sometimes actions publish events with the action affordance name
+	if schema == nil && affType == AffordanceTypeAction {
+		aff := tdi.Events[name]
+		if aff != nil {
+			title = aff.Title
+			schema = aff.Data
+		}
+	}
+
 	if schema == nil {
 		schema = &td.DataSchema{
-			Title: "NewInteractionOutput: td has no affordance: " + name,
+			Title: "NewInteractionOutput: td has no " + affType + ": " + name,
 		}
 	}
 	if title == "" {

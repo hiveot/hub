@@ -1,8 +1,8 @@
 {{/*Display a table of event values from the history */}}
 
 {{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/history.HistoryTemplateData*/ -}}
-
-<ul class="history-table h-grid-table" style="overflow:auto; height:100%;margin:0" striped border>
+<ul class="history-table h-grid-table"
+    style="overflow-y:auto; height:100%;margin:0" striped border>
 
 		{{/* Table Header*/}}
 		<li id="hist-table-title"
@@ -16,16 +16,15 @@
 				<div>Time</div>
 				<div>Value</div>
 		</li>
-
 		{{/* Table values*/}}
 		{{range .Values}}
 				<li>
-						<div>{{.GetUpdated "WT"}}</div>
+						<div>{{datetime .Created "WT"}}</div>
 						<div>{{.ToString 0}} {{$.DataSchema.UnitSymbol}}</div>
 				</li>
 		{{end}}
-</ul>
 
+</ul>
 <style>
 
     /*xs, show column 1 (time), 2 (value) */

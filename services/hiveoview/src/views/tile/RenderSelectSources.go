@@ -5,6 +5,7 @@ import (
 	session2 "github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"github.com/hiveot/hub/services/hiveoview/src/views/directory"
+	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot/consumedthing"
 	"net/http"
 )
@@ -29,7 +30,7 @@ func (data RenderSelectSourcesTemplateData) GetUpdated(thingID string, key strin
 	if !found {
 		return ""
 	}
-	return io.GetUpdated()
+	return tputils.DecodeAsDatetime(io.Updated)
 }
 
 // GetValue returns the string value of a thing event
@@ -72,10 +73,11 @@ func RenderSelectSources(w http.ResponseWriter, r *http.Request) {
 	}
 	data.AgentThings = directory.GroupByAgent(tds)
 	for thingID, td := range tds {
-		//propValues, err := digitwin.ValuesReadAllProperties(hc, thingID)
-		eventValues, err := digitwin.ValuesReadAllEvents(sess.GetHubClient(), thingID)
+		propValues, err := digitwin.ValuesReadAllProperties(sess.GetHubClient(), thingID)
 		if err == nil {
-			data.IOValues[thingID] = consumedthing.NewInteractionOutputFromValueList(eventValues, td)
+			eventValues, _ := digitwin.ValuesReadAllEvents(sess.GetHubClient(), thingID)
+			allValues := append(propValues, eventValues...)
+			data.IOValues[thingID] = consumedthing.NewInteractionOutputFromValueList(allValues, td)
 		}
 	}
 	buff, err := app.RenderAppOrFragment(r, RenderSelectSourceTemplateFile, data)

@@ -14,7 +14,8 @@ import {
     MessageTypeResponse, MessageTypeRequest
 } from "@hivelib/transports/Messages";
 
-const hclog = new tslog.Logger()
+const log = new tslog.Logger({prettyLogTimeZone:"local"})
+
 
 // function parseSSERequest(e: MessageEvent) : RequestMessage {
 //     let tm = new RequestMessage()
@@ -60,26 +61,26 @@ export async function  connectSSE(
             resolve(source)
         }
         source.addEventListener("ping",(e:any)=>{
-            hclog.info("received ping", e)
+            log.info("received ping", e)
         })
         source.addEventListener(MessageTypeNotification,(e:any)=>{
-            hclog.info("received notification", e)
+            log.info("received notification", e)
             let req: NotificationMessage = JSON.parse(e.data)
             onNotification(req)
         })
         source.addEventListener(MessageTypeRequest,(e:any)=>{
-            hclog.info("received request", e)
+            log.info("received request", e)
             let fields = JSON.parse(e.data)
             let req = new RequestMessage(fields)
             onRequest(req)
         })
         source.addEventListener(MessageTypeResponse,(e:any)=>{
-            hclog.info("received response", e)
+            log.info("received response", e)
             let req: ResponseMessage = JSON.parse(e.data)
             onResponse(req)
         })
         source.addEventListener("close",(e:any)=>{
-            hclog.info("On close", e)
+            log.info("On close", e)
         })
         // source.addEventListener("error",(e:any)=>{
         //     hclog.error("On error", e.data)
@@ -89,7 +90,7 @@ export async function  connectSSE(
         // }
         source.onerror = function (err: any) {
             // TODO: differentiate between an auth error and a broken connection
-            hclog.error("Connection error: "+baseURL+ssePath, err.message)
+            log.error("Connection error: "+baseURL+ssePath, err.message)
             // source.close()
             if (source.readyState == EventSource.CLOSED) {
                 onConnection(ConnectionStatus.Disconnected)
