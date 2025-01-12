@@ -1,14 +1,20 @@
-import type {ZWaveNode} from "zwave-js";
-import {CommandClasses, ValueID} from "@zwave-js/core";
+import { ValueID, ZWaveNode} from "npm:zwave-js";
+import {CommandClasses} from "npm:@zwave-js/core";
+// import {CommandClasses, ValueID} from "@zwave-js/core";
 import * as vocab from "@hivelib/api/vocab/vocab.js";
 
 
 // ValueID to TD event,action or property affordance type
 export interface VidAffordance {
     // @type of the property, event or action, "" if not known
-    atType: string,
-    // attr is read-only property; config is writable property
-    messageType: "action" | "event" | "attr" | "config" | undefined
+    atType: string
+
+    // read-only properties are attributes while writable properties are config
+    affType: "action" | "event" | "attr" | "config" | undefined
+
+    // name of the vid affordance: {commandClass}-{property}-{endpoint}[-{propertyKey}]
+    // where commandClass is mapped to a readable abbreviation instead a number
+    affName: string
 }
 
 // Override map of zwavejs VID to HiveOT action, event, config or attributes.
@@ -175,15 +181,17 @@ function defaultVidAffordance(node: ZWaveNode, vid: ValueID, maxNrScenes: number
 //
 // Returns a VidAffordance object or undefined if the Vid is to be ignored.
 export function getVidAffordance(node: ZWaveNode, vid: ValueID, maxNrScenes: number): VidAffordance | undefined {
-    // Determine default values for @type and affordance
+    // Determine default values for @type and affordance type and name
     let affordance = defaultVidAffordance(node, vid, maxNrScenes)
     let atType = ""
     let va: VidAffordance = {
         atType: atType,
-        messageType: affordance
+        affType: affordance,
+        affName:"",
     }
 
-    // Apply values from an override
+    // Apply values from an override:
+    //   map [CC-vid.property-vid.propertyKey] => override @type and affordance type
     let mapKey = vid.commandClass + "-" + String(vid.property)
     if (vid.propertyKey != undefined) {
         mapKey += "-" + String(vid.propertyKey)
@@ -196,9 +204,9 @@ export function getVidAffordance(node: ZWaveNode, vid: ValueID, maxNrScenes: num
         if (override.atType != undefined) {
             va.atType = override.atType
         }
-        if (override.messageType != undefined) {
-            va.messageType = override.messageType
+        if (override.affType != undefined) {
+            va.affType = override.affType
         }
     }
-    return va.messageType ? va : undefined
+    return va.affType ? va : undefined
 }

@@ -1,6 +1,6 @@
-import * as os from 'os';
-import fs, { existsSync } from 'fs';
-import path from 'path';
+import fs, { existsSync } from 'node:fs';
+import process from 'node:process'
+import path from 'node:path';
 import { Logger } from 'tslog'
 import yaml from 'yaml';
 import { program } from 'commander';
@@ -123,8 +123,8 @@ export class NodeEnvironment extends Object {
             this.certsDir = path.join("/etc", "hiveot", "certs")
             this.logsDir = path.join("/var", "log", "hiveot")
             this.storesDir = path.join("/var", "lib", "hiveot")
-        } else { // use application parent dir
-            //slog.Infof("homeDir is '%s", homeDir)
+        } else {
+            // use application parent dir
             this.homeDir = homeDir
             this.binDir = "bin"
             this.certsDir = "certs"
@@ -259,7 +259,7 @@ export class NodeEnvironment extends Object {
     // This throws an error if loading or parsing the config file fails.
     // Returns normally if the config file doesn't exist or is loaded successfully.
     public loadConfigFile(path: string): void {
-        let cfgData: Buffer | undefined
+        let cfgData: Uint8Array | undefined
         try {
             cfgData = fs.readFileSync(path)
             slog.info("Loaded configuration file", "configFile", path)

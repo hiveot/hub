@@ -9,7 +9,7 @@ Breaking changes are to be expected, especially in the way property/event/action
 
 TODO:
 1. Reconnect to Hub if the runtime restarts (javascript HttpSseClient bug)
-2. Report heal network status/progress of a node
+~~2. Report heal network status/progress of a node~~
 1. ZWave stick reconnect support (Recover after serial port removal)
 1. Detect and track health of nodes; dropped messages, etc.
     * timeouts; dropped messages
@@ -19,7 +19,7 @@ TODO:
    B. just publish native values and manage mapping on the Hub C. define proper handling of multi-value properties
 1. Include DataSchema in controller configurations for properties that aren't in the zwave-js vids.
 1. Dimming duration is currently not supported
-1. Change back to JS using JSDoc for types. Simplifying the build process.
+1. Switch to Deno to simplify build process (deno compile)
 
 
 ## Mapping zwave VID to TD property, event and action keys
@@ -34,13 +34,15 @@ A VID is an object with 4 fields, two are optional:
 * endpoint - in case multiple resources exist in the same device. Default is 0. See also: https://community.silabs.com/s/article/z-wave-multi-channel-end-points
 * propertyKey - optional sub-address multiple values of a node. 
 
-This binding uses the VID to construct a key for properties, events and actions:
-  key = {commandClass}-{property}-{endpoint}[-{propertyKey}] 
+This binding uses the VID to construct an affordance name for properties, events and actions:
+  affName = {commandClass}-{property}-{endpoint}[-{propertyKey}] 
+
+Instead of using the numeric commandclass, an abbreviation is used to improve readability, testing and debugging.
 
 Where propertyKey is omitted if not applicable. The endpoint is always provided and set to 0 for the default default.
 
 
-## Building with esbuild
+## Node: Building with esbuild
 
 This first step is just for testing the build process using esbuild. If this already fails then no use using pkg or the 'postject' node20+ injector. Note: one reason to take this step is to allow packages with es modules (axios) to work. pkg seems to not build correctly with code generated with tsc && tsc-alias.
 
@@ -58,7 +60,7 @@ Then run from the project root with:
 
 * note1: --clientID is the client this runs under, eg 'testsvc' during testing. Default will be the binding name zwavejs.
 
-## build a single executable using pkg and esbuild.js from zwave-js-ui
+## Node: build a single executable using pkg and esbuild.js from zwave-js-ui 
 
 NOTE: This uses the esbuild.js script from zwave-js-ui, which does some filename mangling to
 get the externals to work. Not sure how it works but I also really don't care.
@@ -95,6 +97,10 @@ On startup if a configuration file doesn't yet exist it generates a default file
 If you have an existing zwave network with S2 keys then copy these keys in their hex format into the respective fields in the configuration file should let it adopt the network, in theory. This has not yet been tested.
 
 To autostart the binding add it to the autostart section of the launcher.yaml configuration file in the config folder.
+
+### Logging
+
+When started through the launcher, the log output can be found in logs/zwavejs.log
 
 ## Multiple Instances
 

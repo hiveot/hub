@@ -101,6 +101,7 @@ export class PropertyAffordance extends DataSchema {
     // set the property's vocabulary @type field
     setVocabType(atType: string): PropertyAffordance {
         this["@type"] = atType
+
         return this
     }
 }

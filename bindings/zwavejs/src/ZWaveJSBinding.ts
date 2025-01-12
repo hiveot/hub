@@ -1,20 +1,20 @@
 // ZWaveJSBinding.ts holds the entry point to the zwave binding along with its configuration
-import type {ZWaveNode} from "zwave-js";
-import {getNodeTD} from "./getNodeTD";
-import {NodeValues} from "./NodeValues";
-import {ZWAPI} from "./ZWAPI.js";
-import {parseController} from "./parseController";
-import {logVid} from "./logVid";
-import {getPropName} from "./getPropName";
+import process from "node:process"
+import {ValueID, ZWaveNode} from "npm:zwave-js";
+import {getNodeTD} from "./getNodeTD.ts";
+import {NodeValues} from "./NodeValues.ts";
+import {ZWAPI} from "./ZWAPI.ts";
+import {parseController} from "./parseController.ts";
+import {logVid} from "./logVid.ts";
+import {getPropName} from "./getPropName.ts";
 import * as vocab from "@hivelib/api/vocab/vocab.js";
-import fs from "fs";
-import {BindingConfig} from "./BindingConfig";
-import {handleRequest} from "@zwavejs/handleRequest";
-import {ValueID} from "@zwave-js/core";
-import {getVidAffordance} from "@zwavejs/getVidAffordance";
-import {IAgentConnection} from "@hivelib/transports/IAgentConnection";
-import {RequestMessage, ResponseMessage} from "@hivelib/transports/Messages";
-import {getlogger} from "@zwavejs/getLogger";
+import fs from "node:fs";
+import {BindingConfig} from "./BindingConfig.ts";
+import {handleRequest} from "@zwavejs/handleRequest.ts";
+import {getVidAffordance} from "@zwavejs/getVidAffordance.ts";
+import {IAgentConnection} from "@hivelib/transports/IAgentConnection.ts";
+import {RequestMessage, ResponseMessage} from "@hivelib/transports/Messages.ts";
+import {getlogger} from "@zwavejs/getLogger.ts";
 
 const log = getlogger()
 
@@ -130,7 +130,7 @@ export class ZwaveJSBinding {
                 // Determine if value changed enough to publish
                 if (newValue != undefined) {
                     valueMap.values[propID] = newValue
-                    if (va?.messageType === "attr" || va?.messageType === "config") {
+                    if (va?.affType === "attr" || va?.affType === "config") {
                         this.hc.pubProperty(deviceID, propID, newValue)
                     } else {
                         log.debug("handleValueUpdate: publish event for deviceID=" + deviceID + ", propID=" + propID + "")

@@ -1,8 +1,3 @@
-import {TD, TDForm} from '../../wot/TD.js';
-import {
-    IAgentConnection,
-} from "../IAgentConnection.js";
-import * as tslog from 'tslog';
 import {
     OpInvokeAction,
     HTOpPublishEvent,
@@ -12,16 +7,23 @@ import {
     OpSubscribeEvent,
     OpSubscribeAllEvents, OpUnsubscribeAllEvents, OpUnsubscribeEvent, HTOpUpdateTD,
 } from "@hivelib/api/vocab/vocab.js";
+
 import * as http2 from "node:http2";
-import {connectSSE} from "@hivelib/transports/httpclient/connectSSE";
+import {nanoid} from "npm:nanoid";
+import * as tslog from 'npm:tslog';
+
+
+import {TD, TDForm} from '../../wot/TD.ts';
+import {
+    IAgentConnection,
+} from "../IAgentConnection.ts";
+import {connectSSE} from "@hivelib/transports/httpclient/connectSSE.ts";
 import {
     RequestHandler,
     NotificationHandler,
     ResponseHandler, ConnectionStatus
-} from "@hivelib/transports/IConsumerConnection";
-import {nanoid} from "nanoid";
-import EventSource from "eventsource";
-import {NotificationMessage, RequestMessage, ResponseMessage} from "@hivelib/transports/Messages";
+} from "@hivelib/transports/IConsumerConnection.ts";
+import {NotificationMessage, RequestMessage, ResponseMessage} from "@hivelib/transports/Messages.ts";
 
 // FIXME: import from vocab is not working
 const RequestCompleted = "completed"
@@ -163,13 +165,13 @@ export class HttpSSEClient implements IAgentConnection {
             // don't do anything here. on the next post-message a reconnect will be attempted.
             // this.disconnect()
         });
-        this._http2Session.on('connect', (ev) => {
+        this._http2Session.on('connect', (ev:any) => {
             console.warn("connected to server, cid=",this._cid);
         });
-        this._http2Session.on('error', (error) => {
+        this._http2Session.on('error', (error:any) => {
             console.error("connection error: "+error);
         });
-        this._http2Session.on('frameError', (error) => {
+        this._http2Session.on('frameError', (error:any) => {
             console.error(error);
         });
         this._http2Session.on('end', () => {
@@ -349,14 +351,14 @@ export class HttpSSEClient implements IAgentConnection {
                     ':path': path,
                     ":method": methodName,
                     "content-type": "application/json",
-                    "content-length": Buffer.byteLength(payload),
+                    "content-length": payload.length,
                     "message-id": correlationID,
                     "cid": this._cid,
                 })
 
                 req.setEncoding('utf8');
 
-                req.on('response', (r) => {
+                req.on('response', (r:http2.IncomingHttpHeaders & http2.IncomingHttpStatusHeader) => {
                     if (r[":status"]) {
                         statusCode = r[":status"]
                         if (statusCode >= 400) {
@@ -364,7 +366,7 @@ export class HttpSSEClient implements IAgentConnection {
                         }
                     }
                 })
-                req.on('data', (chunk) => {
+                req.on('data', (chunk:string) => {
                     replyData = replyData + chunk
                 });
                 req.on('end', () => {
@@ -377,7 +379,7 @@ export class HttpSSEClient implements IAgentConnection {
                         reject(new Error(replyData))
                     }
                 });
-                req.on('error', (err) => {
+                req.on('error', (err:Error) => {
                     req.destroy()
                     reject(err)
                 });

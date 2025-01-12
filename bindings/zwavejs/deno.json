@@ -1,0 +1,7 @@
+{
+  "imports": {
+    "@hivelib/": "./hivelib/",
+    "@keys/": "./hivelib/keys/",
+    "@zwavejs/": "./src/"
+  }
+}

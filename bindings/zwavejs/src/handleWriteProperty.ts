@@ -1,11 +1,12 @@
 // ZWaveJSBinding.ts holds the entry point to the zwave binding along with its configuration
-import {ZWaveNode} from "zwave-js";
-import {getPropVid} from "./getPropName";
-import {IAgentConnection} from "@hivelib/transports/IAgentConnection";
-import {getEnumFromMemberName, getVidValue,  ZWAPI} from "@zwavejs/ZWAPI";
-import {setValue} from "@zwavejs/setValue";
-import {RequestMessage, ResponseMessage} from "@hivelib/transports/Messages";
-import {getlogger} from "@zwavejs/getLogger";
+import {ZWaveNode} from "npm:zwave-js";
+
+import {getPropVid} from "./getPropName.ts";
+import {IAgentConnection} from "@hivelib/transports/IAgentConnection.ts";
+import {getEnumFromMemberName, getVidValue,  ZWAPI} from "@zwavejs/ZWAPI.ts";
+import {setValue} from "@zwavejs/setValue.ts";
+import {RequestMessage, ResponseMessage} from "@hivelib/transports/Messages.ts";
+import {getlogger} from "@zwavejs/getLogger.ts";
 
 const log = getlogger()
 
@@ -43,7 +44,7 @@ export function handleWriteProperty(
         // convert the value if this is an enum
         // async update
         setValue(node, propVid, propValue)
-            .then(progress => {
+            .then((progress:string) => {
                 let newValue = getVidValue(node, propVid)
 
                 let resp = req.createResponse(newValue)

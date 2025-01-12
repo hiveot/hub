@@ -1,0 +1,1 @@
+deno compile --output dist/zwjsbin --allow-net=0.0.0.0:5353 --allow-sys --allow-ffi --allow-read --allow-env --unstable-sloppy-imports src/main.ts --home /home/henk/bin/hiveot --clientID zwavejs --server https://msi:8444/ssesc

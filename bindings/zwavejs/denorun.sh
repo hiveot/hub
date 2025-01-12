@@ -1,0 +1,1 @@
+DENO_CERT=/home/henk/bin/hiveot/certs/caCert.pem deno run --no-check --allow-net --allow-sys --allow-ffi --allow-read --allow-env --unstable-sloppy-imports src/main.ts --home /home/henk/bin/hiveot --clientID zwavejs --server https://msi:8444/ssesc

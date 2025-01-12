@@ -1,19 +1,19 @@
 // ZWaveJSBinding.ts holds the entry point to the ZWave binding along with its configuration
-import {InterviewStage,  ZWaveNode} from "zwave-js";
-import {getPropVid} from "./getPropName";
-import { IAgentConnection} from "@hivelib/transports/IAgentConnection";
-import {getVidValue, ZWAPI} from "@zwavejs/ZWAPI";
+import {InterviewStage,  ZWaveNode} from "npm:zwave-js";
+import {getPropVid} from "./getPropName.ts";
+import { IAgentConnection} from "@hivelib/transports/IAgentConnection.ts";
+import {getVidValue, ZWAPI} from "@zwavejs/ZWAPI.ts";
 import {OpWriteProperty} from "@hivelib/api/vocab/vocab.js";
-import {handleWriteProperty} from "@zwavejs/handleWriteProperty";
-import {setValue} from "@zwavejs/setValue";
+import {handleWriteProperty} from "@zwavejs/handleWriteProperty.ts";
+import {setValue} from "@zwavejs/setValue.ts";
 import {
     RequestMessage,
     ResponseMessage,
     StatusCompleted,
     StatusPending,
     StatusRunning
-} from "@hivelib/transports/Messages";
-import {getlogger} from "@zwavejs/getLogger";
+} from "@hivelib/transports/Messages.ts";
+import {getlogger} from "@zwavejs/getLogger.ts";
 
 const log = getlogger()
 

@@ -1,8 +1,8 @@
-import type {ZWaveController, ZWaveNode} from "zwave-js";
-import {RFRegion} from "zwave-js";
-import type {TD} from "@hivelib/wot/TD";
-import {DataSchema} from "@hivelib/wot/dataSchema";
+import type {ZWaveController, ZWaveNode} from "npm:zwave-js";
+import type {TD} from "@hivelib/wot/TD.ts";
+import {DataSchema} from "@hivelib/wot/dataSchema.ts";
 import {WoTDataTypeNone, WoTDataTypeString} from "@hivelib/api/vocab/vocab.js";
+import {RFRegion} from "npm:zwave-js";
 
 // parseController adds controller actions and attributes to the Thing TD
 export function parseController(td: TD, ctl: ZWaveController) {

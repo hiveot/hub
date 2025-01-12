@@ -1,8 +1,10 @@
 // ZWaveJSBinding.ts holds the entry point to the zwave binding along with its configuration
-import {SetValueStatus, TranslatedValueID, ValueMetadataNumeric, ZWaveNode} from "zwave-js";
-import {getEnumFromMemberName, getVidValue,  ZWAPI} from "@zwavejs/ZWAPI";
-import {StatusCompleted, StatusFailed, StatusRunning} from "@hivelib/transports/Messages";
-import {getlogger} from "@zwavejs/getLogger";
+import {SetValueStatus, TranslatedValueID, ValueID, ValueMetadataNumeric, ZWaveNode}
+    from "npm:zwave-js";
+
+import {getEnumFromMemberName, getVidValue,  ZWAPI} from "@zwavejs/ZWAPI.ts";
+import {StatusCompleted, StatusFailed, StatusRunning} from "@hivelib/transports/Messages.ts";
+import {getlogger} from "@zwavejs/getLogger.ts";
 
 const log = getlogger()
 
@@ -13,7 +15,7 @@ const log = getlogger()
 // @param vid: valueID parameter to set
 // @param value: native value to set, if any
 // this returns a delivery status for returning to the hub
-export async function setValue(node: ZWaveNode, vid: TranslatedValueID, value: any): Promise<string> {
+export async function setValue(node: ZWaveNode, vid: ValueID, value: any): Promise<string> {
     return new Promise<string>( (resolve, reject) => {
         let dataToSet: unknown
         let progress = StatusFailed
@@ -30,14 +32,14 @@ export async function setValue(node: ZWaveNode, vid: TranslatedValueID, value: a
             }
 
             // setVidValue(node, vid, dataToSet)
-            node.setValue(vid, dataToSet, {onProgress:(prog)=>{
+            node.setValue(vid, dataToSet, {onProgress:(prog:any)=>{
                 // 0: queued
                 // 1: active (currently behing handled)
                 // 2: completed
                 // 3: failed
                 // log.info("setValue progress: ", prog.state.toString())
             }})
-                .then(res => {
+                .then( (res: any) => {
                     // status: 0 - no device support
                     // 1: working - command accepted and working on it
                     // 2: fail - command rejected

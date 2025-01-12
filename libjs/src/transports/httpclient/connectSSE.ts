@@ -1,19 +1,21 @@
-import * as tslog from 'tslog';
 import {
     ConnectionHandler,
     ConnectionStatus,
     NotificationHandler, RequestHandler, ResponseHandler
-} from "@hivelib/transports/IConsumerConnection";
+} from "@hivelib/transports/IConsumerConnection.ts";
 
-import EventSource from 'eventsource'
 import {
     NotificationMessage,
     RequestMessage,
     ResponseMessage,
     MessageTypeNotification,
     MessageTypeResponse, MessageTypeRequest
-} from "@hivelib/transports/Messages";
+} from "@hivelib/transports/Messages.ts";
 
+// need access to headers for bearer token
+import * as tslog from "npm:tslog";
+// @ts-nocheck
+import {EventSource} from "npm:launchdarkly-eventsource"
 const log = new tslog.Logger({prettyLogTimeZone:"local"})
 
 
@@ -40,6 +42,7 @@ export async function  connectSSE(
     return new Promise((resolve, reject): void => {
 
         var eventSourceInitDict = {
+            readTimeoutMillis: 3600000,
             headers: {
                 authorization: 'bearer ' + authToken,
                 origin: baseURL,
@@ -53,49 +56,113 @@ export async function  connectSSE(
         };
 
         let sseURL = baseURL + ssePath
-        const source = new EventSource(sseURL, eventSourceInitDict)
+
+        // const httpsAgent = new https.Agent({
+        //     rejectUnauthorized: false,
+        // });
+        // const myfetch = (init)=>
+        //         fetch(sseURL, {
+        //             ...init,
+        //             agent: httpsAgent,
+        //             headers: {
+        //                 ...init.headers,
+        //                 authorization: 'bearer ' + authToken,
+        //                 origin: baseURL,
+        //                 "path": ssePath,
+        //                 "content-Type": "application/json",
+        //                 "cid": cid // this header must match the ConnectionIDHeader field name on the server
+        //             }
+        //         })
+
+        const source = new EventSource(sseURL,eventSourceInitDict)
+
+        // const source = createEventSource({
+        //     url: sseURL,
+        //     fetch: myfetch,
+        //
+        //     onMessage: ({data, event, id}) => {
+        //         console.log('Data: %s', data)
+        //         console.log('Event ID: %s', id) // Note: can be undefined
+        //         console.log('Event: %s', event) // Note: can be undefined
+        //     },
+        // })
+        // const source = new EventSource(sseURL, {
+        //     fetch: (sseURL:string,init)=>
+        //         fetch(sseURL, {
+        //             ...init,
+        //             agent: httpsAgent,
+        //             headers: {
+        //                 ...init.headers,
+        //                 authorization: 'bearer ' + authToken,
+        //                 origin: baseURL,
+        //                 "path": ssePath,
+        //                 "content-Type": "application/json",
+        //                 "cid": cid // this header must match the ConnectionIDHeader field name on the server
+        //             }
+        //         })
+        //     })
+
+            // onMessage: ({data,event,id})=>{
+            //     log.info("OnMessage: event=",event)
+            //
+            // },
+        //     onConnect: ()=>{
+        //         log.info("OnConnect")
+        //             let cstat = ConnectionStatus.Connected
+        //             onConnection(cstat)
+        //             // resolve(source)
+        //     },
+        //     onDisconnect: ()=>{
+        //        log.info("OnDisconnect")
+        //     }
+        // })
 
         source.onopen = (e: any) => {
             let cstat = ConnectionStatus.Connected
             onConnection(cstat)
             resolve(source)
         }
-        source.addEventListener("ping",(e:any)=>{
-            log.info("received ping", e)
+        source.addEventListener("message",(e:any)=>{
+            log.info("received message", e.toString())
         })
-        source.addEventListener(MessageTypeNotification,(e:any)=>{
-            log.info("received notification", e)
-            let req: NotificationMessage = JSON.parse(e.data)
+        source.addEventListener("ping",(e:any)=>{
+            log.info("received ping")
+        })
+        source.addEventListener(MessageTypeNotification,(e:MessageEvent)=> {
+            log.info("received notification", e.data)
+            let req: NotificationMessage = JSON.parse(e.data as string)
             onNotification(req)
         })
-        source.addEventListener(MessageTypeRequest,(e:any)=>{
-            log.info("received request", e)
-            let fields = JSON.parse(e.data)
+        source.addEventListener(MessageTypeRequest,(e:globalThis.MessageEvent)=>{
+            log.info("received request", e.data)
+            let fields = JSON.parse(e.data  as string)
             let req = new RequestMessage(fields)
             onRequest(req)
         })
-        source.addEventListener(MessageTypeResponse,(e:any)=>{
-            log.info("received response", e)
-            let req: ResponseMessage = JSON.parse(e.data)
+        source.addEventListener(MessageTypeResponse,(e:globalThis.MessageEvent)=>{
+            log.info("received response", e.data)
+            let req: ResponseMessage = JSON.parse(e.data  as string)
             onResponse(req)
         })
         source.addEventListener("close",(e:any)=>{
-            log.info("On close", e)
+            log.info("On close")
         })
-        // source.addEventListener("error",(e:any)=>{
-        //     hclog.error("On error", e.data)
-        // })
-        // source.onmessage = function (msg: any) {
-        //     hclog.warn("On message", msg)
-        // }
+        // // source.addEventListener("error",(e:any)=>{
+        // //     hclog.error("On error", e.data)
+        // // })
+        // // source.onmessage = function (msg: any) {
+        // //     hclog.warn("On message", msg)
+        // // }
         source.onerror = function (err: any) {
-            // TODO: differentiate between an auth error and a broken connection
-            log.error("Connection error: "+baseURL+ssePath, err.message)
-            // source.close()
-            if (source.readyState == EventSource.CLOSED) {
-                onConnection(ConnectionStatus.Disconnected)
+            if (err) {
+                // TODO: differentiate between an auth error and a broken connection
+                log.error("Connection error: " + baseURL + ssePath, err.message)
+                // source.close()
+                if (source.readyState == 2) {// EventSource.CLOSED) {
+                    onConnection(ConnectionStatus.Disconnected)
+                }
+                reject(err)
             }
-            reject(err)
         }
     })
 }

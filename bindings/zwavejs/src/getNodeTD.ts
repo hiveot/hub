@@ -1,6 +1,6 @@
 import {
+    InterviewStage,
     NodeStatus,
-    NodeType,
     TranslatedValueID,
     ValueMetadataBoolean,
     ValueMetadataNumeric,
@@ -8,24 +8,23 @@ import {
     ZWaveNode,
     ZWavePlusNodeType,
     ZWavePlusRoleType
-} from "zwave-js";
-import {CommandClasses, InterviewStage} from '@zwave-js/core';
-import {ActionAffordance, EventAffordance, PropertyAffordance, TD} from "@hivelib/wot/TD";
-import * as vocab from "@hivelib/api/vocab/vocab";
-import type {ZWAPI} from "./ZWAPI";
-import {logVid} from "./logVid";
-import {getPropName} from "./getPropName";
-import {getVidAffordance, VidAffordance} from "./getVidAffordance";
-import {getDeviceType} from "./getDeviceType";
-import {DataSchema} from "@hivelib/wot/dataSchema";
+} from "npm:zwave-js";
+ import {CommandClasses} from 'npm:@zwave-js/core';
+import {ActionAffordance, EventAffordance, PropertyAffordance, TD} from "@hivelib/wot/TD.ts";
+import * as vocab from "@hivelib/api/vocab/vocab.js";
+import type {ZWAPI} from "./ZWAPI.ts";
+import {logVid} from "./logVid.ts";
+import {getPropName} from "./getPropName.ts";
+import {getVidAffordance, VidAffordance} from "./getVidAffordance.ts";
+import {getDeviceType} from "./getDeviceType.ts";
+import {DataSchema} from "@hivelib/wot/dataSchema.ts";
 import {
-    WoTDataTypeAnyURI,
     WoTDataTypeArray,
     WoTDataTypeBool,
     WoTDataTypeNone,
     WoTDataTypeNumber,
     WoTDataTypeString
-} from "@hivelib/api/vocab/vocab";
+} from "@hivelib/api/vocab/vocab.js";
 
 
 // Add the ZWave value data to the TD as an action
@@ -33,10 +32,11 @@ function addAction(td: TD, node: ZWaveNode, vid: TranslatedValueID, name: string
     // let vidMeta = node.getValueMetadata(vid)
 
     // actions without input have no schema. How to identify these?
-    let schema = new DataSchema()
-    SetDataSchema(schema, node, vid)
-    let action = td.AddAction(
-        name, schema.title || name, schema.description, schema)
+    const inputSchema = new DataSchema()
+    SetDataSchema(inputSchema, node, vid)
+    const action = td.AddAction(
+        name, inputSchema.title || name, inputSchema.description,
+        inputSchema)
         .setVocabType(va.atType)
 
     if (action.input) {
@@ -51,7 +51,7 @@ function addAction(td: TD, node: ZWaveNode, vid: TranslatedValueID, name: string
 // Add the ZWave value data to the TD as an attribute property
 function addAttribute(td: TD, node: ZWaveNode, vid: TranslatedValueID, name: string, va: VidAffordance): PropertyAffordance {
 
-    let prop = td.AddProperty(name, va?.atType, WoTDataTypeNone, "")
+    const prop = td.AddProperty(name, va?.atType, WoTDataTypeNone, "")
     // SetDataSchema also sets the title and data type
     SetDataSchema(prop, node, vid)
     return prop
@@ -59,7 +59,7 @@ function addAttribute(td: TD, node: ZWaveNode, vid: TranslatedValueID, name: str
 
 // Add the ZWave VID to the TD as a configuration property
 function addConfig(td: TD, node: ZWaveNode, vid: TranslatedValueID, name: string, va: VidAffordance): PropertyAffordance {
-    let prop = td.AddProperty(name, va.atType, WoTDataTypeNone, "")
+    const prop = td.AddProperty(name, va.atType, WoTDataTypeNone, "")
     prop.readOnly = false
     // SetDataSchema also sets the title and data type
     SetDataSchema(prop, node, vid)
@@ -71,7 +71,7 @@ function addConfig(td: TD, node: ZWaveNode, vid: TranslatedValueID, name: string
 // Add the ZWave VID to the TD as an event
 function addEvent(td: TD, node: ZWaveNode, vid: TranslatedValueID, name: string, va: VidAffordance): EventAffordance {
 
-    let schema = new DataSchema()
+    const schema = new DataSchema()
     SetDataSchema(schema, node, vid)
 
     let ev = td.AddEvent(name, schema.title || name, schema.description, schema)
@@ -99,8 +99,8 @@ export function getNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | unde
     let td: TD;
 
     //--- Step 1: TD definition
-    let deviceID = zwapi.getDeviceID(node.id)
-    let deviceType = getDeviceType(node)
+    const deviceID = zwapi.getDeviceID(node.id)
+    const deviceType = getDeviceType(node)
     let title = node.name
     if (!title) {
         title = node.label || deviceID
@@ -126,8 +126,8 @@ export function getNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | unde
     td.AddPropertyIf(node.canSleep, "canSleep","Can Sleep",
         "Device sleeps to conserve battery",WoTDataTypeBool);
     if (node.deviceClass) {
-        td.AddPropertyIf( node.deviceClass.basic,"deviceClassBasic",
-            node.deviceClass.basic.label, "", WoTDataTypeString);
+        // td.AddPropertyIf( node.deviceClass.basic,"deviceClassBasic",
+        //     node.deviceClass.basic.label, "", WoTDataTypeString);
         td.AddPropertyIf(node.deviceClass.generic,"deviceClassGeneric",
             node.deviceClass.generic.label,"", WoTDataTypeString);
         td.AddPropertyIf(node.deviceClass.specific.label, "deviceClassSpecific",
@@ -206,7 +206,7 @@ export function getNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | unde
     if (node.zwavePlusNodeType) {
         td.AddProperty("zwavePlusNodeType", "ZWave+ Node Type",
             "", WoTDataTypeNumber)
-        let prop = td.AddProperty("zwavePlusNodeTypeName", "ZWave+ Node Type Name",
+        const prop:PropertyAffordance = td.AddProperty("zwavePlusNodeTypeName", "ZWave+ Node Type Name",
             "", WoTDataTypeString)
         if (node.zwavePlusNodeType != undefined) {
             prop.SetAsEnum(ZWavePlusNodeType)
@@ -258,40 +258,40 @@ export function getNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | unde
     // always there.
     // Reading this CC 119 does work and returns the value set with node.name and
     // node.location.
-    let titleCC = CommandClasses["Node Naming and Location"] // 119
-    let nameVid = {
+    const titleCC = CommandClasses["Node Naming and Location"] // 119
+    const nameVid = {
         commandClass: titleCC,
         endpoint: 0,
         property: "name"
     }
-    let titleKey = getPropName(nameVid)
+    const titleKey = getPropName(nameVid)
     let prop = td.AddProperty(titleKey,"Device name",
         "Custom device name/title",  WoTDataTypeString, vocab.PropDeviceTitle);
     prop.readOnly = false
 
-    let locationVid = {
+    const locationVid = {
         commandClass: titleCC,
         endpoint: 0,
         property: "location"
     }
-    let locationKey = getPropName(locationVid)
+    const locationKey = getPropName(locationVid)
     prop = td.AddProperty(locationKey,"Device location",
         "Description of the device location",  WoTDataTypeString,vocab.PropLocation);
     prop.readOnly = false
 
     // now continue with the other vids
-    let vids = node.getDefinedValueIDs()
-    for (let vid of vids) {
-        let va = getVidAffordance(node, vid, maxNrScenes)
+    const vids = node.getDefinedValueIDs()
+    for (const vid of vids) {
+        const va = getVidAffordance(node, vid, maxNrScenes)
 
         // let pt = getPropType(node, vid)
-        let tdPropName = getPropName(vid)
+        const tdPropName = getPropName(vid)
         if (va) {
             logVid(vidLogFD, node, vid, tdPropName, va)
         }
 
         // the vid is either config, attr, action or event based on CC
-        switch (va?.messageType) {
+        switch (va?.affType) {
             case "action":
                 addAction(td, node, vid, tdPropName, va)
                 break;
@@ -325,7 +325,7 @@ function SetDataSchema(ds: DataSchema | undefined, node: ZWaveNode, vid: Transla
     if (!ds) {
         return
     }
-    let vidMeta = node.getValueMetadata(vid)
+    const vidMeta = node.getValueMetadata(vid)
     ds.title = vidMeta.label ? vidMeta.label : vid.propertyName
     if (vid.endpoint) {
         ds.title += " - ("+vid.endpoint+")"
@@ -344,7 +344,7 @@ function SetDataSchema(ds: DataSchema | undefined, node: ZWaveNode, vid: Transla
     switch (vidMeta.type) {
         case "string": {
             ds.type = WoTDataTypeString
-            let vms = vidMeta as ValueMetadataString;
+            const vms = vidMeta as ValueMetadataString;
             ds.minLength = vms.minLength;
             ds.maxLength = vms.maxLength;
             ds.default = vms.default;
@@ -352,14 +352,14 @@ function SetDataSchema(ds: DataSchema | undefined, node: ZWaveNode, vid: Transla
             break;
         case "boolean": {
             ds.type = WoTDataTypeBool
-            let vmb = vidMeta as ValueMetadataBoolean;
+            const vmb = vidMeta as ValueMetadataBoolean;
             ds.default = vmb.default?.toString() || undefined;
         }
             break;
         case "duration":
         case "number": {
             ds.type = WoTDataTypeNumber
-            let vmn = vidMeta as ValueMetadataNumeric;
+            const vmn = vidMeta as ValueMetadataNumeric;
             ds.minimum = vmn.min;
             ds.maximum = vmn.max;
             // prop.steps = vmn.steps;
@@ -382,7 +382,7 @@ function SetDataSchema(ds: DataSchema | undefined, node: ZWaveNode, vid: Transla
                 for (const k in vmn.states) {
                     ds.enum.push(vmn.states[k])
                 }
-                ds.default = vmn.states[vmn.default]
+                ds.default = vmn.states[vmn.default as number]
             }
 
         }

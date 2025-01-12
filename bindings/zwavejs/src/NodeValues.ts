@@ -1,14 +1,14 @@
 import {
-    getEnumMemberName,
+    getEnumMemberName, InterviewStage,
     NodeStatus,
     ZWaveNode,
     ZWavePlusNodeType,
     ZWavePlusRoleType,
-} from "zwave-js";
-import {InterviewStage, SecurityClass} from '@zwave-js/core';
+} from "npm:zwave-js";
+// import {InterviewStage, SecurityClass} from '@zwave-js/core';
 import * as vocab from "@hivelib/api/vocab/vocab.js";
-import {getPropName} from "./getPropName";
-import {getVidValue} from "@zwavejs/ZWAPI";
+import {getPropName} from "./getPropName.ts";
+import {getVidValue} from "@zwavejs/ZWAPI.ts";
 
 
 // NodeValues holds the latest values of a single node
@@ -57,7 +57,7 @@ export class NodeValues {
         this.setIf(vocab.PropDeviceDescription, node.deviceConfig?.description);
 
         if (node.deviceClass) {
-            this.setIf("deviceClassBasic", node.deviceClass.basic.label);
+            // this.setIf("deviceClassBasic", node.deviceClass.basic.label);
             this.setIf("deviceClassGeneric", node.deviceClass.generic.label);
             this.setIf("deviceClassSpecific", node.deviceClass.specific.label);
             // this.setIf("supportedCCs", node.deviceClass.generic.supportedCCs);
@@ -67,8 +67,8 @@ export class NodeValues {
 
         if (node.getHighestSecurityClass()) {
             let classID = node.getHighestSecurityClass() as number
-            let highestSecClass = `${getEnumMemberName(SecurityClass, classID)} (${classID})`
-            this.setIf("highestSecurityClass", highestSecClass);
+            // let highestSecClass = `${getEnumMemberName(SecurityClass, classID)} (${classID})`
+            // this.setIf("highestSecurityClass", highestSecClass);
         }
 
         this.setIf("interviewAttempts", node.interviewAttempts);

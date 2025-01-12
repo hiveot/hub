@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-import {env, exit} from "process";
+import {env, exit} from "node:process";
+import process from 'node:process';
+
 import {ZwaveJSBinding} from "./ZWaveJSBinding";
-import path from "path";
-import {locateHub} from "@hivelib/transports/locateHub";
-import fs from "fs";
+import path from "node:path";
 import {BindingConfig} from "./BindingConfig";
 import {ConnectToHub} from "@hivelib/transports/ConnectToHub";
 import {getlogger} from "@zwavejs/getLogger";
@@ -61,7 +61,7 @@ async function main() {
     try {
         await hc.connectWithToken(appConfig.loginToken)
     } catch(e) {
-        log.error("Unable to connect to the Hub:",e)
+        log.error("Unable to connect to the Hub:")
         exit(1)
     }
 

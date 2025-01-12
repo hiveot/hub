@@ -1,4 +1,4 @@
-import type {ValueID} from "@zwave-js/core";
+import type {ValueID} from "npm:@zwave-js/core";
 
 // static map of key's to vid conversion
 let  key2vidMap = new Map<string,ValueID>()

@@ -1,7 +1,7 @@
 import type { IZWaveConfig } from "./ZWAPI.js";
-import fs, { existsSync } from "fs";
-import path from "path";
-import { NodeEnvironment } from "@hivelib/appenv/NodeEnvironment.js";
+import fs, { existsSync } from "node:fs";
+import path from "node:path";
+import { NodeEnvironment } from "@hivelib/appenv/NodeEnvironment";
 
 
 // This binding's service configuration  
