@@ -15,7 +15,7 @@ process.on("uncaughtException", (err) => {
 })
 
 async function main() {
-
+console.log("Starting hiveot zwavejs binding...")
     //--- Step 1: load config
     // let clientID = "zwavejs"
     // the application name is the clientID
@@ -61,7 +61,7 @@ async function main() {
     try {
         await hc.connectWithToken(appConfig.loginToken)
     } catch(e) {
-        log.error("Unable to connect to the Hub:",e)
+        console.log("Unable to connect to the Hub:",e)
         exit(1)
     }
 

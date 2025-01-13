@@ -228,7 +228,12 @@ export function getNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | unde
 
     td.AddAction("checkLifelineHealth", "Check connection health",
         "Initiates tests to check the health of the connection between the controller and this node and returns the results. " +
-        "This should NOT be done while there is a lot of traffic on the network because it will negatively impact the test results")
+        "This should NOT be done while there is a lot of traffic on the network because it will negatively impact the test results"
+        ).output = new DataSchema({
+        "title": "Rating",
+        "description": "Worst of runs",
+        "type": WoTDataTypeNumber,
+    })
 
     td.AddAction("ping", "Ping", "Ping the device").output=new DataSchema({
         "title": "Duration",

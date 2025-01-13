@@ -90,9 +90,10 @@ export function  handleRequest(
         //     break;
         case "checklifelinehealth":
             status = StatusRunning // async response
-            node.checkLifelineHealth()
+            // 3 runs; return rating
+            node.checkLifelineHealth(3)
                 .then((ev)=>{
-                    resp = req.createResponse(null)
+                    resp = req.createResponse(ev.rating)
                     hc.sendResponse(resp)
                 })
                 .catch(err => {

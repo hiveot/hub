@@ -34,7 +34,9 @@ FIXME: The intent was to trigger a manual reload with click event, however,
     function connectStatusChanged(ev) {
         // console.log("connectStatusRequestChanged", ev)
         let btn = document.getElementById('headerStatusButton')
-        if (ev.type === "htmx:sseError") {
+        if (!btn) {
+		        // no button. still loading?
+        } else if (ev.type === "htmx:sseError") {
             btn.style.borderColor = "red"
             btn.title = "connection is lost"
             btn.children[0].icon = "mdi:link-off"
@@ -44,7 +46,7 @@ FIXME: The intent was to trigger a manual reload with click event, however,
             btn.children[0].icon = "mdi:link"
         }
         // TODO: trigger a toast on connect/disconnect
-		    // note that an error is sent on each reconnect failure
+        // note that an error is sent on each reconnect failure
     }
 </script>
 

@@ -51,6 +51,23 @@ export async function  connectSSE(
                 rejectUnauthorized: false
             }
         };
+        // let eventSourceInit = {
+        //     fetch: (input, init) =>
+        //         fetch(input, {
+        //             ...init,
+        //             headers: {
+        //                 ...init.headers,
+        //                 authorization: 'bearer ' + authToken,
+        //                 origin: baseURL,
+        //                 "path": ssePath,
+        //                 "content-Type": "application/json",
+        //                 "cid": cid // this header must match the ConnectionIDHeader field name on the server
+        //             },
+        //             https: {
+        //                 rejectUnauthorized: false
+        //             }
+        //         }),
+        // }
 
         let sseURL = baseURL + ssePath
         const source = new EventSource(sseURL, eventSourceInitDict)
