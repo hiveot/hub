@@ -35,13 +35,18 @@ type RuntimeConfig struct {
 
 	// Runtime logging
 	LogLevel string `yaml:"logLevel,omitempty"` // default: warn
-	LogFile  string `yaml:"logFile,omitempty"`  // default: no logfile
+	//LogFile  string `yaml:"logFile,omitempty"`  // default: no logfile
 
 	// RequestLog with logging of request and response messages
 	// file is <requests>-<yyyy-mm-dd>.log
-	RequestLog       string `yaml:"requestLog,omitempty"` // default: no log file
-	RequestLogStdout bool   `yaml:"requestLogStdout"`     // fork to stdout
-	RequestLogJson   bool   `yaml:"requestLogJson"`       // log output in json format
+	RequestLog string `yaml:"requestLog,omitempty"` // default: no log file
+	// NotifLog filename for logging of notification messages
+	NotifLog string `yaml:"notifLog,omitempty"`
+	// RuntimeLog filename for other runtime messages
+	RuntimeLog string `yaml:"runtimeLog,omitempty"`
+
+	//RequestLogStdout bool   `yaml:"requestLogStdout"`     // fork to stdout
+	LogfileInJson bool `yaml:"logfileInJson"` // logfile in json format
 
 	// Runtime data directory for storage of digital twins
 	DataDir string `yaml:"dataDir,omitempty"` // default is server default
@@ -286,13 +291,13 @@ func (cfg *RuntimeConfig) Setup(env *plugin.AppEnvironment) error {
 // The CA and Server certificate and keys must be set after creation.
 func NewRuntimeConfig() *RuntimeConfig {
 	cfg := &RuntimeConfig{
-		Authn:            config.NewAuthnConfig(),
-		Authz:            authz.NewAuthzConfig(),
-		ProtocolConfig:   servers.NewProtocolsConfig(),
-		LogLevel:         "info", // error, warning, info, debug
-		LogFile:          "",     // no logfile
-		RequestLog:       "",     // no request logfile
-		RequestLogStdout: true,
+		Authn:          config.NewAuthnConfig(),
+		Authz:          authz.NewAuthzConfig(),
+		ProtocolConfig: servers.NewProtocolsConfig(),
+		LogLevel:       "info", // error, warning, info, debug
+		NotifLog:       "",     // no logfile
+		RequestLog:     "",     // no request logfile
+		RuntimeLog:     "",     // no logfile
 
 		CaCertFile:     certs.DefaultCaCertFile,
 		CaKeyFile:      certs.DefaultCaKeyFile,

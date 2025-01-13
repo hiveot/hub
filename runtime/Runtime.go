@@ -5,6 +5,7 @@ import (
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/digitwin"
+	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/runtime/authn/service"
 	service2 "github.com/hiveot/hub/runtime/authz/service"
@@ -14,8 +15,6 @@ import (
 	"github.com/hiveot/hub/transports/servers"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/lmittmann/tint"
-	"io"
 	"log/slog"
 	"os"
 	"path"
@@ -37,7 +36,16 @@ type Runtime struct {
 	TransportsMgr  *servers.TransportManager
 
 	// logging of request and response messages
-	RequestLogger *slog.Logger
+	requestLogger  *slog.Logger
+	requestLogFile *os.File
+
+	// logging of notification messages
+	notifLogger  *slog.Logger
+	notifLogFile *os.File
+
+	// logging of all other runtime messages
+	runtimeLogger  *slog.Logger
+	runtimeLogFile *os.File
 }
 
 // GetForm returns the form for an operation using a transport protocol binding
@@ -75,28 +83,10 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 		return err
 	}
 
-	// setup request logging
-	if r.cfg.RequestLog != "" {
-		var logWriter io.Writer
-		logfileName := path.Join(env.LogsDir, r.cfg.RequestLog)
-		logWriter, err2 := os.OpenFile(logfileName, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
-		if r.cfg.RequestLogStdout {
-			// log stdout to stdout and to file
-			logWriter = io.MultiWriter(os.Stdout, logWriter)
-			slog.Info("attaching stdout using multiwriter")
-		}
-		if err2 == nil {
-			if r.cfg.RequestLogJson {
-				logHandler := slog.NewJSONHandler(logWriter, nil)
-				r.RequestLogger = slog.New(logHandler)
-			} else {
-				logHandler := tint.NewHandler(logWriter, &tint.Options{
-					AddSource: true, Level: slog.LevelInfo, TimeFormat: "Jan _2 15:04:05.0000"},
-				)
-				r.RequestLogger = slog.New(logHandler)
-			}
-
-		}
+	// setup logging sinks
+	if r.cfg.RuntimeLog != "" {
+		runtimeLogfileName := path.Join(env.LogsDir, r.cfg.RuntimeLog)
+		logging.SetLogging(env.LogLevel, runtimeLogfileName)
 	}
 
 	// startup
@@ -137,8 +127,18 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 		r.AuthzAgent.HandleAction,
 		r.AuthzAgent.HasPermission,
 		r.CM)
-	if r.RequestLogger != nil {
-		r.DigitwinRouter.SetRequestLogger(r.RequestLogger)
+
+	if r.cfg.RequestLog != "" {
+		requestLogfileName := path.Join(env.LogsDir, r.cfg.RequestLog)
+		r.requestLogger, r.requestLogFile = logging.NewFileLogger(
+			requestLogfileName, r.cfg.LogfileInJson)
+		r.DigitwinRouter.SetRequestLogger(r.requestLogger)
+	}
+	if r.cfg.NotifLog != "" {
+		notifLogfileName := path.Join(env.LogsDir, r.cfg.NotifLog)
+		r.notifLogger, r.notifLogFile = logging.NewFileLogger(
+			notifLogfileName, r.cfg.LogfileInJson)
+		r.DigitwinRouter.SetNotifLogger(r.notifLogger)
 	}
 
 	// the protocol manager receives messages from clients (source) and
@@ -204,6 +204,18 @@ func (r *Runtime) Stop() {
 	if nrConnections > 0 {
 		slog.Warn(fmt.Sprintf(
 			"HiveOT Hub Runtime stopped. Force closed %d connections", nrConnections))
+	}
+	if r.notifLogFile != nil {
+		r.notifLogFile.Close()
+		r.notifLogFile = nil
+	}
+	if r.requestLogFile != nil {
+		r.requestLogFile.Close()
+		r.requestLogFile = nil
+	}
+	if r.runtimeLogFile != nil {
+		r.runtimeLogFile.Close()
+		r.runtimeLogFile = nil
 	}
 }
 

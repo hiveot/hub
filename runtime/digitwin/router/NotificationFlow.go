@@ -24,7 +24,7 @@ func (svc *DigitwinRouter) HandleNotification(notif transports.NotificationMessa
 		notif.Created = time.Now().Format(wot.RFC3339Milli)
 	}
 
-	slog.Info("HandleNotification",
+	svc.notifLogger.Info("* NOTIF:",
 		slog.String("operation", notif.Operation),
 		slog.String("thingID", notif.ThingID),
 		slog.String("name", notif.Name),

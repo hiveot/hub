@@ -43,8 +43,15 @@ type DigitwinRouter struct {
 
 	// logging of requests and response
 	requestLogger *slog.Logger
+	// logging of notifications
+	notifLogger *slog.Logger
 }
 
+func (r *DigitwinRouter) SetNotifLogger(logger *slog.Logger) {
+	r.mux.Lock()
+	defer r.mux.Unlock()
+	r.notifLogger = logger
+}
 func (r *DigitwinRouter) SetRequestLogger(logger *slog.Logger) {
 	r.mux.Lock()
 	defer r.mux.Unlock()
