@@ -89,9 +89,9 @@ func (it *IsyThing) GetPropValues(onlyChanges bool) map[string]any {
 	return propValues
 }
 
-// GetValue returns the default 'value' property
-//func (it *IsyThing) GetValue() (string, bool) {
-//	return it.propValues.GetValue(vocab.PropDeviceValue)
+// GetOutputValue returns the default 'value' property
+//func (it *IsyThing) GetOutputValue() (string, bool) {
+//	return it.propValues.GetOutputValue(vocab.PropDeviceValue)
 //}
 
 // HandleActionRequest invokes the action handler of the specialized thing

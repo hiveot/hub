@@ -8,7 +8,8 @@ export interface VidAffordance {
     // @type of the property, event or action, "" if not known
     atType: string,
     // attr is read-only property; config is writable property
-    messageType: "action" | "event" | "attr" | "config" | undefined
+    messageType: "action" | "event" | "attr" | "config" | "sensor" | "actuator" | undefined
+
 }
 
 // Override map of zwavejs VID to HiveOT action, event, config or attributes.
@@ -24,36 +25,38 @@ const overrideMap: Map<string, Partial<VidAffordance> | undefined> = new Map([
     ["32-restorePrevious", {}],
 
     // Binary Switch 0x25 (37) is an actuator
-    ["37-currentValue", {atType: vocab.PropSwitch, messageType: "event"}],
-    ["37-targetValue", {atType: vocab.ActionSwitch, messageType: "action"}],
+    ["37-currentValue", {atType: vocab.PropSwitch, messageType: "sensor"} ],
+    ["37-targetValue", {atType: vocab.ActionSwitch, messageType: "actuator"}],
 
     // Multilevel Switch (38) is an actuator
 
     // Binary Sensor (48)
-    ["48-Any", {atType: vocab.PropAlarmStatus, messageType: "event"}],
+    ["48-Any", {atType: vocab.PropAlarmStatus, messageType: "sensor"}],
 
     // Meter - electrical
-    ["50-value-65537", {atType: vocab.PropElectricEnergy, messageType: "event"}],
-    ["50-value-66049", {atType: vocab.PropElectricPower, messageType: "event"}],
-    ["50-value-66561", {atType: vocab.PropElectricVoltage, messageType: "event"}],
-    ["50-value-66817", {atType: vocab.PropElectricCurrent, messageType: "event"}],
+    ["50-value-65537", {atType: vocab.PropElectricEnergy, messageType: "sensor"}],
+    ["50-value-66049", {atType: vocab.PropElectricPower, messageType: "sensor"}],
+    ["50-value-66561", {atType: vocab.PropElectricVoltage, messageType: "sensor"}],
+    ["50-value-66817", {atType: vocab.PropElectricCurrent, messageType: "sensor"}],
     ["50-reset", {messageType: "config"}], // for managers, not operators
 
     // Notification
-    ["113-Home Security-Motion sensor status", {atType: vocab.PropAlarmMotion, messageType: "event"}],
+    ["113-Home Security-Motion sensor status", {atType: vocab.PropAlarmMotion, messageType: "sensor"}],
 ]);
 
 
 // Default rules to determine whether the vid is an attr, config, event, action or
 // to be ignored.
 // This returns:
-//  action: the vid is writable and not readable
-//  event: the vid is a readonly command CC ?
-//  attr: the vid is read-only, not an event, and has a value or default
-//  config: the vid is writable, not an action, and has a value or default
+//  actuator: the vid is writable and has a value or default
+//  action: the vid is writable, not an actuator, and not readable
+//  event: the vid is a readonly command CC and not state
+//  sensor: the vid is read-only, has a value or default, and is device state
+//  attr: the vid is read-only, not an event or sensor, and has a value or default
+//  config: the vid is writable, not an actuator, and has a value or default
 //  undefined if the vid CC is deprecated or the vid is to be ignored
 function defaultVidAffordance(node: ZWaveNode, vid: ValueID, maxNrScenes: number):
-       "action" | "event" | "config" | "attr" | undefined {
+       "action" | "event" | "config" | "attr" | "sensor"|"actuator"| undefined {
 
     let vidMeta = node.getValueMetadata(vid)
 
@@ -83,10 +86,10 @@ function defaultVidAffordance(node: ZWaveNode, vid: ValueID, maxNrScenes: number
         case CommandClasses["Multilevel Switch"]:
         case CommandClasses["Simple AV Control"]:
         case CommandClasses["Window Covering"]: {
-            return vidMeta.writeable ? "action" : "event";
+            return vidMeta.writeable ? "actuator" : "sensor";
         }
 
-        //-- CC's for data reporting devices
+        //-- CC's for data reporting devices (sensor)
         case CommandClasses["Authentication"]:
         case CommandClasses["Binary Sensor"]:
         case CommandClasses["Central Scene"]:
@@ -101,7 +104,7 @@ function defaultVidAffordance(node: ZWaveNode, vid: ValueID, maxNrScenes: number
         case CommandClasses["Sound Switch"]:
         case CommandClasses["Thermostat Fan State"]:
         case CommandClasses["Thermostat Operating State"]: {
-            return "event"
+            return "sensor"
         }
 
         //--- CC's for configuration or attributes

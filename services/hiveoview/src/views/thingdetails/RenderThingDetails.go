@@ -96,7 +96,7 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 	thingData.CT = ct
 
 	// split properties into attributes and configuration and update the names list
-	tdi := thingData.CT.GetThingDescription()
+	tdi := thingData.CT.GetTD()
 	thingData.TD = tdi
 	for k, prop := range tdi.Properties {
 		if prop.ReadOnly {
@@ -146,14 +146,14 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 	// TODO: this is a bit of a pain to do. Is this a common problem?
 	makeID, _ := tdi.GetPropertyOfVocabType(vocab.PropDeviceMake)
 	if makeID != "" {
-		makeValue := ct.GetPropValue(makeID)
+		makeValue := ct.GetPropOutput(makeID)
 		if makeValue.Value.Text() != "" {
 			thingData.MakeModel = makeValue.Value.Text() + ", "
 		}
 	}
 	modelID, _ := tdi.GetPropertyOfVocabType(vocab.PropDeviceModel)
 	if modelID != "" {
-		modelValue := ct.GetPropValue(modelID)
+		modelValue := ct.GetPropOutput(modelID)
 		if modelValue.Value.Text() != "" {
 			thingData.MakeModel = thingData.MakeModel + modelValue.Value.Text()
 		}

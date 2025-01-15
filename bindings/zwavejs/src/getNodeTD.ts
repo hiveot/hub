@@ -29,6 +29,7 @@ import {
 
 
 // Add the ZWave value data to the TD as an action
+// Actions in this binding have the same output schema as input schema
 function addAction(td: TD, node: ZWaveNode, vid: TranslatedValueID, name: string, va: VidAffordance): ActionAffordance {
     // let vidMeta = node.getValueMetadata(vid)
 
@@ -44,6 +45,9 @@ function addAction(td: TD, node: ZWaveNode, vid: TranslatedValueID, name: string
         action.input.title = undefined
         action.input.description = undefined
         action.input.readOnly = false
+        // all actions have the same output schema as the input schema
+        action.output = action.input
+        action.output.readOnly = true
     }
     return action
 }
@@ -54,6 +58,8 @@ function addAttribute(td: TD, node: ZWaveNode, vid: TranslatedValueID, name: str
     let prop = td.AddProperty(name, va?.atType, WoTDataTypeNone, "")
     // SetDataSchema also sets the title and data type
     SetDataSchema(prop, node, vid)
+    prop.isActuator  = (va.messageType == "actuator")
+    prop.isSensor  = (va.messageType == "sensor")
     return prop
 }
 
@@ -63,9 +69,7 @@ function addConfig(td: TD, node: ZWaveNode, vid: TranslatedValueID, name: string
     prop.readOnly = false
     // SetDataSchema also sets the title and data type
     SetDataSchema(prop, node, vid)
-
     return prop
-
 }
 
 // Add the ZWave VID to the TD as an event
@@ -309,6 +313,12 @@ export function getNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | unde
             case "attr":
                 addAttribute(td, node, vid, tdPropName, va)
                 break;
+            case "sensor":
+                addAttribute(td, node, vid, tdPropName, va)
+                break;
+            case "actuator":
+                addAttribute(td, node, vid, tdPropName, va)
+                break;
             default:
             // ignore this vid
         }
@@ -457,13 +467,3 @@ function SetDataSchema(ds: DataSchema | undefined, node: ZWaveNode, vid: Transla
         ds.description += "; ccSpecific=" + JSON.stringify(vidMeta.ccSpecific)
     }
 }
-
-//
-// // Split the deviceID into homeID and nodeID
-// export function splitDeviceID(deviceID: string): [string, number | undefined] {
-//     let parts = deviceID.split(".")
-//     if (parts.length == 2) {
-//         return [parts[0], parseInt(parts[1])]
-//     }
-//     return ["", undefined]
-// }

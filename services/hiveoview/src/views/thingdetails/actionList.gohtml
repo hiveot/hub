@@ -8,15 +8,17 @@
 		<div class="h-show-sm" title="changes device state">Stateful</div>
 		<div>Input</div>
 		<div class="h-show-md">Description</div>
-		<div class="h-show-xl">Last Action</div>
-		<div class="h-show-xl">Status</div>
+		<div class="h-show-xl">Last Status</div>
+		<div class="h-show-xl">Output</div>
 		<div class="h-show-xl">Requested</div>
 		<div class="h-show-xl">By</div>
 	</li>
 
     {{range $name := .ActionNames }}
         {{$aff := $.TD.GetAction $name}}
-        {{$actionStatus := $.CT.GetActionStatus $name}}
+        {{$actionStatus := $.CT.QueryAction $name}}
+        {{$actionInput := $.CT.GetActionInput $actionStatus}}
+        {{$actionOutput := $.CT.GetActionOutput $actionStatus}}
 				<li>
 
          {{/* Action Name*/}}
@@ -43,16 +45,18 @@
 
 					<div class="h-show-md">{{$aff.Description}}</div>
 
-{{/*					Limit previous input to 30 chars*/}}
-
-					<div class="h-show-xl">{{substr $actionStatus.Input 30}}</div>
-
+					{{/*Previous action*/}}
 					<div class="h-show-xl">{{$actionStatus.Status}}</div>
+
+					<div class="h-show-xl">
+						{{if and $actionOutput $actionOutput.Schema}}
+								{{template "RenderOutputValue.gohtml" $actionOutput }}
+						{{end}}
+					</div>
 
 					<div class="h-show-xl">{{datetime $actionStatus.TimeRequested "WT"}}</div>
 
 					<div class="h-show-xl">{{$actionStatus.SenderID}}</div>
-
 				</li>
     {{end}}
     {{if not .TD.Actions}}

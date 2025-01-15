@@ -21,7 +21,7 @@ type InteractionInput struct {
 
 // NewInteractionInput creates a new interaction input for property or action
 //
-//	td Thing Description document with schemas for the value. Use nil if schema is unknown.
+//	tdi Thing Description instance with schemas for the value. Use nil if schema is unknown.
 //	name of the input property or action
 func NewInteractionInput(td *td.TD, name string, defaultValue any) *InteractionInput {
 	ii := &InteractionInput{

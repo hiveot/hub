@@ -162,7 +162,7 @@ export function  handleRequest(
                         let newValue = getVidValue(node, propVid)
                         resp = req.createResponse(newValue)
                         resp.status = progress
-                        hc.sendResponse(newValue)
+                        hc.sendResponse(resp)
                         zwapi.onValueUpdate(node, propVid, newValue)
                     })
                     .catch(err => {

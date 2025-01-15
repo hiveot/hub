@@ -336,12 +336,13 @@ export class ZWAPI {
             // this.onNodeUpdate(node)
             // let newValue = node.getValue(args)
             let newValue = getVidValue(node,args)
-            this.onValueUpdate(node, args, newValue)
             log.info(`Node ${node.id} value metadata updated`,
                 "property=", args.property,
                 "propertyKeyName=", args.propertyKeyName,
                 "newValue=", newValue,
             );
+            // FIXME: this causes duplicate events
+            // this.onValueUpdate(node, args, newValue)
         });
 
         node.on("notification", (endpoint: Endpoint, cc: CommandClasses, args) => {

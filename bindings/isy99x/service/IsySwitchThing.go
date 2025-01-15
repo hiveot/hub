@@ -42,7 +42,7 @@ func (it *IsySwitchThing) HandleActionRequest(req transports.RequestMessage) tra
 		}
 		//} else if req.Name == vocab.ActionSwitchToggle {
 		//	newValue = "DOF"
-		//	oldValue, found := it.propValues.GetValue(req.Name)
+		//	oldValue, found := it.propValues.GetOutputValue(req.Name)
 		//	if !found || oldValue == "DOF" {
 		//		newValue = "DON"
 		//	}

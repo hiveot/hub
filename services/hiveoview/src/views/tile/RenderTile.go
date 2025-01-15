@@ -48,18 +48,13 @@ func (dt RenderTileTemplateData) GetHistory(thingID string, name string) *histor
 	return hsd
 }
 
-// GetValue return the latest value of a tile source or n/a if not found
+// GetOutputValue return the latest event, property or action output value of a
+// tile source, or n/a if not found
 //
-//  1. If name is an event then use the latest event value. (read-only)
-//  2. If name is not an event but a property then use the property value. (read/write)
-//  3. If name is an action with an input schema then use this schema with the event/prop value
-//     what if the event/prop value type differs from action input type?
-func (d RenderTileTemplateData) GetValue(thingID string, name string) (iout *consumedthing.InteractionOutput) {
-	var rawValue any
-	var updated string
+// Tiles also support inputs (actions or property)
+func (d RenderTileTemplateData) GetOutputValue(thingID string, name string) (iout *consumedthing.InteractionOutput) {
 	ct, _ := d.cts.Consume(thingID)
 	if ct == nil {
-		// FIXME: is this a property, event or action value?
 		// Thing not found. return a dummy interaction output with a non-schema
 		tdi := td.NewTD(thingID, "unknown", vocab.ThingDevice)
 		dummy := consumedthing.NewInteractionOutput(
@@ -67,34 +62,26 @@ func (d RenderTileTemplateData) GetValue(thingID string, name string) (iout *con
 		dummy.Value = consumedthing.NewDataSchemaValue("n/a")
 		return dummy
 	}
-	tdi := ct.GetThingDescription()
+	tdi := ct.GetTD()
 	// assume this is an event
-	iout = ct.ReadEvent(name)
+	iout = ct.GetEventOutput(name)
 	if iout == nil {
 		// if not an event get its property. properties might not update immediately
 		// so events are preferred.
-		iout = ct.ReadProperty(name)
+		iout = ct.GetPropOutput(name)
 	}
-	// something went wrong but don't crash
+	// not an event or property, last try is an action output
 	if iout == nil {
-		iout = consumedthing.NewInteractionOutput(tdi, consumedthing.AffordanceTypeEvent, name, "n/a", "")
-	}
-	// obtain the value to display from either event or property
-	if iout != nil {
-		rawValue = iout.Value.Raw
-		updated = iout.Updated
-	}
-
-	// if name is also an action with an input schema, then get this schema with the event/prop value
-	actionAff := tdi.GetAction(name)
-	if actionAff != nil && actionAff.Input != nil {
-		if iout != nil && iout.Schema.Type != actionAff.Input.Type {
-			// FIXME: rawValue must be of the same type as the action input otherwise
-			//  it might not display correctly. Lets just roll with this for now
-			//  until a recovery solution is known.
+		aff := tdi.GetAction(name)
+		if aff != nil {
+			stat := ct.QueryAction(name)
+			iout = consumedthing.NewInteractionOutput(
+				ct.GetTD(), consumedthing.AffordanceTypeAction, name, stat.Output, stat.TimeUpdated)
 		}
-		iout = consumedthing.NewInteractionOutput(
-			tdi, consumedthing.AffordanceTypeAction, name, rawValue, updated)
+	}
+	if iout == nil {
+		iout = consumedthing.NewInteractionOutput(tdi, "", name,
+			"no output value", "")
 	}
 	return iout
 }

@@ -71,9 +71,11 @@
             </button>
 {{/*            FIXME: disable submit if input type is not supported*/}}
             <button type="submit"
-                    {{if and .Action.Input not .Action.Input.IsNative}}
-                        disabled
-                        title="input format not supported"
+                    {{if .Action.Input}}
+                        {{if not .Action.Input.IsNative}}
+                            disabled
+                            title="input format not supported"
+                        {{end}}
                     {{end}}
                     hx-post="{{.SubmitActionRequestPath}}"
                     hx-include="#action-input-form"

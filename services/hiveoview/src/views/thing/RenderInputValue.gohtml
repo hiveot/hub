@@ -10,7 +10,8 @@
 {{$minmax := ""}}
 {{$iv := .Value.Text}}
 
-{{if .Schema.Enum }}
+{{if not .Schema}}
+{{else if .Schema.Enum }}
     {{/*	=== Enum Selection Input ===*/}}
     {{/* add a select with list of options for the .DataSchema.Enum values */}}
 		<select id="input-{{.Name}}" name="{{.Name}}" autofocus>

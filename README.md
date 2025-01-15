@@ -168,9 +168,12 @@ A typical service or protocol binding publishes its configuration options with i
 
 ### CA certificate
 
-Before starting the hub, a CA certificate must be created. By default, the runtime generates a self-signed CA certificate if none is found. It is possible to use a CA certificate from a 3rd party source, but this isn't needed when used on the local network.
+By default, the hub runtime generates a self-signed CA certificate and server certificate if none is found.
+
+To use an externally generated CA certificate, install it into hiveot/certs/caCert.pem and caKey.pem and restart the launcher/runtime.
 
 The CLI can be used to view the currently used CA and server certificate:
+
 ```sh
 cd ~/bin/hiveot        # when installed locally
 bin/hubcli vca    
@@ -182,6 +185,19 @@ To force generating a new self-signed CA certificate using the CLI:
 cd ~/bin/hiveot        # when installed locally
 bin/hubcli cca --force
 ```
+
+A self-signed CA should be imported in the browser to avoid an error when opening the UI.
+
+### Server certificate
+
+On first use the runtime generates a self-signed server certificate from the CA and installs it in hiveot/certs/hubCert.pem and hiveot/certs/hubKey.pem. This certificate is used with the runtime protocol servers and the hiveoview UI server.
+
+To use a 3rd party server certificate, replace the hubCert.pem and hubKey.pem and restart the runtime. Also replace caCert.pem with the one used to create the server certificate. 
+
+This is shared with Things during provisioning and used by services to secure the server connection.  
+
+Note that use of letsEncrypt is planned for the future which will automate this. This does require an internet connect to work though.
+
 
 ### Systemd Configuration
 

@@ -98,7 +98,7 @@ func NewHistoryTemplateData(
 	ct *consumedthing.ConsumedThing, name string, timestamp time.Time, duration time.Duration) (
 	data *HistoryTemplateData, err error) {
 
-	td := ct.GetThingDescription()
+	td := ct.GetTD()
 	hs := HistoryTemplateData{
 		TD:           td,
 		ThingID:      td.ID,

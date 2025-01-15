@@ -100,9 +100,10 @@ type IConsumerConnection interface {
 	// This replaces any previously set handler.
 	SetNotificationHandler(cb NotificationHandler)
 
-	// SetResponseHandler [consumer] sets the callback for receiving unhandled responses
-	// to requests. If a request is sent with 'sync' set to true then SendRequest
-	// will handle the response instead.
+	// SetResponseHandler [consumer] sets the callback for receiving unhandled
+	// asynchronous responses to requests.
+	// If a request is sent with 'sync' set to true then SendRequest will handle
+	// the response instead.
 	//
 	// This replaces any previously set handler.
 	SetResponseHandler(cb ResponseHandler)

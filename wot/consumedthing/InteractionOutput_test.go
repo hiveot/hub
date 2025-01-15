@@ -18,7 +18,7 @@ func TestNilSchema(t *testing.T) {
 	data1 := "text"
 
 	notif := &transports.NotificationMessage{Name: key1ID, Data: data1}
-	io := NewInteractionOutputFromMessage(notif, nil)
+	io := NewInteractionOutputFromNotification(notif, nil)
 
 	asValue := io.Value.Text()
 	assert.Equal(t, data1, asValue)
@@ -28,7 +28,7 @@ func TestNilSchema(t *testing.T) {
 func TestArray(t *testing.T) {
 	data1 := []string{"item 1", "item 2"}
 	tv := &transports.NotificationMessage{Name: key1ID, Data: data1}
-	io := NewInteractionOutputFromMessage(tv, nil)
+	io := NewInteractionOutputFromNotification(tv, nil)
 	asArray := io.Value.Array()
 	assert.Len(t, asArray, 2)
 }
@@ -36,7 +36,7 @@ func TestArray(t *testing.T) {
 func TestBool(t *testing.T) {
 	data1 := true
 	tv := &transports.NotificationMessage{Name: key1ID, Data: data1}
-	io := NewInteractionOutputFromMessage(tv, nil)
+	io := NewInteractionOutputFromNotification(tv, nil)
 	asBool := io.Value.Boolean()
 	assert.Equal(t, true, asBool)
 	asString := io.Value.Text()
@@ -48,7 +48,7 @@ func TestBool(t *testing.T) {
 func TestInt(t *testing.T) {
 	data1 := 42
 	tv := &transports.NotificationMessage{Name: key1ID, Data: data1}
-	io := NewInteractionOutputFromMessage(tv, nil)
+	io := NewInteractionOutputFromNotification(tv, nil)
 	asInt := io.Value.Integer()
 	assert.Equal(t, 42, asInt)
 	asString := io.Value.Text()
@@ -58,7 +58,7 @@ func TestInt(t *testing.T) {
 func TestString(t *testing.T) {
 	data1 := "Hello world"
 	tv := &transports.NotificationMessage{Name: key1ID, Data: data1}
-	io := NewInteractionOutputFromMessage(tv, nil)
+	io := NewInteractionOutputFromNotification(tv, nil)
 	asString := io.Value.Text()
 	assert.Equal(t, data1, asString)
 }
@@ -73,7 +73,7 @@ func TestObject(t *testing.T) {
 	}
 	data1 := User{Name: "Bob", Age: 10, Active: true, LastLoginAt: "today"}
 	tv := &transports.NotificationMessage{Name: key1ID, Data: data1}
-	io := NewInteractionOutputFromMessage(tv, nil)
+	io := NewInteractionOutputFromNotification(tv, nil)
 	asMap := io.Value.Map()
 	assert.Equal(t, data1.Name, asMap["Name"])
 }

@@ -29,8 +29,14 @@
 > Use-case 1: send an event if one or more properties change.
 * option1: send an event with the property value
 > Use-case 2: send an event if an action has completed to notify other consumers.
-* Current solution: property and actions keys refer to the same Thing state. When an action completes, a property with the same name updates with the action result. Note that the property value can have a different dataschema as the action result.
-* Answer: Officially, there is no intentional relationship between properties,actions and events. There is however a discussion to use properties to reflect state resulting from actions.
+* Current solution: property and actions keys refer to the same Thing state. When an action completes, a property with the same name updates with the action result. Note that the property value can have a different dataschema as the action result. This is NOT WoT.
+* Answer: Officially, there is no relationship between properties, actions and events. There is however a discussion to use properties to reflect state resulting from actions.
+* Conclusion: Anything stateful is best represented with properties if possible. 
+  * Don't use actions if it can be a property. 
+  * Use action if there is no input (a property would have input)
+  * Use action if the input is complex (multiple parameters)
+  * Use action if the action is 'safe' (Thing state is not affected - the output is thus only of interest to the consumer invoking the action)
+  * This leads to another problem, differentiating between primary and secondary properties. (see below) 
 
 7. How best to request reading the 'latest' value of an event? [Answered]
 * Answer: the Thing level form can include an operation 'readevent' and 'readallevents'. This is not standard WoT. Alternatively this can be defined as actions of the digital twin service TD.
@@ -43,10 +49,8 @@
   The code generator creates the type and constants in the scope of the agent defining the thing.
 
 9. Would it be out of scope to use a TD to define a RPC service API? [Non-WoT Workaround]
- * The idea for hiveot is to define the directory, value storage, history storage, authentication and other services using a TD and generate the API with documentation from it.  
- * Answer: In HiveOT all services are defined through a TDD and tdd2go will generate golang code for it. Services calls behave exactly as any other action. However, linking async results to their request is not defined in WoT. 
-   * HiveOT implements an 'action progress' message type to asynchrously send completion or failure of actions. This use-case is not supported in WoT.
-   
+ * Hiveot provides services for the directory, value storage, history storage, authentication and others using a TD, and generates the API with documentation from it (experimental).  
+ * Answer: In HiveOT all services are defined through a TDD and tdd2go will generate golang code for it. Service calls behave exactly as any other 'safe' action. It is up to the protocol binding to link responses to the requests.   
   
 10. 5.3.3.1 SecurityScheme  [Ambiguous]
 > The forth paragraph: "Security schemes generally may require additional authentication parameters, such as a password or key. The location of this information is indicated by the value associated with the name in, often in combination with the value associated with name."
@@ -92,8 +96,9 @@ Answer: encoding is handled in the transport protocol. The forms in the TD conta
 
 17. How to include metadata (thingID, name, clientID) in SSE messages? [Non-WoT workaround]
 * use-case: agent receives an action for a Thing via its SSE connection (agents connect to the Hub). The SSE data is the input data as per TDD, but how to convey the thingID, action name and correlationID?
-* Workaround 1: Encapsulate the message in an evelope and use the additionalResponses field in a Form to define the envelope schema. However this has to be repeated for every single action/property/event which is *very* wordy.
-* Workaround 2: Push this to the transport protocol. In case of SSE use the ID field: {thingID}/{name}/{correlationID}. However, how can this be described in a Form? (chosen workaround)
+* Workaround 1: Encapsulate the message in an envelope and use the additionalResponses field in a Form to define the envelope schema. However this has to be repeated for every single action/property/event which is *very* wordy.
+* Workaround 2: Push this to the transport protocol. In case of SSE use the ID field: {thingID}/{name}/{correlationID}. (chosen workaround)
+  * Problem: how can this be described in a Form? it can't.
 
 18. How to describe a map of objects in the action output dataschema? [Workaround]
 * Workaround: don't use maps, use arrays.
@@ -101,15 +106,15 @@ Answer: encoding is handled in the transport protocol. The forms in the TD conta
 19. How to describe basic vs advanced properties, events and actions in the TD? [Ambiguous, unsolved]
 Use case: human consumers might be interested in some properties, events or actions but not all of them. The human consumer should be able to just look at the essential data without being overwhelmed with more advanced ones. Some zwave devices have close to 100 properties of which only a handful are useful to the regular consumer. How to differentiate them?
     * Note: also check out https://webthings.io/schemas/
-    * option1: use the ht vocabulary to indicate basic properties. This is not compatible with anything.
-    * option2: add to the @context. Yeah ... in reality still not compatible with anything.
+    * option1: use the hiveot vocabulary to indicate basic properties using @type and the hiveot @context vocabulary. 'sensor', 'actuator' 
+    * option2: add a custom field 'isSensor' and 'isActuator' to property affordance to differentiate configuration from sensor/actuator type properties
     * option3: start an initiative to combine all existing ontologies into a single world wide accepted ontology, vocabulary and classification of the majority of IoT devices with their properties, events and actions. Great idea, ... but erm, this looks like a lot of work, unless you enjoy herding cats as a hobby.
     * Option4: push the problem to the client. Maybe use @type to identify which properties are considered important. This requires standardization of property @type which doesn't exist. 
 
 20. Can authorization rules (eg required roles) be applied to a TD? [not supported] 
-Use case: Only show allowed actions to a user based on their authorization. 
+Use case: Only show allowed actions and properties to a user based on their authorization. 
 * This is not supported in WoT TD
-* Option 1: Take a 'capabilities' approach. Split services in groups with each group allowing a role to use. For example, admin vs consumer roles. Each group is defined as a service Thing. The TD can include a custom field indicating which role a Thing allows.
+* Option 1: Take a 'capabilities' approach. Split services in groups with each group allowing a role to use. For example, admin vs consumer roles. Each group is defined as a service with its own TD. The TD can include a custom field indicating which role a Thing allows.
 * Option 2: The service programmatically tells the authz service which roles can use a Thing it publishes. An admin can potentially override this in the authz service.
 * Option 3: Add custom 'allow' and 'deny' fields to each action that lists which roles are allowed/denied invoking an action.
 

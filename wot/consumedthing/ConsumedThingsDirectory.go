@@ -28,8 +28,8 @@ type ConsumedThingsDirectory struct {
 	// unhandled responses to notify with popup
 	responseHandler func(msg *transports.ResponseMessage)
 	// additional handler of notifications
-	eventHandler func(msg *transports.NotificationMessage)
-	mux          sync.RWMutex
+	notificationHandler func(msg *transports.NotificationMessage)
+	mux                 sync.RWMutex
 }
 
 // Consume creates a ConsumedThing instance for reading and operating a Thing.
@@ -56,6 +56,7 @@ func (cts *ConsumedThingsDirectory) Consume(thingID string) (ct *ConsumedThing, 
 		ct = NewConsumedThing(td, cts.cc)
 		ct.ReadAllEvents()
 		ct.ReadAllProperties()
+		ct.ReadAllActions()
 		cts.mux.Lock()
 		cts.consumedThings[thingID] = ct
 		cts.mux.Unlock()
@@ -119,25 +120,25 @@ func (cts *ConsumedThingsDirectory) handleNotification(msg transports.Notificati
 	// update the TD of consumed things
 	// the directory service publishes TD updates as events
 	// FIXME: use the WoT discovery/directory definition instead of using a digitwin dependency
+	// alt: add a UpdateTD operation
 	if msg.Operation == wot.HTOpEvent &&
 		msg.ThingID == digitwin.DirectoryDThingID &&
 		msg.Name == digitwin.DirectoryEventThingUpdated {
 		// decode the TD
-		td := &td.TD{}
-		err := jsoniter.UnmarshalFromString(msg.ToString(0), &td)
+		tdi := &td.TD{}
+		err := jsoniter.UnmarshalFromString(msg.ToString(0), &tdi)
 		if err != nil {
 			slog.Error("invalid payload for TD event. Ignored",
 				"thingID", msg.ThingID)
 			return
 		}
-		cts.mux.Lock()
-		defer cts.mux.Unlock()
-		cts.directory[td.ID] = td
 		// update consumed thing, if existing
-		ct, found := cts.consumedThings[td.ID]
+		cts.mux.Lock()
+		cts.directory[tdi.ID] = tdi
+		ct, found := cts.consumedThings[tdi.ID]
+		cts.mux.Unlock()
 		if found {
-			// FIXME: consumed thing interaction output schemas also need updating
-			ct.OnTDUpdate(td)
+			ct.OnTDUpdate(tdi)
 		}
 	} else if msg.Operation == wot.HTOpUpdateProperty {
 		// update consumed thing, if existing
@@ -147,15 +148,7 @@ func (cts *ConsumedThingsDirectory) handleNotification(msg transports.Notificati
 		if found {
 			ct.OnPropertyUpdate(msg)
 		}
-		//} else if msg.Operation == wot.HTOpUpdateActionStatus {
-		//	// FIXME: action updates are no longer notifications
-		//	// delivery status updates refer to actions
-		//	cts.mux.RLock()
-		//	ct, found := cts.consumedThings[msg.ThingID]
-		//	cts.mux.RUnlock()
-		//	if found {
-		//		ct.OnDeliveryUpdate(msg)
-		//	}
+
 	} else {
 		// this is a regular value event
 		cts.mux.RLock()
@@ -164,16 +157,22 @@ func (cts *ConsumedThingsDirectory) handleNotification(msg transports.Notificati
 		if found {
 			ct.OnEvent(msg)
 		}
-
 	}
 	// pass it on to chained handler
-	if cts.eventHandler != nil {
-		cts.eventHandler(&msg)
+	if cts.notificationHandler != nil {
+		cts.notificationHandler(&msg)
 	}
 }
 
-// handleResponse
-func (cts *ConsumedThingsDirectory) handleResponse(msg transports.ResponseMessage) {
+// handleAsyncResponse handles async response of long running actions
+func (cts *ConsumedThingsDirectory) handleAsyncResponse(msg transports.ResponseMessage) {
+	cts.mux.RLock()
+	ct, found := cts.consumedThings[msg.ThingID]
+	cts.mux.RUnlock()
+	if found {
+		ct.OnAsyncResponse(msg)
+	}
+
 	// pass it on to chained handler
 	if cts.responseHandler != nil {
 		cts.responseHandler(&msg)
@@ -199,16 +198,16 @@ func (cts *ConsumedThingsDirectory) ReadDirectory(force bool) (map[string]*td.TD
 	newDir := make(map[string]*td.TD)
 
 	// TODO: support for reading in pages
-	// FIXME: use a WoT discovery/directory API instead of a digitwin api
+	// TODO: use a WoT discovery/directory API instead of a digitwin api
 	thingsList, err := digitwin.DirectoryReadAllTDs(cts.cc, ReadDirLimit, 0)
 	if err != nil {
 		return newDir, err
 	}
 	for _, tdJson := range thingsList {
-		td := td.TD{}
-		err = jsoniter.UnmarshalFromString(tdJson, &td)
+		tdi := td.TD{}
+		err = jsoniter.UnmarshalFromString(tdJson, &tdi)
 		if err == nil {
-			newDir[td.ID] = &td
+			newDir[tdi.ID] = &tdi
 		}
 	}
 	cts.mux.Lock()
@@ -221,18 +220,18 @@ func (cts *ConsumedThingsDirectory) ReadDirectory(force bool) (map[string]*td.TD
 // ReadTD reads a TD from the directory service and updates the directory cache.
 func (cts *ConsumedThingsDirectory) ReadTD(thingID string) (*td.TD, error) {
 	// request the TD from the Hub
-	td := &td.TD{}
+	tdi := &td.TD{}
 	tdJson, err := digitwin.DirectoryReadTD(cts.cc, thingID)
 	if err == nil {
-		err = jsoniter.UnmarshalFromString(tdJson, &td)
+		err = jsoniter.UnmarshalFromString(tdJson, &tdi)
 	}
 	if err != nil {
 		return nil, err
 	}
 	cts.mux.Lock()
 	defer cts.mux.Unlock()
-	cts.directory[thingID] = td
-	return td, err
+	cts.directory[thingID] = tdi
+	return tdi, err
 }
 
 // SetEventHandler registers a handler to receive events in addition
@@ -243,7 +242,7 @@ func (cts *ConsumedThingsDirectory) ReadTD(thingID string) (*td.TD, error) {
 func (cts *ConsumedThingsDirectory) SetEventHandler(handler func(message *transports.NotificationMessage)) {
 	cts.mux.Lock()
 	defer cts.mux.Unlock()
-	cts.eventHandler = handler
+	cts.notificationHandler = handler
 }
 
 // SetEventHandler registers a handler to receive async response
@@ -261,19 +260,19 @@ func (cts *ConsumedThingsDirectory) SetResponseHandler(handler func(message *tra
 //	tdjson is the TD document in JSON format
 func (cts *ConsumedThingsDirectory) UpdateTD(tdJSON string) *ConsumedThing {
 	// convert the TD
-	var td td.TD
-	err := jsoniter.UnmarshalFromString(tdJSON, &td)
+	var tdi td.TD
+	err := jsoniter.UnmarshalFromString(tdJSON, &tdi)
 	if err != nil {
 		return nil
 	}
 	cts.mux.Lock()
 	defer cts.mux.Unlock()
 	// Replace the TD in the consumed thing
-	ct := cts.consumedThings[td.ID]
+	ct := cts.consumedThings[tdi.ID]
 	if ct == nil {
 		return nil
 	}
-	ct.td = &td
+	ct.tdi = &tdi
 	return ct
 }
 
@@ -289,6 +288,6 @@ func NewConsumedThingsSession(hc transports.IConsumerConnection) *ConsumedThings
 	}
 	//hc.Subscribe("", "") TODO: where to subscribe?
 	hc.SetNotificationHandler(ctm.handleNotification)
-	hc.SetResponseHandler(ctm.handleResponse)
+	hc.SetResponseHandler(ctm.handleAsyncResponse)
 	return &ctm
 }

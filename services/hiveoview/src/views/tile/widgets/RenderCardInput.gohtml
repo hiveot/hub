@@ -6,29 +6,27 @@
 {{- /*gotype:github.com/hiveot/hub/wot/consumedthing.InteractionOutput*/ -}}
 
 {{if eq .Schema.Type "boolean"}}
-    {{/*	=== Boolean Input ===*/}}
+    {{/*	=== Boolean Switch Input ===*/}}
     {{/*    <h-switch name="value" off="Off" on="On" value="{{$iv}}"></h-switch>*/}}
 
 {{/*	    FIXME: somehow grid-stack catches this click and update the dashboard layout. Event when event propagation is stopped.*/}}
+		<input type="checkbox" role="switch" name="{{.Name}}"
+		      sse-swap="{{.ThingID}}/{{.Name}}"
+		      hx-on::sse-before-message="this.checked=event.detail.data == 'true'?true:false"
+		      hx-post="/action/{{.ThingID}}/{{.Name}}"
+		      hx-vals='{"switch":"doit"}'
+		      hx-params="{{.Name}}"
+		      hx-swap="none"
 
-	      <input type="checkbox" role="switch" name="{{.Name}}"
-	             sse-swap="{{.ThingID}}/{{.Name}}"
-	             hx-on::sse-before-message="this.checked=event.detail.data == 'true'?true:false"
-             hx-post="/action/{{.ThingID}}/{{.Name}}"
-             hx-vals='{"switch":"doit"}'
-             hx-params="{{.Name}}"
-             hx-swap="none"
+		    {{/* Update on change event*/}}
+		    {{if .Value.Boolean}}checked{{end}}
 
-            {{/* Update on change event*/}}
-		        {{if .Value.Boolean}}checked{{end}}
-
-						{{/* Submit when value is manually changed*/}}
-        />
+				{{/* Submit when value is manually changed*/}}
+		/>
 
 {{else}}
-
-  <input id="input-{{.Name}}" name="{{.Name}}"
-         autofocus autocomplete="off"
-         placeholder="{{.Value.Text}}" value="{{.Value.Text}}"/>
-  <small>Current value: {{.Value.Text}}</small>
+	  <input id="input-{{.Name}}" name="{{.Name}}"
+	         autofocus autocomplete="off"
+	         placeholder="{{.Value.Text}}" value="{{.Value.Text}}"/>
+	  <small style="font-size:small" >Current value: {{.Value.Text}}</small>
 {{end}}

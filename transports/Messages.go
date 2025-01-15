@@ -75,7 +75,7 @@ type NotificationMessage struct {
 	// This MUST be set by the protocol binding if not provided.
 	Created string `json:"created"`
 
-	// AgentID contains the Agent ID that published the notification
+	// SenderID contains the Agent ID that published the notification
 	// The protocol server MUST set this to the authenticated client.
 	SenderID string `json:"senderID"`
 
@@ -143,7 +143,7 @@ type RequestMessage struct {
 	// in the response.
 	// Notifications can include this to correlate with the subscription.
 	// Message streams can include this to correlate with the original request.
-	// This is optional. If omitted, no response will be sent.
+	// This is optional. If omitted, no response will be received.
 	CorrelationID string `json:"correlationID,omitempty"`
 
 	//--- fields populated by the protocol transport
@@ -153,7 +153,7 @@ type RequestMessage struct {
 	SenderID string `json:"senderID,omitempty"`
 
 	// Created holds the timestamp the request was created using RFC3339milli
-	// This MUST be set by the protocol binding if not provided.
+	// This MUST be set by the protocol server if not provided.
 	Created string `json:"created"`
 
 	// MessageID unique ID of the message. Intended to detect duplicates.
@@ -195,9 +195,8 @@ type ResponseMessage struct {
 	// The operation this is a response to. This MUST be the operation provided in the request.
 	Operation string `json:"operation"`
 
-	// CorrelationID of the message. Correlates the response with the request.
-	// This is required. If omitted, the response will be ignored.
-	CorrelationID string `json:"correlationID"`
+	// CorrelationID of the request this is a response to, if any.
+	CorrelationID string `json:"correlationID,omitempty"`
 
 	// Status of the request processing: pending, running, completed or failed.
 	// (use 'StatusPending', ... constants on top of this file)

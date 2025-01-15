@@ -150,75 +150,57 @@ Property names are not used as a classification or purpose of the property. For 
 
 Properties are defined with the so-called [property affordance](https://www.w3.org/TR/wot-thing-description11/#propertyaffordance). The property affordance defines a set of attributes used to describe the property.
 
-| Attribute   | description                                                                         |
-|-------------|-------------------------------------------------------------------------------------|
-| @type       | property type classification (see [1])                                              | 
-| type        | WoT defined data-type: string, number, integer, boolean, object, array, or null [2] |
-| title       | Short human readable label for the property.                                        |
-| description | Longer human readable description.                                                  |
-| enum        | Restricted set of values [3]                                                        |
-| oneOf       | Restricted set of values with their own dataschema [3]                              |
-| unit        | unit of the value                                                                   |
-| readOnly    | true for Thing attributes, false for configuration                                  |
-| writeOnly   | true for non-readable values like passwords.                                        |
-| default     | Default value to use if no value is provided                                        |
-| minimum     | type number/integer: Minimum range value for numbers                                |
-| maximum     | type number/integer: Maximum range value for numbers                                |
-| minLength   | type string: Minimum length of a string                                             |
-| maxLength   | type string: Maximum length of a string                                             |
-| forms       | in development [4]                                                                  |
+| Attribute    | description                                                                         |
+|--------------|-------------------------------------------------------------------------------------|
+| @type        | property type classification (see [1])                                              | 
+| type         | WoT defined data-type: string, number, integer, boolean, object, array, or null [2] |
+| title        | Short human readable label for the property.                                        |
+| description  | Longer human readable description.                                                  |
+| enum         | Restricted set of values [3]                                                        |
+| oneOf        | Restricted set of values with their own dataschema [3]                              |
+| unit         | unit of the value                                                                   |
+| readOnly     | true for Thing attributes, false for configuration                                  |
+| writeOnly    | true for non-readable values like passwords.                                        |
+| default      | Default value to use if no value is provided                                        |
+| minimum      | type number/integer: Minimum range value for numbers                                |
+| maximum      | type number/integer: Maximum range value for numbers                                |
+| minLength    | type string: Minimum length of a string                                             |
+| maxLength    | type string: Maximum length of a string                                             |
+| *isSensor*   | the property is a sensor output (not a WoT field)                                   |
+| *isActuator* | the property is an actuator (not a WoT field)                                       |
+| forms        | in development [4]                                                                  |
 
 Notes:
 
 1. Just like the TD @type, the property @type provides a standard classification of the property. The list of core property classes are defined in the vocabulary.
 2. type. WoT defines native types. HiveOT also allows the use of types defined in schemaDefinitions. This is contentious as WoT only allows schemaDefinitions in the forms 'AdditionalExpectedResponse' section. 
 3. Enum values are machine identifiers. They are not translatable as this would change their value. Unfortunately the WoT TD standard does not define a method to relate an enum value to a title or description. HiveOT partly works around this by using the @type classification for presentation of enum values for standard properties.
-4. Forms in development. The WoT specifies Forms to define the protocol for operations. The hub only uses top level forms. Forms in affordances are empty.
-5. In HiveOT the namespace for properties and actions is shared. A property with the same name as an action represents the current state of that action.
+4. With almost everything being a property, these is a need to identify whether it is a sensor, actuator, configuration or Thing attribute. 
+5. Forms in development. The WoT specifies Forms to define the protocol for operations. The hub only uses top level forms. Forms in affordances are empty.
 
-### Use of properties to represent action state
+### Use of properties vs actions?
 
-The WoT specifications does not describe how best to link Thing state that is the result of actions on the Thing. One recommended approach however is to represent the state with a property.
+The WoT specifications does not describe how best to link Thing state that is the result of actions on the Thing. One recommended approach however is to represent the state with a property where possible. 
 
-HiveOT bindings define an observable property for each action. By default the property name is that of the action name. 
+HiveOT bindings therefore only use Actions for 'safe' stateless actions, actions that have no input, and actions that require multiple input parameters. 
 
+As a convention, hiveot actions that do affect state always include this as one or more properties in the output schema. If the consumer is not aware of this then it isn't affected. If it is aware of this then it can use this to present the current output state.
+
+Consumers are notified when properties changes if they are observed. 
 
 ## Events
 
-Where properties contain the last known state value of a Thing, events are used to notify of changes to the state of a Thing, including properties and actions.
+When to use events? 
+HiveOT bindings use events to notify of something that doesn't affect the state of the thing. Stateful events are handled through properties.
 
-Events are defined in the Events section of the TD along with a schema definition of the event content.
-
-Events are also used to send updates to the TD with the event name of $td. This is subject to change when the WoT provides a specification on how to notify consumers of changes to a TD. 
-
-The TD events affordance section defines the attributes used to describe events. This is similar to how properties are defined and action outputs are defined.
-
-TD Events map:
-```
-{
-  "events": {
-    "{eventName}": {
-      ...InteractionAffordance,
-      "data": {
-        dataSchema
-      },
-    }
-  }
-}
-```
-
-Where:
-
-* {eventName}: The instance name of the event. Event names follow the same naming convention as properties.
-* @type: event/property type classification. While not mandatory it is highly recommended. See the property classification for details.
-* data: The event payload follows the [dataSchema](https://www.w3.org/TR/wot-thing-description11/#dataschema) format, similar to properties.
-
-The [TD EventAffordance](https://www.w3.org/TR/wot-thing-description11/#eventaffordance) also describes optional event response, subscription and cancellation attributes. These are not used in HiveOT as subscription is handled by the Hub.
+Some examples:
+* the update of a TD is sent as an Event with the operation "updateTD". This is not supported in WoT.  
+* alarm status is a property as it is state of a thing.
 
 
 ## Actions
 
-Actions are used to control device inputs or request an operation on a service.
+Actions are used to ~~control device inputs or~~ request an operation on a service or perform an operation on a thing that has no input or complex input.
 
 The format of actions is defined in the Thing Description document
 through [action affordances](https://www.w3.org/TR/wot-thing-description/#actionaffordance).
@@ -280,19 +262,10 @@ In HiveOT actions result in an update of the property that presents the internal
 
 ### How to track action progress?
 
-In HiveOT protocol bindings, action outputs results in property value changes. While not currently defined in the specification, from discussions with WoT forum members, it is being looked at as a possible solution to link actions with their result.
+Updated: 2025-01-14: Action progress is no longer tracked through properties. Instead actions are only used in either stateless, no-input, or complex input situations.  
+The action returns the result as an output which is returned to the caller.
 
-A property affordance with the same name as an action affordance represents the current output state of that action. Its dataschema is typically identical to the dataschema of the action output, if defined, but can differ. 
-
-If an action affordance does not contain an output dataschema, and a property affordance with the same name is defined, then the property affordance is considered to describe the output of the action.
-
-For example, an on/off switch for controlling a light is defined in its TD as a property with the current state, and an action to request setting the new state. No event needs to be defined as observing the property will notify the consumer of changes to the switch state. It is of course valid to define an event for this, especially for key values.
-
-Observation: this approach blurs the line between properties and events somewhat.  
-
-HiveOT protocol bindings will have a property defined for each internal state of a Thing that can be affected by an action.
-
-For example, a media player has a property of @type 'hiveot:prop:media:muted'. This can be used directly as a property name. When the device internal muted state changes to true, a property update is send to observers with the new state value. However, the action to mute the player could use a different ID: "hiveot:action:media:mute", since the action is only a request and does not represent the state of the device.
+If an action affects Thing state, eg properties, the action out has corresponding field names in its data schema. This is a hiveot convention and not part of WoT.
 
 ### How to distinguish between important properties and auxiliary properties?
 
@@ -303,6 +276,7 @@ Properties that represent state that is considered important to the consumer are
 Events can be used to indicate a change that has no corresponding observable state in the Thing. 
 
 Question: if a light switch state has an observable property, is it still useful to have an event indicating a change? Do observable properties replace events?
+Answer: In this case there is no need for an event.
 
 
 ### How to prevent ghost actions?

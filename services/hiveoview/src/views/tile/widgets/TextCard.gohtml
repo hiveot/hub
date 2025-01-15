@@ -1,5 +1,6 @@
 <!--TextCard Tile renderer.
      This presents a single value or a table with multiple values.
+     Dashboard tiles directly accept inputs for actions and writable properties.
   -->
 
 {{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/tile.RenderTileTemplateData*/ -}}
@@ -8,14 +9,15 @@
 
 		{{/* A single source is displayed as large text*/}}
     {{$s := (index $.Tile.Sources 0)}}
-    {{$iout := $.GetValue $s.ThingID $s.Name}}
+    {{$iout := $.GetOutputValue $s.ThingID $s.Name}}
 		<div class="h-col-centered h-grow"
 		     style="height:100%;font-size:1.5em; justify-content:center"
 		>
-        {{/* Show the value itself. Render booleans as switches*/}}
+        {{/* Show the output itself. Render booleans as switches*/}}
 				{{if $iout.Schema.ReadOnly}}
             {{template "RenderOutputValue.gohtml" $iout}}
         {{else}}
+            {{/* when writable render inline input*/}}
             {{template "RenderCardInput.gohtml" $iout}}
         {{end}}
 
@@ -24,7 +26,7 @@
 				      hx-swap="innerHTML"
 				      hx-target="this"
 							style="position:absolute;right:10px;bottom:0;
-							font-size:10px;color:gray; font-style: italic;font-variant: small-caps" >
+							font-size:small;color:gray; font-style: italic;font-variant: small-caps" >
 					{{datetime $iout.Updated}}
 				</span>
 
@@ -40,7 +42,7 @@
 		        style="grid-template-columns:1fr max-content">
 			<tbody style="display:contents">
 			{{range .Tile.Sources}}
-				{{$iout := $.GetValue .ThingID .Name}}
+				{{$iout := $.GetOutputValue .ThingID .Name}}
 				<tr style="display:contents;">
 
 					{{/* Show the value title with a link to the details page*/}}

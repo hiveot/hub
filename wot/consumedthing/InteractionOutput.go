@@ -77,7 +77,7 @@ func (io *InteractionOutput) setSchemaFromTD(td *td.TD) (found bool) {
 	eventAff, found := td.Events[io.Name]
 	if found {
 		//io.Operation = wot.HTOpPublishEvent
-		io.AffordanceType = "event"
+		io.AffordanceType = AffordanceTypeEvent
 		// an event might not have data associated with it
 		if eventAff.Data != nil {
 			io.Schema = *eventAff.Data
@@ -92,7 +92,7 @@ func (io *InteractionOutput) setSchemaFromTD(td *td.TD) (found bool) {
 	propAff, found := td.Properties[io.Name]
 	if found {
 		//io.Operation = wot.HTOpUpdateProperty
-		io.AffordanceType = "property"
+		io.AffordanceType = AffordanceTypeProperty
 		io.Schema = propAff.DataSchema
 		io.Title = propAff.Title
 		if len(propAff.Forms) > 0 {
@@ -100,18 +100,17 @@ func (io *InteractionOutput) setSchemaFromTD(td *td.TD) (found bool) {
 		}
 		return true
 	}
-	// last, if name is that of an action then use its output schema
+	// last, if name is that of an action with an output schema then use that instead
+	// also update the iout title if it has none.
 	actionAff, found := td.Actions[io.Name]
 	if found {
-		//io.Operation = wot.OpInvokeAction
-		io.AffordanceType = "action"
 		// an action might not have any output data
 		if actionAff.Output != nil {
+			io.AffordanceType = AffordanceTypeAction
 			io.Schema = *actionAff.Output
 		}
-		io.Title = actionAff.Title
-		if len(actionAff.Forms) > 0 {
-			//io.Form = &actionAff.Forms[0]
+		if io.Title == "" {
+			io.Title = actionAff.Title
 		}
 		return true
 	}
@@ -130,7 +129,7 @@ func (io *InteractionOutput) setSchemaFromTD(td *td.TD) (found bool) {
 // a ThingValue object.
 //
 //	values is the property or event value map
-//	td Thing Description document with schemas for the value. Use nil if schema is unknown.
+//	tdi Thing Description instance with schemas for the value. Use nil if schema is unknown.
 func NewInteractionOutputFromValueList(values []digitwin.ThingValue, td *td.TD) InteractionOutputMap {
 	ioMap := make(map[string]*InteractionOutput)
 	for _, tv := range values {
@@ -144,7 +143,7 @@ func NewInteractionOutputFromValueList(values []digitwin.ThingValue, td *td.TD) 
 	return ioMap
 }
 
-// NewInteractionOutputFromMessage creates a new immutable interaction output from
+// NewInteractionOutputFromNotification creates a new immutable interaction output from
 // a NotificationMessage (event,property) and optionally its associated TD.
 //
 // If no td is available, this value conversion will still be usable but it won't
@@ -158,7 +157,7 @@ func NewInteractionOutputFromValueList(values []digitwin.ThingValue, td *td.TD) 
 //
 //	tm contains the received ThingMessage data
 //	tdi is the associated thing description
-func NewInteractionOutputFromMessage(
+func NewInteractionOutputFromNotification(
 	notif *transports.NotificationMessage, tdi *td.TD) *InteractionOutput {
 
 	io := &InteractionOutput{
@@ -185,9 +184,11 @@ func NewInteractionOutputFromMessage(
 //
 // Intended for use when a property, or event value update are read using the
 // digitwin service calls.
+// This determines the TD affordance type by looking up the name. If the affordance
+// type is already known then use NewInteractionOutput(tdi,affType,..) instead.
 //
 //	tv contains the received ThingValue data
-//	td is the associated thing description
+//	td is the associated thing description instance
 func NewInteractionOutputFromValue(
 	tv *digitwin.ThingValue, tdi *td.TD) *InteractionOutput {
 
@@ -207,8 +208,8 @@ func NewInteractionOutputFromValue(
 	return io
 }
 
-// NewInteractionOutput creates a new immutable interaction output from
-// schema and raw value.
+// NewInteractionOutput creates a new immutable interaction output from the
+// affordance type and raw value.
 //
 //	tdi TD instance whose output this is
 //	affType is one of AffordanceTypeAction, event or property
@@ -243,30 +244,26 @@ func NewInteractionOutput(tdi *td.TD, affType string, name string, raw any, upda
 		title = aff.Title
 		schema = &aff.DataSchema
 	}
-	// FIXME: sometimes actions publish events with the action affordance name
-	if schema == nil && affType == AffordanceTypeAction {
-		aff := tdi.Events[name]
-		if aff != nil {
-			title = aff.Title
-			schema = aff.Data
-		}
-	}
-
 	if schema == nil {
 		schema = &td.DataSchema{
-			Title: "NewInteractionOutput: td has no " + affType + ": " + name,
+			Title: "NewInteractionOutput: tdi has no " + affType + " output schema: " + name,
 		}
+		schema.ReadOnly = true // default unless proven otherwise
+		raw = "no output"
+
 	}
 	if title == "" {
 		title = schema.Title
 	}
 	io := &InteractionOutput{
-		ThingID: tdi.ID,
-		Name:    name,
-		Title:   title,
-		Updated: updated,
-		Schema:  *schema,
-		Value:   NewDataSchemaValue(raw),
+		AffordanceType: affType,
+		ThingID:        tdi.ID,
+		Name:           name,
+		Title:          title,
+		Updated:        updated,
+		Schema:         *schema,
+		Value:          NewDataSchemaValue(raw),
 	}
+
 	return io
 }

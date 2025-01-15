@@ -10,6 +10,12 @@ package td
 type PropertyAffordance struct {
 	DataSchema
 
+	// This property contains a sensor value. This is not a WoT attribute.
+	IsSensor bool `json:"isSensor,omitempty"`
+
+	// This property contains an actuator state. This is not a WoT attribute.
+	IsActuator bool `json:"isActuator,omitempty"`
+
 	// Since goland doesn't support inheritance the interaction affordance fields are defined below
 	// @type, title(s) and description(s) are already defined in the embedded DataSchema struct
 

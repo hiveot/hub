@@ -94,7 +94,7 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 		sess.WriteError(w, err, http.StatusBadRequest)
 		return
 	}
-	tdi := ct.GetThingDescription()
+	tdi := ct.GetTD()
 	data := ActionRequestTemplateData{
 		ThingID: thingID,
 		Name:    name,

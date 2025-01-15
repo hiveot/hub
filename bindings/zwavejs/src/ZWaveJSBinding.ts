@@ -133,7 +133,7 @@ export class ZwaveJSBinding {
                     if (va?.messageType === "attr" || va?.messageType === "config") {
                         this.hc.pubProperty(deviceID, propID, newValue)
                     } else {
-                        log.debug("handleValueUpdate: publish event for deviceID=" + deviceID + ", propID=" + propID + "")
+                        log.info("handleValueUpdate: publish event for deviceID=" + deviceID + ", propID=" + propID + "")
                         this.hc.pubEvent(deviceID, propID, newValue)
                     }
                 }

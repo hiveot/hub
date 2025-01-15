@@ -1,6 +1,7 @@
 package consumedthing
 
 import (
+	"errors"
 	"fmt"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
@@ -8,6 +9,7 @@ import (
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
+	"log/slog"
 	"sync"
 	"time"
 )
@@ -29,15 +31,15 @@ const AffordanceTypeAction = "action"
 // This keeps a copy of the Thing's property and event values and updates on changes.
 type ConsumedThing struct {
 	cc transports.IConsumerConnection
-
-	td *td.TD
+	// associated thing description instance
+	tdi *td.TD
 	// observer of property value changes by property name
 	observers map[string]InteractionListener
 	// subscribers to events by eventName
 	subscribers map[string]InteractionListener
 
 	// action status values
-	//actionValues map[string]*transports.ActionStatus
+	actionStatus map[string]*digitwin.ActionStatus
 	// prop values
 	propValues map[string]*InteractionOutput
 	// event values
@@ -50,8 +52,8 @@ type ConsumedThing struct {
 // This looks up the form in the TD for this transport's protocol, marshals the input,
 // sends the request and waits for a completed or failed response.
 func (ct *ConsumedThing) _rpc(op string, name string, input interface{}, output interface{}) error {
-	//just a simple wrapper around the transport client
-	thingID := ct.td.ID
+	//just a simple wrapper around the consumer connection
+	thingID := ct.tdi.ID
 	err := ct.cc.Rpc(op, thingID, name, input, output)
 	return err
 }
@@ -62,64 +64,95 @@ func (ct *ConsumedThing) buildInteractionOutputMap(
 
 	outMap := make(map[string]*InteractionOutput)
 	for key, msg := range tmm {
-		iout := NewInteractionOutputFromMessage(msg, ct.td)
+		iout := NewInteractionOutputFromNotification(msg, ct.tdi)
 		outMap[key] = iout
 	}
 	return outMap
 }
 
 // Create an interactionOutput for the given thing message
-func (ct *ConsumedThing) buildInteractionOutput(tm *transports.NotificationMessage) *InteractionOutput {
-	iout := NewInteractionOutputFromMessage(tm, ct.td)
+func (ct *ConsumedThing) buildInteractionOutput(msg *transports.NotificationMessage) *InteractionOutput {
+	iout := NewInteractionOutputFromNotification(msg, ct.tdi)
 	return iout
 }
 
-// GetActionStatus returns the action status record of the last action
-//
-// This returns an empty ActionStatus if not found
-func (ct *ConsumedThing) GetActionStatus(name string) *digitwin.ActionStatus {
-	var stat digitwin.ActionStatus
-	err := ct._rpc(wot.OpQueryAction, name, nil, &stat)
-
-	//ct.InvokeAction(digitwin.ValuesActionQueryAction, args)
-	//actionVal, err := digitwin.ValuesQueryAction(sess.GetHubClient(), name, thingID)
-	//err = hc.Rpc("invokeaction", ValuesDThingID, ValuesQueryActionMethod, &args, &actionvalue)
-	_ = err
-	return &stat
+// GetActionInput returns the action input value of the given action, if available
+func (ct *ConsumedThing) GetActionInput(as *digitwin.ActionStatus) *InteractionInput {
+	if as == nil || as.Name == "" {
+		return nil
+	}
+	iin := NewInteractionInput(ct.tdi, as.Name, as.Input)
+	return iin
 }
 
-// GetEventValue returns the interaction output of the latest value of an event
+// GetActionOutput returns the interaction output of the latest action value.
+// See also GetValue that always return an iout (for rendering purpose)
+//
+// This returns nil if name is not a known action
+func (ct *ConsumedThing) GetActionOutput(as *digitwin.ActionStatus) (iout *InteractionOutput) {
+	if as == nil || as.Name == "" {
+		iout = NewInteractionOutput(ct.GetTD(), AffordanceTypeAction, "",
+			"no output", "")
+		iout.Err = errors.New("No record for this action")
+	} else {
+		iout = NewInteractionOutput(ct.GetTD(), AffordanceTypeAction, as.Name,
+			as.Output, as.TimeUpdated)
+		if as.Error != "" {
+			iout.Err = errors.New(as.Error)
+		}
+	}
+	return iout
+}
+
+// GetActionStatus returns the ActionStatus object of the latest action value.
+//
+// This returns an empty status if name is not a known action
+func (ct *ConsumedThing) GetActionStatus(name string) (stat *digitwin.ActionStatus) {
+	ct.mux.RLock()
+	actionStatus, _ := ct.actionStatus[name]
+	ct.mux.RUnlock()
+	if actionStatus == nil {
+		// return something
+		actionStatus = &digitwin.ActionStatus{
+			Name:    name,
+			ThingID: ct.GetTD().ID,
+		}
+	}
+	return actionStatus
+}
+
+// GetEventOutput returns the interaction output of the latest value of an event
 // See also GetValue that always return an iout (for rendering purpose)
 //
 // This returns nil if not found
-func (ct *ConsumedThing) GetEventValue(name string) (iout *InteractionOutput) {
+func (ct *ConsumedThing) GetEventOutput(name string) (iout *InteractionOutput) {
 	ct.mux.RLock()
 	iout, _ = ct.eventValues[name]
 	ct.mux.RUnlock()
 	return iout
 }
 
-// GetPropValue returns the interaction output of the latest property value.
+// GetPropOutput returns the interaction output of the latest property value.
 // See also GetValue that always return an iout (for rendering purpose)
 //
 // This returns nil if not found
-func (ct *ConsumedThing) GetPropValue(name string) (iout *InteractionOutput) {
+func (ct *ConsumedThing) GetPropOutput(name string) (iout *InteractionOutput) {
 	ct.mux.RLock()
 	iout, _ = ct.propValues[name]
 	ct.mux.RUnlock()
 	return iout
 }
 
-// GetThingDescription return the TD document that is represented here.
-func (ct *ConsumedThing) GetThingDescription() *td.TD {
-	return ct.td
+// GetTD return the TD document that is represented here.
+func (ct *ConsumedThing) GetTD() *td.TD {
+	return ct.tdi
 }
 
 // GetTitle return the TD document title
 // If a title property is available return its value instead of the TD title.
 // This lets a Thing update its TD title without re-issuing a new TD.
 func (ct *ConsumedThing) GetTitle() string {
-	title := ct.td.Title
+	title := ct.tdi.Title
 	ct.mux.RLock()
 	iout, found := ct.propValues[vocab.PropDeviceTitle]
 	ct.mux.RUnlock()
@@ -145,28 +178,42 @@ func (ct *ConsumedThing) GetValue(name string) *InteractionOutput {
 	if iout == nil {
 		// not a known prop or event value so create an empty io with a schema from the td
 		iout = &InteractionOutput{
-			ThingID: ct.td.ID,
+			ThingID: ct.tdi.ID,
 			Name:    name,
 		}
-		iout.setSchemaFromTD(ct.td)
+		iout.setSchemaFromTD(ct.tdi)
 	}
 	return iout
 }
 
 // InvokeAction requests an action on the Thing
-func (ct *ConsumedThing) InvokeAction(name string, params InteractionInput) *InteractionOutput {
+// TODO: callback for progress updates
+func (ct *ConsumedThing) InvokeAction(name string, iin InteractionInput) (*digitwin.ActionStatus, error) {
 	var output any
-	aff := ct.td.GetAction(name)
-	if aff == nil {
-		return nil
-	}
-	// find the form that describes the protocol for invoking an action
-	//stat := ct.cc.PublishFromForm(href, actionForm, params.value, "")
-	err := ct._rpc(wot.OpInvokeAction, name, params.Value.Raw, &output)
 
-	o := NewInteractionOutput(ct.td, AffordanceTypeAction, name, output, "")
-	o.Err = err
-	return o
+	aff := ct.tdi.GetAction(name)
+	if aff == nil {
+		err := fmt.Errorf("InvokeAction. Unknown action name: %s", name)
+		slog.Error(err.Error())
+		return nil, err
+	}
+
+	slog.Info("InvokeAction", slog.String("name", name))
+	err := ct._rpc(wot.OpInvokeAction, name, iin.Value.Raw, &output)
+	if err != nil {
+		slog.Warn("InvokeAction. failed",
+			slog.String("name", name),
+			slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	as := ct.QueryAction(name)
+	if as != nil {
+		ct.mux.Lock()
+		ct.actionStatus[name] = as
+		ct.mux.Unlock()
+	}
+	return as, nil
 }
 
 // ObserveProperty registers a handler to changes in property value.
@@ -180,41 +227,12 @@ func (ct *ConsumedThing) ObserveProperty(name string, listener InteractionListen
 	return nil
 }
 
-// OnDeliveryUpdate handles receiving of an action progress event.
-// To be called by the manager of this ConsumerThing, the one that receives
-// all subscribed messages from the hub client.
-// FIXME: delivery updates are no longer events/notifications
-// This updates the action progress value and invokes the action callback, if any.
-//
-//	tm is the event message received from the hub. This isn't standard WoT so
-//	the objective is to remove the need for it.
-//func (ct *ConsumedThing) OnDeliveryUpdate(msg transports.ResponseMessage) {
-//	action, found := ct.actionValues[msg.Name]
-//	_ = action
-//	if !found {
-//		slog.Error("Action update without action?",
-//			"thingID", msg.ThingID,
-//			"action", msg.Name)
-//		return
-//	}
-//	stat := transports.ActionStatus{}
-//	err := tputils.DecodeAsObject(msg.Output, &stat)
-//	if stat.Error != "" {
-//		slog.Error("Delivery update invalid payload",
-//			"thingID", msg.ThingID,
-//			"action", msg.Name,
-//			"err", err.Error())
-//	}
-//	ct.actionValues[msg.Name] = &stat
-//}
-
-// OnEvent handles receiving of an event.
+// OnEvent handles receiving a Thing event.
 // To be called by the manager of this ConsumerThing, the one that receives
 // all subscribed events from the hub client.
 // This updates the latest event value and invokes the registered event subscriber, if any.
 //
-//	tm is the event message received from the hub. This isn't standard WoT so
-//	the objective is to remove the need for it.
+//	msg is the notification message received.
 func (ct *ConsumedThing) OnEvent(msg transports.NotificationMessage) {
 	io := ct.buildInteractionOutput(&msg)
 	ct.mux.Lock()
@@ -235,13 +253,32 @@ func (ct *ConsumedThing) OnEvent(msg transports.NotificationMessage) {
 //	msg is the property message received from the hub. This isn't standard WoT so
 //	the objective is to remove the need for it.
 func (ct *ConsumedThing) OnPropertyUpdate(msg transports.NotificationMessage) {
-	io := ct.buildInteractionOutput(&msg)
+	iout := ct.buildInteractionOutput(&msg)
 	ct.mux.Lock()
-	ct.propValues[msg.Name] = io
+	ct.propValues[msg.Name] = iout
 	observer, found := ct.observers[msg.Name]
 	ct.mux.Unlock()
 	if found {
-		observer(io)
+		observer(iout)
+	}
+}
+
+// OnAsyncResponse handles receiving an async progress response.
+// This can be the result of an async property write or invoke action.
+//
+// To be called by the manager of this ConsumerThing, the one that receives
+// all async response messages from the server.
+//
+// Note that rpc calls return the response directly. These are not passed to this handler.
+//
+//	msg is the response message received.
+func (ct *ConsumedThing) OnAsyncResponse(msg transports.ResponseMessage) {
+	if msg.Operation == wot.OpInvokeAction {
+		// build an interactionoutput for the action output, if any
+		iout := NewInteractionOutput(ct.tdi, AffordanceTypeAction, msg.Name, msg.Output, msg.Updated)
+
+		// notify subscribers - of progress update
+		_ = iout
 	}
 }
 
@@ -252,48 +289,45 @@ func (ct *ConsumedThing) OnPropertyUpdate(msg transports.NotificationMessage) {
 //	msg is the property message received from the hub. This isn't standard WoT so
 //	the objective is to remove the need for it.
 func (ct *ConsumedThing) OnTDUpdate(newTD *td.TD) {
+	// FIXME: consumed thing interaction output schemas also need updating
 	ct.mux.Lock()
 	defer ct.mux.Unlock()
-	ct.td = newTD
+	ct.tdi = newTD
 }
 
-// ReadEvent returns the last known Thing event value or nil if name is not an event
-// Call ReadAllEvents to refresh the values.
+// QueryAction queries the action status record from the hub
 //
-// If no value is yet known then create an affordance and read a value.
-func (ct *ConsumedThing) ReadEvent(name string) *InteractionOutput {
-	ct.mux.RLock()
-	iout, _ := ct.eventValues[name]
-	ct.mux.RUnlock()
-	// if there is no known value, read it now
-	if iout == nil {
-		ct.mux.RLock()
-		aff, _ := ct.td.Events[name]
-		ct.mux.RUnlock()
-		if aff == nil {
-			return nil // not a known event
-		}
-		tdi := ct.GetThingDescription()
-		var raw any
-		err := ct._rpc(wot.HTOpReadEvent, name, nil, &raw)
-		_ = err
-		iout = NewInteractionOutput(tdi, AffordanceTypeEvent, name, raw, "")
-		iout.setSchemaFromTD(ct.td)
-
-		//tv, err := ct.cc.ReadEvent(ct.td.ID, name)
-		//form := td.GetForm(wot.HTOpReadEvent, name, ct.cc.GetProtocolType())
-		//	var eventValue any
-		//	err := ct.cc.SendRequest(form, ct.td.ID, name, nil, &eventValue)
-		//
-		//if err == nil {
-		//	iout = NewInteractionOutputFromMessage(&tv, td)
-		//} else {
-		//	iout = NewInteractionOutput(td.ID, name, aff.Data, nil, "")
-		//}
+// # The cached interaction output of this value can be obtained with GetActionOutput
+//
+// This returns an empty ActionStatus if not found
+func (ct *ConsumedThing) QueryAction(name string) *digitwin.ActionStatus {
+	var stat digitwin.ActionStatus
+	err := ct._rpc(wot.OpQueryAction, name, nil, &stat)
+	if err == nil {
 		ct.mux.Lock()
-		ct.eventValues[name] = iout
+		ct.actionStatus[name] = &stat
 		ct.mux.Unlock()
 	}
+	return &stat
+}
+
+// ReadEvent refreshes the last event value by reading it from the hub
+func (ct *ConsumedThing) ReadEvent(name string) *InteractionOutput {
+	ct.mux.RLock()
+	aff, _ := ct.tdi.Events[name]
+	ct.mux.RUnlock()
+	if aff == nil {
+		return nil // not a known event
+	}
+	tdi := ct.GetTD()
+	var raw any
+	err := ct._rpc(wot.HTOpReadEvent, name, nil, &raw)
+	_ = err
+	iout := NewInteractionOutput(tdi, AffordanceTypeEvent, name, raw, "")
+	iout.setSchemaFromTD(ct.tdi)
+	ct.mux.Lock()
+	ct.eventValues[name] = iout
+	ct.mux.Unlock()
 	return iout
 }
 
@@ -312,40 +346,50 @@ func (ct *ConsumedThing) ReadHistory(
 	hist := historyclient.NewReadHistoryClient(ct.cc)
 	// todo: is there a need to read in batches? not for a single day.
 	values, itemsRemaining, err = hist.ReadHistory(
-		ct.td.ID, name, timestamp, duration, 500)
+		ct.tdi.ID, name, timestamp, duration, 500)
 
 	return values, itemsRemaining, err
 }
 
-// ReadProperty returns the last known Thing property value or nil if name is not a property
-// Call ReadAllProperties to refresh the property values.
+// ReadProperty reads the last known Thing property value or nil if name is not a property
+// Call GetPropertyValue to get the cached value.
 func (ct *ConsumedThing) ReadProperty(name string) *InteractionOutput {
 	ct.mux.RLock()
-	iout, _ := ct.propValues[name]
+	aff, _ := ct.tdi.Properties[name]
 	ct.mux.RUnlock()
+	if aff == nil {
+		return nil // not a known event
+	}
+	tdi := ct.GetTD()
+	var raw any
+	err := ct._rpc(wot.OpReadProperty, name, nil, &raw)
+	_ = err
+	iout := NewInteractionOutput(tdi, AffordanceTypeProperty, name, raw, "")
+	iout.setSchemaFromTD(ct.tdi)
+	ct.mux.Lock()
+	ct.propValues[name] = iout
+	ct.mux.Unlock()
 	return iout
 }
 
 // ReadAllEvents reads all Thing event values.
 func (ct *ConsumedThing) ReadAllEvents() map[string]*InteractionOutput {
 	var err error
-	var evList []transports.NotificationMessage
-	ct.mux.Lock()
-	defer ct.mux.Unlock()
-	// FIXME: this sometimes returns actions as events
-	//  zwavejs D0547D32.2 37-targetValue-0 (binary switch)
-	// options for graceful recovery:
-	//   1. show 'unknown event' (current)
-	//   2. use action/property output schema if affordance is an action name
-	//   3.
-	err = ct._rpc(wot.HTOpReadAllEvents, "", nil, &evList)
+	var evMsgList []transports.NotificationMessage
+	err = ct._rpc(wot.HTOpReadAllEvents, "", nil, &evMsgList)
 	if err != nil {
 		return nil
 	}
-	for _, tm := range evList {
-		io := NewInteractionOutput(
-			ct.td, AffordanceTypeEvent, tm.Name, tm.Data, tm.Created)
-		ct.eventValues[tm.Name] = io
+	ct.mux.Lock()
+	defer ct.mux.Unlock()
+	for _, tm := range evMsgList {
+		// if the TD doesn't have this event then ignore it
+		evAff := ct.tdi.GetEvent(tm.Name)
+		if evAff != nil {
+			iout := NewInteractionOutput(
+				ct.tdi, AffordanceTypeEvent, tm.Name, tm.Data, tm.Created)
+			ct.eventValues[tm.Name] = iout
+		}
 	}
 	return ct.eventValues
 }
@@ -353,20 +397,45 @@ func (ct *ConsumedThing) ReadAllEvents() map[string]*InteractionOutput {
 // ReadAllProperties reads all Thing property values and returns them in a
 // map of InteractionOutputs.
 func (ct *ConsumedThing) ReadAllProperties() map[string]*InteractionOutput {
-	var propList []transports.NotificationMessage
+	var propMsgList []transports.NotificationMessage
 
-	//propList, err := digitwin.ValuesReadAllProperties(ct.cc, ct.td.ID)
-	err := ct._rpc(wot.OpReadAllProperties, "", nil, &propList)
+	err := ct._rpc(wot.OpReadAllProperties, "", nil, &propMsgList)
 	if err != nil {
 		return nil
 	}
 	ct.mux.Lock()
 	defer ct.mux.Unlock()
 
-	for _, v := range propList {
-		io := NewInteractionOutput(
-			ct.td, AffordanceTypeProperty, v.Name, v.Data, v.Created)
-		ct.propValues[v.Name] = io
+	for _, msg := range propMsgList {
+		// if the TD doesn't have this property then ignore it
+		propAff := ct.tdi.GetProperty(msg.Name)
+		if propAff != nil {
+			iout := NewInteractionOutput(
+				ct.tdi, AffordanceTypeProperty, msg.Name, msg.Data, msg.Created)
+			ct.propValues[msg.Name] = iout
+		}
+	}
+	return ct.propValues
+}
+
+// ReadAllActions reads all Thing action status values and returns them in a
+// map of InteractionOutputs.
+func (ct *ConsumedThing) ReadAllActions() map[string]*InteractionOutput {
+	var actionMsgList []digitwin.ActionStatus
+
+	err := ct._rpc(wot.OpQueryAllActions, "", nil, &actionMsgList)
+	if err != nil {
+		return nil
+	}
+	ct.mux.Lock()
+	defer ct.mux.Unlock()
+
+	for _, msg := range actionMsgList {
+		// if the TD doesn't have this action then ignore it
+		actionAff := ct.tdi.GetAction(msg.Name)
+		if actionAff != nil {
+			ct.actionStatus[msg.Name] = &msg
+		}
 	}
 	return ct.propValues
 }
@@ -397,7 +466,7 @@ func (ct *ConsumedThing) SubscribeEvent(name string, listener InteractionListene
 func (ct *ConsumedThing) WriteProperty(name string, ii InteractionInput) (err error) {
 
 	//just a simple wrapper around the transport client
-	thingID := ct.td.ID
+	thingID := ct.tdi.ID
 	raw := ii.Value.Raw
 	err = ct.cc.WriteProperty(thingID, name, raw, true)
 
@@ -416,13 +485,13 @@ func (ct *ConsumedThing) WriteMultipleProperties(
 // Call Stop() when done
 func NewConsumedThing(td *td.TD, hc transports.IConsumerConnection) *ConsumedThing {
 	c := ConsumedThing{
-		td:          td,
-		cc:          hc,
-		observers:   make(map[string]InteractionListener),
-		subscribers: make(map[string]InteractionListener),
-		//actionValues: make(map[string]*transports.ActionStatus),
-		eventValues: make(map[string]*InteractionOutput),
-		propValues:  make(map[string]*InteractionOutput),
+		tdi:          td,
+		cc:           hc,
+		observers:    make(map[string]InteractionListener),
+		subscribers:  make(map[string]InteractionListener),
+		actionStatus: make(map[string]*digitwin.ActionStatus),
+		eventValues:  make(map[string]*InteractionOutput),
+		propValues:   make(map[string]*InteractionOutput),
 	}
 	return &c
 }
