@@ -66,15 +66,16 @@ export class ZwaveJSBinding {
     handleNodeStateUpdate(node: ZWaveNode, newState: string) {
         let thingID = this.zwapi.getDeviceID(node.id)
 
-        // NOTE: the names of these events and state MUST match those in the TD event enum. See parseNode.
+        // NOTE: the names of these values MUST match those in the TD property enum. See parseNode.
         switch (newState) {
             case "alive":
             case "dead":
             case "awake":
             case "sleeping": {
-                this.hc.pubEvent(thingID, vocab.PropDeviceStatus, newState)
+                this.hc.pubProperty(thingID, vocab.PropDeviceStatus, newState)
             }
-                break;
+            break;
+            // FIXME: interview state as property and response
             case "interview completed":
             case "interview failed":
             case "interview started": {
@@ -112,7 +113,7 @@ export class ZwaveJSBinding {
     }
 
     // Handle update of a node's value.
-    // This publishes an event if the value changed or 'publishOnlyChanges' is false
+    // This publishes an event or property update if the value changed or 'publishOnlyChanges' is false
     // @param node: The node whose values have updated
     // @param vid: zwave value id
     // @param newValue: the updated value converted to a string
@@ -130,7 +131,7 @@ export class ZwaveJSBinding {
                 // Determine if value changed enough to publish
                 if (newValue != undefined) {
                     valueMap.values[propID] = newValue
-                    if (va?.messageType === "attr" || va?.messageType === "config") {
+                    if (va?.vidType === "property" ) {
                         this.hc.pubProperty(deviceID, propID, newValue)
                     } else {
                         log.info("handleValueUpdate: publish event for deviceID=" + deviceID + ", propID=" + propID + "")

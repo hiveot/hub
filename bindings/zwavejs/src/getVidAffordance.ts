@@ -8,8 +8,7 @@ export interface VidAffordance {
     // @type of the property, event or action, "" if not known
     atType: string,
     // attr is read-only property; config is writable property
-    messageType: "action" | "event" | "attr" | "config" | "sensor" | "actuator" | undefined
-
+    vidType: "action" | "event" | "property" | undefined
 }
 
 // Override map of zwavejs VID to HiveOT action, event, config or attributes.
@@ -25,23 +24,24 @@ const overrideMap: Map<string, Partial<VidAffordance> | undefined> = new Map([
     ["32-restorePrevious", {}],
 
     // Binary Switch 0x25 (37) is an actuator
-    ["37-currentValue", {atType: vocab.PropSwitch, messageType: "sensor"} ],
-    ["37-targetValue", {atType: vocab.ActionSwitch, messageType: "actuator"}],
+    ["37-currentValue", {atType: vocab.PropSwitch, vidType: "property"} ],
+    ["37-targetValue", {atType: vocab.ActionSwitch, vidType: "property"}],
 
     // Multilevel Switch (38) is an actuator
 
     // Binary Sensor (48)
-    ["48-Any", {atType: vocab.PropAlarmStatus, messageType: "sensor"}],
+    ["48-Any", {atType: vocab.PropAlarmStatus, vidType: "property"}],
 
     // Meter - electrical
-    ["50-value-65537", {atType: vocab.PropElectricEnergy, messageType: "sensor"}],
-    ["50-value-66049", {atType: vocab.PropElectricPower, messageType: "sensor"}],
-    ["50-value-66561", {atType: vocab.PropElectricVoltage, messageType: "sensor"}],
-    ["50-value-66817", {atType: vocab.PropElectricCurrent, messageType: "sensor"}],
-    ["50-reset", {messageType: "config"}], // for managers, not operators
+    ["50-value-65537", {atType: vocab.PropElectricEnergy, vidType: "property"}],
+    ["50-value-66049", {atType: vocab.PropElectricPower, vidType: "property"}],
+    ["50-value-66561", {atType: vocab.PropElectricVoltage, vidType: "property"}],
+    ["50-value-66817", {atType: vocab.PropElectricCurrent, vidType: "property"}],
+    ["50-reset", {vidType: "action"}], // for managers, not operators
 
     // Notification
-    ["113-Home Security-Motion sensor status", {atType: vocab.PropAlarmMotion, messageType: "sensor"}],
+    ["113-Home Security-Motion sensor status",
+        {atType: vocab.PropAlarmMotion, vidType: "property"}],
 ]);
 
 
@@ -56,7 +56,7 @@ const overrideMap: Map<string, Partial<VidAffordance> | undefined> = new Map([
 //  config: the vid is writable, not an actuator, and has a value or default
 //  undefined if the vid CC is deprecated or the vid is to be ignored
 function defaultVidAffordance(node: ZWaveNode, vid: ValueID, maxNrScenes: number):
-       "action" | "event" | "config" | "attr" | "sensor"|"actuator"| undefined {
+       "action" | "event" |"property"| undefined {
 
     let vidMeta = node.getValueMetadata(vid)
 
@@ -86,7 +86,7 @@ function defaultVidAffordance(node: ZWaveNode, vid: ValueID, maxNrScenes: number
         case CommandClasses["Multilevel Switch"]:
         case CommandClasses["Simple AV Control"]:
         case CommandClasses["Window Covering"]: {
-            return vidMeta.writeable ? "actuator" : "sensor";
+            return "property";
         }
 
         //-- CC's for data reporting devices (sensor)
@@ -104,7 +104,7 @@ function defaultVidAffordance(node: ZWaveNode, vid: ValueID, maxNrScenes: number
         case CommandClasses["Sound Switch"]:
         case CommandClasses["Thermostat Fan State"]:
         case CommandClasses["Thermostat Operating State"]: {
-            return "sensor"
+            return "property"
         }
 
         //--- CC's for configuration or attributes
@@ -125,7 +125,7 @@ function defaultVidAffordance(node: ZWaveNode, vid: ValueID, maxNrScenes: number
         case CommandClasses["Thermostat Setback"]:
         case CommandClasses["Tariff Table Configuration"]:
         case CommandClasses["User Code"]: {
-            return vidMeta.writeable ? "config" : "attr"
+            return "property";
         }
 
         // Reduce nr of Scene Actuator Configurations
@@ -144,12 +144,12 @@ function defaultVidAffordance(node: ZWaveNode, vid: ValueID, maxNrScenes: number
                     return undefined;
                 }
             }
-            return "config"
+            return "property"
         }
 
         case CommandClasses["Wake Up"]: {
             // wakeup interval is config, wakeup report is attr, wakeup notification is event
-            return vidMeta.writeable ? "config" : "attr"
+            return "property"
         }
 
         //--- deprecated CCs
@@ -164,10 +164,7 @@ function defaultVidAffordance(node: ZWaveNode, vid: ValueID, maxNrScenes: number
     if (!vidMeta.readable) {
         return vidMeta.writeable ? "action" : "event"
     }
-    if (vidMeta.writeable) {
-        return "config"
-    }
-    return "attr"
+    return "property"
 }
 
 
@@ -183,7 +180,7 @@ export function getVidAffordance(node: ZWaveNode, vid: ValueID, maxNrScenes: num
     let atType = ""
     let va: VidAffordance = {
         atType: atType,
-        messageType: affordance
+        vidType: affordance
     }
 
     // Apply values from an override
@@ -199,9 +196,9 @@ export function getVidAffordance(node: ZWaveNode, vid: ValueID, maxNrScenes: num
         if (override.atType != undefined) {
             va.atType = override.atType
         }
-        if (override.messageType != undefined) {
-            va.messageType = override.messageType
+        if (override.vidType != undefined) {
+            va.vidType = override.vidType
         }
     }
-    return va.messageType ? va : undefined
+    return va.vidType ? va : undefined
 }

@@ -53,13 +53,11 @@ function addAction(td: TD, node: ZWaveNode, vid: TranslatedValueID, name: string
 }
 
 // Add the ZWave value data to the TD as an attribute property
-function addAttribute(td: TD, node: ZWaveNode, vid: TranslatedValueID, name: string, va: VidAffordance): PropertyAffordance {
+function addProperty(td: TD, node: ZWaveNode, vid: TranslatedValueID, name: string, va: VidAffordance): PropertyAffordance {
 
     let prop = td.AddProperty(name, va?.atType, WoTDataTypeNone, "")
-    // SetDataSchema also sets the title and data type
+    // SetDataSchema also sets the title, data type and read-only
     SetDataSchema(prop, node, vid)
-    prop.isActuator  = (va.messageType == "actuator")
-    prop.isSensor  = (va.messageType == "sensor")
     return prop
 }
 
@@ -300,24 +298,16 @@ export function getNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | unde
         }
 
         // the vid is either config, attr, action or event based on CC
-        switch (va?.messageType) {
+        switch (va?.vidType) {
             case "action":
                 addAction(td, node, vid, tdPropName, va)
                 break;
             case "event":
                 addEvent(td, node, vid, tdPropName, va)
                 break;
-            case "config":
-                addConfig(td, node, vid, tdPropName, va)
-                break;
-            case "attr":
-                addAttribute(td, node, vid, tdPropName, va)
-                break;
-            case "sensor":
-                addAttribute(td, node, vid, tdPropName, va)
-                break;
-            case "actuator":
-                addAttribute(td, node, vid, tdPropName, va)
+            // these are varieties of properties
+            case "property":
+                addProperty(td, node, vid, tdPropName, va)
                 break;
             default:
             // ignore this vid

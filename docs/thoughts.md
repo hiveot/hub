@@ -131,7 +131,11 @@ While the WoT TD covers a lot of use-cases, there are few workarounds needed:
     Things do get a bit wordy though as each action/event/property will have a set of forms, one for each supported protocol.  
 * ThingID uniqueness; using agentID in address 
     This is resolved by letting agents use anything as thingID as long as only valid characters are used, and have the digital twin runtime prefix the thing-ID it with the agent ID.
-
+* No distinction between attributes, configuration, sensors and actuators.
+  These are all properties in the TD but can't be classified.
+* Action vs properties. Actuators often have state and the recommendation is to use properties for state. This is useful as properties can be observed. However, incrementing a dimmer value can't be done with a property and needs to be an action. So now the same actuator on the same device is controlled through both a property and actions. This inconsistency is illogical and confusing.
+  * One option is to use actions for all actuator interactions while the resulting state are expressed as properties. That would work except that this needs a relationship between properties and actions, which cannot be expressed in the TD. For example, the action to increment a dimmer brightness results in an updated brightness property value. How to show the user the option to increment/decrement the brightness. These are two totally independent affordances in the TD.
+  * Non-compatible workaround. Include the affected properties in the action output dataschema. This only applies to stateful (unsafe) actions. This approach would allow the UI to show applicable actions with properties.
 
 
 ## Encoding data

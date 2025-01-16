@@ -69,7 +69,7 @@ The request message defines the following fields:
 
 ### Response Message
 
-Responses serve to notify a single client of the result of a request.
+Responses serve to provide a client the progress or result of a request.
 
 Response message payload is determined by the request operation. Therefore the request operation is included in the response:
 
@@ -101,10 +101,9 @@ If a 'running' response is send, agents MUST also send a completed or failed res
 
 If a hub or gateway is used then the response is received by the hub/gateway, which in turn forwards it to the client that sent the request. If the client is no longer reachable then the response can be queued or discarded, depending on the capabilities of the hub or gateway.
 
-Clients will receive a response message containing the original correlationID, the payload an any error information. Client implementations can choose to wait for a response (with timeout) or handle it as a separate callback.
+Clients will receive a response message containing the correlationID provided in the request, the payload, and any error information. Client implementations can choose to wait for a response (with timeout) or handle it as a separate callback.
 
-Agents can also sent notifications to subscribers. The notification message includes an operation that identifies the type of notification. A correlationID is optional to link the notification to a subscription request. A hub or gateway can implement their own subscription mechanism for consumers and ask agents to send all notifications.
-
+Agents publish notifications to subscribers. This is a 1-many relationship. The notification message includes an operation that identifies the type of notification. A correlationID is optional to link the notification to a subscription request. A hub or gateway can implement their own subscription mechanism for consumers and ask agents to send all notifications.
 
 
 ## Implementation

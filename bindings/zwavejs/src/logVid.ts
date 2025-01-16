@@ -91,6 +91,6 @@ export function logVid(logFd: number | undefined, node?: ZWaveNode, vid?: Transl
         `${prop};${propName};${propKey};${propKeyName};` +
         `${vidValue};${vm.label};${vm.type};${vm.readable};${vm.writeable};${defaultValue};${description};` +
         `${unit};${min};${max};${states};${allowManualEntry};${ccSpecific};${other};` +
-        `${propID};${va?.messageType};${dataType};${va?.atType}\n`
+        `${propID};${va?.vidType};${dataType};${va?.atType}\n`
     fs.appendFileSync(logFd, vidLine)
 }

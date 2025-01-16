@@ -97,13 +97,6 @@ export class PropertyAffordance extends DataSchema {
     // used when a property has multiple instances, each with their own name
     public properties: Map<string, PropertyAffordance> | undefined = undefined
 
-
-    // This property contains a sensor value. This is not a WoT attribute.
-    public isSensor?: boolean
-
-    // This property contains an actuator state. This is not a WoT attribute.
-    public isActuator?: boolean
-
     // set the property's vocabulary @type field
     setVocabType(atType: string): PropertyAffordance {
         this["@type"] = atType
