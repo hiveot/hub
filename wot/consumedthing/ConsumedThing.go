@@ -7,6 +7,7 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/messaging"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
@@ -30,7 +31,7 @@ const AffordanceTypeAction = "action"
 //
 // This keeps a copy of the Thing's property and event values and updates on changes.
 type ConsumedThing struct {
-	cc transports.IConsumerConnection
+	consumer *messaging.Consumer
 	// associated thing description instance
 	tdi *td.TD
 	// observer of property value changes by property name
@@ -54,13 +55,13 @@ type ConsumedThing struct {
 func (ct *ConsumedThing) _rpc(op string, name string, input interface{}, output interface{}) error {
 	//just a simple wrapper around the consumer connection
 	thingID := ct.tdi.ID
-	err := ct.cc.Rpc(op, thingID, name, input, output)
+	err := ct.consumer.Rpc(op, thingID, name, input, output)
 	return err
 }
 
 // build a map of interaction outputs for the given values
 func (ct *ConsumedThing) buildInteractionOutputMap(
-	tmm map[string]*transports.NotificationMessage) map[string]*InteractionOutput {
+	tmm map[string]*transports.ResponseMessage) map[string]*InteractionOutput {
 
 	outMap := make(map[string]*InteractionOutput)
 	for key, msg := range tmm {
@@ -71,7 +72,7 @@ func (ct *ConsumedThing) buildInteractionOutputMap(
 }
 
 // Create an interactionOutput for the given thing message
-func (ct *ConsumedThing) buildInteractionOutput(msg *transports.NotificationMessage) *InteractionOutput {
+func (ct *ConsumedThing) buildInteractionOutput(msg *transports.ResponseMessage) *InteractionOutput {
 	iout := NewInteractionOutputFromNotification(msg, ct.tdi)
 	return iout
 }
@@ -119,6 +120,26 @@ func (ct *ConsumedThing) GetActionStatus(name string) (stat *digitwin.ActionStat
 		}
 	}
 	return actionStatus
+}
+
+// GetAtTypeTitle return the Thing @type field as a human readable text
+// If @type contains an array then the title of the first value is returned.
+func (ct *ConsumedThing) GetAtTypeTitle() string {
+	atTypeValue := ""
+	switch t := ct.tdi.AtType.(type) {
+	case string:
+		atTypeValue = t
+	case []string:
+		if len(t) > 0 {
+			atTypeValue = t[0]
+		}
+	}
+	// FIXME: read from file to support different vocabularies?
+	atTypeVocab, found := vocab.ThingClassesMap[atTypeValue]
+	if !found {
+		return atTypeValue
+	}
+	return atTypeVocab.Title
 }
 
 // GetEventOutput returns the interaction output of the latest value of an event
@@ -233,7 +254,7 @@ func (ct *ConsumedThing) ObserveProperty(name string, listener InteractionListen
 // This updates the latest event value and invokes the registered event subscriber, if any.
 //
 //	msg is the notification message received.
-func (ct *ConsumedThing) OnEvent(msg transports.NotificationMessage) {
+func (ct *ConsumedThing) OnEvent(msg transports.ResponseMessage) {
 	io := ct.buildInteractionOutput(&msg)
 	ct.mux.Lock()
 	ct.eventValues[msg.Name] = io
@@ -252,7 +273,7 @@ func (ct *ConsumedThing) OnEvent(msg transports.NotificationMessage) {
 //
 //	msg is the property message received from the hub. This isn't standard WoT so
 //	the objective is to remove the need for it.
-func (ct *ConsumedThing) OnPropertyUpdate(msg transports.NotificationMessage) {
+func (ct *ConsumedThing) OnPropertyUpdate(msg transports.ResponseMessage) {
 	iout := ct.buildInteractionOutput(&msg)
 	ct.mux.Lock()
 	ct.propValues[msg.Name] = iout
@@ -272,7 +293,7 @@ func (ct *ConsumedThing) OnPropertyUpdate(msg transports.NotificationMessage) {
 // Note that rpc calls return the response directly. These are not passed to this handler.
 //
 //	msg is the response message received.
-func (ct *ConsumedThing) OnAsyncResponse(msg transports.ResponseMessage) {
+func (ct *ConsumedThing) OnAsyncResponse(msg *transports.ResponseMessage) {
 	if msg.Operation == wot.OpInvokeAction {
 		// build an interactionoutput for the action output, if any
 		iout := NewInteractionOutput(ct.tdi, AffordanceTypeAction, msg.Name, msg.Output, msg.Updated)
@@ -313,6 +334,7 @@ func (ct *ConsumedThing) QueryAction(name string) *digitwin.ActionStatus {
 
 // ReadEvent refreshes the last event value by reading it from the hub
 func (ct *ConsumedThing) ReadEvent(name string) *InteractionOutput {
+
 	ct.mux.RLock()
 	aff, _ := ct.tdi.Events[name]
 	ct.mux.RUnlock()
@@ -337,13 +359,13 @@ func (ct *ConsumedThing) ReadEvent(name string) *InteractionOutput {
 // get the remaining values.
 func (ct *ConsumedThing) ReadHistory(
 	name string, timestamp time.Time, duration time.Duration) (
-	values []*transports.NotificationMessage, itemsRemaining bool, err error) {
+	values []*transports.ResponseMessage, itemsRemaining bool, err error) {
 
 	// FIXME: ReadHistory is not (yet) part of the WoT specification. Ege mentioned it would
 	// be added soon so this will change to follow the WoT specification.
 	// Until then this is tied to the Hub's history service.
 
-	hist := historyclient.NewReadHistoryClient(ct.cc)
+	hist := historyclient.NewReadHistoryClient(ct.consumer)
 	// todo: is there a need to read in batches? not for a single day.
 	values, itemsRemaining, err = hist.ReadHistory(
 		ct.tdi.ID, name, timestamp, duration, 500)
@@ -375,7 +397,7 @@ func (ct *ConsumedThing) ReadProperty(name string) *InteractionOutput {
 // ReadAllEvents reads all Thing event values.
 func (ct *ConsumedThing) ReadAllEvents() map[string]*InteractionOutput {
 	var err error
-	var evMsgList []transports.NotificationMessage
+	var evMsgList []transports.ResponseMessage
 	err = ct._rpc(wot.HTOpReadAllEvents, "", nil, &evMsgList)
 	if err != nil {
 		return nil
@@ -387,7 +409,7 @@ func (ct *ConsumedThing) ReadAllEvents() map[string]*InteractionOutput {
 		evAff := ct.tdi.GetEvent(tm.Name)
 		if evAff != nil {
 			iout := NewInteractionOutput(
-				ct.tdi, AffordanceTypeEvent, tm.Name, tm.Data, tm.Created)
+				ct.tdi, AffordanceTypeEvent, tm.Name, tm.Output, tm.Updated)
 			ct.eventValues[tm.Name] = iout
 		}
 	}
@@ -397,7 +419,7 @@ func (ct *ConsumedThing) ReadAllEvents() map[string]*InteractionOutput {
 // ReadAllProperties reads all Thing property values and returns them in a
 // map of InteractionOutputs.
 func (ct *ConsumedThing) ReadAllProperties() map[string]*InteractionOutput {
-	var propMsgList []transports.NotificationMessage
+	var propMsgList []transports.ResponseMessage
 
 	err := ct._rpc(wot.OpReadAllProperties, "", nil, &propMsgList)
 	if err != nil {
@@ -411,7 +433,7 @@ func (ct *ConsumedThing) ReadAllProperties() map[string]*InteractionOutput {
 		propAff := ct.tdi.GetProperty(msg.Name)
 		if propAff != nil {
 			iout := NewInteractionOutput(
-				ct.tdi, AffordanceTypeProperty, msg.Name, msg.Data, msg.Created)
+				ct.tdi, AffordanceTypeProperty, msg.Name, msg.Output, msg.Updated)
 			ct.propValues[msg.Name] = iout
 		}
 	}
@@ -468,7 +490,7 @@ func (ct *ConsumedThing) WriteProperty(name string, ii InteractionInput) (err er
 	//just a simple wrapper around the transport client
 	thingID := ct.tdi.ID
 	raw := ii.Value.Raw
-	err = ct.cc.WriteProperty(thingID, name, raw, true)
+	err = ct.consumer.WriteProperty(thingID, name, raw, true)
 
 	return err
 }
@@ -483,10 +505,10 @@ func (ct *ConsumedThing) WriteMultipleProperties(
 
 // NewConsumedThing creates a new instance of a Thing
 // Call Stop() when done
-func NewConsumedThing(td *td.TD, hc transports.IConsumerConnection) *ConsumedThing {
+func NewConsumedThing(td *td.TD, consumer *messaging.Consumer) *ConsumedThing {
 	c := ConsumedThing{
 		tdi:          td,
-		cc:           hc,
+		consumer:     consumer,
 		observers:    make(map[string]InteractionListener),
 		subscribers:  make(map[string]InteractionListener),
 		actionStatus: make(map[string]*digitwin.ActionStatus),

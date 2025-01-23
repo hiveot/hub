@@ -15,7 +15,7 @@ import (
 // This is based on the SsescConsumerClient.
 type SsescAgentClient struct {
 	SsescConsumerClient
-	httpclient.HttpAgentClient
+	httpbasicclient.HttpAgentClient
 }
 
 // handle agent requests if any

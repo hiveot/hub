@@ -26,12 +26,12 @@ func startStateService(cleanStart bool) (
 	ts = testenv.StartTestServer(cleanStart)
 
 	// the service needs a server connection
-	hc1, token1 := ts.AddConnectService(stateapi.AgentID)
+	agentConn, token1 := ts.AddConnectService(stateapi.AgentID)
 	_ = token1
 
 	storeDir := path.Join(ts.TestDir, "test-state")
 	svc = service.NewStateService(storeDir)
-	err := svc.Start(hc1)
+	err := svc.Start(agentConn)
 
 	if err != nil {
 		panic("service fails to start: " + err.Error())
@@ -45,7 +45,7 @@ func startStateService(cleanStart bool) (
 	return svc, stateCl, func() {
 		hc2.Disconnect()
 		//slog.Warn("Disconnected " + hc2.GetClientID())
-		hc1.Disconnect()
+		agentConn.Disconnect()
 		//slog.Warn("Disconnected " + hc1.GetClientID())
 		svc.Stop()
 		ts.Stop()
@@ -171,6 +171,7 @@ func TestDelete(t *testing.T) {
 
 }
 
+// Two different clients should not be able to read each other's state
 func TestGetDifferentClientBuckets(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	const clientID1 = "test-client1"
@@ -184,16 +185,17 @@ func TestGetDifferentClientBuckets(t *testing.T) {
 	_ = stateCl
 	defer stopFn()
 
+	// Agents and Services must be able to use this state service
 	ag1, token1 := ts.AddConnectAgent(clientID1)
 	require.NotEmpty(t, token1)
 	defer ag1.Disconnect()
-	hc2, token2 := ts.AddConnectService(clientID2)
+	ag2, token2 := ts.AddConnectAgent(clientID2)
 	require.NotEmpty(t, token2)
-	defer hc2.Disconnect()
+	defer ag2.Disconnect()
 
 	// both clients set a key-value
-	st1 := stateclient.NewStateClient(ag1)
-	st2 := stateclient.NewStateClient(hc2)
+	st1 := stateclient.NewStateClient(&ag1.Consumer)
+	st2 := stateclient.NewStateClient(&ag2.Consumer)
 	err := st1.Set(key1, val1)
 	assert.NoError(t, err)
 	err = st2.Set(key2, val2)

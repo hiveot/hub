@@ -7,10 +7,8 @@ import {
 
 import EventSource from 'eventsource'
 import {
-    NotificationMessage,
     RequestMessage,
     ResponseMessage,
-    MessageTypeNotification,
     MessageTypeResponse, MessageTypeRequest
 } from "@hivelib/transports/Messages";
 
@@ -32,7 +30,6 @@ export async function  connectSSE(
     ssePath:string,
     authToken:string,
     cid:string,
-    onNotification: NotificationHandler,
     onRequest: RequestHandler,
     onResponse: ResponseHandler,
     onConnection: ConnectionHandler ):Promise<EventSource> {
@@ -79,11 +76,6 @@ export async function  connectSSE(
         }
         source.addEventListener("ping",(e:any)=>{
             log.info("received ping", e)
-        })
-        source.addEventListener(MessageTypeNotification,(e:any)=>{
-            log.info("received notification", e)
-            let req: NotificationMessage = JSON.parse(e.data)
-            onNotification(req)
         })
         source.addEventListener(MessageTypeRequest,(e:any)=>{
             log.info("received request", e)

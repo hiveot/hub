@@ -28,16 +28,16 @@ type AddHistory struct {
 	MaxMessageSize int
 }
 
-// encode a NotificationMessage into a single storage key value pair for easy storage and filtering.
+// encode a ResponseMessage into a single storage key value pair for easy storage and filtering.
 // Encoding generates a key as: timestampMsec/name/a|e|p/sender,
 // where a|e|p indicates message type "action", "event" or "property"
-func (svc *AddHistory) encodeValue(msg *transports.NotificationMessage) (storageKey string, data []byte) {
+func (svc *AddHistory) encodeValue(msg *transports.ResponseMessage) (storageKey string, data []byte) {
 	var err error
 	createdTime := time.Now()
-	if msg.Created != "" {
-		createdTime, err = dateparse.ParseAny(msg.Created)
+	if msg.Updated != "" {
+		createdTime, err = dateparse.ParseAny(msg.Updated)
 		if err != nil {
-			slog.Warn("Invalid Created time. Using current time instead", "created", msg.Created)
+			slog.Warn("Invalid Updated time. Using current time instead", "created", msg.Updated)
 			createdTime = time.Now()
 		}
 	}
@@ -48,20 +48,20 @@ func (svc *AddHistory) encodeValue(msg *transports.NotificationMessage) (storage
 	if msg.Operation == vocab.OpInvokeAction {
 		// TODO: actions subscriptions are currently not supported. This would be useful though.
 		storageKey = storageKey + "/a"
-	} else if msg.Operation == vocab.HTOpUpdateProperty {
+	} else if msg.Operation == vocab.OpObserveProperty {
 		storageKey = storageKey + "/p"
-	} else {
+	} else { // treat everything else as events
 		storageKey = storageKey + "/e"
 	}
 	storageKey = storageKey + "/" + msg.SenderID
 	//if msg.Data != nil {
-	data, _ = jsoniter.Marshal(msg.Data)
+	data, _ = jsoniter.Marshal(msg.Output)
 	//}
 	return storageKey, data
 }
 
 // AddAction adds a Thing action with the given name and value to the action history
-func (svc *AddHistory) AddAction(actionValue *transports.NotificationMessage) error {
+func (svc *AddHistory) AddAction(actionValue *transports.ResponseMessage) error {
 	slog.Info("AddAction",
 		slog.String("senderID", actionValue.SenderID),
 		slog.String("thingID", actionValue.ThingID),
@@ -93,7 +93,7 @@ func (svc *AddHistory) AddAction(actionValue *transports.NotificationMessage) er
 // Only events that pass retention rules are stored.
 // If the event has no created time, it will be set to 'now'
 // These events must contain the digitwin thingID
-func (svc *AddHistory) AddEvent(msg *transports.NotificationMessage) error {
+func (svc *AddHistory) AddEvent(msg *transports.ResponseMessage) error {
 
 	retain, err := svc.validateValue(msg)
 	if err != nil {
@@ -132,23 +132,29 @@ func (svc *AddHistory) AddEvent(msg *transports.NotificationMessage) error {
 }
 
 // AddMessage adds an event, action or property message to the history store
-func (svc *AddHistory) AddMessage(msg *transports.NotificationMessage) error {
-	if msg.Operation == vocab.OpInvokeAction {
-		return svc.AddAction(msg)
+func (svc *AddHistory) AddMessage(resp *transports.ResponseMessage) error {
+	// FIXME: store the action request or response?
+	// How to obtain the action request?
+	// How to subscribe to action responses?
+	// Option1: digitwin allows subscribing to action responses (HTOpSubscribeAction?) - not compatible, but thats okay?
+	// Option2: digitwin publishes an actionstatus event (OpSubscribeEvent) - thingID won't match
+	// Option3: digitwin publishes the last action response as notification - not a TD event
+	if resp.Operation == wot.OpInvokeAction {
+		return svc.AddAction(resp) // response of an action
 	}
-	if msg.Operation == vocab.HTOpUpdateProperty || msg.Operation == vocab.HTOpUpdateMultipleProperties {
-		return svc.AddProperty(msg)
+	if resp.Operation == wot.OpObserveProperty || resp.Operation == wot.OpObserveAllProperties {
+		return svc.AddProperty(resp)
 	}
-	if msg.Operation == vocab.HTOpPublishEvent {
-		return svc.AddEvent(msg)
+	if resp.Operation == wot.OpSubscribeEvent || resp.Operation == wot.OpSubscribeAllEvents {
+		return svc.AddEvent(resp)
 	}
 	// anything else is added as an event
-	return svc.AddEvent(msg)
+	return svc.AddEvent(resp)
 }
 
 // AddMessages provides a bulk-add of event/action messages to the history
 // Events that are invalid are skipped.
-func (svc *AddHistory) AddMessages(msgList []*transports.NotificationMessage) (err error) {
+func (svc *AddHistory) AddMessages(msgList []*transports.ResponseMessage) (err error) {
 	if msgList == nil || len(msgList) == 0 {
 		return nil
 	} else if len(msgList) == 1 {
@@ -192,32 +198,31 @@ func (svc *AddHistory) AddMessages(msgList []*transports.NotificationMessage) (e
 //
 // If property name is empty then expect a property key-value map.
 // This splits the property map and adds then as individual name-value pairs
-func (svc *AddHistory) AddProperty(msg *transports.NotificationMessage) (err error) {
+func (svc *AddHistory) AddProperty(msg *transports.ResponseMessage) (err error) {
 
 	propMap := make(map[string]any)
 	if msg.Name == "" {
-		err = tputils.DecodeAsObject(msg.Data, &propMap)
+		err = tputils.DecodeAsObject(msg.Output, &propMap)
 		if err != nil {
 			return err
 		}
 	} else {
-		propMap[msg.Name] = msg.Data
+		propMap[msg.Name] = msg.Output
 	}
-	if msg.Created == "" {
-		msg.Created = time.Now().Format(wot.RFC3339Milli)
+	if msg.Updated == "" {
+		msg.Updated = time.Now().Format(wot.RFC3339Milli)
 	}
 	thingAddr := msg.ThingID // the digitwin ID with the agent prefix
 	bucket := svc.store.GetBucket(thingAddr)
 
-	// turn each property into a NotificationMessage object so they can be queried separately
+	// turn each property into a ResponseMessage object so they can be queried separately
 	for propName, propValue := range propMap {
-		// FIXME: does the  property map contain map k:v or l:NotificationMessage???
-		tv := transports.NewNotificationMessage(
-			vocab.HTOpUpdateProperty, msg.ThingID, propName, propValue)
+		tv := transports.NewResponseMessage(
+			vocab.OpObserveProperty, msg.ThingID, propName, propValue, nil, "")
 		tv.SenderID = msg.SenderID
-		tv.Created = msg.Created
+		tv.Updated = msg.Updated
 
-		retain, err := svc.validateValue(&tv)
+		retain, err := svc.validateValue(tv)
 		if err != nil {
 			slog.Info("AddProperty value error", "err", err.Error())
 			return err
@@ -225,7 +230,7 @@ func (svc *AddHistory) AddProperty(msg *transports.NotificationMessage) (err err
 		// only store properties marked as retained. (default all)
 		if retain {
 			//
-			storageKey, val := svc.encodeValue(&tv)
+			storageKey, val := svc.encodeValue(tv)
 			err = bucket.Set(storageKey, val)
 		}
 	}
@@ -236,24 +241,24 @@ func (svc *AddHistory) AddProperty(msg *transports.NotificationMessage) (err err
 // validateValue checks the event has the right things address, adds a timestamp if missing and returns if it is retained
 // an error will be returned if the agentID, thingID or name are empty.
 // retained returns true if the value is valid and passes the retention rules
-func (svc *AddHistory) validateValue(tv *transports.NotificationMessage) (retained bool, err error) {
-	if tv.ThingID == "" {
-		return false, fmt.Errorf("missing thingID in value with value name '%s'", tv.Name)
+func (svc *AddHistory) validateValue(resp *transports.ResponseMessage) (retained bool, err error) {
+	if resp.ThingID == "" {
+		return false, fmt.Errorf("missing thingID in value with value name '%s'", resp.Name)
 	}
-	if tv.Name == "" {
-		return false, fmt.Errorf("missing name for event or action for things '%s'", tv.ThingID)
+	if resp.Name == "" {
+		return false, fmt.Errorf("missing name for event or action for things '%s'", resp.ThingID)
 	}
-	if tv.SenderID == "" && tv.Operation == vocab.OpInvokeAction {
-		return false, fmt.Errorf("missing sender for action on thing '%s'", tv.ThingID)
+	if resp.SenderID == "" && resp.Operation == vocab.OpInvokeAction {
+		return false, fmt.Errorf("missing sender for action on thing '%s'", resp.ThingID)
 	}
-	if tv.Created == "" {
-		tv.Created = time.Now().Format(wot.RFC3339Milli)
+	if resp.Updated == "" {
+		resp.Updated = time.Now().Format(wot.RFC3339Milli)
 	}
 	if svc.retentionMgr != nil {
-		retain, rule := svc.retentionMgr._IsRetained(tv)
+		retain, rule := svc.retentionMgr._IsRetained(resp)
 		if rule == nil {
 			slog.Debug("no retention rule found for event",
-				slog.String("name", tv.Name), slog.Bool("retain", retain))
+				slog.String("name", resp.Name), slog.Bool("retain", retain))
 		}
 		return retain, nil
 	}

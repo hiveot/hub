@@ -34,7 +34,7 @@ type MqttAgentClient struct {
 // PubEvent helper for agents to publish an event
 // This is short for SendNotification( ... wot.OpEvent ...)
 func (cl *MqttAgentClient) PubEvent(thingID string, name string, value any) error {
-	notif := transports.NewNotificationMessage(wot.HTOpEvent, thingID, name, value)
+	notif := transports.NewNotificationResponse(wot.HTOpEvent, thingID, name, value)
 	return cl.SendNotification(notif)
 }
 
@@ -42,14 +42,14 @@ func (cl *MqttAgentClient) PubEvent(thingID string, name string, value any) erro
 // This is short for SendNotification( ... wot.OpProperty ...)
 func (cl *MqttAgentClient) PubProperty(thingID string, name string, value any) error {
 
-	notif := transports.NewNotificationMessage(wot.HTOpUpdateProperty, thingID, name, value)
+	notif := transports.NewNotificationResponse(wot.HTOpUpdateProperty, thingID, name, value)
 	return cl.SendNotification(notif)
 }
 
 // PubProperties helper for agents to publish a map of property values
 func (cl *MqttAgentClient) PubProperties(thingID string, propMap map[string]any) error {
 
-	notif := transports.NewNotificationMessage(wot.HTOpUpdateMultipleProperties, thingID, "", propMap)
+	notif := transports.NewNotificationResponse(wot.HTOpUpdateMultipleProperties, thingID, "", propMap)
 	err := cl.SendNotification(notif)
 	return err
 }
@@ -58,7 +58,7 @@ func (cl *MqttAgentClient) PubProperties(thingID string, propMap map[string]any)
 // This is short for SendNotification( ... wot.HTOpTD ...)
 func (cl *MqttAgentClient) PubTD(td *td.TD) error {
 	tdJson, _ := jsoniter.Marshal(td)
-	notif := transports.NewNotificationMessage(wot.HTOpUpdateTD, td.ID, "", tdJson)
+	notif := transports.NewNotificationResponse(wot.HTOpUpdateTD, td.ID, "", tdJson)
 	return cl.SendNotification(notif)
 }
 

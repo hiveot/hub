@@ -1,4 +1,4 @@
-package wssserver
+package wotwssserver
 
 import (
 	"fmt"

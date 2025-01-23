@@ -2,6 +2,7 @@ package digitwin_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/wot/td"
 	"github.com/stretchr/testify/assert"
@@ -10,6 +11,7 @@ import (
 )
 
 func TestAddRemoveTD(t *testing.T) {
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	const agentID = "agent1"
 	const thing1ID = "thing1"
 	const title1 = "title1"
@@ -48,6 +50,7 @@ func TestAddRemoveTD(t *testing.T) {
 }
 
 func TestGetTDsFail(t *testing.T) {
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	const clientID = "client1"
 
 	svc, _, stopFunc := startService(true)
@@ -68,6 +71,7 @@ func TestGetTDsFail(t *testing.T) {
 }
 
 //func TestQueryTDs(t *testing.T) {
+//t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 //	_ = os.Remove(testStoreFile)
 //	const senderID = "agent1"
 //	const thing1ID = "agent1:thing1"

@@ -36,7 +36,7 @@ func (svc *HiveovService) PublishServiceTD() error {
 	myTD := svc.CreateHiveoviewTD()
 	tdJSON, _ := json.Marshal(myTD)
 	//err := svc.hc.PubTD(myTD.ID, string(tdJSON))
-	notif := transports.NewNotificationMessage(wot.HTOpUpdateTD, myTD.ID, "", string(tdJSON))
+	notif := transports.NewNotificationResponse(wot.HTOpUpdateTD, myTD.ID, "", string(tdJSON))
 	err := svc.hc.SendNotification(notif)
 
 	if err != nil {
@@ -47,7 +47,7 @@ func (svc *HiveovService) PublishServiceTD() error {
 
 // PublishServiceProps publishes the service properties
 func (svc *HiveovService) PublishServiceProps() error {
-	notif := transports.NewNotificationMessage(
+	notif := transports.NewNotificationResponse(
 		wot.HTOpUpdateProperty, src.HiveoviewServiceID, vocab.PropNetPort, svc.port)
 	err := svc.hc.SendNotification(notif)
 	if err != nil {

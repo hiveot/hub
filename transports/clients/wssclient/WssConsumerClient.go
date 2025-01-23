@@ -13,6 +13,7 @@ import (
 	"github.com/hiveot/hub/transports/servers/wssserver"
 	"github.com/hiveot/hub/transports/tputils/tlsclient"
 	"log/slog"
+	"net/url"
 	"sync/atomic"
 	"time"
 )
@@ -20,7 +21,7 @@ import (
 // WssConsumerClient manages the connection to the hub server using Websockets.
 // This implements the IConsumer interface.
 type WssConsumerClient struct {
-	httpclient.HttpConsumerClient
+	httpbasicclient.HttpConsumerClient
 
 	wssConn              *websocket.Conn
 	wssCancelFn          context.CancelFunc
@@ -30,7 +31,7 @@ type WssConsumerClient struct {
 	token                string
 
 	// optionally define a handler to handle agent messages
-	agentRequestHandler func(baseMsg wssserver.BaseMessage, raw []byte)
+	agentRequestHandler func(baseMsg wssserver_old.BaseMessage, raw []byte)
 }
 
 // websocket connection status handler
@@ -86,10 +87,11 @@ func (cl *WssConsumerClient) ConnectWithPassword(password string) (newToken stri
 	}
 	// TODO: this is part of the http binding, not the websocket binding
 	// a sacrificial client to get a token
-	tlsClient := tlsclient.NewTLSClient(loginURL, nil, cl.BaseCaCert, cl.BaseTimeout)
+	urlParts, _ := url.Parse(loginURL)
+	tlsClient := tlsclient.NewTLSClient(urlParts.Host, nil, cl.BaseCaCert, cl.BaseTimeout)
 	argsJSON, _ := json.Marshal(loginMessage)
 	defer tlsClient.Close()
-	resp, statusCode, err2 := tlsClient.Post(loginURL, argsJSON)
+	resp, statusCode, err2 := tlsClient.Post(httpserver.HttpPostLoginPath, argsJSON)
 	if err2 != nil {
 		err = fmt.Errorf("%d: Login failed: %s", statusCode, err2)
 		return "", err
@@ -171,8 +173,7 @@ func (cl *WssConsumerClient) Logout() error {
 	tlsClient.SetAuthToken(cl.token)
 	defer tlsClient.Close()
 
-	logoutURL := fmt.Sprintf("https://%s%s", cl.BaseHostPort, httpserver.HttpPostLogoutPath)
-	_, _, err2 := tlsClient.Post(logoutURL, nil)
+	_, _, err2 := tlsClient.Post(httpserver.HttpPostLogoutPath, nil)
 	if err2 != nil {
 		err := fmt.Errorf("logout failed: %s", err2)
 		return err
@@ -209,7 +210,6 @@ func (cl *WssConsumerClient) Reconnect() {
 // This is specific to the Hiveot Hub.
 func (cl *WssConsumerClient) RefreshToken(oldToken string) (newToken string, err error) {
 	// use the http endpoint to refresh the token
-	refreshURL := fmt.Sprintf("https://%s%s", cl.BaseHostPort, httpserver.HttpPostRefreshPath)
 
 	// TODO: this is part of the http binding, not the websocket binding
 	// a sacrificial client to get a token
@@ -219,7 +219,7 @@ func (cl *WssConsumerClient) RefreshToken(oldToken string) (newToken string, err
 	defer tlsClient.Close()
 
 	argsJSON, _ := json.Marshal(oldToken)
-	resp, statusCode, err2 := tlsClient.Post(refreshURL, argsJSON)
+	resp, statusCode, err2 := tlsClient.Post(httpserver.HttpPostRefreshPath, argsJSON)
 	if err2 != nil {
 		err = fmt.Errorf("%d: Refresh failed: %s", statusCode, err2)
 		return "", err
@@ -235,7 +235,7 @@ func (cl *WssConsumerClient) RefreshToken(oldToken string) (newToken string, err
 // PubRequest publishes a request message over websockets
 func (cl *WssConsumerClient) PubRequest(req transports.RequestMessage) error {
 
-	slog.Info("PubRequest",
+	slog.Info("SendRequest",
 		slog.String("operation", req.Operation),
 		slog.String("clientID", cl.GetClientID()),
 		slog.String("dThingID", req.ThingID),
@@ -244,10 +244,10 @@ func (cl *WssConsumerClient) PubRequest(req transports.RequestMessage) error {
 	)
 
 	// convert the operation into a websocket message
-	wssMsg, err := wssserver.OpToMessage(req.Operation, req.ThingID, req.Name, nil, req.Input,
+	wssMsg, err := wssserver_old.OpToMessage(req.Operation, req.ThingID, req.Name, nil, req.Input,
 		req.CorrelationID, cl.GetClientID())
 	if err != nil {
-		slog.Error("PubRequest: unknown operation", "op", req.Operation)
+		slog.Error("SendRequest: unknown operation", "op", req.Operation)
 		return err
 	}
 	err = cl._send(wssMsg)

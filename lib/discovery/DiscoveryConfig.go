@@ -11,14 +11,20 @@ type DiscoveryConfig struct {
 	ServerAddr string `yaml:"serverAddr"`
 	// primary port (https)
 	ServerPort int `yaml:"port"`
-	// connection URL for the ssesc protocol
-	SsescURL string `yaml:"ssescURL,omitempty"`
-	// connection URL for the wesbsocket protocol
-	WssURL string `yaml:"wssURL,omitempty"`
-	// connection URL for the mqtt over websocket protocol
-	MqttWssURL string `yaml:"mqttWssURL,omitempty"`
-	// connection URL for the mqtt over tcp protocol
-	MqttTcpURL string `yaml:"mqttTcpURL,omitempty"`
+
+	// connection URL for hiveot SSE-SC protocol
+	HiveotSseURL string `yaml:"hiveotSseURL,omitempty"`
+	// connection URL for the hiveot websocket protocol
+	HiveotWssURL string `yaml:"hiveotWssURL,omitempty"`
+	// connection URL for the WoT http-basic protocol
+	WotHttpBasicURL string `yaml:"wotHttpBasicURL,omitempty"`
+	// connection URL for the WoT websocket protocol
+	WotWssURL string `yaml:"wotWssURL,omitempty"`
+
+	//// connection URL for the mqtt over websocket protocol
+	//MqttWssURL string `yaml:"mqttWssURL,omitempty"`
+	//// connection URL for the mqtt over tcp protocol
+	//MqttTcpURL string `yaml:"mqttTcpURL,omitempty"`
 }
 
 func NewDiscoveryConfig(serverAddr string) DiscoveryConfig {

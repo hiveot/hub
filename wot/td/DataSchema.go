@@ -1,9 +1,8 @@
-// Package things with Schema type definitions for the ExposedThing and ConsumedThing classes
+// Package td with Schema type definitions for the ExposedThing and ConsumedThing classes
 // as described here: https://www.w3.org/TR/wot-thing-description/#sec-data-schema-vocabulary-definition
 package td
 
 import (
-	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/wot"
 )
 
@@ -152,18 +151,6 @@ func (ds *DataSchema) GetAtTypeString() string {
 //	ds.OneOf = values
 //	return ds
 //}
-
-// UnitSymbol returns the symbol of the unit of this schema using the vocabulary unit map
-func (ds *DataSchema) UnitSymbol() string {
-	if ds.Unit == "" {
-		return ""
-	}
-	unit, found := vocab.UnitClassesMap[ds.Unit]
-	if !found {
-		return ds.Unit
-	}
-	return unit.Symbol
-}
 
 // IsNative returns true if the type is string, number, boolean
 // If type is an object or array this returns false

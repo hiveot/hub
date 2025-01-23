@@ -6,8 +6,8 @@ import (
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/services/launcher/config"
 	"github.com/hiveot/hub/services/launcher/launcherapi"
-	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/clients"
+	"github.com/hiveot/hub/transports/messaging"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -39,7 +39,7 @@ type LauncherService struct {
 	cmds []*exec.Cmd
 
 	// agent messaging client
-	hc transports.IAgentConnection
+	ag *messaging.Agent
 
 	// mutex to keep things safe
 	mux sync.Mutex
@@ -200,8 +200,9 @@ func (svc *LauncherService) Start() error {
 	}
 
 	// 3: a connection to the hub is needed to receive requests
-	if svc.hc == nil {
-		svc.hc, err = clients.ConnectAgentToHub(svc.serverURL, svc.clientID, svc.certsDir)
+	if svc.ag == nil {
+		cc, err := clients.ConnectClient(svc.serverURL, svc.clientID, svc.certsDir)
+		svc.ag = messaging.NewAgent(cc, nil, nil, nil, 0)
 		if err != nil {
 			err = fmt.Errorf("failed starting launcher service: %w", err)
 			return err
@@ -209,15 +210,15 @@ func (svc *LauncherService) Start() error {
 	}
 
 	// permissions for using this service
-	err = authz.UserSetPermissions(svc.hc, authz.ThingPermissions{
-		AgentID: svc.hc.GetClientID(),
+	err = authz.UserSetPermissions(&svc.ag.Consumer, authz.ThingPermissions{
+		AgentID: svc.ag.GetClientID(),
 		ThingID: launcherapi.ManageServiceID,
 		Allow:   []authz.ClientRole{authz.ClientRoleManager, authz.ClientRoleAdmin, authz.ClientRoleService},
 		Deny:    nil,
 	})
 
 	// 4: start listening to action requests
-	StartLauncherAgent(svc, svc.hc)
+	StartLauncherAgent(svc, svc.ag)
 
 	// 5: autostart the configured 'autostart' plugins
 	// Log errors but do not stop the launcher
@@ -237,8 +238,8 @@ func (svc *LauncherService) Stop() error {
 	_ = svc.serviceWatcher.Close()
 
 	err := svc.StopAllPlugins(&launcherapi.StopAllPluginsArgs{IncludingRuntime: true})
-	if svc.hc != nil {
-		svc.hc.Disconnect()
+	if svc.ag != nil {
+		svc.ag.Disconnect()
 	}
 	return err
 }
@@ -297,7 +298,7 @@ func NewLauncherService(
 	pluginsDir string,
 	certsDir string,
 	cfg config.LauncherConfig,
-	// hc transports.IClientConnection,
+	// ag transports.IClientConnection,
 ) *LauncherService {
 
 	ls := &LauncherService{
@@ -309,7 +310,7 @@ func NewLauncherService(
 		cfg:        cfg,
 		plugins:    make(map[string]*launcherapi.PluginInfo),
 		cmds:       make([]*exec.Cmd, 0),
-		//hc:        hc,
+		//ag:        ag,
 	}
 
 	return ls

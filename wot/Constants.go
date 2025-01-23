@@ -4,24 +4,21 @@ package wot
 const RFC3339Milli = "2006-01-02T15:04:05.999-0700"
 
 // HiveOT operations that are missing in WoT and those needed by hub connected agents
+// Keep in sync with vocab.yaml
 const (
 	HTOpLogin         = "login"
 	HTOpLoginWithForm = "loginform"
+	HTOpRefresh       = "refresh"
 	HTOpLogout        = "logout"
 	HTOpPing          = "ping"
-	HTOpPong          = "pong"
 	HTOpError         = "error"
-	// FIXME: opevent is replaced with subscribeevent operations
-	HTOpEvent         = "event"
-	HTOpReadAllEvents = "readallevents"
-	HTOpReadAllTDs    = "readalltds"
+
+	// FIXME: readallevents is not a WoT operation. Maybe it should be.
 	HTOpReadEvent     = "readevent"
+	HTOpReadAllEvents = "readallevents"
 	HTOpReadTD        = "readtd"
-	HTOpRefresh       = "refresh"
-	// FIXME: these are replaced with observeproperty operations
-	HTOpUpdateMultipleProperties = "updatemultipleproperties"
-	HTOpUpdateProperty           = "updateproperty"
-	HTOpUpdateTD                 = "updatetd"
+	HTOpReadAllTDs    = "readalltds"
+	HTOpUpdateTD      = "updatetd" // by agent
 )
 
 // WoT operations

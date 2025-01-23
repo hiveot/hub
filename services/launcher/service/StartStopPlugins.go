@@ -110,7 +110,7 @@ func (svc *LauncherService) _startPlugin(pluginName string) (pi launcherapi.Plug
 		// add a service account. Authn admin generates a new token file in the keys directory
 		// the service must have read access to this directory, or the keys must be
 		// copied elsewhere by the administrator.
-		_, err = authn.AdminAddService(svc.hc, pluginName, pluginName, "")
+		_, err = authn.AdminAddService(&svc.ag.Consumer, pluginName, pluginName, "")
 		if err != nil {
 			slog.Error("Unable to add plugin to hub and create credentials. Continuing anyways", "err", err)
 		}

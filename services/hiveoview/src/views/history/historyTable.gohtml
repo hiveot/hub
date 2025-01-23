@@ -8,7 +8,7 @@
 		<li id="hist-table-title"
         {{if eq .CompareToday 0}}
 	        hx-trigger="sse:{{.ThingID}}/{{.Name}}"
-     	    hx-get="{{.RenderHistoryLatestRow}}?unit={{.DataSchema.UnitSymbol}}"
+     	    hx-get="{{.RenderHistoryLatestRow}}?unit={{.UnitSymbol}}"
 			    hx-target="this"
 			    hx-swap="afterend"
         {{end}}
@@ -20,7 +20,7 @@
 		{{range .Values}}
 				<li>
 						<div>{{datetime .Created "WT"}}</div>
-						<div>{{.ToString 0}} {{$.DataSchema.UnitSymbol}}</div>
+						<div>{{.ToString 0}} {{$.UnitSymbol}}</div>
 				</li>
 		{{end}}
 

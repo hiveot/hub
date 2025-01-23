@@ -14,6 +14,8 @@ import (
 //     2.3 invoke the method with the argument
 //     2b. if the method doesn't have an argument
 //     2.4 invoke the method without an argument
+//
+// TODO: merge with messaging agent
 type AgentHandler struct {
 	// the thing this agent is a handler for
 	thingID string
@@ -27,11 +29,13 @@ func (agent *AgentHandler) InvokeMethod(
 	return respData, err
 }
 
-func (agent *AgentHandler) HandleRequest(req transports.RequestMessage) transports.ResponseMessage {
+func (agent *AgentHandler) HandleRequest(
+	req *transports.RequestMessage, _ transports.IConnection) *transports.ResponseMessage {
+
 	if req.ThingID == agent.thingID {
 		method, found := agent.methods[req.Name]
 		if found {
-			output, err := agent.InvokeMethod(method, &req)
+			output, err := agent.InvokeMethod(method, req)
 			return req.CreateResponse(output, err)
 		}
 	}

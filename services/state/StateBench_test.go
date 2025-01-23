@@ -5,6 +5,7 @@ import (
 	"github.com/hiveot/hub/services/state/stateclient"
 	"github.com/stretchr/testify/assert"
 	"log"
+	"log/slog"
 	"math/rand"
 	"testing"
 
@@ -77,6 +78,7 @@ type TestEl struct {
 }
 
 func makeTestData() []TestEl {
+	slog.Warn("Making test data. This can take a while")
 	count := 100000
 	data := make([]TestEl, count)
 	for i := 0; i < count; i++ {

@@ -140,7 +140,7 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 		return strings.ToLower(act1.Title) < strings.ToLower(act2.Title)
 	})
 
-	thingData.DeviceType = tdi.GetAtType()
+	thingData.DeviceType = ct.GetAtTypeTitle()
 
 	// get the value of a make & model properties, if they exist
 	// TODO: this is a bit of a pain to do. Is this a common problem?

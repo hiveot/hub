@@ -1,8 +1,6 @@
 package connections
 
 import (
-	"golang.org/x/exp/slices"
-	"log/slog"
 	"sync"
 )
 
@@ -11,54 +9,66 @@ import (
 // This uses "+" as wildcards
 type Subscriptions struct {
 
+	// map of subscriptions to correlationID
 	// subscriptions of this connection in the form {dThingID}.{name}
-	// This doesn't expect too many subscriptions per connection so use a list
-	subscriptions []string
+	// not many are expected.
+	subscriptions map[string]string
 
 	// mutex for access to subscriptions
 	mux sync.RWMutex
 }
 
-// IsSubscribed returns true  if this client session has subscribed to
-// events or properties from the Thing and name
-func (s *Subscriptions) IsSubscribed(dThingID string, name string) bool {
+// GetSubscription returns the correlation ID if this client session has subscribed to
+// events or properties from the Thing and name.
+// If the subscription is unknown then return an empty string.
+func (s *Subscriptions) GetSubscription(thingID string, name string) string {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
 
 	if len(s.subscriptions) == 0 {
-		return false
+		return ""
 	}
 	// wildcards
-	dThingWC := "+." + name
-	nameWC := dThingID + ".+"
-	sub := dThingID + "." + name
-	for _, s := range s.subscriptions {
-		if s == "+.+" {
+	thingWC := "+." + name
+	nameWC := thingID + ".+"
+	sub := thingID + "." + name
+	for k, v := range s.subscriptions {
+		if k == "+.+" {
 			// step 1, full wildcard subscriptions
-			return true
-		} else if s == dThingWC || s == nameWC {
+			return v
+		} else if k == thingWC || k == nameWC {
 			// step 1, thing or name wildcard subscriptions
-			return true
-		} else if s == sub {
+			return v
+		} else if k == sub {
 			// step 1, exact match subscriptions
-			return true
+			return v
 		}
 	}
-	return false
+	return ""
+}
+
+// IsSubscribed returns true  if this client session has subscribed to
+// events or properties from the Thing and name
+func (s *Subscriptions) IsSubscribed(thingID string, name string) bool {
+	corrID := s.GetSubscription(thingID, name)
+	return corrID != ""
 }
 
 // Subscribe adds a subscription for a thing event/property
-func (s *Subscriptions) Subscribe(dThingID string, name string) {
+func (s *Subscriptions) Subscribe(thingID string, name string, correlationID string) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
-	if dThingID == "" {
-		dThingID = "+"
+	if thingID == "" {
+		thingID = "+"
 	}
 	if name == "" {
 		name = "+"
 	}
-	subKey := dThingID + "." + name
-	s.subscriptions = append(s.subscriptions, subKey)
+	subKey := thingID + "." + name
+	if s.subscriptions == nil {
+		s.subscriptions = make(map[string]string)
+	}
+	s.subscriptions[subKey] = correlationID
 }
 
 // Unsubscribe removes a subscription for a thing event/property
@@ -72,10 +82,5 @@ func (s *Subscriptions) Unsubscribe(dThingID string, name string) {
 		name = "+"
 	}
 	subKey := dThingID + "." + name
-	i := slices.Index(s.subscriptions, subKey)
-	if i >= 0 {
-		s.subscriptions = slices.Delete(s.subscriptions, i, i+1)
-	} else {
-		slog.Info("UnobserveProperty/unsubscribe. Subscription not found", "subKey", subKey)
-	}
+	delete(s.subscriptions, subKey)
 }

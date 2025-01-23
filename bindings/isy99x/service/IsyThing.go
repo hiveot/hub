@@ -36,9 +36,9 @@ type IIsyThing interface {
 	// GetPropValues returns the property values of the thing
 	GetPropValues(onlyChanges bool) map[string]any
 	// HandleActionRequest passes incoming actions to the Thing for execution
-	HandleActionRequest(tv transports.RequestMessage) transports.ResponseMessage
+	HandleActionRequest(req *transports.RequestMessage) *transports.ResponseMessage
 	// HandleConfigRequest passes configuration changes to the Thing for execution
-	HandleConfigRequest(tv transports.RequestMessage) transports.ResponseMessage
+	HandleConfigRequest(req *transports.RequestMessage) *transports.ResponseMessage
 	// HandleValueUpdate updates the Thing properties with value obtained via the ISY gateway
 	HandleValueUpdate(propID string, uom string, newValue string) error
 	// Init assigns the ISY connection and node this Thing represents
@@ -95,13 +95,13 @@ func (it *IsyThing) GetPropValues(onlyChanges bool) map[string]any {
 //}
 
 // HandleActionRequest invokes the action handler of the specialized thing
-func (it *IsyThing) HandleActionRequest(req transports.RequestMessage) transports.ResponseMessage {
+func (it *IsyThing) HandleActionRequest(req *transports.RequestMessage) *transports.ResponseMessage {
 	err := fmt.Errorf("HandleRequest not supported for this thing")
 	return req.CreateResponse(nil, err)
 }
 
 // HandleConfigRequest invokes the config handler of the specialized thing
-func (it *IsyThing) HandleConfigRequest(req transports.RequestMessage) transports.ResponseMessage {
+func (it *IsyThing) HandleConfigRequest(req *transports.RequestMessage) *transports.ResponseMessage {
 	// The title is the friendly name of the node
 	if req.Name == vocab.PropDeviceTitle {
 		newName := req.ToString(0)

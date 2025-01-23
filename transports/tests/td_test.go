@@ -1,7 +1,10 @@
 package tests
 
 import (
+	"errors"
+	"fmt"
 	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/messaging"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
@@ -17,43 +20,51 @@ import (
 
 const DeviceTypeSensor = "hiveot:sensor"
 
-// Test subscribing a TD to the server by the agent
-func TestPublishTDByAgent(t *testing.T) {
-	t.Log("TestPublishTDByAgent")
-	var evVal atomic.Value
+// Test consumer reads a TD from agent via the server
+func TestReadTDFromAgent(t *testing.T) {
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	var thingID = "thing1"
 
-	// notification handler of TDs on the server
-	notificationHandler := func(msg transports.NotificationMessage) {
-		evVal.Store(msg.Data)
-	}
-
 	// 1. start the transport
-	_, cancelFn, _ := StartTransportServer(notificationHandler, nil, nil)
+	srv, cancelFn := StartTransportServer(nil, nil)
+	_ = srv
 	defer cancelFn()
 
 	// 2. connect as an agent
-	ag1 := NewAgent(testAgentID1)
-	_, err := ag1.ConnectWithPassword(testAgentID1)
+	agConn1, ag1 := NewAgent(testAgentID1)
+	_, err := agConn1.ConnectWithPassword(testAgentID1)
 	require.NoError(t, err)
-	defer ag1.Disconnect()
+	defer agConn1.Disconnect()
 
 	// 3. agent creates TD
 	td1 := td.NewTD(thingID, "My gadget", DeviceTypeSensor)
-	td1JSON, _ := jsoniter.Marshal(td1)
-	// 4. agent publishes the TD
-	notif1 := transports.NewNotificationMessage(wot.HTOpUpdateTD, thingID, "", string(td1JSON))
-	err = ag1.SendNotification(notif1)
-	require.NoError(t, err)
-	time.Sleep(time.Millisecond * 10) // time to take effect
 
-	// TD received by server
-	var rxMsg2Raw = evVal.Load()
-	require.NotNil(t, rxMsg2Raw)
-	rxMsg2 := rxMsg2Raw.(string)
+	// agent request handler to read TD
+	agentReqHandler := func(req *transports.RequestMessage,
+		connection transports.IConnection) *transports.ResponseMessage {
+		if req.Operation == wot.HTOpReadTD {
+			tdJSON, err := jsoniter.Marshal(td1)
+			return req.CreateResponse(tdJSON, err)
+		} else if req.Operation == wot.HTOpReadAllTDs {
+			tdJSON, err := jsoniter.Marshal(td1)
+			return req.CreateResponse([]string{string(tdJSON)}, err)
+		} else {
+			return req.CreateResponse(nil,
+				errors.New("agent receives unknown request: "+req.Operation))
+		}
+	}
+	ag1.SetRequestHandler(agentReqHandler)
+
+	// 4. verify the TD can be read from the agent
+	c := srv.GetConnectionByClientID(testAgentID1)
+	// c is server side connection of the agent. The hub is the consumer of the agent.
+	consumer := messaging.NewConsumer(c, nil, nil, testTimeout)
+	tdList, err := consumer.ReadAllTDs()
+	require.NoError(t, err)
+	require.True(t, len(tdList) > 0)
 
 	var td2 td.TD
-	err = jsoniter.UnmarshalFromString(rxMsg2, &td2)
+	err = jsoniter.UnmarshalFromString(tdList[0], &td2)
 	require.NoError(t, err)
 	assert.Equal(t, td1.ID, td2.ID)
 	assert.Equal(t, td1.Title, td2.Title)
@@ -62,12 +73,12 @@ func TestPublishTDByAgent(t *testing.T) {
 
 // Test if forms are indeed added to a TD, describing the transport protocol binding operations
 func TestAddForms(t *testing.T) {
-	t.Log("TestPublishTDByAgent")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	var thingID = "thing1"
 
 	// handler of TDs on the server
 	// 1. start the transport
-	_, cancelFn, _ := StartTransportServer(nil, nil, nil)
+	_, cancelFn := StartTransportServer(nil, nil)
 	defer cancelFn()
 
 	// 2. Create a TD
@@ -81,49 +92,47 @@ func TestAddForms(t *testing.T) {
 	assert.GreaterOrEqual(t, len(tdi.Forms), 1)
 }
 
-func TestReadTD(t *testing.T) {
-	t.Log("TestReadTD")
+// Agent Publishes TD to the directory
+func TestPublishTD(t *testing.T) {
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	var thingID = "thing1"
+	var rxTD atomic.Value
 
 	// 2. Create a TD
 	td1 := td.NewTD(thingID, "My gadget", DeviceTypeSensor)
+	td1JSON, _ := jsoniter.MarshalToString(td1)
 
 	// handler of TDs on the server
-	requestHandler := func(msg transports.RequestMessage, replyTo string) transports.ResponseMessage {
-		resp := msg.CreateResponse(td1, nil)
+	requestHandler := func(msg *transports.RequestMessage,
+		c transports.IConnection) *transports.ResponseMessage {
+		var err error
+		if msg.Operation == wot.HTOpUpdateTD {
+			assert.Equal(t, thingID, msg.ThingID)
+			assert.Equal(t, td1JSON, msg.Input)
+			assert.NotEmpty(t, msg.Input)
+			rxTD.Store(msg.Input)
+		} else {
+			err = fmt.Errorf("Unexpected operation: %s" + msg.Operation)
+		}
+		resp := msg.CreateResponse(nil, err)
 		return resp
 	}
 
-	// 1. start the transport
-	srv, cancelFn, _ := StartTransportServer(nil, requestHandler, nil)
+	// 1. start the transport server with the TD handler
+	srv, cancelFn := StartTransportServer(requestHandler, nil)
+	_ = srv
 	defer cancelFn()
 
-	// 2. add forms
-	err := transportServer.AddTDForms(td1)
+	// 2. Connect as agent
+	cc1, ag1 := NewAgent(testAgentID1)
+	_, err := cc1.ConnectWithPassword(testAgentID1)
 	require.NoError(t, err)
 
-	// 4. Check that at least 1 form are present
-	cl1 := NewConsumer(testClientID1, srv.GetForm)
-	_, err = cl1.ConnectWithPassword(testClientID1)
+	// Agent publishes the TD
+	err = ag1.PubTD(td1)
 	require.NoError(t, err)
-
-	err = cl1.Subscribe(thingID, "")
-	require.NoError(t, err)
-
-	//td2, err := cl1.ReadTD(thingID)
-	var td2 td.TD
-	// FIXME: this requires a request handler
-	err = cl1.Rpc(wot.HTOpReadTD, thingID, "", thingID, &td2)
-	require.NoError(t, err)
-	require.Equal(t, thingID, td2.ID)
-
-	// cl1 should receive update to published TD
-	var rxTD atomic.Bool
-	cl1.SetNotificationHandler(func(msg transports.NotificationMessage) {
-		rxTD.Store(true)
-	})
-	notif1 := transports.NewNotificationMessage(wot.HTOpUpdateTD, thingID, "", td2)
-	srv.SendNotification(notif1)
 	time.Sleep(time.Millisecond * 10)
-	assert.True(t, rxTD.Load())
+
+	// check reception
+	require.Equal(t, td1JSON, rxTD.Load())
 }

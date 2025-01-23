@@ -5,23 +5,23 @@ import {
 import * as tslog from 'tslog';
 import {
     OpInvokeAction,
-    HTOpPublishEvent,
-    HTOpUpdateProperty,
     OpWriteProperty,
-    HTOpUpdateMultipleProperties,
     OpSubscribeEvent,
-    OpSubscribeAllEvents, OpUnsubscribeAllEvents, OpUnsubscribeEvent, HTOpUpdateTD,
+    OpSubscribeAllEvents,
+    OpUnsubscribeAllEvents,
+    OpUnsubscribeEvent,
+    HTOpUpdateTD,
+    OpObserveAllProperties,
+    OpObserveProperty,
 } from "@hivelib/api/vocab/vocab.js";
 import * as http2 from "node:http2";
 import {connectSSE} from "@hivelib/transports/httpclient/connectSSE";
 import {
     RequestHandler,
-    NotificationHandler,
     ResponseHandler, ConnectionStatus
 } from "@hivelib/transports/IConsumerConnection";
 import {nanoid} from "nanoid";
-import EventSource from "eventsource";
-import {NotificationMessage, RequestMessage, ResponseMessage} from "@hivelib/transports/Messages";
+import {RequestMessage, ResponseMessage} from "@hivelib/transports/Messages";
 
 // FIXME: import from vocab is not working
 const RequestCompleted = "completed"
@@ -39,14 +39,14 @@ const RequestFailed = "failed"
 
 // HTTP protoocol constants
 // StatusHeader contains the result of the request, eg Pending, Completed or Failed
-const StatusHeader = "status"
-// CorrelationIDHeader for transports that support headers can include a message-ID
-const CorrelationIDHeader = "correlation-id"
-// ConnectionIDHeader identifies the client's connection in case of multiple
-// connections from the same client.
-const ConnectionIDHeader = "cid"
-// DataSchemaHeader to indicate which  'additionalresults' dataschema being returned.
-const DataSchemaHeader = "dataschema"
+// const StatusHeader = "status"
+// // CorrelationIDHeader for transports that support headers can include a message-ID
+// const CorrelationIDHeader = "correlation-id"
+// // ConnectionIDHeader identifies the client's connection in case of multiple
+// // connections from the same client.
+// const ConnectionIDHeader = "cid"
+// // DataSchemaHeader to indicate which  'additionalresults' dataschema being returned.
+// const DataSchemaHeader = "dataschema"
 
 
 // HTTP Paths for auth.
@@ -56,11 +56,11 @@ const HttpPostLoginPath   = "/authn/login"
 const HttpPostLogoutPath  = "/authn/logout"
 const HttpPostRefreshPath = "/authn/refresh"
 const HttpGetDigitwinPath = "/digitwin/{operation}/{thingID}/{name}"
-
-// paths for HTTP subprotocols
-const DefaultWSSPath   = "/wss"
-const DefaultSSEPath   = "/sse"
-const DefaultSSESCPath = "/ssesc"
+//
+// // paths for HTTP subprotocols
+// const DefaultWSSPath   = "/wss"
+// const DefaultSSEPath   = "/sse"
+// const DefaultSSESCPath = "/ssesc"
 
 // Generic form href that maps to all operations for the http client, using URI variables
 // Generic HiveOT HTTP urls when Forms are not available. The payload is a
@@ -92,8 +92,6 @@ export class HttpSSEClient implements IAgentConnection {
 
     // client handler for connection status change
     connectHandler?: (status: ConnectionStatus) => void;
-    // notification handler for handling event and property update notifications
-    notificationHandler?: NotificationHandler;
     // request handler (agents only) for received action and property write requests.
     requestHandler?: RequestHandler;
     // response handler for receiving responses to non-rpc requests
@@ -197,7 +195,6 @@ export class HttpSSEClient implements IAgentConnection {
         // with the new auth token a SSE return channel can be established
         this._sseClient = await connectSSE(
             this._baseURL, this._ssePath, this.authToken, this._cid,
-            this.onNotification.bind(this),
             this.onRequest.bind(this),
             this.onResponse.bind(this),
             this.onConnection.bind(this))
@@ -212,7 +209,6 @@ export class HttpSSEClient implements IAgentConnection {
         await this.connect()
         this._sseClient = await connectSSE(
             this._baseURL, this._ssePath, this.authToken, this._cid,
-            this.onNotification.bind(this),
             this.onRequest.bind(this),
             this.onResponse.bind(this),
             this.onConnection.bind(this))
@@ -250,20 +246,6 @@ export class HttpSSEClient implements IAgentConnection {
         }
     }
 
-    // Handle incoming event or property notifications and pass them to the handler
-    onNotification(msg: NotificationMessage): void {
-        try {
-            if (this.notificationHandler) {
-                this.notificationHandler(msg)
-            } else {
-                hclog.warn(`onNotification: received notification but no handler registered: ${msg.operation}`)
-            }
-        } catch (e) {
-            let errText = `Error handling hub notification sender=${msg.senderID}, messageType=${msg.operation}, thingID=${msg.thingID}, name=${msg.name}, error=${e}`
-            hclog.warn(errText)
-        }
-    }
-
     // Handle incoming request (as an agent) and pass them to the registered handler
     onRequest(req: RequestMessage):  ResponseMessage {
         let resp: ResponseMessage
@@ -285,9 +267,10 @@ export class HttpSSEClient implements IAgentConnection {
         return resp
     }
 
-    // Handle response to previous sent request
+    // Handle response to previous sent request or notification to subscriptions
     onResponse(resp:ResponseMessage):void{
         let cb: ResponseHandler|undefined
+
         if (resp.correlationID) {
             cb = this._correlData.get(resp.correlationID)
         }
@@ -418,7 +401,7 @@ export class HttpSSEClient implements IAgentConnection {
     }
 
 
-    // PubEvent - Agent publishes a Thing event.
+    // PubEvent - Agent publishes a Thing event for event subscribers.
     // The payload is an event value as per event affordance.
     // Intended for agents of devices and services to notify of changes to the Things
     // they are the agent for.
@@ -427,9 +410,7 @@ export class HttpSSEClient implements IAgentConnection {
     // This is the ID under which the TD document is published that describes
     // the thing. It can be the ID of the sensor, actuator or service.
     //
-    // This will use the client's ID as the agentID of the event.
-    // eventName is the ID of the event described in the TD document 'events' section,
-    // or one of the predefined events listed above as EventIDXyz
+    // This sends a response message with the SubscribeEvent operation.
     //
     //	@param thingID: of the Thing whose event is published
     //	@param eventName: is one of the predefined events as described in the Thing TD
@@ -437,7 +418,7 @@ export class HttpSSEClient implements IAgentConnection {
     pubEvent(thingID: string, name: string, data: any) {
 
         hclog.info("pubEvent. thingID:", thingID, ", name:", name)
-        let msg = new NotificationMessage(HTOpPublishEvent, thingID,name,data)
+        let msg = new ResponseMessage(OpSubscribeEvent, thingID,name,data)
         return this.sendNotification(msg)
 
         // let eventPath = PostAgentPublishEventPath.replace("{thingID}", thingID)
@@ -451,27 +432,27 @@ export class HttpSSEClient implements IAgentConnection {
     }
 
 
-    // Publish batch of property values
+    // Publish batch of property values to property observers
     pubMultipleProperties(thingID: string, propMap: { [key: string]: any }) {
 
         hclog.info("pubMultipleProperties. thingID:", thingID)
-        let msg = new NotificationMessage(HTOpUpdateMultipleProperties, thingID,"",propMap)
+        let msg = new ResponseMessage(OpObserveAllProperties, thingID,"",propMap)
         return this.sendNotification(msg)
     }
 
-    // Publish thing property value update
+    // Publish thing property value update to property observers
     pubProperty(thingID: string, name:string, value: any) {
         hclog.info("pubProperty. thingID:", thingID)
-        let msg = new NotificationMessage(HTOpUpdateProperty, thingID,name,value)
+        let msg = new ResponseMessage(OpObserveProperty, thingID,name,value)
         return this.sendNotification(msg)
     }
 
-    // PubTD publishes an event with a Thing TD document.
+    // PubTD publishes a req with a Thing TD document.
     // This serializes the TD into JSON as per WoT specification
     pubTD(td: TD) {
         hclog.info("pubTD. thingID:", td.id)
         let tdJSON = JSON.stringify(td, null, ' ');
-        let msg = new NotificationMessage(HTOpUpdateTD, td.id,"",tdJSON)
+        let msg = new ResponseMessage(HTOpUpdateTD, td.id,"",tdJSON)
         return this.sendNotification(msg)
     }
 
@@ -497,7 +478,7 @@ export class HttpSSEClient implements IAgentConnection {
 
     // sendNotification [agent] sends a notification message to the hub.
     // @param msg: notification to send
-    sendNotification(notif: NotificationMessage) {
+    sendNotification(notif: ResponseMessage) {
         // notifications can only be send to the fixed endpoint
         this.pubMessage(
             "POST",HiveOTPostNotificationHRef, notif)
@@ -539,7 +520,7 @@ export class HttpSSEClient implements IAgentConnection {
     // sendResponse [agent] sends a response status message to the hub.
     // @param resp: response to send
     sendResponse(resp: ResponseMessage) {
-        // responses can only be send to the fixed endpoint
+        // responses can only be sent to the fixed endpoint
         this.pubMessage(
             "POST",HiveOTPostResponseHRef, resp,resp.correlationID)
             .then().catch()
@@ -595,10 +576,6 @@ export class HttpSSEClient implements IAgentConnection {
     setConnectHandler(handler: (status: ConnectionStatus) => void): void {
         this.connectHandler = handler
     }
-    setNotificationHandler(handler: NotificationHandler) {
-        this.notificationHandler = handler
-    }
-
     // set the handler of incoming requests such as action or property write requests
     //
     // The handler should return a ResponseMessage containing the handling status.

@@ -43,7 +43,7 @@ func (cl *WssAgentTransport) handleAgentRequest(req transports.RequestMessage) {
 // PubEvent helper for agents to publish an event
 // This is short for SendNotification( ... wot.OpEvent ...)
 func (cl *WssAgentTransport) PubEvent(thingID string, name string, value any) error {
-	notif := transports.NewNotificationMessage(wot.HTOpEvent, thingID, name, value)
+	notif := transports.NewNotificationResponse(wot.HTOpEvent, thingID, name, value)
 	return cl.SendNotification(notif)
 }
 
@@ -51,14 +51,14 @@ func (cl *WssAgentTransport) PubEvent(thingID string, name string, value any) er
 // This is short for SendNotification( ... wot.OpProperty ...)
 func (cl *WssAgentTransport) PubProperty(thingID string, name string, value any) error {
 
-	notif := transports.NewNotificationMessage(wot.HTOpUpdateProperty, thingID, name, value)
+	notif := transports.NewNotificationResponse(wot.HTOpUpdateProperty, thingID, name, value)
 	return cl.SendNotification(notif)
 }
 
 // PubProperties helper for agents to publish a map of property values
 func (cl *WssAgentTransport) PubProperties(thingID string, propMap map[string]any) error {
 
-	notif := transports.NewNotificationMessage(wot.HTOpUpdateMultipleProperties, thingID, "", propMap)
+	notif := transports.NewNotificationResponse(wot.HTOpUpdateMultipleProperties, thingID, "", propMap)
 	err := cl.SendNotification(notif)
 	return err
 }
@@ -67,13 +67,13 @@ func (cl *WssAgentTransport) PubProperties(thingID string, propMap map[string]an
 // This is short for SendNotification( ... wot.HTOpTD ...)
 func (cl *WssAgentTransport) PubTD(td *td.TD) error {
 	tdJson, _ := jsoniter.Marshal(td)
-	notif := transports.NewNotificationMessage(wot.HTOpUpdateTD, td.ID, "", tdJson)
+	notif := transports.NewNotificationResponse(wot.HTOpUpdateTD, td.ID, "", tdJson)
 	return cl.SendNotification(notif)
 }
 
 // wssToRequest converts a websocket message to the unified request message
 func (cl *WssAgentTransport) wssToRequest(
-	baseMsg wssserver.BaseMessage, raw []byte) (isRequest bool, req transports.RequestMessage) {
+	baseMsg wssserver_old.BaseMessage, raw []byte) (isRequest bool, req transports.RequestMessage) {
 
 	var err error
 	isRequest = true
@@ -85,38 +85,40 @@ func (cl *WssAgentTransport) wssToRequest(
 		slog.String("msgType", msgType),
 		slog.String("correlationID", correlationID),
 	)
-	operation, _ := wssserver.MsgTypeToOp[baseMsg.MessageType]
+	operation, _ := wssserver_old.MsgTypeToOp[baseMsg.MessageType]
 
 	switch baseMsg.MessageType {
 
-	// agent receives invoke action related message
-	case wssserver.MsgTypeInvokeAction,
-		wssserver.MsgTypeQueryAction,
-		wssserver.MsgTypeQueryAllActions:
-		wssMsg := wssserver.ActionMessage{}
+	// agent receives request messages
+	case wssserver_old.MsgTypeInvokeAction,
+		wssserver_old.MsgTypeQueryAction,
+		wssserver_old.MsgTypeQueryAllActions:
+		wssMsg := wssserver_old.ActionMessage{}
 		err = cl.Unmarshal(raw, &wssMsg)
 		req = transports.NewRequestMessage(
 			wot.OpInvokeAction, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, wssMsg.CorrelationID)
 		req.Created = wssMsg.Timestamp
+		req.SenderID = wssMsg.SenderID
 
 	// agent receivess read event or property requests
-	case wssserver.MsgTypeReadEvent, wssserver.MsgTypeReadAllEvents,
-		wssserver.MsgTypeReadProperty, wssserver.MsgTypeReadAllProperties,
-		wssserver.MsgTypeReadMultipleProperties,
-		wssserver.MsgTypeReadTD:
+	case wssserver_old.MsgTypeReadEvent, wssserver_old.MsgTypeReadAllEvents,
+		wssserver_old.MsgTypeReadProperty, wssserver_old.MsgTypeReadAllProperties,
+		wssserver_old.MsgTypeReadMultipleProperties,
+		wssserver_old.MsgTypeReadTD:
 
-		wssMsg := wssserver.EventMessage{}
+		wssMsg := wssserver_old.EventMessage{}
 		err = cl.Unmarshal(raw, &wssMsg)
 		req = transports.NewRequestMessage(
 			operation, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, wssMsg.CorrelationID)
 		req.Created = wssMsg.Timestamp
 
-	case wssserver.MsgTypeWriteProperty, wssserver.MsgTypeWriteMultipleProperties:
-		wssMsg := wssserver.EventMessage{}
+	case wssserver_old.MsgTypeWriteProperty, wssserver_old.MsgTypeWriteMultipleProperties:
+		wssMsg := wssserver_old.PropertyMessage{}
 		err = cl.Unmarshal(raw, &wssMsg)
 		req = transports.NewRequestMessage(
 			operation, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, wssMsg.CorrelationID)
 		req.Created = wssMsg.Timestamp
+		req.SenderID = wssMsg.SenderID
 
 	default:
 		isRequest = false
@@ -128,7 +130,7 @@ func (cl *WssAgentTransport) wssToRequest(
 }
 
 // HandleAgentMessage agent receives a request.
-func (cl *WssAgentTransport) HandleAgentMessage(baseMsg wssserver.BaseMessage, raw []byte) {
+func (cl *WssAgentTransport) HandleAgentMessage(baseMsg wssserver_old.BaseMessage, raw []byte) {
 	var req transports.RequestMessage
 	var isRequest = true
 	var err error
@@ -186,7 +188,7 @@ func (cl *WssAgentTransport) Init(fullURL string, clientID string,
 func (cl *WssAgentTransport) SendNotification(notif transports.NotificationMessage) error {
 
 	// convert the operation into a websocket message
-	wssMsg, err := wssserver.OpToMessage(
+	wssMsg, err := wssserver_old.OpToMessage(
 		notif.Operation, notif.ThingID, notif.Name, nil, notif.Data,
 		"", cl.GetClientID())
 	if err != nil {
@@ -203,7 +205,7 @@ func (cl *WssAgentTransport) SetRequestHandler(cb transports.RequestHandler) {
 }
 
 // SendResponse Agent sends a response to a request.
-func (cl *WssAgentTransport) SendResponse(resp transports.ResponseMessage) (err error) {
+func (cl *WssAgentTransport) SendResponse(resp *transports.ResponseMessage) (err error) {
 
 	var wssMsg any
 
@@ -215,14 +217,14 @@ func (cl *WssAgentTransport) SendResponse(resp transports.ResponseMessage) (err 
 
 	// convert the operation into a websocket message
 	if resp.Error == "" {
-		wssMsg, err = wssserver.OpToMessage(
+		wssMsg, err = wssserver_old.OpToMessage(
 			resp.Operation, resp.ThingID, resp.Name, nil, resp.Output,
 			"", cl.GetClientID())
 	} else {
-		wssMsg = wssserver.ErrorMessage{
+		wssMsg = wssserver_old.ErrorMessage{
 			ThingID:       resp.ThingID,
 			Name:          resp.Name,
-			MessageType:   wssserver.MsgTypeError,
+			MessageType:   wssserver_old.MsgTypeError,
 			Title:         resp.Error,
 			Detail:        fmt.Sprintf("%v", resp.Output),
 			Status:        transports.StatusFailed,

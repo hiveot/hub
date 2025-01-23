@@ -2,7 +2,6 @@ package td
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/wot"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
@@ -338,25 +337,6 @@ func (tdoc *TD) GetAction(actionName string) *ActionAffordance {
 	return actionAffordance
 }
 
-// GetAtType return the @type field as a string
-// If @type contains an array then the first value is returned.
-func (tdoc *TD) GetAtType() string {
-	atTypeValue := ""
-	switch t := tdoc.AtType.(type) {
-	case string:
-		atTypeValue = t
-	case []string:
-		if len(t) > 0 {
-			atTypeValue = t[0]
-		}
-	}
-	atTypeVocab, found := vocab.ThingClassesMap[atTypeValue]
-	if !found {
-		return atTypeValue
-	}
-	return atTypeVocab.Title
-}
-
 // GetEvent returns the Schema for the event or nil if the event doesn't exist
 func (tdoc *TD) GetEvent(eventName string) *EventAffordance {
 	//tdoc.updateMutex.RLock()
@@ -417,9 +397,7 @@ func (tdoc *TD) GetForm(operation string, name string, protocol string) Form {
 			wot.OpSubscribeAllEvents,
 			wot.OpSubscribeEvent,
 			wot.OpUnsubscribeAllEvents,
-			wot.OpUnsubscribeEvent,
-			wot.HTOpReadAllEvents,
-			wot.HTOpReadEvent:
+			wot.OpUnsubscribeEvent:
 			aff, _ := tdoc.Events[name]
 			if aff != nil {
 				f = aff.Forms

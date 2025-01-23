@@ -1,6 +1,7 @@
-package httpserver
+package wothttpbasicserver
 
 import (
+	httpserver2 "github.com/hiveot/hub/transports/servers/httpserver"
 	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
@@ -47,7 +48,7 @@ type HttpOperation struct {
 //	}
 //
 // ```
-func (svc *HttpTransportServer) AddTDForms(td *td.TD) error {
+func (svc *httpserver2.HttpTransportServer) AddTDForms(td *td.TD) error {
 	svc.AddDigitwinForms(td)
 	svc.AddThingLevelForms(td)
 	//svc.AddPropertiesForms(td)
@@ -58,7 +59,7 @@ func (svc *HttpTransportServer) AddTDForms(td *td.TD) error {
 
 // GetForm returns a new HTTP form for the given operation
 // Intended for Thing level operations
-func (svc *HttpTransportServer) GetForm(op, thingID, name string) td.Form {
+func (svc *httpserver2.HttpTransportServer) GetForm(op, thingID, name string) td.Form {
 
 	// all operations use URI variables for selecting things
 	// HTTP operations
@@ -140,8 +141,8 @@ func (svc *HttpTransportServer) GetForm(op, thingID, name string) td.Form {
 //}
 
 // AddDigitwinForms adds Thing level forms for all digitwin read and write operations
-func (svc *HttpTransportServer) AddDigitwinForms(tdi *td.TD) {
-	methodPath := HttpGetDigitwinPath
+func (svc *httpserver2.HttpTransportServer) AddDigitwinForms(tdi *td.TD) {
+	methodPath := httpserver2.HttpGetDigitwinPath
 	f := td.Form{
 		"op": []string{
 			wot.OpReadProperty, wot.OpReadAllProperties,
@@ -154,7 +155,7 @@ func (svc *HttpTransportServer) AddDigitwinForms(tdi *td.TD) {
 		"htv:methodName": http.MethodGet,
 	}
 	tdi.Forms = append(tdi.Forms, f)
-	methodPath = HttpGetDigitwinPath
+	methodPath = httpserver2.HttpGetDigitwinPath
 	f = td.Form{
 		"op":             []string{wot.OpInvokeAction, wot.OpWriteProperty},
 		"href":           methodPath,
@@ -166,7 +167,7 @@ func (svc *HttpTransportServer) AddDigitwinForms(tdi *td.TD) {
 
 // AddThingLevelForms adds forms with protocol info to the TD, and its properties, events and actions
 // HiveOT mostly uses top level forms.
-func (svc *HttpTransportServer) AddThingLevelForms(tdi *td.TD) {
+func (svc *httpserver2.HttpTransportServer) AddThingLevelForms(tdi *td.TD) {
 	// iterate the thing level operations
 	params := map[string]string{"thingID": tdi.ID}
 	for _, opInfo := range svc.operations {

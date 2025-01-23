@@ -2,14 +2,17 @@ package digitwin_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/runtime/digitwin/store"
+	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/connections"
 	"github.com/hiveot/hub/wot/td"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"log/slog"
 	"os"
 	"path"
 	"testing"
@@ -33,7 +36,11 @@ func startService(clean bool) (
 		_ = os.RemoveAll(testDirFolder)
 		cm.CloseAll()
 	}
-	svc, store, err := service.StartDigitwinService(dirStorePath, cm)
+	notifHandler := func(notif *transports.ResponseMessage) error {
+		slog.Info("Received notification", "op", notif.Operation)
+		return nil
+	}
+	svc, store, err := service.StartDigitwinService(dirStorePath, notifHandler)
 	if err != nil {
 		panic("unable to start the digitwin service")
 	}
@@ -73,6 +80,7 @@ func createTDDoc(thingID string, nrProps, nrEvents, nrActions int) *td.TD {
 }
 
 func TestStartStopService(t *testing.T) {
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	var thingIDs = []string{"thing1", "thing2", "thing3", "thing4"}
 	svc, hc, stopFunc := startService(true)
 	_ = hc

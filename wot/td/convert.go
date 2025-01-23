@@ -3,7 +3,7 @@ package td
 import (
 	"errors"
 	"github.com/araddon/dateparse"
-	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/wot"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"strconv"
@@ -38,7 +38,7 @@ func UnmarshalTDList(tdListJSON []string) (tdList []*TD, err error) {
 func ConvertToNative(strVal string, dataSchema *DataSchema) (val any, err error) {
 	if strVal == "" {
 		// nil value boolean input are always treated as false.
-		if dataSchema.Type == vocab.WoTDataTypeBool {
+		if dataSchema.Type == wot.WoTDataTypeBool {
 			return false, nil
 		}
 		return nil, nil
@@ -47,7 +47,7 @@ func ConvertToNative(strVal string, dataSchema *DataSchema) (val any, err error)
 		return nil, errors.New("Nil DataSchema")
 	}
 	switch dataSchema.Type {
-	case vocab.WoTDataTypeBool:
+	case wot.WoTDataTypeBool:
 		// ParseBool is too restrictive
 		lowerVal := strings.ToLower(strVal)
 		val = false
@@ -55,22 +55,22 @@ func ConvertToNative(strVal string, dataSchema *DataSchema) (val any, err error)
 			val = true
 		}
 		break
-	case vocab.WoTDataTypeArray:
+	case wot.WoTDataTypeArray:
 		err = jsoniter.UnmarshalFromString(strVal, &val)
 		break
-	case vocab.WoTDataTypeDateTime:
+	case wot.WoTDataTypeDateTime:
 		val, err = dateparse.ParseAny(strVal)
 		break
-	case vocab.WoTDataTypeInteger:
+	case wot.WoTDataTypeInteger:
 		val, err = strconv.ParseInt(strVal, 10, 64)
 		break
-	case vocab.WoTDataTypeNumber:
+	case wot.WoTDataTypeNumber:
 		val, err = strconv.ParseFloat(strVal, 64)
 		break
-	case vocab.WoTDataTypeUnsignedInt:
+	case wot.WoTDataTypeUnsignedInt:
 		val, err = strconv.ParseUint(strVal, 10, 64)
 		break
-	case vocab.WoTDataTypeObject:
+	case wot.WoTDataTypeObject:
 		err = jsoniter.UnmarshalFromString(strVal, &val)
 		break
 	default:

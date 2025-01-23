@@ -1,6 +1,7 @@
 package httpserver
 
 import (
+	"errors"
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	jsoniter "github.com/json-iterator/go"
@@ -8,6 +9,9 @@ import (
 	"log/slog"
 	"net/http"
 )
+
+const SessionContextID = "session"
+const ContextClientID = "clientID"
 
 // RequestParams contains the parameters read from the HTTP request
 type RequestParams struct {
@@ -105,4 +109,14 @@ func GetHiveotParams(r *http.Request) (clientID, connID string, payload []byte, 
 	}
 
 	return clientID, connID, payload, err
+}
+
+// GetClientIdFromContext returns the clientID for the given request
+func GetClientIdFromContext(r *http.Request) (clientID string, err error) {
+	ctxClientID := r.Context().Value(ContextClientID)
+	if ctxClientID == nil {
+		return "", errors.New("no clientID in context")
+	}
+	clientID = ctxClientID.(string)
+	return clientID, nil
 }

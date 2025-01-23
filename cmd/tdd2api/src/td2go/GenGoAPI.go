@@ -44,6 +44,7 @@ func GenGoAPIFromTD(td1 *td.TD, outFile string) (err error) {
 
 	l.Add("")
 	l.Add("import \"errors\"")
+	l.Add("import \"github.com/hiveot/hub/transports/messaging\"")
 	l.Add("import \"github.com/hiveot/hub/transports/tputils\"")
 	l.Add("import \"github.com/hiveot/hub/transports\"")
 	l.Add("")

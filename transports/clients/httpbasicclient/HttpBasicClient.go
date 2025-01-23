@@ -1,4 +1,4 @@
-package httpclient
+package httpbasicclient
 
 import (
 	"bytes"
@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/clients/base"
 	"github.com/hiveot/hub/transports/servers/httpserver"
 	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/transports/tputils/tlsclient"
@@ -19,11 +18,12 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"sync"
 	"sync/atomic"
 	"time"
 )
 
-// HttpConsumerClient is the http/2 client for connecting a WoT consumer to a
+// HttpBasicClient is the http/2 client for connecting a WoT consumer to a
 // WoT server.
 // This implements the IAgentTransport interface.
 //
@@ -33,14 +33,39 @@ import (
 // While this client can be used stand-alone, it is intended for use as a base
 // for http subprotocols SSE-SC and WSS
 // See SsescTransportClient and WSSTransportClient.
-type HttpConsumerClient struct {
-	base.BaseClient
+type HttpBasicClient struct {
+	clientID string
 
+	// CA certificate to verify the server with
+	caCert *x509.Certificate
+
+	// This client's connection ID
+	cid string
+
+	// The full server's URL schema://host:port/path
+	fullURL string
+	// The server host:port
+	hostPort    string
+	isConnected atomic.Bool
+
+	// protocol ProtocolTypeHTTPS/SSESC/MQTT/WSS
+	protocolType string
+
+	// RPC timeout
+	timeout time.Duration
+	// protected operations
+	mux sync.RWMutex
 	// http2 client for posting messages
 	httpClient *http.Client
 	// authentication bearer token if authenticated
 	bearerToken string
+
+	// getForm obtains the form for sending a request or notification
+	// if nil, then the hiveot protocol envelope and URL are used as fallback
+	getForm transports.GetFormHandler
+
 	// custom headers to include in each request
+
 	headers map[string]string
 
 	lastError atomic.Pointer[error]
@@ -59,7 +84,7 @@ type HttpConsumerClient struct {
 //	correlationID: optional correlationID header value
 //
 // This returns the raw serialized response data, a response message ID, return status code or an error
-func (cl *HttpConsumerClient) _send(method string, methodPath string,
+func (cl *HttpBasicClient) _send(method string, methodPath string,
 	body []byte, correlationID string) (
 	resp []byte, headers http.Header, err error) {
 
@@ -135,7 +160,7 @@ func (cl *HttpConsumerClient) _send(method string, methodPath string,
 //	clientCert client tls certificate containing x509 cert and private key
 //
 // Returns nil if successful, or an error if connection failed
-//func (cl *HttpConsumerClient) ConnectWithClientCert(kp keys.IHiveKey, clientCert *tls.Certificate) (err error) {
+//func (cl *HttpBasicClient) ConnectWithClientCert(kp keys.IHiveKey, clientCert *tls.Certificate) (err error) {
 //	cl.mux.RLock()
 //	defer cl.mux.RUnlock()
 //	_ = kp
@@ -144,14 +169,27 @@ func (cl *HttpConsumerClient) _send(method string, methodPath string,
 //}
 
 // CreateKeyPair returns a new set of serialized public/private key pair
-//func (cl *HttpConsumerClient) CreateKeyPair() (cryptoKeys keys.IHiveKey) {
+//func (cl *HttpBasicClient) CreateKeyPair() (cryptoKeys keys.IHiveKey) {
 //	k := keys.NewKey(keys.KeyTypeEd25519)
 //	return k
 //}
 
+// Disconnect from the server
+func (cl *HttpBasicClient) Disconnect() {
+	slog.Debug("HttpBasicClient.Disconnect",
+		slog.String("clientID", cl.clientID),
+	)
+
+	cl.mux.Lock()
+	defer cl.mux.Unlock()
+	if cl.isConnected.Load() {
+		cl.httpClient.CloseIdleConnections()
+	}
+}
+
 // GetDefaultForm return the default http form for the operation
 // This simply returns nil for anything else than login.
-func (cl *HttpConsumerClient) GetDefaultForm(op, thingID, name string) (f td.Form) {
+func (cl *HttpBasicClient) GetDefaultForm(op, thingID, name string) (f td.Form) {
 	// login has its own URL as it is unauthenticated
 	if op == wot.HTOpLogin {
 		href := httpserver.HttpPostLoginPath
@@ -163,23 +201,35 @@ func (cl *HttpConsumerClient) GetDefaultForm(op, thingID, name string) (f td.For
 	return f
 }
 
-// Disconnect from the server
-func (cl *HttpConsumerClient) Disconnect() {
-	slog.Debug("HttpConsumerClient.Disconnect",
-		slog.String("clientID", cl.GetClientID()),
-	)
-
-	cl.BaseMux.Lock()
-	defer cl.BaseMux.Unlock()
-	if cl.BaseIsConnected.Load() {
-		cl.httpClient.CloseIdleConnections()
-	}
+// GetClientID returns the client's account ID
+func (cl *HttpBasicClient) GetClientID() string {
+	return cl.clientID
 }
 
-func (cl *HttpConsumerClient) GetTlsClient() *http.Client {
-	cl.BaseMux.RLock()
-	defer cl.BaseMux.RUnlock()
+// GetConnectionID returns the client's connection ID
+func (cl *HttpBasicClient) GetConnectionID() string {
+	return cl.cid
+}
+
+// GetProtocolType returns the type of protocol this client supports
+func (cl *HttpBasicClient) GetProtocolType() string {
+	return transports.ProtocolTypeWotHTTPBasic
+}
+
+// GetServerURL returns the schema://address:port/path of the server connection
+func (cl *HttpBasicClient) GetServerURL() string {
+	return cl.fullURL
+}
+
+func (cl *HttpBasicClient) GetTlsClient() *http.Client {
+	cl.mux.RLock()
+	defer cl.mux.RUnlock()
 	return cl.httpClient
+}
+
+// IsConnected return whether the return channel is connection, eg can receive data
+func (cl *HttpBasicClient) IsConnected() bool {
+	return cl.isConnected.Load()
 }
 
 // PubRequest publishes a request message to the server.
@@ -193,7 +243,7 @@ func (cl *HttpConsumerClient) GetTlsClient() *http.Client {
 //
 // This locates the form for the operation using 'getForm' and uses the result
 // to determine the URL to publish the request to.
-func (cl *HttpConsumerClient) PubRequest(req transports.RequestMessage) error {
+func (cl *HttpBasicClient) PubRequest(req transports.RequestMessage) error {
 
 	var dataJSON []byte
 	var method string
@@ -208,7 +258,7 @@ func (cl *HttpConsumerClient) PubRequest(req transports.RequestMessage) error {
 
 	// the getForm callback provides the method and URL to invoke for this operation.
 	// use the hiveot fallback if not available
-	f := cl.BaseGetForm(req.Operation, req.ThingID, req.Name)
+	f := cl.getForm(req.Operation, req.ThingID, req.Name)
 	if f != nil {
 		method, _ = f.GetMethodName()
 		href, _ = f.GetHRef()
@@ -216,12 +266,11 @@ func (cl *HttpConsumerClient) PubRequest(req transports.RequestMessage) error {
 
 	if f == nil {
 		// fallback to sending the hiveot request envelope
-		// FIXME: this is temporary as agents don't use forms.
-		dataJSON = cl.Marshal(req)
+		dataJSON, _ = jsoniter.Marshal(req)
 		method = http.MethodPost
 		href = httpserver.HiveOTPostRequestHRef
 	} else if req.Input != nil {
-		dataJSON = cl.Marshal(req.Input)
+		dataJSON, _ = jsoniter.Marshal(req.Input)
 	}
 	// use + as wildcard for thingID to avoid a 404
 	// while not recommended, it is allowed to subscribe/observe all things
@@ -280,7 +329,7 @@ func (cl *HttpConsumerClient) PubRequest(req transports.RequestMessage) error {
 		}
 		// having raw output data is treated as completed
 		if outputRaw != nil && len(outputRaw) > 0 {
-			err = cl.Unmarshal(outputRaw, &output)
+			err = jsoniter.Unmarshal(outputRaw, &output)
 		}
 		// 2 and 3. request completed
 		// not all client respond with a statusHeader
@@ -293,7 +342,7 @@ func (cl *HttpConsumerClient) PubRequest(req transports.RequestMessage) error {
 				resp := transports.NewResponseMessage(
 					req.Operation, req.ThingID, req.Name, output, nil, req.CorrelationID)
 				// pass a response to the sync or asyncn handler of responses
-				cl.OnResponse(resp)
+				cl.OnResponse(*resp)
 			}()
 		} else if statusHeader == transports.StatusFailed {
 			// body contains the error details return the error
@@ -309,55 +358,7 @@ func (cl *HttpConsumerClient) PubRequest(req transports.RequestMessage) error {
 	return err
 }
 
-func (cl *HttpConsumerClient) Init(
-	fullURL string, clientID string, clientCert *tls.Certificate, caCert *x509.Certificate,
-	getForm transports.GetFormHandler,
-	timeout time.Duration) {
-	baseHostPort := ""
-	caCertPool := x509.NewCertPool()
-
-	// Use CA certificate for server authentication if it exists
-	if caCert == nil {
-		slog.Info("NewHttpTransportClient: No CA certificate. InsecureSkipVerify used",
-			slog.String("destination", fullURL))
-	} else {
-		slog.Debug("NewHttpTransportClient: CA certificate",
-			slog.String("destination", fullURL),
-			slog.String("caCert CN", caCert.Subject.CommonName))
-		caCertPool.AddCert(caCert)
-	}
-	if timeout == 0 {
-		timeout = time.Second * 3
-	}
-	urlParts, err := url.Parse(fullURL)
-	if err != nil {
-		slog.Error("Invalid URL")
-	} else {
-		baseHostPort = urlParts.Host
-	}
-	cl.BaseClient = base.BaseClient{
-		BaseCaCert:       caCert,
-		BaseClientID:     clientID,
-		BaseConnectionID: "http-" + shortid.MustGenerate(),
-		BaseProtocolType: transports.ProtocolTypeHTTPS,
-		BaseFullURL:      fullURL,
-		BaseHostPort:     baseHostPort,
-		BaseTimeout:      timeout,
-		BaseRnrChan:      base.NewRnRChan(),
-	}
-
-	if getForm == nil {
-		getForm = cl.GetDefaultForm
-	}
-	//
-	cl.BaseGetForm = getForm
-	cl.headers = make(map[string]string)
-
-	cl.httpClient = tlsclient.NewHttp2TLSClient(caCert, clientCert, timeout)
-	cl.BasePubRequest = cl.PubRequest
-}
-
-// NewHttpTransportClient creates a new instance of the http binding client
+// NewHttpBasicClient creates a new instance of the http-basic protocol binding client
 //
 // This uses TD forms to perform an operation.
 //
@@ -367,12 +368,32 @@ func (cl *HttpConsumerClient) Init(
 //	caCert of the server to validate the server or nil to not check the server cert
 //	getForm is the handler for return a form for invoking an operation. nil for default
 //	timeout for waiting for response. 0 to use the default.
-func NewHttpTransportClient(
+func NewHttpBasicClient(
 	fullURL string, clientID string, clientCert *tls.Certificate, caCert *x509.Certificate,
-	getForm transports.GetFormHandler,
-	timeout time.Duration) *HttpConsumerClient {
+	getForm transports.GetFormHandler, timeout time.Duration) *HttpBasicClient {
 
-	cl := HttpConsumerClient{}
-	cl.Init(fullURL, clientID, clientCert, caCert, getForm, timeout)
+	var hostPort string
+	urlParts, err := url.Parse(fullURL)
+	if err != nil {
+		slog.Error("Invalid URL")
+	} else {
+		hostPort = urlParts.Host
+	}
+
+	cl := HttpBasicClient{
+		clientID:     clientID,
+		caCert:       caCert,
+		cid:          "http-" + shortid.MustGenerate(),
+		fullURL:      fullURL,
+		hostPort:     hostPort,
+		protocolType: transports.ProtocolTypeWotHTTPBasic,
+		timeout:      timeout,
+		getForm:      getForm,
+		headers:      make(map[string]string),
+	}
+	if cl.getForm == nil {
+		cl.getForm = cl.GetDefaultForm
+	}
+	cl.httpClient = tlsclient.NewHttp2TLSClient(caCert, clientCert, timeout)
 	return &cl
 }

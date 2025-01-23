@@ -1,48 +1,44 @@
-# HiveOT Transport Protocol Bindings
+# HiveOT Transport Bindings
 
-The HiveOT transports package has two main objectives:
+## Introduction
+
+The HiveOT transports package has the following objectives:
 1. Support any protocol to exchange messages between consumers and agents.
-2. Standardize the messaging for consumers and agents regardless the transport used.
+2. Standardize the messaging for consumers and agents regardless the underlying transport used.
 
-Consumers are end-users of IoT devices and services. WoT specifies protocol bindings to describe how consumers interact with Things. Unfortunately these protocol bindings each differ in the message envelopes used. HiveOT bindings therefore maps between the standardized hiveot message format and that of the protocol binding, while remaining compatible with the WoT specification where possible. 
+In HiveOT the Hub acts as the Thing agent for digital twins. Consumers connect to the Hub and can use all the Things available on the Hub as if it was the Thing itself. 
 
-Agents are services that expose a Thing to consumers. HiveOT uses an agent model where agents are clients of a Hub, just like consumers. WoT only addresses consumer-server interaction, so agent-server messaging is not specified. Since WoT isn't providing any specifications for this, HiveOT makes a best effort to use WoT concepts and vocabulary as far as they exists.
+The hub itself is a consumer of Things which are used to create a digital twin on the Hub. The main difference between hub and agent is that agents connect to the Hub instead of the other way around. The messaging however is still that of a consumer (hub) talking to an agent. In theory the connection can also be made by the hub, after which the exchange continues in the same way.
 
-HiveOT bindings supports the three hiveOT standardized message envelopes over the http, sse, ws and mqtt transports: These envelopes match the message flow for requests, responses and notifications, and are passed as-is over the underlying transport. This is used as the fallback in case forms are not available. This effectively act as a WoT application protocol that provides easy message exchange regardless the underlying transport. 
+This transports package is designed such that it can also be used stand-alone with requiring the Hub. The protocol clients and servers are used by consumer, agents and the hub.
+
+HiveOT provides a messaging layer on top of the WoT protocol bindings. This layer offers a unified way of communicating between consumer and Thing regardless the underlying transport protocol. In a addition, a set of direct transports are provided that simply transport the messages as-is instead of converting them to the WoT protocol binding format. These direct transports work over http/sse, wss, mqtt and other and use the request and response envelopes.
+
+This package has the following folder structure:
+```
+   root (transports)
+     - clients      WoT protocol bindings for communicating with a WoT compatible server
+     - servers      WoT protocol server for communicating with consumers
+     - connections  Connection and subscription manager for use by servers
+     - messaging    Application messaging layer built on top of clients and servers
+     - tputils      Transport protocol helper classes and methods
+     - tests        Test cases that operate on the messaging layer for testing protocol bindings. 
+```
 
 
 ## Messaging on HiveOT
 
-Hiveot APIs uses standardized message envelopes to provide a simple and consistent API regardless the protocol binding in use. Protocol bindings effectively map between the protocol specific messages and the hiveot standardized messages. The hiveot messages become the application level protocol for WoT consumers, services and Thing agents. It is the hope of HiveOT that this or a similar standard will be adopted by the WoT to provide a unified messaging interface for all protocol bindings.
+The messaging layer is a thin application layer built on top of the transport protocols. It provides a simple WoT friendly API to consumers and Thing agents for building IoT applications and Things.
+
+The purpose of this messaging layer is to enable WoT applications to work over any support transport protocol.
+
+HiveOT messaging uses a simple request-response message envelope. Clients send requests for operations and receive responses for these operations. It supports both direct and asynchronous transports. 
 
 This approach builds on top of the WoT definition for 'operations' and adds operations for use by agents, supporting agents as clients of a hub or gateway. 
 
-### Notification Message
-
-Notifications serve to notify subscribers of a change as identified by the operation, thingID and affordance name. Notifications are intended for any number of subscribers (or observers) and do not receive a response.
-
-All notifications use the same message envelope as implemented in NotificationMessage struct (golang, JS, Python). Protocol bindings can use this envelope directly or map from their protocol equivalent to this message format.
-
-The following operations are considered notifications:
-* property:  Update of a property value, sent by a Thing agent to observers of a property.
-* event:  Notification of event to subscribers.
-* td: Update of a TD by the directory (hiveot extension)
-
-| name              | data type | description                                                                                                                                       | required  |
-|-------------------|-----------|---------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
-| type              | string    | "notification". Identifies the message as a notification message                                                                                  | mandatory |
-| operation         | string    | Identification of the notification                                                                                                                | mandatory |
-| data              | any       | notification data as specified by the operation                                                                                                   | optional  |
-| correlationID | string | optional correlation with the request that caused the notification, such as subscriptions or message streams.                                     | optional  |
-| created           | string    | Timestamp the notification was created                                                                                                            | optional  |
-| thingID           | string    | ID of the thing the notification applies to                                                                                                       | optional  |
-| name              | string    | Name of the affordance the notification applies to, if applicable. The type of affordance (event, action, property) is determined by the operation | optional  |
-| messageID         | string    | Unique identification of the message.                                                                                                             | optional  |
-
-
 ### Request Message
 
-The purpose of the request message is for a client to send a request for an operation on a thing. Thing agents are required to send a response when a request is received.
+The purpose of the request message is for a client to send an asynchronous request for an operation on a thing. Thing agents implemented using these messages are required to send a response when a request is received.
 
 The following operations are considered to be requests:
 * invokeaction  [WoT]
@@ -52,106 +48,137 @@ The following operations are considered to be requests:
 * queryaction, queryallactions [WoT]
 * readevent, readallevents  (of a Thing)  [HiveOT extension]
 * readtd, readalltds  (of a directory or thing) [HiveOT extension]
+* subscribe, unsubscribe
+* observe, unobserve
 
 The request message defines the following fields:
 
-| name      | data type | description                                                                                                                                                                     | required  |
-|-----------|-----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
-| type      | string| "request". Identifies the message as a request message                                                                                                                          | mandatory |
-| operation | string| Describes the request to perform                                                                                                                                                | mandatory |
-| thingID   | string| ID of the thing the request applies to                                                                                                                                          | optional  |
-| name      | string| Name of the affordance the request applies to if applicable. The type of affordance (event, action, property) is determined by the operation                                    | optional  |
-| input     | any   | Input data of the request as described by the operation. invokeaction refers to the action affordance while other operations define the input as part of the operation          | optional  |
-| correlationID | string| Unique identifier of the request. This must be included in the response if provided in the request. | optional  |
-| senderID  | string| Authenticated sender of the request.                                                                                                                                            | optional  |
-| messageID | string| Unique identification of the message.                                                                                                                                           | optional  |
+| name          | data type | description                                                  | required  |
+|---------------|-----------|--------------------------------------------------------------|-----------|
+| type          | string    | "request". Identifies the message as a request message       | Required  |
+| operation     | string    | Describes the request to perform                             | Required  |
+| messageID     | string    | Unique identification of the message.                        | Required  |
+| correlationID | string    | Unique identifier of the request.                            | Optional  |
+| thingID       | string    | ID of the thing the request applies to                       | Optional  |
+| name          | string    | Name of the affordance the request applies to if applicable. | Optional  |
+| input         | any       | Input data of the request as described by the operation.     | Optional  |
+| senderID      | string    | Authenticated sender of the request.                         | Optional  |
 
 
 ### Response Message
 
 Responses serve to provide a client the progress or result of a request.
 
-Response message payload is determined by the request operation. Therefore the request operation is included in the response:
+Response message payload is determined by the request operation and the response status. Therefore the request operation is included in the response:
 
-| name      | data type   | description                                                                                                                                                                                  | required  |
-|-----------|--------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|
-| type      | string | "response". Identifies the message as a response message                                                                                                                                     | mandatory |
-| correlationID | string | identifies the request this is a response to.                                                                                                                                                | required  |
-| status    | string | Status of the request processing: "pending", "running", "completed" or "failed"                                                                                                              | required  |
-| output    | any    | Result of processing the request if status is "completed" as defined in the dataschema of the action or operation. If status is "failed" then this can contain additional error information. | optional  |
-| error     | string | Error title if status is "failed".                                                                                                                                                           | optional  |
-| received  | string | Timestamp the request was received by the Thing (or its agent)                                                                                                                               | optional  |
-| updated   | string | Timestamp the status was updated                                                                                                                                                             | optional  |
-| operation | string | The request operation this is a response to, to aid in debugging.                                                                                                                            | optional  |
-| thingID   | string | ID of the thing the request applies to aid in debugging.                                                                                                                                     | optional  |
-| name      | string | Name of the affordance the request applies to if applicable. The type of affordance (event, action, property) is determined by the operation                                                 | optional  |
-| messageID | string | Unique identification of the message.                                                                                                                                                        | optional  |
+| name          | data type | description                                                                     | required  |
+|---------------|-----------|---------------------------------------------------------------------------------|-----------|
+| type          | string    | "response". Identifies the message as a response message                        | required  |
+| operation     | string    | The request operation this is a response to, to aid in debugging.               | optional  |
+| messageID     | string    | Unique identification of the message.                                           | required  |
+| correlationID | string    | identifies the request this is a response to.                                   | required  |
+| thingID       | string    | ID of the thing the request applies to aid in debugging.                        | optional  |
+| name          | string    | Name of the affordance the request applies.                                     | optional  |
+| output        | any       | Result of processing the request when status is "completed".                    | optional  |
+| status        | string    | Status of the request processing: "pending", "running", "completed" or "failed" | required  |
+| error         | string    | Error title if status is "failed".                                              | optional  |
+| requested     | string    | Timestamp the request was received by the Thing (or its agent)                  | optional  |
+| updated       | string    | Timestamp the status was updated                                                | optional  |
 
 ### Behavior
 
-Any client can publish a request. They can choose to wait for a response message or handle the response asynchronously. This is dependent on the client implementation.  
+Any client can send a request. They can choose to wait for a response message or handle the response asynchronously. Sending the request involves an application protocol client and a transport protocol client. The HiveOT application protocol is identical regardless the underlying transport protocol used. The transport protocol is one of the client transports like http/sse-sc, websocket mqtt, etc. More on this below.
 
-The server can be an agent for a thing or a hub or gateway. 
+HiveOT uses a simple application protocol built on top of transport protocols. Clients only need to be aware of this protocol, which will work with any of the supported transport protocols.  
+
+The application protocol consists of only 2 messages. RequestMessage and ResponseMessage.
+
+Requests are handled by the protocol server, which is run by the HiveOT Hub, or a Thing agent. The Hub serves digital twin requests while Thing agents server device requests.
+
+While this package is intended for connecting to the HiveOT Hub, it can also be used connecting between consumers and 3rd party Thing agents, including services. Use of the Hub is not a requirement for using this package.
+
+When used with the Hub, these protocol clients support a reversal of connection, where they connect to the Hub instead of consumers connecting to the agent. Once the connection is established the message flow is the same between consumer and hub, and between hub and agent. 
+
+Consumers connect to the protocol server using connection information described in TD forms. Agents connect to the Hub as a client using out-of-band token authentication. 
 
 Hub or gateways will forward requests to the Thing agent. If the agent is not reachable at this point they return the error response or a pending response if there is support for queuing requests.
 
 Thing agents will process the request. They SHOULD send a response with one of the statuses: pending, running, completed or failed. If a request is received without a request ID then no response is sent.
 
-If a 'running' response is send, agents MUST also send a completed or failed response once the operation has finished.
+If a 'running' response is sent, agents MUST also send a completed or failed response once the operation has finished.
 
-If a hub or gateway is used then the response is received by the hub/gateway, which in turn forwards it to the client that sent the request. If the client is no longer reachable then the response can be queued or discarded, depending on the capabilities of the hub or gateway.
+If a hub or gateway is used then the response is received by the hub/gateway, which in turn updates the digital twin and passes the digital twin response to the client that sent the request. If the client is no longer reachable then the response can be queued or discarded, depending on the capabilities of the hub or gateway.
 
 Clients will receive a response message containing the correlationID provided in the request, the payload, and any error information. Client implementations can choose to wait for a response (with timeout) or handle it as a separate callback.
 
 Agents publish notifications to subscribers. This is a 1-many relationship. The notification message includes an operation that identifies the type of notification. A correlationID is optional to link the notification to a subscription request. A hub or gateway can implement their own subscription mechanism for consumers and ask agents to send all notifications.
 
 
-## Implementation
+## Design
 
-In HiveOT both consumers and agents connect to a Hub for exchanging information. Therefore Thing agents are implemented as clients. Transport servers receive requests. It is possible to use the transport server to implement a Thing and act as an agent, but this is not the intent of hiveot. 
+There are 3 layers involved in exchanging messages:
+1: messaging: sending a request and receiving a response using the underlying protocol transport.
+2: mapping: map between request and response messages and the underlying transport protocol binding messages.
+3: transport: establishing a connection to send and receive message payloads.
 
-For each protocol binding this library provides 3 components:
-* Server transports that receive connections and handle messages from both agents and consumer clients. This library is named XyzServerTransport, where Xyz is the protocol name. (eg HttpServerTransport)
-* Consumer transports that can submit requests and receive responses. This library is named XyzConsumerTransport.
-* Agent transports that extend the consumer clients with receive requests and sending responses. This library is named XyzAgentTransport.
+### Messaging
 
-Each protocol binding implements the message formats as defined by their specification. These bindings map the protocol specific messages into the universal hiveot message format so applications don't have to consider the protocol binding used.
+The messaging layer provides a simple API to perform WoT Thing operations such as InvokeAction, WriteProperty, etc. Most methods reflect the operations defined in the TD-1.1 specification. In addition, the SendRequest method is available.
 
-### Consumer Transports
-Consumer transports implement the IConsumerConnection interface containing these methods:
+This layer constructs a RequestMessage and passes it to the mapping layer. The mapping layer converts protocol messages back to responses and passes the response to the client.
 
-1. SendRequest - send a request for operation to a Thing agent or service and optionally wait for a response or confirmation. Intended for both consumers and agents. The InvokeAction operation for example is sent using SendRequest, as are ReadProperty and such. The client must include a request-id that an asynchronous response can be addressed to.
-2. Subscribe/Observe - register to receive events or property updates
-3. SetNotificationHandler - receive a property, event, action status, and td notification message.
+For agents, the layer provides methods to construct a response and pass it to the mapping layer for further delivery using the underlying protocol.
+With the response comes a status flag that can hold one of four values:
 
-### Agent Transports
-Agent transports implement the IAgentConnection interface containing these methods:
+1. completed: The request was completed and no more responses are sent
+2. failed: The request has failed and no more responses are sent. The error field holds an error title.
+3. running: The request is running. Output optionally contains intermediate result or stream data.
+4. pending: The request has been received but hasn't yet started. 
 
-1. SetRequestHandler - receive an action, property write, readproperty, query action requests message.
-2. SendNotification - send an operation to subscribers or observers. No response is expected. Intended for Thing agents or services.
-3. SendResponse - send a response to a request. This requires the request-id to respond to. The 'operation' describes the type of response and differs from the request operation. 
+### Mapping
+
+Mapping converts between RequestMessage/ResponseMessage, and the underlying protocol binding message.
+This is implemented in accordance to the WoT specification of the protocol binding.
+
+A special kind of mapping is the direct mapping. This is a simple pass-through of the request and response messages. As it bypasses the conversion overhead it should be the most efficient. 
+
+
+### Client Transport
+
+Client transports connect the client to the server and passing the provided messages using the underlying transport protocol.
+Anything that can pass a message between client and server can act as a client transport.
+
+Typically the transport and mapping are combined as described in the WoT Protocol Binding. However, it is also possible to use you own custom mapping and custom transport.
+
+Transport clients implement the ITransportClient interface containing these methods:
+
+1. SendRequest - send a request to the connected server.
+2. SendResponse - send a response to the connected server.
+3. SetConnectionHandler - succesful connections are reported to this handler:
+4. SetRequestHandler - incoming request messages from the server are passed to this handler. (agents)
+5. SetResponseHandler - incoming response messages are passed to this handler. (consumers)
+
 
 ### Server Transports
 
-The server transport listens for incoming connections from both agents and consumers. They convert incoming messages to a standard request, response or notification messages and pass it on to the corresponding handler. In case of the HiveOT Hub this is the digital twin router.
+The server transport serves incoming connections initiated by the client. Once a connection is established the messages can be sent in either direction. Protocol messages are served by both client and server.
 
-Server transports aim to be WoT compliant to support use by 3rd party WoT consumers.
-
-These implement the ITransportServer interface containing these methods:
+Server transports implement the ITransportServer interface containing these methods:
 1. AddTDForms - add forms to the given TD for supported operations using this transport. 
 2. GetForm - return the form for a specific operation. Primarily intended for testing.
 3. GetConnectURL - provide the URL used to connect to this server
-4. SendNotification - broadcast an event or property change notification to subscribers
+4. SendRequest - send a request to the connected client. Some operations require a subscription. (consumers)
+4. SendResponse - send a response to the connected client (agents)
 6. SetConnectionHandler - incoming connections are reported as an instance of the IServerConnection interface for sending messages to the remote client:
-   * SendNotification - send a notification to the connected consumer client
-   * SendRequest - send a request to the connected agent client. An asynchronous response message is expected.
-   * SendResponse - send a response to a request to the connected consumer client.
+7. SetRequestHandler - incoming request messages are passed to this handler
+8. SetResponseHandler - incoming response messages are passed to this handler
+
 
 #### Authentication
 
 TransportServers can provide facility to authenticate the client and MUST support the facility to verify identity before processing messages. Once a message is passed to the message handler, the client is considered to be authenticated. The only exception is the login request which is handled out of bounds, depending on the transport protocol. 
 
-### Discovery
+#### Discovery
 
 Before a consumer or agent can connect to the server, the server must be discovered. 
 Transport servers use DNS-SD to publish their discovery information.
@@ -295,7 +322,6 @@ Include a 'cid' header field containing a connection-id. This is required for li
 Once a request is received, an agent has to send a response. When the agent is another client, as in hiveot, the response has to be linked to the request. When the agent sends a response message it must therefore include the correlationID provided with the request. The response operation field must be empty unless it contains a known response operation, such as actionstatus. In hiveot this is used to send a response to the consumer that send the request.
 
 
-
 ### HTTP+WebSocket Transport
 
 This transports uses HTTP to establish a connection and authenticate. All further messages take place using websocket messages.
@@ -326,6 +352,10 @@ A form to subscribe to all events of a Thing could look like:
 ```
 
 This follows the specification from the 'strawman proposal' https://docs.google.com/document/d/1KWv-aQfMgsqBFg0v4rVqzcVvzzisC7y4X4CMUYGc8rE by Ben Francis. 
+
+## Direct Transport Server 
+
+This transport establishes a connection using any means available. TCP, UDP, Bluetooth, IR, and of course HTTP/SSE_SC and Websockets. 
 
 ## MQTT Transport Server (todo)
 

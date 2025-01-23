@@ -6,6 +6,7 @@ import (
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
 	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/messaging"
 	"log/slog"
 )
 
@@ -30,7 +31,7 @@ import (
 type IdProvService struct {
 
 	// Hub connection
-	hc transports.IAgentConnection
+	ag *messaging.Agent
 	// the manage service
 	ManageIdProv *ManageIdProvService
 
@@ -50,18 +51,21 @@ type IdProvService struct {
 // 3. Start the http request server
 // 4. start the security check for rogue DNS-SD records
 // 5. start DNS-SD discovery server
-func (svc *IdProvService) Start(hc transports.IAgentConnection) (err error) {
-	slog.Info("Starting the provisioning service", "clientID", hc.GetClientID())
-	svc.hc = hc
-	//svc.Stop()
-	svc.ManageIdProv = StartManageIdProvService(svc.hc)
+//
+// cc is the connection with the hub to receive requests
+func (svc *IdProvService) Start(cc transports.IConnection) (err error) {
+
+	ag := messaging.NewAgent(cc, nil, nil, nil, 0)
+	slog.Info("Starting the provisioning service", "clientID", ag.GetClientID())
+	svc.ag = ag
+	svc.ManageIdProv, err = StartManageIdProvService(svc.ag)
 	if err != nil {
 		return err
 	}
 
 	// Set the required permissions for using this service
-	err = authz.UserSetPermissions(hc, authz.ThingPermissions{
-		AgentID: hc.GetClientID(),
+	err = authz.UserSetPermissions(&ag.Consumer, authz.ThingPermissions{
+		AgentID: ag.GetClientID(),
 		ThingID: idprovapi.ManageServiceID,
 		Allow: []authz.ClientRole{
 			authz.ClientRoleManager,
@@ -72,7 +76,7 @@ func (svc *IdProvService) Start(hc transports.IAgentConnection) (err error) {
 		return err
 	}
 	// the agent maps incoming action requests to the management service methods
-	StartIdProvAgent(svc.ManageIdProv, hc)
+	StartIdProvAgent(svc.ManageIdProv, ag)
 
 	// Start the HTTP server
 	svc.httpServer, err = StartIdProvHttpServer(

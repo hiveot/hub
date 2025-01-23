@@ -60,7 +60,7 @@ func (svc *AuthzService) HasThingPermission(senderID string, thingID string) boo
 	return false
 }
 
-// HasPermission returns whether the sender has permission to perform an operation
+// HasPermission returns whether the sender has permission to request an operation
 // on a Thing.
 //
 // This returns true if the client has permission, false if the client does not

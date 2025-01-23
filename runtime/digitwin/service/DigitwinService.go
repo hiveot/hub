@@ -4,7 +4,7 @@ import (
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
 	"github.com/hiveot/hub/runtime/digitwin/store"
-	"github.com/hiveot/hub/transports/connections"
+	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"os"
@@ -60,8 +60,8 @@ func (svc *DigitwinService) Stop() {
 // This creates a bucket store for the directory, inbox, and outbox.
 //
 // storesDir is the directory where to create the digitwin storage
-// cm is the connection manager used to send messages to clients
-func StartDigitwinService(storesDir string, cm *connections.ConnectionManager) (
+// notifHandler is the handler to send responses to subscribes
+func StartDigitwinService(storesDir string, notifHandler transports.ResponseHandler) (
 	svc *DigitwinService, digitwinStore *store.DigitwinStore, err error) {
 
 	sPath := path.Join(storesDir, "digitwin")
@@ -73,7 +73,7 @@ func StartDigitwinService(storesDir string, cm *connections.ConnectionManager) (
 	if err == nil {
 		digitwinStore, err = store.OpenDigitwinStore(bucketStore, false)
 	}
-	dirSvc := NewDigitwinDirectoryService(digitwinStore, cm)
+	dirSvc := NewDigitwinDirectoryService(digitwinStore, notifHandler)
 	valuesSvc := NewDigitwinValuesService(digitwinStore)
 	if err == nil {
 		svc = &DigitwinService{

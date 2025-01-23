@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
-	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/messaging"
 	"github.com/hiveot/hub/wot/exposedthing"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
@@ -364,9 +364,9 @@ func (igw *IsyGatewayThing) MakeTD() *td.TD {
 //}
 
 // PubTD read and publishes the gateway's TD
-func (svc *IsyGatewayThing) PubTD(hc transports.IAgentConnection) (err error) {
-	td := svc.MakeTD()
-	err = hc.PubTD(td)
+func (svc *IsyGatewayThing) PubTD(ag *messaging.Agent) (err error) {
+	tdi := svc.MakeTD()
+	err = ag.PubTD(tdi)
 	if err != nil {
 		err = fmt.Errorf("failed publishing ISY gateway TD: %w", err)
 		slog.Error(err.Error())

@@ -36,11 +36,12 @@ type ActiveRequestRecord struct {
 // This returns a response if available. replyTo is used to store the sender's
 // reply-to address for handling responses to pending requests.
 func (svc *DigitwinRouter) HandleRequest(
-	req transports.RequestMessage, replyTo string) (resp transports.ResponseMessage) {
+	req *transports.RequestMessage, c transports.IConnection) (resp *transports.ResponseMessage) {
 
 	if req.Created == "" {
 		req.Created = time.Now().Format(wot.RFC3339Milli)
 	}
+
 	svc.requestLogger.Info("-> REQ:",
 		slog.String("correlationID", req.CorrelationID),
 		slog.String("operation", req.Operation),
@@ -61,34 +62,36 @@ func (svc *DigitwinRouter) HandleRequest(
 	// Thing actions status are tracked and stored.
 	// Responses are send asynchronously to the replyTo address.
 	case vocab.OpInvokeAction:
-		resp = svc.HandleInvokeAction(req, replyTo)
+		resp = svc.HandleInvokeAction(req, c)
 	case vocab.OpWriteProperty:
-		resp = svc.HandleWriteProperty(req, replyTo)
+		resp = svc.HandleWriteProperty(req, c)
 
 	// authentication requests are handled immediately and return a response
 	case vocab.HTOpLogin:
-		resp = svc.HandleLogin(req)
+		resp = svc.HandleLogin(req, c)
 	case vocab.HTOpLogout:
-		resp = svc.HandleLogout(req)
+		resp = svc.HandleLogout(req, c)
 	case vocab.HTOpRefresh:
-		resp = svc.HandleLoginRefresh(req)
+		resp = svc.HandleLoginRefresh(req, c)
 
 		// digital twin requests are handled immediately and return a response
 		// FIXME: why not pass the request to the digitwin service agent?
 	case vocab.OpQueryAction, vocab.OpQueryAllActions:
-		resp = svc.HandleQueryAction(req)
+		resp = svc.HandleQueryAction(req, c)
 	case vocab.HTOpReadEvent:
-		resp = svc.HandleReadEvent(req)
+		resp = svc.HandleReadEvent(req, c)
 	case vocab.HTOpReadAllEvents:
-		resp = svc.HandleReadAllEvents(req)
+		resp = svc.HandleReadAllEvents(req, c)
 	case vocab.OpReadProperty:
-		resp = svc.HandleReadProperty(req)
+		resp = svc.HandleReadProperty(req, c)
 	case vocab.OpReadAllProperties:
-		resp = svc.HandleReadAllProperties(req)
+		resp = svc.HandleReadAllProperties(req, c)
 	case vocab.HTOpReadTD:
-		resp = svc.HandleReadTD(req)
+		resp = svc.HandleReadTD(req, c)
 	case vocab.HTOpReadAllTDs:
-		resp = svc.HandleReadAllTDs(req)
+		resp = svc.HandleReadAllTDs(req, c)
+	case vocab.HTOpUpdateTD:
+		resp = svc.HandleUpdateTD(req, c)
 
 	default:
 		err := fmt.Errorf("unknown request operation '%s' from client '%s'",
@@ -128,7 +131,7 @@ func (svc *DigitwinRouter) HandleRequest(
 // SSE, WS, MQTT bindings must use a correlation-id to match request-response messages.
 // this is not well-defined in the WoT specs and up to the protocol binding implementation.
 func (svc *DigitwinRouter) HandleInvokeAction(
-	req transports.RequestMessage, replyTo string) (resp transports.ResponseMessage) {
+	req *transports.RequestMessage, c transports.IConnection) (resp *transports.ResponseMessage) {
 
 	// Forward the action to the built-in services
 	agentID, thingID := td.SplitDigiTwinThingID(req.ThingID)
@@ -137,24 +140,23 @@ func (svc *DigitwinRouter) HandleInvokeAction(
 	// internal services return instant result
 	switch agentID {
 	case digitwin.DirectoryAgentID:
-		resp = svc.digitwinAction(req)
+		resp = svc.digitwinAction(req, c)
 	case authn.AdminAgentID:
-		resp = svc.authnAction(req)
+		resp = svc.authnAction(req, c)
 	case authz.AdminAgentID:
-		resp = svc.authzAction(req)
+		resp = svc.authzAction(req, c)
 	case api.DigitwinServiceID:
-		resp = svc.digitwinAction(req)
+		resp = svc.digitwinAction(req, c)
 	default:
 		// Forward the action to external agents
-		resp = svc.ForwardActionToRemoteAgent(req, replyTo)
+		resp = svc.ForwardActionToRemoteAgent(req, c)
 	}
 	return resp
 }
 
 // ForwardActionToRemoteAgent forwards the action to external agents
 func (svc *DigitwinRouter) ForwardActionToRemoteAgent(
-	req transports.RequestMessage, replyTo string) (resp transports.ResponseMessage) {
-
+	req *transports.RequestMessage, c2 transports.IConnection) (resp *transports.ResponseMessage) {
 	agentID, thingID := td.SplitDigiTwinThingID(req.ThingID)
 
 	// Store the action progress to be able to respond to queryAction. Only
@@ -167,14 +169,18 @@ func (svc *DigitwinRouter) ForwardActionToRemoteAgent(
 
 	// Determine the agent to forward the request to.
 	// Agents only have a single connection instance so the agentID can be used.
-	c := svc.cm.GetConnectionByClientID(agentID)
+	agentConn := svc.transportServer.GetConnectionByClientID(agentID)
 
-	if c == nil {
+	if agentConn == nil {
 		// The request cannot be delivered as the agent is not reachable
 		// For now return an error.
 		// TODO: determine the rules and use-cases for queuing a request
 		err = fmt.Errorf("ForwardActionToRemoteAgent: Agent '%s' not reachable. Ignored", agentID)
 		return req.CreateResponse(nil, err)
+	}
+	replyTo := ""
+	if c2 != nil {
+		replyTo = c2.GetConnectionID()
 	}
 
 	// track the action progress so async responses can be returned to the client (replyTo)
@@ -197,7 +203,7 @@ func (svc *DigitwinRouter) ForwardActionToRemoteAgent(
 	// agent instead of using Create/SplitDigitalTwinID everywhere.
 	req2 := req
 	req2.ThingID = thingID // agent uses the local message ID
-	err = c.SendRequest(req2)
+	err = agentConn.SendRequest(req2)
 
 	// if forwarding the request to the agent failed, then remove the tracking,
 	// update the action status, and return an error response
@@ -226,14 +232,16 @@ func (svc *DigitwinRouter) ForwardActionToRemoteAgent(
 }
 
 // HandleQueryAction returns the action status
-func (svc *DigitwinRouter) HandleQueryAction(req transports.RequestMessage) transports.ResponseMessage {
+func (svc *DigitwinRouter) HandleQueryAction(
+	req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
 	av, err := svc.dtwService.ValuesSvc.QueryAction(req.SenderID,
 		digitwin.ValuesQueryActionArgs{ThingID: req.ThingID, Name: req.Name})
 	return req.CreateResponse(av, err)
 }
 
 // HandleReadEvent consumer requests a digital twin thing's event value
-func (svc *DigitwinRouter) HandleReadEvent(req transports.RequestMessage) transports.ResponseMessage {
+func (svc *DigitwinRouter) HandleReadEvent(
+	req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
 
 	output, err := svc.dtwService.ValuesSvc.ReadEvent(req.SenderID,
 		digitwin.ValuesReadEventArgs{ThingID: req.ThingID, Name: req.Name})
@@ -241,14 +249,16 @@ func (svc *DigitwinRouter) HandleReadEvent(req transports.RequestMessage) transp
 }
 
 // HandleReadAllEvents consumer requests all digital twin thing event values
-func (svc *DigitwinRouter) HandleReadAllEvents(req transports.RequestMessage) transports.ResponseMessage {
+func (svc *DigitwinRouter) HandleReadAllEvents(
+	req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
 
 	output, err := svc.dtwService.ValuesSvc.ReadAllEvents(req.SenderID, req.ThingID)
 	return req.CreateResponse(output, err)
 }
 
 // HandleReadProperty consumer requests a digital twin thing's property value
-func (svc *DigitwinRouter) HandleReadProperty(req transports.RequestMessage) transports.ResponseMessage {
+func (svc *DigitwinRouter) HandleReadProperty(
+	req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
 
 	output, err := svc.dtwService.ValuesSvc.ReadProperty(req.SenderID,
 		digitwin.ValuesReadPropertyArgs{ThingID: req.ThingID, Name: req.Name})
@@ -256,7 +266,8 @@ func (svc *DigitwinRouter) HandleReadProperty(req transports.RequestMessage) tra
 }
 
 // HandleReadAllProperties consumer requests reading all digital twin's property values
-func (svc *DigitwinRouter) HandleReadAllProperties(req transports.RequestMessage) transports.ResponseMessage {
+func (svc *DigitwinRouter) HandleReadAllProperties(
+	req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
 
 	output, err := svc.dtwService.ValuesSvc.ReadAllProperties(req.SenderID, req.ThingID)
 	return req.CreateResponse(output, err)
@@ -265,24 +276,41 @@ func (svc *DigitwinRouter) HandleReadAllProperties(req transports.RequestMessage
 // HandleReadTD consumer reads a TD
 // This converts the operation in an action for the directory service.
 func (svc *DigitwinRouter) HandleReadTD(
-	req transports.RequestMessage) transports.ResponseMessage {
+	req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
 
 	// the thingID in the request becomes the argument for the directory service, if any
-	req.Input = req.ThingID
-	req.ThingID = digitwin.DirectoryDThingID
-	req.Name = digitwin.DirectoryReadTDMethod
-	resp := svc.digitwinAction(req)
+	req2 := *req
+	req2.Input = req.ThingID
+	req2.ThingID = digitwin.DirectoryDThingID
+	req2.Name = digitwin.DirectoryReadTDMethod
+	resp := svc.digitwinAction(&req2, c)
 	return resp
 }
 
 // HandleReadAllTDs consumer reads all TDs
 // This converts the operation in an action for the directory service.
 func (svc *DigitwinRouter) HandleReadAllTDs(
-	req transports.RequestMessage) transports.ResponseMessage {
+	req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
 
-	req.ThingID = digitwin.DirectoryDThingID
-	req.Name = digitwin.DirectoryReadAllTDsMethod
-	resp := svc.digitwinAction(req)
+	req2 := *req
+	req2.ThingID = digitwin.DirectoryDThingID
+	req2.Name = digitwin.DirectoryReadAllTDsMethod
+	resp := svc.digitwinAction(&req2, c)
+	return resp
+}
+
+// HandleUpdateTD agent updates a TD
+// This converts the operation in an action for the directory service.
+func (svc *DigitwinRouter) HandleUpdateTD(
+	req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
+
+	// the thingID in the request becomes the argument for the directory service, if any
+	//rework the request
+	req2 := *req
+	req2.Input = req.Input
+	req2.ThingID = digitwin.DirectoryDThingID
+	req2.Name = digitwin.DirectoryUpdateTDMethod
+	resp := svc.digitwinAction(&req2, c)
 	return resp
 }
 
@@ -294,8 +322,8 @@ func (svc *DigitwinRouter) HandleReadAllTDs(
 //
 // if name is empty then newValue contains a map of properties
 func (svc *DigitwinRouter) HandleWriteProperty(
-	req transports.RequestMessage, replyTo string) transports.ResponseMessage {
+	req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
 
-	resp := svc.ForwardActionToRemoteAgent(req, replyTo)
+	resp := svc.ForwardActionToRemoteAgent(req, c)
 	return resp
 }

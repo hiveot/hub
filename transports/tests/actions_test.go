@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/connections"
 	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot"
 	"github.com/stretchr/testify/assert"
@@ -31,7 +30,7 @@ func TestInvokeActionFromConsumerToServer(t *testing.T) {
 	var actionName = "action1"
 
 	// the server will receive the action request and return an immediate result
-	requestHandler := func(req transports.RequestMessage, replyTo string) transports.ResponseMessage {
+	requestHandler := func(req *transports.RequestMessage, replyTo transports.IConnection) *transports.ResponseMessage {
 		if req.Operation == wot.OpInvokeAction {
 			inputVal.Store(req.Input)
 			// Hmm, should this be pending with a separate async completed result?
@@ -41,13 +40,13 @@ func TestInvokeActionFromConsumerToServer(t *testing.T) {
 		return req.CreateResponse(nil, errors.New("unexpected request"))
 	}
 	// 1. start the servers
-	srv, cancelFn, _ := StartTransportServer(nil, requestHandler, nil)
+	srv, cancelFn := StartTransportServer(requestHandler, nil)
 	defer cancelFn()
 
 	// 2. connect a client
-	cl1 := NewConsumer(testClientID1, srv.GetForm)
-	token, err := cl1.ConnectWithPassword(testClientID1)
-	defer cl1.Disconnect()
+	cc1, cl1 := NewConsumer(testClientID1, srv.GetForm)
+	token, err := cc1.ConnectWithPassword(testClientID1)
+	defer cc1.Disconnect()
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
 	ctx1, release1 := context.WithTimeout(context.Background(), time.Minute)
@@ -55,11 +54,12 @@ func TestInvokeActionFromConsumerToServer(t *testing.T) {
 
 	// since there is no waiting for a response when sending the request, the
 	// client should receive an action/request response via the response callback
-	cl1.SetResponseHandler(func(resp transports.ResponseMessage) {
+	cl1.SetResponseHandler(func(resp *transports.ResponseMessage) error {
 		slog.Info("testOutput was updated asynchronously via the message handler")
 		err2 := tputils.Decode(resp.Output, &testOutput)
 		assert.NoError(t, err2)
 		release1()
+		return err2
 	})
 
 	// 3. invoke the action without waiting for a result
@@ -67,8 +67,8 @@ func TestInvokeActionFromConsumerToServer(t *testing.T) {
 	// testOutput can be updated as an immediate result or via the callback message handler
 	req := transports.NewRequestMessage(wot.OpInvokeAction, thingID, actionName, testMsg1, shortid.MustGenerate())
 	resp, err := cl1.SendRequest(req, false)
+	require.NoError(t, err)
 	assert.Equal(t, resp.Status, transports.StatusPending)
-	assert.NoError(t, err)
 	<-ctx1.Done()
 
 	// whether receiving completed or delivered depends on the binding
@@ -98,7 +98,6 @@ func TestInvokeActionFromServerToAgent(t *testing.T) {
 	var thingID = "thing1"
 	var actionKey = "action1"
 	var corrID = "correlation-1"
-	var cm *connections.ConnectionManager
 
 	// 1. start the server. register a message handler for receiving an action status
 	// async reply from the agent after the server sends an invoke action.
@@ -107,7 +106,7 @@ func TestInvokeActionFromServerToAgent(t *testing.T) {
 	ctx1, cancelFn1 := context.WithTimeout(context.Background(), time.Minute)
 	defer cancelFn1()
 	// server receives agent response
-	responseHandler := func(resp transports.ResponseMessage) error {
+	responseHandler := func(resp *transports.ResponseMessage) error {
 		var responseData string
 		// The server receives a response message from the agent
 		// (which normally is forwarded to the remote consumer; but not in this test)
@@ -125,20 +124,19 @@ func TestInvokeActionFromServerToAgent(t *testing.T) {
 		cancelFn1()
 		return nil
 	}
-	srv, cancelFn2, cm2 := StartTransportServer(nil, nil, responseHandler)
+	srv, cancelFn2 := StartTransportServer(nil, responseHandler)
 	_ = srv
-	cm = cm2
 	defer cancelFn2()
 
 	// 2a. connect as an agent
-	ag1client := NewAgent(testAgentID1)
-	token, err := ag1client.ConnectWithPassword(testAgentID1)
+	cc1, ag1client := NewAgent(testAgentID1)
+	token, err := cc1.ConnectWithPassword(testAgentID1)
 	require.NoError(t, err)
 	require.NotEmpty(t, token)
-	defer ag1client.Disconnect()
+	defer cc1.Disconnect()
 
 	// an agent receives requests from the server
-	ag1client.SetRequestHandler(func(req transports.RequestMessage) transports.ResponseMessage {
+	ag1client.SetRequestHandler(func(req *transports.RequestMessage, replyTo transports.IConnection) *transports.ResponseMessage {
 		// agent receives action request and returns a result
 		slog.Info("Agent receives request", "op", req.Operation)
 		assert.Equal(t, testClientID1, req.SenderID)
@@ -149,7 +147,7 @@ func TestInvokeActionFromServerToAgent(t *testing.T) {
 	// Send the action request from the server to the agent (the agent is connected as a client)
 	// and expect result using the request status message sent by the agent.
 	time.Sleep(time.Millisecond)
-	ag1Server := cm.GetConnectionByClientID(testAgentID1)
+	ag1Server := srv.GetConnectionByClientID(testAgentID1)
 	require.NotNil(t, ag1Server)
 	req := transports.NewRequestMessage(wot.OpInvokeAction, thingID, actionKey, testMsg1, corrID)
 	req.SenderID = testClientID1
@@ -176,7 +174,7 @@ func TestQueryActions(t *testing.T) {
 	// 1. start the server. register a request handler for receiving a request
 	// from the agent after the server sends an invoke action.
 	// Note that WoT doesn't cover this use-case so this uses hiveot vocabulary operation.
-	requestHandler := func(req transports.RequestMessage, replyTo string) transports.ResponseMessage {
+	requestHandler := func(req *transports.RequestMessage, replyTo transports.IConnection) *transports.ResponseMessage {
 
 		assert.NotNil(t, replyTo)
 		assert.NotNil(t, req.CorrelationID)
@@ -211,14 +209,14 @@ func TestQueryActions(t *testing.T) {
 	}
 
 	// 1. start the servers
-	srv, cancelFn, _ := StartTransportServer(nil, requestHandler, nil)
+	srv, cancelFn := StartTransportServer(requestHandler, nil)
 	defer cancelFn()
 
 	// 2. connect as a consumer
-	cl1 := NewConsumer(testClientID1, srv.GetForm)
-	_, err := cl1.ConnectWithPassword(testClientID1)
+	cc1, cl1 := NewConsumer(testClientID1, srv.GetForm)
+	_, err := cc1.ConnectWithPassword(testClientID1)
 	require.NoError(t, err)
-	defer cl1.Disconnect()
+	defer cc1.Disconnect()
 
 	// 3. Query action status
 	var output transports.ResponseMessage

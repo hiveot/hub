@@ -37,7 +37,7 @@
 											<div>Value</div>
 											<div class="h-show-md">Updated</div>
 										</li>
-                    {{range $k,$v := .Properties}}
+                    {{range $k,$aff := .Properties}}
                     {{- /*gotype: github.com/hiveot/hub/wot/tdd.PropertyAffordance*/ -}}
 										<li>
 											<div>
@@ -52,7 +52,7 @@
 														{{.Title}}
 												</a>
 											</div>
-											<div>{{$data.GetValue $thing.ID $k}} {{if $v}}{{$v.UnitSymbol}}{{end}}</div>
+											<div>{{$data.GetValue $thing.ID $k}}</div>
 											<div>{{$data.GetUpdated $thing.ID $k}}</div>
 										</li>
                     {{end}}
@@ -66,7 +66,7 @@
 										<div>Value</div>
 										<div class="h-show-md">Updated</div>
 									</li>
-                    {{range $k,$v := .Events}}
+                    {{range $k,$aff := .Events}}
                         {{- /*gotype: github.com/hiveot/hub/wot/tdd.EventAffordance*/ -}}
 												<li>
 													<div>
@@ -81,7 +81,7 @@
                                 {{.Title}}
 														</a>
 													</div>
-													<div>{{$data.GetValue $thing.ID $k}} {{if $v.Data}}{{$v.Data.UnitSymbol}}{{end}}</div>
+													<div>{{$data.GetValue $thing.ID $k}}</div>
 													<div>{{$data.GetUpdated $thing.ID $k}}</div>
 												</li>
                     {{end}}
@@ -110,9 +110,7 @@
                                 {{.Title}}
 														</a>
 													</div>
-													<div>{{$data.GetValue $thing.ID $k}}
-															{{if $v.Input}}{{$v.Input.UnitSymbol}}{{end}}
-													</div>
+													<div>{{$data.GetValue $thing.ID $k}}</div>
 													<div>{{$data.GetUpdated $thing.ID $k}}</div>
 												</li>
                     {{end}}

@@ -28,7 +28,7 @@ export async function ConnectToHub(
         // return after first result
         let uc = await locateHub()
         // currently only supporting SSE on this client
-        fullURL = uc.sseScURL
+        fullURL = uc.hiveotSseURL
     }
     if (!clientID || !fullURL) {
         throw("Missing clientID or hub URL")

@@ -33,7 +33,7 @@ func (data RenderSelectSourcesTemplateData) GetUpdated(thingID string, key strin
 	return tputils.DecodeAsDatetime(io.Updated)
 }
 
-// GetValue returns the string value of a thing event
+// GetValue returns the string value and unit symbol of a thing event
 func (data RenderSelectSourcesTemplateData) GetValue(thingID string, key string) string {
 	ioMap, found := data.IOValues[thingID]
 	if !found {
@@ -43,7 +43,11 @@ func (data RenderSelectSourcesTemplateData) GetValue(thingID string, key string)
 	if !found {
 		return ""
 	}
-	return io.Value.Text()
+	valueStr := io.Value.Text()
+	if io.UnitSymbol() != "" {
+		valueStr += " " + io.UnitSymbol()
+	}
+	return valueStr
 }
 
 // RenderSelectSources renders the selection of Tile sources for adding to a tile

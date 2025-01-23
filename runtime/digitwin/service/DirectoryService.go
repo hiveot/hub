@@ -4,25 +4,24 @@ import (
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/runtime/digitwin/store"
 	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/connections"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 )
 
-// Digital Twin Directory Service
+// DirectoryService provides the digital twin directory service
+// This is based on the W3C WoT Discovery draft specification: https://w3c.github.io/wot-discovery
+// Currently being revised to be compatible.
 type DirectoryService struct {
 	dtwStore *store.DigitwinStore
 
-	// transport binding for publishing directory events and getting forms
-	// to include in digital twin TDs.
-	//tb api.ITransportBinding
-	cm              *connections.ConnectionManager
+	// notifications on directory changes
+	notifHandler    transports.ResponseHandler
 	addFormsHandler func(*td.TD) error
 }
 
-// MakeDigitalTwinTD returns the digital twin from a agent provided TD
+// MakeDigitalTwinTD returns the digital twin from an agent provided TD
 func (svc *DirectoryService) MakeDigitalTwinTD(
 	agentID string, tdJSON string) (thingTD *td.TD, dtwTD *td.TD, err error) {
 
@@ -94,12 +93,12 @@ func (svc *DirectoryService) ReadAllTDs(
 // RemoveTD removes a Thing TD document from the digital twin directory
 func (svc *DirectoryService) RemoveTD(senderID string, dThingID string) error {
 	err := svc.dtwStore.RemoveDTW(dThingID, senderID)
-	if err == nil && svc.cm != nil {
+	if err == nil && svc.notifHandler != nil {
 		// Publish an event notifying subscribers that the Thing was removed from the directory
 		// Those subscribing to directory event will be notified
-		notif := transports.NewNotificationMessage(
-			wot.HTOpEvent, digitwin.DirectoryDThingID, digitwin.DirectoryEventThingRemoved, dThingID)
-		go svc.cm.PublishNotification(notif)
+		notif := transports.NewNotificationResponse(
+			wot.OpSubscribeEvent, digitwin.DirectoryDThingID, digitwin.DirectoryEventThingRemoved, dThingID, nil)
+		go svc.notifHandler(notif)
 	}
 	return err
 }
@@ -121,27 +120,28 @@ func (svc *DirectoryService) UpdateTD(agentID string, tdJson string) error {
 	svc.dtwStore.UpdateTD(agentID, thingTD, digitalTwinTD)
 
 	// notify subscribers of TD updates
-	if svc.cm != nil {
+	if svc.notifHandler != nil {
 		dtdJSON, _ := jsoniter.Marshal(digitalTwinTD)
 		// todo: only send notification on changes
 		// publish an event that the directory TD has updated with a new TD
-		notif := transports.NewNotificationMessage(
-			wot.HTOpEvent, digitwin.DirectoryDThingID, digitwin.DirectoryEventThingUpdated, string(dtdJSON))
-		go svc.cm.PublishNotification(notif)
+		notif := transports.NewNotificationResponse(
+			wot.OpSubscribeEvent, digitwin.DirectoryDThingID, digitwin.DirectoryEventThingUpdated, string(dtdJSON), nil)
+		go svc.notifHandler(notif)
 	}
 	return err
 }
 
 // NewDigitwinDirectoryService creates a new instance of the directory service
 // using the given store.
-//
+// This is based on the W3C WoT Discovery draft specification: https://w3c.github.io/wot-discovery
+// Currently being revised to be compatible.
 // The transport binding can be supplied directly or set later by the parent service
 func NewDigitwinDirectoryService(
-	dtwStore *store.DigitwinStore, cm *connections.ConnectionManager) *DirectoryService {
+	dtwStore *store.DigitwinStore, notifHandler transports.ResponseHandler) *DirectoryService {
 
 	dirSvc := &DirectoryService{
-		dtwStore: dtwStore,
-		cm:       cm,
+		dtwStore:     dtwStore,
+		notifHandler: notifHandler,
 	}
 
 	// verify service interface matches the TD generated interface

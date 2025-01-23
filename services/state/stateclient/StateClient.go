@@ -3,7 +3,7 @@ package stateclient
 import (
 	"encoding/json"
 	"github.com/hiveot/hub/services/state/stateapi"
-	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/messaging"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 )
@@ -12,14 +12,14 @@ import (
 type StateClient struct {
 	// dThingID digital twin service ID of the state management
 	dThingID string
-	// Connection to the hub
-	hc transports.IConsumerConnection
+	// Thing consumer
+	co *messaging.Consumer
 }
 
 // Delete removes the record with the given key.
 func (cl *StateClient) Delete(key string) error {
 
-	err := cl.hc.InvokeAction(cl.dThingID, stateapi.DeleteMethod, key, nil)
+	err := cl.co.InvokeAction(cl.dThingID, stateapi.DeleteMethod, key, nil)
 	return err
 }
 
@@ -28,7 +28,7 @@ func (cl *StateClient) Delete(key string) error {
 func (cl *StateClient) Get(key string, record interface{}) (found bool, err error) {
 
 	resp := stateapi.GetResp{}
-	err = cl.hc.InvokeAction(cl.dThingID, stateapi.GetMethod, key, &resp)
+	err = cl.co.InvokeAction(cl.dThingID, stateapi.GetMethod, key, &resp)
 	if err != nil {
 		return false, err
 	}
@@ -42,7 +42,7 @@ func (cl *StateClient) Get(key string, record interface{}) (found bool, err erro
 func (cl *StateClient) GetMultiple(keys []string) (values map[string]string, err error) {
 
 	resp := stateapi.GetMultipleResp{}
-	err = cl.hc.InvokeAction(cl.dThingID, stateapi.GetMultipleMethod, &keys, &resp)
+	err = cl.co.InvokeAction(cl.dThingID, stateapi.GetMultipleMethod, &keys, &resp)
 	if err != nil {
 		return nil, err
 	}
@@ -53,13 +53,14 @@ func (cl *StateClient) GetMultiple(keys []string) (values map[string]string, err
 func (cl *StateClient) Set(key string, record interface{}) error {
 	data, _ := json.Marshal(record)
 	req := stateapi.SetArgs{Key: key, Value: string(data)}
-	err := cl.hc.InvokeAction(cl.dThingID, stateapi.SetMethod, &req, nil)
+	err := cl.co.InvokeAction(cl.dThingID, stateapi.SetMethod, &req, nil)
+
 	return err
 }
 
 // SetMultiple writes multiple serialized records
 func (cl *StateClient) SetMultiple(kv map[string]string) error {
-	err := cl.hc.InvokeAction(cl.dThingID, stateapi.SetMultipleMethod, kv, nil)
+	err := cl.co.InvokeAction(cl.dThingID, stateapi.SetMultipleMethod, kv, nil)
 	return err
 }
 
@@ -67,12 +68,12 @@ func (cl *StateClient) SetMultiple(kv map[string]string) error {
 //
 // This assumes the agentID used to access the service is: stateapi.AgentID.
 //
-//	hc is the hub client connection to use.
+//	co is the hub client connection to use.
 //	agentID is the instance name of the state agent. Use "" for default.
-func NewStateClient(hc transports.IConsumerConnection) *StateClient {
+func NewStateClient(co *messaging.Consumer) *StateClient {
 	agentID := stateapi.AgentID
 	cl := StateClient{
-		hc:       hc,
+		co:       co,
 		dThingID: td.MakeDigiTwinThingID(agentID, stateapi.StorageServiceID),
 	}
 	return &cl

@@ -1,5 +1,5 @@
 // package httpclient with hiveot messaging protocol for use by agents
-package httpclient
+package httpbasicclient
 
 import (
 	"github.com/hiveot/hub/transports"
@@ -20,7 +20,7 @@ type HttpAgentClient struct {
 // PubEvent helper for agents to publish an event
 // This is short for SendNotification( ... wot.OpEvent ...)
 func (cl *HttpAgentClient) PubEvent(thingID string, name string, value any) error {
-	notif := transports.NewNotificationMessage(wot.HTOpEvent, thingID, name, value)
+	notif := transports.NewNotificationResponse(wot.HTOpEvent, thingID, name, value)
 	return cl.SendNotification(notif)
 }
 
@@ -28,7 +28,7 @@ func (cl *HttpAgentClient) PubEvent(thingID string, name string, value any) erro
 // This is short for SendNotification( ... wot.OpProperty ...)
 func (cl *HttpAgentClient) PubProperty(thingID string, name string, value any) error {
 
-	notif := transports.NewNotificationMessage(wot.HTOpUpdateProperty, thingID, name, value)
+	notif := transports.NewNotificationResponse(wot.HTOpUpdateProperty, thingID, name, value)
 	return cl.SendNotification(notif)
 }
 
@@ -36,7 +36,7 @@ func (cl *HttpAgentClient) PubProperty(thingID string, name string, value any) e
 // TODO: support multiple properties?
 func (cl *HttpAgentClient) PubProperties(thingID string, propMap map[string]any) error {
 
-	notif := transports.NewNotificationMessage(wot.HTOpUpdateMultipleProperties, thingID, "", propMap)
+	notif := transports.NewNotificationResponse(wot.HTOpUpdateMultipleProperties, thingID, "", propMap)
 	err := cl.SendNotification(notif)
 	return err
 }
@@ -46,7 +46,7 @@ func (cl *HttpAgentClient) PubProperties(thingID string, propMap map[string]any)
 func (cl *HttpAgentClient) PubTD(td *td.TD) error {
 	// JSON must be encoded as string
 	tdJson, _ := jsoniter.MarshalToString(td)
-	notif := transports.NewNotificationMessage(wot.HTOpUpdateTD, td.ID, "", tdJson)
+	notif := transports.NewNotificationResponse(wot.HTOpUpdateTD, td.ID, "", tdJson)
 	return cl.SendNotification(notif)
 }
 

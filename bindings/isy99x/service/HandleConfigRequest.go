@@ -8,7 +8,7 @@ import (
 )
 
 // handleConfigRequest for handling device configuration changes
-func (svc *IsyBinding) handleConfigRequest(req transports.RequestMessage) (resp transports.ResponseMessage) {
+func (svc *IsyBinding) handleConfigRequest(req *transports.RequestMessage) (resp *transports.ResponseMessage) {
 
 	slog.Info("handleConfigRequest",
 		slog.String("thingID", req.ThingID),
@@ -40,12 +40,12 @@ func (svc *IsyBinding) handleConfigRequest(req transports.RequestMessage) (resp 
 	// publish changed values after returning
 	go func() {
 		values := isyThing.GetPropValues(true)
-		_ = svc.hc.PubProperties(isyThing.GetID(), values)
+		_ = svc.ag.PubProperties(isyThing.GetID(), values)
 
 		// re-submit the TD if the title changes
 		if req.Name == vocab.PropDeviceTitle {
 			td := isyThing.MakeTD()
-			_ = svc.hc.PubTD(td)
+			_ = svc.ag.PubTD(td)
 		}
 	}()
 	return resp

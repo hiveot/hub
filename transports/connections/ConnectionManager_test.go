@@ -156,14 +156,15 @@ func TestPublishEventProp(t *testing.T) {
 	c1 := NewDummyConnection(client1ID, remoteAddr, session1ID)
 	c1.SubscribeEvent(dThingID, "")
 	c1.ObserveProperty(dThingID, "")
-	c1.SendNotificationHandler = func(notif transports.NotificationMessage) {
-		if notif.Operation == wot.HTOpEvent {
+	c1.SendResponseHandler = func(notif *transports.ResponseMessage) error {
+		if notif.Operation == wot.OpSubscribeEvent {
 			evCount++
-		} else if notif.Operation == wot.HTOpUpdateProperty {
+		} else if notif.Operation == wot.OpObserveProperty {
 			propCount++
 		}
+		return nil
 	}
-	c1.SendRequestHandler = func(req transports.RequestMessage, replyTo string) transports.ResponseMessage {
+	c1.SendRequestHandler = func(req *transports.RequestMessage, replyTo transports.IConnection) *transports.ResponseMessage {
 		assert.Fail(t, "unexpected")
 		return req.CreateResponse(nil, errors.New("unexpected request"))
 	}
@@ -172,12 +173,12 @@ func TestPublishEventProp(t *testing.T) {
 	require.NoError(t, err)
 
 	// publish
-	notif1 := transports.NewNotificationMessage(wot.HTOpEvent, dThingID, evName, nil)
+	notif1 := transports.NewNotificationResponse(wot.OpSubscribeEvent, dThingID, evName, nil, nil)
 	notif1.SenderID = agent1ID
-	cm.PublishNotification(notif1)
-	notif2 := transports.NewNotificationMessage(wot.HTOpUpdateProperty, dThingID, propName, nil)
+	cm.SendNotification(notif1)
+	notif2 := transports.NewNotificationResponse(wot.OpObserveProperty, dThingID, propName, nil, nil)
 	notif2.SenderID = agent1ID
-	cm.PublishNotification(notif2)
+	cm.SendNotification(notif2)
 
 	time.Sleep(time.Millisecond * 10)
 	// should receive 1 event and 1 property message

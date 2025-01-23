@@ -2,8 +2,7 @@ import process from "node:process";
 import * as tslog from 'tslog';
 import {ConnectToHub} from "@hivelib/transports/ConnectToHub";
 import { OpInvokeAction} from "@hivelib/api/vocab/vocab.js";
-import {RequestCompleted, RequestDelivered} from "@hivelib/api/vocab/vocab.js";
-import {NotificationMessage, RequestMessage, ResponseMessage} from "@hivelib/transports/Messages";
+import {RequestMessage, ResponseMessage, StatusCompleted, StatusPending} from "@hivelib/transports/Messages";
 
 const log = new tslog.Logger({name: "HCTest"})
 
@@ -124,18 +123,18 @@ async function test4() {
     let actionDelivery: ResponseMessage | undefined
 
     // connect a service that sends events
-    let hcSvc = await ConnectToHub(baseURL, testSvcID, caCertPEM, true)
+    let agc = await ConnectToHub(baseURL, testSvcID, caCertPEM, true)
     try {
-        svcToken = await hcSvc.connectWithPassword(testSvcPass)
+        svcToken = await agc.connectWithPassword(testSvcPass)
     } catch (e) {
         log.error("test4", e)
         throw (e)
     }
 
     // connect a client that listens for events
-    let hcCl = await ConnectToHub(baseURL, testClientID, caCertPEM, true)
+    let clc = await ConnectToHub(baseURL, testClientID, caCertPEM, true)
     try {
-        clToken = await hcCl.connectWithPassword(testPass)
+        clToken = await clc.connectWithPassword(testPass)
     } catch (err) {
         log.error("Failed connecting to server: " + err)
         return
@@ -143,29 +142,27 @@ async function test4() {
 
     //round 2, subscribe to events
     try {
-        await hcCl.subscribe("dtw:testsvc:thing1", "")
+        await clc.subscribe("dtw:testsvc:thing1", "")
         // await hcCl.subscribe("","")
-        hcCl.setRequestHandler((req: RequestMessage): ResponseMessage => {
-                actionCount++
-                let resp = req.createResponse("success")
+        clc.setRequestHandler((req: RequestMessage): ResponseMessage => {
+            actionCount++
+            let resp = req.createResponse("success")
             return resp
         })
 
-        hcCl.setNotificationHandler( (notif:NotificationMessage)=>{
-    if (notif.thingID == "dtw:testsvc:thing1") {
-        log.info("Received event: " + notif.name + "; data=" + notif.data)
-        ev1Count++
-    }
+        clc.setResponseHandler((notif: ResponseMessage) => {
+            if (notif.thingID == "dtw:testsvc:thing1") {
+                log.info("Received event: " + notif.name + "; data=" + notif.output)
+                ev1Count++
+            }
         })
-
-
-        hcCl.setResponseHandler( (resp:ResponseMessage)=>{
+        clc.setResponseHandler((resp: ResponseMessage) => {
             actionDelivery = JSON.parse(resp.output)
         })
 
-        } catch (e) {
-            log.error("test1: Failed: " + e)
-        }
+    } catch (e) {
+        log.error("test1: Failed: " + e)
+    }
 
 
         // time for background to start listening
@@ -174,13 +171,13 @@ async function test4() {
     // round 3, send a test event
     // FIXME: publish a TD for thing1 to create a digitwin
     try {
-        await hcSvc.pubEvent("thing1", "event1", "hello world")
+        await agc.pubEvent("thing1", "event1", "hello world")
     } catch (e) {
         console.error("pubevent failed",e)
     }
     // round 4, send an action to the digitwin thing of the test service
     try {
-        hcSvc.setRequestHandler((req: RequestMessage): ResponseMessage => {
+        agc.setRequestHandler((req: RequestMessage): ResponseMessage => {
             let resp: ResponseMessage
             // agents receive the thingID without prefix
             if (req.thingID == "thing1") {
@@ -194,10 +191,10 @@ async function test4() {
         })
 
         let dtwThing1ID = "dtw:" + testSvcID + ":thing1"
-        let resp2 = await hcCl.invokeAction(dtwThing1ID, "action1",  "how are you")
+        let resp2 = await clc.invokeAction(dtwThing1ID, "action1",  "how are you")
         if (resp2.error) {
             log.error("failed publishing action: " + resp2.error)
-        } else if (resp2.status != RequestDelivered) {
+        } else if (resp2.status != StatusPending) {
             log.error("unexpected status: " + resp2.status)
         }
     } catch (e) {
@@ -215,13 +212,13 @@ async function test4() {
         }
         if (actionCount != 1) {
             log.error("received " + actionCount + " actions. Expected 1")
-        } else if (!actionDelivery || actionDelivery.status != RequestCompleted) {
+        } else if (!actionDelivery || actionDelivery.status != StatusCompleted) {
             log.error("test4 action sent but missing delivery confirmation")
         } else {
             log.info("test4 action success. Received an action confirmation")
         }
-        hcSvc.disconnect()
-        hcCl.disconnect()
+        clc.disconnect()
+        agc.disconnect()
     } catch (e) {
         console.error("wait for events failed")
     }

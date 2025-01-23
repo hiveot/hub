@@ -14,7 +14,6 @@ import (
 // back to a reply message, if any.
 // The main entry point is the HandleMessage function.
 type AuthzAgent struct {
-	hc           transports.IAgentConnection
 	svc          *AuthzService
 	adminHandler transports.RequestHandler
 	userHandler  transports.RequestHandler
@@ -22,15 +21,15 @@ type AuthzAgent struct {
 
 // HandleAction authz service action handler
 func (agent *AuthzAgent) HandleAction(
-	req transports.RequestMessage) (resp transports.ResponseMessage) {
+	req *transports.RequestMessage, c transports.IConnection) (resp *transports.ResponseMessage) {
 
 	// if the message has an authn agent prefix then remove it.
 	// This can happen if invoked directly through an embedded client
 	_, thingID := td.SplitDigiTwinThingID(req.ThingID)
 	if thingID == authz.AdminServiceID {
-		resp = agent.adminHandler(req)
+		resp = agent.adminHandler(req, c)
 	} else if thingID == authz.UserServiceID {
-		resp = agent.userHandler(req)
+		resp = agent.userHandler(req, c)
 	} else {
 		err := fmt.Errorf("unknown authz service capability '%s'", req.ThingID)
 		resp = req.CreateResponse(nil, err)
@@ -54,8 +53,8 @@ func (agent *AuthzAgent) HasPermission(
 func StartAuthzAgent(svc *AuthzService) (*AuthzAgent, error) {
 	var err error
 	agent := AuthzAgent{
-		adminHandler: authz.NewHandleAdminAction(svc),
-		userHandler:  authz.NewHandleUserAction(svc),
+		adminHandler: authz.NewHandleAdminRequest(svc),
+		userHandler:  authz.NewHandleUserRequest(svc),
 		svc:          svc,
 	}
 

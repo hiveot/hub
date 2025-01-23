@@ -4,6 +4,7 @@ import (
 	"github.com/grandcat/zeroconf"
 	"github.com/hiveot/hub/lib/discovery"
 	"github.com/hiveot/hub/lib/net"
+	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 )
@@ -34,10 +35,12 @@ func StartDiscoveryTransport(cfg discovery.DiscoveryConfig) (*DiscoveryTransport
 	svc.disco, err = discovery.ServeDiscovery(
 		"hiveot", "hiveot", obip, cfg.ServerPort,
 		map[string]string{
-			discovery.HiveotSsescID:   cfg.SsescURL,
-			discovery.HiveotWssID:     cfg.WssURL,
-			discovery.HiveotMqttWssID: cfg.MqttWssURL,
-			discovery.HiveotMqttTcpID: cfg.MqttTcpURL,
+			transports.ProtocolTypeHiveotSSE:    cfg.HiveotSseURL,
+			transports.ProtocolTypeHiveotWSS:    cfg.HiveotWssURL,
+			transports.ProtocolTypeWotHTTPBasic: cfg.WotHttpBasicURL,
+			transports.ProtocolTypeWotWSS:       cfg.WotWssURL,
+			//discovery.HiveotMqttWssID: cfg.MqttWssURL,
+			//discovery.HiveotMqttTcpID: cfg.MqttTcpURL,
 		})
 	if err != nil {
 		slog.Error("Can't start discovery. Invalid server URL",

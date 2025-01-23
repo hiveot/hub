@@ -1,5 +1,5 @@
 // Package wssbinding with requests made by consumers
-package wssserver
+package wotwssserver
 
 import (
 	"errors"
@@ -21,7 +21,7 @@ func opToMessageType(op string) string {
 	return ""
 }
 
-// OpToMessage creates a websocket message for an operation
+// OpToMessage creates a websocket message for a request operation
 func OpToMessage(
 	op string, dThingID string, name string, names []string,
 	data any, correlationID string, senderID string) (msg any, err error) {
@@ -72,7 +72,7 @@ func OpToMessage(
 		wot.OpSubscribeEvent, wot.OpSubscribeAllEvents,
 		wot.OpUnsubscribeEvent, wot.OpUnsubscribeAllEvents,
 		wot.HTOpEvent,
-		wot.HTOpPing, wot.HTOpPong:
+		wot.HTOpPing:
 		msg = EventMessage{
 			ThingID:       dThingID,
 			MessageType:   msgType,

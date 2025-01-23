@@ -6,6 +6,7 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/messaging"
 	"log/slog"
 	"time"
 )
@@ -13,7 +14,7 @@ import (
 type IPNetBinding struct {
 	config *config.IPNetConfig
 	// Hub connection
-	hc transports.IAgentConnection
+	ag *messaging.Agent
 
 	// discovered devices
 	devicesMap      map[string]*IPDeviceInfo
@@ -21,23 +22,25 @@ type IPNetBinding struct {
 }
 
 // ActionHandler handle action requests
-func (svc *IPNetBinding) ActionHandler(req transports.RequestMessage) (resp transports.ResponseMessage) {
+func (svc *IPNetBinding) ActionHandler(req *transports.RequestMessage,
+	_ transports.IConnection) (resp *transports.ResponseMessage) {
+
 	resp = req.CreateResponse(nil, fmt.Errorf("unknown action '%s'", req.Name))
 	slog.Warn(resp.Error)
 	return resp
 }
 
 // Start the binding
-func (svc *IPNetBinding) Start(hc transports.IAgentConnection) (err error) {
+func (svc *IPNetBinding) Start(ag *messaging.Agent) (err error) {
 	if svc.config.LogLevel != "" {
 		logging.SetLogging(svc.config.LogLevel, "")
 	}
 	slog.Info("Starting the IpNet binding", "logLevel", svc.config.LogLevel)
 
-	svc.hc = hc
+	svc.ag = ag
 
 	// register the action handler
-	svc.hc.SetRequestHandler(svc.ActionHandler)
+	svc.ag.SetRequestHandler(svc.ActionHandler)
 
 	// publish this binding's TD document
 	err = svc.PubBindingTD()

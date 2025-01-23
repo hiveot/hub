@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authn/config"
@@ -43,12 +42,9 @@ func (svc *AuthnUserService) Logout(senderID string) error {
 
 // RefreshToken requests a new token based on the old token
 func (svc *AuthnUserService) RefreshToken(
-	senderID string, args authn.UserRefreshTokenArgs) (newToken string, err error) {
+	senderID string, args string) (newToken string, err error) {
 
-	if args.ClientID != senderID {
-		return "", fmt.Errorf("RefreshToken: Invalid parameters")
-	}
-	newToken, err = svc.sessionAuth.RefreshToken(senderID, args.ClientID, args.OldToken)
+	newToken, err = svc.sessionAuth.RefreshToken(senderID, args)
 	return newToken, err
 }
 

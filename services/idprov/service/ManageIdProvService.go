@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
-	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/messaging"
 	"log/slog"
 	"sync"
 	"time"
@@ -17,7 +17,7 @@ type ManageIdProvService struct {
 	requests map[string]idprovapi.ProvisionStatus
 
 	//
-	hc transports.IAgentConnection
+	ag *messaging.Agent
 	// mutex to guard access to maps
 	mux sync.RWMutex
 }
@@ -158,7 +158,7 @@ func (svc *ManageIdProvService) SubmitRequest(senderID string, args *idprovapi.P
 		}
 
 		status.Pending = false
-		token, err = authn.AdminAddAgent(svc.hc, status.ClientID, status.ClientID, status.PubKey)
+		token, err = authn.AdminAddAgent(&svc.ag.Consumer, status.ClientID, status.ClientID, status.PubKey)
 
 		if err != nil {
 			return nil, err
@@ -190,13 +190,13 @@ func (svc *ManageIdProvService) SubmitRequest(senderID string, args *idprovapi.P
 func (svc *ManageIdProvService) Stop() {
 }
 
-func StartManageIdProvService(hc transports.IAgentConnection) *ManageIdProvService {
+func StartManageIdProvService(ag *messaging.Agent) (*ManageIdProvService, error) {
 
 	svc := &ManageIdProvService{
 		// map of requests by SenderID
 		requests: make(map[string]idprovapi.ProvisionStatus),
-		hc:       hc,
+		ag:       ag,
 	}
 
-	return svc
+	return svc, nil
 }

@@ -1,7 +1,6 @@
 package runtime
 
 import (
-	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/digitwin"
@@ -11,7 +10,7 @@ import (
 	service2 "github.com/hiveot/hub/runtime/authz/service"
 	"github.com/hiveot/hub/runtime/digitwin/router"
 	service4 "github.com/hiveot/hub/runtime/digitwin/service"
-	"github.com/hiveot/hub/transports/connections"
+	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/servers"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
@@ -32,8 +31,8 @@ type Runtime struct {
 	AuthzAgent     *service2.AuthzAgent
 	DigitwinSvc    *service4.DigitwinService
 	DigitwinRouter *router.DigitwinRouter
-	CM             *connections.ConnectionManager
-	TransportsMgr  *servers.TransportManager
+	//CM             *connections.ConnectionManager
+	TransportsMgr *servers.TransportManager
 
 	// logging of request and response messages
 	requestLogger  *slog.Logger
@@ -51,8 +50,12 @@ type Runtime struct {
 // GetForm returns the form for an operation using a transport protocol binding
 // These forms point to the use of a digital twin via the hub runtime.
 // If the protocol is not found this returns a nil and might cause a panic
-func (r *Runtime) GetForm(op string, protocol string) (f td.Form) {
-	return r.TransportsMgr.GetForm(op, protocol)
+func (r *Runtime) GetForm(op string, protocol string) (f *td.Form) {
+	srv := r.TransportsMgr.GetServer(protocol)
+	if srv != nil {
+		return srv.GetForm(op, "", "")
+	}
+	return nil
 }
 
 // GetConnectURL returns the URL for connecting with the given protocol type.
@@ -90,14 +93,15 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	}
 
 	// startup
-	// setup the Authentication service
+
+	// 1: setup the Authentication service
 	r.AuthnSvc, err = service.StartAuthnService(&r.cfg.Authn)
 	if err != nil {
 		return err
 	}
 	r.AuthnAgent = service.StartAuthnAgent(r.AuthnSvc)
 
-	// start authorization service and add its account
+	// 2: start authorization service and add its account
 	r.AuthzSvc, err = service2.StartAuthzService(&r.cfg.Authz, r.AuthnSvc.AuthnStore)
 	if err != nil {
 		return err
@@ -112,10 +116,18 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 
 	r.AuthzAgent, err = service2.StartAuthzAgent(r.AuthzSvc)
 
+	// Start the servers. The digitwin router needs it to send messages
+	r.TransportsMgr, err = servers.StartTransportManager(
+		&r.cfg.ProtocolConfig,
+		r.cfg.ServerCert,
+		r.cfg.CaCert,
+		r.AuthnSvc.SessionAuth,
+	)
+
 	// The digitwin service directs the message flow between agents and consumers
 	// It receives messages from the middleware and uses the protocol manager
 	// to send messages to clients.
-	r.DigitwinSvc, _, err = service4.StartDigitwinService(env.StoresDir, r.CM)
+	r.DigitwinSvc, _, err = service4.StartDigitwinService(env.StoresDir, r.SendNotification)
 	dtwAgent := service4.NewDigitwinAgent(r.DigitwinSvc)
 
 	// The transport passes incoming messages on to the hub-router, which in
@@ -126,7 +138,9 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 		r.AuthnAgent.HandleRequest,
 		r.AuthzAgent.HandleAction,
 		r.AuthzAgent.HasPermission,
-		r.CM)
+		r.TransportsMgr)
+	r.TransportsMgr.SetRequestHandler(r.DigitwinRouter.HandleRequest)
+	r.TransportsMgr.SetResponseHandler(r.DigitwinRouter.HandleResponse)
 
 	if r.cfg.RequestLog != "" {
 		requestLogfileName := path.Join(env.LogsDir, r.cfg.RequestLog)
@@ -141,18 +155,6 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 		r.DigitwinRouter.SetNotifLogger(r.notifLogger)
 	}
 
-	// the protocol manager receives messages from clients (source) and
-	// sends messages to connected clients (sink)
-	r.TransportsMgr, err = servers.StartProtocolManager(
-		&r.cfg.ProtocolConfig,
-		r.cfg.ServerCert,
-		r.cfg.CaCert,
-		r.AuthnSvc.SessionAuth,
-		r.DigitwinRouter.HandleNotification,
-		r.DigitwinRouter.HandleRequest,
-		r.DigitwinRouter.HandleResponse,
-		r.CM,
-	)
 	if err != nil {
 		return err
 	}
@@ -179,14 +181,19 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 		ThingID: digitwin.DirectoryServiceID,
 		Deny:    []authz.ClientRole{authz.ClientRoleNone},
 	})
-
 	return err
+}
+
+// SendNotification sends an event or property response message to subscribers.
+func (r *Runtime) SendNotification(notif *transports.ResponseMessage) error {
+	r.TransportsMgr.SendNotification(notif)
+	return nil
 }
 
 func (r *Runtime) Stop() {
 	// wait a little to allow ongoing connection closure to complete
 	time.Sleep(time.Millisecond * 10)
-	nrConnections, _ := r.CM.GetNrConnections()
+	//nrConnections, _ := r.CM.GetNrConnections()
 
 	if r.AuthnSvc != nil {
 		r.AuthnSvc.Stop()
@@ -200,21 +207,21 @@ func (r *Runtime) Stop() {
 	if r.TransportsMgr != nil {
 		r.TransportsMgr.Stop()
 	}
-	r.CM.CloseAll()
-	if nrConnections > 0 {
-		slog.Warn(fmt.Sprintf(
-			"HiveOT Hub Runtime stopped. Force closed %d connections", nrConnections))
-	}
+	//r.CM.CloseAll()
+	//if nrConnections > 0 {
+	//	slog.Warn(fmt.Sprintf(
+	//		"HiveOT Hub Runtime stopped. Force closed %d connections", nrConnections))
+	//}
 	if r.notifLogFile != nil {
-		r.notifLogFile.Close()
+		_ = r.notifLogFile.Close()
 		r.notifLogFile = nil
 	}
 	if r.requestLogFile != nil {
-		r.requestLogFile.Close()
+		_ = r.requestLogFile.Close()
 		r.requestLogFile = nil
 	}
 	if r.runtimeLogFile != nil {
-		r.runtimeLogFile.Close()
+		_ = r.runtimeLogFile.Close()
 		r.runtimeLogFile = nil
 	}
 }
@@ -222,7 +229,7 @@ func (r *Runtime) Stop() {
 func NewRuntime(cfg *RuntimeConfig) *Runtime {
 	r := &Runtime{
 		cfg: cfg,
-		CM:  connections.NewConnectionManager(),
+		//CM:  connections.NewConnectionManager(),
 	}
 	return r
 }

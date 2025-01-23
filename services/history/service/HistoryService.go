@@ -5,6 +5,7 @@ import (
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/services/history/historyapi"
 	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/messaging"
 	"log/slog"
 )
 
@@ -23,8 +24,8 @@ type HistoryService struct {
 	readHistSvc *ReadHistory
 
 	agentID string
-	// the pubsub service to subscribe to event
-	hc transports.IAgentConnection
+	// the messaging agent used to pubsub service to subscribe to event
+	ag *messaging.Agent
 	// optional handling of pubsub events. nil if not used
 	//subEventHandler *PubSubEventHandler
 	// handler that adds history to the store
@@ -37,13 +38,14 @@ func (svc *HistoryService) GetAddHistory() *AddHistory {
 	return svc.addHistory
 }
 
-// Start using the history service
-func (svc *HistoryService) Start(hc transports.IAgentConnection) (err error) {
-	slog.Info("Starting HistoryService", "clientID", hc.GetClientID())
+// Start the history service
+func (svc *HistoryService) Start(agentConn transports.IConnection) (err error) {
+	ag := messaging.NewAgent(agentConn, nil, nil, nil, 0)
+	slog.Info("Starting HistoryService", "clientID", ag.GetClientID())
 
 	// setup
-	svc.hc = hc
-	svc.agentID = hc.GetClientID()
+	svc.ag = ag
+	svc.agentID = ag.GetClientID()
 	svc.manageHistSvc = NewManageHistory(nil)
 	err = svc.manageHistSvc.Start()
 	if err == nil {
@@ -56,11 +58,12 @@ func (svc *HistoryService) Start(hc transports.IAgentConnection) (err error) {
 
 	// Set the required permissions for using this service
 	// any user roles can view the history
-	err = authz.UserSetPermissions(hc, authz.ThingPermissions{
-		AgentID: hc.GetClientID(),
+	permissions := authz.ThingPermissions{
+		AgentID: ag.GetClientID(),
 		ThingID: historyapi.ReadHistoryServiceID,
 		Deny:    []authz.ClientRole{authz.ClientRoleNone},
-	})
+	}
+	err = authz.UserSetPermissions(&ag.Consumer, permissions)
 
 	//if err == nil {
 	//	// only admin role can manage the history
@@ -68,18 +71,18 @@ func (svc *HistoryService) Start(hc transports.IAgentConnection) (err error) {
 	//}
 
 	// subscribe to events to add to the history store
-	if err == nil && svc.hc != nil {
+	if err == nil && svc.ag != nil {
 
 		// handler of adding events to the history
 		svc.addHistory = NewAddHistory(svc.bucketStore, svc.manageHistSvc)
 
-		// register the history service methods
-		StartHistoryAgent(svc, svc.hc)
+		// register the history service methods and listen for requests
+		StartHistoryAgent(svc, svc.ag)
 
 		// TODO: add actions to the history, filtered through retention manager
 		// subscribe to receive the events to add to the history, filtered through the retention manager
-		err = svc.hc.Subscribe("", "")
-		err = svc.hc.ObserveProperty("", "")
+		err = svc.ag.Subscribe("", "")
+		err = svc.ag.ObserveProperty("", "")
 	}
 
 	return err

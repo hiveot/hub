@@ -29,7 +29,7 @@ func (it *IsySwitchThing) GetPropValues(onlyChanges bool) map[string]any {
 // HandleActionRequest handles request to execute an action on this device
 // actionID string as defined in the action affordance
 // newValue is not used as these actions do not carry a parameter
-func (it *IsySwitchThing) HandleActionRequest(req transports.RequestMessage) transports.ResponseMessage {
+func (it *IsySwitchThing) HandleActionRequest(req *transports.RequestMessage) *transports.ResponseMessage {
 	var restPath = ""
 	var newValue = ""
 	// FIXME: req keys are the raw keys, not @type

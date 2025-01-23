@@ -18,15 +18,16 @@ func GenServiceHandler(l *utils.SL, serviceTitle string, td1 *td.TD) {
 	interfaceName := "I" + serviceTitle + "Service"
 
 	l.Add("")
-	l.Add("// NewHandle%sAction returns an agent handler for Thing '%s' actions.", serviceTitle, td1.ID)
+	l.Add("// NewHandle%sRequest returns an agent handler for Thing '%s' requests.", serviceTitle, td1.ID)
 	l.Add("//")
 	l.Add("// This unmarshalls the request payload into an args struct and passes it to the service")
 	l.Add("// that implements the corresponding interface method.")
 	l.Add("// ")
 	l.Add("// This returns the marshalled response data or an error.")
-	l.Add("func NewHandle%sAction(svc %s)(func(msg transports.RequestMessage) transports.ResponseMessage) {", serviceTitle, interfaceName)
+	l.Add("func NewHandle%sRequest(svc %s)(func(msg *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage) {",
+		serviceTitle, interfaceName)
 	l.Indent++
-	l.Add("return func(msg transports.RequestMessage) transports.ResponseMessage {")
+	l.Add("return func(msg *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {")
 
 	l.Indent++
 

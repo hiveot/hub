@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot"
@@ -23,30 +24,30 @@ func TestSubscribeAll(t *testing.T) {
 	var testMsg1 = "hello world 1"
 	var testMsg2 = "hello world 2"
 	var agentID = "agent1"
-	var agentID2 = "agent2"
 	var thingID = "thing1"
 	var eventKey = "event11"
+	var agentRxEvent atomic.Bool
 
 	// 1. start the servers
-	srv, cancelFn, cm := StartTransportServer(nil, nil, nil)
+	srv, cancelFn := StartTransportServer(nil, nil)
 	defer cancelFn()
 
 	// 2. connect as consumers
-	cl1 := NewConsumer(testClientID1, srv.GetForm)
-	_, err := cl1.ConnectWithPassword(testClientID1)
+	cconn1, cons1 := NewConsumer(testClientID1, srv.GetForm)
+	_, err := cconn1.ConnectWithPassword(testClientID1)
 	require.NoError(t, err)
-	defer cl1.Disconnect()
+	defer cconn1.Disconnect()
 
-	cl2 := NewConsumer(testClientID1, srv.GetForm)
-	_, err = cl2.ConnectWithPassword(testClientID1)
+	cconn2, cons2 := NewConsumer(testClientID1, srv.GetForm)
+	_, err = cconn2.ConnectWithPassword(testClientID1)
 	require.NoError(t, err)
-	defer cl2.Disconnect()
+	defer cconn2.Disconnect()
 
 	// ensure that agents can also subscribe (they cant use forms)
-	ag2 := NewAgent(agentID2)
-	_, err = ag2.ConnectWithPassword(agentID2)
+	agConn1, agent1 := NewAgent(agentID)
+	_, err = agConn1.ConnectWithPassword(agentID)
 	require.NoError(t, err)
-	defer cl2.Disconnect()
+	defer agConn1.Disconnect()
 
 	// FIXME: test subscription by agent
 
@@ -54,54 +55,62 @@ func TestSubscribeAll(t *testing.T) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), time.Minute)
 	defer cancelFn()
 
-	cl1.SetNotificationHandler(func(ev transports.NotificationMessage) {
+	cons1.SetResponseHandler(func(ev *transports.ResponseMessage) error {
 		slog.Info("client 1 receives event")
 		// receive event
-		rxVal.Store(ev.Data)
+		rxVal.Store(ev.Output)
 		cancelFn()
+		return nil
 	})
-	cl2.SetNotificationHandler(func(ev transports.NotificationMessage) {
+	cons2.SetResponseHandler(func(ev *transports.ResponseMessage) error {
 		slog.Info("client 2 receives event")
+		return nil
 	})
-	ag2.SetNotificationHandler(func(ev transports.NotificationMessage) {
+	agent1.SetResponseHandler(func(ev *transports.ResponseMessage) error {
 		// receive event
 		slog.Info("Agent receives event")
+		agentRxEvent.Store(true)
+		return nil
 	})
 
 	// Subscribe to events. Each binding implements this as per its spec
-	err = cl1.Subscribe("", "")
+	err = cons1.Subscribe("", "")
 	assert.NoError(t, err)
-	err = cl2.Subscribe(thingID, eventKey)
+	err = cons2.Subscribe(thingID, eventKey)
 	assert.NoError(t, err)
-	err = ag2.Subscribe("", "")
+	err = agent1.Subscribe("", "")
 	assert.NoError(t, err)
 
 	// 3. Server sends event to consumers
 	time.Sleep(time.Millisecond * 10)
-	notif1 := transports.NewNotificationMessage(wot.HTOpEvent, thingID, eventKey, testMsg1)
+	notif1 := transports.NewNotificationResponse(wot.OpSubscribeEvent, thingID, eventKey, testMsg1, nil)
 	notif1.SenderID = agentID
-	cm.PublishNotification(notif1)
+	srv.SendNotification(notif1)
 
 	// 4. subscriber should have received them
 	<-ctx.Done()
 	assert.Equal(t, testMsg1, rxVal.Load())
+	time.Sleep(time.Millisecond)
+	assert.True(t, agentRxEvent.Load())
 
 	// Unsubscribe from events
-	err = cl1.Unsubscribe("", "")
+	err = cons1.Unsubscribe("", "")
 	assert.NoError(t, err)
 	time.Sleep(time.Millisecond * 10) // async take time
-
-	err = cl2.Unsubscribe(thingID, eventKey)
+	err = cons2.Unsubscribe(thingID, eventKey)
 	assert.NoError(t, err)
-	err = ag2.Unsubscribe("", "")
+	err = agent1.Unsubscribe("", "")
 	assert.NoError(t, err)
+	agentRxEvent.Store(false)
 
 	// 5. Server sends another event to consumers
-	notif2 := transports.NewNotificationMessage(wot.HTOpEvent, thingID, eventKey, testMsg2)
+	notif2 := transports.NewNotificationResponse(wot.OpSubscribeEvent, thingID, eventKey, testMsg2, nil)
 	notif2.SenderID = agentID
-	cm.PublishNotification(notif2)
+	srv.SendNotification(notif2)
+	time.Sleep(time.Millisecond)
 	// update not received
 	assert.Equal(t, testMsg1, rxVal.Load(), "Unsubscribe didnt work")
+	assert.False(t, agentRxEvent.Load())
 
 	//
 }
@@ -113,29 +122,27 @@ func TestPublishEventsByAgent(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	var evVal atomic.Value
 	var testMsg = "hello world"
-	var agentID = "agent1"
 	var thingID = "thing1"
 	var eventKey = "event11"
 
 	// 1. start the transport
 	// handler of event notification on the server
-	notificationHandler := func(msg transports.NotificationMessage) {
-		evVal.Store(msg.Data)
+	notificationHandler := func(msg *transports.ResponseMessage) error {
+		evVal.Store(msg.Output)
+		return nil
 	}
-	srv, cancelFn, _ := StartTransportServer(notificationHandler, nil, nil)
+	srv, cancelFn := StartTransportServer(nil, notificationHandler)
 	_ = srv
 	defer cancelFn()
 
 	// 2. connect as an agent
-	ag1 := NewAgent(testAgentID1)
-	_, err := ag1.ConnectWithPassword(testAgentID1)
+	agConn1, agent1 := NewAgent(testAgentID1)
+	_, err := agConn1.ConnectWithPassword(testAgentID1)
 	require.NoError(t, err)
-	defer ag1.Disconnect()
+	defer agConn1.Disconnect()
 
 	// 3. agent publishes an event
-	notif := transports.NewNotificationMessage(wot.HTOpEvent, thingID, eventKey, testMsg)
-	notif.SenderID = agentID
-	err = ag1.SendNotification(notif)
+	err = agent1.PubEvent(thingID, eventKey, testMsg)
 	time.Sleep(time.Millisecond) // time to take effect
 	require.NoError(t, err)
 
@@ -143,4 +150,34 @@ func TestPublishEventsByAgent(t *testing.T) {
 	rxMsg2 := evVal.Load()
 	require.NotNil(t, rxMsg2)
 	assert.Equal(t, testMsg, rxMsg2)
+}
+
+// Consumer reads events from agent
+func TestReadEvent(t *testing.T) {
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	var thingID = "thing1"
+	var eventKey = "event11"
+	var eventValue = "value11"
+
+	// 1. start the agent transport with the request handler
+	// in this case the consumer connects to the agent (unlike when using a hub)
+	agentReqHandler := func(req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
+		if req.Operation == wot.HTOpReadEvent && req.ThingID == thingID && req.Name == eventKey {
+			return req.CreateResponse(eventValue, nil)
+		}
+		return req.CreateResponse(nil, errors.New("unexpected request"))
+	}
+	srv, cancelFn := StartTransportServer(agentReqHandler, nil)
+	_ = srv
+	defer cancelFn()
+
+	// 2. connect as a consumer
+	cc1, consumer1 := NewConsumer(testClientID1, srv.GetForm)
+	_, err := cc1.ConnectWithPassword(testClientID1)
+	require.NoError(t, err)
+	defer cc1.Disconnect()
+
+	rxVal, err := consumer1.ReadEvent(thingID, eventKey)
+	require.NoError(t, err)
+	assert.Equal(t, eventValue, rxVal)
 }

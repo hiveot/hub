@@ -1,4 +1,4 @@
-package ssescserver
+package hiveotsseserver
 
 import (
 	"fmt"
@@ -21,14 +21,14 @@ type SSEEvent struct {
 // SSEPingEvent can be used by the server to ping the client that the connection is ready
 const SSEPingEvent = "sseping"
 
-// SseScServerConnection handles the SSE connection by remote client
+// HiveotSseServerConnection handles the SSE connection by remote client
 //
 // The Sse-sc protocol binding uses a 'hiveot' message envelope for sending messages
 // between server and consumer.
 //
 // This implements the IServerConnection interface for sending messages to
 // the client over SSE.
-type SseScServerConnection struct {
+type HiveotSseServerConnection struct {
 	// connection ID (from header, without clientID prefix)
 	connectionID string
 
@@ -68,7 +68,7 @@ type SseScServerConnection struct {
 // _send sends a request, response or notification message to the client over SSE.
 // This is different from the WoT SSE subprotocol in that the payload is the
 // message envelope and can carry any operation.
-func (c *SseScServerConnection) _send(msgType string, msg any) (err error) {
+func (c *HiveotSseServerConnection) _send(msgType string, msg any) (err error) {
 
 	var payload []byte = nil
 	payload, _ = jsoniter.Marshal(msg)
@@ -90,7 +90,7 @@ func (c *SseScServerConnection) _send(msgType string, msg any) (err error) {
 }
 
 // Disconnect closes the connection and ends the read loop
-func (c *SseScServerConnection) Disconnect() {
+func (c *HiveotSseServerConnection) Disconnect() {
 	c.mux.Lock()
 	defer c.mux.Unlock()
 	if !c.isClosed.Load() {
@@ -100,28 +100,28 @@ func (c *SseScServerConnection) Disconnect() {
 }
 
 // GetClientID returns the client's account ID
-func (c *SseScServerConnection) GetClientID() string {
+func (c *HiveotSseServerConnection) GetClientID() string {
 	return c.clientID
 }
 
 // GetConnectionID returns the clients connection ID unique within the sessions
-func (c *SseScServerConnection) GetConnectionID() string {
+func (c *HiveotSseServerConnection) GetConnectionID() string {
 	return c.connectionID
 }
 
 // GetProtocolType returns the protocol used in this connection
-func (c *SseScServerConnection) GetProtocolType() string {
+func (c *HiveotSseServerConnection) GetProtocolType() string {
 	return transports.ProtocolTypeSSESC
 }
 
 // GetSessionID returns the client's authentication session ID
-//func (c *SseScServerConnection) GetSessionID() string {
+//func (c *HiveotSseServerConnection) GetSessionID() string {
 //	return c.sessionID
 //}
 
 //// IsSubscribed returns true if subscription for thing and name exists
 //// If dThingID or name are empty, then "+" is used as wildcard
-//func (c *SseScServerConnection) IsSubscribed(subs []string, dThingID string, name string) bool {
+//func (c *HiveotSseServerConnection) IsSubscribed(subs []string, dThingID string, name string) bool {
 //	if dThingID == "" {
 //		dThingID = "+"
 //	}
@@ -138,12 +138,12 @@ func (c *SseScServerConnection) GetProtocolType() string {
 //}
 
 // ObserveProperty adds a subscription for a thing property
-func (c *SseScServerConnection) ObserveProperty(dThingID string, name string) {
+func (c *HiveotSseServerConnection) ObserveProperty(dThingID string, name string) {
 	c.observations.Subscribe(dThingID, name)
 }
 
 // SendNotification sends a notification message if the client is subscribed
-func (c *SseScServerConnection) SendNotification(noti transports.NotificationMessage) {
+func (c *HiveotSseServerConnection) SendNotification(noti transports.NotificationMessage) {
 
 	switch noti.Operation {
 	case wot.HTOpUpdateTD:
@@ -168,13 +168,13 @@ func (c *SseScServerConnection) SendNotification(noti transports.NotificationMes
 }
 
 // SendRequest sends a request message to an agent over SSE
-func (c *SseScServerConnection) SendRequest(req transports.RequestMessage) error {
+func (c *HiveotSseServerConnection) SendRequest(req transports.RequestMessage) error {
 	// This simply sends the message as-is
 	return c._send(transports.MessageTypeRequest, req)
 }
 
 // SendResponse send a response (action status) from server to client.
-func (c *SseScServerConnection) SendResponse(resp transports.ResponseMessage) error {
+func (c *HiveotSseServerConnection) SendResponse(resp transports.ResponseMessage) error {
 	// This simply sends the message as-is
 	return c._send(transports.MessageTypeResponse, resp)
 }
@@ -183,7 +183,7 @@ func (c *SseScServerConnection) SendResponse(resp transports.ResponseMessage) er
 // This listens for outgoing requests on the given channel
 // It ends when the client disconnects or the connection is closed with Close()
 // Sse requests are refused if no valid session is found.
-func (c *SseScServerConnection) Serve(w http.ResponseWriter, r *http.Request) {
+func (c *HiveotSseServerConnection) Serve(w http.ResponseWriter, r *http.Request) {
 	// Set headers for SSE response
 	//w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Expose-Headers", "Content-Type")
@@ -276,36 +276,36 @@ func (c *SseScServerConnection) Serve(w http.ResponseWriter, r *http.Request) {
 }
 
 // SubscribeEvent handles a subscription request for an event
-func (c *SseScServerConnection) SubscribeEvent(dThingID string, name string) {
+func (c *HiveotSseServerConnection) SubscribeEvent(dThingID string, name string) {
 	c.subscriptions.Subscribe(dThingID, name)
 }
 
 // UnsubscribeEvent removes an event subscription
 // dThingID and name must match those of ObserveProperty
-func (c *SseScServerConnection) UnsubscribeEvent(dThingID string, name string) {
+func (c *HiveotSseServerConnection) UnsubscribeEvent(dThingID string, name string) {
 	c.subscriptions.Unsubscribe(dThingID, name)
 }
 
 // UnobserveProperty removes a property subscription
 // dThingID and name must match those of ObserveProperty
-func (c *SseScServerConnection) UnobserveProperty(dThingID string, name string) {
+func (c *HiveotSseServerConnection) UnobserveProperty(dThingID string, name string) {
 	c.observations.Unsubscribe(dThingID, name)
 }
 
 // WriteProperty sends the property change request to the agent
-//func (c *SseScServerConnection) WriteProperty(
+//func (c *HiveotSseServerConnection) WriteProperty(
 //	thingID, name string, data any, correlationID string, senderID string) (status string, err error) {
 //
 //	status, err = c._send(vocab.OpWriteProperty, thingID, name, data, correlationID, senderID)
 //	return status, err
 //}
 
-// NewSSEConnection creates a new SSE connection instance.
+// NewHiveotSseConnection creates a new SSE connection instance.
 // This implements the IServerConnection interface.
-func NewSSEConnection(clientID string, cid string, remoteAddr string, sseFallback bool) *SseScServerConnection {
+func NewHiveotSseConnection(clientID string, cid string, remoteAddr string, sseFallback bool) *HiveotSseServerConnection {
 	connectionID := clientID + "-" + cid // -> must match subscribe/observe requests
 
-	c := &SseScServerConnection{
+	c := &HiveotSseServerConnection{
 		connectionID:  connectionID,
 		clientID:      clientID,
 		remoteAddr:    remoteAddr,

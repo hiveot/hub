@@ -60,13 +60,13 @@ func (d *DummyAuthenticator) ValidatePassword(clientID string, password string) 
 }
 
 func (d *DummyAuthenticator) RefreshToken(
-	senderID string, clientID string, oldToken string) (newToken string, err error) {
+	senderID string, oldToken string) (newToken string, err error) {
 
 	tokenClientID, sessionID, err := d.ValidateToken(oldToken)
-	if clientID == tokenClientID {
-		newToken = d.CreateSessionToken(clientID, sessionID, 0)
-	} else {
+	if err != nil || senderID != tokenClientID {
 		err = fmt.Errorf("Invalid token, client or sender")
+	} else {
+		newToken = d.CreateSessionToken(senderID, sessionID, 0)
 	}
 	return newToken, err
 }

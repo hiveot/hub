@@ -127,7 +127,7 @@ func (svc *OWServerBinding) PollNodes() ([]*eds.OneWireNode, error) {
 func (svc *OWServerBinding) PublishNodeTD(node *eds.OneWireNode) (err error) {
 	td := svc.CreateTDFromNode(node)
 	svc.things[td.ID] = td
-	err = svc.hc.PubTD(td)
+	err = svc.ag.PubTD(td)
 	return err
 }
 

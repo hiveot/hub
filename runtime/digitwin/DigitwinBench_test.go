@@ -9,6 +9,7 @@ import (
 )
 
 func BenchmarkUpdateDTW(b *testing.B) {
+	b.Log(fmt.Sprintf("---%s---\n", b.Name()))
 	const agent1ID = "agent1"
 	const thing1ID = "thing1"
 	const title1 = "title1"

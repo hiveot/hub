@@ -6,6 +6,8 @@ import (
 	"github.com/hiveot/hub/lib/hubagent"
 	"github.com/hiveot/hub/services/history/historyapi"
 	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/messaging"
+	"github.com/hiveot/hub/wot"
 )
 
 // StartHistoryAgent returns a new instance of the agent for the history services.
@@ -15,8 +17,8 @@ import (
 // for example when testing.
 //
 //	svc is the history service whose capabilities to expose
-//	hc is the optional message client connected to the server protocol
-func StartHistoryAgent(svc *HistoryService, hc transports.IAgentConnection) {
+//	ag is the optional connected agent connected to the server protocol
+func StartHistoryAgent(svc *HistoryService, ag *messaging.Agent) {
 
 	// TODO: load latest retention rules from state store
 	manageHistoryMethods := map[string]interface{}{
@@ -40,23 +42,23 @@ func StartHistoryAgent(svc *HistoryService, hc transports.IAgentConnection) {
 	mah := hubagent.NewAgentHandler(historyapi.ManageHistoryServiceID, manageHistoryMethods)
 
 	// receive subscribed updates for events and properties
-	hc.SetNotificationHandler(func(msg transports.NotificationMessage) {
-		if msg.Operation == vocab.HTOpPublishEvent {
-			_ = svc.addHistory.AddEvent(&msg)
-		} else if msg.Operation == vocab.HTOpUpdateProperty {
-			_ = svc.addHistory.AddProperty(&msg)
-		} else {
-			//ignore the rest
+	ag.Consumer.SetResponseHandler(func(resp *transports.ResponseMessage) error {
+		if resp.Operation == wot.OpSubscribeEvent {
+			return svc.addHistory.AddEvent(resp)
+		} else if resp.Operation == wot.OpObserveProperty {
+			return svc.addHistory.AddProperty(resp)
 		}
+		//ignore the rest
+		return nil
 	})
 
 	// handle service requests
-	hc.SetRequestHandler(func(req transports.RequestMessage) transports.ResponseMessage {
+	ag.SetRequestHandler(func(req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
 		if req.Operation == vocab.OpInvokeAction {
 			if req.ThingID == historyapi.ReadHistoryServiceID {
-				return rah.HandleRequest(req)
+				return rah.HandleRequest(req, c)
 			} else if req.ThingID == historyapi.ManageHistoryServiceID {
-				return mah.HandleRequest(req)
+				return mah.HandleRequest(req, c)
 			}
 		}
 		return req.CreateResponse(nil, fmt.Errorf("Unhandled message"))

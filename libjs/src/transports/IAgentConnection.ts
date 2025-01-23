@@ -1,6 +1,6 @@
 import {TD} from "@hivelib/wot/TD";
 import {IConsumerConnection, RequestHandler} from "@hivelib/transports/IConsumerConnection";
-import {NotificationMessage, ResponseMessage} from "@hivelib/transports/Messages";
+import {ResponseMessage} from "@hivelib/transports/Messages";
 
 
 // IAgentClient defines the interface for use by  hub agents.
@@ -44,11 +44,6 @@ export interface IAgentConnection extends IConsumerConnection {
     //
     // @param td is the Thing Description document describing the Thing
     pubTD(td: TD): void
-
-    // sendNotification [agent] sends a notification message to the hub.
-    //
-    // Intended for agents sending events, property and td notifications.
-    sendNotification(notif: NotificationMessage):void
 
     // sendResponse [agent] sends a response status message to the hub.
     // The hub will update the status of the action in the digital twin and

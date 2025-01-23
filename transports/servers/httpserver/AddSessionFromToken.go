@@ -8,8 +8,7 @@ import (
 	"net/http"
 )
 
-// AddSessionFromToken middleware decodes the bearer session token in the authorization header
-// and adds the corresponding ClientSession object to the request context.
+// AddSessionFromToken middleware decodes the bearer session token in the authorization header.
 //
 // Session tokens can be provided through a bearer token or a client cookie. The token
 // must match with an existing session ID.
@@ -32,7 +31,7 @@ import (
 func AddSessionFromToken(userAuthn transports.IAuthenticator) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			//var cs *sessions2.ClientSession
+
 			bearerToken, err := tlsserver.GetBearerToken(r)
 			if err != nil {
 				errMsg := "AddSessionFromToken: " + err.Error()

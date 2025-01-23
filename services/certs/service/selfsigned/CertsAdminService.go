@@ -10,6 +10,7 @@ import (
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/services/certs/certsapi"
 	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/messaging"
 	"log/slog"
 	"math/big"
 	"net"
@@ -28,9 +29,6 @@ type SelfSignedCertsService struct {
 	caCertPEM  string
 	caKey      keys.IHiveKey
 	caCertPool *x509.CertPool
-
-	// messaging client for receiving requests
-	hc transports.IAgentConnection
 }
 
 // _createDeviceCert internal function to create a CA signed certificate for mutual authentication by IoT devices
@@ -200,14 +198,12 @@ func (svc *SelfSignedCertsService) CreateUserCert(
 // Start the service and listen for requests
 //
 //	hc is the connection to the hub with a service role. For testing it can be nil.
-func (svc *SelfSignedCertsService) Start(hc transports.IAgentConnection) (err error) {
-	slog.Info("Starting certs service", "serviceID", hc.GetClientID())
-	// for testing, hc can be nil
-	svc.hc = hc
-
+func (svc *SelfSignedCertsService) Start(cc transports.IConnection) (err error) {
+	slog.Info("Starting certs service", "serviceID", cc.GetClientID())
+	ag := messaging.NewAgent(cc, nil, nil, nil, 0)
 	// permissions for using this service are for admin only
-	err = authz.UserSetPermissions(svc.hc, authz.ThingPermissions{
-		AgentID: svc.hc.GetClientID(),
+	err = authz.UserSetPermissions(&ag.Consumer, authz.ThingPermissions{
+		AgentID: ag.GetClientID(),
 		ThingID: certsapi.CertsAdminThingID,
 		Allow:   []authz.ClientRole{authz.ClientRoleAdmin},
 		Deny:    nil,
@@ -215,7 +211,7 @@ func (svc *SelfSignedCertsService) Start(hc transports.IAgentConnection) (err er
 
 	// FIXME: add the service TD with the actions
 
-	StartCertsAgent(svc, hc)
+	StartCertsAgent(svc, ag)
 	return err
 }
 

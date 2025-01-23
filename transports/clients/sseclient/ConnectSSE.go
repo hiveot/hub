@@ -75,7 +75,7 @@ func ConnectSSE(
 
 	// Wait for max 3 seconds to detect a connection
 	waitConnectCtx, waitConnectCancelFn := context.WithTimeout(context.Background(), timeout)
-	conn.SubscribeEvent(ssescserver.SSEPingEvent, func(event sse.Event) {
+	conn.SubscribeEvent(hiveotsseserver.SSEPingEvent, func(event sse.Event) {
 		// WORKAROUND since go-sse has no callback for a successful (re)connect, simulate one here.
 		// As soon as a connection is established the server could send a 'ping' event.
 		// success!

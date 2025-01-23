@@ -10,22 +10,41 @@ type ITransportServer interface {
 	// Original forms must be removed first as they are no longer applicable.
 	AddTDForms(td *td.TD) error
 
+	// CloseAllClientConnections close all connections from the given client.
+	// Intended to close connections after a logout.
+	CloseAllClientConnections(clientID string)
+
+	// GetConnectionByConnectionID returns the connection with the given ID from this server
+	GetConnectionByConnectionID(cid string) IConnection
+
+	// GetConnectionByClientID returns the connection with the given client ID.
+	// Intended to find agents to route requests to.
+	GetConnectionByClientID(agentID string) IConnection
+
 	// GetForm generates a form for the given operation for this server's transport
 	// protocol. Intended to update a TD with forms.
 	// Forms can use the following URI variables for top level Things:
 	//	{op} for operation
 	// 	{thingID} the ID of the thing
 	//	{name} the name of the property, event or action affordance
-	GetForm(op string, thingID string, name string) td.Form
+	GetForm(op string, thingID string, name string) *td.Form
 
 	// GetConnectURL returns the URL to connect to this server
-	GetConnectURL() string
+	// protocolType is intended for servers that support multiple protocols.
+	// Use "" for default.
+	GetConnectURL(protocolType string) string
 
-	// SendNotification broadcast an event or property change to subscribers
-	// Use this instead of sending notifications to individual connections
-	// as message bus brokers handle their own subscriptions.
-	SendNotification(msg NotificationMessage)
+	// GetProtocol returns the server supported protocol
+	//GetProtocol() string
 
-	// Stop the server
+	// SendNotification sends an event or property update notification to connected
+	// event subscribers or property observers.
+	// The subscription is handled by the underlying transport protocol.
+	SendNotification(msg *ResponseMessage)
+
+	// CloseAll closes all connections but do not stop the server
+	CloseAll()
+
+	// Stop the server after force closing all connections
 	Stop()
 }

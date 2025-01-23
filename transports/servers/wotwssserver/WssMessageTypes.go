@@ -1,4 +1,4 @@
-package wssserver
+package wotwssserver
 
 import (
 	"github.com/hiveot/hub/wot"
@@ -53,7 +53,7 @@ var MsgTypeToOp = map[string]string{
 	MsgTypeObserveProperty:         wot.OpObserveProperty,
 	MsgTypeError:                   "error",
 	MsgTypePing:                    wot.HTOpPing,
-	MsgTypePong:                    wot.HTOpPong,
+	MsgTypePong:                    wot.HTOpPing,
 	MsgTypePublishEvent:            wot.HTOpEvent,
 	MsgTypeQueryAction:             wot.OpQueryAction,
 	MsgTypeQueryAllActions:         wot.OpQueryAllActions,
@@ -80,9 +80,9 @@ var MsgTypeToOp = map[string]string{
 // Base message struct for common field. Used to partially parse the message
 // before knowing the operation and full type.
 type BaseMessage struct {
-	ThingID     string `json:"thingId"`
-	MessageType string `json:"messageType"`
-	//MessageID   string `json:"messageId,omitempty"`
+	ThingID       string `json:"thingId"`
+	MessageType   string `json:"messageType"`
+	MessageID     string `json:"messageId"`
 	CorrelationID string `json:"correlationID,omitempty"`
 }
 
@@ -99,9 +99,7 @@ type ActionMessage struct {
 	// The correlationID is not in the spec but needed to be able to correlate a response
 	// message.
 	CorrelationID string `json:"correlationID,omitempty"`
-	// The senderID is not in the spec but it is needed for some services to
-	// identify who is sending the action. It can't be a parameter because that
-	// wouldnt be secure.
+	// to be removed. Agents as clients are not supported in WoT protocols
 	SenderID string `json:"senderID"`
 }
 
@@ -176,6 +174,8 @@ type PropertyMessage struct {
 	Timestamp     string   `json:"timestamp,omitempty"`
 	//
 	CorrelationID string `json:"correlationID,omitempty"`
+	// to be removed. Agents as clients are not supported in WoT protocols
+	SenderID string `json:"senderID"`
 }
 
 type TDMessage struct {

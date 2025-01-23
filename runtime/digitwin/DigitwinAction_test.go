@@ -2,6 +2,7 @@ package digitwin_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/runtime/digitwin/service"
@@ -15,6 +16,7 @@ import (
 )
 
 func TestActionFlow(t *testing.T) {
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	const agentID = "agent1"
 	const thingID = "thing1"
 	const title1 = "title1"
@@ -75,6 +77,7 @@ func TestActionFlow(t *testing.T) {
 }
 
 func TestActionReadFail(t *testing.T) {
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	const agentID = "agent1"
 	const thingID = "thing1"
 	var dThingID = td.MakeDigiTwinThingID(agentID, thingID)
@@ -103,6 +106,7 @@ func TestActionReadFail(t *testing.T) {
 }
 
 func TestInvokeActionErrors(t *testing.T) {
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	const agentID = "agent1"
 	const thingID = "thing1"
 	const title1 = "title1"
@@ -155,6 +159,7 @@ func TestInvokeActionErrors(t *testing.T) {
 }
 
 func TestDigitwinAgentAction(t *testing.T) {
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	const agentID = "agent1"
 	const thingID = "thing1"
 	const title1 = "title1"
@@ -186,7 +191,8 @@ func TestDigitwinAgentAction(t *testing.T) {
 	req := transports.NewRequestMessage(vocab.OpInvokeAction,
 		digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, dThingID, consumerID)
 	req.CorrelationID = correlationID
-	resp := ag.HandleRequest(req)
+	resp := ag.HandleRequest(req, nil)
+
 	require.Empty(t, resp.Error)
 	require.NotEmpty(t, resp.Output)
 
@@ -194,21 +200,21 @@ func TestDigitwinAgentAction(t *testing.T) {
 	req = transports.NewRequestMessage(vocab.OpInvokeAction,
 		digitwin.DirectoryDThingID, digitwin.DirectoryReadTDMethod, "badid", consumerID)
 	req.CorrelationID = correlationID
-	resp = ag.HandleRequest(req)
+	resp = ag.HandleRequest(req, nil)
 	require.NotEmpty(t, resp.Error)
 
 	// a non-existing method name should fail
 	req = transports.NewRequestMessage(vocab.OpInvokeAction,
 		digitwin.DirectoryDThingID, "badMethod", dThingID, consumerID)
 	req.CorrelationID = correlationID
-	resp = ag.HandleRequest(req)
+	resp = ag.HandleRequest(req, nil)
 	require.NotEmpty(t, resp.Error)
 
 	// a non-existing serviceID should fail
 	req = transports.NewRequestMessage(vocab.OpInvokeAction,
 		"badservicename", digitwin.DirectoryReadTDMethod, dThingID, consumerID)
 	req.CorrelationID = correlationID
-	resp = ag.HandleRequest(req)
+	resp = ag.HandleRequest(req, nil)
 	require.NotEmpty(t, resp.Error)
 
 }

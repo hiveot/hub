@@ -4,7 +4,6 @@ import (
 	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/runtime/digitwin/store"
 	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/connections"
 	"log/slog"
 	"sync"
 )
@@ -38,8 +37,8 @@ type DigitwinRouter struct {
 	activeCache map[string]ActiveRequestRecord
 	// cache map usage mux
 	mux sync.Mutex
-	// connection manager for sending messages to agent or consumer
-	cm *connections.ConnectionManager
+	// connection manager for forwarding messages to agents or consumers
+	transportServer transports.ITransportServer
 
 	// logging of requests and response
 	requestLogger *slog.Logger
@@ -70,18 +69,20 @@ func NewDigitwinRouter(
 	authnAgent transports.RequestHandler,
 	authzAgent transports.RequestHandler,
 	permissionHandler PermissionHandler,
-	cm *connections.ConnectionManager,
+	//cm *connections.ConnectionManager,
+	transportServer transports.ITransportServer,
 ) *DigitwinRouter {
 	ar := &DigitwinRouter{
-		dtwStore:       dtwService.DtwStore,
-		cm:             cm,
-		authnAction:    authnAgent,
-		authzAction:    authzAgent,
-		hasPermission:  permissionHandler,
-		digitwinAction: digitwinAction,
-		dtwService:     dtwService,
-		activeCache:    make(map[string]ActiveRequestRecord),
-		requestLogger:  slog.Default(),
+		dtwStore: dtwService.DtwStore,
+		//cm:             cm,
+		transportServer: transportServer,
+		authnAction:     authnAgent,
+		authzAction:     authzAgent,
+		hasPermission:   permissionHandler,
+		digitwinAction:  digitwinAction,
+		dtwService:      dtwService,
+		activeCache:     make(map[string]ActiveRequestRecord),
+		requestLogger:   slog.Default(),
 	}
 	return ar
 }

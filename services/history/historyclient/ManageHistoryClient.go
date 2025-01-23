@@ -2,7 +2,7 @@ package historyclient
 
 import (
 	"github.com/hiveot/hub/services/history/historyapi"
-	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/messaging"
 	"github.com/hiveot/hub/wot/td"
 )
 
@@ -10,7 +10,8 @@ import (
 type ManageHistoryClient struct {
 	// service providing the history management capability
 	dThingID string
-	cc       transports.IConsumerConnection
+	//co       transports.IClientConnection
+	co *messaging.Consumer
 }
 
 // GetRetentionRule returns the retention configuration of an event by name
@@ -27,30 +28,30 @@ func (cl *ManageHistoryClient) GetRetentionRule(
 		Name:    name,
 	}
 	resp := historyapi.GetRetentionRuleResp{}
-	err := cl.cc.InvokeAction(cl.dThingID, historyapi.GetRetentionRuleMethod, &args, &resp)
+	err := cl.co.InvokeAction(cl.dThingID, historyapi.GetRetentionRuleMethod, &args, &resp)
 	return resp.Rule, err
 }
 
 // GetRetentionRules returns the list of retention rules
 func (cl *ManageHistoryClient) GetRetentionRules() (historyapi.RetentionRuleSet, error) {
 	resp := historyapi.GetRetentionRulesResp{}
-	err := cl.cc.InvokeAction(cl.dThingID, historyapi.GetRetentionRulesMethod, nil, &resp)
+	err := cl.co.InvokeAction(cl.dThingID, historyapi.GetRetentionRulesMethod, nil, &resp)
 	return resp.Rules, err
 }
 
 // SetRetentionRules configures the retention of a Thing event
 func (cl *ManageHistoryClient) SetRetentionRules(rules historyapi.RetentionRuleSet) error {
 	args := historyapi.SetRetentionRulesArgs{Rules: rules}
-	err := cl.cc.InvokeAction(cl.dThingID, historyapi.SetRetentionRulesMethod, &args, nil)
+	err := cl.co.InvokeAction(cl.dThingID, historyapi.SetRetentionRulesMethod, &args, nil)
 	return err
 }
 
 // NewManageHistoryClient creates a new instance of the manage history client for use by authorized clients
-func NewManageHistoryClient(cc transports.IConsumerConnection) *ManageHistoryClient {
+func NewManageHistoryClient(co *messaging.Consumer) *ManageHistoryClient {
 	agentID := historyapi.AgentID
 	mngCl := &ManageHistoryClient{
 		dThingID: td.MakeDigiTwinThingID(agentID, historyapi.ManageHistoryServiceID),
-		cc:       cc,
+		co:       co,
 	}
 	return mngCl
 }

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/grandcat/zeroconf"
 	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/servers/httpserver"
 	"log/slog"
 	"strings"
 	"time"
@@ -13,10 +12,13 @@ import (
 
 const HIVEOT_DNSSD_TYPE = "_hiveot._tcp"
 
-const HiveotWssID = "wss"
-const HiveotSsescID = "ssesc"
-const HiveotMqttWssID = "mqtt-wss"
-const HiveotMqttTcpID = "mqtt-tcps"
+//const HiveotSsescID = "ssesc"
+//const HiveotWssID = "wss-hiveot"
+//const WotHttpBasicID = "https"
+//const WotWssID = "wss"
+
+//const HiveotMqttWssID = "mqtt-wss"
+//const HiveotMqttTcpID = "mqtt-tcps"
 
 // DiscoverService searches for services with the given type and returns all its instances.
 // This is a wrapper around various means of discovering services and supports the discovery of multiple
@@ -93,20 +95,22 @@ func LocateHub(searchTime time.Duration, firstResult bool) (cfg DiscoveryConfig,
 	cfg.ServerAddr = addr
 	cfg.ServerPort = port
 	cfg.ServiceID = "hiveot"
-	cfg.WssURL = params[HiveotWssID]
-	cfg.SsescURL = params[HiveotSsescID]
-	cfg.MqttTcpURL = params[HiveotMqttTcpID]
-	cfg.MqttWssURL = params[HiveotMqttWssID]
+	cfg.HiveotWssURL = params[transports.ProtocolTypeHiveotWSS]
+	cfg.HiveotSseURL = params[transports.ProtocolTypeHiveotSSE]
+	cfg.WotHttpBasicURL = params[transports.ProtocolTypeWotHTTPBasic]
+	cfg.WotWssURL = params[transports.ProtocolTypeWotWSS]
+	//cfg.MqttTcpURL = params[HiveotMqttTcpID]
+	//cfg.MqttWssURL = params[HiveotMqttWssID]
 
 	// fallback to defaults
 	if addr == "" {
 		addr = "localhost"
 		cfg.ServerAddr = addr
-		cfg.ServerPort = transports.DefaultHttpsPort
-		cfg.WssURL = fmt.Sprintf("wss://%s:%d%s", addr, transports.DefaultHttpsPort, httpserver.DefaultWSSPath)
-		cfg.SsescURL = fmt.Sprintf("https://%s:%d%s", addr, transports.DefaultHttpsPort, httpserver.DefaultSSESCPath)
-		cfg.MqttTcpURL = fmt.Sprintf("https://%s:%d%s", addr, transports.DefaultMqttWssPort, "")
-		cfg.MqttWssURL = fmt.Sprintf("https://%s:%d%s", addr, transports.DefaultMqttTcpPort, "")
+		//cfg.ServerPort = servers.DefaultHttpsPort
+		//cfg.WssURL = fmt.Sprintf("wss://%s:%d%s", addr, servers.DefaultHttpsPort, "")
+		//cfg.SsescURL = fmt.Sprintf("https://%s:%d%s", addr, servers.DefaultHttpsPort, "")
+		//cfg.MqttTcpURL = fmt.Sprintf("https://%s:%d%s", addr, servers.DefaultMqttWssPort, "")
+		//cfg.MqttWssURL = fmt.Sprintf("https://%s:%d%s", addr, servers.DefaultMqttTcpPort, "")
 	}
 	slog.Info("LocateHub",
 		slog.Int("Nr records", len(records)),

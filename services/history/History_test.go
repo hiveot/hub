@@ -12,6 +12,7 @@ import (
 	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/hiveot/hub/services/history/service"
 	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/messaging"
 	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
@@ -57,24 +58,24 @@ func startHistoryService(clean bool) (
 		panic("can't open history bucket store")
 	}
 
-	// the service needs a server connection
-	hc, _ := ts.AddConnectService(historyapi.AgentID)
+	// the service needs an agent connection
+	agentConn, _ := ts.AddConnectService(historyapi.AgentID)
 	svc = service.NewHistoryService(histStore)
 
-	err = svc.Start(hc)
+	err = svc.Start(agentConn)
 	if err != nil {
 		panic("Failed starting the state service: " + err.Error())
 	}
 
 	// create an end user client for testing
-	cl1, _ := ts.AddConnectConsumer(testClientID, authz.ClientRoleOperator)
-	histCl := historyclient.NewReadHistoryClient(cl1)
+	co1, _ := ts.AddConnectConsumer(testClientID, authz.ClientRoleOperator)
+	histCl := historyclient.NewReadHistoryClient(co1)
 
 	return svc, histCl, func() {
-		cl1.Disconnect()
+		co1.Disconnect()
 		svc.Stop()
 		_ = histStore.Close()
-		hc.Disconnect()
+		agentConn.Disconnect()
 		ts.Stop()
 		// give it some time to shut down before the next test
 		time.Sleep(time.Millisecond)
@@ -88,10 +89,10 @@ func startHistoryService(clean bool) (
 // generate a random batch of property and event values for testing
 // timespanSec is the range of timestamps up until now
 func makeValueBatch(agentID string, nrValues, nrThings, timespanSec int) (
-	batch []*transports.NotificationMessage, highest map[string]*transports.NotificationMessage) {
+	batch []*transports.ResponseMessage, highest map[string]*transports.ResponseMessage) {
 
-	highest = make(map[string]*transports.NotificationMessage)
-	valueBatch := make([]*transports.NotificationMessage, 0, nrValues)
+	highest = make(map[string]*transports.ResponseMessage)
+	valueBatch := make([]*transports.ResponseMessage, 0, nrValues)
 	for j := 0; j < nrValues; j++ {
 		randomID := rand.Intn(nrThings)
 		randomName := rand.Intn(10)
@@ -103,31 +104,31 @@ func makeValueBatch(agentID string, nrValues, nrThings, timespanSec int) (
 		dThingID := td.MakeDigiTwinThingID(agentID, thingID)
 
 		randomMsgType := rand.Intn(2)
-		op := vocab.HTOpPublishEvent
+		op := wot.OpSubscribeEvent
 		if randomMsgType == 1 {
-			op = vocab.HTOpUpdateProperty
+			op = wot.OpObserveProperty
 		}
 
-		msg := transports.NewNotificationMessage(op, dThingID, names[randomName],
-			fmt.Sprintf("%2.3f", randomValue))
+		msg := transports.NewNotificationResponse(op, dThingID, names[randomName],
+			fmt.Sprintf("%2.3f", randomValue), nil)
 		msg.SenderID = agentID
-		msg.Created = randomTime.Format(wot.RFC3339Milli)
+		msg.Updated = randomTime.Format(wot.RFC3339Milli)
 
 		// track the actual most recent event for the name for things 3
 		if randomID == 0 {
 			if _, exists := highest[msg.Name]; !exists ||
-				highest[msg.Name].Created < msg.Created {
-				highest[msg.Name] = &msg
+				highest[msg.Name].Updated < msg.Updated {
+				highest[msg.Name] = msg
 			}
 		}
-		valueBatch = append(valueBatch, &msg)
+		valueBatch = append(valueBatch, msg)
 	}
 	return valueBatch, highest
 }
 
 // add some history to the store. This bypasses the check for thingID to exist.
 func addBulkHistory(svc *service.HistoryService, agentID string, count int, nrThings int,
-	timespanSec int) (highest map[string]*transports.NotificationMessage) {
+	timespanSec int) (highest map[string]*transports.ResponseMessage) {
 
 	var batchSize = 1000
 	if batchSize > count {
@@ -187,37 +188,37 @@ func TestAddGetEvent(t *testing.T) {
 	// add thing1 temperature from 5 minutes ago
 	addHist := svc.GetAddHistory()
 	dThing1ID := td.MakeDigiTwinThingID(agent1ID, thing1ID)
-	ev1_1 := &transports.NotificationMessage{
-		Operation: vocab.HTOpPublishEvent,
+	ev1_1 := &transports.ResponseMessage{
+		Operation: wot.OpSubscribeEvent,
 		SenderID:  agent1ID, ThingID: dThing1ID, Name: evTemperature,
-		Data: "12.5", Created: fivemago.Format(wot.RFC3339Milli),
+		Output: "12.5", Updated: fivemago.Format(wot.RFC3339Milli),
 	}
 	err := addHist.AddEvent(ev1_1)
 	assert.NoError(t, err)
 	// add thing1 humidity from 55 minutes ago
-	ev1_2 := &transports.NotificationMessage{
-		Operation: vocab.HTOpPublishEvent,
+	ev1_2 := &transports.ResponseMessage{
+		Operation: vocab.OpSubscribeEvent,
 		SenderID:  agent1ID, ThingID: dThing1ID, Name: evHumidity,
-		Data: "70", Created: fiftyfivemago.Format(wot.RFC3339Milli),
+		Output: "70", Updated: fiftyfivemago.Format(wot.RFC3339Milli),
 	}
 	err = addHist.AddEvent(ev1_2)
 	assert.NoError(t, err)
 
 	// add thing2 humidity from 5 minutes ago
 	dThing2ID := td.MakeDigiTwinThingID(agent1ID, thing2ID)
-	ev2_1 := &transports.NotificationMessage{
-		Operation: vocab.HTOpPublishEvent,
+	ev2_1 := &transports.ResponseMessage{
+		Operation: vocab.OpSubscribeEvent,
 		SenderID:  agent1ID, ThingID: dThing2ID, Name: evHumidity,
-		Data: "50", Created: fivemago.Format(wot.RFC3339Milli),
+		Output: "50", Updated: fivemago.Format(wot.RFC3339Milli),
 	}
 	err = addHist.AddEvent(ev2_1)
 	assert.NoError(t, err)
 
 	// add thing2 temperature from 55 minutes ago
-	ev2_2 := &transports.NotificationMessage{
-		Operation: vocab.HTOpPublishEvent,
+	ev2_2 := &transports.ResponseMessage{
+		Operation: vocab.OpSubscribeEvent,
 		SenderID:  agent1ID, ThingID: dThing2ID, Name: evTemperature,
-		Data: "17.5", Created: fiftyfivemago.Format(wot.RFC3339Milli),
+		Output: "17.5", Updated: fiftyfivemago.Format(wot.RFC3339Milli),
 	}
 	err = addHist.AddEvent(ev2_2)
 	assert.NoError(t, err)
@@ -249,7 +250,7 @@ func TestAddGetEvent(t *testing.T) {
 	if assert.True(t, valid) {
 		assert.Equal(t, dThing1ID, tv3.ThingID)  // must match the filtered id1
 		assert.Equal(t, evTemperature, tv3.Name) // must match evTemperature from 5 minutes ago
-		assert.Equal(t, fivemago.Format(wot.RFC3339Milli), tv3.Created)
+		assert.Equal(t, fivemago.Format(wot.RFC3339Milli), tv3.Updated)
 	}
 	c1Release()
 	// Stop the service before phase 2
@@ -282,41 +283,41 @@ func TestAddProperties(t *testing.T) {
 	defer closeFn()
 
 	dThing1ID := td.MakeDigiTwinThingID(agent1, thing1ID)
-	action1 := &transports.NotificationMessage{
+	action1 := &transports.ResponseMessage{
 		SenderID:  agent1,
 		ThingID:   dThing1ID,
 		Name:      vocab.ActionSwitchOnOff,
-		Data:      "on",
+		Output:    "on",
 		Operation: vocab.OpInvokeAction,
 	}
-	event1 := &transports.NotificationMessage{
+	event1 := &transports.ResponseMessage{
 		SenderID:  agent1,
 		ThingID:   dThing1ID,
 		Name:      vocab.PropEnvTemperature,
-		Data:      temp1,
-		Operation: vocab.HTOpPublishEvent,
+		Output:    temp1,
+		Operation: vocab.OpSubscribeEvent,
 	}
-	badEvent1 := &transports.NotificationMessage{
+	badEvent1 := &transports.ResponseMessage{
 		SenderID:  agent1,
 		ThingID:   dThing1ID,
 		Name:      "", // missing name
-		Operation: vocab.HTOpPublishEvent,
+		Operation: vocab.OpSubscribeEvent,
 	}
 	// dThing1ID identifies the publisher so not an error
 	//badEvent2 := &transports.IConsumer{
 	//	SenderID:  "", // missing publisher
 	//	ThingID:   dThing1ID,
 	//	Name:      "name",
-	//	Operation: vocab.HTOpPublishEvent,
+	//	Operation: vocab.OpSubscribeEvent,
 	//}
-	badEvent3 := &transports.NotificationMessage{
+	badEvent3 := &transports.ResponseMessage{
 		SenderID:  agent1,
 		ThingID:   dThing1ID,
 		Name:      "baddate",
-		Created:   "-1",
-		Operation: vocab.HTOpPublishEvent,
+		Updated:   "-1",
+		Operation: vocab.OpSubscribeEvent,
 	}
-	badEvent4 := &transports.NotificationMessage{
+	badEvent4 := &transports.ResponseMessage{
 		SenderID: agent1,
 		ThingID:  "", // missing ID
 		Name:     "temperature",
@@ -325,12 +326,12 @@ func TestAddProperties(t *testing.T) {
 	propsList[vocab.PropDeviceBattery] = battTemp
 	propsList[vocab.PropEnvCpuload] = 30
 	propsList[vocab.PropSwitchOnOff] = "off"
-	props1 := &transports.NotificationMessage{
+	props1 := &transports.ResponseMessage{
 		SenderID:  agent1,
 		ThingID:   dThing1ID,
 		Name:      "", // property list
-		Data:      propsList,
-		Operation: vocab.HTOpUpdateMultipleProperties,
+		Output:    propsList,
+		Operation: wot.OpObserveAllProperties,
 	}
 
 	// in total add 5 properties
@@ -362,18 +363,18 @@ func TestAddProperties(t *testing.T) {
 	assert.NotEmpty(t, msg)
 	hasProps := false
 	for valid && err == nil {
-		if msg.Operation == vocab.HTOpUpdateProperty {
+		if msg.Operation == wot.OpObserveProperty {
 			hasProps = true
 			require.NotEmpty(t, msg.Name)
-			require.NotEmpty(t, msg.Data)
+			require.NotEmpty(t, msg.Output)
 			if msg.Name == vocab.PropDeviceBattery {
-				assert.Equal(t, float64(battTemp), msg.Data)
+				assert.Equal(t, float64(battTemp), msg.Output)
 			}
 			//props := make(map[string]interface{})
 			//err = utils.DecodeAsObject(msg.Data, &props)
 			//require.NoError(t, err)
 		} else if msg.Name == vocab.PropEnvTemperature {
-			dataInt := tputils.DecodeAsInt(msg.Data)
+			dataInt := tputils.DecodeAsInt(msg.Output)
 			require.Equal(t, temp1, dataInt)
 		}
 		msg, valid, err = c.Next()
@@ -444,7 +445,7 @@ func TestPrevNext(t *testing.T) {
 	item0b, valid, err := cursor.Prev()
 	require.NoError(t, err)
 	assert.True(t, valid)
-	assert.Equal(t, item0.Created, item0b.Created)
+	assert.Equal(t, item0.Updated, item0b.Updated)
 
 	// can't skip before the beginning of time
 	iteminv, valid, err := cursor.Prev()
@@ -454,7 +455,7 @@ func TestPrevNext(t *testing.T) {
 
 	// seek to item11 should succeed
 	item11 := items2to11[9]
-	timeStamp, _ := dateparse.ParseAny(item11.Created)
+	timeStamp, _ := dateparse.ParseAny(item11.Updated)
 	item11b, valid, err := cursor.Seek(timeStamp)
 	require.NoError(t, err)
 	assert.True(t, valid)
@@ -505,7 +506,7 @@ func TestPrevNextFiltered(t *testing.T) {
 	item0b, valid, err := cursor.Prev()
 	assert.True(t, valid)
 	require.Nil(t, err)
-	assert.Equal(t, item0.Created, item0b.Created)
+	assert.Equal(t, item0.Updated, item0b.Updated)
 	assert.Equal(t, propName, item0b.Name)
 
 	// can't skip before the beginning of time
@@ -515,7 +516,7 @@ func TestPrevNextFiltered(t *testing.T) {
 
 	// seek to item11 should succeed
 	item11 := items2to11[9]
-	timeStamp, _ := dateparse.ParseAny(item11.Created)
+	timeStamp, _ := dateparse.ParseAny(item11.Updated)
 	item11b, valid, err := cursor.Seek(timeStamp)
 	assert.True(t, valid)
 	require.Nil(t, err)
@@ -610,8 +611,9 @@ func TestPubEvents(t *testing.T) {
 
 	_, readHist, stopFn := startHistoryService(true)
 	defer stopFn()
-	ag1, _ := ts.AddConnectService(agent1ID)
-	defer ag1.Disconnect()
+	agentConn, _ := ts.AddConnectService(agent1ID)
+	ag1 := messaging.NewAgent(agentConn, nil, nil, nil, ts.ConnectTimeout)
+	defer agentConn.Disconnect()
 
 	// Add the thing who is publishing events
 	td1 := ts.CreateTestTD(0)
@@ -633,8 +635,7 @@ func TestPubEvents(t *testing.T) {
 		val := strconv.Itoa(i + 1)
 		// events are published by the agent using their native thingID
 		name := names[i]
-		notif := transports.NewNotificationMessage(wot.HTOpEvent, thing0ID, name, val)
-		err := ag1.SendNotification(notif)
+		err := ag1.PubEvent(thing0ID, name, val)
 		//err := ag1.PubEvent(f1, thing0ID, name, val, "")
 		assert.NoError(t, err)
 		// make sure timestamp differs
@@ -677,8 +678,8 @@ func TestManageRetention(t *testing.T) {
 	dThing0ID := td.MakeDigiTwinThingID(agentID, td0.ID)
 
 	// connect as an admin user
-	cl1, _ := ts.AddConnectConsumer(client1ID, authz.ClientRoleAdmin)
-	mngHist := historyclient.NewManageHistoryClient(cl1)
+	co1, _ := ts.AddConnectConsumer(client1ID, authz.ClientRoleAdmin)
+	mngHist := historyclient.NewManageHistoryClient(co1)
 
 	// should be able to read the current retention rules. Expect the default rules.
 	rules1, err := mngHist.GetRetentionRules()
@@ -705,14 +706,12 @@ func TestManageRetention(t *testing.T) {
 	}
 
 	// connect as agent-1 and publish two events for thing0, one to be retained
-	ag1, _ := ts.AddConnectService(agentID)
+	ag1, _ := ts.AddConnectAgent(agentID)
 	require.NoError(t, err)
 	defer ag1.Disconnect()
-	notif1 := transports.NewNotificationMessage(wot.HTOpEvent, td0.ID, event1Name, "event one")
-	err = ag1.SendNotification(notif1)
+	err = ag1.PubEvent(td0.ID, event1Name, "event one")
 	assert.NoError(t, err)
-	notif2 := transports.NewNotificationMessage(wot.HTOpEvent, td0.ID, event2Name, "event two")
-	err = ag1.SendNotification(notif2)
+	err = ag1.PubEvent(td0.ID, event2Name, "event two")
 	assert.NoError(t, err)
 	// give it some time to persist the bucket
 	time.Sleep(time.Millisecond * 100)

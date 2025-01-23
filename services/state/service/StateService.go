@@ -6,6 +6,7 @@ import (
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
 	"github.com/hiveot/hub/services/state/stateapi"
 	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/messaging"
 	"log/slog"
 	"path"
 )
@@ -83,7 +84,7 @@ func (svc *StateService) SetMultiple(clientID string, kv map[string]string) (err
 }
 
 // Start the service
-func (svc *StateService) Start(hc transports.IAgentConnection) (err error) {
+func (svc *StateService) Start(cc transports.IConnection) (err error) {
 	slog.Info("Starting the state service")
 	storePath := path.Join(svc.storeDir, StateStoreName)
 	svc.store = kvbtree.NewKVStore(storePath)
@@ -93,8 +94,11 @@ func (svc *StateService) Start(hc transports.IAgentConnection) (err error) {
 		return err
 	}
 	// Anyone with a role can store their state
-	err = authz.UserSetPermissions(hc, authz.ThingPermissions{
-		AgentID: hc.GetClientID(),
+	// agent to facilitate communication
+	ag := messaging.NewAgent(cc, nil, nil, nil, 0)
+
+	err = authz.UserSetPermissions(&ag.Consumer, authz.ThingPermissions{
+		AgentID: cc.GetClientID(),
 		ThingID: stateapi.StorageServiceID,
 		Deny:    []authz.ClientRole{authz.ClientRoleNone},
 	})
@@ -102,7 +106,7 @@ func (svc *StateService) Start(hc transports.IAgentConnection) (err error) {
 		return err
 	}
 
-	StartStateAgent(svc, hc)
+	StartStateAgent(svc, ag)
 	return err
 }
 

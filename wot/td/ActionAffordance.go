@@ -1,4 +1,4 @@
-// Package things with API interface definitions for the ExposedThing and ConsumedThing classes
+// Package td with API interface definitions for the ExposedThing and ConsumedThing classes
 package td
 
 // ActionAffordance metadata that defines how to invoke a function of a Thing to manipulate
@@ -8,7 +8,6 @@ type ActionAffordance struct {
 
 	// AtType is the JSON-LD @type keyword to classify the action using standard vocabulary, or nil if not known
 	// Intended for grouping and querying similar actions, and standardized presentation such as icons
-	// Use GetAtType to safely read this as an array of strings
 	AtType any `json:"@type,omitempty"`
 
 	// Multiline description

@@ -37,7 +37,7 @@ func GenServiceClient(l *utils.SL, serviceTitle string, td *td.TD) {
 //	key with the service action method.
 //	action affordance describing the input and output parameters
 func GenActionMethod(l *utils.SL, serviceTitle string, key string, action *td.ActionAffordance) {
-	argsString := "hc transports.IConsumerConnection"
+	argsString := "hc *messaging.Consumer"
 	respString := "err error"
 	invokeArgs := "nil"
 	invokeResp := "nil"

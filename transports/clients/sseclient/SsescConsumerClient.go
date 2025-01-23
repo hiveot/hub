@@ -30,7 +30,7 @@ import (
 // subscribe and unsubscribe. In addition, sse-sc uses the SSE eventID to pass
 // the operation, thingID and affordance name, supporting multiple devices.
 type SsescConsumerClient struct {
-	httpclient.HttpConsumerClient
+	httpbasicclient.HttpConsumerClient
 
 	// the sse connection path
 	ssePath string
@@ -185,7 +185,7 @@ func (cl *SsescConsumerClient) handleSSEConnect(connected bool, err error) {
 func (cl *SsescConsumerClient) handleSseEvent(event sse.Event) {
 
 	// no further processing of a ping needed
-	if event.Type == ssescserver.SSEPingEvent {
+	if event.Type == hiveotsseserver.SSEPingEvent {
 		return
 	}
 

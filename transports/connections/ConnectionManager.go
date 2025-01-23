@@ -30,9 +30,6 @@ type ConnectionManager struct {
 
 	// mutex to manage the connections
 	mux sync.RWMutex
-
-	// Session manager
-	//sm *SessionManager
 }
 
 // AddConnection adds a new connection.
@@ -102,6 +99,7 @@ func (cm *ConnectionManager) CloseAll() {
 
 // ForEachConnection invoke handler for each client connection
 // Intended for publishing event and property updates to subscribers
+// This is concurrent safe as the iteration takes place on a copy
 func (cm *ConnectionManager) ForEachConnection(handler func(c transports.IServerConnection)) {
 	// collect a list of connections
 	cm.mux.Lock()
@@ -110,6 +108,7 @@ func (cm *ConnectionManager) ForEachConnection(handler func(c transports.IServer
 		connList = append(connList, c)
 	}
 	cm.mux.Unlock()
+	//
 	for _, c := range connList {
 		// TODO: TBD pros/cons for running this in the background vs synchronously?
 		handler(c)
@@ -146,21 +145,22 @@ func (cm *ConnectionManager) GetConnectionByClientID(clientID string) (c transpo
 	return c
 }
 
-// GetConnectionByProtocol returns the list of connections for a specific protocol
-func (cm *ConnectionManager) GetConnectionByProtocol(protocolType string) []transports.IServerConnection {
-	cm.mux.Lock()
-	defer cm.mux.Unlock()
-	// Not the most efficient way
-	// what is really needed is a way to get connections that don't supports broadcast
-	// using a message bus.
-	cList := make([]transports.IServerConnection, 0, len(cm.connectionsByClientID))
-	for _, c := range cm.connectionsByConnectionID {
-		if c.GetProtocolType() == protocolType {
-			cList = append(cList, c)
-		}
-	}
-	return cList
-}
+//
+//// GetConnectionByProtocol returns the list of connections for a specific protocol
+//func (cm *ConnectionManager) GetConnectionByProtocol(protocolType string) []transports.IServerConnection {
+//	cm.mux.Lock()
+//	defer cm.mux.Unlock()
+//	// Not the most efficient way
+//	// what is really needed is a way to get connections that don't supports broadcast
+//	// using a message bus.
+//	cList := make([]transports.IServerConnection, 0, len(cm.connectionsByClientID))
+//	for _, c := range cm.connectionsByConnectionID {
+//		if c.GetProtocolType() == protocolType {
+//			cList = append(cList, c)
+//		}
+//	}
+//	return cList
+//}
 
 // GetNrConnections returns the number of client connections and nr of unique clients
 func (cm *ConnectionManager) GetNrConnections() (int, int) {
@@ -169,20 +169,21 @@ func (cm *ConnectionManager) GetNrConnections() (int, int) {
 	return len(cm.connectionsByConnectionID), len(cm.connectionsByClientID)
 }
 
-// PublishNotification broadcasts a notification to subscribers
-func (cm *ConnectionManager) PublishNotification(notif transports.NotificationMessage) {
+// SendNotification sends a response notification to subscribers
+// For each subscriber, the correlationID of the subscription is used.
+func (cm *ConnectionManager) SendNotification(resp *transports.ResponseMessage) error {
 
-	slog.Debug("PublishNotification (to subscribers/observers)",
-		slog.String("Operation", notif.Operation),
-		slog.String("dThingID", notif.ThingID),
-		slog.String("name", notif.Name),
-		slog.Any("value", notif.Data),
+	slog.Debug("SendNotification (to subscribers/observers)",
+		slog.String("Operation", resp.Operation),
+		slog.String("dThingID", resp.ThingID),
+		slog.String("name", resp.Name),
+		slog.Any("output", resp.Output),
 	)
-	// FIXME: invoke the servers instead as the subscription mechanism
 	// is determined by the server (like MQTT)
 	cm.ForEachConnection(func(c transports.IServerConnection) {
-		c.SendNotification(notif)
+		c.SendNotification(*resp)
 	})
+	return nil
 }
 
 // RemoveConnection removes the connection by its connectionID

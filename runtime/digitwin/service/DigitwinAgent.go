@@ -16,12 +16,12 @@ type DigitwinAgent struct {
 // HandleRequest handles digitwin services requests
 // Including reading events, properties, actions from the digital twin.
 func (agent *DigitwinAgent) HandleRequest(
-	req transports.RequestMessage) (resp transports.ResponseMessage) {
+	req *transports.RequestMessage, c transports.IConnection) (resp *transports.ResponseMessage) {
 
 	if req.ThingID == digitwin.DirectoryDThingID {
-		resp = agent.dirHandler(req)
+		resp = agent.dirHandler(req, c)
 	} else if req.ThingID == digitwin.ValuesDThingID {
-		resp = agent.valuesHandler(req)
+		resp = agent.valuesHandler(req, c)
 	} else {
 		slog.Warn("HandleRequest: dThingID is not a service capability", "dThingID", req.ThingID)
 		err := fmt.Errorf("%s is not a digitwin service capability", req.ThingID)
@@ -35,8 +35,8 @@ func (agent *DigitwinAgent) HandleRequest(
 func NewDigitwinAgent(svc *DigitwinService) *DigitwinAgent {
 	agent := &DigitwinAgent{
 		svc:           svc,
-		dirHandler:    digitwin.NewHandleDirectoryAction(svc.DirSvc),
-		valuesHandler: digitwin.NewHandleValuesAction(svc.ValuesSvc),
+		dirHandler:    digitwin.NewHandleDirectoryRequest(svc.DirSvc),
+		valuesHandler: digitwin.NewHandleValuesRequest(svc.ValuesSvc),
 	}
 	return agent
 }

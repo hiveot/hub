@@ -43,7 +43,7 @@ func SseServe(w http.ResponseWriter, r *http.Request) {
 	sseChan := cs.NewSseChan()
 	// _send a ping event as the go-sse client doesn't have a 'connected callback'
 	// (borrow the event name from the transports SSE server)
-	pingEvent := session.SSEEvent{Event: ssescserver.SSEPingEvent}
+	pingEvent := session.SSEEvent{Event: hiveotsseserver.SSEPingEvent}
 	sseChan <- pingEvent
 
 	clientID := cs.GetHubClient().GetClientID()

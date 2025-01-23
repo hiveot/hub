@@ -372,7 +372,7 @@ func (svc *DigitwinStore) UpdateTD(
 // The output is just a transformation of the input.
 //
 // This returns true if the request is stored or false if the request is safe.
-func (svc *DigitwinStore) NewActionStart(req transports.RequestMessage) (stored bool, err error) {
+func (svc *DigitwinStore) NewActionStart(req *transports.RequestMessage) (stored bool, err error) {
 	svc.cacheMux.Lock()
 	defer svc.cacheMux.Unlock()
 
@@ -429,7 +429,7 @@ func (svc *DigitwinStore) NewActionStart(req transports.RequestMessage) (stored 
 // progress response.
 //
 // resp is a progress response with a ThingID of the digital twin
-func (svc *DigitwinStore) UpdateActionStatus(agentID string, resp transports.ResponseMessage) (
+func (svc *DigitwinStore) UpdateActionStatus(agentID string, resp *transports.ResponseMessage) (
 	actionValue digitwin.ActionStatus, err error) {
 
 	svc.cacheMux.Lock()

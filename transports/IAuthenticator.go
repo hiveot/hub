@@ -24,7 +24,7 @@ type IAuthenticator interface {
 	//	validitySec validity in seconds of the new token
 	//
 	// This returns a new token or an error if the old token isn't valid or doesn't match clientID
-	RefreshToken(senderID string, clientID string, oldToken string) (newToken string, err error)
+	RefreshToken(senderID string, oldToken string) (newToken string, err error)
 
 	// ValidatePassword checks if the given password is valid for the client
 	ValidatePassword(clientID string, password string) (err error)

@@ -3,7 +3,7 @@ package idprovclient
 import (
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
-	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/messaging"
 	"github.com/hiveot/hub/wot/td"
 )
 
@@ -11,7 +11,7 @@ import (
 // service using the message bus.
 // This requires admin permissions.
 type ManageIdProvClient struct {
-	hc transports.IConsumerConnection
+	co *messaging.Consumer
 	// thingID digital twin service ID of this capability (digitwin version with agent prefix)
 	dThingID string
 }
@@ -19,7 +19,7 @@ type ManageIdProvClient struct {
 // _send the IDProv method
 // This returns an error if anything goes wrong: not delivered, delivery incomplete or processing error
 func (cl *ManageIdProvClient) call(method string, args interface{}, resp interface{}) error {
-	err := cl.hc.InvokeAction(cl.dThingID, method, args, resp)
+	err := cl.co.InvokeAction(cl.dThingID, method, args, resp)
 	return err
 }
 
@@ -80,10 +80,10 @@ func (cl *ManageIdProvClient) SubmitRequest(
 	return &resp.Status, resp.Token, err
 }
 
-func NewIdProvManageClient(hc transports.IConsumerConnection) *ManageIdProvClient {
+func NewIdProvManageClient(co *messaging.Consumer) *ManageIdProvClient {
 	agentID := idprovapi.AgentID
 	cl := &ManageIdProvClient{
-		hc:       hc,
+		co:       co,
 		dThingID: td.MakeDigiTwinThingID(agentID, idprovapi.ManageServiceID),
 	}
 	return cl

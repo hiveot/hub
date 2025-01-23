@@ -1,4 +1,4 @@
-package wssserver
+package wotwssserver
 
 import (
 	"context"
@@ -19,14 +19,39 @@ type WssTransportServer struct {
 	httpTransport *httpserver.HttpTransportServer
 	cm            *connections.ConnectionManager
 
-	handleRequest      transports.ServerRequestHandler
-	handleResponse     transports.ServerResponseHandler
-	handleNotification transports.ServerNotificationHandler
+	handleRequest  transports.RequestHandler
+	handleResponse transports.ResponseHandler
+	//handleNotification transports.ServerNotificationHandler
 
 	// convert operation to message type (for building forms)
 	op2MsgType map[string]string
 	// opList to include in TDs
 	opList []string
+}
+
+func (svc *WssTransportServer) AddTDForms(tdi *td.TD) error {
+
+	// apparently you can just add 1 form containing all operations...
+	// still struggling with this stuff.
+	form := td.Form{}
+	form["op"] = svc.opList
+	form["subprotocol"] = "websocket"
+	form["contentType"] = "application/json"
+	form["href"] = svc.wssPath
+	tdi.Forms = append(tdi.Forms, form)
+
+	//svc.AddPropertiesForms(tdi)
+	//svc.AddEventsForms(tdi)
+	//svc.AddActionForms(tdi)
+	return nil
+}
+
+// GetConnectURL returns base path of the server with the wss connection path
+func (svc *WssTransportServer) GetConnectURL() string {
+	baseURL := svc.httpTransport.GetConnectURL()
+	parts, _ := url.Parse(baseURL)
+	wssURL, _ := url.JoinPath("wss://", parts.Host, svc.wssPath)
+	return wssURL
 }
 
 // GetForm returns a new form for a websocket supported operation
@@ -50,54 +75,30 @@ func (svc *WssTransportServer) GetForm(op, thingID, name string) td.Form {
 	return form
 }
 
-// GetConnectURL returns base path of the server with the wss connection path
-func (svc *WssTransportServer) GetConnectURL() string {
-	baseURL := svc.httpTransport.GetConnectURL()
-	parts, _ := url.Parse(baseURL)
-	wssURL, _ := url.JoinPath("wss://", parts.Host, svc.wssPath)
-	return wssURL
-}
-
-func (svc *WssTransportServer) AddTDForms(tdi *td.TD) error {
-
-	// apparently you can just add 1 form containing all operations...
-	// still struggling with this stuff.
-	form := td.Form{}
-	form["op"] = svc.opList
-	form["subprotocol"] = "websocket"
-	form["contentType"] = "application/json"
-	form["href"] = svc.wssPath
-	tdi.Forms = append(tdi.Forms, form)
-
-	//svc.AddPropertiesForms(tdi)
-	//svc.AddEventsForms(tdi)
-	//svc.AddActionForms(tdi)
-	return nil
-}
-
 // SendNotification broadcast an event or property change to subscribers clients
-func (svc *WssTransportServer) SendNotification(notif transports.NotificationMessage) {
+func (svc *WssTransportServer) SendNotification(msg transports.ResponseMessage) {
 	cList := svc.cm.GetConnectionByProtocol(transports.ProtocolTypeWSS)
 	for _, c := range cList {
 		c.SendNotification(notif)
 	}
 }
 
-// SendRequest sends a request (action, write property) to the connecting agent.
-func (svc *WssTransportServer) SendRequest(req transports.RequestMessage) {
-	cList := svc.cm.GetConnectionByProtocol(transports.ProtocolTypeWSS)
-	for _, c := range cList {
-		_ = c.SendRequest(req)
-	}
-}
-
-// SendResponse send a response message to the client as a reply to a previous request.
-func (svc *WssTransportServer) SendResponse(resp transports.ResponseMessage) {
-	cList := svc.cm.GetConnectionByProtocol(transports.ProtocolTypeWSS)
-	for _, c := range cList {
-		_ = c.SendResponse(resp)
-	}
-}
+//
+//// SendRequest sends a request (action, write property) to the connecting agent.
+//func (svc *WssTransportServer) SendRequest(req transports.RequestMessage) {
+//	cList := svc.cm.GetConnectionByProtocol(transports.ProtocolTypeWSS)
+//	for _, c := range cList {
+//		_ = c.SendRequest(req)
+//	}
+//}
+//
+//// SendResponse send a response message to the client as a reply to a previous request.
+//func (svc *WssTransportServer) SendResponse(resp transports.ResponseMessage) {
+//	cList := svc.cm.GetConnectionByProtocol(transports.ProtocolTypeWSS)
+//	for _, c := range cList {
+//		_ = c.SendResponse(resp)
+//	}
+//}
 
 // Serve a new websocket connection.
 // This creates an instance of the WSSConnection handler for reading and
@@ -110,8 +111,7 @@ func (svc *WssTransportServer) Serve(w http.ResponseWriter, r *http.Request) {
 	clientID, err := httpserver.GetClientIdFromContext(r)
 
 	if err != nil {
-		slog.Warn("WS HandleConnect. No session available yet, telling client to delay retry to 10 seconds",
-			"remoteAddr", r.RemoteAddr)
+		slog.Warn("Serve. No clientID", "remoteAddr", r.RemoteAddr)
 		errMsg := "no auth session available. Login first."
 		http.Error(w, errMsg, http.StatusUnauthorized)
 		return
@@ -188,9 +188,9 @@ func (svc *WssTransportServer) Stop() {
 //	httpTransport to attach to
 func StartWssTransportServer(wssPath string, cm *connections.ConnectionManager,
 	httpTransport *httpserver.HttpTransportServer,
-	handleNotification transports.ServerNotificationHandler,
-	handleRequest transports.ServerRequestHandler,
-	handleResponse transports.ServerResponseHandler,
+	//handleNotification transports.NotificationHandler,
+	handleRequest transports.RequestHandler,
+	handleResponse transports.ResponseHandler,
 ) *WssTransportServer {
 
 	if wssPath == "" {
@@ -204,14 +204,14 @@ func StartWssTransportServer(wssPath string, cm *connections.ConnectionManager,
 		opList = append(opList, op)
 	}
 	b := &WssTransportServer{
-		cm:                 cm,
-		httpTransport:      httpTransport,
-		wssPath:            wssPath,
-		op2MsgType:         op2MsgType,
-		opList:             opList,
-		handleRequest:      handleRequest,
-		handleResponse:     handleResponse,
-		handleNotification: handleNotification,
+		cm:             cm,
+		httpTransport:  httpTransport,
+		wssPath:        wssPath,
+		op2MsgType:     op2MsgType,
+		opList:         opList,
+		handleRequest:  handleRequest,
+		handleResponse: handleResponse,
+		//handleNotification: handleNotification,
 	}
 	// add the WSS routes
 	httpTransport.AddOps(nil, []string{WSSOpConnect}, http.MethodGet, wssPath, b.Serve)

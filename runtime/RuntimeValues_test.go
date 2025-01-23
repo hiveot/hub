@@ -1,7 +1,7 @@
 package runtime_test
 
 import (
-	"encoding/json"
+	"fmt"
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
@@ -18,7 +18,7 @@ import (
 )
 
 func TestQueryActions(t *testing.T) {
-	t.Log("TestQueryActions")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	const agentID = "agent1"
 	const userID = "user1"
 	const data = "Hello world"
@@ -36,26 +36,28 @@ func TestQueryActions(t *testing.T) {
 
 	// step 1: agent publishes a TD: dtw:agent1:thing-1
 	td1 := ts.CreateTestTD(0)
-	td1JSON, _ := json.Marshal(td1)
 	var dThing1ID = td.MakeDigiTwinThingID(agentID, td1.ID)
-	ag1.SetRequestHandler(func(msg transports.RequestMessage) transports.ResponseMessage {
+
+	ag1.SetRequestHandler(func(msg *transports.RequestMessage,
+		c transports.IConnection) *transports.ResponseMessage {
+
 		slog.Info("request: "+msg.Operation, "correlationID", msg.CorrelationID)
 		return msg.CreateResponse(data, nil)
 	})
-	cl1.SetNotificationHandler(func(msg transports.NotificationMessage) {
+
+	cl1.SetResponseHandler(func(msg *transports.ResponseMessage) error {
 		slog.Info("notification: " + msg.Operation)
 		// signal notification received
 		updateChan1 <- true
+		return nil
 	})
 	err := cl1.Subscribe("", "")
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond)
-	//err := ag1.PubTD(td1.ID, string(td1JSON))
+	err = ag1.PubTD(td1)
 
 	// step 2: consumer publish an action to the agent it should return as
 	// a notification.
-	notif := transports.NewNotificationMessage(wot.HTOpUpdateTD, td1.ID, "", string(td1JSON))
-	err = ag1.SendNotification(notif)
 	require.NoError(t, err)
 	<-updateChan1
 
@@ -76,7 +78,7 @@ func TestQueryActions(t *testing.T) {
 
 // Get events from the outbox using the experimental http REST api
 func TestReadEvents(t *testing.T) {
-	t.Log("TestReadEvents")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	const agentID = "agent1"
 	const key1 = "key1"
 	const userID = "user1"
@@ -93,25 +95,22 @@ func TestReadEvents(t *testing.T) {
 	defer hc1.Disconnect()
 
 	// step 1: agent publishes a TD first: dtw:agent1:thing-1
-	td1 := ts.CreateTestTD(0)
-	td1JSON, _ := json.Marshal(td1)
-	var dThing1ID = td.MakeDigiTwinThingID(agentID, td1.ID)
 	// is requested. hiveot uses it to determine if a response is required.
-	notif1 := transports.NewNotificationMessage(wot.HTOpUpdateTD, td1.ID, "", string(td1JSON))
-	err := ag1.SendNotification(notif1)
+	td1 := ts.CreateTestTD(0)
+	var dThing1ID = td.MakeDigiTwinThingID(agentID, td1.ID)
+
+	err := ag1.PubTD(td1)
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond * 10)
 
-	notif2 := transports.NewNotificationMessage(wot.HTOpEvent, td1.ID, key1, data)
-	err = ag1.SendNotification(notif2)
+	// FIXME: this event value must be stored in the digital twin?
+	err = ag1.PubEvent(td1.ID, key1, data)
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond * 1)
 
 	dtwValues := make([]digitwin.ThingValue, 0)
 	//stat := hc1.ReadAllEvents(dThing1ID, &dtwValues, "")
-	// FIXME: the format of this operation is not defined by WoT or the
-	// protocol binding spec. In this case the digitwin determines the output
-	// format. (a list of ThingValue objects)
+	// FIXME: 0 results. Why?
 	err = hc1.Rpc(wot.HTOpReadAllEvents, dThing1ID, "", nil, &dtwValues)
 	require.NoError(t, err)
 	require.NotZero(t, len(dtwValues))
@@ -127,7 +126,7 @@ func TestReadEvents(t *testing.T) {
 }
 
 func TestHttpsGetProps(t *testing.T) {
-	t.Log("TestHttpsGetProps")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	const agentID = "agent1"
 	const key1 = "key1"
 	const key2 = "key2"
@@ -147,19 +146,15 @@ func TestHttpsGetProps(t *testing.T) {
 
 	// step 1: agent publishes a TD first: dtw:agent1:thing-1
 	td1 := ts.CreateTestTD(0)
-	td1JSON, _ := json.Marshal(td1)
 	var dThingID = td.MakeDigiTwinThingID(agentID, td1.ID)
-	notif1 := transports.NewNotificationMessage(wot.HTOpUpdateTD, td1.ID, "", string(td1JSON))
-	err := ag1.SendNotification(notif1)
+	err := ag1.PubTD(td1)
 	time.Sleep(time.Millisecond * 10)
 	require.NoError(t, err)
 
 	//err = ag1.PubProperty(td1.ID, key1, data1)
 	//err = ag1.PubProperty(td1.ID, key2, data2)
-	notif2 := transports.NewNotificationMessage(wot.HTOpUpdateProperty, td1.ID, key1, data1)
-	err = ag1.SendNotification(notif2)
-	notif3 := transports.NewNotificationMessage(wot.HTOpUpdateProperty, td1.ID, key2, data2)
-	err = ag1.SendNotification(notif3)
+	err = ag1.PubProperty(td1.ID, key1, data1)
+	err = ag1.PubProperty(td1.ID, key2, data2)
 
 	require.NoError(t, err)
 	//
@@ -175,7 +170,7 @@ func TestHttpsGetProps(t *testing.T) {
 }
 
 func TestSubscribeValues(t *testing.T) {
-	t.Log("--- TestSubscribeValues tests receiving value update events ---")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	const agentID = "agent1"
 	const userID = "user1"
 	const key1 = "key1"
@@ -194,17 +189,16 @@ func TestSubscribeValues(t *testing.T) {
 	// 1. consumer subscribes to events/properties
 	err := cl1.Subscribe("", "")
 	require.NoError(t, err)
-	cl1.SetNotificationHandler(func(msg transports.NotificationMessage) {
+	cl1.SetResponseHandler(func(msg *transports.ResponseMessage) error {
 		msgCount.Add(1)
+		return nil
 	})
 
 	// 2: agent creates a TD first: dtw:agent1:thing-1 - this sends a notification
 	td1 := ts.CreateTestTD(0)
-	td1JSON, _ := json.Marshal(td1)
 
 	// 3: agent publishes notification
-	notif1 := transports.NewNotificationMessage(wot.HTOpUpdateTD, td1.ID, "", string(td1JSON))
-	err = ag1.SendNotification(notif1)
+	err = ag1.PubTD(td1)
 
 	time.Sleep(time.Millisecond * 100)
 
@@ -212,10 +206,8 @@ func TestSubscribeValues(t *testing.T) {
 	propMap[key1] = data1
 	propMap[key2] = data2
 
-	notif2 := transports.NewNotificationMessage(wot.HTOpEvent, td1.ID, key1, data1)
-	err = ag1.SendNotification(notif2)
-	notif3 := transports.NewNotificationMessage(wot.HTOpEvent, td1.ID, key2, data2)
-	err = ag1.SendNotification(notif3)
+	err = ag1.PubEvent(td1.ID, key1, data1)
+	err = ag1.PubEvent(td1.ID, key2, data2)
 	require.NoError(t, err)
 
 	time.Sleep(time.Millisecond * 100)
@@ -224,7 +216,7 @@ func TestSubscribeValues(t *testing.T) {
 }
 
 func TestWriteProperties(t *testing.T) {
-	t.Log("--- TestWriteProperties ---")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	const agentID = "agent1"
 	const userID = "user1"
 	const key1 = "key1"
@@ -240,12 +232,12 @@ func TestWriteProperties(t *testing.T) {
 
 	// step 1: agent publishes a TD first: dtw:agent1:thing-1
 	td1 := ts.CreateTestTD(0)
-	td1JSON, _ := json.Marshal(td1)
-	notif1 := transports.NewNotificationMessage(wot.HTOpUpdateTD, td1.ID, "", string(td1JSON))
-	err := ag1.SendNotification(notif1)
+	err := ag1.PubTD(td1)
 
 	// agents listen for property write requests
-	ag1.SetRequestHandler(func(msg transports.RequestMessage) transports.ResponseMessage {
+	ag1.SetRequestHandler(func(msg *transports.RequestMessage,
+		c transports.IConnection) *transports.ResponseMessage {
+
 		if msg.Operation == vocab.OpWriteProperty && msg.Name == key1 {
 			msgCount.Add(1)
 		}
@@ -256,11 +248,12 @@ func TestWriteProperties(t *testing.T) {
 	err = cl1.ObserveProperty("", "")
 	require.NoError(t, err)
 
-	cl1.SetNotificationHandler(func(msg transports.NotificationMessage) {
+	cl1.SetResponseHandler(func(msg *transports.ResponseMessage) error {
 		// expect an action status message that is the result of invokeaction
 		if msg.Name == key1 {
 			msgCount.Add(1)
 		}
+		return nil
 	})
 	time.Sleep(time.Millisecond * 100)
 

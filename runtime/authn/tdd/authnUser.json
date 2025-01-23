@@ -129,20 +129,11 @@
       "idempotent": false,
       "safe": false,
       "input": {
-        "type": "object",
-        "properties": {
-          "clientID": {
-            "title": "ClientID",
-            "type": "string"
-          },
-          "oldToken": {
-            "title": "Old Token",
-            "type": "string"
-          }
-        }
+          "title": "Old Token",
+          "type": "string"
       },
       "output": {
-        "title": "Token",
+        "title": "New Token",
         "type": "string"
       }
     },

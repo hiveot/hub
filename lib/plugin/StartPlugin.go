@@ -1,8 +1,8 @@
 package plugin
 
 import (
-	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/clients"
+	"github.com/hiveot/hub/transports/messaging"
 	"log/slog"
 	"os"
 )
@@ -14,8 +14,8 @@ type PluginConfig struct {
 // IPlugin interface of protocol bindings and service plugins
 type IPlugin interface {
 	// Start the plugin with the given environment settings and hub connection
-	//	hc is the hub connection for publishing and subscribing
-	Start(hc transports.IAgentConnection) error
+	//	ag is the agent with the capability for publishing and subscribing
+	Start(ag *messaging.Agent) error
 	Stop()
 }
 
@@ -38,15 +38,15 @@ func StartPlugin(plugin IPlugin, clientID string, certsDir string) {
 	//caCert, err := certs.LoadX509CertFromPEM(caCertFile)
 
 	// FIXME: the plugin needs a bootstrap form to connect to the server
-	//hc, err := clients.NewAgentClient("", clientID, caCert, 0)
-	hc, err := clients.ConnectAgentToHub("", clientID, certsDir)
+	hc, err := clients.ConnectClient("", clientID, certsDir)
 
 	if err != nil {
 		slog.Error("Failed connecting to the Hub", "err", err)
 		os.Exit(1)
 	}
-	// start the service
-	err = plugin.Start(hc)
+	// start the service with the agent.
+	ag := messaging.NewAgent(hc, nil, nil, nil, 0)
+	err = plugin.Start(ag)
 	if err != nil {
 		slog.Error("failed starting service", "err", err.Error())
 		os.Exit(1)

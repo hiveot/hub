@@ -2,22 +2,32 @@ package servers
 
 import (
 	"github.com/hiveot/hub/lib/discovery"
-	"github.com/hiveot/hub/transports"
 	"os"
 )
 
-type ProtocolsConfig struct {
-	// Enable the GRPC protocol binding. Default is false.
-	//EnableGRPC bool `yaml:"enableGRPC,omitempty"`
+const DefaultHttpsPort = 8444
+const DefaultHiveotWssPath = "/hiveot/wss"
+const DefaultHiveotSsePath = "/hiveot/sse"
+const DefaultMqttTcpPort = 8883
+const DefaultMqttWssPort = 8884
 
-	// Enable the HTTPS transport binding. Default is true.
-	EnableHTTPS bool `yaml:"enableHTTPS"`
-	// Enable the SSE-SC sub protocol transport binding. Default is true.
-	EnableSSESC bool `yaml:"enableSSESC"`
-	// Enable the Websocket sub protocol transport binding. Default is true.
-	EnableWSS bool `yaml:"enableWSS"`
+// const DefaultWotSsePath = "/wot/sse"
+const DefaultWotWssPath = "/wot/wss"
+
+type ProtocolsConfig struct {
+
+	// Enable the HiveOT SSE (sse-sc) sub protocol binding. Default is true.
+	EnableHiveotSSE bool `yaml:"enableHiveotSSE"`
+	// Enable the HiveOT WSS sub protocol binding. Default is true.
+	EnableHiveotWSS bool `yaml:"enableHiveotWSS"`
+
+	// Enable the WoT HTTP Basic protocol binding. Default is true.
+	EnableWotHTTPBasic bool `yaml:"enableWotHTTPBasic"`
+	// Enable the WoT Websocket sub-protocol binding. Default is true.
+	EnableWotWSS bool `yaml:"enableWotWSS"`
+
 	// Enable the MQTT protocol binding, default is false.
-	EnableMQTT bool `yaml:"enableMQTT"`
+	//EnableMQTT bool `yaml:"enableMQTT"`
 
 	// Enable mDNS discovery. Default is true
 	EnableDiscovery bool `yaml:"enableDiscovery"`
@@ -26,10 +36,10 @@ type ProtocolsConfig struct {
 	HttpHost string `yaml:"host"`
 	// https listening port
 	HttpsPort int `yaml:"httpsPort"`
-	// SSE subprotocol prefix
-	//HttpSSEPath string `yaml:"ssePath"`
-	// Websocket subprotocol prefix
-	//HttpWSSPath string `yaml:"wssPath"`
+	// WoT SSE subprotocol paths
+	//WotSSEPath string `yaml:"wotSsePath"`
+	// HiveOT subprotocol prefix
+	//HiveotWSSPath string `yaml:"hiveotWssPath"`
 
 	// MQTT host interface
 	MqttHost string `yaml:"mqttHost"`
@@ -48,19 +58,20 @@ func NewProtocolsConfig() ProtocolsConfig {
 	hostName, _ := os.Hostname()
 
 	cfg := ProtocolsConfig{
-		EnableHTTPS:     true,
-		EnableSSESC:     true,
-		EnableWSS:       true,
-		EnableDiscovery: true,
-		EnableMQTT:      false, // todo
+		EnableHiveotSSE:    true,
+		EnableHiveotWSS:    true,
+		EnableWotHTTPBasic: true,
+		EnableWotWSS:       true,
+		EnableDiscovery:    true,
+		//EnableMQTT:      false, // todo
 		//HttpWSSPath:     transports.DefaultWSSPath,
 		//HttpSsePath:     transports.DefaultSSEPath,
 		//HttpSseScPath:     transports.DefaultSSESCPath,
 		HttpHost:    hostName,
-		HttpsPort:   transports.DefaultHttpsPort,
+		HttpsPort:   DefaultHttpsPort,
 		MqttHost:    hostName,
-		MqttTcpPort: transports.DefaultMqttTcpPort,
-		MqttWssPort: transports.DefaultMqttWssPort,
+		MqttTcpPort: DefaultMqttTcpPort,
+		MqttWssPort: DefaultMqttWssPort,
 
 		Discovery: discovery.NewDiscoveryConfig(hostName),
 	}

@@ -89,7 +89,7 @@ func RenderTileSourceRow(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// if no value was ever received then use n/a
-	latestValue := io.Value.Text() + " " + io.Schema.UnitSymbol()
+	latestValue := io.Value.Text() + " " + io.UnitSymbol()
 	latestUpdated := tputils.DecodeAsDatetime(io.Updated)
 	title := tdi.Title + " " + io.Title
 

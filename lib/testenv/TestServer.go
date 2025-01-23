@@ -1,7 +1,6 @@
 package testenv
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
@@ -11,7 +10,9 @@ import (
 	"github.com/hiveot/hub/runtime"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/clients"
+	"github.com/hiveot/hub/transports/messaging"
 	"github.com/hiveot/hub/wot/td"
+	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"math/rand"
 	"os"
@@ -71,31 +72,35 @@ type TestServer struct {
 
 // GetAgentConnection returns a hub connection for an agent and protocol.
 // This sets 'getForm' to the handler provided by the protocol server. For testing only.
-func (test *TestServer) GetAgentConnection(agentID string, protocolName string) transports.IAgentConnection {
+func (test *TestServer) GetAgentConnection(agentID string, protocolName string) (transports.IClientConnection, *messaging.Agent) {
 	connectURL := test.Runtime.TransportsMgr.GetConnectURL(protocolName)
 
-	cl, _ := clients.NewAgentClient(connectURL, agentID, test.Certs.CaCert, test.ConnectTimeout)
-	return cl
+	server := test.Runtime.TransportsMgr.GetServer(protocolName)
+	cc, _ := clients.NewClient(connectURL, agentID, test.Certs.CaCert, server.GetForm, test.ConnectTimeout)
+	agent := messaging.NewAgent(cc, nil, nil, nil, test.ConnectTimeout)
+	return cc, agent
 }
 
 // GetConsumerConnection returns a hub connection for a consumer and protocol.
 // This sets 'getForm' to the handler provided by the protocol server. For testing only.
-func (test *TestServer) GetConsumerConnection(clientID string, protocolName string) transports.IConsumerConnection {
-	getForm := func(op, thingID, name string) td.Form {
+func (test *TestServer) GetConsumerConnection(
+	clientID string, protocolName string) (transports.IClientConnection, *messaging.Consumer) {
+
+	getForm := func(op string, thingID string, name string) *td.Form {
 		return test.Runtime.GetForm(op, protocolName)
 	}
 
 	connectURL := test.Runtime.TransportsMgr.GetConnectURL(protocolName)
 
-	cl, _ := clients.NewConsumerClient(connectURL, clientID, test.Certs.CaCert, getForm, test.ConnectTimeout)
-	return cl
+	cc, _ := clients.NewClient(connectURL, clientID, test.Certs.CaCert, getForm, test.ConnectTimeout)
+	consumer := messaging.NewConsumer(cc, nil, nil, test.ConnectTimeout)
+	return cc, consumer
 }
 
-// AddConnectConsumer creates a new test user with the given role,
-// and returns a hub client and a new session token.
+// AddConnectConsumer creates a new test user with the given role and returns a client, consumer and a new session token.
 // In case of error this panics.
 func (test *TestServer) AddConnectConsumer(
-	clientID string, clientRole authz.ClientRole) (cl transports.IConsumerConnection, token string) {
+	clientID string, clientRole authz.ClientRole) (consumer *messaging.Consumer, token string) {
 
 	password := clientID
 	err := test.Runtime.AuthnSvc.AdminSvc.AddConsumer(clientID,
@@ -108,19 +113,19 @@ func (test *TestServer) AddConnectConsumer(
 		panic("Failed adding client:" + err.Error())
 	}
 
-	cl = test.GetConsumerConnection(clientID, test.ConsumerProtocol)
-	token, err = cl.ConnectWithPassword(password)
+	cc, consumer := test.GetConsumerConnection(clientID, test.ConsumerProtocol)
+	token, err = cc.ConnectWithPassword(password)
 
 	if err != nil {
 		panic("Failed connect with password:" + err.Error())
 	}
-	return cl, token
+	return consumer, token
 }
 
 // AddConnectAgent creates a new agent test client.
 // Agents use non-session tokens and survive a server restart.
 // This returns the agent's connection token.
-func (test *TestServer) AddConnectAgent(agentID string) (cl transports.IAgentConnection, token string) {
+func (test *TestServer) AddConnectAgent(agentID string) (agent *messaging.Agent, token string) {
 
 	token, err := test.Runtime.AuthnSvc.AdminSvc.AddAgent(agentID,
 		authn.AdminAddAgentArgs{ClientID: agentID, DisplayName: "agent name"})
@@ -132,16 +137,16 @@ func (test *TestServer) AddConnectAgent(agentID string) (cl transports.IAgentCon
 	if err != nil {
 		panic("AddConnectAgent: Failed adding client:" + err.Error())
 	}
-	cl = test.GetAgentConnection(agentID, test.AgentProtocol)
+	cc, agent := test.GetAgentConnection(agentID, test.AgentProtocol)
 
-	newToken, err := cl.ConnectWithToken(token)
+	err = cc.ConnectWithToken(token)
 	if err != nil {
 		err = fmt.Errorf("AddConnectAgent: Failed connecting using token. "+
 			"SenderID='%s': %s", agentID, err.Error())
 		panic(err)
 	}
 
-	return cl, newToken
+	return agent, token
 }
 
 // AddConnectService creates a new service test client.
@@ -151,9 +156,9 @@ func (test *TestServer) AddConnectAgent(agentID string) (cl transports.IAgentCon
 // This sets the getForm handler of the client to the protocol server. (for testing)
 //
 // clientType can be one of ClientTypeAgent or ClientTypeService
-func (test *TestServer) AddConnectService(serviceID string) (
-	cl transports.IAgentConnection, token string) {
+func (test *TestServer) AddConnectService(serviceID string) (ag *messaging.Agent, token string) {
 
+	// 1: register the service
 	token, err := test.Runtime.AuthnSvc.AdminSvc.AddService(serviceID,
 		authn.AdminAddServiceArgs{ClientID: serviceID, DisplayName: "service name"})
 	if err == nil {
@@ -163,13 +168,20 @@ func (test *TestServer) AddConnectService(serviceID string) (
 	if err != nil {
 		panic("AddConnectService: Failed adding client:" + err.Error())
 	}
-	cl = test.GetAgentConnection(serviceID, test.ServiceProtocol)
-	_, err = cl.ConnectWithToken(token)
+	// 2: create and connect a client. The getForm is needed for agents to call other services.
+	connectURL := test.Runtime.TransportsMgr.GetConnectURL(test.ServiceProtocol)
+	server := test.Runtime.TransportsMgr.GetServer(test.ServiceProtocol)
+	getForm := server.GetForm
+	cc, err := clients.NewClient(connectURL, serviceID, test.Certs.CaCert, getForm, test.ConnectTimeout)
+	if err == nil {
+		err = cc.ConnectWithToken(token)
+		ag = messaging.NewAgent(cc, nil, nil, nil, 0)
+	}
 	if err != nil {
 		panic("AddConnectService: Failed connecting using token. serviceID=" + serviceID)
 	}
 
-	return cl, token
+	return ag, token
 }
 
 // AddTD adds a test TD document to the runtime
@@ -179,8 +191,8 @@ func (test *TestServer) AddTD(agentID string, td *td.TD) *td.TD {
 		i := rand.Intn(99882)
 		td = test.CreateTestTD(i)
 	}
-	tdJSON, _ := json.Marshal(td)
-	err := test.Runtime.DigitwinSvc.DirSvc.UpdateTD(agentID, string(tdJSON))
+	tdJSON, _ := jsoniter.MarshalToString(td)
+	err := test.Runtime.DigitwinSvc.DirSvc.UpdateTD(agentID, tdJSON)
 	//ag := test.Runtime.TransportsMgr.GetEmbedded().NewClient(agentID)
 	//err := ag.PubEvent(td.ID, vocab.EventNameTD, string(tdJSON))
 	if err != nil {
@@ -239,8 +251,11 @@ func (test *TestServer) CreateTestTD(i int) (tdi *td.TD) {
 }
 
 // GetForm returns the form for the given operation and transport protocol binding
-func (test *TestServer) GetForm(op string, protocol string) td.Form {
-	return test.Runtime.GetForm(op, protocol)
+func (test *TestServer) GetForm(op string, thingID string, name string) *td.Form {
+
+	// test default test server consumer protocol (only consumers need forms)
+	srv := test.Runtime.TransportsMgr.GetServer(test.ConsumerProtocol)
+	return srv.GetForm(op, thingID, name)
 }
 
 // GetServerURL returns the default connection URL to use for the given client type
@@ -295,9 +310,9 @@ func NewTestServer() *TestServer {
 		Certs:   certs.CreateTestCertBundle(),
 		Config:  runtime.NewRuntimeConfig(),
 		// change these for running all tests with different protocols
-		AgentProtocol:    transports.ProtocolTypeSSESC,
-		ServiceProtocol:  transports.ProtocolTypeSSESC,
-		ConsumerProtocol: transports.ProtocolTypeSSESC,
+		AgentProtocol:    transports.ProtocolTypeHiveotWSS,
+		ServiceProtocol:  transports.ProtocolTypeHiveotWSS,
+		ConsumerProtocol: transports.ProtocolTypeHiveotWSS,
 		ConnectTimeout:   time.Second * 120, // testing extra long
 	}
 

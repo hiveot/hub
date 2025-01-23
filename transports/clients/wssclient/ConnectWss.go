@@ -18,7 +18,7 @@ import (
 func ConnectWSS(
 	clientID string, wssURL string, bearerToken string, caCert *x509.Certificate,
 	onConnect func(bool, error),
-	onMessage func(wssBase wssserver.BaseMessage, raw []byte),
+	onMessage func(wssBase wssserver_old.BaseMessage, raw []byte),
 ) (cancelFn func(), conn *websocket.Conn, err error) {
 	var clientCertList []tls.Certificate
 
@@ -120,7 +120,7 @@ func ConnectWSS(
 
 // WSSReadLoop reads incoming websocket messages in a loop, until connection closes or context is cancelled
 func WSSReadLoop(ctx context.Context, wssConn *websocket.Conn,
-	onMessage func(wssBase wssserver.BaseMessage, raw []byte)) {
+	onMessage func(wssBase wssserver_old.BaseMessage, raw []byte)) {
 
 	var readLoop atomic.Bool
 	readLoop.Store(true)
@@ -146,7 +146,7 @@ func WSSReadLoop(ctx context.Context, wssConn *websocket.Conn,
 			// ending the read loop and returning will close the connection
 			break
 		}
-		baseMsg := wssserver.BaseMessage{}
+		baseMsg := wssserver_old.BaseMessage{}
 		err = jsoniter.Unmarshal(raw, &baseMsg)
 		if err != nil {
 			slog.Error("WSSReadLoop: message is not a valid websocket message. Ignored",

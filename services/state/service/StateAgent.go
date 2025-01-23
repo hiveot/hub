@@ -5,6 +5,7 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/services/state/stateapi"
 	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/messaging"
 	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
@@ -13,7 +14,7 @@ import (
 
 // StateAgent agent for the state storage services
 type StateAgent struct {
-	hc  transports.IAgentConnection
+	ag  *messaging.Agent
 	svc *StateService
 }
 
@@ -99,7 +100,7 @@ func (agent StateAgent) CreateTD() *td.TD {
 }
 
 // HandleRequest dispatches requests to the service capabilities
-func (agent *StateAgent) HandleRequest(req transports.RequestMessage) transports.ResponseMessage {
+func (agent *StateAgent) HandleRequest(req *transports.RequestMessage, _ transports.IConnection) *transports.ResponseMessage {
 	if req.Operation == wot.OpInvokeAction && req.ThingID == stateapi.StorageServiceID {
 		switch req.Name {
 		case stateapi.DeleteMethod:
@@ -117,12 +118,12 @@ func (agent *StateAgent) HandleRequest(req transports.RequestMessage) transports
 	err := fmt.Errorf("unknown action '%s' for service '%s'", req.Name, req.ThingID)
 	return req.CreateResponse(nil, err)
 }
-func (agent *StateAgent) Delete(req transports.RequestMessage) transports.ResponseMessage {
+func (agent *StateAgent) Delete(req *transports.RequestMessage) *transports.ResponseMessage {
 	key := tputils.DecodeAsString(req.Input, 0)
 	err := agent.svc.Delete(req.SenderID, key)
 	return req.CreateResponse(nil, err)
 }
-func (agent *StateAgent) Get(req transports.RequestMessage) transports.ResponseMessage {
+func (agent *StateAgent) Get(req *transports.RequestMessage) *transports.ResponseMessage {
 	var err error
 	output := stateapi.GetResp{}
 	key := tputils.DecodeAsString(req.Input, 0)
@@ -130,7 +131,7 @@ func (agent *StateAgent) Get(req transports.RequestMessage) transports.ResponseM
 	output.Value, output.Found, err = agent.svc.Get(req.SenderID, key)
 	return req.CreateResponse(output, err)
 }
-func (agent *StateAgent) GetMultiple(req transports.RequestMessage) transports.ResponseMessage {
+func (agent *StateAgent) GetMultiple(req *transports.RequestMessage) *transports.ResponseMessage {
 	input := stateapi.GetMultipleArgs{}
 	output := stateapi.GetMultipleResp{}
 	err := tputils.DecodeAsObject(req.Input, &input)
@@ -139,7 +140,7 @@ func (agent *StateAgent) GetMultiple(req transports.RequestMessage) transports.R
 	}
 	return req.CreateResponse(output, err)
 }
-func (agent *StateAgent) Set(req transports.RequestMessage) transports.ResponseMessage {
+func (agent *StateAgent) Set(req *transports.RequestMessage) *transports.ResponseMessage {
 	input := stateapi.SetArgs{}
 	err := tputils.DecodeAsObject(req.Input, &input)
 	if err == nil {
@@ -147,7 +148,7 @@ func (agent *StateAgent) Set(req transports.RequestMessage) transports.ResponseM
 	}
 	return req.CreateResponse(nil, err)
 }
-func (agent *StateAgent) SetMultiple(req transports.RequestMessage) transports.ResponseMessage {
+func (agent *StateAgent) SetMultiple(req *transports.RequestMessage) *transports.ResponseMessage {
 	input := stateapi.SetMultipleArgs{}
 	err := tputils.DecodeAsObject(req.Input, &input)
 	if err == nil {
@@ -171,14 +172,15 @@ func NewStateAgent(svc *StateService) *StateAgent {
 //
 //	svc is the state service whose capabilities to expose
 //	hc is the messaging client used to register a message handler
-func StartStateAgent(svc *StateService, hc transports.IAgentConnection) *StateAgent {
-	agent := StateAgent{hc: hc, svc: svc}
-	if hc != nil {
-		hc.SetRequestHandler(agent.HandleRequest)
+func StartStateAgent(svc *StateService, ag *messaging.Agent) *StateAgent {
+
+	agent := StateAgent{ag: ag, svc: svc}
+	if ag != nil {
+		ag.SetRequestHandler(agent.HandleRequest)
 
 		// publish the service TD
 		tdi := agent.CreateTD()
-		err := hc.PubTD(tdi)
+		err := ag.PubTD(tdi)
 		if err != nil {
 			slog.Error("Failed publishing the TD", "err", err.Error())
 		}

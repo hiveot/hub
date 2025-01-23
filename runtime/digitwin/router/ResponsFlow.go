@@ -3,6 +3,7 @@ package router
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
@@ -10,39 +11,17 @@ import (
 	"time"
 )
 
-// HandleResponse update the action status with the agent response.
-//
-// This converts the ThingID from the agent to that of the digital twin for whom
-// the response is intended. The digital twin in turn sends this to the client
-// that requested the action on the digital twin.
-//
+// HandleActionResponse handles receiving a response to an action
 // This updates the action status if it was recorded.
-//
-// If the response status is StatusCompleted then the 'output' contains the
-// action result, as described in the TD action affordance.
 //
 // This:
 // 1. Validates the request is still active.
 // 2: Updates the status fields of the current digital twin action record to completed.
 // 3: Forwards the update to the sender of the request.
 // 4: Remove the active request from the cache.
-//
-// If the message is no longer in the active cache then it is ignored.
-func (svc *DigitwinRouter) HandleResponse(resp transports.ResponseMessage) error {
-	var err error
+func (svc *DigitwinRouter) HandleActionResponse(resp *transports.ResponseMessage) (err error) {
 
-	// Convert the agent ThingID to that of the digital twin
-	dThingID := td.MakeDigiTwinThingID(resp.SenderID, resp.ThingID)
-	resp.ThingID = dThingID
-	// ensure the updated time is set
-	if resp.Updated == "" {
-		resp.Updated = time.Now().Format(wot.RFC3339Milli)
-	}
-
-	if resp.CorrelationID == "" {
-		slog.Warn("HandleResponse: Received a response without a correlationID. This is ignored")
-		return nil
-	}
+	// Action response
 	svc.requestLogger.Info("<- RESP",
 		slog.String("correlationID", resp.CorrelationID),
 		slog.String("operation", resp.Operation),
@@ -54,6 +33,7 @@ func (svc *DigitwinRouter) HandleResponse(resp transports.ResponseMessage) error
 	)
 
 	// 1: The response must be an active request
+	// Note that event and property subscriptions are active
 	svc.mux.Lock()
 	as, found := svc.activeCache[resp.CorrelationID]
 	svc.mux.Unlock()
@@ -82,7 +62,7 @@ func (svc *DigitwinRouter) HandleResponse(resp transports.ResponseMessage) error
 	_, _ = svc.dtwStore.UpdateActionStatus(resp.SenderID, resp)
 
 	// 3: Forward the response to the sender of the request
-	c := svc.cm.GetConnectionByConnectionID(as.ReplyTo)
+	c := svc.transportServer.GetConnectionByConnectionID(as.ReplyTo)
 	if c != nil {
 		err = c.SendResponse(resp)
 	} else {
@@ -111,4 +91,84 @@ func (svc *DigitwinRouter) HandleResponse(resp transports.ResponseMessage) error
 		delete(svc.activeCache, as.CorrelationID)
 	}
 	return nil
+}
+
+// HandleSubscriptionNotification handles receiving a subscription update (event, property)
+// This updates the digital twin property or event value
+func (svc *DigitwinRouter) HandleSubscriptionNotification(resp *transports.ResponseMessage) (err error) {
+	// Update the digital twin with this event or property value
+	// FIXME: Update the digital twin property or event value
+	tv := digitwin.ThingValue{
+		Created: resp.Updated,
+		Data:    resp.Output,
+		Name:    resp.Name,
+		ThingID: resp.ThingID,
+	}
+	if resp.Operation == wot.OpSubscribeEvent {
+		err = svc.dtwStore.UpdateEventValue(tv)
+		if err == nil {
+			// broadcast the event to subscribers of the digital twin
+			svc.transportServer.SendNotification(resp)
+		}
+	} else if resp.Operation == wot.OpObserveProperty {
+		changed, _ := svc.dtwStore.UpdatePropertyValue(tv)
+		// unchanged values are still updated in the store but not published
+		// should this be configurable?
+		if changed {
+			svc.transportServer.SendNotification(resp)
+		}
+	} else if resp.Operation == wot.OpObserveAllProperties {
+		changed, _ := svc.dtwStore.UpdatePropertyValue(tv)
+		// unchanged values are still updated in the store but not published
+		// should this be configurable?
+		if changed {
+			svc.transportServer.SendNotification(resp)
+		}
+	} else if resp.Operation == wot.HTOpUpdateTD {
+		tdJSON := resp.ToString(0)
+		err := svc.dtwService.DirSvc.UpdateTD(resp.SenderID, tdJSON)
+		if err != nil {
+			slog.Warn(err.Error())
+		}
+		// Don't forward the notification.
+		//Only digitwin TDs should be published. These have updated forms.
+	} else {
+		err := fmt.Errorf("Unknown notification '%s'", resp.Operation)
+		slog.Warn(err.Error())
+		// Other notifications are not supported at this moment
+		//svc.cm.PublishNotification(notif)
+	}
+
+	return err
+}
+
+// HandleResponse update the action status with the agent response.
+//
+// This converts the ThingID from the agent to that of the digital twin for whom
+// the response is intended. The digital twin in turn sends this to the client
+// that requested the action on the digital twin.
+//
+// If the message is no longer in the active cache then it is ignored.
+func (svc *DigitwinRouter) HandleResponse(resp *transports.ResponseMessage) error {
+	var err error
+
+	// Convert the agent ThingID to that of the digital twin
+	dThingID := td.MakeDigiTwinThingID(resp.SenderID, resp.ThingID)
+	resp.ThingID = dThingID
+	// ensure the updated time is set
+	if resp.Updated == "" {
+		resp.Updated = time.Now().Format(wot.RFC3339Milli)
+	}
+
+	// event/property notifications are forwarded to subscribers
+	if resp.Operation == wot.OpObserveProperty ||
+		resp.Operation == wot.OpObserveAllProperties ||
+		resp.Operation == wot.OpSubscribeEvent ||
+		resp.Operation == wot.OpSubscribeAllEvents ||
+		resp.Operation == wot.HTOpUpdateTD {
+
+		err = svc.HandleSubscriptionNotification(resp)
+		return err
+	}
+	return svc.HandleActionResponse(resp)
 }

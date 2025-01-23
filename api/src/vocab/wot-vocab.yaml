@@ -99,21 +99,8 @@ WoTVocab:
     HTOpLogin: "login"
     HTOpLogout: "logout"
     HTOpRefresh: "refresh"
-    # TODO: look for a solution the directory service specification
-    HTOpReadAllTDs: "readalltds"
-    # TODO: readevents might not have an alternative
-    HTOpReadAllEvents: "readallevents" # not standard
     HTOpReadEvent: "readevent"  # not standard
-    # TODO: look in the discovery specification for a compatible approach
+    HTOpReadAllEvents: "readallevents" # not standard
     HTOpReadTD: "readtd"
-
-    # FIXME: figure out how to perform Thing to Hub operations operations in the
-    # protocol binding instead of defining them as Form operations.
-    # Until then define them as HiveOT operations
-#    HTOpPublishError : "error"
-    HTOpPublishEvent : "event"
-    HTOpUpdateTD: "updatetd"  # Maybe better through a discovery method?
-    HTOpUpdateProperty : "updateproperty"
-    HTOpUpdateMultipleProperties : "updatemultipleproperties"
-
-
+    HTOpReadAllTDs: "readalltds"
+    HTOpUpdateTD: "updatetd"   # by agent

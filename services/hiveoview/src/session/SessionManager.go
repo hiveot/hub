@@ -98,7 +98,7 @@ func (sm *WebSessionManager) _addSession(
 	//err = SetSessionCookie(w, clientID, newToken, maxAge, sm.signingKey)
 
 	// publish the new nr of sessions
-	notif := transports.NewNotificationMessage(wot.HTOpEvent, src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions)
+	notif := transports.NewNotificationResponse(wot.HTOpEvent, src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions)
 	_ = sm.hc.SendNotification(notif)
 	return cs, err
 }
@@ -133,7 +133,7 @@ func (sm *WebSessionManager) _removeSession(cs *WebClientSession) {
 
 	// 5. publish the new nr of sessions
 	go func() {
-		notif := transports.NewNotificationMessage(wot.HTOpEvent, src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions)
+		notif := transports.NewNotificationResponse(wot.HTOpEvent, src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions)
 		_ = sm.hc.SendNotification(notif)
 	}()
 }

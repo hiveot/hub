@@ -3,7 +3,7 @@ package service
 import (
 	"github.com/hiveot/hub/lib/hubagent"
 	"github.com/hiveot/hub/services/launcher/launcherapi"
-	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/messaging"
 )
 
 // StartLauncherAgent returns a new instance of the agent for the launcher service.
@@ -13,8 +13,8 @@ import (
 // for example when testing.
 //
 //	svc is the service whose capabilities to expose
-//	hc is the optional message client connected to the server protocol
-func StartLauncherAgent(svc *LauncherService, hc transports.IAgentConnection) *hubagent.AgentHandler {
+//	ag is the optional message client connected to the server protocol
+func StartLauncherAgent(svc *LauncherService, ag *messaging.Agent) *hubagent.AgentHandler {
 
 	methods := map[string]interface{}{
 		launcherapi.ListMethod:            svc.List,
@@ -24,8 +24,8 @@ func StartLauncherAgent(svc *LauncherService, hc transports.IAgentConnection) *h
 		launcherapi.StopAllPluginsMethod:  svc.StopAllPlugins,
 	}
 
-	ah := hubagent.NewAgentHandler(launcherapi.ManageServiceID, methods)
+	agHandler := hubagent.NewAgentHandler(launcherapi.ManageServiceID, methods)
 	// todo: publish service TD
-	hc.SetRequestHandler(ah.HandleRequest)
-	return ah
+	ag.SetRequestHandler(agHandler.HandleRequest)
+	return agHandler
 }

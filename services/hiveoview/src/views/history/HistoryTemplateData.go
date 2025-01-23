@@ -19,6 +19,7 @@ type HistoryTemplateData struct {
 	Title      string // allow override to data description
 	Name       string
 	DataSchema td.DataSchema // dataschema of event/property key
+	UnitSymbol string        // unit of this data
 
 	// history information
 	Timestamp      time.Time
@@ -116,6 +117,7 @@ func NewHistoryTemplateData(
 	iout := ct.GetValue(name)
 
 	hs.DataSchema = iout.Schema
+	hs.UnitSymbol = iout.UnitSymbol()
 	hs.Title = iout.Title + " of " + td.Title
 	hs.DataSchema.Title = hs.Title
 	hs.Stepped = (iout.Schema.Type == vocab.WoTDataTypeBool)

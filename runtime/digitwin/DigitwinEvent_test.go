@@ -2,6 +2,7 @@ package digitwin_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/wot/td"
@@ -11,6 +12,7 @@ import (
 )
 
 func TestAddReadEvent(t *testing.T) {
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	const agent1ID = "agent1"
 	const thing1ID = "thing1"
 	const eventName = "event1"
@@ -48,6 +50,7 @@ func TestAddReadEvent(t *testing.T) {
 }
 
 func TestEventReadFail(t *testing.T) {
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	const agentID = "agent1"
 	const thingID = "thing1"
 	var dThingID = td.MakeDigiTwinThingID(agentID, thingID)
@@ -78,6 +81,7 @@ func TestEventReadFail(t *testing.T) {
 }
 
 func TestEventUpdateFail(t *testing.T) {
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	const agentID = "agent1"
 	const thingID = "thing1"
 	const EventName = "event1"

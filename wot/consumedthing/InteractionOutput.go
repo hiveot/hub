@@ -3,6 +3,7 @@ package consumedthing
 import (
 	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/api/go/digitwin"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot/td"
@@ -72,51 +73,63 @@ func (iout *InteractionOutput) Substr(data any, maxLen int) string {
 
 // setSchemaFromTD updates the dataschema fields in this interaction output.
 // This first looks for events, then property then action output
-func (io *InteractionOutput) setSchemaFromTD(td *td.TD) (found bool) {
+func (iout *InteractionOutput) setSchemaFromTD(td *td.TD) (found bool) {
 	// if name is that of an event then use it
-	eventAff, found := td.Events[io.Name]
+	eventAff, found := td.Events[iout.Name]
 	if found {
-		//io.Operation = wot.HTOpPublishEvent
-		io.AffordanceType = AffordanceTypeEvent
+		//iout.Operation = wot.HTOpPublishEvent
+		iout.AffordanceType = AffordanceTypeEvent
 		// an event might not have data associated with it
 		if eventAff.Data != nil {
-			io.Schema = *eventAff.Data
+			iout.Schema = *eventAff.Data
 		}
-		io.Title = eventAff.Title
+		iout.Title = eventAff.Title
 		if len(eventAff.Forms) > 0 {
-			//io.Form = &eventAff.Forms[0]
+			//iout.Form = &eventAff.Forms[0]
 		}
 		return true
 	}
 	// if name is that of a property then use it
-	propAff, found := td.Properties[io.Name]
+	propAff, found := td.Properties[iout.Name]
 	if found {
-		//io.Operation = wot.HTOpUpdateProperty
-		io.AffordanceType = AffordanceTypeProperty
-		io.Schema = propAff.DataSchema
-		io.Title = propAff.Title
+		//iout.Operation = wot.HTOpUpdateProperty
+		iout.AffordanceType = AffordanceTypeProperty
+		iout.Schema = propAff.DataSchema
+		iout.Title = propAff.Title
 		if len(propAff.Forms) > 0 {
-			//io.Form = &propAff.Forms[0]
+			//iout.Form = &propAff.Forms[0]
 		}
 		return true
 	}
 	// last, if name is that of an action with an output schema then use that instead
 	// also update the iout title if it has none.
-	actionAff, found := td.Actions[io.Name]
+	actionAff, found := td.Actions[iout.Name]
 	if found {
 		// an action might not have any output data
 		if actionAff.Output != nil {
-			io.AffordanceType = AffordanceTypeAction
-			io.Schema = *actionAff.Output
+			iout.AffordanceType = AffordanceTypeAction
+			iout.Schema = *actionAff.Output
 		}
-		if io.Title == "" {
-			io.Title = actionAff.Title
+		if iout.Title == "" {
+			iout.Title = actionAff.Title
 		}
 		return true
 	}
 	slog.Warn("setSchemaFromTD: value without schema in the TD",
-		"thingID", io.ThingID, "name", io.Name)
+		"thingID", iout.ThingID, "name", iout.Name)
 	return false
+}
+
+// UnitSymbol returns the symbol of the unit of this schema using the vocabulary unit map
+func (iout *InteractionOutput) UnitSymbol() string {
+	if iout.Schema.Unit == "" {
+		return ""
+	}
+	unit, found := vocab.UnitClassesMap[iout.Schema.Unit]
+	if !found {
+		return iout.Schema.Unit
+	}
+	return unit.Symbol
 }
 
 // NewInteractionOutputFromValueList creates a new immutable interaction map from
@@ -124,6 +137,8 @@ func (io *InteractionOutput) setSchemaFromTD(td *td.TD) (found bool) {
 //
 // This determines the dataschema by looking for the schema in the events, properties and
 // actions (output) section of the TD.
+//
+// FIXME: remove dependency on the hub ThingValue. This should work stand-alone.
 //
 // Intended for use with the digitwin Values service functions which return
 // a ThingValue object.
@@ -158,14 +173,14 @@ func NewInteractionOutputFromValueList(values []digitwin.ThingValue, td *td.TD) 
 //	tm contains the received ThingMessage data
 //	tdi is the associated thing description
 func NewInteractionOutputFromNotification(
-	notif *transports.NotificationMessage, tdi *td.TD) *InteractionOutput {
+	notif *transports.ResponseMessage, tdi *td.TD) *InteractionOutput {
 
 	io := &InteractionOutput{
 		//ThingID:  tdi.ID,
 		Name:     notif.Name,
 		SenderID: notif.SenderID,
-		Updated:  notif.Created,
-		Value:    NewDataSchemaValue(notif.Data),
+		Updated:  notif.Updated,
+		Value:    NewDataSchemaValue(notif.Output),
 		Err:      nil,
 	}
 	if tdi == nil {

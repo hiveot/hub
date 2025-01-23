@@ -8,7 +8,9 @@ import (
 )
 
 // HandleRequest passes the action request to the associated Thing.
-func (svc *IsyBinding) handleRequest(req transports.RequestMessage) (resp transports.ResponseMessage) {
+func (svc *IsyBinding) handleRequest(req *transports.RequestMessage,
+	_ transports.IConnection) (resp *transports.ResponseMessage) {
+
 	if req.Operation == vocab.OpWriteProperty {
 		return svc.handleConfigRequest(req)
 	}
@@ -37,7 +39,7 @@ func (svc *IsyBinding) handleRequest(req transports.RequestMessage) (resp transp
 		thingID := req.ThingID
 		values := isyThing.GetPropValues(true)
 		for k, v := range values {
-			_ = svc.hc.PubProperty(thingID, k, v)
+			_ = svc.ag.PubProperty(thingID, k, v)
 		}
 	}()
 	return resp

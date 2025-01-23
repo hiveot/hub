@@ -1,7 +1,7 @@
 package td_test
 
 import (
-	vocab2 "github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
@@ -14,31 +14,31 @@ import (
 
 func TestCreateTD(t *testing.T) {
 	thingID := "urn:thing1"
-	tdoc := td.NewTD(thingID, "test TD", vocab2.ThingSensor)
+	tdoc := td.NewTD(thingID, "test TD", vocab.ThingSensor)
 	assert.NotNil(t, tdoc)
 
 	// Set version
 	//versions := map[string]string{"Software": "v10.1", "Hardware": "v2.0"}
 	propAffordance := &td.PropertyAffordance{
 		DataSchema: td.DataSchema{
-			Type:  vocab2.WoTDataTypeArray,
+			Type:  vocab.WoTDataTypeArray,
 			Title: "version",
 		},
 	}
-	tdoc.UpdateProperty(vocab2.PropDeviceSoftwareVersion, propAffordance)
+	tdoc.UpdateProperty(vocab.PropDeviceSoftwareVersion, propAffordance)
 
 	// Define TD property
 	propAffordance = &td.PropertyAffordance{
 		DataSchema: td.DataSchema{
-			Type: vocab2.WoTDataTypeString,
+			Type: vocab.WoTDataTypeString,
 			Enum: make([]interface{}, 0), //{"value1", "value2"},
 			Unit: "C",
 		},
 	}
 	//propAffordance.SetOneOfValues([]string{})
 
-	thingType := tdoc.GetAtType()
-	assert.Equal(t, vocab2.ThingSensor, thingType)
+	thingType := tdoc.AtType
+	assert.Equal(t, vocab.ThingSensor, thingType)
 
 	// created time must be set to RFC3339
 	assert.NotEmpty(t, tdoc.Created)
@@ -73,7 +73,7 @@ func TestMissingAffordance(t *testing.T) {
 	thingID := "urn:thing1"
 
 	// test return nil if no affordance is found
-	tdoc := td.NewTD(thingID, "test TD", vocab2.ThingSensor)
+	tdoc := td.NewTD(thingID, "test TD", vocab.ThingSensor)
 	assert.NotNil(t, tdoc)
 
 	prop := tdoc.GetProperty("prop1")
@@ -89,13 +89,13 @@ func TestMissingAffordance(t *testing.T) {
 func TestAddProp(t *testing.T) {
 	thingID := "urn:thing1"
 	prop2AtType := "test:specialtype"
-	tdoc := td.NewTD(thingID, "test TD", vocab2.ThingSensor)
-	tdoc.AddProperty("prop1", "prop 1", "test property", vocab2.WoTDataTypeBool)
+	tdoc := td.NewTD(thingID, "test TD", vocab.ThingSensor)
+	tdoc.AddProperty("prop1", "prop 1", "test property", vocab.WoTDataTypeBool)
 
-	pa := tdoc.AddProperty("prop2", "test property2", "", vocab2.WoTDataTypeString)
-	pa.SetAtType(prop2AtType)
-	pa.Unit = vocab2.UnitPercent
-	assert.Equal(t, "%", pa.UnitSymbol())
+	aff := tdoc.AddProperty("prop2", "test property2", "", vocab.WoTDataTypeString)
+	aff.SetAtType(prop2AtType)
+	aff.Unit = vocab.UnitPercent
+
 	// retrieve a property by its @type value
 	pa2Name, pa2 := tdoc.GetPropertyOfVocabType(prop2AtType)
 	assert.Equal(t, "prop2", pa2Name)
@@ -117,10 +117,10 @@ func TestAddProp(t *testing.T) {
 func TestAddPropBadIDs(t *testing.T) {
 	thingID := "urn:thing 1"
 	propID := "prop 1"
-	tdoc := td.NewTD(thingID, "test TD", vocab2.ThingSensor)
-	tdoc.AddProperty(propID, "test property", "", vocab2.WoTDataTypeBool)
+	tdoc := td.NewTD(thingID, "test TD", vocab.ThingSensor)
+	tdoc.AddProperty(propID, "test property", "", vocab.WoTDataTypeBool)
 
-	tdoc.AddProperty("prop2", "test property2", "", vocab2.WoTDataTypeString)
+	tdoc.AddProperty("prop2", "test property2", "", vocab.WoTDataTypeString)
 
 	prop := tdoc.GetProperty(propID)
 	assert.Nil(t, prop)
@@ -134,7 +134,7 @@ func TestAddPropBadIDs(t *testing.T) {
 
 func TestAddEvent(t *testing.T) {
 	thingID := "urn:thing1"
-	tdoc := td.NewTD(thingID, "test TD", vocab2.ThingSensor)
+	tdoc := td.NewTD(thingID, "test TD", vocab.ThingSensor)
 	tdoc.AddEvent("event1", "Test Event", "", nil)
 
 	tdoc.AddEvent("event2", "Test Event", "", nil)
@@ -148,7 +148,7 @@ func TestAddEvent(t *testing.T) {
 
 func TestAddAction(t *testing.T) {
 	thingID := "urn:thing1"
-	tdoc := td.NewTD(thingID, "test TD", vocab2.ThingSensor)
+	tdoc := td.NewTD(thingID, "test TD", vocab.ThingSensor)
 	tdoc.AddAction("action1", "test", "Test Action", nil)
 
 	// has a space
@@ -167,7 +167,7 @@ func TestForms(t *testing.T) {
 	const prop1Name = "prop1"
 	const event1Name = "event1"
 	thingID := "urn:thing1"
-	tdoc := td.NewTD(thingID, "test TD", vocab2.ThingSensor)
+	tdoc := td.NewTD(thingID, "test TD", vocab.ThingSensor)
 	actAff := tdoc.AddAction(action1Name, "action", "Test Action", nil)
 	tdoc.AddProperty(prop1Name, "prop", "Test Prop", wot.WoTDataTypeInteger)
 	tdoc.AddEvent(event1Name, "event", "Test Event", nil)
@@ -182,11 +182,11 @@ func TestForms(t *testing.T) {
 	tdoc.AddForms(forms)
 
 	//
-	f1 := tdoc.GetForm(wot.OpWriteProperty, prop1Name, transports.ProtocolTypeHTTPS)
+	f1 := tdoc.GetForm(wot.OpWriteProperty, prop1Name, transports.ProtocolTypeWotHTTPBasic)
 	assert.NotNil(t, f1)
-	f2 := tdoc.GetForm(wot.OpInvokeAction, action1Name, transports.ProtocolTypeHTTPS)
+	f2 := tdoc.GetForm(wot.OpInvokeAction, action1Name, transports.ProtocolTypeWotHTTPBasic)
 	assert.NotNil(t, f2)
-	f3 := tdoc.GetForm(wot.OpSubscribeEvent, event1Name, transports.ProtocolTypeHTTPS)
+	f3 := tdoc.GetForm(wot.OpSubscribeEvent, event1Name, transports.ProtocolTypeWotHTTPBasic)
 	assert.NotNil(t, f3)
 
 	uriVars := make(map[string]string)

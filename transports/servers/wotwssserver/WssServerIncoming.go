@@ -1,4 +1,4 @@
-package wssserver
+package wotwssserver
 
 import (
 	"github.com/hiveot/hub/transports"
@@ -84,9 +84,9 @@ func (c *WssServerConnection) WssServerHandleMessage(raw []byte) {
 		resp.Status = wssMsg.Status // todo: convert from wss to global names
 		resp.Updated = wssMsg.TimeEnded
 		resp.SenderID = c.GetClientID()
-		_ = c.responseHandler(resp)
+		_ = c.responseHandler(resp) // forward to hub action flow
 
-	case // hub receives action messages from a consumer. Forward as a request.
+	case // hub receives action messages from a consumer. Forward as a request and return the response.
 		MsgTypeInvokeAction,
 		MsgTypeQueryAction,
 		MsgTypeQueryAllActions:
@@ -97,9 +97,10 @@ func (c *WssServerConnection) WssServerHandleMessage(raw []byte) {
 			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, wssMsg.CorrelationID)
 		req.SenderID = c.GetClientID()
 		req.Created = wssMsg.Timestamp
-		_ = c.requestHandler(req, c.GetConnectionID())
+		resp := c.requestHandler(req, c.GetConnectionID())
+		_ = c.SendResponse(resp)
 
-	case // hub receives event request. Forward as request.
+	case // hub receives event request. Forward as request and return the response.
 		MsgTypeReadAllEvents,
 		MsgTypeReadEvent:
 		// map the message to a request
@@ -109,20 +110,21 @@ func (c *WssServerConnection) WssServerHandleMessage(raw []byte) {
 			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, wssMsg.CorrelationID)
 		req.SenderID = c.GetClientID()
 		req.Created = wssMsg.Timestamp
-		_ = c.requestHandler(req, c.GetConnectionID())
+		resp := c.requestHandler(req, c.GetConnectionID())
+		_ = c.SendResponse(resp)
 
 	case // hub receives event notification. Forward as notification.
 		MsgTypePublishEvent:
 		// map the message to a request
 		wssMsg := EventMessage{}
 		_ = c.Unmarshal(raw, &wssMsg)
-		notif := transports.NewNotificationMessage(
+		notif := transports.NewNotificationResponse(
 			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data)
 		notif.Created = wssMsg.Timestamp
 		notif.SenderID = c.GetClientID()
 		c.notificationHandler(notif)
 
-	case // property requests. Forward as requests
+	case // property requests. Forward as requests and return the response.
 		MsgTypeReadAllProperties,
 		MsgTypeReadMultipleProperties,
 		MsgTypeReadProperty,
@@ -136,7 +138,8 @@ func (c *WssServerConnection) WssServerHandleMessage(raw []byte) {
 			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, wssMsg.CorrelationID)
 		req.SenderID = c.GetClientID()
 		req.Created = wssMsg.Timestamp
-		_ = c.requestHandler(req, c.GetConnectionID())
+		resp := c.requestHandler(req, c.GetConnectionID())
+		_ = c.SendResponse(resp)
 
 	case // agent response
 		MsgTypePropertyReadings, // agent response
@@ -149,7 +152,7 @@ func (c *WssServerConnection) WssServerHandleMessage(raw []byte) {
 			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, nil, wssMsg.CorrelationID)
 		resp.Updated = wssMsg.Timestamp
 		resp.SenderID = c.GetClientID()
-		_ = c.responseHandler(resp)
+		_ = c.responseHandler(resp) // forward response to request flow
 
 		// td messages
 	case MsgTypeReadTD:
@@ -159,12 +162,13 @@ func (c *WssServerConnection) WssServerHandleMessage(raw []byte) {
 			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data, wssMsg.CorrelationID)
 		req.SenderID = c.GetClientID()
 		req.Created = wssMsg.Timestamp
-		_ = c.requestHandler(req, c.GetConnectionID())
+		resp := c.requestHandler(req, c.GetConnectionID())
+		_ = c.responseHandler(resp)
 
 	case MsgTypeUpdateTD:
 		wssMsg := TDMessage{}
 		_ = c.Unmarshal(raw, &wssMsg)
-		notif := transports.NewNotificationMessage(
+		notif := transports.NewNotificationResponse(
 			op, wssMsg.ThingID, wssMsg.Name, wssMsg.Data)
 		notif.Created = wssMsg.Timestamp
 		notif.SenderID = c.GetClientID()
@@ -175,6 +179,7 @@ func (c *WssServerConnection) WssServerHandleMessage(raw []byte) {
 		wssMsg := PropertyMessage{}
 		_ = c.Unmarshal(raw, &wssMsg)
 		c.ObserveProperty(wssMsg.ThingID, wssMsg.Name)
+		//_ = c.responseHandler(resp)
 	case MsgTypeSubscribeEvent, MsgTypeSubscribeAllEvents:
 		wssMsg := EventMessage{}
 		_ = c.Unmarshal(raw, &wssMsg)

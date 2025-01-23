@@ -1,4 +1,4 @@
-import {NotificationMessage, RequestMessage, ResponseMessage} from "@hivelib/transports/Messages";
+import { RequestMessage, ResponseMessage} from "@hivelib/transports/Messages";
 
 
 export enum ConnectionStatus {
@@ -10,8 +10,18 @@ export enum ConnectionStatus {
     Unauthorized = "unauthorized"
 }
 
+// Supported transport protocol bindings types
+export const ProtocolTypeWotHTTPBasic = "wot-http-basic"
+// WoT http websocket subprotocol based on strawman proposal
+export const ProtocolTypeWotWSS = "wot-wss"
+
+// HiveOT http SSE subprotocol return channel with direct messaging
+export const ProtocolTypeHiveotSSE = "hiveot-sse"
+// HiveOT http WSS subprotocol with direct messaging
+export const ProtocolTypeHiveotWSS = "hiveot-wss"
+
+
 export type ConnectionHandler = (status: ConnectionStatus)=>void;
-export type NotificationHandler = (msg: NotificationMessage)=>void;
 export type RequestHandler = (msg: RequestMessage)=>ResponseMessage;
 export type ResponseHandler = (resp: ResponseMessage)=>void;
 
@@ -75,10 +85,6 @@ export interface IConsumerConnection {
     // If a reconnect is to take place with a different password or token then 
     // call disconnect(), followed by connectWithXyz().
     setConnectHandler(handler: (status: ConnectionStatus) => void): void
-
-    // Set the notification handler
-    // This replaces any previously set handler.
-    setNotificationHandler(handler: NotificationHandler):void
 
 
     // Set the progress handler

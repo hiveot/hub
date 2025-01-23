@@ -12,7 +12,9 @@ import (
 )
 
 // HandleRequest handles action or property write requests
-func (svc *OWServerBinding) HandleRequest(req transports.RequestMessage) (resp transports.ResponseMessage) {
+func (svc *OWServerBinding) HandleRequest(req *transports.RequestMessage,
+	_ transports.IConnection) (resp *transports.ResponseMessage) {
+
 	slog.Info("HandleRequest",
 		slog.String("op", req.Operation),
 		slog.String("thingID", req.ThingID),
@@ -32,7 +34,7 @@ func (svc *OWServerBinding) HandleRequest(req transports.RequestMessage) (resp t
 }
 
 // HandleActionRequest handles requests to activate inputs
-func (svc *OWServerBinding) HandleActionRequest(req transports.RequestMessage) (resp transports.ResponseMessage) {
+func (svc *OWServerBinding) HandleActionRequest(req *transports.RequestMessage) (resp *transports.ResponseMessage) {
 	var attr eds.OneWireAttr
 
 	// TODO: lookup the req Title used by the EDS
@@ -85,7 +87,7 @@ func (svc *OWServerBinding) HandleActionRequest(req transports.RequestMessage) (
 }
 
 // HandleConfigRequest handles requests to configure the service or devices
-func (svc *OWServerBinding) HandleConfigRequest(req transports.RequestMessage) (stat transports.ResponseMessage) {
+func (svc *OWServerBinding) HandleConfigRequest(req *transports.RequestMessage) (stat *transports.ResponseMessage) {
 	var err error
 	valueStr := req.ToString(0)
 	slog.Info("HandleConfigRequest",
@@ -108,7 +110,7 @@ func (svc *OWServerBinding) HandleConfigRequest(req transports.RequestMessage) (
 		svc.customTitles[req.ThingID] = valueStr
 		go svc.SaveState()
 		// publish changed values after returning
-		go svc.hc.PubProperty(req.ThingID, vocab.PropDeviceTitle, valueStr)
+		go svc.ag.PubProperty(req.ThingID, vocab.PropDeviceTitle, valueStr)
 		return req.CreateResponse(valueStr, nil)
 	} else {
 		attr, found := node.Attr[req.Name]

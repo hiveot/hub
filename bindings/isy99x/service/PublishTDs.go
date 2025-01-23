@@ -12,7 +12,7 @@ func (svc *IsyBinding) PublishTDs() (err error) {
 	slog.Info("PublishTDs Gateway and Nodes")
 
 	td := svc.MakeBindingTD()
-	err = svc.hc.PubTD(td)
+	err = svc.ag.PubTD(td)
 	if err != nil {
 		err = fmt.Errorf("failed publishing binding TD: %w", err)
 		slog.Error(err.Error())
@@ -23,7 +23,7 @@ func (svc *IsyBinding) PublishTDs() (err error) {
 		return errors.New("not connected to the gateway")
 	}
 
-	err = svc.IsyGW.PubTD(svc.hc)
+	err = svc.IsyGW.PubTD(svc.ag)
 	if err == nil {
 		// read and publish the node TDs
 		err = svc.IsyGW.ReadIsyThings()
@@ -35,7 +35,7 @@ func (svc *IsyBinding) PublishTDs() (err error) {
 		//things := svc.IsyGW.ReadThings()
 		for _, thing := range svc.IsyGW.GetIsyThings() {
 			td = thing.MakeTD()
-			err = svc.hc.PubTD(td)
+			err = svc.ag.PubTD(td)
 			if err != nil {
 				slog.Error("failed publishing Thing TD",
 					"thingID", td.ID, "err", err.Error())

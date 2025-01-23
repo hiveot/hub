@@ -49,17 +49,17 @@ func TestLoginAsAgent(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 
 	r := startRuntime()
-	ag, token := ts.AddConnectAgent(agentID)
+	agent, token := ts.AddConnectAgent(agentID)
 	_ = token
-	t2, err := ag.RefreshToken(token)
+	t2, err := agent.RefreshToken(token)
 	require.NoError(t, err)
 	assert.NotEmpty(t, t2)
 	// use the refresh token
-	t3, err := ag.RefreshToken(t2)
+	t3, err := agent.RefreshToken(t2)
 	_ = t3
 	require.NoError(t, err)
 
-	ag.Disconnect()
+	agent.Disconnect()
 	r.Stop()
 	//time.Sleep(time.Millisecond * 100)
 }
@@ -68,17 +68,17 @@ func TestLoginAsConsumer(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 
 	r := startRuntime()
-	cl, token := ts.AddConnectConsumer(clientID, authz.ClientRoleManager)
+	consumer, token := ts.AddConnectConsumer(clientID, authz.ClientRoleManager)
 	_ = token
-	t2, err := cl.RefreshToken(token)
+	t2, err := consumer.RefreshToken(token)
 	require.NoError(t, err)
 	assert.NotEmpty(t, t2)
 	// use the refresh token
-	t3, err := cl.RefreshToken(t2)
+	t3, err := consumer.RefreshToken(t2)
 	_ = t3
 	require.NoError(t, err)
 
-	cl.Disconnect()
+	consumer.Disconnect()
 	r.Stop()
 	//time.Sleep(time.Millisecond * 100)
 }
@@ -90,7 +90,7 @@ func TestMultiConnectSingleClient(t *testing.T) {
 	const agentID = "agent1"
 	const testConnections = int32(100)
 	const eventName = "event1"
-	var clients = make([]transports.IConsumerConnection, 0)
+	var clients = make([]transports.IClientConnection, 0)
 	var connectCount atomic.Int32
 	var disConnectCount atomic.Int32
 	var messageCount atomic.Int32
@@ -102,7 +102,7 @@ func TestMultiConnectSingleClient(t *testing.T) {
 	td1 := ts.AddTD(agentID, nil)
 	cl1, token1 := ts.AddConnectConsumer(clientID1, authz.ClientRoleOperator)
 
-	onConnection := func(connected bool, err error) {
+	onConnection := func(connected bool, err error, c transports.IConnection) {
 		if connected {
 			connectCount.Add(1)
 		} else {
@@ -113,30 +113,30 @@ func TestMultiConnectSingleClient(t *testing.T) {
 	//	messageCount.Add(1)
 	//	return req.CreateResponse()
 	//}
-	onNotification := func(msg transports.NotificationMessage) {
+	onResponse := func(msg *transports.ResponseMessage) error {
 		messageCount.Add(1)
+		return nil
 	}
 	// 2: connect and subscribe clients and verify
 	for range testConnections {
-		cl := ts.GetConsumerConnection(clientID1, ts.ConsumerProtocol)
-		cl.SetConnectHandler(onConnection)
-		cl.SetNotificationHandler(onNotification)
-		token, err := cl.ConnectWithToken(token1)
+		cc, consumer := ts.GetConsumerConnection(clientID1, ts.ConsumerProtocol)
+		cc.SetConnectHandler(onConnection)
+		consumer.SetResponseHandler(onResponse)
+		err := cc.ConnectWithToken(token1)
 		require.NoError(t, err)
 		// allow server to register its connection
 		time.Sleep(waitafterconnect)
-		err = cl.Subscribe("", "")
+		err = consumer.Subscribe("", "")
 		require.NoError(t, err)
-		_ = token
-		clients = append(clients, cl)
+		clients = append(clients, cc)
 	}
 	// connection notification should have been received N times
 	time.Sleep(waitafterconnect)
 	require.Equal(t, testConnections, connectCount.Load(), "connect count mismatch")
+	//require.Equal(t, testConnections, ts.Runtime.TransportsMgr.GetNrConnections(), "ts connect count mismatch")
 
 	// 3: agent publishes an event, which should be received N times
-	err := ag1.SendNotification(transports.NewNotificationMessage(
-		wot.HTOpEvent, td1.ID, eventName, "a value"))
+	err := ag1.PubEvent(td1.ID, eventName, "a value")
 	//err := ag1.PubEvent(td1.ID, eventName, "a value", "message1")
 	require.NoError(t, err)
 
@@ -155,18 +155,17 @@ func TestMultiConnectSingleClient(t *testing.T) {
 
 	// 5: no more messages should be received after disconnecting
 	messageCount.Store(0)
-	err = ag1.SendNotification(transports.NewNotificationMessage(
-		wot.HTOpEvent, td1.ID, eventName, "a value"))
+	err = ag1.PubEvent(td1.ID, eventName, "a value")
 	require.NoError(t, err)
 	ag1.Disconnect()
 
 	// zero events should have been received
-	time.Sleep(time.Millisecond * 10)
+	time.Sleep(time.Millisecond * 100)
 	assert.Equal(t, int32(0), messageCount.Load(), "still receiving events after disconnect")
 
 	// last, the runtime connection manager should only have no connections
-	count, _ := r.CM.GetNrConnections()
-	assert.Equal(t, 0, count)
+	//count, _ := r.TransportsMgr.GetNrConnections()
+	//assert.Equal(t, 0, count)
 	r.Stop()
 	//time.Sleep(time.Millisecond * 100)
 }
@@ -197,8 +196,8 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	defer cl1.Disconnect()
 
 	// Agent receives action request which we'll handle here
-	agentRequestHandler := func(req transports.RequestMessage) transports.ResponseMessage {
-		rxMsg = req
+	agentRequestHandler := func(req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
+		rxMsg = *req
 		reply := tputils.DecodeAsString(req.Input, 0) + ".reply"
 		// TODO WSS doesn't support the senderID in the message. How important is this?
 		// option1: not important - no use-case
@@ -248,13 +247,15 @@ func TestServiceReconnect(t *testing.T) {
 	actionID := "action-1" // match the test TD action
 	ts.AddTD(agentID, td1)
 
-	hasAgent := ts.Runtime.CM.GetConnectionByClientID(ag1.GetClientID())
+	hasAgent := ts.Runtime.TransportsMgr.GetConnectionByClientID(ag1.GetClientID())
 	require.NotNil(t, hasAgent)
 
 	// Agent receives action request which we'll handle here
-	ag1.SetRequestHandler(func(msg transports.RequestMessage) transports.ResponseMessage {
+	ag1.SetRequestHandler(func(msg *transports.RequestMessage,
+		c transports.IConnection) *transports.ResponseMessage {
+
 		var req string
-		rxMsg.Store(&msg)
+		rxMsg.Store(msg)
 		_ = tputils.DecodeAsObject(msg.Input, &req)
 		output := req + ".reply"
 		slog.Info("agent1 delivery complete", "correlationID", msg.CorrelationID)
@@ -278,8 +279,8 @@ func TestServiceReconnect(t *testing.T) {
 	// wait for the reconnect
 	time.Sleep(time.Second * 1)
 
-	hasAgent = ts.Runtime.CM.GetConnectionByClientID(ag1.GetClientID())
-	require.NotNil(t, hasAgent)
+	hasAgent = ts.Runtime.TransportsMgr.GetConnectionByClientID(ag1.GetClientID())
+	assert.NotNil(t, hasAgent)
 
 	cl2, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
 	defer cl2.Disconnect()

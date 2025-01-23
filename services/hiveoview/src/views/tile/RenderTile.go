@@ -97,7 +97,7 @@ func (d RenderTileTemplateData) GetUnit(thingID string, name string) string {
 	if iout == nil {
 		return ""
 	}
-	unitSymbol := iout.Schema.UnitSymbol()
+	unitSymbol := iout.UnitSymbol()
 	return unitSymbol
 }
 

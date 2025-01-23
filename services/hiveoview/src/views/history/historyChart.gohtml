@@ -17,7 +17,7 @@
 	{{/* inject the json encoded array with data to show as {x:time,y:value} here */}}
 	<data key="{{.Name}}"
  			 title="{{.DataSchema.Title}}"
-		    unit="{{.DataSchema.UnitSymbol}}"
+		    unit="{{.UnitSymbol}}"
 	      stepped="{{.Stepped}}">
 			{{ .AsJSON }}
 	</data>

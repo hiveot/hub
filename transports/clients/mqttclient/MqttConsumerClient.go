@@ -412,7 +412,7 @@ func (cl *MqttConsumerClient) _parseResponse(data []byte, resp interface{}) erro
 // _pub publishes a message and waits for an answer or until timeout
 // In order to receive replies, an inbox subscription is added on the first request.
 //func (cl *MqttConsumerClient) _pub(topic string, payload []byte) (resp []byte, err error) {
-//	slog.Debug("PubRequest", "topic", topic)
+//	slog.Debug("SendRequest", "topic", topic)
 //
 //	ctx, cancelFn := context.WithTimeout(context.Background(), cl.BaseTimeout)
 //	defer cancelFn()
@@ -464,7 +464,7 @@ func (cl *MqttConsumerClient) _parseResponse(data []byte, resp interface{}) erro
 //		return nil, err
 //	}
 //
-//	slog.Debug("PubRequest end:",
+//	slog.Debug("SendRequest end:",
 //		slog.String("topic", topic),
 //		slog.String("ContentType (if any)", respMsg.Properties.ContentType),
 //	)

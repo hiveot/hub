@@ -136,18 +136,18 @@ func (svc *PasetoAuthenticator) Logout(clientID string) {
 // RefreshToken requests a new token based on the old token
 // This requires that the existing session is still valid
 func (svc *PasetoAuthenticator) RefreshToken(
-	senderID string, clientID string, oldToken string) (newToken string, err error) {
+	senderID string, oldToken string) (newToken string, err error) {
 
 	// validation only succeeds if there is an active session
 	tokenClientID, sessionID, err := svc.ValidateToken(oldToken)
-	if err != nil || clientID != senderID || clientID != tokenClientID {
+	if err != nil || senderID != tokenClientID {
 		return newToken, fmt.Errorf("SenderID mismatch")
 	}
 	// must still be a valid client
 	prof, err := svc.authnStore.GetProfile(senderID)
 	_ = prof
 	if err != nil || prof.Disabled {
-		return newToken, fmt.Errorf("Profile for '%s' is disabled", clientID)
+		return newToken, fmt.Errorf("Profile for '%s' is disabled", senderID)
 	}
 	validitySec := svc.ConsumerTokenValiditySec
 	if prof.ClientType == authn.ClientTypeAgent {
@@ -155,7 +155,7 @@ func (svc *PasetoAuthenticator) RefreshToken(
 	} else if prof.ClientType == authn.ClientTypeService {
 		validitySec = svc.ServiceTokenValiditySec
 	}
-	newToken = svc.CreateSessionToken(clientID, sessionID, validitySec)
+	newToken = svc.CreateSessionToken(senderID, sessionID, validitySec)
 	return newToken, err
 }
 

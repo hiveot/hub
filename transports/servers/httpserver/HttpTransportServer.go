@@ -5,24 +5,56 @@ import (
 	"crypto/x509"
 	"fmt"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/connections"
+	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/transports/tputils/tlsserver"
+	"github.com/hiveot/hub/wot"
 	jsoniter "github.com/json-iterator/go"
+	"io"
 	"log/slog"
 	"net/http"
 )
 
+// HTTP protoocol constants
+const (
+	// StatusHeader contains the result of the request, eg Pending, Completed or Failed
+	StatusHeader = "status"
+	// CorrelationIDHeader for transports that support headers can include a message-ID
+	CorrelationIDHeader = "correlation-id"
+	// ConnectionIDHeader identifies the client's connection in case of multiple
+	// connections from the same client.
+	ConnectionIDHeader = "cid"
+	// DataSchemaHeader to indicate which  'additionalresults' dataschema being returned.
+	DataSchemaHeader = "dataschema"
+
+	// HTTP Paths for auth
+	// TO be REMOVED AFTER auth is implemented using the TD and forms.
+	// The hub client will need the TD (ConsumedThing) to determine the paths.
+	HttpPostLoginPath   = "/authn/login"
+	HttpPostLogoutPath  = "/authn/logout"
+	HttpPostRefreshPath = "/authn/refresh"
+	HttpGetPingPath     = "/ping"
+)
+
+type HttpOperation struct {
+	ops         []string
+	method      string
+	subprotocol string
+	url         string
+	handler     http.HandlerFunc
+	//isThingLevel bool
+}
+
 // HttpTransportServer is the transport binding server for HTTPS
 // This wraps the library's https server and add routes and middleware for use in the binding
+// Intended for use with the SSE and WSS protocol bindings
 type HttpTransportServer struct {
 
-	// registered handler of received notifications (sent by agents)
-	serverNotificationHandler transports.ServerNotificationHandler
 	// registered handler of requests (which return a reply)
-	serverRequestHandler transports.ServerRequestHandler
+	//serverRequestHandler transports.ServerRequestHandler
 	// registered handler of responses (which sends a reply to the request sender)
-	serverResponseHandler transports.ServerResponseHandler
+	//serverResponseHandler transports.ServerResponseHandler
 
 	// TLS server and router
 	httpServer *tlsserver.TLSServer
@@ -47,7 +79,7 @@ type HttpTransportServer struct {
 	operations []HttpOperation
 
 	// connection manager for adding/removing binding connections
-	cm *connections.ConnectionManager
+	//cm *connections.ConnectionManager
 }
 
 // AddOps adds one or more protocol binding operations with a path and handler
@@ -69,10 +101,79 @@ func (svc *HttpTransportServer) AddOps(
 	r.Method(method, opURL, handler)
 }
 
-// GetConnectionByConnectionID returns the client connection for sending messages to a client
-func (svc *HttpTransportServer) GetConnectionByConnectionID(connectionID string) transports.IServerConnection {
-	return svc.cm.GetConnectionByConnectionID(connectionID)
+// createRoutes creates the middleware chain for handling requests, including
+// recoverer, compression and token verification for protected routes.
+//
+// This includes the unprotected routes for login and ping
+// This includes the protected routes for refresh and logout.
+// Everything else should be added by the sub-protocols.
+//
+// Routes are added by (sub)protocols such as http-basic, sse and wss.
+func (svc *HttpTransportServer) createRoutes(router chi.Router) http.Handler {
+
+	// TODO: is there a use for a static file server?
+	//var staticFileServer http.Handler
+	//if rootPath == "" {
+	//	staticFileServer = http.FileServer(
+	//		&StaticFSWrapper{
+	//			FileSystem:   http.FS(src.EmbeddedStatic),
+	//			FixedModTime: time.Now(),
+	//		})
+	//} else {
+	//	// during development when run from the 'hub' project directory
+	//	staticFileServer = http.FileServer(http.Dir(rootPath))
+	//}
+
+	// TODO: add csrf support in posts
+	//csrfMiddleware := csrf.Protect(
+	//	[]byte("32-byte-long-auth-key"),
+	//	csrf.SameSite(csrf.SameSiteStrictMode))
+
+	//-- add the middleware before routes
+	router.Use(middleware.Recoverer)
+	//router.Use(middleware.Logger) // todo: proper logging strategy
+	//router.Use(csrfMiddleware)
+	//router.Use(middleware.Compress(5,
+	//	"text/html", "text/css", "text/javascript", "image/svg+xml"))
+
+	//--- public routes do not require an authenticated session
+	router.Group(func(r chi.Router) {
+		r.Use(middleware.Compress(5,
+			"text/html", "text/css", "text/javascript", "image/svg+xml"))
+
+		//r.Get("/static/*", staticFileServer.ServeHTTP)
+		// build-in REST API for easy login to obtain a token
+		svc.AddOps(r, []string{wot.HTOpLogin},
+			http.MethodPost, HttpPostLoginPath, svc.HandleLogin)
+
+		svc.AddOps(r, []string{wot.HTOpPing}, http.MethodGet, HttpGetPingPath, svc.HandlePing)
+	})
+
+	//--- private routes that requires authentication (as published in the TD)
+	// general format for digital twins: /digitwin/{operation}/{thingID}/{name}
+	router.Group(func(r chi.Router) {
+		r.Use(middleware.Compress(5,
+			"text/html", "text/css", "text/javascript", "image/svg+xml"))
+
+		// client sessions authenticate the sender
+		r.Use(AddSessionFromToken(svc.authenticator))
+
+		// Using AddOps without provider router will add paths to this route.
+		svc.protectedRoutes = r
+
+		// authn service actions
+		svc.AddOps(r, []string{wot.HTOpRefresh},
+			http.MethodPost, HttpPostRefreshPath, svc.HandleLoginRefresh)
+		svc.AddOps(r, []string{wot.HTOpLogout},
+			http.MethodPost, HttpPostLogoutPath, svc.HandleLogout)
+	})
+	return router
 }
+
+//// GetConnectionByConnectionID returns the client connection for sending messages to a client
+//func (svc *HttpTransportServer) GetConnectionByConnectionID(connectionID string) transports.IServerConnection {
+//	return svc.cm.GetConnectionByConnectionID(connectionID)
+//}
 
 // GetConnectURL returns connection url of the http server
 func (svc *HttpTransportServer) GetConnectURL() string {
@@ -80,13 +181,87 @@ func (svc *HttpTransportServer) GetConnectURL() string {
 	return baseURL
 }
 
-// SendNotification broadcast an event or property change to subscribers clients
-func (svc *HttpTransportServer) SendNotification(msg transports.NotificationMessage) {
-	cList := svc.cm.GetConnectionByProtocol(transports.ProtocolTypeHTTPS)
-	for _, c := range cList {
-		c.SendNotification(msg)
+// HandleLogin handles a login request, posted by a consumer.
+// This is the only unprotected route supported.
+// This uses the configured session authenticator.
+func (svc *HttpTransportServer) HandleLogin(w http.ResponseWriter, r *http.Request) {
+	var reply any
+	var args map[string]string
+
+	payload, err := io.ReadAll(r.Body)
+	if err == nil {
+		err = jsoniter.Unmarshal(payload, &args)
 	}
+	if err == nil {
+		// the login is handled in-house and has an immediate return
+		// TODO: use-case for 3rd party login? oauth2 process support? tbd
+		// FIXME: hard-coded keys!? ugh
+		clientID := args["login"]
+		password := args["password"]
+		reply, err = svc.authenticator.Login(clientID, password)
+	}
+	if err != nil {
+		slog.Warn("HandleLogin failed:", "err", err.Error())
+		svc.WriteError(w, err, http.StatusUnauthorized)
+		return
+	}
+	// TODO: set client session cookie for browser clients
+	//svc.sessionManager.SetSessionCookie(cs.sessionID,token)
+	svc.WriteReply(w, reply, transports.StatusCompleted, nil)
 }
+
+// HandleLoginRefresh refreshes the auth token using the session authenticator.
+// The session authenticator is that of the authn service. This allows testing with a dummy
+// authenticator without having to run the authn service.
+func (svc *HttpTransportServer) HandleLoginRefresh(w http.ResponseWriter, r *http.Request) {
+	var newToken string
+	var oldToken string
+	rp, err := GetRequestParams(r)
+	if err == nil {
+		err = tputils.Decode(rp.Data, &oldToken)
+	}
+	if err == nil {
+		newToken, err = svc.authenticator.RefreshToken(rp.ClientID, oldToken)
+	}
+	if err != nil {
+		slog.Warn("HandleLoginRefresh failed:", "err", err.Error())
+		svc.WriteError(w, err, 0)
+		return
+	}
+	svc.WriteReply(w, newToken, transports.StatusCompleted, nil)
+}
+
+// HandleLogout ends the session and closes all client connections
+func (svc *HttpTransportServer) HandleLogout(w http.ResponseWriter, r *http.Request) {
+	// use the authenticator
+	rp, err := GetRequestParams(r)
+	if err == nil {
+		svc.authenticator.Logout(rp.ClientID)
+	}
+	svc.WriteReply(w, nil, transports.StatusCompleted, err)
+}
+
+// HandlePing with http handler of ping as a request
+func (svc *HttpTransportServer) HandlePing(w http.ResponseWriter, r *http.Request) {
+	// simply return a pong message
+	rp, err := GetRequestParams(r)
+
+	replyHeader := w.Header()
+	replyHeader.Set(CorrelationIDHeader, rp.CorrelationID)
+
+	svc.WriteReply(w, "pong", transports.StatusCompleted, err)
+
+	//svc.HandleRequestMessage(wot.HTOpPing, w, r)
+}
+
+//
+//// SendNotification broadcast an event or property change to subscribers clients
+//func (svc *HttpTransportServer) SendNotification(msg transports.NotificationMessage) {
+//	cList := svc.cm.GetConnectionByProtocol(transports.ProtocolTypeHTTPS)
+//	for _, c := range cList {
+//		c.SendNotification(msg)
+//	}
+//}
 
 // Stop the https server
 func (svc *HttpTransportServer) Stop() {
@@ -96,10 +271,10 @@ func (svc *HttpTransportServer) Stop() {
 	svc.httpServer.Stop()
 }
 
-// writeError is a convenience function that logs and writes an error
+// WriteError is a convenience function that logs and writes an error
 // If the reply has an error then write a bad request with the error as payload
 // This also writes the StatusHeader containing StatusFailed.
-func (svc *HttpTransportServer) writeError(w http.ResponseWriter, err error, code int) {
+func (svc *HttpTransportServer) WriteError(w http.ResponseWriter, err error, code int) {
 	if code == 0 {
 		code = http.StatusBadRequest
 	}
@@ -113,12 +288,12 @@ func (svc *HttpTransportServer) writeError(w http.ResponseWriter, err error, cod
 	}
 }
 
-// writeReply is a convenience function that serializes the data and writes it as a response,
+// WriteReply is a convenience function that serializes the data and writes it as a response,
 // optionally reporting an error with code BadRequest.
 //
 // status is completed,failed,... set in the 'StatusHeader' reply header if provided.
 // only used by hiveot.
-func (svc *HttpTransportServer) writeReply(
+func (svc *HttpTransportServer) WriteReply(
 	w http.ResponseWriter, data any, status string, err error) {
 
 	if status != "" {
@@ -155,10 +330,10 @@ func StartHttpTransportServer(host string, port int,
 	serverCert *tls.Certificate,
 	caCert *x509.Certificate,
 	authenticator transports.IAuthenticator,
-	cm *connections.ConnectionManager,
-	handleNotification transports.ServerNotificationHandler,
-	handleRequest transports.ServerRequestHandler,
-	handleResponse transports.ServerResponseHandler,
+	// cm *connections.ConnectionManager,
+	// handleNotification transports.ServerNotificationHandler,
+	// handleRequest transports.ServerRequestHandler,
+	// handleResponse transports.ServerResponseHandler,
 ) (*HttpTransportServer, error) {
 
 	httpServer, httpRouter := tlsserver.NewTLSServer(
@@ -168,15 +343,15 @@ func StartHttpTransportServer(host string, port int,
 	svc := HttpTransportServer{
 		authenticator: authenticator,
 
-		serverRequestHandler:      handleRequest,
-		serverResponseHandler:     handleResponse,
-		serverNotificationHandler: handleNotification,
+		//serverRequestHandler:      handleRequest,
+		//serverResponseHandler:     handleResponse,
+		//serverNotificationHandler: handleNotification,
 
 		hostName:   host,
 		port:       port,
 		httpServer: httpServer,
 		router:     httpRouter,
-		cm:         cm,
+		//cm:         cm,
 	}
 
 	svc.createRoutes(svc.router)

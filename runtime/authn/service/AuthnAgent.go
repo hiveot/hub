@@ -15,13 +15,13 @@ type AuthnAgent struct {
 
 // HandleRequest authn services action request
 func (agent *AuthnAgent) HandleRequest(
-	req transports.RequestMessage) (resp transports.ResponseMessage) {
+	req *transports.RequestMessage, c transports.IConnection) (resp *transports.ResponseMessage) {
 
 	_, thingID := td.SplitDigiTwinThingID(req.ThingID)
 	if thingID == authn.AdminServiceID {
-		resp = agent.adminHandler(req)
+		resp = agent.adminHandler(req, c)
 	} else if thingID == authn.UserServiceID {
-		resp = agent.userHandler(req)
+		resp = agent.userHandler(req, c)
 	} else {
 		err := fmt.Errorf("unknown authn service capability '%s'", req.ThingID)
 		resp = req.CreateResponse(nil, err)
@@ -38,8 +38,8 @@ func (agent *AuthnAgent) HandleRequest(
 //	svc is the authentication service whose capabilities to expose
 func StartAuthnAgent(svc *AuthnService) *AuthnAgent {
 	agent := &AuthnAgent{
-		adminHandler: authn.NewHandleAdminAction(svc.AdminSvc),
-		userHandler:  authn.NewHandleUserAction(svc.UserSvc),
+		adminHandler: authn.NewHandleAdminRequest(svc.AdminSvc),
+		userHandler:  authn.NewHandleUserRequest(svc.UserSvc),
 	}
 	return agent
 }

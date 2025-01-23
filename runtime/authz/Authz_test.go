@@ -82,8 +82,8 @@ func TestSetRole(t *testing.T) {
 func TestHasPermission(t *testing.T) {
 	const operatorID = "operator-1"
 	const client1Role = authz2.ClientRoleOperator
-	const thingID = ""
-	const key = ""
+	const thingID = "thing1"
+	const key = "key1"
 	const correlationID = "req-1"
 	cfg := authz.NewAuthzConfig()
 	cfg.Setup(testDir)
@@ -104,9 +104,10 @@ func TestHasPermission(t *testing.T) {
 	hasPerm := svc.HasPermission(msg.SenderID, msg.Operation, msg.ThingID)
 	assert.True(t, hasPerm)
 
-	// operators cannot publish property values
-	msg = transports.NewRequestMessage(vocab.HTOpUpdateProperty, thingID, key, nil, correlationID)
-	msg.SenderID = operatorID
-	hasPerm = svc.HasPermission(msg.SenderID, msg.Operation, msg.ThingID)
-	assert.False(t, hasPerm)
+	// operators cannot respond with events updates
+	//resp := transports.NewResponseMessage(vocab.OpSubscribeEvent, thingID, key, "eventValue", nil, correlationID)
+	//resp.SenderID = operatorID
+	//// haspermission only validates requests and event/property notificates are now subscription responses
+	//hasPerm = svc.HasPermission(msg.SenderID, msg.Operation, msg.ThingID)
+	//assert.False(t, hasPerm)
 }

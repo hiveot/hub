@@ -1,4 +1,4 @@
-package httpserver
+package wothttpbasicserver
 
 // message types defined in the http basic profile
 // https://w3c.github.io/wot-profile/#http-basic-profile-protocol-binding

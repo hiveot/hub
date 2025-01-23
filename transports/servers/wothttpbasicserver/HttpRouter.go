@@ -1,4 +1,4 @@
-package httpserver
+package wothttpbasicserver
 
 import (
 	"github.com/go-chi/chi/v5"
@@ -29,9 +29,9 @@ const (
 	HttpGetDigitwinPath = "/digitwin/{operation}/{thingID}/{name}"
 
 	// paths for HTTP subprotocols
-	DefaultWSSPath   = "/wss"
-	DefaultSSEPath   = "/sse"
-	DefaultSSESCPath = "/ssesc"
+	//DefaultWSSPath   = "/wss"
+	//DefaultSSEPath   = "/sse"
+	//DefaultSSESCPath = "/ssesc"
 
 	// Generic form href that maps to all operations for the http client, using URI variables
 	// Generic HiveOT HTTP urls when Forms are not available. The payload is a

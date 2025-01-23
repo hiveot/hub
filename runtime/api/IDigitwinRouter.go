@@ -11,9 +11,7 @@ type IDigitwinRouter interface {
 	// HandleRequest with the message to handle.
 	// If a result is immediately available it is returned, otherwise it is sent
 	// separately to the connection with the ID of replyTo
-	HandleRequest(msg transports.RequestMessage, replyTo string) transports.ResponseMessage
+	HandleRequest(msg *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage
 
-	HandleResponse(resp transports.ResponseMessage) error
-
-	HandleNotification(notif transports.NotificationMessage)
+	HandleResponse(resp *transports.ResponseMessage) error
 }

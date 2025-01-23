@@ -10,6 +10,7 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/messaging"
 	"github.com/hiveot/hub/wot/exposedthing"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
@@ -25,7 +26,7 @@ type IsyBinding struct {
 
 	// Configuration of this protocol binding
 	config *config.Isy99xConfig
-	hc     transports.IAgentConnection
+	ag     *messaging.Agent
 
 	thingID      string           // ID of the binding Thing
 	isyAPI       *isy.IsyAPI      // methods for communicating met ISY gateway device
@@ -62,12 +63,12 @@ func (svc *IsyBinding) GetBindingPropValues(onlyChanges bool) map[string]any {
 
 // onIsyEvent publishes the event sent by one of the ISY thing.
 func (svc *IsyBinding) onIsyEvent(thingID string, evName string, value any) {
-	_ = svc.hc.PubEvent(thingID, evName, value)
+	_ = svc.ag.PubEvent(thingID, evName, value)
 }
 
 // HandleWriteBindingProperty configures the binding.
 func (svc *IsyBinding) HandleWriteBindingProperty(
-	req transports.RequestMessage) transports.ResponseMessage {
+	req *transports.RequestMessage) *transports.ResponseMessage {
 
 	err := fmt.Errorf("unknown configuration request '%s' from '%s'", req.Name, req.SenderID)
 	// connection settings to connect to the gateway
@@ -144,10 +145,10 @@ func (svc *IsyBinding) MakeBindingTD() *td.TD {
 // If no connection can be made the heartbeat will retry periodically until stopped.
 //
 // This publishes a TD for this binding, starts a background polling heartbeat.
-func (svc *IsyBinding) Start(hc transports.IAgentConnection) (err error) {
+func (svc *IsyBinding) Start(ag *messaging.Agent) (err error) {
 	slog.Info("Starting Isy99x binding")
-	svc.hc = hc
-	svc.thingID = hc.GetClientID()
+	svc.ag = ag
+	svc.thingID = ag.GetClientID()
 	if svc.config.LogLevel != "" {
 		logging.SetLogging(svc.config.LogLevel, "")
 	}
@@ -160,7 +161,7 @@ func (svc *IsyBinding) Start(hc transports.IAgentConnection) (err error) {
 	svc.IsyGW.Init(svc.isyAPI)
 
 	// subscribe to action and property write requests
-	svc.hc.SetRequestHandler(svc.handleRequest)
+	svc.ag.SetRequestHandler(svc.handleRequest)
 
 	// last, start polling heartbeat
 	svc.stopHeartbeatFn = svc.startHeartbeat()
@@ -189,7 +190,7 @@ func (svc *IsyBinding) startHeartbeat() (stopFn func()) {
 		if !isConnected {
 			// if the connection dropped, send an event
 			if svc.wasConnected {
-				_ = svc.hc.PubEvent(svc.thingID, vocab.PropNetConnection, isConnected)
+				_ = svc.ag.PubEvent(svc.thingID, vocab.PropNetConnection, isConnected)
 			}
 			err = svc.isyAPI.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
 			if err == nil {
@@ -198,7 +199,7 @@ func (svc *IsyBinding) startHeartbeat() (stopFn func()) {
 			}
 			isConnected = svc.isyAPI.IsConnected()
 			if isConnected {
-				_ = svc.hc.PubEvent(svc.thingID, vocab.PropNetConnection, isConnected)
+				_ = svc.ag.PubEvent(svc.thingID, vocab.PropNetConnection, isConnected)
 			}
 		}
 		svc.wasConnected = isConnected

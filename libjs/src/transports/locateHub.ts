@@ -1,6 +1,7 @@
 
 import { Bonjour } from 'bonjour-service';
 import * as tslog from 'tslog';
+import {ProtocolTypeHiveotSSE, ProtocolTypeHiveotWSS} from "@hivelib/transports/IConsumerConnection";
 
 const HIVEOT_HUB_SERVICE = "hiveot";
 const log = new  tslog.Logger({prettyLogTimeZone:"local"})
@@ -10,8 +11,8 @@ const log = new  tslog.Logger({prettyLogTimeZone:"local"})
 //    https://<addr>:<port>/<ssepath>
 //    wss://<addr>:<port>/<wsspath>
 export async function locateHub(): Promise<{
-    addr?:string, sseScURL?: string, wssURL?:string,
-    mqttWssURL?:string, mqttTcpURL?:string }> {
+    addr?:string, hiveotSseURL?: string, hiveotWssURL?:string,
+    wotWssURL?:string }> {
 
     return new Promise((resolve, reject) => {
 
@@ -24,18 +25,19 @@ export async function locateHub(): Promise<{
             // from nodejs, only websockets can be used for the capnp connection
             let addr = service.addresses[0];
             let kv = service.txt;
-            let wssURL = kv["wss"];
-            let ssescURL = kv["ssesc"];
-            let mqttWssURL = kv["mqtt-wss"];
-            let mqttTcpURL = kv["mqtt-tcp"];
+            let wotWssURL = kv[ProtocolTypeHiveotWSS];
+            let hiveotWssURL = kv[ProtocolTypeHiveotWSS];
+            let hiveotSseURL = kv[ProtocolTypeHiveotSSE];
+            // let mqttWssURL = kv[ProtocolTypeHiveotMQTT];
+            // let mqttTcpURL = kv["mqtt-tcp"];
 
             log.info("found service: ", addr);
             resolve({
                 addr:addr,
-                sseScURL: ssescURL,
-                wssURL:wssURL,
-                mqttWssURL:mqttWssURL,
-                mqttTcpURL:mqttTcpURL,
+                hiveotSseURL: hiveotSseURL,
+                wotWssURL:wotWssURL,
+                hiveotWssURL:hiveotWssURL,
+                // mqttTcpURL:mqttTcpURL,
             });
         });
     });

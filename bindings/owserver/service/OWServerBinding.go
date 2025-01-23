@@ -7,7 +7,7 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/services/state/stateclient"
-	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/messaging"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"sync"
@@ -35,7 +35,7 @@ type OWServerBinding struct {
 	edsAPI *eds.EdsAPI
 
 	// hub client to publish TDs and values and receive actions
-	hc transports.IAgentConnection
+	ag *messaging.Agent
 
 	// The discovered and publishable things, containing instructions on
 	// if and how properties and events are published
@@ -99,7 +99,7 @@ func (svc *OWServerBinding) GetBindingPropValues() map[string]any {
 // LoadState loads the custom node names (owserver doesn't support saving node names)
 // and clear 'clientModelChanged' status
 func (svc *OWServerBinding) LoadState() error {
-	stateCl := stateclient.NewStateClient(svc.hc)
+	stateCl := stateclient.NewStateClient(&svc.ag.Consumer)
 	// load user edited node names
 	found, err := stateCl.Get(customTitlesKey, &svc.customTitles)
 	if !found {
@@ -110,7 +110,7 @@ func (svc *OWServerBinding) LoadState() error {
 
 // SaveState stores the custom node names
 func (svc *OWServerBinding) SaveState() error {
-	stateCl := stateclient.NewStateClient(svc.hc)
+	stateCl := stateclient.NewStateClient(&svc.ag.Consumer)
 	err := stateCl.Set(customTitlesKey, &svc.customTitles)
 	return err
 }
@@ -118,20 +118,20 @@ func (svc *OWServerBinding) SaveState() error {
 // Start the OWServer protocol binding
 // This publishes a TD for this binding, starts a background heartbeat.
 //
-//	hc is the connection with the hubClient to use.
-func (svc *OWServerBinding) Start(hc transports.IAgentConnection) (err error) {
+//	ag is the agent connection for receiving requests and sending responses.
+func (svc *OWServerBinding) Start(ag *messaging.Agent) (err error) {
 	slog.Info("Starting OWServer binding")
 	if svc.config.LogLevel != "" {
 		logging.SetLogging(svc.config.LogLevel, "")
 	}
-	svc.hc = hc
-	svc.agentID = hc.GetClientID()
+	svc.ag = ag
+	svc.agentID = ag.GetClientID()
 	// Create the adapter for the OWServer 1-wire gateway
 	svc.edsAPI = eds.NewEdsAPI(
 		svc.config.OWServerURL, svc.config.OWServerLogin, svc.config.OWServerPassword)
 
 	// subscribe to action and configuration requests
-	svc.hc.SetRequestHandler(svc.HandleRequest)
+	svc.ag.SetRequestHandler(svc.HandleRequest)
 
 	// load custom settings
 	err = svc.LoadState()
@@ -140,15 +140,15 @@ func (svc *OWServerBinding) Start(hc transports.IAgentConnection) (err error) {
 	}
 
 	// publish this binding's TD document
-	td := svc.CreateBindingTD()
-	svc.things[td.ID] = td
-	err = svc.hc.PubTD(td)
+	tdi := svc.CreateBindingTD()
+	svc.things[tdi.ID] = tdi
+	err = svc.ag.PubTD(tdi)
 	if err != nil {
 		slog.Error("failed publishing service TD. Continuing...",
 			slog.String("err", err.Error()))
 	} else {
 		props := svc.GetBindingPropValues()
-		err = hc.PubProperties(td.ID, props)
+		err = ag.PubProperties(tdi.ID, props)
 	}
 
 	// last, start polling heartbeat
@@ -176,7 +176,7 @@ func (svc *OWServerBinding) startHeartBeat() (stopFn func()) {
 			// Since this can take some time, check if client is closed before using it.
 			nodes, err := svc.PollNodes()
 			svc.mux.RLock()
-			isConnected := svc.hc.IsConnected()
+			isConnected := svc.ag.IsConnected()
 			svc.mux.RUnlock()
 			if err == nil && isConnected {
 				if tdCountDown <= 0 {

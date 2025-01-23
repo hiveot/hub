@@ -63,8 +63,7 @@ func TestLoginRefresh(t *testing.T) {
 	require.NoError(t, err)
 
 	// RefreshToken the token
-	token2, err := svc.UserSvc.RefreshToken(
-		user1ID, authn.UserRefreshTokenArgs{user1ID, token1})
+	token2, err := svc.UserSvc.RefreshToken(user1ID, token1)
 	require.NoError(t, err)
 	require.NotEmpty(t, token2)
 
@@ -82,7 +81,7 @@ func TestLoginRefreshFail(t *testing.T) {
 	defer stopFn()
 
 	// RefreshToken the token non-existing
-	resp, err := svc.UserSvc.RefreshToken(user1ID, authn.UserRefreshTokenArgs{user1ID, "badToken"})
+	resp, err := svc.UserSvc.RefreshToken(user1ID, "badToken")
 	_ = resp
 	require.Error(t, err)
 }

@@ -67,9 +67,9 @@ func getHiveoviewForm(op, thingID, name string) td.Form {
 // This returns a client. Call Close() when done.
 func WebLogin(fullURL string, clientID string,
 	onConnection func(bool, error),
-	onNotification func(message transports.NotificationMessage),
+	onNotification func(message *transports.ResponseMessage),
 	onRequest func(message transports.RequestMessage) transports.ResponseMessage) (
-	cl transports.IConsumerConnection, err error) {
+	cl transports.IConnection, err error) {
 
 	//sseCl := clients.NewHubClient(fullURL, clientID, ts.Certs.CaCert)
 	// websocket client
@@ -77,7 +77,7 @@ func WebLogin(fullURL string, clientID string,
 	//	fullURL, clientID, nil, ts.Certs.CaCert, time.Minute)
 	// or ssesc client
 
-	// use the hub's SSE client to connect to the hiveoview server
+	// use the hub's SSE client to connect to the hiveoview server as a browser.
 	// FIXME: hiveoview server uses different SSE event payload than hiveoview
 	// the 'event' ID contains thingID etc. We can't change this because
 	// htmx sse triggers rely on this format. (for now)
@@ -189,7 +189,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	const agentID = "agent1"
 	const testConnections = 1
 	const eventName = "event1"
-	var webClients = make([]transports.IConsumerConnection, 0)
+	var webClients = make([]transports.IConnection, 0)
 	var connectCount atomic.Int32
 	var disConnectCount atomic.Int32
 	var messageCount atomic.Int32
@@ -231,7 +231,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 		}
 	}
 	// handler hiveoview SSE notifications
-	onNotification := func(msg transports.NotificationMessage) {
+	onNotification := func(msg transports.ResponseMessage) {
 		// the UI expects this format for triggering htmx
 		expectedType := fmt.Sprintf("dtw:%s:%s/%s", agentID, td1.ID, eventName)
 		if msg.Operation == expectedType {
@@ -260,8 +260,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	require.Equal(t, testConnections, nrSessions)
 
 	// 3: agent publishes an event, which should be received N times
-	notif1 := transports.NewNotificationMessage(wot.HTOpEvent, td1.ID, eventName, "a value")
-	err = ag1.SendNotification(notif1)
+	err = ag1.PubEvent(td1.ID, eventName, "a value")
 	require.NoError(t, err)
 
 	// event should have been received N times
@@ -284,7 +283,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 
 	// 5: no more messages should be received after disconnecting
 	messageCount.Store(0)
-	err = ag1.SendNotification(notif1)
+	err = ag1.PubEvent(td1.ID, eventName, "a value")
 	require.NoError(t, err)
 
 	// zero events should have been received
@@ -300,7 +299,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	// the root cause of the first is that the first browser load doesn't connect
 	// with SSE and this never closes the connection.
 	// The second remaining session doesn't happen while debugging .. yeah fun
-	nrConnections, _ := ts.Runtime.CM.GetNrConnections()
+	nrConnections, _ := ts.Runtime.TransportsMgr.GetNrConnections()
 	nrSessions = svc.GetSM().GetNrSessions()
 	if nrConnections > 0 {
 		t.Log(fmt.Sprintf(

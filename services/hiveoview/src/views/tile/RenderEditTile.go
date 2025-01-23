@@ -35,12 +35,12 @@ func (data EditTileTemplateData) GetTypeLabel(typeID string) string {
 
 // GetValue returns the value of a tile source
 func (data EditTileTemplateData) GetValue(thingID, name string) string {
-	v, found := data.Values[thingID+"/"+name]
+	iout, found := data.Values[thingID+"/"+name]
 	if !found {
 		return ""
 	}
-	unitSymbol := v.Schema.UnitSymbol()
-	return v.Value.Text() + " " + unitSymbol
+	unitSymbol := iout.UnitSymbol()
+	return iout.Value.Text() + " " + unitSymbol
 }
 func (data EditTileTemplateData) GetUpdated(thingID, name string) string {
 	v, found := data.Values[thingID+"/"+name]

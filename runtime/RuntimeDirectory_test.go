@@ -1,7 +1,8 @@
 package runtime_test
 
 import (
-	"encoding/json"
+	"errors"
+	"fmt"
 	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/digitwin"
@@ -13,60 +14,62 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"net/url"
 	"sync/atomic"
 	"testing"
 	"time"
 )
 
+// FIXME: add tests to check that the runtime requests the TDs of newly connected agents
+
 func TestAddRemoveTD(t *testing.T) {
-	t.Log("--- TestAddRemoveTD start ---")
-	defer t.Log("--- TestAddRemoveTD end ---")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 
 	const agentID = "agent1"
 	const userID = "user1"
 	const agThing1ID = "thing1"
-	const agentAction = "action1"
 	var dtThing1ID = td.MakeDigiTwinThingID(agentID, agThing1ID)
-	var evCount atomic.Int32
 
 	r := startRuntime()
 	defer r.Stop()
+
+	// Create the agent and its TDs to query
+	td1 := td.NewTD(agThing1ID, "Title", vocab.ThingSensorMulti)
+	td1JSON, _ := jsoniter.MarshalToString(td1)
+	tdList := []string{string(td1JSON)}
 	ag1, _ := ts.AddConnectAgent(agentID)
-	ag1.SetRequestHandler(func(req transports.RequestMessage) transports.ResponseMessage {
-		// expect 2 requests, updated and removed
-		evCount.Add(1)
-		return req.CreateResponse(nil, nil)
+	ag1.SetRequestHandler(func(req *transports.RequestMessage, _ transports.IConnection) *transports.ResponseMessage {
+		if req.Operation == wot.HTOpReadTD {
+			req.CreateResponse(td1JSON, nil)
+		} else if req.Operation == wot.HTOpReadAllTDs {
+			req.CreateResponse(tdList, nil)
+		}
+		return req.CreateResponse(nil, errors.New("UnexpectedRequest"))
 	})
 	defer ag1.Disconnect()
+
+	// Create the consumer
 	cl1, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
-	cl1.SetNotificationHandler(func(msg transports.NotificationMessage) {
-	})
+	//cl1.SetResponseHandler(func(msg *transports.ResponseMessage) error {
+	//	return nil
+	//})
 	defer cl1.Disconnect()
-	err := cl1.Subscribe("", "")
-	require.NoError(t, err)
+	//err := cl1.Subscribe("", "")
+	//require.NoError(t, err)
 
 	// Add the TD
-	td1 := td.NewTD(agThing1ID, "Title", vocab.ThingSensorMulti)
-	td1JSON, _ := json.Marshal(td1)
-	//err = ag1.PubTD(agThing1ID, string(td1JSON))
 	// the hub will intercept this operation and update the digitwin directory
-	// todo: changes this to follow the directory specification once it is available (assuming it fits)
-	notif := transports.NewNotificationMessage(wot.HTOpUpdateTD, "", "", string(td1JSON))
-	err = ag1.SendNotification(notif)
+	err := ag1.PubTD(td1) // sends request HTOpUpdateTD
 	assert.NoError(t, err)
-	time.Sleep(time.Second * 2)
+
 	// Get returns a serialized TD object
 	// use the helper directory client rpc method
-	time.Sleep(time.Millisecond)
-	td3Json, err := digitwin.DirectoryReadTD(cl1, dtThing1ID)
+	td3Json, err := cl1.ReadTD(dtThing1ID)
 	require.NoError(t, err)
 	var td3 td.TD
 	err = jsoniter.UnmarshalFromString(td3Json, &td3)
 	require.NoError(t, err)
 	assert.Equal(t, dtThing1ID, td3.ID)
-
-	//send action to agent
-	err = cl1.Rpc(wot.OpInvokeAction, dtThing1ID, agentAction, "do something", nil)
 
 	//stat = cl1.SendRequest(nil, directory.ThingID, directory.RemoveTDMethod, &args, nil)
 	// RemoveTD from the directory
@@ -76,18 +79,13 @@ func TestAddRemoveTD(t *testing.T) {
 
 	// after removal of the TD, getTD should return an error
 	//var tdJSON4 string
-	td4Json, err := digitwin.DirectoryReadTD(cl1, dtThing1ID)
-	//err = cl1.InvokeAction(digitwin.DirectoryDThingID,
-	//	digitwin.DirectoryReadTDMethod, dtThing1ID, &td4Json)
+	td4Json, err := cl1.ReadTD(dtThing1ID)
 	require.Error(t, err)
 	require.Empty(t, td4Json)
-
-	// expect 2 events to be received
-	require.Equal(t, int32(1), evCount.Load())
 }
 
 func TestReadTDs(t *testing.T) {
-	t.Log("--- TestReadTDs start ---")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 
 	const agentID = "agent1"
 	const userID = "user1"
@@ -123,7 +121,7 @@ func TestReadTDs(t *testing.T) {
 }
 
 func TestReadTDsRest(t *testing.T) {
-	t.Log("--- TestReadTDs using the rest api ---")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 
 	const agentID = "agent1"
 	const userID = "user1"
@@ -139,7 +137,9 @@ func TestReadTDsRest(t *testing.T) {
 	ts.AddTDs(agentID, 100)
 
 	serverURL := ts.GetServerURL(authn.ClientTypeConsumer)
-	cl2 := tlsclient.NewTLSClient(serverURL, nil, ts.Certs.CaCert, time.Second*30)
+	// FIXME: use the consumer protocol
+	urlParts, err := url.Parse(serverURL)
+	cl2 := tlsclient.NewTLSClient(urlParts.Host, nil, ts.Certs.CaCert, time.Second*30)
 	cl2.SetAuthToken(token)
 
 	tdJSONList, err := digitwin.DirectoryReadAllTDs(cl, 100, 0)
@@ -157,7 +157,7 @@ func TestReadTDsRest(t *testing.T) {
 }
 
 func TestTDEvent(t *testing.T) {
-	t.Log("--- TestTDEvent tests receiving TD update events ---")
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 
 	const agentID = "agent1"
 	const userID = "user1"
@@ -172,8 +172,8 @@ func TestTDEvent(t *testing.T) {
 	defer cl1.Disconnect()
 
 	// wait to directory TD updated events
-	notifHandler := func(msg transports.NotificationMessage) {
-		if msg.Operation == vocab.HTOpPublishEvent &&
+	respHandler := func(msg *transports.ResponseMessage) error {
+		if msg.Operation == vocab.OpSubscribeEvent &&
 			msg.ThingID == digitwin.DirectoryDThingID &&
 			msg.Name == digitwin.DirectoryEventThingUpdated {
 
@@ -184,9 +184,9 @@ func TestTDEvent(t *testing.T) {
 			assert.NoError(t, err)
 			tdCount.Add(1)
 		}
+		return nil
 	}
-	cl1.SetNotificationHandler(notifHandler)
-	//err := cl1.Subscribe("", "")
+	cl1.SetResponseHandler(respHandler)
 	err := cl1.Subscribe("", "")
 	require.NoError(t, err)
 	defer cl1.Unsubscribe("", "")
@@ -194,7 +194,7 @@ func TestTDEvent(t *testing.T) {
 	time.Sleep(time.Millisecond * 100)
 	require.NoError(t, err)
 
-	// add a TD
+	// add a TD and expect an event from the directory
 	ts.AddTDs(agentID, 1)
 	time.Sleep(time.Millisecond * 1000)
 	assert.Equal(t, int32(1), tdCount.Load())

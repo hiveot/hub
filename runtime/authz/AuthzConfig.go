@@ -3,6 +3,7 @@ package authz
 import (
 	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	"path"
 	"sync"
@@ -59,85 +60,69 @@ type RolePermission struct {
 	//MsgKey string
 }
 
-// agents can publish actions, events, property updates,
-// and subscribe to their own actions and config
+// re-usable auth permissions to refresh token and logout
+var authPermissions = []string{
+	wot.HTOpLogout,
+	wot.HTOpRefresh,
+}
+
+// re-usable permissions to observe and read and observe properties, events, actions, TDs
+var readPermissions = []string{
+	wot.HTOpReadEvent, wot.HTOpReadAllEvents,
+	wot.HTOpReadTD, wot.HTOpReadAllTDs,
+	wot.OpObserveProperty, wot.OpObserveAllProperties,
+	//wot.OpQueryAction, wot.OpQueryAllActions,  // why query actions if you cant invoke?
+	wot.OpReadProperty, wot.OpReadAllProperties,
+	wot.OpSubscribeEvent, wot.OpSubscribeAllEvents,
+	wot.OpUnobserveProperty, wot.OpUnobserveAllProperties,
+	wot.OpUnsubscribeEvent, wot.OpUnsubscribeAllEvents,
+}
+
+// Thing agents can refresh tokens and invoke actions on services.
 var agentPermissions = RolePermission{
-	Operations: []string{
-		vocab.HTOpPublishEvent,
-		vocab.HTOpUpdateMultipleProperties,
-		vocab.HTOpUpdateProperty,
-		vocab.HTOpUpdateTD,
-		vocab.OpInvokeAction,
-	},
+	Operations: append(authPermissions,
+		wot.OpInvokeAction,
+		wot.HTOpUpdateTD,
+	),
 }
 
-// services can pub/sub anything
+// services can do almost anything
 var servicePermissions = RolePermission{
-
-	Operations: []string{
-		vocab.HTOpPublishEvent,
-		vocab.HTOpUpdateMultipleProperties,
-		vocab.HTOpUpdateProperty,
-		vocab.HTOpUpdateTD,
-		vocab.OpInvokeAction,
-		vocab.OpObserveProperty,
-		vocab.OpObserveAllProperties,
-		vocab.OpReadAllProperties,
-		vocab.OpReadProperty,
-		vocab.HTOpReadAllEvents,
-		vocab.HTOpReadEvent,
-		vocab.HTOpReadAllTDs,
-		vocab.HTOpReadTD,
-		vocab.OpSubscribeEvent,
-		vocab.OpSubscribeAllEvents,
-	},
+	Operations: append(
+		append(authPermissions, readPermissions...),
+		wot.OpQueryAction, wot.OpQueryAllActions,
+		wot.OpInvokeAction, wot.OpWriteProperty,
+		wot.HTOpUpdateTD,
+	),
 }
 
-// viewers can subscribe to events from all things
+// viewers can authenticate and read properties and events
 var viewerPermissions = RolePermission{
-	Operations: []string{
-		vocab.OpObserveProperty, vocab.OpObserveAllProperties,
-		vocab.OpSubscribeEvent, vocab.OpSubscribeAllEvents,
-		// digitwin
-		vocab.OpReadProperty, vocab.OpReadAllProperties,
-		vocab.HTOpReadEvent, vocab.HTOpReadAllEvents,
-		vocab.HTOpReadTD, vocab.HTOpReadAllTDs,
-	},
+	Operations: append(authPermissions, readPermissions...),
 }
 
 // operators can subscribe to events and publish things actions
 // operators cannot configure things
 var operatorPermissions = RolePermission{
-	Operations: []string{
+	Operations: append(
+		append(authPermissions, readPermissions...),
 		vocab.OpInvokeAction,
-		vocab.OpObserveProperty, vocab.OpObserveAllProperties,
-		vocab.OpSubscribeEvent, vocab.OpSubscribeAllEvents,
-		// digitwin
-		vocab.OpQueryAction, vocab.OpQueryAllActions,
-		vocab.OpReadProperty, vocab.OpReadAllProperties,
-		vocab.HTOpReadEvent, vocab.HTOpReadAllEvents,
-		vocab.HTOpReadTD, vocab.HTOpReadAllTDs,
-	},
+		wot.OpQueryAction, wot.OpQueryAllActions,
+	),
 }
 
-// managers can sub all events and pub all actions
+// managers are operators that can also configure properties
 var managerPermissions = RolePermission{
-	Operations: []string{
-		vocab.OpInvokeAction,
-		vocab.OpObserveProperty, vocab.OpObserveAllProperties,
-		vocab.OpSubscribeEvent, vocab.OpSubscribeAllEvents,
+	Operations: append(operatorPermissions.Operations,
 		vocab.OpWriteProperty,
-		// digitwin
-		vocab.OpQueryAction, vocab.OpQueryAllActions,
-		vocab.OpReadProperty, vocab.OpReadAllProperties,
-		vocab.HTOpReadEvent, vocab.HTOpReadAllEvents,
-		vocab.HTOpReadTD, vocab.HTOpReadAllTDs,
-	},
+	),
 }
 
 // administrators are like managers.
 // Services will add their role authorization on startup
-var adminPermissions = managerPermissions
+var adminPermissions = RolePermission{
+	Operations: append(managerPermissions.Operations), // copy the permissions
+}
 
 // DefaultRolePermissions contains the default pub/sub permissions for each role
 var DefaultRolePermissions = map[authz.ClientRole]RolePermission{
