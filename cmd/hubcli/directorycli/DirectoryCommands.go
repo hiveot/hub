@@ -4,17 +4,17 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/runtime/api"
-	"github.com/hiveot/hub/transports"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
+	"github.com/hiveot/hub/transports/messaging"
 	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot/td"
 	"github.com/urfave/cli/v2"
 	"log/slog"
 )
 
-func DirectoryListCommand(hc *transports.IConsumerConnection) *cli.Command {
+func DirectoryListCommand(hc **messaging.Consumer) *cli.Command {
 	var verbose = false
 	return &cli.Command{
 		Name:      "ld",
@@ -46,9 +46,9 @@ func DirectoryListCommand(hc *transports.IConsumerConnection) *cli.Command {
 }
 
 // HandleListDirectory lists the directory content
-func HandleListDirectory(hc transports.IConsumerConnection) (err error) {
+func HandleListDirectory(hc *messaging.Consumer) (err error) {
 	// todo: iterate with offset and limit
-	tdListJson, err := digitwin.DirectoryReadAllTDs(hc, 300, 0)
+	tdListJson, err := digitwin.ThingDirectoryReadAllTDs(hc, 300, 0)
 	tdList, err2 := td.UnmarshalTDList(tdListJson)
 
 	if err != nil || err2 != nil {
@@ -79,14 +79,14 @@ func HandleListDirectory(hc transports.IConsumerConnection) (err error) {
 }
 
 // HandleListThing lists details of a Thing in the directory
-func HandleListThing(hc transports.IConsumerConnection, thingID string) error {
+func HandleListThing(hc *messaging.Consumer, thingID string) error {
 
-	tdDocJson, err := digitwin.DirectoryReadTD(hc, thingID)
+	tdDocJson, err := digitwin.ThingDirectoryReadTD(hc, thingID)
 	tdDoc, err2 := td.UnmarshalTD(tdDocJson)
 	if err != nil || err2 != nil {
 		return err
 	}
-	propValueList, err := digitwin.ValuesReadAllProperties(hc, thingID)
+	propValueList, err := digitwin.ThingValuesReadAllProperties(hc, thingID)
 	propValueMap := api.ValueListToMap(propValueList)
 
 	if err != nil {
@@ -107,7 +107,7 @@ func HandleListThing(hc transports.IConsumerConnection, thingID string) error {
 		prop, found := tdDoc.Properties[key]
 		if found && prop.ReadOnly {
 			value := propValueMap[key]
-			valueStr := tputils.DecodeAsString(value.Data, 15)
+			valueStr := tputils.DecodeAsString(value.Output, 15)
 			fmt.Printf(" %-30s %-40.40s %s%-15.15s%s %-.80s\n",
 				key, prop.Title, utils.COGreen, valueStr, utils.COReset, prop.Description)
 		}
@@ -120,7 +120,7 @@ func HandleListThing(hc transports.IConsumerConnection, thingID string) error {
 		prop, found := tdDoc.Properties[key]
 		if found && !prop.ReadOnly {
 			value := propValueMap[key]
-			valueStr := tputils.DecodeAsString(value.Data, 15)
+			valueStr := tputils.DecodeAsString(value.Output, 15)
 			fmt.Printf(" %-30s %-40.40s %-10.10s %s%-15.15s%s %-.80s\n",
 				key, prop.Title, prop.Type, utils.COBlue, valueStr, utils.COReset, prop.Description)
 		}
@@ -129,7 +129,7 @@ func HandleListThing(hc transports.IConsumerConnection, thingID string) error {
 	fmt.Println(utils.COYellow + "\nEvents:")
 	fmt.Println(" ID                                  EventType                 Title                                    DataType   Value           Description")
 	fmt.Println(" ----------------------------------  ------------------------  ---------------------------------------  ---------  --------------  -----------" + utils.COReset)
-	eventValueList, err := digitwin.ValuesReadAllEvents(hc, thingID)
+	eventValueList, err := digitwin.ThingValuesReadAllEvents(hc, thingID)
 	eventValueMap := api.ValueListToMap(eventValueList)
 	keys = utils.OrderedMapKeys(tdDoc.Events)
 	for _, key := range keys {
@@ -139,7 +139,7 @@ func HandleListThing(hc transports.IConsumerConnection, thingID string) error {
 			dataType = ev.Data.Type
 		}
 		value := eventValueMap[key]
-		valueStr := tputils.DecodeAsString(value.Data, 15)
+		valueStr := tputils.DecodeAsString(value.Output, 15)
 		if ev.Data.Type != "" {
 			//initialValue = ev.Data.InitialValue
 		}
@@ -150,14 +150,14 @@ func HandleListThing(hc transports.IConsumerConnection, thingID string) error {
 	fmt.Println(utils.CORed + "\nActions:")
 	fmt.Println(" ID                             ActionType                Title                                    Arg(s)     Value           Description")
 	fmt.Println(" -----------------------------  ------------------------  ---------------------------------------  ---------  --------------  -----------" + utils.COReset)
-	actionValueList, err := digitwin.ValuesReadAllProperties(hc, thingID)
+	actionValueList, err := digitwin.ThingValuesReadAllProperties(hc, thingID)
 	actionValueMap := api.ValueListToMap(actionValueList)
 	keys = utils.OrderedMapKeys(tdDoc.Actions)
 	for _, key := range keys {
 		action := tdDoc.Actions[key]
 		dataType := "(n/a)"
 		value := actionValueMap[key]
-		valueStr := tputils.DecodeAsString(value.Data, 15)
+		valueStr := tputils.DecodeAsString(value.Output, 15)
 		if action.Input != nil {
 			dataType = action.Input.Type
 			//initialValue = action.Input.InitialValue
@@ -170,8 +170,8 @@ func HandleListThing(hc transports.IConsumerConnection, thingID string) error {
 }
 
 // HandleListThingVerbose lists a Thing full TD
-func HandleListThingVerbose(hc transports.IConsumerConnection, thingID string) error {
-	tdJSON, err := digitwin.DirectoryReadTD(hc, thingID)
+func HandleListThingVerbose(hc *messaging.Consumer, thingID string) error {
+	tdJSON, err := digitwin.ThingDirectoryReadTD(hc, thingID)
 
 	if err != nil {
 		return err

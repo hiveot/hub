@@ -3,16 +3,15 @@ package history_test
 import (
 	"fmt"
 	"github.com/araddon/dateparse"
-	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/bucketstore"
 	"github.com/hiveot/hub/lib/testenv"
+	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/hiveot/hub/services/history/historyapi"
 	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/hiveot/hub/services/history/service"
 	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/messaging"
 	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
@@ -611,9 +610,8 @@ func TestPubEvents(t *testing.T) {
 
 	_, readHist, stopFn := startHistoryService(true)
 	defer stopFn()
-	agentConn, _ := ts.AddConnectService(agent1ID)
-	ag1 := messaging.NewAgent(agentConn, nil, nil, nil, ts.ConnectTimeout)
-	defer agentConn.Disconnect()
+	ag1, _ := ts.AddConnectService(agent1ID)
+	defer ag1.Disconnect()
 
 	// Add the thing who is publishing events
 	td1 := ts.CreateTestTD(0)

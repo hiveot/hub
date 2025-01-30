@@ -5,11 +5,10 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
-	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/keys"
+	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/hiveot/hub/services/certs/certsapi"
-	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/messaging"
 	"log/slog"
 	"math/big"
@@ -198,9 +197,9 @@ func (svc *SelfSignedCertsService) CreateUserCert(
 // Start the service and listen for requests
 //
 //	hc is the connection to the hub with a service role. For testing it can be nil.
-func (svc *SelfSignedCertsService) Start(cc transports.IConnection) (err error) {
-	slog.Info("Starting certs service", "serviceID", cc.GetClientID())
-	ag := messaging.NewAgent(cc, nil, nil, nil, 0)
+func (svc *SelfSignedCertsService) Start(ag *messaging.Agent) (err error) {
+	slog.Info("Starting certs service", "serviceID", ag.GetClientID())
+
 	// permissions for using this service are for admin only
 	err = authz.UserSetPermissions(&ag.Consumer, authz.ThingPermissions{
 		AgentID: ag.GetClientID(),

@@ -1,12 +1,11 @@
 package authz_test
 
 import (
-	"github.com/hiveot/hub/api/go/authn"
-	authz2 "github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/logging"
+	authn "github.com/hiveot/hub/runtime/authn/api"
 	"github.com/hiveot/hub/runtime/authn/authnstore"
-	"github.com/hiveot/hub/runtime/authz"
+	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/hiveot/hub/runtime/authz/service"
 	"github.com/hiveot/hub/transports"
 	"github.com/stretchr/testify/assert"
@@ -32,7 +31,7 @@ func TestMain(m *testing.M) {
 
 // Test starting and stopping authorization service
 func TestStartStop(t *testing.T) {
-	cfg := authz.NewAuthzConfig()
+	cfg := service.NewAuthzConfig()
 	svc := service.NewAuthzService(&cfg, nil)
 	err := svc.Start()
 	require.NoError(t, err)
@@ -42,9 +41,9 @@ func TestStartStop(t *testing.T) {
 // Test Get/Set role
 func TestSetRole(t *testing.T) {
 	const client1ID = "client1"
-	const client1Role = authz2.ClientRoleAgent
+	const client1Role = authz.ClientRoleAgent
 	// start the authz server
-	cfg := authz.NewAuthzConfig()
+	cfg := service.NewAuthzConfig()
 	authnStore := authnstore.NewAuthnFileStore(passwordFile, "")
 	svc := service.NewAuthzService(&cfg, authnStore)
 	err := svc.Start()
@@ -65,7 +64,7 @@ func TestSetRole(t *testing.T) {
 	//hc := embedded.NewEmbeddedClient(client1ID, handler.HandleMessage)
 
 	// set the role
-	err = svc.SetClientRole(client1ID, authz2.AdminSetClientRoleArgs{
+	err = svc.SetClientRole(client1ID, authz.AdminSetClientRoleArgs{
 		ClientID: client1ID,
 		Role:     client1Role,
 	})
@@ -81,11 +80,11 @@ func TestSetRole(t *testing.T) {
 
 func TestHasPermission(t *testing.T) {
 	const operatorID = "operator-1"
-	const client1Role = authz2.ClientRoleOperator
+	const client1Role = authz.ClientRoleOperator
 	const thingID = "thing1"
 	const key = "key1"
 	const correlationID = "req-1"
-	cfg := authz.NewAuthzConfig()
+	cfg := service.NewAuthzConfig()
 	cfg.Setup(testDir)
 	authnStore := authnstore.NewAuthnFileStore(passwordFile, "")
 	svc := service.NewAuthzService(&cfg, authnStore)
@@ -96,7 +95,7 @@ func TestHasPermission(t *testing.T) {
 	err = authnStore.Add(operatorID,
 		authn.ClientProfile{ClientID: operatorID, ClientType: authn.ClientTypeConsumer})
 	require.NoError(t, err)
-	err = svc.SetClientRole(operatorID, authz2.AdminSetClientRoleArgs{operatorID, client1Role})
+	err = svc.SetClientRole(operatorID, authz.AdminSetClientRoleArgs{operatorID, client1Role})
 	assert.NoError(t, err)
 	// consumers have permission to publish actions and write-property requests
 	msg := transports.NewRequestMessage(vocab.OpInvokeAction, thingID, key, nil, correlationID)

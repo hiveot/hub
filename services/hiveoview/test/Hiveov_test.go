@@ -2,13 +2,13 @@ package test
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
+	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/service"
 	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/clients/sseclient"
+	"github.com/hiveot/hub/transports/clients/httpsseclient"
 	"github.com/hiveot/hub/transports/servers/httpserver"
 	"github.com/hiveot/hub/transports/tputils/tlsclient"
 	"github.com/hiveot/hub/wot"
@@ -38,7 +38,7 @@ var ts *testenv.TestServer
 
 // return the form with href for login operations to the hiveoview server
 // these must match the paths in hiveoview CreateRoutes.
-func getHiveoviewForm(op, thingID, name string) td.Form {
+func getHiveoviewForm(op, thingID, name string) *td.Form {
 	var href string
 	var method string
 	switch op {
@@ -59,16 +59,17 @@ func getHiveoviewForm(op, thingID, name string) td.Form {
 	}
 	f := td.NewForm(op, href)
 	f.SetMethodName(method)
-	return f
+	return &f
 }
 
 // Helper function to login as a web client and sse listener
 // The TestLogin test must succeed before using this.
 // This returns a client. Call Close() when done.
 func WebLogin(fullURL string, clientID string,
-	onConnection func(bool, error),
-	onNotification func(message *transports.ResponseMessage),
-	onRequest func(message transports.RequestMessage) transports.ResponseMessage) (
+	onConnection func(bool, error, transports.IConnection),
+	onRequest transports.RequestHandler,
+	onResponse transports.ResponseHandler,
+) (
 	cl transports.IConnection, err error) {
 
 	//sseCl := clients.NewHubClient(fullURL, clientID, ts.Certs.CaCert)
@@ -83,13 +84,13 @@ func WebLogin(fullURL string, clientID string,
 	// htmx sse triggers rely on this format. (for now)
 	// FIXME: can htmx sse trigger using additional fields (type=notification, thingID/name=blah?)
 	// or is this too painful in htmx.
-	sseCl := sseclient.NewSsescConsumerClient(
-		fullURL, clientID, nil, ts.Certs.CaCert,
+	sseCl := httpsseclient.NewHttpSseClientConnection(fullURL,
+		clientID, nil, ts.Certs.CaCert,
 		getHiveoviewForm, time.Minute)
 	// hiveoview uses a different login path as the hub
-	sseCl.SetSSEPath(service.WebSsePath)
+	//sseCl.SetSSEPath(service.WebSsePath)
 	sseCl.SetConnectHandler(onConnection)
-	sseCl.SetNotificationHandler(onNotification)
+	sseCl.SetResponseHandler(onResponse)
 	sseCl.SetRequestHandler(onRequest)
 
 	//err = sseCl.ConnectWithLoginForm(clientID)
@@ -223,7 +224,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 
 	_ = token1
 	//handler for web connection notifications
-	onConnection := func(connected bool, err error) {
+	onConnection := func(connected bool, err error, _ transports.IConnection) {
 		if connected {
 			connectCount.Add(1)
 		} else {
@@ -231,12 +232,13 @@ func TestMultiConnectDisconnect(t *testing.T) {
 		}
 	}
 	// handler hiveoview SSE notifications
-	onNotification := func(msg transports.ResponseMessage) {
+	onResponse := func(msg *transports.ResponseMessage) error {
 		// the UI expects this format for triggering htmx
 		expectedType := fmt.Sprintf("dtw:%s:%s/%s", agentID, td1.ID, eventName)
 		if msg.Operation == expectedType {
 			messageCount.Add(1)
 		}
+		return nil
 	}
 
 	// 2: connect and subscribe web clients and verify
@@ -246,7 +248,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	hiveoviewURL := svc.GetServerURL()
 	for range testConnections {
 		sseCl, err := WebLogin(
-			hiveoviewURL, clientID1, onConnection, onNotification, nil)
+			hiveoviewURL, clientID1, onConnection, nil, onResponse)
 		require.NoError(t, err)
 		require.NotNil(t, sseCl)
 		webClients = append(webClients, sseCl)
@@ -299,13 +301,13 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	// the root cause of the first is that the first browser load doesn't connect
 	// with SSE and this never closes the connection.
 	// The second remaining session doesn't happen while debugging .. yeah fun
-	nrConnections, _ := ts.Runtime.TransportsMgr.GetNrConnections()
-	nrSessions = svc.GetSM().GetNrSessions()
-	if nrConnections > 0 {
-		t.Log(fmt.Sprintf(
-			"FIXME: expected 0 remaining connections and sessions. "+
-				"Got '%d' connections from '%d' sessions", nrConnections, nrSessions))
-	}
+	//nrConnections, _ := ts.Runtime.TransportsMgr.GetNrConnections()
+	//nrSessions = svc.GetSM().GetNrSessions()
+	//if nrConnections > 0 {
+	//	t.Log(fmt.Sprintf(
+	//		"FIXME: expected 0 remaining connections and sessions. "+
+	//			"Got '%d' connections from '%d' sessions", nrConnections, nrSessions))
+	//}
 	//assert.Less(t, 3, count)
 
 	//time.Sleep(time.Millisecond * 100)

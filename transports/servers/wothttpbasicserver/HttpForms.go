@@ -1,12 +1,8 @@
 package wothttpbasicserver
 
 import (
-	httpserver2 "github.com/hiveot/hub/transports/servers/httpserver"
-	"github.com/hiveot/hub/transports/tputils"
-	"github.com/hiveot/hub/wot"
+	"github.com/hiveot/hub/transports/servers/httpserver"
 	"github.com/hiveot/hub/wot/td"
-	"golang.org/x/exp/slices"
-	"log/slog"
 	"net/http"
 )
 
@@ -17,6 +13,9 @@ type HttpOperation struct {
 	url         string
 	handler     http.HandlerFunc
 	//isThingLevel bool
+}
+type HttpBasicTransportServer struct {
+	httpserver.HttpTransportServer
 }
 
 // AddTDForms add WoT forms to the given TD containing protocol information to
@@ -48,33 +47,36 @@ type HttpOperation struct {
 //	}
 //
 // ```
-func (svc *httpserver2.HttpTransportServer) AddTDForms(td *td.TD) error {
-	svc.AddDigitwinForms(td)
-	svc.AddThingLevelForms(td)
+func (svc *HttpBasicTransportServer) AddTDForms(td *td.TD) error {
+	//svc.AddDigitwinForms(td)
+	//svc.AddThingLevelForms(td)
 	//svc.AddPropertiesForms(td)
 	//svc.AddEventsForms(td)
 	//svc.AddActionForms(td)
 	return nil
 }
 
-// GetForm returns a new HTTP form for the given operation
-// Intended for Thing level operations
-func (svc *httpserver2.HttpTransportServer) GetForm(op, thingID, name string) td.Form {
-
-	// all operations use URI variables for selecting things
-	// HTTP operations
-	for _, httpOp := range svc.operations {
-		if slices.Contains(httpOp.ops, op) {
-			form := td.NewForm(op, httpOp.url)
-			form["htv:methodName"] = httpOp.method
-			return form
-		}
-	}
-
-	slog.Warn("GetForm. No form found for operation",
-		"op", op)
-	return nil
-}
+//
+//// GetForm returns a new HTTP form for the given operation
+//// Intended for Thing level operations
+//func (svc *HttpBasicTransportServer) GetForm(op, thingID, name string) td.Form {
+//	// FIXME: form handling in http server base or here?
+//	return svc.HttpTransportServer.GetForm()
+//
+//	// all operations use URI variables for selecting things
+//	// HTTP operations
+//	for _, httpOp := range svc.operations {
+//		if slices.Contains(httpOp.ops, op) {
+//			form := td.NewForm(op, httpOp.url)
+//			form["htv:methodName"] = httpOp.method
+//			return form
+//		}
+//	}
+//
+//	slog.Warn("GetForm. No form found for operation",
+//		"op", op)
+//	return nil
+//}
 
 // AddActionForms add forms Thing action affordance
 // intended for consumers of the digitwin Thing
@@ -141,50 +143,50 @@ func (svc *httpserver2.HttpTransportServer) GetForm(op, thingID, name string) td
 //}
 
 // AddDigitwinForms adds Thing level forms for all digitwin read and write operations
-func (svc *httpserver2.HttpTransportServer) AddDigitwinForms(tdi *td.TD) {
-	methodPath := httpserver2.HttpGetDigitwinPath
-	f := td.Form{
-		"op": []string{
-			wot.OpReadProperty, wot.OpReadAllProperties,
-			wot.HTOpReadEvent, wot.HTOpReadAllEvents,
-			wot.OpQueryAction, wot.OpQueryAllActions,
-			wot.HTOpReadTD, wot.HTOpReadAllTDs,
-		},
-		"href":           methodPath,
-		"contentType":    "application/json",
-		"htv:methodName": http.MethodGet,
-	}
-	tdi.Forms = append(tdi.Forms, f)
-	methodPath = httpserver2.HttpGetDigitwinPath
-	f = td.Form{
-		"op":             []string{wot.OpInvokeAction, wot.OpWriteProperty},
-		"href":           methodPath,
-		"contentType":    "application/json",
-		"htv:methodName": http.MethodPost,
-	}
-	tdi.Forms = append(tdi.Forms, f)
-}
+//func (svc *HttpBasicTransportServer) AddDigitwinForms(tdi *td.TD) {
+//	methodPath := httpserver2.HttpGetDigitwinPath
+//	f := td.Form{
+//		"op": []string{
+//			wot.OpReadProperty, wot.OpReadAllProperties,
+//			wot.HTOpReadEvent, wot.HTOpReadAllEvents,
+//			wot.OpQueryAction, wot.OpQueryAllActions,
+//			wot.HTOpReadTD, wot.HTOpReadAllTDs,
+//		},
+//		"href":           methodPath,
+//		"contentType":    "application/json",
+//		"htv:methodName": http.MethodGet,
+//	}
+//	tdi.Forms = append(tdi.Forms, f)
+//	methodPath = httpserver2.HttpGetDigitwinPath
+//	f = td.Form{
+//		"op":             []string{wot.OpInvokeAction, wot.OpWriteProperty},
+//		"href":           methodPath,
+//		"contentType":    "application/json",
+//		"htv:methodName": http.MethodPost,
+//	}
+//	tdi.Forms = append(tdi.Forms, f)
+//}
 
 // AddThingLevelForms adds forms with protocol info to the TD, and its properties, events and actions
 // HiveOT mostly uses top level forms.
-func (svc *httpserver2.HttpTransportServer) AddThingLevelForms(tdi *td.TD) {
+func (svc *HttpBasicTransportServer) AddThingLevelForms(tdi *td.TD) {
 	// iterate the thing level operations
-	params := map[string]string{"thingID": tdi.ID}
-	for _, opInfo := range svc.operations {
-		methodPath := tputils.Substitute(opInfo.url, params)
-		f := td.Form{
-			"op":             opInfo.ops, // not a WoT operation
-			"href":           methodPath,
-			"contentType":    "application/json",
-			"htv:methodName": opInfo.method,
-		}
-		if opInfo.subprotocol != "" {
-			f["subprotocol"] = opInfo.subprotocol
-		}
-		tdi.Forms = append(tdi.Forms, f)
-	}
-	// this binding uses the BearerSecurityScheme
-	tdi.Security = "bearer"
-	tdi.SecurityDefinitions = map[string]td.SecurityScheme{
-		"bearer": {Scheme: "bearer", Alg: "ES256", Format: "jwt", In: "header"}}
+	//params := map[string]string{"thingID": tdi.ID}
+	//for _, opInfo := range svc.operations {
+	//	methodPath := tputils.Substitute(opInfo.url, params)
+	//	f := td.Form{
+	//		"op":             opInfo.ops, // not a WoT operation
+	//		"href":           methodPath,
+	//		"contentType":    "application/json",
+	//		"htv:methodName": opInfo.method,
+	//	}
+	//	if opInfo.subprotocol != "" {
+	//		f["subprotocol"] = opInfo.subprotocol
+	//	}
+	//	tdi.Forms = append(tdi.Forms, f)
+	//}
+	//// this binding uses the BearerSecurityScheme
+	//tdi.Security = "bearer"
+	//tdi.SecurityDefinitions = map[string]td.SecurityScheme{
+	//	"bearer": {Scheme: "bearer", Alg: "ES256", Format: "jwt", In: "header"}}
 }

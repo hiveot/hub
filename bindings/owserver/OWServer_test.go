@@ -1,11 +1,11 @@
 package owserver_test
 
 import (
-	"github.com/hiveot/hub/api/go/authz"
-	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/bindings/owserver/config"
 	"github.com/hiveot/hub/bindings/owserver/service"
 	"github.com/hiveot/hub/lib/testenv"
+	authz "github.com/hiveot/hub/runtime/authz/api"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot/td"
@@ -122,7 +122,7 @@ func TestPoll(t *testing.T) {
 
 	// get events from the digitwin
 	dThingID := td.MakeDigiTwinThingID(agentID, device1ID)
-	events, err := digitwin.ValuesReadAllEvents(cl1, dThingID)
+	events, err := digitwin.ThingValuesReadAllEvents(cl1, dThingID)
 	require.NoError(t, err)
 	// this thing has 5 sensors
 	require.True(t, len(events) == 5)

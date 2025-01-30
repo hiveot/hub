@@ -2,10 +2,10 @@ package idprov_test
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go/authn"
-	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/testenv"
+	authn "github.com/hiveot/hub/runtime/authn/api"
+	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
 	"github.com/hiveot/hub/services/idprov/idprovclient"
 	"github.com/hiveot/hub/services/idprov/service"

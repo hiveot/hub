@@ -4,12 +4,13 @@ import (
 	"crypto/x509"
 	"fmt"
 	"github.com/hiveot/hub/lib/certs"
-	"github.com/hiveot/hub/lib/discovery"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/clients/hiveotwssclient"
+	"github.com/hiveot/hub/transports/clients/wssclient"
 	"github.com/hiveot/hub/transports/servers"
-	"github.com/hiveot/hub/transports/servers/hiveotwssserver"
+	"github.com/hiveot/hub/transports/servers/wssserver"
+	"github.com/hiveot/hub/transports/tputils/discovery"
+	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"os"
 	"path"
@@ -83,6 +84,20 @@ func ConnectClient(fullURL string, clientID string, certDir string) (
 	return cc, err
 }
 
+// ConnectWithPassword is a convenience function to connect with a server and
+// authenticate with the given password.
+// This returns a new auth token and a client connection that can be used with consumers or agents.
+func ConnectWithPassword(fullURL string, clientID string, certDir string, password string) (
+	newToken string, cc transports.IClientConnection, err error) {
+
+	cc, err = ConnectClient(fullURL, clientID, certDir)
+	if err != nil {
+		return "", nil, err
+	}
+	newToken, err = cc.ConnectWithPassword(password)
+	return newToken, cc, err
+}
+
 // ConnectWithTokenFile is a convenience function to read token and key
 // from file and connect to the server. Also used by agents.
 //
@@ -111,9 +126,10 @@ func ConnectWithTokenFile(cc transports.IClientConnection, keysDir string) error
 	return err
 }
 
-// NewClient returns a new client connection for connecting to a wot server.
+// GetProtocolFromURL determines which transport protocol type the URL represents
+// This returns an empty string if the protocol cannot be determined
 //
-// FullURL contains the full server address as provided by discovery:
+// fullURL contains the full server address as provided by discovery:
 //
 //	https://addr:port/ for http without sse
 //	https://addr:port/wot/sse for http with the sse subprotocol binding
@@ -121,24 +137,10 @@ func ConnectWithTokenFile(cc transports.IClientConnection, keysDir string) error
 //	wss://addr:port/wot/wss for websocket over TLS
 //	wss://addr:port/hiveot/wss for direct messaging websocket over TLS
 //	mqtts://addr:port/ for mqtt over websocket over TLS
-//
-// clientID is the ID to authenticate as when using one of the Connect... methods
-//
-// caCert is the server's CA certificate to verify the connection. Using nil will
-// ignore the server certificate check.
-//
-// Agents do not use forms as WoT does not support agents. This will fall back to
-// the hiveot message envelopes.
-//
-// timeout is optional maximum wait time for connecting or waiting for responses.
-// Use 0 for default.
-func NewClient(
-	fullURL string, clientID string, caCert *x509.Certificate,
-	getForm transports.GetFormHandler, timeout time.Duration) (
-	cc transports.IClientConnection, err error) {
-
+func GetProtocolFromURL(fullURL string) string {
 	// determine the protocol to use from the URL
-	protocolType := transports.ProtocolTypeHiveotWSS
+	protocolType := ""
+
 	if strings.HasPrefix(fullURL, "https") {
 		if strings.HasSuffix(fullURL, servers.DefaultHiveotSsePath) {
 			protocolType = transports.ProtocolTypeHiveotSSE
@@ -156,7 +158,45 @@ func NewClient(
 		}
 	} else if strings.HasPrefix(fullURL, "mqtts") {
 		protocolType = transports.ProtocolTypeWotMQTTWSS
-	} else {
+	}
+	return protocolType
+}
+
+// GetProtocolFromForm determine the protocol type from a WoT form.
+// FIXME: forms can contain relative paths instead of full URL. The TD
+//
+//	base is the TD base URI used for all relative URI references.
+//	form is the form whose (sub)protocol to determine.
+func GetProtocolFromForm(base string, form *td.Form) string {
+	subProto, _ := form.GetSubprotocol()
+	if subProto != "" {
+		return subProto
+	}
+	url, _ := form.GetHRef()
+	
+	return GetProtocolFromURL(url)
+}
+
+// NewClient returns a new client connection for connecting to a wot server.
+//
+// fullURL contains the full server address as provided by discovery. See GetProtocolFromURL for details.
+// clientID is the ID to authenticate as when using one of the Connect... methods
+// caCert is the server's CA certificate to verify the connection. Using nil will
+// ignore the server certificate check.
+//
+// Agents do not use forms as WoT does not support agents. This will fall back to
+// the hiveot message envelopes.
+//
+// timeout is optional maximum wait time for connecting or waiting for responses.
+// Use 0 for default.
+func NewClient(
+	fullURL string, clientID string, caCert *x509.Certificate,
+	getForm transports.GetFormHandler, timeout time.Duration) (
+	cc transports.IClientConnection, err error) {
+
+	// determine the protocol to use from the URL
+	protocolType := GetProtocolFromURL(fullURL)
+	if protocolType == "" {
 		return nil, fmt.Errorf("Unknown protocol type in URL: " + fullURL)
 	}
 	if timeout <= 0 {
@@ -171,13 +211,13 @@ func NewClient(
 		panic("sse-sc client is broken")
 
 	case transports.ProtocolTypeHiveotWSS:
-		msgConverter := &hiveotwssserver.HiveotMessageConverter{}
-		cc = hiveotwssclient.NewWssClientConnection(
-			fullURL, clientID, caCert, msgConverter, timeout)
+		msgConverter := &wssserver.HiveotMessageConverter{}
+		cc = wssclient.NewHiveotWssClientConnection(fullURL, clientID, caCert,
+			msgConverter, transports.ProtocolTypeHiveotWSS, timeout)
 
 	case transports.ProtocolTypeWotWSS:
 		//msgConverter := &hiveotwssserver.WotWssMessageConverter{}
-		//cc = hiveotwssclient.NewWssClientConnection(
+		//cc = hiveotwssclient.NewHiveotWssClientConnection(
 		//	fullURL, clientID, nil, caCert,
 		//	msgConverter, nil, timeout)
 		panic("wss client is broken")

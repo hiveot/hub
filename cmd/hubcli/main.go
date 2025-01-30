@@ -12,8 +12,8 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/clients"
+	"github.com/hiveot/hub/transports/messaging"
 	"github.com/urfave/cli/v2"
 	"log/slog"
 	"os"
@@ -29,7 +29,7 @@ var nowrap bool
 // commandline:  hubcli command options
 
 func main() {
-	var hc transports.IConsumerConnection
+	var hc *messaging.Consumer
 	var verbose bool
 	var loginID = "admin"
 	var password = ""
@@ -101,8 +101,9 @@ func main() {
 				fmt.Printf(utils.WrapOff)
 			}
 			// the CLI uses the built-in hiveot messaging protocol
-			hc, err = clients.ConnectConsumerToHub(
-				serverURL, loginID, certsDir, password, nil)
+			_, cc, err := clients.ConnectWithPassword(
+				serverURL, loginID, certsDir, password)
+			hc = messaging.NewConsumer(cc, 0)
 
 			if err != nil {
 				slog.Error("Unable to connect to the server", "err", err)

@@ -2,9 +2,9 @@ package td_test
 
 import (
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
+	"github.com/stretchr/testify/require"
 	"strings"
 	"testing"
 	"time"
@@ -182,15 +182,15 @@ func TestForms(t *testing.T) {
 	tdoc.AddForms(forms)
 
 	//
-	f1 := tdoc.GetForm(wot.OpWriteProperty, prop1Name, transports.ProtocolTypeWotHTTPBasic)
-	assert.NotNil(t, f1)
-	f2 := tdoc.GetForm(wot.OpInvokeAction, action1Name, transports.ProtocolTypeWotHTTPBasic)
-	assert.NotNil(t, f2)
-	f3 := tdoc.GetForm(wot.OpSubscribeEvent, event1Name, transports.ProtocolTypeWotHTTPBasic)
-	assert.NotNil(t, f3)
+	f1 := tdoc.GetForms(wot.OpWriteProperty, prop1Name)
+	require.NotNil(t, f1)
+	f2 := tdoc.GetForms(wot.OpInvokeAction, action1Name)
+	require.NotNil(t, f2)
+	f3 := tdoc.GetForms(wot.OpSubscribeEvent, event1Name)
+	require.NotNil(t, f3)
 
 	uriVars := make(map[string]string)
-	f1href, err := tdoc.GetFormHRef(f1, uriVars)
+	f1href, err := tdoc.GetFormHRef(f1[0], uriVars)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, f1href)
 }

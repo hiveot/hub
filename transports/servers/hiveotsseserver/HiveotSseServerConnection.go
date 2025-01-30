@@ -38,11 +38,19 @@ type HiveotSseServerConnection struct {
 	// connection remote address
 	remoteAddr string
 
+	// incoming sse request
+	httpReq *http.Request
+
+	isConnected atomic.Bool
+
 	// track last used time to auto-close inactive connections
 	lastActivity time.Time
 
 	// mutex for controlling writing and closing
 	mux sync.RWMutex
+
+	// notify client of a connect or disconnect
+	connectionHandler transports.ConnectionHandler
 
 	sseChan  chan SSEEvent
 	isClosed atomic.Bool
@@ -111,7 +119,17 @@ func (c *HiveotSseServerConnection) GetConnectionID() string {
 
 // GetProtocolType returns the protocol used in this connection
 func (c *HiveotSseServerConnection) GetProtocolType() string {
-	return transports.ProtocolTypeSSESC
+	return transports.ProtocolTypeHiveotSSE
+}
+
+// GetConnectURL returns the connection URL of this connection
+func (c *HiveotSseServerConnection) GetConnectURL() string {
+	return c.httpReq.URL.String()
+}
+
+// IsConnected returns the connection status
+func (c *HiveotSseServerConnection) IsConnected() bool {
+	return c.isConnected.Load()
 }
 
 // GetSessionID returns the client's authentication session ID
@@ -138,43 +156,73 @@ func (c *HiveotSseServerConnection) GetProtocolType() string {
 //}
 
 // ObserveProperty adds a subscription for a thing property
-func (c *HiveotSseServerConnection) ObserveProperty(dThingID string, name string) {
-	c.observations.Subscribe(dThingID, name)
-}
+//func (c *HiveotSseServerConnection) ObserveProperty(dThingID string, name string) {
+//	c.observations.Subscribe(dThingID, name, correlationID)
+//}
+//
+//// SendNotification sends a notification message if the client is subscribed
+//func (c *HiveotSseServerConnection) SendNotification(noti transports.NotificationMessage) {
+//
+//	switch noti.Operation {
+//	case wot.HTOpUpdateTD:
+//		// update the TD if the client is subscribed to its events
+//		if c.subscriptions.IsSubscribed(noti.ThingID, "") {
+//			_ = c._send(transports.MessageTypeNotification, noti)
+//		}
+//	case wot.HTOpEvent:
+//		if c.subscriptions.IsSubscribed(noti.ThingID, noti.Name) {
+//			_ = c._send(transports.MessageTypeNotification, noti)
+//		}
+//	case wot.HTOpUpdateProperty, wot.HTOpUpdateMultipleProperties:
+//		if c.observations.IsSubscribed(noti.ThingID, noti.Name) {
+//			_ = c._send(transports.MessageTypeNotification, noti)
+//		}
+//	default:
+//		slog.Error("SendNotification: Unknown notification operation",
+//			"op", noti.Operation,
+//			"thingID", noti.ThingID,
+//			"to", c.clientID)
+//	}
+//}
 
-// SendNotification sends a notification message if the client is subscribed
-func (c *HiveotSseServerConnection) SendNotification(noti transports.NotificationMessage) {
+// SendNotification sends a response to the client if subscribed.
+// this is a response to a long-running subscription request
+// If this returns an error then no response was sent.
+func (c *HiveotSseServerConnection) SendNotification(resp transports.ResponseMessage) {
 
-	switch noti.Operation {
-	case wot.HTOpUpdateTD:
-		// update the TD if the client is subscribed to its events
-		if c.subscriptions.IsSubscribed(noti.ThingID, "") {
-			_ = c._send(transports.MessageTypeNotification, noti)
+	slog.Info("SendNotification (subscription response)",
+		slog.String("clientID", c.clientID),
+		slog.String("correlationID", resp.CorrelationID),
+		slog.String("operation", resp.Operation),
+		slog.String("senderID", resp.SenderID),
+	)
+
+	if resp.Operation == wot.OpSubscribeEvent || resp.Operation == wot.OpSubscribeAllEvents {
+		correlationID := c.subscriptions.GetSubscription(resp.ThingID, resp.Name)
+		if correlationID != "" {
+			resp.CorrelationID = correlationID
+			_ = c.SendResponse(&resp)
 		}
-	case wot.HTOpEvent:
-		if c.subscriptions.IsSubscribed(noti.ThingID, noti.Name) {
-			_ = c._send(transports.MessageTypeNotification, noti)
+	} else if resp.Operation == wot.OpObserveProperty || resp.Operation == wot.OpObserveAllProperties {
+		correlationID := c.observations.GetSubscription(resp.ThingID, resp.Name)
+		if correlationID != "" {
+			resp.CorrelationID = correlationID
+			_ = c.SendResponse(&resp)
 		}
-	case wot.HTOpUpdateProperty, wot.HTOpUpdateMultipleProperties:
-		if c.observations.IsSubscribed(noti.ThingID, noti.Name) {
-			_ = c._send(transports.MessageTypeNotification, noti)
-		}
-	default:
-		slog.Error("SendNotification: Unknown notification operation",
-			"op", noti.Operation,
-			"thingID", noti.ThingID,
-			"to", c.clientID)
+	} else {
+		slog.Warn("Unknown notification: " + resp.Operation)
 	}
+	return
 }
 
 // SendRequest sends a request message to an agent over SSE
-func (c *HiveotSseServerConnection) SendRequest(req transports.RequestMessage) error {
+func (c *HiveotSseServerConnection) SendRequest(req *transports.RequestMessage) error {
 	// This simply sends the message as-is
 	return c._send(transports.MessageTypeRequest, req)
 }
 
-// SendResponse send a response (action status) from server to client.
-func (c *HiveotSseServerConnection) SendResponse(resp transports.ResponseMessage) error {
+// SendResponse send a response from server to client.
+func (c *HiveotSseServerConnection) SendResponse(resp *transports.ResponseMessage) error {
 	// This simply sends the message as-is
 	return c._send(transports.MessageTypeResponse, resp)
 }
@@ -210,7 +258,7 @@ func (c *HiveotSseServerConnection) Serve(w http.ResponseWriter, r *http.Request
 		slog.String("protocol", r.Proto),
 		slog.String("remoteAddr", c.remoteAddr),
 	)
-	readLoop := true
+	sendLoop := true
 
 	// close the channel when the connection drops
 	go func() {
@@ -224,8 +272,8 @@ func (c *HiveotSseServerConnection) Serve(w http.ResponseWriter, r *http.Request
 		}
 	}()
 
-	// read the message channel until it closes
-	for readLoop { // sseMsg := range sseChan {
+	// read the message channel for sending messages until it closes
+	for sendLoop { // sseMsg := range sseChan {
 		select {
 		// keep reading to prevent blocking on channel on write
 		case sseMsg, ok := <-c.sseChan: // received event
@@ -233,7 +281,7 @@ func (c *HiveotSseServerConnection) Serve(w http.ResponseWriter, r *http.Request
 
 			if !ok { // channel was closed by session
 				// avoid further writes
-				readLoop = false
+				sendLoop = false
 				// ending the read loop and returning will close the connection
 				break
 			}
@@ -275,22 +323,36 @@ func (c *HiveotSseServerConnection) Serve(w http.ResponseWriter, r *http.Request
 	)
 }
 
+func (c *HiveotSseServerConnection) SetConnectHandler(h transports.ConnectionHandler) {
+	c.mux.Lock()
+	c.connectionHandler = h
+	c.mux.Unlock()
+}
+
+// SetRequestHandler is ignored as this is an outgoing 1-way connection
+func (c *HiveotSseServerConnection) SetRequestHandler(h transports.RequestHandler) {
+}
+
+// SetResponseHandler is ignored as this is an outgoing 1-way connection
+func (c *HiveotSseServerConnection) SetResponseHandler(h transports.ResponseHandler) {
+}
+
 // SubscribeEvent handles a subscription request for an event
-func (c *HiveotSseServerConnection) SubscribeEvent(dThingID string, name string) {
-	c.subscriptions.Subscribe(dThingID, name)
-}
-
-// UnsubscribeEvent removes an event subscription
-// dThingID and name must match those of ObserveProperty
-func (c *HiveotSseServerConnection) UnsubscribeEvent(dThingID string, name string) {
-	c.subscriptions.Unsubscribe(dThingID, name)
-}
-
-// UnobserveProperty removes a property subscription
-// dThingID and name must match those of ObserveProperty
-func (c *HiveotSseServerConnection) UnobserveProperty(dThingID string, name string) {
-	c.observations.Unsubscribe(dThingID, name)
-}
+//func (c *HiveotSseServerConnection) SubscribeEvent(dThingID string, name string) {
+//	c.subscriptions.Subscribe(dThingID, name)
+//}
+//
+//// UnsubscribeEvent removes an event subscription
+//// dThingID and name must match those of ObserveProperty
+//func (c *HiveotSseServerConnection) UnsubscribeEvent(dThingID string, name string) {
+//	c.subscriptions.Unsubscribe(dThingID, name)
+//}
+//
+//// UnobserveProperty removes a property subscription
+//// dThingID and name must match those of ObserveProperty
+//func (c *HiveotSseServerConnection) UnobserveProperty(dThingID string, name string) {
+//	c.observations.Unsubscribe(dThingID, name)
+//}
 
 // WriteProperty sends the property change request to the agent
 //func (c *HiveotSseServerConnection) WriteProperty(
@@ -302,19 +364,24 @@ func (c *HiveotSseServerConnection) UnobserveProperty(dThingID string, name stri
 
 // NewHiveotSseConnection creates a new SSE connection instance.
 // This implements the IServerConnection interface.
-func NewHiveotSseConnection(clientID string, cid string, remoteAddr string, sseFallback bool) *HiveotSseServerConnection {
+func NewHiveotSseConnection(clientID string, cid string, remoteAddr string,
+	httpReq *http.Request, sseFallback bool) *HiveotSseServerConnection {
+
 	connectionID := clientID + "-" + cid // -> must match subscribe/observe requests
 
 	c := &HiveotSseServerConnection{
 		connectionID:  connectionID,
 		clientID:      clientID,
 		remoteAddr:    remoteAddr,
+		httpReq:       httpReq,
 		lastActivity:  time.Time{},
 		mux:           sync.RWMutex{},
 		observations:  connections.Subscriptions{},
 		subscriptions: connections.Subscriptions{},
 		correlData:    make(map[string]chan any),
 		sseFallback:   sseFallback,
+		//requestHandler:  reqHandler,
+		//responseHandler: respHandler,
 	}
 	// interface check
 	var _ transports.IServerConnection = c

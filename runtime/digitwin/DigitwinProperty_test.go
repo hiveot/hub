@@ -3,7 +3,7 @@ package digitwin_test
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/hiveot/hub/api/go/digitwin"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/wot/td"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -35,16 +35,16 @@ func TestUpdateReadProperty(t *testing.T) {
 
 	// agent has provided a new property value
 	changed, err := dtwStore.UpdatePropertyValue(
-		digitwin.ThingValue{ThingID: dThing1ID, Name: propName, Data: propValue})
+		digitwin.ThingValue{ThingID: dThing1ID, Name: propName, Output: propValue})
 	assert.NoError(t, err)
 	assert.True(t, changed)
 
 	// Read the property value and all values
-	v2, err := svc.ValuesSvc.ReadProperty(user1ID, digitwin.ValuesReadPropertyArgs{
+	v2, err := svc.ValuesSvc.ReadProperty(user1ID, digitwin.ThingValuesReadPropertyArgs{
 		ThingID: dThing1ID,
 		Name:    propName})
 	assert.NoError(t, err)
-	assert.Equal(t, propValue, v2.Data)
+	assert.Equal(t, propValue, v2.Output)
 
 	propList, err := svc.ValuesSvc.ReadAllProperties(user1ID, dThing1ID)
 	assert.Equal(t, 1, len(propList))
@@ -52,14 +52,14 @@ func TestUpdateReadProperty(t *testing.T) {
 
 	// next write a new value
 	changed, err = dtwStore.UpdatePropertyValue(
-		digitwin.ThingValue{ThingID: dThing1ID, Name: propName, Data: propValue2})
+		digitwin.ThingValue{ThingID: dThing1ID, Name: propName, Output: propValue2})
 
 	assert.NoError(t, err)
 	assert.True(t, changed)
-	v3, err := svc.ValuesSvc.ReadProperty(user1ID, digitwin.ValuesReadPropertyArgs{
+	v3, err := svc.ValuesSvc.ReadProperty(user1ID, digitwin.ThingValuesReadPropertyArgs{
 		ThingID: dThing1ID,
 		Name:    propName})
-	assert.Equal(t, propValue2, v3.Data)
+	assert.Equal(t, propValue2, v3.Output)
 }
 
 func TestPropertyReadFail(t *testing.T) {
@@ -77,7 +77,7 @@ func TestPropertyReadFail(t *testing.T) {
 	err := svc.DirSvc.UpdateTD(agentID, string(tdDoc1Json))
 	require.NoError(t, err)
 
-	_, err = svc.ValuesSvc.ReadProperty("itsme", digitwin.ValuesReadPropertyArgs{
+	_, err = svc.ValuesSvc.ReadProperty("itsme", digitwin.ThingValuesReadPropertyArgs{
 		ThingID: "badthingid",
 		Name:    "someprop"})
 	assert.Error(t, err)
@@ -105,12 +105,12 @@ func TestPropertyUpdateFail(t *testing.T) {
 	require.NoError(t, err)
 
 	changed, err := dtwStore.UpdatePropertyValue(
-		digitwin.ThingValue{ThingID: dBadThingID, Name: propName, Data: 123})
+		digitwin.ThingValue{ThingID: dBadThingID, Name: propName, Output: 123})
 	assert.Error(t, err)
 	assert.False(t, changed)
 	//property names not in the TD are accepted
 	changed, err = dtwStore.UpdatePropertyValue(
-		digitwin.ThingValue{ThingID: dThing1ID, Name: "unknownprop", Data: 123})
+		digitwin.ThingValue{ThingID: dThing1ID, Name: "unknownprop", Output: 123})
 	assert.NoError(t, err)
 	assert.True(t, changed)
 

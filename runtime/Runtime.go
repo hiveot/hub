@@ -1,13 +1,13 @@
 package runtime
 
 import (
-	"github.com/hiveot/hub/api/go/authn"
-	"github.com/hiveot/hub/api/go/authz"
-	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
+	authn "github.com/hiveot/hub/runtime/authn/api"
 	"github.com/hiveot/hub/runtime/authn/service"
+	authz "github.com/hiveot/hub/runtime/authz/api"
 	service2 "github.com/hiveot/hub/runtime/authz/service"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/runtime/digitwin/router"
 	service4 "github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/transports"
@@ -165,20 +165,20 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	_ = r.DigitwinSvc.DirSvc.UpdateTD(authn.AdminAgentID, authn.AdminTD)
 	_ = r.DigitwinSvc.DirSvc.UpdateTD(authn.UserAgentID, authn.UserTD)
 	_ = r.DigitwinSvc.DirSvc.UpdateTD(authz.AdminAgentID, authz.AdminTD)
-	_ = r.DigitwinSvc.DirSvc.UpdateTD(digitwin.DirectoryAgentID, digitwin.DirectoryTD)
-	_ = r.DigitwinSvc.DirSvc.UpdateTD(digitwin.ValuesAgentID, digitwin.ValuesTD)
+	_ = r.DigitwinSvc.DirSvc.UpdateTD(digitwin.ThingDirectoryAgentID, digitwin.ThingDirectoryTD)
+	_ = r.DigitwinSvc.DirSvc.UpdateTD(digitwin.ThingValuesAgentID, digitwin.ThingValuesTD)
 
 	// agents can update to the directory
 	_ = r.AuthzSvc.SetPermissions(authn.AdminServiceID, authz.ThingPermissions{
-		AgentID: digitwin.DirectoryAgentID,
-		ThingID: digitwin.DirectoryServiceID,
+		AgentID: digitwin.ThingDirectoryAgentID,
+		ThingID: digitwin.ThingDirectoryServiceID,
 		Allow:   []authz.ClientRole{authz.ClientRoleAgent},
 	})
 	// anyone else can read the directory, except those with no role
 	// FIXME: differentiate per action based on TD default?
 	_ = r.AuthzSvc.SetPermissions(authn.AdminServiceID, authz.ThingPermissions{
-		AgentID: digitwin.DirectoryAgentID,
-		ThingID: digitwin.DirectoryServiceID,
+		AgentID: digitwin.ThingDirectoryAgentID,
+		ThingID: digitwin.ThingDirectoryServiceID,
 		Deny:    []authz.ClientRole{authz.ClientRoleNone},
 	})
 	return err

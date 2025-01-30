@@ -3,12 +3,12 @@ package session
 import (
 	"bytes"
 	"fmt"
-	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/runtime/consumedthing"
 	"github.com/hiveot/hub/services/state/stateclient"
 	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/messaging"
 	"github.com/hiveot/hub/transports/tputils"
-	"github.com/hiveot/hub/wot/consumedthing"
-	"github.com/hiveot/hub/wot/td"
+	"github.com/hiveot/hub/wot"
 	"log/slog"
 	"net/http"
 	"sync"
@@ -46,14 +46,19 @@ type WebClientSession struct {
 	// the connection ID of this client for correlating requests
 	clcid string
 
+	// clientID of the authenticated client
+	clientID string
+
 	// Client session data, loaded from the state service
 	clientData *ClientDataModel
 	// the error is used to retry loading if the client state is requested
 	clientStateError error
 
+	// The consumer connection of this session
+	co *messaging.Consumer
+
 	// Holder of consumed things for this session
-	// FIXME: if a tdd is not found initially then reload it
-	cts *consumedthing.ConsumedThingsDirectory
+	coDir *consumedthing.ConsumedThingsDirectory
 
 	// flag, this session is active and can be used to send messages to
 	// the hub. If sseChan is set then the return channel is active too.
@@ -67,8 +72,9 @@ type WebClientSession struct {
 	lastActivity time.Time
 	//lastError    error
 
-	// The associated hub client for pub/sub
-	hc transports.IConsumerConnection
+	// The associated consumer client for pub/sub
+	//co *messaging.Consumer
+
 	// session mutex for updating sse and activity
 	mux sync.RWMutex
 
@@ -84,12 +90,12 @@ type WebClientSession struct {
 // Consume is short for consumedThingSession.Consume()
 func (sess *WebClientSession) Consume(
 	thingID string) (ct *consumedthing.ConsumedThing, err error) {
-	return sess.cts.Consume(thingID)
+	return sess.coDir.Consume(thingID)
 }
 
 // GetClientID returns the ID of this session's client
 func (sess *WebClientSession) GetClientID() string {
-	return sess.hc.GetClientID()
+	return sess.clientID
 }
 
 // GetCLCID returns the client-connection-id of this session
@@ -116,14 +122,9 @@ func (sess *WebClientSession) GetClientData() *ClientDataModel {
 	return sess.clientData
 }
 
-// GetForm returns the form for an operation on a Thing
-func (sess *WebClientSession) GetForm(op, thingID, name string) td.Form {
-	return sess.cts.GetForm(op, thingID, name)
-}
-
-// GetHubClient returns the hub client connection for use in pub/sub
-func (sess *WebClientSession) GetHubClient() transports.IConsumerConnection {
-	return sess.hc
+// GetConsumer returns the hub client connection for use in pub/sub
+func (sess *WebClientSession) GetConsumer() *messaging.Consumer {
+	return sess.co
 }
 
 // GetLastError returns the most recent error, if any
@@ -133,7 +134,7 @@ func (sess *WebClientSession) GetLastError() error {
 
 // GetConsumedThingsDirectory returns the directory of consumed things of this client
 func (sess *WebClientSession) GetConsumedThingsDirectory() *consumedthing.ConsumedThingsDirectory {
-	return sess.cts
+	return sess.coDir
 }
 
 // GetViewModel returns the hiveoview view model of this client
@@ -180,7 +181,7 @@ func (sess *WebClientSession) HandleWebConnectionClosed() {
 	if sess.sseChan == nil {
 		// disconnect from the hub. This will call back into 'HandleHubConnectionClosed'
 		// which will end the session.
-		sess.hc.Disconnect()
+		sess.co.Disconnect()
 	}
 	sess.mux.RUnlock()
 	//}()
@@ -229,14 +230,14 @@ func (sess *WebClientSession) IsActive() bool {
 
 // IsConnected returns the 'connected' status of hub connection
 func (sess *WebClientSession) IsConnected() bool {
-	return sess.hc.IsConnected()
+	return sess.co.IsConnected()
 }
 
 // LoadState loads the client session state containing dashboard and other model data,
 // and clear 'clientModelChanged' status
 func (sess *WebClientSession) LoadState() error {
 	// load the stored view state from the state service
-	stateCl := stateclient.NewStateClient(sess.hc)
+	stateCl := stateclient.NewStateClient(sess.co)
 	clientData := NewClientDataModel()
 	found, err := stateCl.Get(HiveOViewDataKey, &clientData)
 	_ = found
@@ -277,7 +278,7 @@ func (sess *WebClientSession) NewSseChan() chan SSEEvent {
 }
 
 // onHubConnectionChange is invoked on hub client disconnect/reconnect
-func (sess *WebClientSession) onHubConnectionChange(connected bool, err error) {
+func (sess *WebClientSession) onHubConnectionChange(connected bool, err error, c transports.IConnection) {
 	lastErrText := ""
 
 	slog.Debug("onHubConnectionChange",
@@ -298,70 +299,52 @@ func (sess *WebClientSession) onHubConnectionChange(connected bool, err error) {
 	}
 }
 
-// onResponse notifies SSE clients of incoming response to a request.
-// This is intended for notifying the client UI of the update to actions.
-// The consumed thing itself is already updated.
-func (sess *WebClientSession) onResponse(msg *transports.ResponseMessage) {
-
-	// tbd: is there any use-case for showing response progress automatically in a toast?
-	//if msg.Operation == vocab.OpInvokeAction {
-	//	if msg.Error != "" {
-	//		sess.SendNotify(NotifyError, msg.CorrelationID, msg.Error)
-	//	} else if msg.Status == transports.StatusCompleted {
-	//		sess.SendNotify(NotifySuccess, msg.CorrelationID, "Action successful")
-	//	} else {
-	//		sess.SendNotify(NotifyWarning, msg.CorrelationID, "Action progress: "+msg.Status)
-	//	}
-	//}
-}
-
-// onNotification notifies SSE clients of incoming notifications from the Hub
+// onResponse notifies SSE clients of incoming notifications from the Hub
 // This is intended for notifying the client UI of the update to props or events.
 // The consumed thing itself is already updated.
-func (sess *WebClientSession) onNotification(msg *transports.NotificationMessage) {
+func (sess *WebClientSession) onResponse(resp *transports.ResponseMessage) error {
 
-	slog.Debug("received notification",
-		slog.String("operation", msg.Operation),
-		slog.String("thingID", msg.ThingID),
-		slog.String("name", msg.Name),
-		//slog.Any("data", msg.Data),
-		slog.String("senderID", msg.SenderID),
-		slog.String("receiver cid", sess.cid),
-	)
-	if msg.Operation == vocab.HTOpUpdateProperty {
+	//slog.Debug("received notification",
+	//	slog.String("operation", resp.Operation),
+	//		slog.String("thingID", resp.ThingID),
+	//		slog.String("name", resp.Name),
+	//		//slog.Any("data", resp.Data),
+	//		slog.String("senderID", resp.SenderID),
+	//		slog.String("receiver cid", sess.cid),
+	//	)
+	if resp.Operation == wot.OpObserveProperty {
 		// Publish a sse event for each property
 		// The UI that displays this event can use this as a trigger to load the
 		// property value:
 		//    hx-trigger="sse:{{.Thing.ThingID}}/{{k}}"
 		// notify the browser both of the property value and the timestamp
-		thingAddr := fmt.Sprintf("%s/%s", msg.ThingID, msg.Name)
-		propVal := tputils.DecodeAsString(msg.Data, 0)
+		thingAddr := fmt.Sprintf("%s/%s", resp.ThingID, resp.Name)
+		propVal := tputils.DecodeAsString(resp.Output, 0)
 		sess.SendSSE(thingAddr, propVal)
-		thingAddr = fmt.Sprintf("%s/%s/updated", msg.ThingID, msg.Name)
-		sess.SendSSE(thingAddr, tputils.DecodeAsDatetime(msg.Created))
-	} else {
+		thingAddr = fmt.Sprintf("%s/%s/updated", resp.ThingID, resp.Name)
+		sess.SendSSE(thingAddr, tputils.DecodeAsDatetime(resp.Updated))
+	} else if resp.Operation == wot.OpSubscribeEvent {
 		// Publish sse event indicating the event affordance or value has changed.
 		// The UI that displays this event can use this as a trigger to reload the
 		// fragment that displays this event:
 		//    hx-trigger="sse:{{.Thing.ThingID}}/{{$k}}"
 		// where $k is the event ID
-		eventName := fmt.Sprintf("%s/%s", msg.ThingID, msg.Name)
-		sess.SendSSE(eventName, msg.ToString(0))
-		eventName = fmt.Sprintf("%s/%s/updated", msg.ThingID, msg.Name)
-		sess.SendSSE(eventName, tputils.DecodeAsDatetime(msg.Created))
+		eventName := fmt.Sprintf("%s/%s", resp.ThingID, resp.Name)
+		sess.SendSSE(eventName, resp.ToString(0))
+		eventName = fmt.Sprintf("%s/%s/updated", resp.ThingID, resp.Name)
+		sess.SendSSE(eventName, tputils.DecodeAsDatetime(resp.Updated))
 	}
+	return nil
 }
 
-// ReplaceConnection replaces the hub connection in this session.
+// ReplaceConsumer replaces the hub consumer connection for this client session.
 // This closes the old connection and ignores the callback it gives.
-func (sess *WebClientSession) ReplaceConnection(hc transports.IConsumerConnection) {
-	oldHC := sess.hc
-	sess.hc = hc
-	hc.SetConnectHandler(sess.onHubConnectionChange)
-	//hc.SetNotificationHandler(sess.onNotification)
-	oldHC.SetConnectHandler(nil)
-	oldHC.SetNotificationHandler(nil)
-	oldHC.Disconnect()
+func (sess *WebClientSession) ReplaceConsumer(newCo *messaging.Consumer) {
+	oldCo := sess.co
+	oldCo.Disconnect()
+	sess.co = newCo
+	newCo.SetConnectHandler(sess.onHubConnectionChange)
+	newCo.SetResponseHandler(sess.onResponse)
 }
 
 // SaveState stores the current client session model using the state service,
@@ -376,7 +359,7 @@ func (sess *WebClientSession) SaveState() error {
 	clientState := sess.clientData
 	sess.mux.RUnlock()
 
-	stateCl := stateclient.NewStateClient(sess.GetHubClient())
+	stateCl := stateclient.NewStateClient(sess.GetConsumer())
 	err := stateCl.Set(HiveOViewDataKey, &clientState)
 	if err != nil {
 		//sess.lastError = err
@@ -460,13 +443,17 @@ func (sess *WebClientSession) WritePage(w http.ResponseWriter, buff *bytes.Buffe
 	}
 }
 
-// NewWebClientSession creates a new client session for the given Hub connection
+// NewWebClientSession creates a new webclient session for the given Hub connection
 // Intended for use by the session manager.
 //
-// A Web Client session is created on the first http request with a valid token, or
-// valid login. After a hub connection is established, this session can be created.
-// At this point there is not yet an SSE return channel.
-// The cid will be neccesary to link this connection with the expected incoming SSE connection.
+// A Web Client session is created on the first request from a web browser, after
+// establishing a hub connection using its credentials.
+//
+// At this point there is not yet a browser SSE return channel. A 'cid' will be
+// necessary to link this connection with the expected incoming SSE connection.
+//
+// This session manages both an outgoing hub connection and an incoming web
+// browser SSE connection .
 //
 // This session closes when A) the hub connection closes, or B) more likely, the web
 // browser SSE connection closes. This will result in a call to onClosed.
@@ -479,69 +466,71 @@ func (sess *WebClientSession) WritePage(w http.ResponseWriter, buff *bytes.Buffe
 // can hang around indefinitely.
 //
 //	cid is the web client provided connectionID used to associate http request with SSE clients
-//	hc is the corresponding established hub connection
+//	co is the consumer connected to the Hub
 //	remoteAddr is the web client remote address
 //	onClose is the callback to invoke when this session is closed.
 func NewWebClientSession(
-	cid string, hc transports.IConsumerConnection, remoteAddr string, noState bool,
+	cid string, co *messaging.Consumer, remoteAddr string, noState bool,
 	onClosed func(*WebClientSession)) *WebClientSession {
 	var err error
 
-	// each web client session has their own connection to the Hub through
-	// a consumed thing session, supporting multiple consumed things.
-	// the consumed thing subscribes to updates.
-	cts := consumedthing.NewConsumedThingsSession(hc)
+	// Each web client session has their own connection to the Hub through
+	// a consumed things directory.
+	//
+	// The consumed things directory holds the consumed thing instances for use
+	// by the web client. Consumed things are automatically updated when Thing
+	// subscription updates are received.
+	coDir := consumedthing.NewConsumedThingsDirectory(co)
 
-	cs := WebClientSession{
+	webSess := WebClientSession{
 		cid:          cid,
-		clcid:        hc.GetClientID() + "-" + cid,
+		clcid:        co.GetClientID() + "-" + cid,
+		clientID:     co.GetClientID(),
 		remoteAddr:   remoteAddr,
-		hc:           hc,
 		lastActivity: time.Now(),
 		clientData:   NewClientDataModel(),
 		//viewModel:    NewClientViewModel(hc),
-		cts:      cts,
+		co:       co,
+		coDir:    coDir,
 		onClosed: onClosed,
 	}
-	hc.SetConnectHandler(cs.onHubConnectionChange)
+	co.SetConnectHandler(webSess.onHubConnectionChange)
+
 	// onResponse is called with async responses to requests
-	cts.SetResponseHandler(cs.onResponse)
-	// onNotification is called with updates from the consumed thing
-	cts.SetEventHandler(cs.onNotification)
+	co.SetResponseHandler(webSess.onResponse)
 
-	isConnected := hc.IsConnected()
-	cs.isActive.Store(isConnected)
+	webSess.isActive.Store(co.IsConnected())
 
-	// restore the session data model
+	// restore the session state
 	if !noState {
-		err = cs.LoadState()
+		err = webSess.LoadState()
 		if err != nil {
 			slog.Error("unable to load client state from state service",
-				"clientID", cs.hc.GetClientID(), "err", err.Error())
-			cs.SendNotify(NotifyWarning, "", "Unable to restore session: "+err.Error())
+				"clientID", webSess.GetClientID(), "err", err.Error())
+			webSess.SendNotify(NotifyWarning, "", "Unable to restore session: "+err.Error())
 		}
 	}
 
 	// TODO: selectively subscribe instead of everything, but, based on what?
-	err = hc.Subscribe("", "")
-	err = hc.ObserveProperty("", "")
+	err = co.Subscribe("", "")
+	err = co.ObserveProperty("", "")
 	if err != nil {
-		//cs.lastError = err
+		//webSess.lastError = err
 	}
 
 	// prevent orphaned sessions. Cleanup after 3 sec
 	// the number is arbitrary and not sensitive.
 	go func() {
 		time.Sleep(time.Second * 300) // for testing change to 300
-		cs.mux.RLock()
-		hasSSE := cs.sseChan != nil
-		cs.mux.RUnlock()
+		webSess.mux.RLock()
+		hasSSE := webSess.sseChan != nil
+		webSess.mux.RUnlock()
 
-		if !hasSSE && cs.IsActive() {
-			slog.Info("Removing orphaned web-session (no sse connection) within 3 seconds", "cid", cs.cid)
-			cs.hc.Disconnect()
+		if !hasSSE && webSess.IsActive() {
+			slog.Info("Removing orphaned web-session (no sse connection) within 3 seconds", "cid", webSess.cid)
+			webSess.co.Disconnect()
 		}
 	}()
 
-	return &cs
+	return &webSess
 }

@@ -3,7 +3,6 @@ package digitwin_test
 import (
 	"fmt"
 	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/digitwin/router"
 	"os"
 	"path"
@@ -29,7 +28,7 @@ func TestMain(m *testing.M) {
 func TestStartStop(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	// API match check
-	var _ api.IDigitwinRouter = &router.DigitwinRouter{}
+	var _ router.IDigitwinRouter = &router.DigitwinRouter{}
 	//r := hubrouter.NewDigitwinRouter(dtwService, dirAgent, authnAction, authzAction)
 
 }

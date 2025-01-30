@@ -2,11 +2,11 @@ package service
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go/authn"
-	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/lib/keys"
-	"github.com/hiveot/hub/runtime/api"
+	authn "github.com/hiveot/hub/runtime/authn/api"
+	"github.com/hiveot/hub/runtime/authn/authnstore"
 	"github.com/hiveot/hub/runtime/authn/config"
+	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/clients"
 	"log/slog"
@@ -16,7 +16,7 @@ import (
 
 // AuthnAdminService handles administration of clients
 type AuthnAdminService struct {
-	authnStore api.IAuthnStore
+	authnStore authnstore.IAuthnStore
 
 	cfg *config.AuthnConfig
 
@@ -163,7 +163,7 @@ func (svc *AuthnAdminService) AddService(senderID string,
 
 // GetEntries provide a list of known clients. (internal function)
 // An entry is a profile with a password hash.
-func (svc *AuthnAdminService) GetEntries() (entries []api.AuthnEntry) {
+func (svc *AuthnAdminService) GetEntries() (entries []authnstore.AuthnEntry) {
 	return svc.authnStore.GetEntries()
 }
 
@@ -283,7 +283,7 @@ func (svc *AuthnAdminService) Stop() {
 //	msgServer used to apply changes to users, devices and services
 func NewAuthnAdminService(
 	authConfig *config.AuthnConfig,
-	authnStore api.IAuthnStore,
+	authnStore authnstore.IAuthnStore,
 	sessionAuth transports.IAuthenticator) *AuthnAdminService {
 
 	authnSvc := &AuthnAdminService{

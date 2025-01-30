@@ -2,7 +2,7 @@ package service
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go/digitwin"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/transports"
 	"log/slog"
 )
@@ -18,9 +18,9 @@ type DigitwinAgent struct {
 func (agent *DigitwinAgent) HandleRequest(
 	req *transports.RequestMessage, c transports.IConnection) (resp *transports.ResponseMessage) {
 
-	if req.ThingID == digitwin.DirectoryDThingID {
+	if req.ThingID == digitwin.ThingDirectoryDThingID {
 		resp = agent.dirHandler(req, c)
-	} else if req.ThingID == digitwin.ValuesDThingID {
+	} else if req.ThingID == digitwin.ThingValuesDThingID {
 		resp = agent.valuesHandler(req, c)
 	} else {
 		slog.Warn("HandleRequest: dThingID is not a service capability", "dThingID", req.ThingID)
@@ -35,8 +35,8 @@ func (agent *DigitwinAgent) HandleRequest(
 func NewDigitwinAgent(svc *DigitwinService) *DigitwinAgent {
 	agent := &DigitwinAgent{
 		svc:           svc,
-		dirHandler:    digitwin.NewHandleDirectoryRequest(svc.DirSvc),
-		valuesHandler: digitwin.NewHandleValuesRequest(svc.ValuesSvc),
+		dirHandler:    digitwin.NewHandleThingDirectoryRequest(svc.DirSvc),
+		valuesHandler: digitwin.NewHandleThingValuesRequest(svc.ValuesSvc),
 	}
 	return agent
 }

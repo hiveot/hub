@@ -1,7 +1,7 @@
 package service
 
 import (
-	"github.com/hiveot/hub/lib/net"
+	"github.com/hiveot/hub/transports/tputils/net"
 	"log/slog"
 )
 

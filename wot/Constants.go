@@ -23,14 +23,14 @@ const (
 
 // WoT operations
 const (
-	OpCancelAction            = "cancelaction"
-	OpInvokeAction            = "invokeaction"
-	OpObserveAllProperties    = "observeallproperties"
-	OpObserveProperty         = "observeproperty"
-	OpQueryAction             = "queryaction"
-	OpQueryAllActions         = "queryallactions"
-	OpReadAllProperties       = "readallproperties"
-	OpReadMultipleProperties  = "readmultipleproperties"
+	OpCancelAction         = "cancelaction"
+	OpInvokeAction         = "invokeaction"
+	OpObserveAllProperties = "observeallproperties"
+	OpObserveProperty      = "observeproperty"
+	OpQueryAction          = "queryaction"
+	OpQueryAllActions      = "queryallactions"
+	OpReadAllProperties    = "readallproperties"
+	//OpReadMultipleProperties  = "readmultipleproperties"
 	OpReadProperty            = "readproperty"
 	OpSubscribeAllEvents      = "subscribeallevents"
 	OpSubscribeEvent          = "subscribeevent"

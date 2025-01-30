@@ -2,10 +2,9 @@ package service
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go/authn"
-	authz2 "github.com/hiveot/hub/api/go/authz"
-	"github.com/hiveot/hub/runtime/api"
-	"github.com/hiveot/hub/runtime/authz"
+	authn "github.com/hiveot/hub/runtime/authn/api"
+	"github.com/hiveot/hub/runtime/authn/authnstore"
+	authz "github.com/hiveot/hub/runtime/authz/api"
 	"log/slog"
 )
 
@@ -13,11 +12,11 @@ import (
 type AuthzService struct {
 
 	// configuration with role
-	cfg *authz.AuthzConfig
+	cfg *AuthzConfig
 
 	// authz currently uses authn store to persist the user's role
 	// this is good enough as long as a user only has a single role
-	authnStore api.IAuthnStore
+	authnStore authnstore.IAuthnStore
 }
 
 // CreateCustomRole adds a new custom role
@@ -58,21 +57,21 @@ type AuthzService struct {
 //}
 
 // GetClientRole returns the role assigned to the client or an error
-func (svc *AuthzService) GetClientRole(senderID string, clientID string) (authz2.ClientRole, error) {
+func (svc *AuthzService) GetClientRole(senderID string, clientID string) (authz.ClientRole, error) {
 	// this simply returns the default role stored with the client
 	// in future more roles could be added in which case authz will need its own store.
 	role, err := svc.authnStore.GetRole(clientID)
-	return authz2.ClientRole(role), err
+	return authz.ClientRole(role), err
 }
 
 // GetRolePermissions returns the permissions for the given role
-func (svc *AuthzService) GetRolePermissions(senderID string, role authz2.ClientRole) (authz.RolePermission, bool) {
+func (svc *AuthzService) GetRolePermissions(senderID string, role authz.ClientRole) (RolePermission, bool) {
 	rolePerm, found := svc.cfg.RolePermissions[role]
 	return rolePerm, found
 }
 
 // SetClientRole sets the role of a client in the authz store
-func (svc *AuthzService) SetClientRole(senderID string, args authz2.AdminSetClientRoleArgs) error {
+func (svc *AuthzService) SetClientRole(senderID string, args authz.AdminSetClientRoleArgs) error {
 	// okay, we lied, it uses the authn store
 	return svc.authnStore.SetRole(args.ClientID, string(args.Role))
 }
@@ -86,7 +85,7 @@ func (svc *AuthzService) SetClientRole(senderID string, args authz2.AdminSetClie
 //
 //	senderID is the client sets the permissions.
 //	perms are the permissions that apply to using this agent
-func (svc *AuthzService) SetPermissions(senderID string, perms authz2.ThingPermissions) error {
+func (svc *AuthzService) SetPermissions(senderID string, perms authz.ThingPermissions) error {
 	// the sender must be a service
 	slog.Info("SetPermissions",
 		slog.String("senderID", senderID),
@@ -97,7 +96,7 @@ func (svc *AuthzService) SetPermissions(senderID string, perms authz2.ThingPermi
 	role, _ := svc.authnStore.GetRole(senderID)
 	if err != nil {
 		return err
-	} else if authz2.ClientRole(role) == authz2.ClientRoleAdmin {
+	} else if authz.ClientRole(role) == authz.ClientRoleAdmin {
 		// administrators can set permissions for others
 		slog.Info("Administrator setting role")
 	} else if senderID != perms.AgentID {
@@ -127,7 +126,7 @@ func (svc *AuthzService) Stop() {
 // NewAuthzService creates a new instance of the authorization service with default rules
 //
 //	authnStore is used to store default client roles
-func NewAuthzService(cfg *authz.AuthzConfig, authnStore api.IAuthnStore) *AuthzService {
+func NewAuthzService(cfg *AuthzConfig, authnStore authnstore.IAuthnStore) *AuthzService {
 	svc := &AuthzService{
 		cfg:        cfg,
 		authnStore: authnStore,
@@ -138,7 +137,7 @@ func NewAuthzService(cfg *authz.AuthzConfig, authnStore api.IAuthnStore) *AuthzS
 // StartAuthzService creates and start the authz administration service
 // with the given config.
 // This uses the authn store to store the user role
-func StartAuthzService(cfg *authz.AuthzConfig, authnStore api.IAuthnStore) (*AuthzService, error) {
+func StartAuthzService(cfg *AuthzConfig, authnStore authnstore.IAuthnStore) (*AuthzService, error) {
 
 	svc := NewAuthzService(cfg, authnStore)
 	err := svc.Start()

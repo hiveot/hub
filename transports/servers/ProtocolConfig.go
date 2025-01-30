@@ -1,7 +1,7 @@
 package servers
 
 import (
-	"github.com/hiveot/hub/lib/discovery"
+	"github.com/hiveot/hub/transports/tputils/discovery"
 	"os"
 )
 

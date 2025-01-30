@@ -1,0 +1,191 @@
+// Package wothttpbasicserver with handlers for the http-basic protocol
+package wothttpbasicserver
+
+import (
+	"fmt"
+	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/connections"
+	"github.com/hiveot/hub/transports/servers/httpserver"
+	"github.com/hiveot/hub/wot"
+	"github.com/teris-io/shortid"
+	"log/slog"
+	"net/http"
+	"sync"
+)
+
+// HttpBasicServer is the HTTP protocol binding server that handles the requests
+// over HTTP.
+//
+// This only supports receiving requests and direct responses, which is sufficient
+// to use the digital twin operations, but cannot return response from actions
+// send to remote devices.
+//
+// TODO: how to return responses from other services?
+//
+//	option1: synchronous, wait for reply - not possible for subscriptions
+//	option2: don't, require a sub-protocol with a return channel
+//
+// This heavily depends on use of URI variables for operation, thingID and name.
+type HttpBasicServer struct {
+	httpTransport *httpserver.HttpTransportServer
+
+	// registered handler of incoming connections
+	serverConnectHandler transports.ConnectionHandler
+
+	// registered handler of incoming requests (which return a reply)
+	serverRequestHandler transports.RequestHandler
+	// registered handler of incoming responses (which sends a reply to the request sender)
+	serverResponseHandler transports.ResponseHandler
+
+	// Conversion between request/response messages and protocol messages.
+	messageConverter transports.IMessageConverter
+
+	// mutex for updating connections
+	mux sync.RWMutex
+
+	// manage the incoming connections
+	connections *connections.ConnectionManager
+
+	wssPath string
+}
+
+// HttpRouter contains the method to setup the HTTP binding routes
+
+// setup the chain of routes used by the service and return the router
+// this also sets the routes for the sub-protocol handlers (ssesc and wss)
+func (svc *HttpBasicServer) createRoutes() {
+
+	// TODO: is there a use for a static file server?
+	//var staticFileServer http.Handler
+	//if rootPath == "" {
+	//	staticFileServer = http.FileServer(
+	//		&StaticFSWrapper{
+	//			FileSystem:   http.FS(src.EmbeddedStatic),
+	//			FixedModTime: time.Now(),
+	//		})
+	//} else {
+	//	// during development when run from the 'hub' project directory
+	//	staticFileServer = http.FileServer(http.Dir(rootPath))
+	//}
+	//- direct methods for digital twins
+	svc.httpTransport.AddOps(nil, []string{
+		wot.HTOpReadAllEvents,
+		wot.HTOpReadAllTDs,
+		wot.OpReadAllProperties,
+		wot.OpQueryAllActions},
+		http.MethodGet, "/digitwin/{operation}/{thingID}", svc.HandleRequestMessage)
+	svc.httpTransport.AddOps(nil, []string{
+		wot.HTOpReadEvent,
+		wot.HTOpReadTD,
+		wot.OpReadProperty,
+		wot.OpQueryAction},
+		http.MethodGet, "/digitwin/{operation}/{thingID}/{name}", svc.HandleRequestMessage)
+	svc.httpTransport.AddOps(nil, []string{
+		wot.OpWriteProperty,
+		wot.OpInvokeAction},
+		http.MethodPost, "/digitwin/{operation}/{thingID}/{name}", svc.HandleRequestMessage)
+}
+
+// HandleRequestMessage handles requests that expect a response.
+// This first builds a RequestMessage envelope; Next it passes this to the registered
+// handler for processing. Finally, the result is included in the response payload.
+//
+// Note: If result is async then the response will be sent separately by agent using an
+// ActionStatus message.
+func (svc *HttpBasicServer) HandleRequestMessage(w http.ResponseWriter, r *http.Request) {
+
+	var response *transports.ResponseMessage
+	rp, err := httpserver.GetRequestParams(r)
+	if err != nil {
+		slog.Error(err.Error())
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	// An action request should have a cid in order to receive an async reply.
+	if r.Header.Get(httpserver.ConnectionIDHeader) == "" {
+		slog.Info("HandleRequestMessage request has no 'cid' header.",
+			"clientID", rp.ClientID, "op", rp.Op)
+	}
+
+	// pass the event to the digitwin service for further processing
+	correlationID := r.Header.Get(httpserver.CorrelationIDHeader)
+	if correlationID == "" {
+		correlationID = shortid.MustGenerate()
+	}
+
+	request := transports.NewRequestMessage(rp.Op, rp.ThingID, rp.Name, rp.Data, correlationID)
+	request.SenderID = rp.ClientID
+	svc.mux.RLock()
+	rh := svc.serverRequestHandler
+	svc.mux.RUnlock()
+
+	// ping is handled internally
+	if rp.Op == wot.HTOpPing {
+		// regular http server returns with pong -
+		// used only when no sub-protocol is used as return channel
+		response = request.CreateResponse("pong", nil)
+	} else if rh == nil {
+		err = fmt.Errorf("No request handler registered")
+		slog.Error(err.Error())
+		response = request.CreateResponse("", err)
+	} else {
+		// forward the request to the internal handler for further processing.
+		// there is no connection
+		response = rh(request, nil)
+	}
+	replyHeader := w.Header()
+	if replyHeader == nil {
+		// this happened a few times during testing. perhaps a broken connection while debugging?
+		err = fmt.Errorf("HandleRequest: Can't return result."+
+			" Write header is nil. This is unexpected. clientID='%s", rp.ClientID)
+		svc.httpTransport.WriteError(w, err, http.StatusInternalServerError)
+		return
+	}
+	// hiveot used headers
+	replyHeader.Set(httpserver.CorrelationIDHeader, correlationID)
+
+	// progress is complete, return the default output
+	svc.httpTransport.WriteReply(w, response.Output, response.Status, err)
+}
+
+// HandleActionStatus handles a received action status message from an agent client
+// and forwards this as a ResponseMessage to the server response handler.
+//func (svc *HttpTransportServer) HandleActionStatus(w http.ResponseWriter, r *http.Request) {
+//	//svc.HandleNotification(wot.HTOpActionStatus, w, r)
+//	rp, err := GetRequestParams(r)
+//	if err != nil {
+//		slog.Error(err.Error())
+//		w.WriteHeader(http.StatusUnauthorized)
+//		return
+//	}
+//	actionStatus := HttpActionStatus{}
+//	err = tputils.Decode(rp.Data, &actionStatus)
+//	if err != nil {
+//		slog.Warn("HandleActionStatus. Payload is not an HttpActionStatus object",
+//			"agentID", rp.ClientID,
+//			"correlationID", rp.CorrelationID)
+//	}
+//	// on the server the action status is handled using a standardized ResponseMessage instance
+//	// This is converted to the transport protocol used to send it to the client.
+//	response := transports.ResponseMessage{
+//		MessageType: transports.MessageTypeResponse,
+//		Operation:   wot.OpInvokeAction,
+//		ThingID:     rp.ThingID,
+//		Name:        rp.Name,
+//		CorrelationID:   rp.CorrelationID,
+//		SenderID:    rp.ClientID,
+//		Status:      actionStatus.Status, // todo map names (they are the same)
+//		Error:       actionStatus.Error,
+//		Output:      actionStatus.Output,
+//		Received:    actionStatus.TimeRequested,
+//		Updated:     actionStatus.TimeEnded,
+//	}
+//	if svc.serverResponseHandler == nil {
+//		slog.Error("No response handler registered",
+//			"op", response.Operation)
+//	} else {
+//		err = svc.serverResponseHandler(response)
+//	}
+//	svc.writeReply(w, nil, "", err)
+//}

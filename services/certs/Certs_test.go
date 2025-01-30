@@ -2,12 +2,12 @@ package certs_test
 
 import (
 	"crypto/x509"
-	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
+	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/hiveot/hub/services/certs/certsapi"
 	"github.com/hiveot/hub/services/certs/certsclient"
 	"github.com/hiveot/hub/services/certs/service/selfsigned"

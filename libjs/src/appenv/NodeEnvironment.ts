@@ -36,9 +36,6 @@ export class NodeEnvironment extends Object {
     // Root of the service stores
     storesDir: string = ""
 
-    // Server connection core determines the transport to use
-    //Core string `yaml:"core"` // core to use, "nats" or "mqtt". empty for auto-detect
-
     // schema://address:port/ of the hub. Default is autodetect using DNS-SD
     hubURL: string = ""
 

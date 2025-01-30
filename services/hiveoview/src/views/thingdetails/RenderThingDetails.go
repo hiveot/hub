@@ -3,12 +3,12 @@ package thingdetails
 import (
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/runtime/consumedthing"
 	"github.com/hiveot/hub/services/hiveoview/src"
-	session2 "github.com/hiveot/hub/services/hiveoview/src/session"
+	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"github.com/hiveot/hub/services/hiveoview/src/views/history"
 	"github.com/hiveot/hub/transports/tputils"
-	"github.com/hiveot/hub/wot/consumedthing"
 	"github.com/hiveot/hub/wot/td"
 	"golang.org/x/exp/maps"
 	"log/slog"
@@ -81,7 +81,7 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Read the TD being displayed and its latest values
-	_, sess, err := session2.GetSessionFromContext(r)
+	_, sess, err := session.GetSessionFromContext(r)
 	cts := sess.GetConsumedThingsDirectory()
 	if err == nil {
 		ct, err = cts.Consume(thingID)
@@ -89,7 +89,7 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		slog.Error("Failed loading Thing info",
 			"thingID", thingID, "err", err.Error())
-		sess.SendNotify(session2.NotifyError, "", err.Error())
+		sess.SendNotify(session.NotifyError, "", err.Error())
 		sess.WriteError(w, err, 0)
 		return
 	}

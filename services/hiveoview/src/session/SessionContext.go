@@ -115,6 +115,6 @@ func GetSessionFromContext(r *http.Request) (
 	}
 	clientSession := ctxClientSession.(*WebClientSession)
 	sm := ctxSessionManager.(*WebSessionManager)
-	//hc := session.GetHubClient()
+	//hc := session.GetConsumer()
 	return sm, clientSession, nil
 }

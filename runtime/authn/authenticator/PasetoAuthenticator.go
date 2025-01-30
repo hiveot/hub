@@ -4,9 +4,9 @@ import (
 	"aidanwoods.dev/go-paseto"
 	"crypto/ed25519"
 	"fmt"
-	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/lib/keys"
-	"github.com/hiveot/hub/runtime/api"
+	authn "github.com/hiveot/hub/runtime/authn/api"
+	"github.com/hiveot/hub/runtime/authn/authnstore"
 	"github.com/hiveot/hub/runtime/authn/config"
 	"github.com/hiveot/hub/runtime/authn/sessions"
 	"github.com/teris-io/shortid"
@@ -20,7 +20,7 @@ type PasetoAuthenticator struct {
 	// key used to create and verify session tokens
 	signingKey ed25519.PrivateKey
 	// authentication store for login verification
-	authnStore api.IAuthnStore
+	authnStore authnstore.IAuthnStore
 	//
 	AgentTokenValiditySec    int
 	ConsumerTokenValiditySec int
@@ -193,7 +193,7 @@ func (svc *PasetoAuthenticator) ValidateToken(token string) (clientID string, se
 }
 
 // NewPasetoAuthenticator returns a new instance of a Paseto token authenticator using the given signing key
-func NewPasetoAuthenticator(authnStore api.IAuthnStore, signingKey ed25519.PrivateKey) *PasetoAuthenticator {
+func NewPasetoAuthenticator(authnStore authnstore.IAuthnStore, signingKey ed25519.PrivateKey) *PasetoAuthenticator {
 	paseto.NewV4AsymmetricSecretKey()
 
 	svc := PasetoAuthenticator{
@@ -211,7 +211,7 @@ func NewPasetoAuthenticator(authnStore api.IAuthnStore, signingKey ed25519.Priva
 // NewPasetoAuthenticatorFromFile returns a new instance of a Paseto token authenticator
 // loading a keypair from file or creating one if it doesn't exist.
 // This returns nil if no signing key can be loaded or created
-func NewPasetoAuthenticatorFromFile(authnStore api.IAuthnStore, keysDir string) *PasetoAuthenticator {
+func NewPasetoAuthenticatorFromFile(authnStore authnstore.IAuthnStore, keysDir string) *PasetoAuthenticator {
 
 	clientID := "authn"
 	authKey, err := keys.LoadCreateKeyPair(clientID, keysDir, keys.KeyTypeEd25519)

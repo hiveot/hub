@@ -3,11 +3,11 @@ package history
 import (
 	"encoding/json"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/runtime/consumedthing"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot"
-	"github.com/hiveot/hub/wot/consumedthing"
 	"github.com/hiveot/hub/wot/td"
 	"time"
 )
@@ -25,7 +25,7 @@ type HistoryTemplateData struct {
 	Timestamp      time.Time
 	TimestampStr   string
 	DurationSec    int
-	Values         []*transports.NotificationMessage
+	Values         []*transports.ResponseMessage
 	ItemsRemaining bool // for paging, if supported
 	Stepped        bool // stepped graph
 
@@ -48,9 +48,9 @@ func (ht HistoryTemplateData) AsJSON() string {
 	dataList := []HistoryDataPoint{}
 
 	for _, m := range ht.Values {
-		yValue := m.Data
+		yValue := m.Output
 		if ht.DataSchema.Type == vocab.WoTDataTypeBool {
-			boolValue := m.ToBool()
+			boolValue := tputils.DecodeAsBool(m.Output)
 			yValue = 0
 			if boolValue {
 				yValue = 1
@@ -58,7 +58,7 @@ func (ht HistoryTemplateData) AsJSON() string {
 
 		}
 		dataList = append(dataList,
-			HistoryDataPoint{X: m.Created, Y: yValue})
+			HistoryDataPoint{X: m.Updated, Y: yValue})
 	}
 	dataJSON, _ := json.Marshal(dataList)
 	return string(dataJSON)
@@ -99,12 +99,12 @@ func NewHistoryTemplateData(
 	ct *consumedthing.ConsumedThing, name string, timestamp time.Time, duration time.Duration) (
 	data *HistoryTemplateData, err error) {
 
-	td := ct.GetTD()
+	tdi := ct.GetTD()
 	hs := HistoryTemplateData{
-		TD:           td,
-		ThingID:      td.ID,
+		TD:           tdi,
+		ThingID:      tdi.ID,
 		Name:         name,
-		Title:        td.Title,
+		Title:        tdi.Title,
 		Timestamp:    timestamp,
 		TimestampStr: timestamp.Format(wot.RFC3339Milli),
 		DurationSec:  int(duration.Seconds()),
@@ -118,15 +118,15 @@ func NewHistoryTemplateData(
 
 	hs.DataSchema = iout.Schema
 	hs.UnitSymbol = iout.UnitSymbol()
-	hs.Title = iout.Title + " of " + td.Title
+	hs.Title = iout.Title + " of " + tdi.Title
 	hs.DataSchema.Title = hs.Title
-	hs.Stepped = (iout.Schema.Type == vocab.WoTDataTypeBool)
+	hs.Stepped = iout.Schema.Type == vocab.WoTDataTypeBool
 
 	// TODO: (if needed) if items remaining, get the rest in an additional call
 	hs.Values, hs.ItemsRemaining, err = ct.ReadHistory(name, timestamp, duration)
 
 	// Add the URL paths for navigating around the history
-	pathParams := map[string]string{"thingID": td.ID, "name": name}
+	pathParams := map[string]string{"thingID": tdi.ID, "name": name}
 	prevDayTime := hs.PrevDay().Format(time.RFC3339)
 	nextDayTime := hs.NextDay().Format(time.RFC3339)
 	todayTime := time.Now().Format(time.RFC3339)

@@ -2,8 +2,8 @@ package store
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/lib/buckets"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
@@ -153,7 +153,7 @@ func (svc *DigitwinStore) ReadAllProperties(dThingID string) (
 	dtw, found := svc.dtwCache[dThingID]
 
 	if !found {
-		err = fmt.Errorf("ReadAllProperties: dThing with ID '%s' not found", dThingID)
+		err = fmt.Errorf("GetAllProperties: dThing with ID '%s' not found", dThingID)
 		return v, err
 	}
 	// shallow copy
@@ -453,7 +453,7 @@ func (svc *DigitwinStore) UpdateActionStatus(agentID string, resp *transports.Re
 		actionValue.TimeUpdated = time.Now().Format(wot.RFC3339Milli)
 		if resp.Status == transports.StatusCompleted {
 			actionValue.Output = resp.Output
-			actionValue.TimeEnded = resp.Updated
+			actionValue.TimeUpdated = resp.Updated
 		} else if resp.Error != "" {
 			actionValue.Error = resp.Error
 		}
@@ -543,27 +543,27 @@ func (svc *DigitwinStore) UpdatePropertyValue(newValue digitwin.ThingValue) (
 // correlationID provided by the agent, in response to an action or write
 //
 // This returns a map with changed property values.
-func (svc *DigitwinStore) UpdateProperties(dThingID string, created string, propMap map[string]any) (
-	changes map[string]any, err error) {
-
-	changes = make(map[string]any)
-	for k, v := range propMap {
-		newValue := digitwin.ThingValue{
-			Created: created,
-			Data:    v,
-			Name:    k,
-			ThingID: dThingID,
-		}
-
-		//	wot.HTOpUpdateProperty, dThingID, k, v)
-		//}
-		changed, _ := svc.UpdatePropertyValue(newValue)
-		if changed {
-			changes[k] = v
-		}
-	}
-	return changes, nil
-}
+//func (svc *DigitwinStore) UpdateProperties(dThingID string, created string, propMap map[string]any) (
+//	changes map[string]any, err error) {
+//
+//	changes = make(map[string]any)
+//	for k, v := range propMap {
+//		newValue := digitwin.ThingValue{
+//			Created: created,
+//			Data:    v,
+//			Name:    k,
+//			ThingID: dThingID,
+//		}
+//
+//		//	wot.HTOpUpdateProperty, dThingID, k, v)
+//		//}
+//		changed, _ := svc.UpdatePropertyValue(newValue)
+//		if changed {
+//			changes[k] = v
+//		}
+//	}
+//	return changes, nil
+//}
 
 // WriteProperty stores a new  property value
 // This sets the 'updated' timestamp if empty

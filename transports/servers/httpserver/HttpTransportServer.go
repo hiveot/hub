@@ -10,7 +10,9 @@ import (
 	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/transports/tputils/tlsserver"
 	"github.com/hiveot/hub/wot"
+	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
+	"golang.org/x/exp/slices"
 	"io"
 	"log/slog"
 	"net/http"
@@ -46,15 +48,12 @@ type HttpOperation struct {
 	//isThingLevel bool
 }
 
-// HttpTransportServer is the transport binding server for HTTPS
-// This wraps the library's https server and add routes and middleware for use in the binding
-// Intended for use with the SSE and WSS protocol bindings
+// HttpTransportServer is the transport binding server for HTTPS.
+//
+// This wraps the library's https server and add routes, middleware, forms,
+// and authentication.
+// Intended for use with the SSE and WSS sub-protocols which inject their own routes.
 type HttpTransportServer struct {
-
-	// registered handler of requests (which return a reply)
-	//serverRequestHandler transports.ServerRequestHandler
-	// registered handler of responses (which sends a reply to the request sender)
-	//serverResponseHandler transports.ServerResponseHandler
 
 	// TLS server and router
 	httpServer *tlsserver.TLSServer
@@ -67,24 +66,23 @@ type HttpTransportServer struct {
 	// for sub-protocol bindings such as sse and wss.
 	protectedRoutes chi.Router
 
-	// subprotocol bindings
-	//sse   *sse.SseBindingServer
-	//ssesc *ssescserver.SseScTransportServer
-	//ws    *wssserver.WssTransportServer
-
 	// authenticator for logging in and validating session tokens
 	authenticator transports.IAuthenticator
 
 	// Thing level operations added by the http router
 	operations []HttpOperation
-
-	// connection manager for adding/removing binding connections
-	//cm *connections.ConnectionManager
 }
 
 // AddOps adds one or more protocol binding operations with a path and handler
 // This will be added as a protected route that requires authentication.
+//
 // Intended for adding operations for http routes and for sub-protocol bindings.
+//
+//	r is the router to use or nil for the default protected route.
+//	ops is a list of operations to register with this URL.
+//	method is the HTTP method to use
+//	opURL is the URL for the operation(s). Can contain URI variables.
+//	handler is the server handler for the operation
 func (svc *HttpTransportServer) AddOps(
 	r chi.Router, ops []string, method string, opURL string, handler http.HandlerFunc) {
 
@@ -101,15 +99,15 @@ func (svc *HttpTransportServer) AddOps(
 	r.Method(method, opURL, handler)
 }
 
-// createRoutes creates the middleware chain for handling requests, including
+// setupRouting creates the middleware chain for handling requests, including
 // recoverer, compression and token verification for protected routes.
 //
-// This includes the unprotected routes for login and ping
-// This includes the protected routes for refresh and logout.
+// This includes the unprotected routes for login and ping (for now)
+// This includes the protected routes for refresh and logout. (for now)
 // Everything else should be added by the sub-protocols.
 //
 // Routes are added by (sub)protocols such as http-basic, sse and wss.
-func (svc *HttpTransportServer) createRoutes(router chi.Router) http.Handler {
+func (svc *HttpTransportServer) setupRouting(router chi.Router) http.Handler {
 
 	// TODO: is there a use for a static file server?
 	//var staticFileServer http.Handler
@@ -181,6 +179,24 @@ func (svc *HttpTransportServer) GetConnectURL() string {
 	return baseURL
 }
 
+// GetForm returns a new HTTP form for the given operation
+// Intended for Thing level operations
+func (svc *HttpTransportServer) GetForm(op, thingID, name string) *td.Form {
+
+	// Operations use URI variables in URLs for selecting things.
+	for _, httpOp := range svc.operations {
+		if slices.Contains(httpOp.ops, op) {
+			form := td.NewForm(op, httpOp.url)
+			form["htv:methodName"] = httpOp.method
+			return &form
+		}
+	}
+
+	slog.Warn("GetForm. No form found for operation",
+		"op", op)
+	return nil
+}
+
 // HandleLogin handles a login request, posted by a consumer.
 // This is the only unprotected route supported.
 // This uses the configured session authenticator.
@@ -245,13 +261,15 @@ func (svc *HttpTransportServer) HandleLogout(w http.ResponseWriter, r *http.Requ
 func (svc *HttpTransportServer) HandlePing(w http.ResponseWriter, r *http.Request) {
 	// simply return a pong message
 	rp, err := GetRequestParams(r)
+	if err != nil {
+		svc.WriteError(w, err, http.StatusBadRequest)
+		return
+	}
 
 	replyHeader := w.Header()
 	replyHeader.Set(CorrelationIDHeader, rp.CorrelationID)
 
 	svc.WriteReply(w, "pong", transports.StatusCompleted, err)
-
-	//svc.HandleRequestMessage(wot.HTOpPing, w, r)
 }
 
 //
@@ -322,18 +340,10 @@ func (svc *HttpTransportServer) WriteReply(
 //	serverCert: the TLS certificate of this server
 //	caCert: the CA public certificate that signed the server cert
 //	authenticator: plugin to authenticate requests
-//	cm: handler of new incoming connections
-//	serverRequestHandler: handler of incoming requests from clients
-//	serverResponseHandler: handler of incoming response from agents
-//	serverNotificationHandler: handler if incoming notifications from agents
 func StartHttpTransportServer(host string, port int,
 	serverCert *tls.Certificate,
 	caCert *x509.Certificate,
 	authenticator transports.IAuthenticator,
-	// cm *connections.ConnectionManager,
-	// handleNotification transports.ServerNotificationHandler,
-	// handleRequest transports.ServerRequestHandler,
-	// handleResponse transports.ServerResponseHandler,
 ) (*HttpTransportServer, error) {
 
 	httpServer, httpRouter := tlsserver.NewTLSServer(
@@ -342,11 +352,6 @@ func StartHttpTransportServer(host string, port int,
 	//wssURL := fmt.Sprintf("wss://%s:%d", config.Host, config.Port)
 	svc := HttpTransportServer{
 		authenticator: authenticator,
-
-		//serverRequestHandler:      handleRequest,
-		//serverResponseHandler:     handleResponse,
-		//serverNotificationHandler: handleNotification,
-
 		hostName:   host,
 		port:       port,
 		httpServer: httpServer,
@@ -354,7 +359,7 @@ func StartHttpTransportServer(host string, port int,
 		//cm:         cm,
 	}
 
-	svc.createRoutes(svc.router)
+	svc.setupRouting(svc.router)
 	err := svc.httpServer.Start()
 	return &svc, err
 }

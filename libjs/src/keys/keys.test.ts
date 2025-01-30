@@ -3,7 +3,7 @@
 
 import { Ed25519Key } from "./Ed25519Key";
 // import {Ed25519Key} from "./Ed25519Key.js";
-import { natsKey } from "./natsKey";
+// import { natsKey } from "./natsKey";
 import { IHiveKey } from './IHiveKey';
 
 

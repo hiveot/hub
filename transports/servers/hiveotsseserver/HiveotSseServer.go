@@ -1,69 +1,130 @@
 package hiveotsseserver
 
 import (
-	"fmt"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/connections"
-	"github.com/hiveot/hub/transports/servers"
 	"github.com/hiveot/hub/transports/servers/httpserver"
-	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
-	"log/slog"
-	"net/http"
 	"sync"
 )
 
 const SSEOpConnect = "sse-connect"
 
-// HiveotSseServer is a subprotocol binding server of http
+// HiveotSseServer is a protocol binding transport server of http for the SSE-SC
+// Single-Connection protocol. This protocol supports full asynchronous messaging
+// over http and SSE.
 //
-// This server supports both the SSE (TODO) and the SSE-SC sub-protocols.
+// This is not a WoT specified protocol but is arguably easier to use. It uses
+// the hiveot RequestMessage and ResponseMessage envelopes for all messaging, or
+// an alternative message converter can be provided to support a different message
+// envelope format.
 //
-// The SSE subprotocol provides event/property resource in the path.
-// See also https://w3c.github.io/wot-profile/#sec-http-sse-profile
-// The SSE event 'event' field contains the event or property affordance name.
+// This can be used with any golang HTTP server, including the http-basic or
+// websocket http server as long as it can register routes.
 //
-// The SSE-SC extension is automatically enabled if the SSE connection is made
-// on the ssesc base path. Clients subscribe and observe methods to make
-// REST calls to subscribe and unsubscribe.
-// An SSE-SC event 'event' field contains the operation name while the ID field
-// contains the concatenation of operation/thingID/affordance name.
-// (todo: look into using operation/thingID/affordance in the event field instead
-// so it is closer to the SSE spec)
+// Usages:
 //
-// For consideration is a third variant that uses message envelopes similar to
-// websockets.
+//  1. Thing Agents that run servers. For example the HiveOT Hub. The agent
+//     serves HTTP/SSE connections from consumers. Requests are received over HTTP
+//     and asynchronous responses are sent back over SSE. HTTP requests and SSE
+//     connections must carry the same 'cid' to correlate HTTP requests with the
+//     SSE return channel from the same client.
+//     The HiveOT Hub uses this as part of multiple servers that serve the
+//     digital twin repository content.
+//
+//  2. Consumers that run servers. For example the Hub is a consumer of Thing agents
+//     that connect to the Hub. Since the connection is reversed, the requests are
+//     now sent over SSE to the Hub while the response is sent as a HTTP post to the hub.
+//
+//  3. An agent/consumer hybrid that runs a server. For example, the HiveOT Hub.
+//     Another Thing agent or service connect to the Hub to receive requests and
+//     at the same time can send consumer requests over http and receive responses
+//     over SSE.
+//
+// # Note that the direction of connection is independent of this transport does not determine the
+//
+// All SSE messages use the 'event' and 'data' field as per SSE standard. The event
+// field contains the operation while the data field contains the RequestMessage
+// or ResponseMessage envelope.
+//
+// SSE 'event' field contains the request or response message type, indicating the
+// message payload.
 type HiveotSseServer struct {
-	// connection manager to add/remove connections
-	cm *connections.ConnectionManager
+
+	// manage the incoming SSE connections
+	connections *connections.ConnectionManager
 
 	httpTransport *httpserver.HttpTransportServer
 
 	// mutex for updating connections
 	mux sync.RWMutex
+
+	// registered handler of incoming connections
+	serverConnectHandler transports.ConnectionHandler
+
+	// The listening path
+	ssePath string
+
+	// registered handler of incoming requests (which return a reply)
+	serverRequestHandler transports.RequestHandler
+	// registered handler of incoming responses (which sends a reply to the request sender)
+	serverResponseHandler transports.ResponseHandler
 }
 
-func (svc *HiveotSseServer) AddTDForms(tdi *td.TD) error {
+// AddRoutes adds routes to the HTTP server for connecting to SSE, (Un)Subscribe,
+// and (Un)Observe using hiveot RequestMessage and ResponseMessage envelopes.
+// This
+
+// AddTDForms for connecting to SSE, Subscribe, Observe, Send Requests, read and query
+// using hiveot RequestMessage and ResponseMessage envelopes.
+func (srv *HiveotSseServer) AddTDForms(tdi *td.TD) error {
+
+	//srv.httpTransport.AddOps()
 	// forms are handled through the http binding
-	return svc.httpTransport.AddTDForms(tdi)
+	//return srv.httpTransport.AddTDForms(tdi)
+	return nil
+}
+
+func (srv *HiveotSseServer) CloseAll() {
+	srv.connections.CloseAll()
+}
+
+// CloseAllClientConnections close all connections from the given client.
+// Intended to close connections after a logout.
+func (srv *HiveotSseServer) CloseAllClientConnections(clientID string) {
+	srv.connections.ForEachConnection(func(c transports.IServerConnection) {
+		if c.GetClientID() == clientID {
+			c.Disconnect()
+		}
+	})
+}
+
+// GetConnectURL returns websocket connection URL of the server
+func (srv *HiveotSseServer) GetConnectURL(_ string) string {
+	return srv.httpTransport.GetConnectURL() + srv.ssePath
+}
+
+// GetConnectionByConnectionID returns the connection with the given connection ID
+func (srv *HiveotSseServer) GetConnectionByConnectionID(cid string) transports.IConnection {
+	return srv.connections.GetConnectionByConnectionID(cid)
+}
+
+// GetConnectionByClientID returns the connection with the given client ID
+func (srv *HiveotSseServer) GetConnectionByClientID(agentID string) transports.IConnection {
+	return srv.connections.GetConnectionByClientID(agentID)
 }
 
 // GetForm returns a new SSE form for the given operation
 // this returns the http form
-func (svc *HiveotSseServer) GetForm(op, thingID, name string) td.Form {
+func (srv *HiveotSseServer) GetForm(op, thingID, name string) *td.Form {
 	// forms are handled through the http binding
-	return svc.httpTransport.GetForm(op, thingID, name)
-}
-
-// GetConnectURL returns SSE connection path of the server
-func (svc *HiveotSseServer) GetConnectURL() string {
-	return svc.httpTransport.GetConnectURL() + servers.DefaultHiveotSsePath
+	return srv.httpTransport.GetForm(op, thingID, name)
 }
 
 // GetSseConnection returns the SSE Connection with the given ID
 // This returns nil if not found or if the connectionID is not
-func (svc *HiveotSseServer) GetSseConnection(connectionID string) *HiveotSseServerConnection {
-	c := svc.cm.GetConnectionByConnectionID(connectionID)
+func (srv *HiveotSseServer) GetSseConnection(connectionID string) *HiveotSseServerConnection {
+	c := srv.connections.GetConnectionByConnectionID(connectionID)
 	if c == nil {
 		return nil
 	}
@@ -74,97 +135,18 @@ func (svc *HiveotSseServer) GetSseConnection(connectionID string) *HiveotSseServ
 	return sseConn
 }
 
-// HandleConnect handles a new sse-sc connection.
-// This doesn't return until the connection is closed by either client or server.
-func (svc *HiveotSseServer) HandleConnect(w http.ResponseWriter, r *http.Request) {
-
-	//An active session is required before accepting the request. This is created on
-	//authentication/login. Until then SSE connections are blocked.
-	clientID, err := httpserver.GetClientIdFromContext(r)
-
-	if err != nil {
-		slog.Warn("SSESC HandleConnect. No session available yet, telling client to delay retry to 10 seconds",
-			"remoteAddr", r.RemoteAddr)
-
-		// set retry to a large number
-		// see https://javascript.info/server-sent-events#reconnection
-		errMsg := fmt.Sprintf("retry: %s\nevent:%s\n\n",
-			"10000", "logout")
-		http.Error(w, errMsg, http.StatusUnauthorized)
-		//w.Write([]byte(errMsg))
-		w.(http.Flusher).Flush()
-		return
-	}
-	// SSE-SC clients include a connection-ID header to link subscriptions to this
-	// connection. This is prefixed with "{clientID}-" to ensure uniqueness and
-	// prevent connection hijacking.
-	cid := r.Header.Get(httpserver.ConnectionIDHeader)
-
-	// add the new sse connection
-	sseFallback := false // TODO
-	c := NewHiveotSseConnection(clientID, cid, r.RemoteAddr, sseFallback)
-
-	err = svc.cm.AddConnection(c)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		return
-	}
-	// don't return until the connection is closed
-	c.Serve(w, r)
-
-	// finally cleanup the connection
-	svc.cm.RemoveConnection(c.GetConnectionID())
+// SendNotification sends a property update or event response message to subscribers
+func (srv *HiveotSseServer) SendNotification(msg *transports.ResponseMessage) {
+	// pass the response to all subscribed connections
+	// FIXME: track connections
+	srv.connections.ForEachConnection(func(c transports.IServerConnection) {
+		c.SendNotification(*msg)
+	})
 }
 
-//// HandlePing responds with a pong reply message on the SSE return channel
-//func (svc *HiveotSseServer) HandlePing(w http.ResponseWriter, r *http.Request) {
-//	rp, _ := httpserver.GetRequestParams(r)
-//
-//	c := svc.GetSseConnection(rp.ConnectionID)
-//	if c == nil {
-//		http.Error(w, "Missing or unknown connection ID", http.StatusBadRequest)
-//		return
-//	}
-//	resp := transports.NewResponseMessage(wot.HTOpPong, "", "", "pon", nil, rp.CorrelationID)
-//	_ = c._send(transports.MessageTypeResponse, resp)
-//}
-
-// HandleSubscriptions (un)subscribe events or (un)observe properties
-func (svc *HiveotSseServer) HandleSubscriptions(w http.ResponseWriter, r *http.Request) {
-	rp, err := httpserver.GetRequestParams(r)
-	if err != nil {
-		slog.Warn("HandleSubscriptions", "err", err.Error())
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	c := svc.GetSseConnection(rp.ConnectionID)
-	if c == nil {
-		slog.Error("HandleSubscribeEvent: no matching connection found",
-			"clientID", rp.ClientID, "connID", rp.ConnectionID)
-	}
-	switch rp.Op {
-	case wot.OpSubscribeEvent, wot.OpSubscribeAllEvents:
-		c.SubscribeEvent(rp.ThingID, rp.Name)
-	case wot.OpUnsubscribeEvent, wot.OpUnsubscribeAllEvents:
-		c.UnsubscribeEvent(rp.ThingID, rp.Name)
-	case wot.OpObserveProperty, wot.OpObserveAllProperties:
-		c.ObserveProperty(rp.ThingID, rp.Name)
-	case wot.OpUnobserveProperty, wot.OpUnobserveAllProperties:
-		c.UnobserveProperty(rp.ThingID, rp.Name)
-	}
-}
-
-// SendNotification broadcast an event or property change to subscribers clients
-func (svc *HiveotSseServer) SendNotification(notification transports.ResponseMessage) {
-	cList := svc.cm.GetConnectionByProtocol(transports.ProtocolTypeHiveotSSE)
-	for _, c := range cList {
-		c.SendNotification(notification)
-	}
-}
-
-func (svc *HiveotSseServer) Stop() {
+func (srv *HiveotSseServer) Stop() {
 	//Close all incoming SSE connections
-	svc.cm.CloseAll()
+	srv.connections.CloseAll()
 }
 
 // StartHiveotSseServer returns a new SSE-SC sub-protocol binding.
@@ -176,30 +158,20 @@ func (svc *HiveotSseServer) Stop() {
 // If no ssePath is provided, the default DefaultSSESCPath (/ssesc) is used
 func StartHiveotSseServer(
 	ssePath string,
-	cm *connections.ConnectionManager,
 	httpTransport *httpserver.HttpTransportServer,
+	handleConnect transports.ConnectionHandler,
+	handleRequest transports.RequestHandler,
+	handleResponse transports.ResponseHandler,
 ) *HiveotSseServer {
-	if ssePath == "" {
-		ssePath = servers.DefaultHiveotSsePath
+	srv := &HiveotSseServer{
+		connections:           connections.NewConnectionManager(),
+		serverConnectHandler:  handleConnect,
+		serverRequestHandler:  handleRequest,
+		serverResponseHandler: handleResponse,
+		ssePath:               ssePath,
+		httpTransport:         httpTransport,
 	}
-	b := &HiveotSseServer{
-		cm:            cm,
-		httpTransport: httpTransport,
-	}
-	httpTransport.AddOps(nil, []string{SSEOpConnect},
-		http.MethodGet, ssePath, b.HandleConnect)
-	httpTransport.AddOps(nil, []string{
-		wot.OpObserveProperty, wot.OpObserveAllProperties,
-		wot.OpSubscribeEvent, wot.OpSubscribeAllEvents,
-		wot.OpUnobserveProperty, wot.OpUnobserveAllProperties,
-		wot.OpUnsubscribeEvent, wot.OpUnsubscribeAllEvents},
-		http.MethodPost, ssePath+"/{operation}/{thingID}", b.HandleSubscriptions)
-
-	// TODO: move to sse
-	//// register the endpoints with the http server
-	//httpTransport.AddOps(nil, []string{"request"},
-	//	http.MethodPost, httpserver.HiveOTPostRequestHRef, srv.HandleRequest)
-	//httpTransport.AddOps(nil, []string{"response"},
-	//	http.MethodPost, httpserver.HiveOTPostResponseHRef, srv.HandleResponse)
-	return b
+	// Add the routes used in SSE connection and subscription requests
+	srv.CreateRoutes()
+	return srv
 }

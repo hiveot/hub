@@ -5,9 +5,9 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
-	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/logging"
+	authn "github.com/hiveot/hub/runtime/authn/api"
 	"github.com/hiveot/hub/transports/servers/httpserver"
 	"github.com/hiveot/hub/transports/tputils/tlsclient"
 	"github.com/stretchr/testify/require"
@@ -219,6 +219,8 @@ func TestAuthJWT(t *testing.T) {
 	mux := http.NewServeMux()
 	// Handle a jwt login
 	mux.HandleFunc(pathLogin1, func(resp http.ResponseWriter, req *http.Request) {
+		// FIXME: remove dependency on authn
+		// Is the login API a transport feature? Look into the WoT specification.
 		authMsg := authn.UserLoginArgs{}
 		slog.Info("TestAuthJWT: login")
 		body, err := io.ReadAll(req.Body)

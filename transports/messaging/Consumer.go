@@ -8,31 +8,43 @@ import (
 	"github.com/hiveot/hub/wot"
 	"github.com/teris-io/shortid"
 	"log/slog"
+	"sync"
+	"sync/atomic"
 	"time"
 )
+
+const DefaultRpcTimeout = time.Second * 3
 
 // Consumer provides the messaging functionality for consumers
 // This provides a golang API to consumer operations.
 type Consumer struct {
+	// application callback for reporting connection status change
+	appConnectHandlerPtr atomic.Pointer[transports.ConnectionHandler]
+
+	// application callback that handles asynchronous responses
+	appResponseHandlerPtr atomic.Pointer[transports.ResponseHandler]
+
 	// The underlying transport connection for delivering and receiving requests and responses
 	cc transports.IConnection
+
+	mux sync.RWMutex
 
 	// The timeout to use when waiting for a response
 	rpcTimeout time.Duration
 
 	// Request and Response channel helper
 	rnrChan *RnRChan
-
-	// application callback for reporting connection status change
-	appConnectHandler transports.ConnectionHandler
-
-	// application callback that handles asynchronous responses
-	appResponseHandler transports.ResponseHandler
 }
 
-// Disconnect the client.
+// Disconnect the client connection and remove the callbacks linked to it.
+// Do not use this consumer after disconnect.
 func (co *Consumer) Disconnect() {
 	co.cc.Disconnect()
+	co.mux.Lock()
+	co.mux.Unlock()
+	co.cc.SetConnectHandler(nil)
+	co.cc.SetRequestHandler(nil)
+	co.cc.SetResponseHandler(nil)
 }
 
 // GetClientID returns the client's account ID
@@ -40,12 +52,13 @@ func (co *Consumer) GetClientID() string {
 	return co.cc.GetClientID()
 }
 
-// GetConnection returns the connection of this consumer
+// GetConnection returns the underlying connection of this consumer
 func (co *Consumer) GetConnection() transports.IConnection {
 	return co.cc
 }
 
 // InvokeAction invokes an action on a thing and wait for the response
+// If the response type is known then provide it with output, otherwise use interface{}
 func (co *Consumer) InvokeAction(
 	dThingID, name string, input any, output any) error {
 
@@ -94,8 +107,9 @@ func (co *Consumer) ObserveProperty(thingID string, name string) error {
 
 // websocket connection status handler
 func (co *Consumer) onConnect(connected bool, err error, c transports.IConnection) {
-	if co.appConnectHandler != nil {
-		co.appConnectHandler(connected, err, c)
+	hPtr := co.appConnectHandlerPtr.Load()
+	if hPtr != nil {
+		(*hPtr)(connected, err, c)
 	}
 }
 
@@ -110,26 +124,27 @@ func (co *Consumer) onResponse(resp *transports.ResponseMessage) error {
 	}
 
 	// handle the response as an async response with no wait handler registered
-	if co.appResponseHandler == nil {
+	hPtr := co.appResponseHandlerPtr.Load()
+	if hPtr == nil {
 		if resp.Status == transports.StatusPending {
 			// NOTE: if no response is expected then this could be an out-of-order response
 			// instead of receiving 'pending' 'completed', the completed response is
 			// received first.
 			// Ignore the pending response for now.
 			return nil
-		} else {
-			// at least one of the handlers should be registered
-			slog.Error("Response received but no handler registered",
-				"operation", resp.Operation,
-				"clientID", co.GetClientID(),
-				"thingID", resp.ThingID,
-				"name", resp.Name,
-				"correlationID", resp.CorrelationID)
-			err := fmt.Errorf("Response received but no handler registered")
-			return err
 		}
+		// at least one of the handlers should be registered
+		slog.Error("Response received but no handler registered",
+			"operation", resp.Operation,
+			"clientID", co.GetClientID(),
+			"thingID", resp.ThingID,
+			"name", resp.Name,
+			"correlationID", resp.CorrelationID)
+		err := fmt.Errorf("Response received but no handler registered")
+		return err
 	}
-	return co.appResponseHandler(resp)
+	// pass the response to the registered handler
+	return (*hPtr)(resp)
 }
 
 // Ping the server and wait for a pong response
@@ -146,15 +161,57 @@ func (co *Consumer) Ping() error {
 	return nil
 }
 
-// ReadAllEvents sends a request to read all Thing event values
+// QueryAction obtains the most recent action status
+//
+// This depends on the underlying protocol binding to construct appropriate
+// ResponseMessages and include information such as Updated. All hiveot protocols
+// include full information. WoT bindings might be too limited.
+func (co *Consumer) QueryAction(thingID, name string) (
+	resp *transports.ResponseMessage, err error) {
+
+	correlationID := shortid.MustGenerate()
+	req := transports.NewRequestMessage(wot.OpReadProperty, thingID, name, nil, correlationID)
+	// use SendRequest so we can return the actual response message with the value
+	resp, err = co.SendRequest(req, true)
+	return resp, err
+}
+
+// QueryAllActions returns a map of action statuses for all actions of a thing.
+//
+// This returns a map of actionName and the last received action status message.
+//
+// This depends on the underlying protocol binding to construct appropriate
+// ResponseMessages and include information such as Updated. All hiveot protocols
+// include full information. WoT bindings might be too limited.
+func (co *Consumer) QueryAllActions(thingID string) (
+	values map[string]*transports.ResponseMessage, err error) {
+
+	err = co.Rpc(wot.OpQueryAllActions, thingID, "", nil, &values)
+	return values, err
+}
+
+// ReadAllEvents sends a request to read all Thing event values.
 // This is not a WoT operation (but maybe it should be)
-func (co *Consumer) ReadAllEvents(thingID string) (values map[string]any, err error) {
+// This returns a map of eventName and the last received event message.
+//
+// This depends on the underlying protocol binding to construct appropriate
+// ResponseMessages and include information such as Updated. All hiveot protocols
+// include full information. WoT bindings might be too limited.
+func (co *Consumer) ReadAllEvents(thingID string) (
+	values map[string]*transports.ResponseMessage, err error) {
+
 	err = co.Rpc(wot.HTOpReadAllEvents, thingID, "", nil, &values)
 	return values, err
 }
 
-// ReadAllProperties sends a request to read all Thing property values
-func (co *Consumer) ReadAllProperties(thingID string) (values map[string]any, err error) {
+// ReadAllProperties sends a request to read all Thing property values.
+//
+// This depends on the underlying protocol binding to construct appropriate
+// ResponseMessages and include information such as Updated. All hiveot protocols
+// include full information. WoT bindings might be too limited.
+func (co *Consumer) ReadAllProperties(thingID string) (
+	values map[string]*transports.ResponseMessage, err error) {
+
 	err = co.Rpc(wot.OpReadAllProperties, thingID, "", nil, &values)
 	return values, err
 }
@@ -168,18 +225,37 @@ func (co *Consumer) ReadAllTDs() (tdJSONs []string, err error) {
 }
 
 // ReadEvent sends a request to read a Thing event value.
-// This returns the value as described in the TD event affordance schema.
+//
+// This returns a ResponseMessage containing the value as described in the TD
+// event affordance schema.
+//
+// This depends on the underlying protocol binding to construct appropriate
+// ResponseMessages and include information such as Updated. All hiveot protocols
+// include full information. WoT bindings might be too limited.
 // This is not a WoT operation (but maybe it should be)
-func (co *Consumer) ReadEvent(thingID, name string) (value any, err error) {
-	err = co.Rpc(wot.HTOpReadEvent, thingID, name, nil, &value)
-	return value, err
+func (co *Consumer) ReadEvent(thingID, name string) (
+	resp *transports.ResponseMessage, err error) {
+
+	correlationID := shortid.MustGenerate()
+	req := transports.NewRequestMessage(wot.HTOpReadEvent, thingID, name, nil, correlationID)
+	// use SendRequest so we can return the actual response message with the value
+	resp, err = co.SendRequest(req, true)
+	return resp, err
 }
 
-// ReadProperty sends a request to read a Thing property value
-// This returns the value as described in the TD property affordance schema.
-func (co *Consumer) ReadProperty(thingID, name string) (value any, err error) {
-	err = co.Rpc(wot.OpReadProperty, thingID, name, nil, &value)
-	return value, err
+// ReadProperty sends a request to read a Thing property value.
+//
+// This depends on the underlying protocol binding to construct appropriate
+// ResponseMessages and include information such as Updated. All hiveot protocols
+// include full information. WoT bindings might be too limited.
+func (co *Consumer) ReadProperty(thingID, name string) (
+	resp *transports.ResponseMessage, err error) {
+
+	correlationID := shortid.MustGenerate()
+	req := transports.NewRequestMessage(wot.OpReadProperty, thingID, name, nil, correlationID)
+	// use SendRequest so we can return the actual response message with the value
+	resp, err = co.SendRequest(req, true)
+	return resp, err
 }
 
 // ReadTD sends a request to read the latest Thing TD
@@ -292,31 +368,25 @@ func (co *Consumer) SendRequest(req *transports.RequestMessage, waitForCompletio
 	return resp, err
 }
 
-//
-//// SetConnectHandler sets the notification handler of connection failure
-//// Intended to notify the client that a reconnect or relogin is needed.
-//func (cl *Consumer) SetConnectHandler(cb func(connected bool, err error)) {
-//	cl.mux.Lock()
-//	cl.AppConnectHandler = cb
-//	cl.mux.Unlock()
-//}
-//
-//// SetNotificationHandler set the handler that receives server notifications
-//func (cl *BaseClient) SetNotificationHandler(cb transports.NotificationHandler) {
-//	cl.BaseMux.Lock()
-//	cl.appNotificationHandler = cb
-//	cl.BaseMux.Unlock()
-//}
-
-//// Set the form lookup handler
-//func (cl *BaseClient) SetGetForm(getForm transports.GetFormHandler) {
-//	cl.BaseGetForm = getForm
-//}
+// SetConnectHandler sets the notification handler of changes to this consumer connection
+// Intended to notify the client that a reconnect or relogin is needed.
+// Only a single handler is supported. This replaces the previously set callback.
+func (co *Consumer) SetConnectHandler(cb transports.ConnectionHandler) {
+	if cb == nil {
+		co.appConnectHandlerPtr.Store(nil)
+	} else {
+		co.appConnectHandlerPtr.Store(&cb)
+	}
+}
 
 // SetResponseHandler set the handler that receives asynchronous responses
 // Those are response to requests that are not waited for using the baseRnR handler.
 func (co *Consumer) SetResponseHandler(cb transports.ResponseHandler) {
-	co.appResponseHandler = cb
+	if cb == nil {
+		co.appResponseHandlerPtr.Store(nil)
+	} else {
+		co.appResponseHandlerPtr.Store(&cb)
+	}
 }
 
 // Subscribe to one or all events of a thing
@@ -433,31 +503,30 @@ func (co *Consumer) WriteProperty(thingID string, name string, input any, wait b
 	return err
 }
 
-// NewAgent creates a new consumer instance for sending requests and receiving responses.
+// NewConsumer returns a new instance of the WoT consumer for use with the given
+// connection. The connection should not be used by others as this consumer takes
+// possession by registering connection callbacks.
 //
-// Consumers connect to a Thing server as a client.
+// This provides the API for common WoT operations such as invoking actions and
+// supports RPC calls by waiting for a response.
 //
-// This is a wrapper around the ClientConnection that provides WoT response messages
-// publishing properties and events to subscribers and publishing a TD.
-
-// NewConsumer returns a new instance of the WoT consumer for use with the given connection.
-// This provides the API for common WoT operations by creating requests and waiting for responses.
+// Use SetResponseHandler to set the callback to receive async responses.
+// Use SetConnectHandler to set the callback to be notified of connection changes.
 //
-//	cc the client connection to use for sending requests and receiving responses
-//	respHandler callback for passing unhandled/async responses
-//	connHandler callback when connection status changes.
-func NewConsumer(cc transports.IConnection,
-	respHandler transports.ResponseHandler,
-	connHandler transports.ConnectionHandler,
-	timeout time.Duration) *Consumer {
-
-	consumer := Consumer{
-		cc:                 cc,
-		rnrChan:            NewRnRChan(),
-		appConnectHandler:  connHandler,
-		appResponseHandler: respHandler,
-		rpcTimeout:         timeout,
+//	cc the client connection to use for sending requests and receiving responses.
+//	timeout of the rpc connections or 0 for default (3 sec)
+func NewConsumer(cc transports.IConnection, rpcTimeout time.Duration) *Consumer {
+	if rpcTimeout == 0 {
+		rpcTimeout = DefaultRpcTimeout
 	}
+	consumer := Consumer{
+		cc:         cc,
+		rnrChan:    NewRnRChan(),
+		rpcTimeout: rpcTimeout,
+	}
+	consumer.SetConnectHandler(nil)
+	consumer.SetResponseHandler(nil)
+	// set the connection callbacks to this consumer
 	cc.SetResponseHandler(consumer.onResponse)
 	cc.SetConnectHandler(consumer.onConnect)
 	return &consumer

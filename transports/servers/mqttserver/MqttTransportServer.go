@@ -12,16 +12,15 @@ import (
 )
 
 type MqttTransportServer struct {
-	host               string
-	tcpPort            int
-	wssPort            int
-	serverCert         *tls.Certificate
-	caCert             *x509.Certificate
-	authenticator      transports.IAuthenticator
-	handleRequest      transports.ServerRequestHandler
-	handleResponse     transports.ServerResponseHandler
-	handleNotification transports.ServerNotificationHandler
-	cm                 *connections.ConnectionManager
+	host           string
+	tcpPort        int
+	wssPort        int
+	serverCert     *tls.Certificate
+	caCert         *x509.Certificate
+	authenticator  transports.IAuthenticator
+	handleRequest  transports.RequestHandler
+	handleResponse transports.ResponseHandler
+	cm             *connections.ConnectionManager
 
 	// convert operation to topics (for building forms)
 	op2Topic map[string]string
@@ -52,7 +51,7 @@ func (svc *MqttTransportServer) GetForm(op, thingID, name string) td.Form {
 	case wot.OpUnsubscribeEvent, wot.OpUnsubscribeAllEvents,
 		wot.OpUnobserveProperty, wot.OpUnobserveAllProperties:
 		controlPacket = "unsubscribe"
-	case wot.OpReadProperty, wot.OpReadMultipleProperties, wot.OpReadAllProperties,
+	case wot.OpReadProperty, wot.OpReadAllProperties,
 		wot.OpWriteProperty, wot.OpWriteMultipleProperties,
 		wot.OpInvokeAction:
 		// NOTE: the spec recommends to use subscribe for reading properties, but that
@@ -84,8 +83,8 @@ func (svc *MqttTransportServer) GetConnectURL() string {
 	return connectURL
 }
 
-// SendNotification broadcast an event or property change to subscribers clients
-func (svc *MqttTransportServer) SendNotification(notif transports.NotificationMessage) {
+// SendResponse sends a response to subscribers and observers
+func (svc *MqttTransportServer) SendResponse(notif transports.ResponseMessage) {
 	// this is needed so mqtt can broadcast once via the message bus instead all individual connections
 	// tbd. An embedded mqtt server can still send per connection?
 	slog.Error("todo: implement")
@@ -110,18 +109,16 @@ func StartMqttTransportServer(host string, tcpPort int, wssPort int,
 	caCert *x509.Certificate,
 	authenticator transports.IAuthenticator,
 	cm *connections.ConnectionManager,
-	handleNotification transports.ServerNotificationHandler,
-	handleRequest transports.ServerRequestHandler,
-	handleResponse transports.ServerResponseHandler,
+	handleRequest transports.RequestHandler,
+	handleResponse transports.ResponseHandler,
 ) (*MqttTransportServer, error) {
 	svc := &MqttTransportServer{
-		serverCert:         serverCert,
-		caCert:             caCert,
-		authenticator:      authenticator,
-		cm:                 cm,
-		handleNotification: handleNotification,
-		handleRequest:      handleRequest,
-		handleResponse:     handleResponse,
+		serverCert:     serverCert,
+		caCert:         caCert,
+		authenticator:  authenticator,
+		cm:             cm,
+		handleRequest:  handleRequest,
+		handleResponse: handleResponse,
 	}
 	return svc, fmt.Errorf("Not yet implemented")
 }

@@ -3,7 +3,7 @@ DIST_FOLDER=./dist
 BIN_FOLDER=./dist/bin
 PLUGINS_FOLDER=./dist/plugins
 INSTALL_HOME=~/bin/hiveot
-GENAPI=go run cmd/tdd2api/main.go
+GENAPI=go run cmd/td2go/main.go
 .DEFAULT_GOAL := help
 
 .FORCE: 
@@ -14,9 +14,8 @@ all: api runtime hubcli services bindings    ## Build Core, Bindings and hubcli
 
 api: .FORCE
 	go run cmd/genvocab/main.go
-	$(GENAPI) ggo runtime/authn/tdd
-	$(GENAPI) ggo runtime/authz/tdd
-	$(GENAPI) ggo runtime/digitwin/tdd
+	$(GENAPI) generate -r all runtime
+	$(GENAPI) generate -r all services
 
 runtime: .FORCE
 	mkdir -p $(BIN_FOLDER)

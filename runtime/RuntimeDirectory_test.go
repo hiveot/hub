@@ -3,10 +3,10 @@ package runtime_test
 import (
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/api/go/authn"
-	"github.com/hiveot/hub/api/go/authz"
-	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
+	authn "github.com/hiveot/hub/runtime/authn/api"
+	authz "github.com/hiveot/hub/runtime/authz/api"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/tputils/tlsclient"
 	"github.com/hiveot/hub/wot"
@@ -73,8 +73,8 @@ func TestAddRemoveTD(t *testing.T) {
 
 	//stat = cl1.SendRequest(nil, directory.ThingID, directory.RemoveTDMethod, &args, nil)
 	// RemoveTD from the directory
-	err = cl1.Rpc(wot.OpInvokeAction, digitwin.DirectoryDThingID,
-		digitwin.DirectoryRemoveTDMethod, dtThing1ID, nil)
+	err = cl1.Rpc(wot.OpInvokeAction, digitwin.ThingDirectoryDThingID,
+		digitwin.ThingDirectoryRemoveTDMethod, dtThing1ID, nil)
 	require.NoError(t, err)
 
 	// after removal of the TD, getTD should return an error
@@ -108,14 +108,14 @@ func TestReadTDs(t *testing.T) {
 
 	// GetThings returns a serialized TD object
 	// 1. Use actions
-	args := digitwin.DirectoryReadAllTDsArgs{Limit: 10}
+	args := digitwin.ThingDirectoryReadAllTDsArgs{Limit: 10}
 	tdList1 := []string{}
-	err := cl1.Rpc(wot.OpInvokeAction, digitwin.DirectoryDThingID, digitwin.DirectoryReadAllTDsMethod, args, &tdList1)
+	err := cl1.Rpc(wot.OpInvokeAction, digitwin.ThingDirectoryDThingID, digitwin.ThingDirectoryReadAllTDsMethod, args, &tdList1)
 	require.NoError(t, err)
 	require.True(t, len(tdList1) > 0)
 
 	// 2. Try it the easy way using the generated client code
-	tdList2, err := digitwin.DirectoryReadAllTDs(cl1, 333, 02)
+	tdList2, err := digitwin.ThingDirectoryReadAllTDs(cl1, 333, 02)
 	require.NoError(t, err)
 	require.True(t, len(tdList2) > 0)
 }
@@ -142,7 +142,7 @@ func TestReadTDsRest(t *testing.T) {
 	cl2 := tlsclient.NewTLSClient(urlParts.Host, nil, ts.Certs.CaCert, time.Second*30)
 	cl2.SetAuthToken(token)
 
-	tdJSONList, err := digitwin.DirectoryReadAllTDs(cl, 100, 0)
+	tdJSONList, err := digitwin.ThingDirectoryReadAllTDs(cl, 100, 0)
 	require.NoError(t, err)
 
 	// tds are sent as an array of JSON, first unpack the array of JSON strings
@@ -151,7 +151,7 @@ func TestReadTDsRest(t *testing.T) {
 	require.Equal(t, 100, len(tdList)) // 100 is the given limit
 
 	// check reading a single td
-	tdJSON, err := digitwin.DirectoryReadTD(cl, tdList[0].ID)
+	tdJSON, err := digitwin.ThingDirectoryReadTD(cl, tdList[0].ID)
 	require.NoError(t, err)
 	require.NotEmpty(t, tdJSON)
 }
@@ -174,8 +174,8 @@ func TestTDEvent(t *testing.T) {
 	// wait to directory TD updated events
 	respHandler := func(msg *transports.ResponseMessage) error {
 		if msg.Operation == vocab.OpSubscribeEvent &&
-			msg.ThingID == digitwin.DirectoryDThingID &&
-			msg.Name == digitwin.DirectoryEventThingUpdated {
+			msg.ThingID == digitwin.ThingDirectoryDThingID &&
+			msg.Name == digitwin.ThingDirectoryEventThingUpdated {
 
 			// decode the TD
 			td := td.TD{}

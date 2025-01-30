@@ -1,7 +1,7 @@
 package service
 
 import (
-	"github.com/hiveot/hub/api/go/digitwin"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/runtime/digitwin/store"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot"
@@ -75,7 +75,7 @@ func (svc *DirectoryService) ReadTD(senderID string, dThingID string) (tdJSON st
 // ReadAllTDs returns a batch of TD documents
 // This returns a list of JSON encoded digital twin TD documents
 func (svc *DirectoryService) ReadAllTDs(
-	senderID string, args digitwin.DirectoryReadAllTDsArgs) (tdList []string, err error) {
+	senderID string, args digitwin.ThingDirectoryReadAllTDsArgs) (tdList []string, err error) {
 
 	dtdList, err := svc.dtwStore.ReadTDs(args.Offset, args.Limit)
 	if err == nil {
@@ -96,8 +96,9 @@ func (svc *DirectoryService) RemoveTD(senderID string, dThingID string) error {
 	if err == nil && svc.notifHandler != nil {
 		// Publish an event notifying subscribers that the Thing was removed from the directory
 		// Those subscribing to directory event will be notified
-		notif := transports.NewNotificationResponse(
-			wot.OpSubscribeEvent, digitwin.DirectoryDThingID, digitwin.DirectoryEventThingRemoved, dThingID, nil)
+		notif := transports.NewNotificationResponse(wot.OpSubscribeEvent,
+			digitwin.ThingDirectoryDThingID, digitwin.ThingDirectoryEventThingRemoved,
+			dThingID, nil)
 		go svc.notifHandler(notif)
 	}
 	return err
@@ -124,8 +125,9 @@ func (svc *DirectoryService) UpdateTD(agentID string, tdJson string) error {
 		dtdJSON, _ := jsoniter.Marshal(digitalTwinTD)
 		// todo: only send notification on changes
 		// publish an event that the directory TD has updated with a new TD
-		notif := transports.NewNotificationResponse(
-			wot.OpSubscribeEvent, digitwin.DirectoryDThingID, digitwin.DirectoryEventThingUpdated, string(dtdJSON), nil)
+		notif := transports.NewNotificationResponse(wot.OpSubscribeEvent,
+			digitwin.ThingDirectoryDThingID, digitwin.ThingDirectoryEventThingUpdated,
+			string(dtdJSON), nil)
 		go svc.notifHandler(notif)
 	}
 	return err
@@ -145,7 +147,7 @@ func NewDigitwinDirectoryService(
 	}
 
 	// verify service interface matches the TD generated interface
-	var s digitwin.IDirectoryService = dirSvc
+	var s digitwin.IThingDirectoryService = dirSvc
 	_ = s
 
 	return dirSvc

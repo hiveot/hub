@@ -2,7 +2,7 @@
 package router
 
 import (
-	"github.com/hiveot/hub/api/go/authn"
+	authn "github.com/hiveot/hub/runtime/authn/api"
 	"github.com/hiveot/hub/transports"
 )
 

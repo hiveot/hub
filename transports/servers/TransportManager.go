@@ -6,8 +6,9 @@ import (
 	"errors"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/servers/discotransport"
-	"github.com/hiveot/hub/transports/servers/hiveotwssserver"
+	"github.com/hiveot/hub/transports/servers/hiveotsseserver"
 	"github.com/hiveot/hub/transports/servers/httpserver"
+	"github.com/hiveot/hub/transports/servers/wssserver"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 )
@@ -201,9 +202,11 @@ func StartTransportManager(cfg *ProtocolsConfig,
 	// Embedded services are: authn, authz, directory, inbox, outbox services
 	//svc.embeddedTransport = embedded.StartEmbeddedBinding()
 
-	// Http basic is needed for all subprotocols because of their auth endpoints
+	// Http is needed for all subprotocols because of their auth endpoints
 	if cfg.EnableHiveotWSS || cfg.EnableHiveotSSE ||
 		cfg.EnableWotHTTPBasic || cfg.EnableWotWSS {
+
+		// 1. HTTP server with login
 		httpServer, err2 := httpserver.StartHttpTransportServer(
 			cfg.HttpHost, cfg.HttpsPort,
 			serverCert, caCert,
@@ -212,17 +215,20 @@ func StartTransportManager(cfg *ProtocolsConfig,
 		err = err2
 		svc.httpsTransport = httpServer
 
-		// http subprotocols
+		// 2. HTTP HiveOT SSE-SC sub-protocol
 		if cfg.EnableHiveotSSE {
-			//svc.hiveotSseServer = hiveotsseserver.StartHiveotSseServer(
-			//	"",
-			//	cm, svc.httpsTransport)
-			//svc.servers = append(svc.servers, svc.hiveotSseServer)
+			ssePath := DefaultHiveotSsePath
+			hiveotSseServer := hiveotsseserver.StartHiveotSseServer(ssePath,
+				svc.httpsTransport, nil, svc.handleRequest, svc.handleResponse)
+			svc.servers[transports.ProtocolTypeHiveotSSE] = hiveotSseServer
 		}
+
+		// 3. HTTP HiveOT WSS protocol
 		if cfg.EnableHiveotWSS {
-			converter := &hiveotwssserver.HiveotMessageConverter{}
-			hiveotWssServer, err := hiveotwssserver.StartHiveotWssServer(
-				DefaultHiveotWssPath, converter,
+			converter := &wssserver.HiveotMessageConverter{}
+			wssPath := DefaultHiveotWssPath
+			hiveotWssServer, err := wssserver.StartHiveotWssServer(
+				wssPath, converter, transports.ProtocolTypeHiveotWSS,
 				svc.httpsTransport,
 				nil,
 				svc.handleRequest,
@@ -232,24 +238,25 @@ func StartTransportManager(cfg *ProtocolsConfig,
 				svc.servers[transports.ProtocolTypeHiveotWSS] = hiveotWssServer
 			}
 		}
-		//if cfg.EnableWotHTTPBasic {
-		//	svc.wotHttpBasicServer = StartWotHttpBasicServer(
-		//		"", cm,
-		//		svc.httpsTransport,
-		//		handleRequest,
-		//		handleResponse,
-		//	)
-		//svc.servers = append(svc.servers, svc.wotHttpBasicServer)
-		//}
-		//if cfg.EnableWotWSS {
-		//	svc.wotWssServer = wssserver_old.StartWotWssServer(
-		//		"", cm,
-		//		svc.httpsTransport,
-		//		handleRequest,
-		//		handleResponse,
-		//	)
-		//svc.servers = append(svc.servers, svc.wotWssServer)
-		//}
+		if cfg.EnableWotHTTPBasic {
+			//	svc.wotHttpBasicServer = StartWotHttpBasicServer(
+			//		"", cm,
+			//		svc.httpsTransport,
+			//		handleRequest,
+			//		handleResponse,
+			//	)
+			//svc.servers = append(svc.servers, svc.wotHttpBasicServer)
+		}
+
+		if cfg.EnableWotWSS {
+			//	svc.wotWssServer = wssserver_old.StartWotWssServer(
+			//		"", cm,
+			//		svc.httpsTransport,
+			//		handleRequest,
+			//		handleResponse,
+			//	)
+			//svc.servers = append(svc.servers, svc.wotWssServer)
+		}
 	}
 	//if cfg.EnableMQTT {
 	//svc.mqttsTransport, err = mqttserver.StartMqttTransportServer(

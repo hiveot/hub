@@ -1,0 +1,132 @@
+{
+	"@context":[ "https://www.w3.org/2022/wot/td/v1.1",
+		{"hiveot": "https://www.hiveot.net/vocab/v0.1"}
+	],
+	"@type": "Service",
+	"id": "ThingDirectory",
+	"title": "DigiTwin Directory Service",
+	"description": "HiveOT digital twin directory service",
+	"version": {
+		"instance": "0.1.0"
+	},
+	"created": "2024-04-21T17:00:00.000Z",
+	"modified": "2024-04-21T17:00:00.000Z",
+	"support": "https://www.github.com/hiveot/hub",
+	"security": ["bearer"],
+	"securityDefinitions": {
+		"bearer": {
+			"description": "HTTP protocol authentication",
+			"name": "authentication",
+			"alg": "es256",
+			"format": "jwt",
+			"scheme": "bearer",
+			"in": "header"
+		}
+	},
+	"deny": ["none"],
+	"properties": {
+	},
+	"events": {
+		"thingUpdated": {
+			"title": "Thing Updated",
+			"description": "A digital twin Thing TD was updated in the directory",
+			"data": {
+				"title": "TD",
+				"description": "JSON encoded TD of the digital twin Thing",
+				"type": "string"
+			}
+		},
+		"thingRemoved": {
+			"title": "Thing Removed",
+			"description": "A Thing TD was removed from the directory",
+			"data": {
+				"title": "Thing ID",
+				"description": "ID of the digital twin Thing that was removed",
+				"type": "string"
+			}
+		}
+	},
+	"actions": {
+		"readTD": {
+			"@type": "hiveot:function",
+			"title": "Read TD",
+			"description": "Return a JSON encoded TD document",
+			"safe": true,
+			"idempotent": true,
+			"input": {
+				"title": "Thing ID",
+				"description": "Digital Twin Thing ID of the Thing to read",
+				"type": "string"
+			},
+			"output": {
+				"title": "TD",
+				"description": "A JSON encoded Thing Description Document",
+				"type": "string"
+			}
+		},
+		"readAllTDs": {
+			"@type": "hiveot:function",
+			"title": "Read all TDs",
+			"description": "Read a batch of TD documents",
+			"safe": true,
+			"idempotent": true,
+			"input": {
+				"type": "object",
+				"properties": {
+					"offset": {
+						"title": "Offset",
+						"description": "Start index in the list of TD documents",
+						"type": "integer",
+						"minimum": 0,
+						"default": 0
+					},
+					"limit": {
+						"title": "Limit",
+						"description": "Maximum number of documents to return",
+						"type": "integer",
+						"minimum": 1,
+						"default": 100
+					}
+				}
+			},
+			"output": {
+				"title": "TD list",
+				"description": "List of JSON encoded TD documents",
+				"type": "array",
+				"items": {
+					"type": "string"
+				}
+			}
+		},
+		"removeTD": {
+			"@type": "hiveot:function",
+			"title": "Remove TD",
+			"description": "Remove a digital twin from the directory",
+			"safe": false,
+			"idempotent": true,
+			"allow": ["admin"],
+			"comment": "only admin can remove TDs",
+			"input": {
+				"title": "dThing ID",
+				"description": "Digital Twin Thing ID of the Thing to remove",
+				"type": "string"
+			}
+		},
+
+		"updateTD": {
+			"@type": "hiveot:function",
+			"title": "Update TD",
+			"description": "Update the Thing TD in the directory. For use by agents only.",
+			"idempotent": true,
+			"allow": ["agent","admin"],
+			"comment": "Only agents can update their TD",
+			"input": {
+				"title": "TD",
+				"description": "Device TD document in JSON format",
+				"comment": "The TD document will be upgraded to represent the digital twin",
+				"type": "string"
+			}
+		}
+	},
+	"links": []
+}

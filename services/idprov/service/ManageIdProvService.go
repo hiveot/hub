@@ -2,7 +2,7 @@ package service
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go/authn"
+	authn "github.com/hiveot/hub/runtime/authn/api"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
 	"github.com/hiveot/hub/transports/messaging"
 	"log/slog"

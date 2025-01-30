@@ -158,12 +158,15 @@ func TestReadEvent(t *testing.T) {
 	var thingID = "thing1"
 	var eventKey = "event11"
 	var eventValue = "value11"
+	var timestamp = "eventtime"
 
 	// 1. start the agent transport with the request handler
 	// in this case the consumer connects to the agent (unlike when using a hub)
 	agentReqHandler := func(req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
 		if req.Operation == wot.HTOpReadEvent && req.ThingID == thingID && req.Name == eventKey {
-			return req.CreateResponse(eventValue, nil)
+			resp := req.CreateResponse(eventValue, nil)
+			resp.Updated = timestamp
+			return resp
 		}
 		return req.CreateResponse(nil, errors.New("unexpected request"))
 	}
@@ -179,5 +182,44 @@ func TestReadEvent(t *testing.T) {
 
 	rxVal, err := consumer1.ReadEvent(thingID, eventKey)
 	require.NoError(t, err)
-	assert.Equal(t, eventValue, rxVal)
+	assert.Equal(t, eventValue, rxVal.Output)
+	assert.Equal(t, timestamp, rxVal.Updated)
+}
+
+// Consumer reads events from agent
+func TestReadAllEvents(t *testing.T) {
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	var thingID = "thing1"
+	var event1Name = "event1"
+	var event2Name = "event2"
+	var event1Value = "value1"
+	var event2Value = "value2"
+
+	// 1. start the agent transport with the request handler
+	// in this case the consumer connects to the agent (unlike when using a hub)
+	agentReqHandler := func(req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
+		if req.Operation == wot.HTOpReadAllEvents {
+			output := make(map[string]*transports.ResponseMessage)
+			output[event1Name] = transports.NewResponseMessage(wot.OpSubscribeEvent, thingID, event1Name, event1Value, nil, "")
+			output[event2Name] = transports.NewResponseMessage(wot.OpSubscribeEvent, thingID, event2Name, event2Value, nil, "")
+			resp := req.CreateResponse(output, nil)
+			return resp
+		}
+		return req.CreateResponse(nil, errors.New("unexpected request"))
+	}
+	srv, cancelFn := StartTransportServer(agentReqHandler, nil)
+	_ = srv
+	defer cancelFn()
+
+	// 2. connect as a consumer
+	cc1, consumer1 := NewConsumer(testClientID1, srv.GetForm)
+	_, err := cc1.ConnectWithPassword(testClientID1)
+	require.NoError(t, err)
+	defer cc1.Disconnect()
+
+	evMap, err := consumer1.ReadAllEvents(thingID)
+	require.NoError(t, err)
+	require.Equal(t, 2, len(evMap))
+	require.Equal(t, event1Value, evMap[event1Name].Output)
+	require.Equal(t, event2Value, evMap[event2Name].Output)
 }

@@ -50,8 +50,12 @@ func GetRequestParams(r *http.Request) (reqParam RequestParams, err error) {
 	// the connection ID distinguishes between different connections from the same client.
 	// this is needed to correlate http requests with the sub-protocol connection.
 	// this is intended to solve for unidirectional SSE connections from multiple devices.
-	// if no connectionID is provided then only single device connection is allowed.
+	// if no connectionID is provided then only a single device connection is allowed.
 	headerCID := r.Header.Get(ConnectionIDHeader)
+	if headerCID == "" {
+		slog.Info("GetRequestParams: missing connection-id, only a single " +
+			"connection is supported")
+	}
 
 	// the connection ID is the clientID + provided clcid
 	reqParam.ConnectionID = reqParam.ClientID + "-" + headerCID

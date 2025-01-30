@@ -4,9 +4,9 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"github.com/gorilla/websocket"
-	"github.com/hiveot/hub/transports/servers/wssserver"
-	jsoniter "github.com/json-iterator/go"
+	"github.com/hiveot/hub/transports/servers/httpserver"
 	"log/slog"
 	"net"
 	"net/http"
@@ -16,15 +16,12 @@ import (
 
 // ConnectWSS establishes a websocket session with a server
 func ConnectWSS(
-	clientID string, wssURL string, bearerToken string, caCert *x509.Certificate,
+	clientID string, connectionID string, wssURL string,
+	bearerToken string, caCert *x509.Certificate,
 	onConnect func(bool, error),
-	onMessage func(wssBase wssserver_old.BaseMessage, raw []byte),
+	onMessage func(raw []byte),
 ) (cancelFn func(), conn *websocket.Conn, err error) {
 	var clientCertList []tls.Certificate
-
-	// separate client with a long timeout for sse
-	// use a new http client instance to set an indefinite timeout for the sse connection
-	//httpClient := tlsclient.NewHttp2TLSClient(caCert, nil, 0)
 
 	slog.Info("ConnectWSS (to hub) - establishing Websocket connection to server",
 		slog.String("URL", wssURL),
@@ -55,8 +52,7 @@ func ConnectWSS(
 
 	wssHeader := http.Header{}
 	wssHeader.Add("Authorization", "bearer "+bearerToken)
-	//wssHeader.Add("connection-id", connectionID)
-	wssHeader.Add("ClientID", clientID)
+	wssHeader.Add(httpserver.ConnectionIDHeader, connectionID)
 	//parts, _ := url.Parse(hostPort)
 	//origin := fmt.Sprintf("%s://%s", parts.Scheme, parts.Host)
 	//opts.HTTPHeader.Add("Origin", origin)
@@ -91,8 +87,12 @@ func ConnectWSS(
 	//httpParts.Scheme = "https"
 	//httpsURL := httpParts.String()
 
-	wssConn, _, err := dialer.Dial(wssURL, wssHeader)
+	wssConn, r, err := dialer.Dial(wssURL, wssHeader)
 	if err != nil {
+		// provide a bit more accurate error in case of unauthorized
+		if r != nil && r.StatusCode == http.StatusUnauthorized {
+			err = errors.New("Unauthorized")
+		}
 		wssCancelFn()
 		return nil, nil, err
 	}
@@ -119,8 +119,8 @@ func ConnectWSS(
 }
 
 // WSSReadLoop reads incoming websocket messages in a loop, until connection closes or context is cancelled
-func WSSReadLoop(ctx context.Context, wssConn *websocket.Conn,
-	onMessage func(wssBase wssserver_old.BaseMessage, raw []byte)) {
+func WSSReadLoop(ctx context.Context,
+	wssConn *websocket.Conn, onMessage func(raw []byte)) {
 
 	var readLoop atomic.Bool
 	readLoop.Store(true)
@@ -146,15 +146,8 @@ func WSSReadLoop(ctx context.Context, wssConn *websocket.Conn,
 			// ending the read loop and returning will close the connection
 			break
 		}
-		baseMsg := wssserver_old.BaseMessage{}
-		err = jsoniter.Unmarshal(raw, &baseMsg)
-		if err != nil {
-			slog.Error("WSSReadLoop: message is not a valid websocket message. Ignored",
-				"message size", len(raw))
-		} else {
-			// process in the background
-			go onMessage(baseMsg, raw)
-		}
+		// process in the background
+		go onMessage(raw)
 	}
 
 }

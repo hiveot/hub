@@ -1,7 +1,7 @@
 package store
 
 import (
-	"github.com/hiveot/hub/api/go/digitwin"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/wot/td"
 )
 

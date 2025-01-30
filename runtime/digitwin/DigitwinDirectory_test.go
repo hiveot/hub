@@ -3,7 +3,7 @@ package digitwin_test
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/hiveot/hub/api/go/digitwin"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/wot/td"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -35,7 +35,7 @@ func TestAddRemoveTD(t *testing.T) {
 	require.NotEmpty(t, tdd2JSON)
 
 	dtdList, err := dirSvc.ReadAllTDs(consumerID,
-		digitwin.DirectoryReadAllTDsArgs{Limit: 10})
+		digitwin.ThingDirectoryReadAllTDsArgs{Limit: 10})
 	assert.NoError(t, err)
 	assert.NotEmpty(t, dtdList)
 

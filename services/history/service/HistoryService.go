@@ -1,10 +1,9 @@
 package service
 
 import (
-	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/lib/buckets"
+	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/hiveot/hub/services/history/historyapi"
-	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/messaging"
 	"log/slog"
 )
@@ -39,8 +38,8 @@ func (svc *HistoryService) GetAddHistory() *AddHistory {
 }
 
 // Start the history service
-func (svc *HistoryService) Start(agentConn transports.IConnection) (err error) {
-	ag := messaging.NewAgent(agentConn, nil, nil, nil, 0)
+func (svc *HistoryService) Start(ag *messaging.Agent) (err error) {
+
 	slog.Info("Starting HistoryService", "clientID", ag.GetClientID())
 
 	// setup

@@ -3,10 +3,10 @@ package history
 import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
-	"github.com/hiveot/hub/api/go/digitwin"
+	"github.com/hiveot/hub/runtime/consumedthing"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/transports/tputils"
-	"github.com/hiveot/hub/wot/consumedthing"
 	"net/http"
 )
 
@@ -37,6 +37,7 @@ func RenderLatestValueRow(w http.ResponseWriter, r *http.Request) {
 	thingID := chi.URLParam(r, "thingID")
 	name := chi.URLParam(r, "name")
 	unit := r.URL.Query().Get("unit")
+	fragment := ""
 
 	// Read the TD being displayed and its latest values
 	_, sess, err := session.GetSessionFromContext(r)
@@ -46,7 +47,7 @@ func RenderLatestValueRow(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//latestValues, err := thing.GetLatest(thingID, hc)
-	latestValue, err := digitwin.ValuesReadEvent(sess.GetHubClient(), name, thingID)
+	latestValue, err := digitwin.ThingValuesReadEvent(sess.GetConsumer(), name, thingID)
 	if err != nil {
 		// hiveoview does not show property history so no event means no data
 		//latestValue, err = digitwin.ValuesReadProperty(hc, name, thingID)
@@ -55,14 +56,18 @@ func RenderLatestValueRow(w http.ResponseWriter, r *http.Request) {
 		sess.WriteError(w, err, 0)
 		return
 	}
-	iout := consumedthing.NewInteractionOutputFromValue(&latestValue, nil)
+	consumedThing, err := sess.Consume(thingID)
 	if err == nil {
-		// TODO: get unit symbol
-		fragment := fmt.Sprintf(addRowTemplate,
-			tputils.DecodeAsDatetime(iout.Updated), latestValue.Data, unit)
+		tdi := consumedThing.GetTD()
+		iout := consumedthing.NewInteractionOutputFromValue(
+			tdi, consumedthing.AffordanceTypeEvent, latestValue)
 
-		_, _ = w.Write([]byte(fragment))
-		return
+		// TODO: get unit symbol
+		fragment = fmt.Sprintf(addRowTemplate,
+			tputils.DecodeAsDatetime(iout.Updated), latestValue.Output, unit)
+	} else {
+		fragment = fmt.Sprintf("")
 	}
-	sess.WriteError(w, err, 0)
+	_, _ = w.Write([]byte(fragment))
+	return
 }

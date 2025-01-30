@@ -2,9 +2,9 @@ package state_test
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
+	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/hiveot/hub/services/state/service"
 	"github.com/hiveot/hub/services/state/stateapi"
 	"github.com/hiveot/hub/services/state/stateclient"

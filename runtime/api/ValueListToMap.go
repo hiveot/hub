@@ -1,7 +1,7 @@
 package api
 
 import (
-	"github.com/hiveot/hub/api/go/digitwin"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 )
 
 // ActionListToMap creates a map from a digitwin action value list

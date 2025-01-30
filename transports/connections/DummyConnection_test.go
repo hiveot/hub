@@ -23,8 +23,9 @@ func (c *DummyConnection) Disconnect() {}
 
 func (c *DummyConnection) GetConnectionID() string { return c.connectionID }
 func (c *DummyConnection) GetClientID() string     { return c.clientID }
-
+func (c *DummyConnection) GetConnectURL() string   { return "" }
 func (c *DummyConnection) GetProtocolType() string { return "dummy" }
+func (c *DummyConnection) IsConnected() bool       { return true }
 
 //func (c *DummyConnection) GetSessionID() string    { return c.sessID }
 
@@ -50,6 +51,18 @@ func (c *DummyConnection) SendResponse(resp *transports.ResponseMessage) error {
 	}
 	return nil
 }
+
+func (c *DummyConnection) SetConnectHandler(h transports.ConnectionHandler) {
+}
+
+// SetRequestHandler is ignored as this is an outgoing 1-way connection
+func (c *DummyConnection) SetRequestHandler(h transports.RequestHandler) {
+}
+
+// SetResponseHandler is ignored as this is an outgoing 1-way connection
+func (c *DummyConnection) SetResponseHandler(h transports.ResponseHandler) {
+}
+
 func (c *DummyConnection) SubscribeEvent(dThingID, name string) {
 	c.subscriptions.Subscribe(dThingID, name, "subscr-1")
 }

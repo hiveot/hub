@@ -4,8 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/api/go/authn"
-	"github.com/hiveot/hub/runtime/api"
+	authn "github.com/hiveot/hub/runtime/authn/api"
 	"github.com/hiveot/hub/runtime/authn/config"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
@@ -25,7 +24,7 @@ import (
 // User passwords are stored using ARGON2id hash
 // It includes a file watcher to automatically reload on update.
 type AuthnFileStore struct {
-	entries           map[string]api.AuthnEntry
+	entries           map[string]AuthnEntry
 	storePath         string
 	hashAlgo          string // hashing algorithm PWHASH_ARGON2id
 	minPasswordLength int
@@ -53,7 +52,7 @@ func (store *AuthnFileStore) Add(clientID string, profile authn.ClientProfile) e
 
 	if !found {
 		slog.Info("Add: New client " + clientID)
-		entry = api.AuthnEntry{ClientProfile: profile}
+		entry = AuthnEntry{ClientProfile: profile}
 	} else {
 		slog.Info("Add: Updating existing client", slog.String("clientID", clientID))
 		entry.ClientProfile = profile
@@ -123,10 +122,10 @@ func (store *AuthnFileStore) GetRole(clientID string) (role string, err error) {
 }
 
 // GetEntries returns a list of all profiles with their hashed passwords
-func (store *AuthnFileStore) GetEntries() (entries []api.AuthnEntry) {
+func (store *AuthnFileStore) GetEntries() (entries []AuthnEntry) {
 	store.mutex.RLock()
 	defer store.mutex.RUnlock()
-	entries = make([]api.AuthnEntry, 0, len(store.entries))
+	entries = make([]AuthnEntry, 0, len(store.entries))
 	for _, entry := range store.entries {
 		entries = append(entries, entry)
 	}
@@ -159,7 +158,7 @@ func (store *AuthnFileStore) Reload() error {
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
-	entries := make(map[string]api.AuthnEntry)
+	entries := make(map[string]AuthnEntry)
 	dataBytes, err := os.ReadFile(store.storePath)
 	if errors.Is(err, os.ErrNotExist) {
 		err = store.save()
@@ -339,7 +338,7 @@ func (store *AuthnFileStore) VerifyPassword(
 // WritePasswordsToTempFile write the given entries to temp file in the given folder
 // This returns the name of the new temp file.
 func WritePasswordsToTempFile(
-	folder string, entries map[string]api.AuthnEntry) (tempFileName string, err error) {
+	folder string, entries map[string]AuthnEntry) (tempFileName string, err error) {
 
 	file, err := os.CreateTemp(folder, "hub-pwfilestore")
 
@@ -377,7 +376,7 @@ func NewAuthnFileStore(filepath string, hashAlgo string) *AuthnFileStore {
 		storePath:         filepath,
 		hashAlgo:          hashAlgo,
 		minPasswordLength: 5,
-		entries:           make(map[string]api.AuthnEntry),
+		entries:           make(map[string]AuthnEntry),
 	}
 	return store
 }

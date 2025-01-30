@@ -4,10 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/go-chi/chi/v5"
-	"github.com/hiveot/hub/api/go/digitwin"
+	"github.com/hiveot/hub/runtime/consumedthing"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/transports/tputils"
-	"github.com/hiveot/hub/wot/consumedthing"
 	"github.com/hiveot/hub/wot/td"
 	"net/http"
 )
@@ -65,14 +64,13 @@ func RenderTileSourceRow(w http.ResponseWriter, r *http.Request) {
 		//return
 	}
 	// get the latest event values of this source
-	// FIXME: why is this needed?
-	tv, err := digitwin.ValuesReadEvent(sess.GetHubClient(), name, thingID)
-	if tv.Name == "" {
-		tv, err = digitwin.ValuesReadProperty(sess.GetHubClient(), name, thingID)
+	var iout *consumedthing.InteractionOutput
+	consumedThing, err := cts.Consume(thingID)
+	if consumedThing != nil {
+		iout = consumedThing.GetValue(name)
 	}
-	io := consumedthing.NewInteractionOutputFromValue(&tv, tdi)
-	if io == nil || tv.Name == "" {
-		io = &consumedthing.InteractionOutput{
+	if iout == nil {
+		iout = &consumedthing.InteractionOutput{
 			ThingID: thingID,
 			Name:    name,
 			Title:   "Unknown affordance",
@@ -89,9 +87,9 @@ func RenderTileSourceRow(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// if no value was ever received then use n/a
-	latestValue := io.Value.Text() + " " + io.UnitSymbol()
-	latestUpdated := tputils.DecodeAsDatetime(io.Updated)
-	title := tdi.Title + " " + io.Title
+	latestValue := iout.Value.Text() + " " + iout.UnitSymbol()
+	latestUpdated := tputils.DecodeAsDatetime(iout.Updated)
+	title := tdi.Title + " " + iout.Title
 
 	// the input hidden hold the real source value
 	// this must match the list in RenderEditTile.gohtml

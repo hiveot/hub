@@ -2,12 +2,12 @@ package tile
 
 import (
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/runtime/consumedthing"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"github.com/hiveot/hub/services/hiveoview/src/views/history"
 	"github.com/hiveot/hub/transports/tputils"
-	"github.com/hiveot/hub/wot/consumedthing"
 	"github.com/hiveot/hub/wot/td"
 	"net/http"
 	"time"
@@ -74,9 +74,7 @@ func (d RenderTileTemplateData) GetOutputValue(thingID string, name string) (iou
 	if iout == nil {
 		aff := tdi.GetAction(name)
 		if aff != nil {
-			stat := ct.QueryAction(name)
-			iout = consumedthing.NewInteractionOutput(
-				ct.GetTD(), consumedthing.AffordanceTypeAction, name, stat.Output, stat.TimeUpdated)
+			iout = ct.QueryAction(name)
 		}
 	}
 	if iout == nil {

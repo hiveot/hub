@@ -3,9 +3,8 @@ package service
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"github.com/hiveot/hub/api/go/authz"
+	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
-	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/messaging"
 	"log/slog"
 )
@@ -53,9 +52,8 @@ type IdProvService struct {
 // 5. start DNS-SD discovery server
 //
 // cc is the connection with the hub to receive requests
-func (svc *IdProvService) Start(cc transports.IConnection) (err error) {
+func (svc *IdProvService) Start(ag *messaging.Agent) (err error) {
 
-	ag := messaging.NewAgent(cc, nil, nil, nil, 0)
 	slog.Info("Starting the provisioning service", "clientID", ag.GetClientID())
 	svc.ag = ag
 	svc.ManageIdProv, err = StartManageIdProvService(svc.ag)

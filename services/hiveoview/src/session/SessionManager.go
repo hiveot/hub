@@ -6,8 +6,9 @@ import (
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/clients"
+	"github.com/hiveot/hub/transports/messaging"
 	"github.com/hiveot/hub/transports/servers/httpserver"
-	"github.com/hiveot/hub/wot"
+	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"net/http"
 	"sync"
@@ -31,8 +32,8 @@ type WebSessionManager struct {
 	hubURL string
 	// Hub CA certificate
 	caCert *x509.Certificate
-	// hub client for publishing events
-	hc transports.IAgentConnection
+	// this service's agent for publishing events
+	ag *messaging.Agent
 	// disable persistence from state service (for testing)
 	noState bool
 
@@ -40,10 +41,10 @@ type WebSessionManager struct {
 	timeout time.Duration
 }
 
-// add a new session with the given clientID and send a session count event
+// add a new session with the given hub connection and send a session count event
 // This sets the getForm handler for the client for using this session TD directory
 func (sm *WebSessionManager) _addSession(
-	r *http.Request, cid string, hc transports.IConsumerConnection) (
+	r *http.Request, cid string, hc transports.IClientConnection) (
 	cs *WebClientSession, err error) {
 
 	// if the browser does not provide a CID until after the first connection,
@@ -58,27 +59,26 @@ func (sm *WebSessionManager) _addSession(
 	clcid := clientID + "-" + cid
 	existingSession := sm.sessions[clcid]
 	if existingSession != nil {
-		// Ugly hack!
-		// this is an attempt to add a new connection using an existing cid.
-		// it can happen if a client invokes connect-with-password or token, and
+		// Caution: Attempt to add a new connection while one exists with the cid.
+		// This it can happen if a client invokes connect-with-password or token, and
 		// provides an existing or empty cid.
-		// Instead of throwing out the session, replace the connection.
+		// Instead of throwing out the session, replace the consumer connection.
 		cs = existingSession
-		exhccid := existingSession.hc.GetConnectionID()
+		//exhccid := existingSession.cid //GetConnectionID()
 		slog.Warn("session with clcid already exists. replace its connection.",
 			slog.String("clientID", clientID),
 			slog.String("clcid", cs.clcid),
-			slog.String("ex hc.cid", exhccid),
-			//slog.String("existing HC CID", existingSession.hc.GetCid()),
 		)
 
 		// WARNING: disconnect can take a while to call back into SM to remove the
 		// session (plus its waiting for a lock).
 		// If the connection has been replaced then it won't match so ignore the
 		// callback if the connection differs.
-		existingSession.ReplaceConnection(hc)
+		co := messaging.NewConsumer(hc, sm.timeout)
+		existingSession.ReplaceConsumer(co)
 	} else {
-		cs = NewWebClientSession(cid, hc, r.RemoteAddr, sm.noState, sm.onClose)
+		co := messaging.NewConsumer(hc, sm.timeout)
+		cs = NewWebClientSession(cid, co, r.RemoteAddr, sm.noState, sm.onClose)
 		hccid := hc.GetConnectionID()
 		slog.Info("_addSession",
 			slog.String("clientID", clientID),
@@ -89,7 +89,6 @@ func (sm *WebSessionManager) _addSession(
 		)
 	}
 	sm.sessions[cs.clcid] = cs
-	hc.SetGetForm(cs.GetForm)
 	nrSessions := len(sm.sessions)
 	sm.mux.Unlock()
 
@@ -98,8 +97,7 @@ func (sm *WebSessionManager) _addSession(
 	//err = SetSessionCookie(w, clientID, newToken, maxAge, sm.signingKey)
 
 	// publish the new nr of sessions
-	notif := transports.NewNotificationResponse(wot.HTOpEvent, src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions)
-	_ = sm.hc.SendNotification(notif)
+	_ = sm.ag.PubEvent(src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions)
 	return cs, err
 }
 
@@ -107,13 +105,13 @@ func (sm *WebSessionManager) _addSession(
 // Make sure the connection is closed before calling this
 func (sm *WebSessionManager) _removeSession(cs *WebClientSession) {
 	// do not call back into cs as this callback takes place in a locked section.
-	isConnected := cs.hc.IsConnected()
-	hccid := cs.hc.GetConnectionID()
+	isConnected := cs.co.IsConnected()
+	//hccid := cs.clcid//GetConnectionID()
 	slog.Info("_removeSession",
 		slog.String("clientID", cs.GetClientID()),
 		slog.String("clcid", cs.GetCLCID()),
 		slog.Bool("isConnected", isConnected),
-		slog.String("hc.cid", hccid),
+		//slog.String("hc.cid", hccid),
 	)
 	if isConnected {
 		slog.Warn("_removeSession. session still has a connection")
@@ -133,12 +131,11 @@ func (sm *WebSessionManager) _removeSession(cs *WebClientSession) {
 
 	// 5. publish the new nr of sessions
 	go func() {
-		notif := transports.NewNotificationResponse(wot.HTOpEvent, src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions)
-		_ = sm.hc.SendNotification(notif)
+		_ = sm.ag.PubEvent(src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions)
 	}()
 }
 
-// disconnect all the web client sessions by disconnecting the client side
+// CloseAllWebSessions disconnects all the web client sessions by disconnecting the client side
 func (sm *WebSessionManager) CloseAllWebSessions() {
 	sm.mux.RLock()
 	// shallow copy of the map into an array of remaining sesions
@@ -147,10 +144,16 @@ func (sm *WebSessionManager) CloseAllWebSessions() {
 		sessions = append(sessions, s)
 	}
 	sm.mux.RUnlock()
-	for _, s := range sessions {
-		slog.Warn("CloseAllWebSessions", "clientID", s.hc.GetClientID())
-		s.hc.Disconnect()
+	for _, sess := range sessions {
+		slog.Warn("CloseAllWebSessions", "clientID", sess.co.GetClientID())
+		sess.co.Disconnect()
 	}
+}
+
+// GetForm returns the form for an operation on a Thing
+func (sm *WebSessionManager) GetForm(op, thingID, name string) *td.Form {
+	//return sess.coDir.GetForm(op, thingID, name)
+	return nil
 }
 
 // onClose handles closing of the client connection
@@ -176,16 +179,20 @@ func (sm *WebSessionManager) onClose(cs *WebClientSession) {
 //	}
 //}
 
-// ConnectWithPassword logs a consumer in to the hub using the given password.
-// If successful this updates the secure cookie with a new auth token and also
-// returns this token.
-// If a cid is provided in the headers it will create a session using it.
+// ConnectWithPassword handles the request to log a consumer in to the Hub
+// (or any Thing server) using the given password.
+// A cid (connection-id) is required to differentiate between browser tabs.
+//
+// This:
+//  1. Logs in to the Hub, obtaining a new auth token to reconnect later.
+//  2. Creates a hiveoview session using the given connection-id.
+//  3. Set a secure session cookie with the browser that contains the clientID and
+//     auth token for reconnecting without password.
 func (sm *WebSessionManager) ConnectWithPassword(
 	w http.ResponseWriter, r *http.Request,
 	loginID string, password string, cid string) (newToken string, err error) {
 
-	//
-	hc, err := clients.NewConsumerClient(sm.hubURL, loginID, sm.caCert, nil, sm.timeout)
+	hc, err := clients.NewClient(sm.hubURL, loginID, sm.caCert, sm.GetForm, sm.timeout)
 	if err == nil {
 		newToken, err = hc.ConnectWithPassword(password)
 	}
@@ -226,17 +233,16 @@ func (sm *WebSessionManager) ConnectWithToken(
 	slog.Info("ConnectWithToken",
 		"clientID", loginID, "cid", cid, "remoteAddr", r.RemoteAddr,
 		"nr websessions", len(sm.sessions))
-	var newToken string
-
-	hc, err := clients.NewConsumerClient(sm.hubURL, loginID, sm.caCert, nil, sm.timeout)
+	//var newToken string
+	hc, err := clients.NewClient(sm.hubURL, loginID, sm.caCert, nil, sm.timeout)
 	if err == nil {
-		newToken, err = hc.ConnectWithToken(authToken)
+		err = hc.ConnectWithToken(authToken)
 	}
 	if err == nil {
 		cs, err = sm._addSession(r, cid, hc)
 		// Update the session cookie with the new auth token (default 14 days)
 		maxAge := time.Hour * 24 * 14
-		err = SetSessionCookie(w, loginID, newToken, maxAge, sm.signingKey)
+		err = SetSessionCookie(w, loginID, authToken, maxAge, sm.signingKey)
 	}
 
 	return cs, err
@@ -302,6 +308,7 @@ func (sm *WebSessionManager) GetSessionFromCookie(r *http.Request) (
 // NewWebSessionManager creates a new instance of the hiveoview service
 // session manager.
 //
+//	hubURL to connect the clients
 //	signingKey for use with session cookies
 //	caCert of the hub
 //	hc is the agent service connection for reporting notifications and handling config
@@ -309,7 +316,7 @@ func (sm *WebSessionManager) GetSessionFromCookie(r *http.Request) (
 //	timeout of hub connections
 func NewWebSessionManager(hubURL string,
 	signingKey ed25519.PrivateKey, caCert *x509.Certificate,
-	hc transports.IAgentConnection, noState bool,
+	ag *messaging.Agent, noState bool,
 	timeout time.Duration) *WebSessionManager {
 	sm := &WebSessionManager{
 		sessions:   make(map[string]*WebClientSession),
@@ -318,7 +325,7 @@ func NewWebSessionManager(hubURL string,
 		pubKey:     signingKey.Public().(ed25519.PublicKey),
 		hubURL:     hubURL,
 		caCert:     caCert,
-		hc:         hc,
+		ag:         ag,
 		noState:    noState,
 		timeout:    timeout,
 	}

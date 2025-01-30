@@ -1,13 +1,14 @@
 package service
 
 import (
-	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/lib/utils"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/runtime/digitwin/store"
 	"github.com/hiveot/hub/transports/tputils"
 )
 
 // ValuesService provides access to digital thing values by consumers
+// This implements the IValuesSvcService interface
 type ValuesService struct {
 	// underlying store for the digital twin objects
 	dtwStore *store.DigitwinStore
@@ -15,9 +16,21 @@ type ValuesService struct {
 
 // QueryAction returns the current status of the action
 func (svc *ValuesService) QueryAction(clientID string,
-	args digitwin.ValuesQueryActionArgs) (av digitwin.ActionStatus, err error) {
+	args digitwin.ThingValuesQueryActionArgs) (av digitwin.ActionStatus, err error) {
 	//convert action status to action value, because ... need generated agent code
 	as, err := svc.dtwStore.QueryAction(args.ThingID, args.Name)
+	if err == nil {
+		err = tputils.Decode(as, &av)
+	}
+	return av, err
+}
+
+// QueryAllActions returns the current status of all thing actions
+func (svc *ValuesService) QueryAllActions(clientID string,
+	thingID string) (av []digitwin.ActionStatus, err error) {
+
+	//convert action status to action value, because ... need generated agent code
+	as, err := svc.dtwStore.QueryAllActions(thingID)
 	if err == nil {
 		err = tputils.Decode(as, &av)
 	}
@@ -42,7 +55,7 @@ func (svc *ValuesService) ReadAllProperties(clientID string,
 
 // ReadEvent returns the latest event of a digitwin instance
 func (svc *ValuesService) ReadEvent(clientID string,
-	args digitwin.ValuesReadEventArgs) (digitwin.ThingValue, error) {
+	args digitwin.ThingValuesReadEventArgs) (digitwin.ThingValue, error) {
 
 	return svc.dtwStore.ReadEvent(args.ThingID, args.Name)
 }
@@ -51,7 +64,7 @@ func (svc *ValuesService) ReadEvent(clientID string,
 // or an empty value if no value is known.
 // This returns an error if the dThingID doesn't exist.
 func (svc *ValuesService) ReadProperty(clientID string,
-	args digitwin.ValuesReadPropertyArgs) (p digitwin.ThingValue, err error) {
+	args digitwin.ThingValuesReadPropertyArgs) (p digitwin.ThingValue, err error) {
 
 	return svc.dtwStore.ReadProperty(args.ThingID, args.Name)
 }

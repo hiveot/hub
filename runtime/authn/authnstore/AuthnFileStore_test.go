@@ -2,11 +2,10 @@ package authnstore_test
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go/authn"
-	"github.com/hiveot/hub/api/go/authz"
-	"github.com/hiveot/hub/runtime/api"
+	authn "github.com/hiveot/hub/runtime/authn/api"
 	"github.com/hiveot/hub/runtime/authn/authnstore"
 	"github.com/hiveot/hub/runtime/authn/config"
+	authz "github.com/hiveot/hub/runtime/authz/api"
 	"log/slog"
 	"os"
 	"path"
@@ -317,7 +316,7 @@ func TestConcurrentReadWrite(t *testing.T) {
 }
 
 func TestWritePwToBadTempFolder(t *testing.T) {
-	pws := make(map[string]api.AuthnEntry)
+	pws := make(map[string]authnstore.AuthnEntry)
 	pwStore1 := authnstore.NewAuthnFileStore(unpwFilePath, "")
 	err := pwStore1.Open()
 	assert.NoError(t, err)

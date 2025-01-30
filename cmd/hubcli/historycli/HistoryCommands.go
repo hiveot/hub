@@ -3,7 +3,7 @@ package historycli
 import (
 	"fmt"
 	"github.com/hiveot/hub/services/history/historyclient"
-	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/messaging"
 	"github.com/urfave/cli/v2"
 )
 
@@ -23,7 +23,7 @@ import (
 //	}
 //}
 
-func HistoryListCommand(hc *transports.IConsumerConnection) *cli.Command {
+func HistoryListCommand(hc **messaging.Consumer) *cli.Command {
 	limit := 100
 	return &cli.Command{
 		Name:      "hev",
@@ -108,7 +108,7 @@ func HistoryListCommand(hc *transports.IConsumerConnection) *cli.Command {
 //}
 
 // HandleListEvents lists the history content
-func HandleListEvents(hc transports.IConsumerConnection, dThingID string, name string, limit int) error {
+func HandleListEvents(hc *messaging.Consumer, dThingID string, name string, limit int) error {
 	// FIXME: hc has a bootstrap algo to read the needed TD
 	//histTD := hc.GetTD(historyapi.ReadHistoryServiceID)
 	//f := histTD.GetForm(wot.OpInvokeAction)
@@ -132,7 +132,7 @@ func HandleListEvents(hc transports.IConsumerConnection, dThingID string, name s
 		//	value = fmt.Sprintf("(%d properties)", len(props))
 		//}
 		// FIXME: reformat timestmp
-		updated := msg.Created
+		updated := msg.Updated
 		fmt.Printf("%-30s %-30s %-20.20s %-30s\n",
 			msg.ThingID,
 			updated,

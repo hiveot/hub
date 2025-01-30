@@ -3,8 +3,9 @@ package router
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go/digitwin"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
@@ -97,20 +98,25 @@ func (svc *DigitwinRouter) HandleActionResponse(resp *transports.ResponseMessage
 // This updates the digital twin property or event value
 func (svc *DigitwinRouter) HandleSubscriptionNotification(resp *transports.ResponseMessage) (err error) {
 	// Update the digital twin with this event or property value
-	// FIXME: Update the digital twin property or event value
-	tv := digitwin.ThingValue{
-		Created: resp.Updated,
-		Data:    resp.Output,
-		Name:    resp.Name,
-		ThingID: resp.ThingID,
-	}
 	if resp.Operation == wot.OpSubscribeEvent {
+		tv := digitwin.ThingValue{
+			Name:    resp.Name,
+			Output:  resp.Output,
+			ThingID: resp.ThingID,
+			Updated: resp.Updated,
+		}
 		err = svc.dtwStore.UpdateEventValue(tv)
 		if err == nil {
 			// broadcast the event to subscribers of the digital twin
 			svc.transportServer.SendNotification(resp)
 		}
 	} else if resp.Operation == wot.OpObserveProperty {
+		tv := digitwin.ThingValue{
+			Name:    resp.Name,
+			Output:  resp.Output,
+			ThingID: resp.ThingID,
+			Updated: resp.Updated,
+		}
 		changed, _ := svc.dtwStore.UpdatePropertyValue(tv)
 		// unchanged values are still updated in the store but not published
 		// should this be configurable?
@@ -118,11 +124,24 @@ func (svc *DigitwinRouter) HandleSubscriptionNotification(resp *transports.Respo
 			svc.transportServer.SendNotification(resp)
 		}
 	} else if resp.Operation == wot.OpObserveAllProperties {
-		changed, _ := svc.dtwStore.UpdatePropertyValue(tv)
-		// unchanged values are still updated in the store but not published
-		// should this be configurable?
-		if changed {
-			svc.transportServer.SendNotification(resp)
+		// output is a key-value map
+		var propMap map[string]any
+		err = tputils.DecodeAsObject(resp.Output, &propMap)
+		if err == nil {
+			for k, v := range propMap {
+				tv := digitwin.ThingValue{
+					Name:    k,
+					Output:  v,
+					ThingID: resp.ThingID,
+					Updated: resp.Updated,
+				}
+				changed, _ := svc.dtwStore.UpdatePropertyValue(tv)
+				// unchanged values are still updated in the store but not published
+				// should this be configurable?
+				if changed {
+					svc.transportServer.SendNotification(resp)
+				}
+			}
 		}
 	} else if resp.Operation == wot.HTOpUpdateTD {
 		tdJSON := resp.ToString(0)

@@ -3,7 +3,7 @@ package thing
 import (
 	"encoding/json"
 	"github.com/go-chi/chi/v5"
-	"github.com/hiveot/hub/api/go/digitwin"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	jsoniter "github.com/json-iterator/go"
 	"net/http"
@@ -17,7 +17,7 @@ func RenderThingRaw(w http.ResponseWriter, r *http.Request) {
 	// Read the TD being displayed and its latest values
 	_, sess, err := session.GetSessionFromContext(r)
 	if err == nil {
-		tdJSON, err = digitwin.DirectoryReadTD(sess.GetHubClient(), thingID)
+		tdJSON, err = digitwin.ThingDirectoryReadTD(sess.GetConsumer(), thingID)
 	}
 	if err == nil {
 		// re-marshal with pretty-print JSON

@@ -1,11 +1,11 @@
 package tile
 
 import (
+	"github.com/hiveot/hub/runtime/consumedthing"
 	"github.com/hiveot/hub/services/hiveoview/src"
-	session2 "github.com/hiveot/hub/services/hiveoview/src/session"
+	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"github.com/hiveot/hub/transports/tputils"
-	"github.com/hiveot/hub/wot/consumedthing"
 	"github.com/teris-io/shortid"
 	"net/http"
 )
@@ -13,8 +13,8 @@ import (
 const EditTileTemplate = "RenderEditTile.gohtml"
 
 type EditTileTemplateData struct {
-	Dashboard session2.DashboardModel
-	Tile      session2.DashboardTile
+	Dashboard session.DashboardModel
+	Tile      session.DashboardTile
 	// Values of the tile sources by thingID/name
 	Values map[string]*consumedthing.InteractionOutput
 	// human labels for each tile type
@@ -26,7 +26,7 @@ type EditTileTemplateData struct {
 }
 
 func (data EditTileTemplateData) GetTypeLabel(typeID string) string {
-	label, found := session2.TileTypesLabels[typeID]
+	label, found := session.TileTypesLabels[typeID]
 	if !found {
 		return typeID
 	}
@@ -77,7 +77,7 @@ func RenderEditTile(w http.ResponseWriter, r *http.Request) {
 	data := EditTileTemplateData{
 		Dashboard:                   ctc.dashboard,
 		Tile:                        ctc.tile,
-		TileTypeLabels:              session2.TileTypesLabels,
+		TileTypeLabels:              session.TileTypesLabels,
 		RenderSelectTileSourcesPath: getTilePath(src.RenderTileSelectSourcesPath, ctc),
 		SubmitEditTilePath:          getTilePath(src.PostTileEditPath, ctc),
 		Values:                      values,

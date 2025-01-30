@@ -5,9 +5,9 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/lib/keys"
-	"github.com/hiveot/hub/runtime/api"
+	authn "github.com/hiveot/hub/runtime/authn/api"
+	"github.com/hiveot/hub/runtime/authn/authnstore"
 	"github.com/hiveot/hub/runtime/authn/config"
 	"github.com/hiveot/hub/runtime/authn/sessions"
 	"github.com/teris-io/shortid"
@@ -21,7 +21,7 @@ type JWTAuthenticator struct {
 	// key used to create and verify session tokens
 	signingKey keys.IHiveKey
 	// authentication store for login verification
-	authnStore api.IAuthnStore
+	authnStore authnstore.IAuthnStore
 	//
 	AgentTokenValiditySec    int
 	ConsumerTokenValiditySec int
@@ -218,7 +218,7 @@ func (svc *JWTAuthenticator) ValidateToken(token string) (clientID string, sessi
 }
 
 // NewJWTAuthenticator returns a new instance of a JWT token authenticator
-func NewJWTAuthenticator(authnStore api.IAuthnStore, signingKey keys.IHiveKey) *JWTAuthenticator {
+func NewJWTAuthenticator(authnStore authnstore.IAuthnStore, signingKey keys.IHiveKey) *JWTAuthenticator {
 	svc := JWTAuthenticator{
 		signingKey: signingKey,
 		authnStore: authnStore,

@@ -86,6 +86,6 @@ func main() {
 		serverPort, false, signingKey, rootPath, serverCert, env.CaCert,
 		false, time.Second*20)
 
-	// StartPlugin will connect to the hub and wait for signal to end
+	// StartPlugin will connect to the hub and wait for a signal to end.
 	plugin.StartPlugin(svc, env.ClientID, env.CertsDir)
 }

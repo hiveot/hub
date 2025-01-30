@@ -59,6 +59,9 @@ type IConnection interface {
 	// See ProtocolType... constants above for valid values.
 	GetProtocolType() string
 
+	// GetConnectURL returns the full URL used to establish this connection
+	GetConnectURL() string
+
 	// IsConnected returns the current connection status
 	IsConnected() bool
 

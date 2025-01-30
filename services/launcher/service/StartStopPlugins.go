@@ -3,8 +3,8 @@ package service
 import (
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/api/go/authn"
 	"github.com/hiveot/hub/lib/utils"
+	authn "github.com/hiveot/hub/runtime/authn/api"
 	"github.com/hiveot/hub/services/launcher/launcherapi"
 	"github.com/struCoder/pidusage"
 	"io"

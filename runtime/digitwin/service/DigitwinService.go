@@ -12,9 +12,8 @@ import (
 	"sync"
 )
 
-// The DigitwinService orchestrates the flow of properties, events and actions
-// between Thing agents and consumers.
-// It stores digital twin things, property values and the latest event and action.
+// The DigitwinService stores digital twin things, property values and provide
+// the latest event and action values.
 type DigitwinService struct {
 	// underlying store for the digital twin objects
 	bucketStore buckets.IBucketStore

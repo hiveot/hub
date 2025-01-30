@@ -2,9 +2,9 @@ package discotransport
 
 import (
 	"github.com/grandcat/zeroconf"
-	"github.com/hiveot/hub/lib/discovery"
-	"github.com/hiveot/hub/lib/net"
 	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/tputils/discovery"
+	"github.com/hiveot/hub/transports/tputils/net"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 )

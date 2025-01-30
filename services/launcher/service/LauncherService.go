@@ -3,7 +3,7 @@ package service
 import (
 	"fmt"
 	"github.com/fsnotify/fsnotify"
-	"github.com/hiveot/hub/api/go/authz"
+	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/hiveot/hub/services/launcher/config"
 	"github.com/hiveot/hub/services/launcher/launcherapi"
 	"github.com/hiveot/hub/transports/clients"

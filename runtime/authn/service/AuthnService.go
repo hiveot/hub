@@ -1,7 +1,6 @@
 package service
 
 import (
-	"github.com/hiveot/hub/runtime/api"
 	"github.com/hiveot/hub/runtime/authn/authenticator"
 	"github.com/hiveot/hub/runtime/authn/authnstore"
 	"github.com/hiveot/hub/runtime/authn/config"
@@ -10,7 +9,7 @@ import (
 
 type AuthnService struct {
 	SessionAuth transports.IAuthenticator
-	AuthnStore  api.IAuthnStore
+	AuthnStore  authnstore.IAuthnStore
 	AdminSvc    *AuthnAdminService
 	UserSvc     *AuthnUserService
 }
@@ -38,7 +37,7 @@ func (svc *AuthnService) Stop() {
 // NewAuthnService creates an instance of the authentication services
 func NewAuthnService(
 	cfg *config.AuthnConfig,
-	authnStore api.IAuthnStore,
+	authnStore authnstore.IAuthnStore,
 	sessionAuth transports.IAuthenticator) *AuthnService {
 
 	svc := &AuthnService{

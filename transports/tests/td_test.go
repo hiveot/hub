@@ -58,7 +58,7 @@ func TestReadTDFromAgent(t *testing.T) {
 	// 4. verify the TD can be read from the agent
 	c := srv.GetConnectionByClientID(testAgentID1)
 	// c is server side connection of the agent. The hub is the consumer of the agent.
-	consumer := messaging.NewConsumer(c, nil, nil, testTimeout)
+	consumer := messaging.NewConsumer(c, testTimeout)
 	tdList, err := consumer.ReadAllTDs()
 	require.NoError(t, err)
 	require.True(t, len(tdList) > 0)

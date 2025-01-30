@@ -3,7 +3,7 @@ package service
 import (
 	"fmt"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
-	"github.com/hiveot/hub/transports/servers/ssescserver"
+	"github.com/hiveot/hub/transports/servers/hiveotsseserver"
 	"log/slog"
 	"net/http"
 )
@@ -46,7 +46,7 @@ func SseServe(w http.ResponseWriter, r *http.Request) {
 	pingEvent := session.SSEEvent{Event: hiveotsseserver.SSEPingEvent}
 	sseChan <- pingEvent
 
-	clientID := cs.GetHubClient().GetClientID()
+	clientID := cs.GetConsumer().GetClientID()
 
 	slog.Debug("SseServe. New SSE incoming connection",
 		slog.String("clientID", clientID),

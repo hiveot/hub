@@ -2,12 +2,12 @@ package testenv
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go/authn"
-	"github.com/hiveot/hub/api/go/authz"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/runtime"
+	authn "github.com/hiveot/hub/runtime/authn/api"
+	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/clients"
 	"github.com/hiveot/hub/transports/messaging"
@@ -93,7 +93,7 @@ func (test *TestServer) GetConsumerConnection(
 	connectURL := test.Runtime.TransportsMgr.GetConnectURL(protocolName)
 
 	cc, _ := clients.NewClient(connectURL, clientID, test.Certs.CaCert, getForm, test.ConnectTimeout)
-	consumer := messaging.NewConsumer(cc, nil, nil, test.ConnectTimeout)
+	consumer := messaging.NewConsumer(cc, test.ConnectTimeout)
 	return cc, consumer
 }
 

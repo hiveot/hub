@@ -35,7 +35,4 @@ type IClientConnection interface {
 	//
 	// This connection method must be supported by all transport implementations.
 	ConnectWithToken(token string) (err error)
-
-	// GetServerURL returns the schema://address:port of the connection
-	GetServerURL() string
 }

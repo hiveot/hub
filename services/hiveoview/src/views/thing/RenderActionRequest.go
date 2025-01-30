@@ -1,18 +1,16 @@
 package thing
 
 import (
-	"fmt"
+	"errors"
 	"github.com/araddon/dateparse"
 	"github.com/go-chi/chi/v5"
-	"github.com/hiveot/hub/api/go/digitwin"
+	"github.com/hiveot/hub/runtime/consumedthing"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
-	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/tputils"
-	"github.com/hiveot/hub/wot/consumedthing"
 	"github.com/hiveot/hub/wot/td"
-	jsoniter "github.com/json-iterator/go"
 	"net/http"
 	"time"
 )
@@ -49,24 +47,24 @@ type ActionRequestTemplateData struct {
 	SubmitActionRequestPath string
 }
 
-// Return the action affordance
-func getActionAff(hc transports.IConsumerConnection, thingID string, name string) (
-	td *td.TD, actionAff *td.ActionAffordance, err error) {
-
-	tdJson, err := digitwin.DirectoryReadTD(hc, thingID)
-	if err != nil {
-		return td, actionAff, err
-	}
-	err = jsoniter.UnmarshalFromString(tdJson, &td)
-	if err != nil {
-		return td, actionAff, err
-	}
-	actionAff = td.GetAction(name)
-	if actionAff == nil {
-		return td, actionAff, fmt.Errorf("Action '%s' not found for Thing '%s'", name, thingID)
-	}
-	return td, actionAff, nil
-}
+//// Return the action affordance
+//func getActionAff(hc transports.IConsumerConnection, thingID string, name string) (
+//	td *td.TD, actionAff *td.ActionAffordance, err error) {
+//
+//	tdJson, err := digitwin.DirectoryReadTD(hc, thingID)
+//	if err != nil {
+//		return td, actionAff, err
+//	}
+//	err = jsoniter.UnmarshalFromString(tdJson, &td)
+//	if err != nil {
+//		return td, actionAff, err
+//	}
+//	actionAff = td.GetAction(name)
+//	if actionAff == nil {
+//		return td, actionAff, fmt.Errorf("Action '%s' not found for Thing '%s'", name, thingID)
+//	}
+//	return td, actionAff, nil
+//}
 
 // RenderActionRequest renders the action dialog.
 // Path: /things/{thingID}/{name}
@@ -88,10 +86,10 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		sess.WriteError(w, err, http.StatusBadRequest)
 	}
-
-	_, actionAff, err := getActionAff(sess.GetHubClient(), thingID, name)
-	if err != nil {
-		sess.WriteError(w, err, http.StatusBadRequest)
+	actionAff := ct.GetTD().GetAction(name)
+	//_, actionAff, err := getActionAff(sess.GetConsumer(), thingID, name)
+	if actionAff == nil {
+		sess.WriteError(w, errors.New("No such action: "+name), http.StatusBadRequest)
 		return
 	}
 	tdi := ct.GetTD()
@@ -110,7 +108,7 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 
 	// get last action request that was received
 	// reading a latest value is optional
-	actionVal, err := digitwin.ValuesQueryAction(sess.GetHubClient(), name, thingID)
+	actionVal, err := digitwin.ThingValuesQueryAction(sess.GetConsumer(), name, thingID)
 	if err == nil && actionVal.Name != "" {
 		data.LastActionRecord = &actionVal
 		//data.PrevValue = &lastActionRecord

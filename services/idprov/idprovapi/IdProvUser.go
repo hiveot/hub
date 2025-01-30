@@ -1,7 +1,7 @@
 package idprovapi
 
 import (
-	"github.com/hiveot/hub/api/go/authn"
+	authn "github.com/hiveot/hub/runtime/authn/api"
 )
 
 // ProvisioningServerType defines the discovery type for the provisioning

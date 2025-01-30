@@ -10,8 +10,8 @@ import (
 	"github.com/hiveot/hub/transports/clients"
 	"github.com/hiveot/hub/transports/messaging"
 	"github.com/hiveot/hub/transports/servers"
-	"github.com/hiveot/hub/transports/servers/hiveotwssserver"
 	"github.com/hiveot/hub/transports/servers/httpserver"
+	"github.com/hiveot/hub/transports/servers/wssserver"
 	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
@@ -97,7 +97,7 @@ func NewAgent(clientID string) (transports.IClientConnection, *messaging.Agent) 
 func NewConsumer(clientID string, getForm transports.GetFormHandler) (
 	transports.IClientConnection, *messaging.Consumer) {
 	cc := NewTestClient(clientID)
-	consumer := messaging.NewConsumer(cc, nil, nil, testTimeout)
+	consumer := messaging.NewConsumer(cc, testTimeout)
 	return cc, consumer
 }
 
@@ -154,9 +154,9 @@ func StartTransportServer(
 		panic("wss (strawman) is broken")
 
 	case transports.ProtocolTypeHiveotWSS:
-		transportServer, err = hiveotwssserver.StartHiveotWssServer(
+		transportServer, err = wssserver.StartHiveotWssServer(
 			servers.DefaultHiveotWssPath,
-			&hiveotwssserver.HiveotMessageConverter{},
+			&wssserver.HiveotMessageConverter{}, transports.ProtocolTypeWotWSS,
 			httpTransportServer, nil, reqHandler, respHandler)
 	default:
 		err = errors.New("unknown protocol name: " + defaultProtocol)

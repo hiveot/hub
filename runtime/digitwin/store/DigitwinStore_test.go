@@ -2,9 +2,9 @@ package store_test
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
 	"github.com/hiveot/hub/lib/logging"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/runtime/digitwin/store"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
@@ -71,8 +71,8 @@ func addValues(svc *store.DigitwinStore,
 		value := fmt.Sprintf("%2.3f", randomValue)
 		name := valueNames[randomName]
 		tv := digitwin.ThingValue{
-			Created: time.Now().Format(wot.RFC3339Milli),
-			Data:    value,
+			Updated: time.Now().Format(wot.RFC3339Milli),
+			Output:  value,
 			Name:    name,
 			ThingID: dThingID,
 		}
@@ -181,8 +181,8 @@ func TestUpdateProps(t *testing.T) {
 	addValues(svc, 10, agent1ID, []string{thing1ID}, 3600*24*30)
 
 	tv := digitwin.ThingValue{
-		Created: time.Now().Format(wot.RFC3339Milli),
-		Data:    prop1Value,
+		Updated: time.Now().Format(wot.RFC3339Milli),
+		Output:  prop1Value,
 		Name:    prop1Name,
 		ThingID: dThingID1,
 	}
@@ -192,7 +192,7 @@ func TestUpdateProps(t *testing.T) {
 
 	p1val, err := svc.ReadProperty(dThingID1, prop1Name)
 	require.NoError(t, err)
-	require.Equal(t, prop1Value, p1val.Data)
+	require.Equal(t, prop1Value, p1val.Output)
 }
 
 func TestAddPropsFail(t *testing.T) {
@@ -204,8 +204,8 @@ func TestAddPropsFail(t *testing.T) {
 	defer closeFn()
 
 	tv := digitwin.ThingValue{
-		Created: time.Now().Format(wot.RFC3339Milli),
-		Data:    "val1",
+		Updated: time.Now().Format(wot.RFC3339Milli),
+		Output:  "val1",
 		Name:    "prop1",
 		ThingID: dThingID,
 	}

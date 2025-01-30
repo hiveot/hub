@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/keys"
-	"github.com/hiveot/hub/lib/net"
 	"github.com/hiveot/hub/lib/plugin"
-	"github.com/hiveot/hub/runtime/authn/config"
-	"github.com/hiveot/hub/runtime/authz"
+	service2 "github.com/hiveot/hub/runtime/authn/config"
+	"github.com/hiveot/hub/runtime/authz/service"
 	"github.com/hiveot/hub/transports/servers"
+	"github.com/hiveot/hub/transports/tputils/net"
 	"gopkg.in/yaml.v3"
 	"log/slog"
 	"os"
@@ -29,8 +29,8 @@ const DefaultServerKeyFile = "hubKey.pem"
 type RuntimeConfig struct {
 
 	// middleware and services config. These all work out of the box with their defaults.
-	Authn          config.AuthnConfig      `yaml:"authn"`
-	Authz          authz.AuthzConfig       `yaml:"authz"`
+	Authn          service2.AuthnConfig    `yaml:"authn"`
+	Authz          service.AuthzConfig     `yaml:"authz"`
 	ProtocolConfig servers.ProtocolsConfig `yaml:"protocols"`
 
 	// Runtime logging
@@ -291,8 +291,8 @@ func (cfg *RuntimeConfig) Setup(env *plugin.AppEnvironment) error {
 // The CA and Server certificate and keys must be set after creation.
 func NewRuntimeConfig() *RuntimeConfig {
 	cfg := &RuntimeConfig{
-		Authn:          config.NewAuthnConfig(),
-		Authz:          authz.NewAuthzConfig(),
+		Authn:          service2.NewAuthnConfig(),
+		Authz:          service.NewAuthzConfig(),
 		ProtocolConfig: servers.NewProtocolsConfig(),
 		LogLevel:       "info", // error, warning, info, debug
 		NotifLog:       "",     // no logfile

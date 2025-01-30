@@ -9,7 +9,7 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
-	"github.com/nats-io/nkeys"
+	//"github.com/nats-io/nkeys"
 	"os"
 	"path"
 )
@@ -20,11 +20,11 @@ func DetermineKeyType(encKey string) KeyType {
 	var err error
 	blockPub, _ := pem.Decode([]byte(encKey))
 	if blockPub == nil {
-		// is this an nkey seed?
-		_, err = nkeys.FromSeed([]byte(encKey))
-		if err == nil {
-			return KeyTypeNKey
-		}
+		//// is this an nkey seed?
+		//_, err = nkeys.FromSeed([]byte(encKey))
+		//if err == nil {
+		//	return KeyTypeNKey
+		//}
 		// no nkey, try base64 decoding. Eg PEM content
 		derBytes, err = base64.StdEncoding.DecodeString(encKey)
 
@@ -110,8 +110,8 @@ func NewKey(keyType KeyType) IHiveKey {
 		return NewEcdsaKey()
 	case KeyTypeEd25519:
 		return NewEd25519Key()
-	case KeyTypeNKey:
-		return NewNkeysKey()
+	//case KeyTypeNKey:
+	//	return NewNkeysKey()
 	case KeyTypeRSA:
 		return NewRsaKey()
 	default:

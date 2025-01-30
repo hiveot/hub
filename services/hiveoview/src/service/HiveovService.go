@@ -8,11 +8,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/go-chi/chi/v5"
-	"github.com/hiveot/hub/api/go/authz"
+	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views"
-	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/messaging"
 	"github.com/hiveot/hub/transports/tputils/tlsserver"
 	"log/slog"
 	"net/http"
@@ -43,9 +43,9 @@ type HiveovService struct {
 	// a web session per connections
 	sm *session.WebSessionManager
 
-	// hc hub client of this service.
+	// ag agent hub client of this service.
 	// This client's CA and URL is also used to establish client sessions.
-	hc transports.IAgentConnection
+	ag *messaging.Agent
 
 	// cookie signing
 	signingKey ed25519.PrivateKey
@@ -70,15 +70,16 @@ func (svc *HiveovService) GetSM() *session.WebSessionManager {
 
 // Start the web server and publish the service's own TD.
 //
-//	hc is the service agent connection to the hub for publishing notifications
-//	timeout for client hub connections
-func (svc *HiveovService) Start(hc transports.IAgentConnection) error {
-	slog.Info("Starting HiveovService", "clientID", hc.GetClientID())
-	svc.hc = hc
+// This is invoked by the plugin library.
+//
+//	ag is the service agent connection to the hub for publishing notifications
+func (svc *HiveovService) Start(ag *messaging.Agent) error {
+	slog.Info("Starting HiveovService", "clientID", ag.GetClientID())
+	svc.ag = ag
 
 	// publish a TD for the service and set allowable roles in this case only a management capability is published
-	err := authz.UserSetPermissions(hc, authz.ThingPermissions{
-		AgentID: hc.GetClientID(),
+	err := authz.UserSetPermissions(&ag.Consumer, authz.ThingPermissions{
+		AgentID: ag.GetClientID(),
 		ThingID: src.HiveoviewServiceID,
 		Allow:   []authz.ClientRole{authz.ClientRoleAdmin, authz.ClientRoleService, authz.ClientRoleManager},
 	})
@@ -88,16 +89,16 @@ func (svc *HiveovService) Start(hc transports.IAgentConnection) error {
 
 	// Setup the handling of incoming web sessions
 	// re-use the runtime connection manager
-	hubURL := hc.GetServerURL()
+	hubURL := ag.GetConnection().GetConnectURL()
 	svc.sm = session.NewWebSessionManager(
-		hubURL, svc.signingKey, svc.caCert, hc, svc.noState, svc.timeout)
+		hubURL, svc.signingKey, svc.caCert, ag, svc.noState, svc.timeout)
 
 	// parse the templates
 	svc.tm.ParseAllTemplates()
 
 	// TODO: hostname configurable as the server can live elsewhere
 	// This is an SSE server
-	urlParts, _ := url.Parse(hc.GetServerURL())
+	urlParts, _ := url.Parse(hubURL)
 	svc.serverURL = fmt.Sprintf("https://%s:%d%s", urlParts.Hostname(), svc.port, WebSsePath)
 
 	// Start the TLS server for serving the UI
@@ -138,7 +139,7 @@ func (svc *HiveovService) Start(hc transports.IAgentConnection) error {
 func (svc *HiveovService) Stop() {
 	slog.Info("Stopping HiveovService")
 	// TODO: send event the service has stopped
-	svc.hc.Disconnect()
+	svc.ag.Disconnect()
 	svc.sm.CloseAllWebSessions()
 	if svc.tlsServer != nil {
 		svc.tlsServer.Stop()

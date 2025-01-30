@@ -16,9 +16,8 @@ require (
 	github.com/grandcat/zeroconf v1.0.0
 	github.com/huin/goupnp v1.3.0
 	github.com/json-iterator/go v1.1.12
-	github.com/lmittmann/tint v1.0.5
+	github.com/lmittmann/tint v1.0.6
 	github.com/mostlygeek/arp v0.0.0-20170424181311-541a2129847a
-	github.com/nats-io/nkeys v0.4.7
 	github.com/rs/cors v1.11.1
 	github.com/samber/lo v1.47.0
 	github.com/stretchr/testify v1.9.0
@@ -31,7 +30,6 @@ require (
 	go.etcd.io/bbolt v1.3.11
 	golang.org/x/crypto v0.31.0
 	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0
-	golang.org/x/net v0.29.0
 	golang.org/x/sys v0.28.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -69,6 +67,7 @@ require (
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
+	golang.org/x/net v0.27.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect

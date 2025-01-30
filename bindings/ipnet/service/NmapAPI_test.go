@@ -2,7 +2,7 @@ package service_test
 
 import (
 	"github.com/hiveot/hub/bindings/ipnet/service"
-	"github.com/hiveot/hub/lib/net"
+	"github.com/hiveot/hub/transports/tputils/net"
 	"github.com/stretchr/testify/assert"
 	"log/slog"
 	"testing"

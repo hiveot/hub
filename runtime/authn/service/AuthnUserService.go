@@ -1,8 +1,8 @@
 package service
 
 import (
-	"github.com/hiveot/hub/api/go/authn"
-	"github.com/hiveot/hub/runtime/api"
+	authn "github.com/hiveot/hub/runtime/authn/api"
+	"github.com/hiveot/hub/runtime/authn/authnstore"
 	"github.com/hiveot/hub/runtime/authn/config"
 	"github.com/hiveot/hub/transports"
 	"log/slog"
@@ -11,7 +11,7 @@ import (
 // AuthnUserService handles authentication and authorization of regular users
 // such as agents, services and end-users.
 type AuthnUserService struct {
-	authnStore api.IAuthnStore
+	authnStore authnstore.IAuthnStore
 
 	cfg *config.AuthnConfig
 
@@ -127,7 +127,7 @@ func (svc *AuthnUserService) UpdatePubKey(senderID string, pubKeyPEM string) err
 //	sessionAuth is the authenticator returned by the admin service.
 func NewAuthnUserService(
 	cfg *config.AuthnConfig,
-	authnStore api.IAuthnStore,
+	authnStore authnstore.IAuthnStore,
 	authenticator transports.IAuthenticator) *AuthnUserService {
 
 	authnSvc := &AuthnUserService{

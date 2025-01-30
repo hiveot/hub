@@ -2,7 +2,7 @@ package directory
 
 import (
 	"github.com/go-chi/chi/v5"
-	"github.com/hiveot/hub/api/go/digitwin"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
@@ -33,7 +33,7 @@ func RenderConfirmDeleteTD(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tdJson, err = digitwin.DirectoryReadTD(sess.GetHubClient(), thingID)
+	tdJson, err = digitwin.ThingDirectoryReadTD(sess.GetConsumer(), thingID)
 	if err == nil {
 		err = jsoniter.UnmarshalFromString(tdJson, &td)
 	}

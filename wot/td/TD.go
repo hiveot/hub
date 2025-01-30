@@ -349,20 +349,21 @@ func (tdoc *TD) GetEvent(eventName string) *EventAffordance {
 	return eventAffordance
 }
 
-// GetForm returns the form for the requested operation
+// GetForms returns the forms for the requested operation.
+// The caller still has to find the matching protocol based on url and subprotocol field.
 //
-// This:
+// This first checks for forms in the requested operation by affordance name,
+// and appends the global forms.
 //
-// 1. determine the affordance or thing level to use based on the operation
-// 2. determine the base path to use
-// 3. determine the protocol binding to use from the href (https, mqtt, ...)
-// 4. determine which form matches the available protocol binding(s)
+// FIXME: make this wot compatible. The top level forms seem to play a different
+// role than the one in the affordances. The other problem is that the sheer
+// amount of forms would bloat the TD so I have trouble accepting this approach.
 //
 //	operation is the operation as defined in TD forms
 //	name is the name of property, event or action whose form to get or "" for the TD level operations
-//	protocol to get, eg: http, mqtt, coap, or "" for the first available protocol
-func (tdoc *TD) GetForm(operation string, name string, protocol string) Form {
-	var f []Form
+func (tdoc *TD) GetForms(operation string, name string) []Form {
+	var availableForms []Form
+	var opForms []Form = make([]Form, 0)
 
 	if name != "" {
 		// get the form from the affordance if a name is given
@@ -375,14 +376,13 @@ func (tdoc *TD) GetForm(operation string, name string, protocol string) Form {
 			wot.OpQueryAllActions:
 			aff, _ := tdoc.Actions[name]
 			if aff != nil {
-				f = aff.Forms
+				availableForms = aff.Forms
 			}
 
 		case
 			wot.OpObserveAllProperties,
 			wot.OpObserveProperty,
 			wot.OpReadAllProperties,
-			wot.OpReadMultipleProperties,
 			wot.OpReadProperty,
 			wot.OpUnobserveAllProperties,
 			wot.OpUnobserveProperty,
@@ -390,7 +390,7 @@ func (tdoc *TD) GetForm(operation string, name string, protocol string) Form {
 			wot.OpWriteMultipleProperties:
 			aff, _ := tdoc.Properties[name]
 			if aff != nil {
-				f = aff.Forms
+				availableForms = aff.Forms
 			}
 
 		case
@@ -400,38 +400,28 @@ func (tdoc *TD) GetForm(operation string, name string, protocol string) Form {
 			wot.OpUnsubscribeEvent:
 			aff, _ := tdoc.Events[name]
 			if aff != nil {
-				f = aff.Forms
+				availableForms = aff.Forms
 			}
 		}
 
-		if f != nil {
+		if availableForms != nil {
 			// find the form for this operation that has the currently used transport type
-			for _, form := range f {
+			for _, form := range availableForms {
 				op, found := form["op"]
 				if found && op == operation {
-					href, found := form.GetHRef()
-					if found {
-						if protocol == "" || strings.HasPrefix(href, protocol) {
-							return form
-						}
-					}
+					opForms = append(opForms, form)
 				}
 			}
 		}
 	}
-	// still here? okay check the top level form
+	// still not found? okay check the top level form
 	for _, form := range tdoc.Forms {
 		op, found := form["op"]
 		if found && op == operation {
-			href, found := form.GetHRef()
-			if found {
-				if protocol == "" || strings.HasPrefix(href, protocol) {
-					return form
-				}
-			}
+			opForms = append(opForms, form)
 		}
 	}
-	return nil
+	return opForms
 }
 
 // GetFormHRef returns the URL of the form and injects the URI variables if provided.

@@ -142,12 +142,15 @@ func TestReadProperty(t *testing.T) {
 	var thingID = "thing1"
 	var propKey = "propKey1"
 	var propValue = "value11"
+	var timestamp = "mytime"
 
 	// 1. start the agent transport with the request handler
 	// in this case the consumer connects to the agent (unlike when using a hub)
 	agentReqHandler := func(req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
 		if req.Operation == wot.OpReadProperty && req.ThingID == thingID && req.Name == propKey {
-			return req.CreateResponse(propValue, nil)
+			resp := req.CreateResponse(propValue, nil)
+			resp.Updated = timestamp
+			return resp
 		}
 		return req.CreateResponse(nil, errors.New("unexpected request"))
 	}
@@ -163,5 +166,44 @@ func TestReadProperty(t *testing.T) {
 
 	rxVal, err := consumer1.ReadProperty(thingID, propKey)
 	require.NoError(t, err)
-	assert.Equal(t, propValue, rxVal)
+	assert.Equal(t, propValue, rxVal.Output)
+	assert.Equal(t, timestamp, rxVal.Updated)
+}
+
+// Consumer reads events from agent
+func TestReadAllProperties(t *testing.T) {
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	var thingID = "thing1"
+	var name1 = "prop1"
+	var name2 = "prop2"
+	var value1 = "value1"
+	var value2 = "value2"
+
+	// 1. start the agent transport with the request handler
+	// in this case the consumer connects to the agent (unlike when using a hub)
+	agentReqHandler := func(req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
+		if req.Operation == wot.OpReadAllProperties {
+			output := make(map[string]*transports.ResponseMessage)
+			output[name1] = transports.NewResponseMessage(wot.OpSubscribeEvent, thingID, name1, value1, nil, "")
+			output[name2] = transports.NewResponseMessage(wot.OpSubscribeEvent, thingID, name2, value2, nil, "")
+			resp := req.CreateResponse(output, nil)
+			return resp
+		}
+		return req.CreateResponse(nil, errors.New("unexpected request"))
+	}
+	srv, cancelFn := StartTransportServer(agentReqHandler, nil)
+	_ = srv
+	defer cancelFn()
+
+	// 2. connect as a consumer
+	cc1, consumer1 := NewConsumer(testClientID1, srv.GetForm)
+	_, err := cc1.ConnectWithPassword(testClientID1)
+	require.NoError(t, err)
+	defer cc1.Disconnect()
+
+	propMap, err := consumer1.ReadAllProperties(thingID)
+	require.NoError(t, err)
+	require.Equal(t, 2, len(propMap))
+	require.Equal(t, value1, propMap[name1].Output)
+	require.Equal(t, value2, propMap[name2].Output)
 }

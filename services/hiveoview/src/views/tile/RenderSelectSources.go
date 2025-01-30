@@ -1,12 +1,12 @@
 package tile
 
 import (
-	"github.com/hiveot/hub/api/go/digitwin"
-	session2 "github.com/hiveot/hub/services/hiveoview/src/session"
+	"github.com/hiveot/hub/runtime/consumedthing"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
+	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"github.com/hiveot/hub/services/hiveoview/src/views/directory"
 	"github.com/hiveot/hub/transports/tputils"
-	"github.com/hiveot/hub/wot/consumedthing"
 	"net/http"
 )
 
@@ -51,11 +51,10 @@ func (data RenderSelectSourcesTemplateData) GetValue(thingID string, key string)
 }
 
 // RenderSelectSources renders the selection of Tile sources for adding to a tile
-// A source is either an event or action.
-// TODO: split into properties, events and actions
+// A source is a property or event or action.
 func RenderSelectSources(w http.ResponseWriter, r *http.Request) {
 
-	_, sess, err := session2.GetSessionFromContext(r)
+	_, sess, err := session.GetSessionFromContext(r)
 	if err != nil {
 		sess.WriteError(w, err, http.StatusBadRequest)
 		return
@@ -77,11 +76,12 @@ func RenderSelectSources(w http.ResponseWriter, r *http.Request) {
 	}
 	data.AgentThings = directory.GroupByAgent(tds)
 	for thingID, td := range tds {
-		propValues, err := digitwin.ValuesReadAllProperties(sess.GetHubClient(), thingID)
+		propValues, err := digitwin.ThingValuesReadAllProperties(sess.GetConsumer(), thingID)
 		if err == nil {
-			eventValues, _ := digitwin.ValuesReadAllEvents(sess.GetHubClient(), thingID)
+			eventValues, _ := digitwin.ThingValuesReadAllEvents(sess.GetConsumer(), thingID)
 			allValues := append(propValues, eventValues...)
-			data.IOValues[thingID] = consumedthing.NewInteractionOutputFromValueList(allValues, td)
+			data.IOValues[thingID] = consumedthing.NewInteractionOutputFromValueList(
+				td, consumedthing.AffordanceTypeEvent, allValues)
 		}
 	}
 	buff, err := app.RenderAppOrFragment(r, RenderSelectSourceTemplateFile, data)

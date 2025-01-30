@@ -3,11 +3,11 @@ package router
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go/authn"
-	"github.com/hiveot/hub/api/go/authz"
-	"github.com/hiveot/hub/api/go/digitwin"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/runtime/api"
+	authn "github.com/hiveot/hub/runtime/authn/api"
+	authz "github.com/hiveot/hub/runtime/authz/api"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
@@ -139,7 +139,7 @@ func (svc *DigitwinRouter) HandleInvokeAction(
 
 	// internal services return instant result
 	switch agentID {
-	case digitwin.DirectoryAgentID:
+	case digitwin.ThingDirectoryAgentID:
 		resp = svc.digitwinAction(req, c)
 	case authn.AdminAgentID:
 		resp = svc.authnAction(req, c)
@@ -235,7 +235,7 @@ func (svc *DigitwinRouter) ForwardActionToRemoteAgent(
 func (svc *DigitwinRouter) HandleQueryAction(
 	req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
 	av, err := svc.dtwService.ValuesSvc.QueryAction(req.SenderID,
-		digitwin.ValuesQueryActionArgs{ThingID: req.ThingID, Name: req.Name})
+		digitwin.ThingValuesQueryActionArgs{ThingID: req.ThingID, Name: req.Name})
 	return req.CreateResponse(av, err)
 }
 
@@ -244,7 +244,7 @@ func (svc *DigitwinRouter) HandleReadEvent(
 	req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
 
 	output, err := svc.dtwService.ValuesSvc.ReadEvent(req.SenderID,
-		digitwin.ValuesReadEventArgs{ThingID: req.ThingID, Name: req.Name})
+		digitwin.ThingValuesReadEventArgs{ThingID: req.ThingID, Name: req.Name})
 	return req.CreateResponse(output, err)
 }
 
@@ -261,7 +261,7 @@ func (svc *DigitwinRouter) HandleReadProperty(
 	req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
 
 	output, err := svc.dtwService.ValuesSvc.ReadProperty(req.SenderID,
-		digitwin.ValuesReadPropertyArgs{ThingID: req.ThingID, Name: req.Name})
+		digitwin.ThingValuesReadPropertyArgs{ThingID: req.ThingID, Name: req.Name})
 	return req.CreateResponse(output, err)
 }
 
@@ -281,8 +281,8 @@ func (svc *DigitwinRouter) HandleReadTD(
 	// the thingID in the request becomes the argument for the directory service, if any
 	req2 := *req
 	req2.Input = req.ThingID
-	req2.ThingID = digitwin.DirectoryDThingID
-	req2.Name = digitwin.DirectoryReadTDMethod
+	req2.ThingID = digitwin.ThingDirectoryDThingID
+	req2.Name = digitwin.ThingDirectoryReadTDMethod
 	resp := svc.digitwinAction(&req2, c)
 	return resp
 }
@@ -293,8 +293,8 @@ func (svc *DigitwinRouter) HandleReadAllTDs(
 	req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
 
 	req2 := *req
-	req2.ThingID = digitwin.DirectoryDThingID
-	req2.Name = digitwin.DirectoryReadAllTDsMethod
+	req2.ThingID = digitwin.ThingDirectoryDThingID
+	req2.Name = digitwin.ThingDirectoryReadAllTDsMethod
 	resp := svc.digitwinAction(&req2, c)
 	return resp
 }
@@ -308,8 +308,8 @@ func (svc *DigitwinRouter) HandleUpdateTD(
 	//rework the request
 	req2 := *req
 	req2.Input = req.Input
-	req2.ThingID = digitwin.DirectoryDThingID
-	req2.Name = digitwin.DirectoryUpdateTDMethod
+	req2.ThingID = digitwin.ThingDirectoryDThingID
+	req2.Name = digitwin.ThingDirectoryUpdateTDMethod
 	resp := svc.digitwinAction(&req2, c)
 	return resp
 }

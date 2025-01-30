@@ -31,8 +31,9 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// convert the value from string to the data type
-	tdi, actionAff, err = getActionAff(sess.GetHubClient(), thingID, actionName)
-	if err != nil || tdi == nil {
+	ct, err := sess.Consume(thingID)
+	//tdi, actionAff, err = getActionAff(sess.GetConsumer(), thingID, actionName)
+	if err != nil || ct == nil {
 		sess.WriteError(w, err, http.StatusInternalServerError)
 		return
 	}
@@ -49,7 +50,7 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 		// FIXME: use async progress updates instead of RPC
 		//stat = hc.HandleActionFlow(thingID, actionName, newValue)
 		var resp interface{}
-		err = sess.GetHubClient().InvokeAction(thingID, actionName, newValue, &resp)
+		err = sess.GetConsumer().InvokeAction(thingID, actionName, newValue, &resp)
 		if resp != nil {
 			// stringify the reply for presenting in the notification
 			reply = fmt.Sprintf("%v", resp)
