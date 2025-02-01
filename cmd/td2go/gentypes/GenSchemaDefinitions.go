@@ -8,7 +8,7 @@ import (
 // GenSchemaDefinitions generates golang structs from the dataschema in the SchemaDefinitions section
 func GenSchemaDefinitions(l *utils.SL, td1 *td.TD) error {
 
-	agentID, _ := td.SplitDigiTwinThingID(td1.ID)
+	//agentID, _ := td.SplitDigiTwinThingID(td1.ID)
 
 	if len(td1.SchemaDefinitions) > 0 {
 		l.Add("")
@@ -22,7 +22,7 @@ func GenSchemaDefinitions(l *utils.SL, td1 *td.TD) error {
 		dataSchema := td1.SchemaDefinitions[schemaName]
 		schemaTypeName := ToTitle(schemaName)
 
-		err := GenDataSchema(l, agentID, schemaTypeName, &dataSchema)
+		err := GenDataSchema(l, schemaTypeName, &dataSchema)
 		if err != nil {
 			l.Add("// Aborted due to error: " + err.Error())
 			l.Add("")

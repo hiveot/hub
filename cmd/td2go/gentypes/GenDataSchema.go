@@ -7,17 +7,11 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-func GenDataSchema(l *utils.SL, agentID, schemaName string, ds *td.DataSchema) (err error) {
+func GenDataSchema(l *utils.SL, schemaName string, ds *td.DataSchema) (err error) {
 	schemaTypeName := ToTitle(schemaName)
 
 	if ds.Type == "object" {
-		// generate a complex type struct
-		if ds.Ref == "" {
-			// define an agent scoped data struct
-			err = GenDataSchemaStruct(l, agentID, schemaTypeName, ds)
-		} else {
-			// $ref links to an existing schema. Nothing to do here.
-		}
+		err = GenDataSchemaObject(l, schemaTypeName, ds)
 	} else if ds.Enum != nil {
 		// define the agent scoped enum
 		GenDataSchemaEnum(l, schemaTypeName, ds)
@@ -36,18 +30,52 @@ func GenDataSchema(l *utils.SL, agentID, schemaName string, ds *td.DataSchema) (
 	return err
 }
 
-// GenDataSchemaStruct generates a data struct scoped to the agent from schema definition
-func GenDataSchemaStruct(l *utils.SL, agentID string, idTitle string, ds *td.DataSchema) error {
-	l.Add("// %s defines a %s data schema of the %s agent.", idTitle, ds.Title, agentID)
+// GenDataSchemaObject generates a golang type of the given name for the dataschema.
+//
+// 1. If the dataschema has a 'schema' reference then use this as the type
+// > type {typeName} {schemafield}
+//
+// 2. If the dataschema is a map (1 properties with "" key)
+// > type {typeName} map[string]{propstype}
+//
+// 3. Default define a struct
+//
+//	> type {typeName} struct {
+//	  ... properties
+//	}
+//
+// data struct or map scoped to the agent from schema definition
+func GenDataSchemaObject(l *utils.SL, typeName string, ds *td.DataSchema) (err error) {
+	l.Add("// %s defines a %s data schema.", typeName, ds.Title)
 	GenDescription(l, ds.Description, ds.Comments)
-	l.Add("type %s struct {", idTitle)
 
-	l.Indent++
-	// define an agent wide data struct
-	err := GenDataSchemaFields(l, idTitle, ds)
-	l.Indent--
+	// 1. if ds.schema field is set then use it instead of a struct
+	if ds.Schema != "" {
+		l.Add("type %s %s", typeName, ds.Schema)
+	} else if len(ds.Properties) == 1 && ds.Properties[""] != nil {
+		mapSchema := ds.Properties[""]
+		// 2. if dataschema is a map
+		if mapSchema.Schema != "" {
+			l.Add("type %s map[string]%s", typeName, mapSchema.Schema)
+		} else {
+			l.Add("type %s map[string]struct{", typeName)
+			l.Indent++
+			// define an agent wide data struct
+			err = GenDataSchemaFields(l, typeName, mapSchema)
+			l.Indent--
 
-	l.Add("}")
+			l.Add("}")
+		}
+	} else {
+		l.Add("type %s struct {", typeName)
+
+		l.Indent++
+		// define an agent wide data struct
+		err = GenDataSchemaFields(l, typeName, ds)
+		l.Indent--
+
+		l.Add("}")
+	}
 	l.Add("")
 	return err
 }
@@ -56,18 +84,14 @@ func GenDataSchemaStruct(l *utils.SL, agentID string, idTitle string, ds *td.Dat
 // Intended for generating fields in action, event, property affordances and schema definitions.
 //
 //	l is the output lines with generated source code
-//	name is the field name of the dataschema
+//	name is the field name of the dataschema if there is only a single field
 //	ds is the dataschema to generate
 func GenDataSchemaFields(l *utils.SL, name string, ds *td.DataSchema) (err error) {
-	// get the list of attributes in this schema
-	//attrList := GetSchemaAttrs(key, ds, true)
-	// the top level attribute can be a single attribute or a list of properties
-	//schemaAttr := GetSchemaAttr(key, ds)
-	//if schemaAttr.Nested != nil {
+	// Each field of a dataschema is a native type or an object
 	if len(ds.Properties) > 0 {
-		// field is a dataschema
 		err = GenSchemaAttr(l, ds.Properties)
 	} else {
+		// This dataschema has a single field
 		props := map[string]*td.DataSchema{name: ds}
 		err = GenSchemaAttr(l, props)
 	}
@@ -106,9 +130,9 @@ func GenSchemaAttr(l *utils.SL, attrMap map[string]*td.DataSchema) (err error) {
 		if attr.Properties != nil {
 			// nested struct
 			err = GenSchemaAttr(l, attr.Properties)
-		} else if attr.Ref != "" {
+		} else if attr.Schema != "" {
 			// field is a reference to a dataschema
-			typeName := ToTitle(attr.Ref)
+			typeName := ToTitle(attr.Schema)
 			l.Add("%s %s", keyTitle, typeName)
 		} else if len(attr.AdditionalProperties) > 0 {
 			// field is a map of dataschema

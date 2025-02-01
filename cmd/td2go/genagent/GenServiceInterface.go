@@ -38,7 +38,7 @@ func GenServiceInterface(l *utils.SL, agentID, serviceID string, tdi *td.TD) {
 // The value is either a native type or a struct, based on the TDD definition
 func GenInterfaceMethod(l *utils.SL, serviceTitle string, name string, action *td.ActionAffordance) {
 
-	// 1. build the input arguments. All methods receive the sender ID.
+	// 1. build the input arguments. All methods receive the sender client ID.
 	methodName := gentypes.Name2ID(name)
 	argsString := "senderID string"
 
@@ -53,15 +53,19 @@ func GenInterfaceMethod(l *utils.SL, serviceTitle string, name string, action *t
 		}
 		argsString = fmt.Sprintf("senderID string, %s %s", argName, goType)
 	}
+	// output always returns an error
 	respString := "error"
 	if action.Output != nil {
 		respName := getParamName("resp", action.Output)
 		goType := ""
-		if action.Output.Type == "object" && action.Output.Properties != nil {
-			goType = fmt.Sprintf("%s%sResp", serviceTitle, methodName)
-		} else {
-			goType = gentypes.GoTypeFromSchema(action.Output)
-		}
+		//if action.Output.Type == "object" &&
+		//	action.Output.Schema == "" &&
+		//	action.Output.Properties != nil &&
+		//	action.Output.Properties[""] == nil { // map
+		//	goType = fmt.Sprintf("%s%sResp", serviceTitle, methodName)
+		//} else {
+		goType = gentypes.GoTypeFromSchema(action.Output)
+		//}
 		respString = fmt.Sprintf("(%s %s, err error)", respName, goType)
 	}
 	l.Add("")

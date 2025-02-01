@@ -112,11 +112,16 @@ func GenActionMethod(l *utils.SL, serviceTitle string, key string, action *td.Ac
 	if action.Output != nil {
 		respName := getParamName("resp", action.Output)
 		goType := ""
-		if action.Output.Type == "object" && action.Output.Properties != nil {
-			goType = fmt.Sprintf("%sResp", methodName)
-		} else {
-			goType = gentypes.GoTypeFromSchema(action.Output)
-		}
+		//// define a response struct
+		//if action.Output.Type == "object" &&
+		//	action.Output.Schema == "" &&
+		//	action.Output.Properties != nil &&
+		//	action.Output.Properties[""] != nil { // map
+		//	goType = fmt.Sprintf("%sResp", methodName)
+		//} else {
+		// this also handles maps
+		goType = gentypes.GoTypeFromSchema(action.Output)
+		//}
 		respString = fmt.Sprintf("%s %s, err error", respName, goType)
 		invokeResp = "&" + respName
 	}

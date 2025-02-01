@@ -15,6 +15,9 @@ import (
 
 // GoTypeFromSchema returns the golang type of a dataschema type,
 // or the non-standard type if this not a WoT type.
+//
+// If the type is an object and the 'schema' field contains a type name then u
+// return the schema value as the type.
 func GoTypeFromSchema(ds *td.DataSchema) string {
 	switch ds.Type {
 	case wot.WoTDataTypeAnyURI:
@@ -41,9 +44,21 @@ func GoTypeFromSchema(ds *td.DataSchema) string {
 	case wot.WoTDataTypeUnsignedInt:
 		return "uint64"
 	case wot.WoTDataTypeObject:
-		if ds.Ref != "" {
+		if ds.Schema != "" {
 			// Only local references are supported
-			return ToTitle(ds.Ref)
+			return ToTitle(ds.Schema)
+		} else if ds.Properties != nil {
+			// support map types
+			if ds.Properties[""] != nil {
+				// this is a map
+				mapType := ds.Properties[""]
+				if mapType.Schema != "" {
+					return "map[string]" + mapType.Schema
+				} else {
+					return "map[string]" + mapType.Type
+				}
+			}
+			return "nested properties not supported"
 		} else {
 			return "map[string]interface{}"
 		}

@@ -53,7 +53,8 @@ func GenServiceAgent(l *utils.SL, agentID, serviceID string, td1 *td.TD) {
 	l.Add("}")
 }
 
-// GenRequestMethodHandler add an unmarshaller handler for its service.
+// GenRequestMethodHandler adds for handling a service action request.
+//
 // This unmarshal the request, invokes the service, and marshals the response
 // name  of the action affordance in the TD
 func GenRequestMethodHandler(l *utils.SL, serviceTitle string, name string, action *td.ActionAffordance) {
