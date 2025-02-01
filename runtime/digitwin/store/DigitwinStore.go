@@ -417,8 +417,8 @@ func (svc *DigitwinStore) NewActionStart(req *transports.RequestMessage) (stored
 	actionStatus.SenderID = req.SenderID
 	actionStatus.Input = req.Input
 	actionStatus.Status = transports.StatusPending
-	actionStatus.TimeRequested = req.Created
-	actionStatus.CorrelationID = req.CorrelationID
+	actionStatus.Requested = req.Created
+	actionStatus.Id = req.CorrelationID
 	dtw.ActionStatuses[req.Name] = actionStatus
 	svc.changedThings[req.ThingID] = true
 
@@ -450,10 +450,10 @@ func (svc *DigitwinStore) UpdateActionStatus(agentID string, resp *transports.Re
 			actionValue = digitwin.ActionStatus{}
 		}
 		actionValue.Status = resp.Status
-		actionValue.TimeUpdated = time.Now().Format(wot.RFC3339Milli)
+		actionValue.Updated = time.Now().Format(wot.RFC3339Milli)
 		if resp.Status == transports.StatusCompleted {
 			actionValue.Output = resp.Output
-			actionValue.TimeUpdated = resp.Updated
+			actionValue.Updated = resp.Updated
 		} else if resp.Error != "" {
 			actionValue.Error = resp.Error
 		}

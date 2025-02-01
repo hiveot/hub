@@ -101,14 +101,12 @@ func main() {
 				fmt.Printf(utils.WrapOff)
 			}
 			// the CLI uses the built-in hiveot messaging protocol
-			_, cc, err := clients.ConnectWithPassword(
-				serverURL, loginID, certsDir, password)
-			hc = messaging.NewConsumer(cc, 0)
-
+			cc, err := clients.ConnectClient(serverURL, loginID, certsDir, password)
 			if err != nil {
 				slog.Error("Unable to connect to the server", "err", err)
 				return err
 			}
+			hc = messaging.NewConsumer(cc, 0)
 			return nil
 		},
 		// commands arguments are passed by reference so they are updated in the Before section

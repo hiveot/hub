@@ -38,7 +38,7 @@ func StartPlugin(plugin IPlugin, clientID string, certsDir string) {
 	//caCert, err := certs.LoadX509CertFromPEM(caCertFile)
 
 	// FIXME: the plugin needs a bootstrap form to connect to the server
-	hc, err := clients.ConnectClient("", clientID, certsDir)
+	hc, err := clients.ConnectClient("", clientID, certsDir, "")
 
 	if err != nil {
 		slog.Error("Failed connecting to the Hub", "err", err)

@@ -2,10 +2,10 @@ package tile
 
 import (
 	"github.com/hiveot/hub/runtime/consumedthing"
-	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"github.com/hiveot/hub/services/hiveoview/src/views/directory"
+	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/tputils"
 	"net/http"
 )
@@ -34,6 +34,7 @@ func (data RenderSelectSourcesTemplateData) GetUpdated(thingID string, key strin
 }
 
 // GetValue returns the string value and unit symbol of a thing event
+// this is called from the template.
 func (data RenderSelectSourcesTemplateData) GetValue(thingID string, key string) string {
 	ioMap, found := data.IOValues[thingID]
 	if !found {
@@ -76,10 +77,19 @@ func RenderSelectSources(w http.ResponseWriter, r *http.Request) {
 	}
 	data.AgentThings = directory.GroupByAgent(tds)
 	for thingID, td := range tds {
-		propValues, err := digitwin.ThingValuesReadAllProperties(sess.GetConsumer(), thingID)
-		if err == nil {
-			eventValues, _ := digitwin.ThingValuesReadAllEvents(sess.GetConsumer(), thingID)
-			allValues := append(propValues, eventValues...)
+		propMap, _ := sess.GetConsumer().ReadAllProperties(thingID)
+		evMap, _ := sess.GetConsumer().ReadAllEvents(thingID)
+		//propValues, err := digitwin.ThingValuesReadAllProperties(sess.GetConsumer(), thingID)
+		if propMap != nil && evMap != nil {
+			allValues := make([]transports.ThingValue, 0, len(propMap)+len(evMap))
+			for _, v := range propMap {
+				allValues = append(allValues, v)
+			}
+			for _, v := range evMap {
+				allValues = append(allValues, v)
+			}
+			//eventValues, _ := digitwin.ThingValuesReadAllEvents(sess.GetConsumer(), thingID)
+			//allValues := append(propValues, eventValues...)
 			data.IOValues[thingID] = consumedthing.NewInteractionOutputFromValueList(
 				td, consumedthing.AffordanceTypeEvent, allValues)
 		}

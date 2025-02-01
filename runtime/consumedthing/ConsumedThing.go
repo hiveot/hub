@@ -35,7 +35,7 @@ type ConsumedThing struct {
 	// The consumer instance this uses for invoking actions
 	co *messaging.Consumer
 
-	// ID of this Thing
+	// ID of this Thing for use by consumers
 	ThingID string
 
 	// associated thing description instance
@@ -74,7 +74,7 @@ type ConsumedThing struct {
 //}
 
 // GetActionInput returns the action input value of the given action, if available
-func (ct *ConsumedThing) GetActionInput(as *digitwin.ActionStatus) *InteractionInput {
+func (ct *ConsumedThing) GetActionInput(as *transports.ActionStatus) *InteractionInput {
 	if as == nil || as.Name == "" {
 		return nil
 	}
@@ -301,9 +301,10 @@ func (ct *ConsumedThing) OnResponse(msg *transports.ResponseMessage) {
 //
 // This returns an empty ActionStatus if not found
 func (ct *ConsumedThing) QueryAction(name string) *InteractionOutput {
-	resp, err := ct.co.QueryAction(ct.ThingID, name)
+	as, err := ct.co.QueryAction(ct.ThingID, name)
 	if err == nil {
-		iout := NewInteractionOutput(ct.tdi, AffordanceTypeAction, name, resp.Output, resp.Updated)
+		iout := NewInteractionOutput(
+			ct.tdi, AffordanceTypeAction, name, as.Output, as.Updated)
 		ct.mux.Lock()
 		ct.actionStatus[name] = iout
 		ct.mux.Unlock()
@@ -320,7 +321,6 @@ func (ct *ConsumedThing) ReadEvent(name string) *InteractionOutput {
 		return nil
 	}
 	iout := NewInteractionOutput(ct.tdi, AffordanceTypeEvent, name, resp.Output, resp.Updated)
-	iout.SenderID = resp.SenderID
 	//iout.setSchemaFromTD(ct.tdi)
 	ct.mux.Lock()
 	ct.eventValues[name] = iout
@@ -369,44 +369,46 @@ func (ct *ConsumedThing) ReadProperty(name string) *InteractionOutput {
 // Refresh reloads all property and event values from the Hub and updates the
 // cache.
 func (ct *ConsumedThing) Refresh() error {
+	var iout *InteractionOutput
 	// refresh events
 	valueMap, err := ct.co.ReadAllEvents(ct.ThingID)
 	if err != nil {
 		return err
 	}
-	for name, msg := range valueMap {
-		evAff := ct.tdi.GetEvent(name)
-		if evAff != nil {
-			iout := NewInteractionOutput(
-				ct.tdi, AffordanceTypeEvent, name, msg.Output, msg.Updated)
-			ct.propValues[name] = iout
+	for name, _ := range ct.tdi.Events {
+		tv, found := valueMap[name]
+		if found {
+			iout = NewInteractionOutputFromValue(ct.tdi, AffordanceTypeEvent, tv)
+		} else {
+			iout = NewInteractionOutput(ct.tdi, AffordanceTypeEvent, name, nil, "")
 		}
+		ct.propValues[name] = iout
 	}
 	// refresh properties
 	valueMap, err = ct.co.ReadAllProperties(ct.ThingID)
 	if err != nil {
 		return err
 	}
-	for name, msg := range valueMap {
-		// if the TD doesn't have this property then ignore it
-		propAff := ct.tdi.GetProperty(name)
-		if propAff != nil {
-			iout := NewInteractionOutput(
-				ct.tdi, AffordanceTypeProperty, name, msg.Output, msg.Updated)
-			ct.propValues[name] = iout
+	for name, _ := range ct.tdi.Properties {
+		tv, found := valueMap[name]
+		if found {
+			iout = NewInteractionOutputFromValue(ct.tdi, AffordanceTypeProperty, tv)
+		} else {
+			iout = NewInteractionOutput(
+				ct.tdi, AffordanceTypeProperty, name, nil, "")
 		}
+		ct.propValues[name] = iout
 	}
 	// refresh action status
-	valueMap, err = ct.co.QueryAllActions(ct.ThingID)
+	actionStatusMap, err := ct.co.QueryAllActions(ct.ThingID)
 	if err != nil {
 		return err
 	}
-	for name, msg := range valueMap {
+	for name, as := range actionStatusMap {
 		// if the TD doesn't have this property then ignore it
-		propAff := ct.tdi.GetAction(name)
-		if propAff != nil {
-			iout := NewInteractionOutput(
-				ct.tdi, AffordanceTypeAction, name, msg.Output, msg.Updated)
+		actionAff := ct.tdi.GetAction(name)
+		if actionAff != nil {
+			iout := NewInteractionOutputFromActionStatus(ct.tdi, as)
 			ct.actionStatus[name] = iout
 		}
 	}
@@ -444,6 +446,7 @@ func (ct *ConsumedThing) WriteProperty(name string, ii InteractionInput) (err er
 // Call Stop() when done
 func NewConsumedThing(tdi *td.TD, co *messaging.Consumer) *ConsumedThing {
 	c := ConsumedThing{
+		ThingID:      tdi.ID,
 		tdi:          tdi,
 		co:           co,
 		observers:    make(map[string]InteractionListener),

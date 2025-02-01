@@ -33,13 +33,11 @@ type ConnectionHandler func(connected bool, err error, c IConnection)
 //	asynchronous response(s).
 type RequestHandler func(req *RequestMessage, c IConnection) (response *ResponseMessage)
 
-// ResponseHandler handles an response to a request, send by an agent.
+// ResponseHandler handles a response to a request, send by an agent.
 // The handler delivers the response to the client that sent the original request.
-// Note that the ThingID in the response is that of the agent, not the digital
-// twin ThingID.
 //
-// This returns an error if the client is not reachable. This can be used to
-// retry sending the response or dispose of it altogether.
+// This returns an error if the response cannot be delivered. This can be used to
+// retry sending the response at a later time.
 type ResponseHandler func(msg *ResponseMessage) error
 
 // IConnection defines the interface of a server or client connection.

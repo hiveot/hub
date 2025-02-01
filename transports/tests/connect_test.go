@@ -447,7 +447,7 @@ func TestReconnect(t *testing.T) {
 	// An RPC call is the ultimate test
 	var rpcArgs string = "rpc test"
 	var rpcResp string
-
+	time.Sleep(time.Millisecond * 10)
 	err = cl1.Rpc(wot.OpInvokeAction, dThingID, actionKey, &rpcArgs, &rpcResp)
 	require.NoError(t, err)
 	assert.Equal(t, rpcArgs, rpcResp)

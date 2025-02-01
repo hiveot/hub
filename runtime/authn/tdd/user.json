@@ -85,7 +85,8 @@
       "safe": true,
       "output": {
         "comment": "need a way to reference an external definition",
-        "type": "ClientProfile"
+        "type": "object",
+        "schema": "ClientProfile"
       }
     },
 

@@ -154,7 +154,7 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 	modelID, _ := tdi.GetPropertyOfVocabType(vocab.PropDeviceModel)
 	if modelID != "" {
 		modelValue := ct.GetPropOutput(modelID)
-		if modelValue.Value.Text() != "" {
+		if modelValue != nil && modelValue.Value.Text() != "" {
 			thingData.MakeModel = thingData.MakeModel + modelValue.Value.Text()
 		}
 	}

@@ -53,7 +53,7 @@ type HttpBasicServer struct {
 
 // setup the chain of routes used by the service and return the router
 // this also sets the routes for the sub-protocol handlers (ssesc and wss)
-func (svc *HttpBasicServer) createRoutes() {
+func (srv *HttpBasicServer) createRoutes() {
 
 	// TODO: is there a use for a static file server?
 	//var staticFileServer http.Handler
@@ -68,22 +68,22 @@ func (svc *HttpBasicServer) createRoutes() {
 	//	staticFileServer = http.FileServer(http.Dir(rootPath))
 	//}
 	//- direct methods for digital twins
-	svc.httpTransport.AddOps(nil, []string{
+	srv.httpTransport.AddOps(nil, []string{
 		wot.HTOpReadAllEvents,
 		wot.HTOpReadAllTDs,
 		wot.OpReadAllProperties,
 		wot.OpQueryAllActions},
-		http.MethodGet, "/digitwin/{operation}/{thingID}", svc.HandleRequestMessage)
-	svc.httpTransport.AddOps(nil, []string{
+		http.MethodGet, "/digitwin/{operation}/{thingID}", srv.HandleRequestMessage)
+	srv.httpTransport.AddOps(nil, []string{
 		wot.HTOpReadEvent,
 		wot.HTOpReadTD,
 		wot.OpReadProperty,
 		wot.OpQueryAction},
-		http.MethodGet, "/digitwin/{operation}/{thingID}/{name}", svc.HandleRequestMessage)
-	svc.httpTransport.AddOps(nil, []string{
+		http.MethodGet, "/digitwin/{operation}/{thingID}/{name}", srv.HandleRequestMessage)
+	srv.httpTransport.AddOps(nil, []string{
 		wot.OpWriteProperty,
 		wot.OpInvokeAction},
-		http.MethodPost, "/digitwin/{operation}/{thingID}/{name}", svc.HandleRequestMessage)
+		http.MethodPost, "/digitwin/{operation}/{thingID}/{name}", srv.HandleRequestMessage)
 }
 
 // HandleRequestMessage handles requests that expect a response.

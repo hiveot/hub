@@ -3,7 +3,6 @@ package runtime_test
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/runtime/api"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/transports"
@@ -91,8 +90,8 @@ func TestReadEvents(t *testing.T) {
 	ag1, _ := ts.AddConnectAgent(agentID)
 	defer ag1.Disconnect()
 	// consumer for reading events
-	hc1, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
-	defer hc1.Disconnect()
+	co1, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
+	defer co1.Disconnect()
 
 	// step 1: agent publishes a TD first: dtw:agent1:thing-1
 	// is requested. hiveot uses it to determine if a response is required.
@@ -108,20 +107,16 @@ func TestReadEvents(t *testing.T) {
 	time.Sleep(time.Millisecond * 1)
 
 	// step 3: read all events
-	dtwValues := make([]digitwin.ThingValue, 0)
-	//stat := hc1.ReadAllEvents(dThing1ID, &dtwValues, "")
-	// FIXME: 0 results. Why?
-	err = hc1.Rpc(wot.HTOpReadAllEvents, dThing1ID, "", nil, &dtwValues)
+	dtwValues := make(map[string]digitwin.ThingValue, 0)
+	err = co1.Rpc(wot.HTOpReadAllEvents, dThing1ID, "", nil, &dtwValues)
 	require.NoError(t, err)
 	require.NotZero(t, len(dtwValues))
-	require.Equal(t, data, dtwValues[0].Output)
+	require.Equal(t, data, dtwValues[key1].Output)
 
 	// read latest using the generated client api
-	valueList, err := digitwin.ThingValuesReadAllEvents(hc1, dThing1ID)
-	//resp, err := digitwin.OutboxReadLatest(hc, "", nil, "", dThingID)
+	valueMap, err := digitwin.ThingValuesReadAllEvents(co1, dThing1ID)
 	require.NoError(t, err)
-	require.NotNil(t, valueList)
-	valueMap := api.ValueListToMap(valueList)
+	require.NotNil(t, valueMap)
 	require.Equal(t, len(dtwValues), len(valueMap))
 	require.Equal(t, data, valueMap[key1].Output)
 }
@@ -160,10 +155,9 @@ func TestHttpsGetProps(t *testing.T) {
 	require.NoError(t, err)
 	//
 	time.Sleep(time.Millisecond)
-	valueList, err := digitwin.ThingValuesReadAllProperties(cl2, dThingID)
+	valueMap, err := digitwin.ThingValuesReadAllProperties(cl2, dThingID)
 	require.NoError(t, err)
-	require.Equal(t, 2, len(valueList))
-	valueMap := api.ValueListToMap(valueList)
+	require.Equal(t, 2, len(valueMap))
 
 	// note: golang unmarshalls integers as float64.
 	data2raw := valueMap[key2].Output.(float64)

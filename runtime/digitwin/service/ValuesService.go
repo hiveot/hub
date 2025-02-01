@@ -1,7 +1,6 @@
 package service
 
 import (
-	"github.com/hiveot/hub/lib/utils"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/runtime/digitwin/store"
 	"github.com/hiveot/hub/transports/tputils"
@@ -27,7 +26,7 @@ func (svc *ValuesService) QueryAction(clientID string,
 
 // QueryAllActions returns the current status of all thing actions
 func (svc *ValuesService) QueryAllActions(clientID string,
-	thingID string) (av []digitwin.ActionStatus, err error) {
+	thingID string) (av map[string]digitwin.ActionStatus, err error) {
 
 	//convert action status to action value, because ... need generated agent code
 	as, err := svc.dtwStore.QueryAllActions(thingID)
@@ -39,18 +38,18 @@ func (svc *ValuesService) QueryAllActions(clientID string,
 
 // ReadAllEvents returns a list of known digitwin instance event values
 func (svc *ValuesService) ReadAllEvents(clientID string,
-	dThingID string) ([]digitwin.ThingValue, error) {
+	dThingID string) (map[string]digitwin.ThingValue, error) {
 
 	evMap, err := svc.dtwStore.ReadAllEvents(dThingID)
-	return utils.Map2Array(evMap), err
+	return evMap, err
 }
 
 // ReadAllProperties returns a map of known digitwin instance property values
 func (svc *ValuesService) ReadAllProperties(clientID string,
-	dThingID string) ([]digitwin.ThingValue, error) {
+	dThingID string) (map[string]digitwin.ThingValue, error) {
 
 	propMap, err := svc.dtwStore.ReadAllProperties(dThingID)
-	return utils.Map2Array(propMap), err
+	return propMap, err
 }
 
 // ReadEvent returns the latest event of a digitwin instance

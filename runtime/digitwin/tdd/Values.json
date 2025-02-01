@@ -15,6 +15,7 @@
 	"created": "2024-10-04T17:00:00.000Z",
 	"modified": "2024-10-04T17:00:00.000Z",
 	"support": "https://www.github.com/hiveot/hub",
+	"base": "https://localhost/",
 	"security": [
 		"bearer"
 	],
@@ -33,7 +34,7 @@
 
 		"ActionStatus": {
 			"title": "Action Status",
-			"description": "Status of the last action",
+			"description": "Status of the an action",
 			"type": "object",
 			"properties": {
 				"agentID": {
@@ -44,6 +45,11 @@
 				"error": {
 					"title": "Error",
 					"description": "Action error info when failed",
+					"type": "string"
+				},
+				"id": {
+					"title": "Action ID",
+					"description": "Unique identifier of the action",
 					"type": "string"
 				},
 				"input": {
@@ -61,34 +67,31 @@
 					"description": "",
 					"type": "any"
 				},
-				"correlationID": {
-					"title": "Request ID",
-					"description": "The action request identifier",
-					"type": "string"
-				},
 				"senderID": {
-					"title": "Consumer ID",
+					"title": "Sender client ID",
+					"description": "ID of the client requesting the action",
 					"type": "string"
 				},
 				"status": {
 					"title": "Action status",
 					"description": "Status of the action's progress",
-					"type": "string"
+					"type": "string",
+					"enum": ["pending", "running", "completed", "failed"]
 				},
 				"thingID": {
 					"title": "Action Thing",
 					"description": "Digital twin ThingID the action applies to",
 					"type": "string"
 				},
-				"timeRequested": {
-					"title": "Creation Time",
-					"description": "Time the action was initially requested",
-					"type": "dateTime"
+				"requested": {
+					"title": "Requested Time",
+					"description": "Time the action request was received",
+					"type": "string"
 				},
-				"timeUpdated": {
-					"title": "Updated time",
+				"updated": {
+					"title": "Updated Time",
 					"description": "Time the action status was last updated",
-					"type": "dateTime"
+					"type": "string"
 				}
 			}
 		},
@@ -96,83 +99,37 @@
 			"title": "Thing Value",
 			"description": "Property or event value",
 			"type": "object",
-			"comment": "This has the same fields as a transports ResponseMessage",
+			"comment": "This has the same fields as a transports ThingValue",
 			"properties": {
-				"updated": {
-					"title": "Updated time",
-					"description": "Time the value was last updated",
-					"type": "dateTime"
-				},
-				"output": {
-					"title": "Payload",
-					"description": "Data in format as described by the thing's property affordance",
-					"type": "any"
+				"id": {
+					"title": "Value identifier",
+					"description": "Unique identification of this reported value",
+					"type": "string"
 				},
 				"name": {
 					"title": "Name",
 					"description":"Name of the property holding the value",
 					"type": "string"
 				},
+				"output": {
+					"title": "Payload",
+					"description": "Data in format as described by the thing's property affordance",
+					"type": "any"
+				},
 				"thingID": {
 					"title": "Thing ID",
 					"description": "Digital twin Thing ID",
+					"type": "string"
+				},
+				"updated": {
+					"title": "Updated time",
+					"description": "Time the value was last updated",
 					"type": "string"
 				}
 			}
 		}
 	},
 	"events": {
-		"progress": {
-			"title": "Progress",
-			"description": "Progress notification of a property write or thing action request",
-			"data": {
-				"type": "object",
-				"properties": {
-					"id": {
-						"title": "Thing ID",
-						"description": "Thing ID of thing whose value is updated",
-						"type": "string"
-					},
-					"name": {
-						"title": "Property name",
-						"description": "Name of the property or action the notification applies to",
-						"comment": "An action without a corresponding property definition can have an 'automatic' property that represents the action output",
-						"type": "string"
-					},
-					"data": {
-						"title": "Data",
-						"description": "Input value in format as described by the thing's property affordance",
-						"comment": "This is the requested write value and can differ from the current value if status is not completed",
-						"type": "any"
-					},
-					"correlationID": {
-						"title": "Message ID",
-						"description": "link to action or property write that triggered the update",
-						"type": "string"
-					},
-					"messageType": {
-						"title": "Message Type",
-						"description": "Type of change request",
-						"type": "string",
-						"enum": ["action", "property"]
-					},
-					"senderID": {
-						"title": "Sender ID",
-						"description": "ID of the sender of the request",
-						"type": "string"
-					},
-					"status": {
-						"title": "Progress status",
-						"description": "The new status of the update progress.",
-						"type": "string"
-					},
-					"statusInfo": {
-						"title": "Additional status information",
-						"type": "string"
-					}
-				}
-			}
-		}
 	},
 	"actions": {
 		"queryAction": {
@@ -204,7 +161,34 @@
 				"title": "Action value",
 				"description": "The latest action value",
 				"comment": "defined in schemadefinitions",
-				"type": "ActionStatus"
+				"type": "object",
+				"schema": "ActionStatus"
+			}
+		},
+
+		"queryAllActions": {
+			"@type": "hiveot:function",
+			"title": "Action statuses",
+			"description": "Read all action statuses of a Thing",
+			"safe": true,
+			"idempotent": true,
+			"input": {
+				"type": "string",
+				"title": "Thing ID",
+				"description": "ID of the Thing to query"
+			},
+			"output": {
+				"title": "Action value",
+				"description": "Map of action statuses",
+				"comment": "defined in schemadefinitions",
+				"type": "object",
+				"properties": {
+					"": {
+						"type": "object",
+						"title": "Action Status",
+						"schema": "ActionStatus"
+					}
+				}
 			}
 		},
 
@@ -221,14 +205,18 @@
 			},
 			"output": {
 				"title": "Event values",
-				"description": "List with the most recent event value objects",
-				"type": "array",
-				"items": {
-					"type": "ThingValue",
-					"comment": "defined in schemadefinitions",
-					"title": "Event value"
+				"description": "Map with the most recent event ThingValue objects",
+				"type": "object",
+				"properties": {
+					"": {
+						"title": "Event Value",
+						"type": "object",
+						"schema": "ThingValue",
+						"comment": "defined in schemadefinitions"
+					}
 				}
-			}
+			},
+			"forms": [{"href": "/{operation}"}]
 		},
 
 		"readAllProperties": {
@@ -244,14 +232,18 @@
 			},
 			"output": {
 				"title": "Property values",
-				"description": "List of ThingValue objects",
-				"type": "array",
-				"items": {
-					"type": "ThingValue",
-					"comment": "defined in schemadefinitions",
-					"title": "Property Value"
+				"description": "Map of event name:ThingValue objects",
+				"type": "object",
+				"properties": {
+					"": {
+						"title": "Property Value",
+						"type": "object",
+						"schema": "ThingValue",
+						"comment": "defined in schemadefinitions"
+					}
 				}
-			}
+			},
+			"forms": [{"href": "/{operation}"}]
 		},
 
 		"readEvent": {
@@ -283,8 +275,10 @@
 				"title": "Event value",
 				"description": "Most recent event value",
 				"comment": "defined in schemadefinitions",
-				"type": "ThingValue"
-			}
+				"type": "object",
+				"schema": "ThingValue"
+			},
+			"forms": [{"href": "/{operation}"}]
 		},
 
 		"readProperty": {
@@ -316,8 +310,10 @@
 				"title": "Property value",
 				"description": "Most recent property value",
 				"comment": "defined in schemadefinitions",
-				"type": "ThingValue"
-			}
+				"type": "object",
+				"schema": "ThingValue"
+			},
+			"forms": [{"href": "/{operation}"}]
 		}
 	}
 }

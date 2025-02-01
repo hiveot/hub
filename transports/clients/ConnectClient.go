@@ -25,7 +25,8 @@ const TokenFileExt = ".token"
 var DefaultTimeout = time.Second * 3
 
 // ConnectClient helper function creates a client transport connection to the
-// server using the given protocol. Intended for consumers and Thing agents.
+// server using the given CA certificate from a directory.
+// Intended for consumers and Thing agents.
 //
 // This assumes that CA cert and auth token have already been set up and are available
 // in the certDir.
@@ -40,7 +41,7 @@ var DefaultTimeout = time.Second * 3
 //	fullURL is the scheme://addr:port/[wssPath] the server is listening on. "" for auto discovery
 //	clientID to connect as. Also used for the key and token file names
 //	certDir is the credentials directory containing the CA cert (caCert.pem) and key/token files ({clientID}.token)
-func ConnectClient(fullURL string, clientID string, certDir string) (
+func ConnectClient(fullURL string, clientID string, certDir string, password string) (
 	cc transports.IClientConnection, err error) {
 
 	if clientID == "" {
@@ -66,6 +67,7 @@ func ConnectClient(fullURL string, clientID string, certDir string) (
 	if err != nil {
 		return nil, err
 	}
+
 	// 3. Determine which protocol to use and setup the key and token filenames
 	// getForm should be set by the application that has the Thing directory
 	cc, _ = NewClient(fullURL, clientID, caCert, nil, 0)
@@ -75,8 +77,12 @@ func ConnectClient(fullURL string, clientID string, certDir string) (
 
 	// 4. Connect and auth with token from file
 	slog.Info("connecting to", "serverURL", fullURL)
-	// agents use token files
-	err = ConnectWithTokenFile(cc, certDir)
+	if password != "" {
+		_, err = cc.ConnectWithPassword(password)
+	} else {
+		// login with token file
+		err = ConnectWithTokenFile(cc, certDir)
+	}
 
 	if err != nil {
 		return nil, err
@@ -90,7 +96,14 @@ func ConnectClient(fullURL string, clientID string, certDir string) (
 func ConnectWithPassword(fullURL string, clientID string, certDir string, password string) (
 	newToken string, cc transports.IClientConnection, err error) {
 
-	cc, err = ConnectClient(fullURL, clientID, certDir)
+	// 1. obtain the CA public cert to verify the server
+	caCertFile := path.Join(certDir, certs.DefaultCaCertFile)
+	caCert, err := certs.LoadX509CertFromPEM(caCertFile)
+	if err != nil {
+		return "", nil, err
+	}
+
+	cc, err = NewClient(fullURL, clientID, caCert, nil, 0)
 	if err != nil {
 		return "", nil, err
 	}
@@ -173,7 +186,7 @@ func GetProtocolFromForm(base string, form *td.Form) string {
 		return subProto
 	}
 	url, _ := form.GetHRef()
-	
+
 	return GetProtocolFromURL(url)
 }
 
@@ -193,6 +206,20 @@ func NewClient(
 	fullURL string, clientID string, caCert *x509.Certificate,
 	getForm transports.GetFormHandler, timeout time.Duration) (
 	cc transports.IClientConnection, err error) {
+
+	// 1. determine the actual address
+	if fullURL == "" {
+		// return after first result
+		disco, err := discovery.LocateHub(time.Second, true)
+		if err != nil {
+			return nil, fmt.Errorf("Hub not found")
+		}
+		// FIXME: specified a protocol
+		fullURL = disco.HiveotWssURL
+		if fullURL == "" {
+			fullURL = disco.HiveotSseURL
+		}
+	}
 
 	// determine the protocol to use from the URL
 	protocolType := GetProtocolFromURL(fullURL)

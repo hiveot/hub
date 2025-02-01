@@ -148,7 +148,14 @@ func TestReadProperty(t *testing.T) {
 	// in this case the consumer connects to the agent (unlike when using a hub)
 	agentReqHandler := func(req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
 		if req.Operation == wot.OpReadProperty && req.ThingID == thingID && req.Name == propKey {
-			resp := req.CreateResponse(propValue, nil)
+			tv := transports.ThingValue{
+				ID:      "uniqueid1",
+				Name:    req.Name,
+				Output:  propValue,
+				ThingID: "thingID",
+				Updated: timestamp,
+			}
+			resp := req.CreateResponse(tv, nil)
 			resp.Updated = timestamp
 			return resp
 		}

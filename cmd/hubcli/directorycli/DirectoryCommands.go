@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/runtime/api"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/transports/messaging"
 	"github.com/hiveot/hub/transports/tputils"
@@ -86,8 +85,7 @@ func HandleListThing(hc *messaging.Consumer, thingID string) error {
 	if err != nil || err2 != nil {
 		return err
 	}
-	propValueList, err := digitwin.ThingValuesReadAllProperties(hc, thingID)
-	propValueMap := api.ValueListToMap(propValueList)
+	propValueMap, err := digitwin.ThingValuesReadAllProperties(hc, thingID)
 
 	if err != nil {
 		slog.Error("Unable to read directory:", "err", err)
@@ -129,8 +127,7 @@ func HandleListThing(hc *messaging.Consumer, thingID string) error {
 	fmt.Println(utils.COYellow + "\nEvents:")
 	fmt.Println(" ID                                  EventType                 Title                                    DataType   Value           Description")
 	fmt.Println(" ----------------------------------  ------------------------  ---------------------------------------  ---------  --------------  -----------" + utils.COReset)
-	eventValueList, err := digitwin.ThingValuesReadAllEvents(hc, thingID)
-	eventValueMap := api.ValueListToMap(eventValueList)
+	eventValueMap, err := digitwin.ThingValuesReadAllEvents(hc, thingID)
 	keys = utils.OrderedMapKeys(tdDoc.Events)
 	for _, key := range keys {
 		ev := tdDoc.Events[key]
@@ -150,8 +147,7 @@ func HandleListThing(hc *messaging.Consumer, thingID string) error {
 	fmt.Println(utils.CORed + "\nActions:")
 	fmt.Println(" ID                             ActionType                Title                                    Arg(s)     Value           Description")
 	fmt.Println(" -----------------------------  ------------------------  ---------------------------------------  ---------  --------------  -----------" + utils.COReset)
-	actionValueList, err := digitwin.ThingValuesReadAllProperties(hc, thingID)
-	actionValueMap := api.ValueListToMap(actionValueList)
+	actionValueMap, err := digitwin.ThingValuesReadAllProperties(hc, thingID)
 	keys = utils.OrderedMapKeys(tdDoc.Actions)
 	for _, key := range keys {
 		action := tdDoc.Actions[key]

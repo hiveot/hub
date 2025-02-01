@@ -3,7 +3,6 @@ package consumedthing
 import (
 	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/api/go/vocab"
-	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot/td"
@@ -152,7 +151,7 @@ func (iout *InteractionOutput) UnitSymbol() string {
 	return unit.Symbol
 }
 
-func NewInteractionOutputFromValueList(tdi *td.TD, affType string, values []digitwin.ThingValue) InteractionOutputMap {
+func NewInteractionOutputFromValueList(tdi *td.TD, affType string, values []transports.ThingValue) InteractionOutputMap {
 	ioMap := make(map[string]*InteractionOutput)
 	for _, tv := range values {
 		iout := NewInteractionOutput(tdi, affType, tv.Name, tv.Output, tv.Updated)
@@ -162,7 +161,7 @@ func NewInteractionOutputFromValueList(tdi *td.TD, affType string, values []digi
 	return ioMap
 }
 
-func NewInteractionOutputFromValue(tdi *td.TD, affType string, tv digitwin.ThingValue) *InteractionOutput {
+func NewInteractionOutputFromValue(tdi *td.TD, affType string, tv transports.ThingValue) *InteractionOutput {
 	iout := NewInteractionOutput(tdi, affType, tv.Name, tv.Output, tv.Updated)
 	return iout
 }
@@ -186,6 +185,22 @@ func NewInteractionOutputFromResponse(
 
 	iout := NewInteractionOutput(tdi, affType, resp.Name, resp.Output, resp.Updated)
 	iout.SenderID = resp.SenderID
+	return iout
+}
+
+// NewInteractionOutputFromActionStatus creates a new immutable interaction output from
+// an action status and optionally its associated TD.
+//
+// If no td is available, this value conversion will still be usable but it won't
+// contain any schema information.
+//
+//	tm contains the received ThingMessage data
+//	tdi is the associated thing description
+func NewInteractionOutputFromActionStatus(
+	tdi *td.TD, as transports.ActionStatus) *InteractionOutput {
+
+	iout := NewInteractionOutput(tdi, AffordanceTypeAction, as.Name, as.Output, as.Updated)
+	iout.SenderID = as.SenderID
 	return iout
 }
 

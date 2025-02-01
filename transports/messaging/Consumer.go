@@ -161,30 +161,37 @@ func (co *Consumer) Ping() error {
 	return nil
 }
 
-// QueryAction obtains the most recent action status
+// QueryAction obtains the status of an action
 //
-// This depends on the underlying protocol binding to construct appropriate
-// ResponseMessages and include information such as Updated. All hiveot protocols
-// include full information. WoT bindings might be too limited.
+// Q: http-basic protocol returns an array per action in QueryAllActions but only
+//
+//	a single action in QueryAction. This is inconsistent.
+//
+// The underlying protocol binding constructs the ActionStatus array from the
+// protocol specific messages.
+// The hiveot protocol passes this as-is as the output.
 func (co *Consumer) QueryAction(thingID, name string) (
-	resp *transports.ResponseMessage, err error) {
+	value transports.ActionStatus, err error) {
 
-	correlationID := shortid.MustGenerate()
-	req := transports.NewRequestMessage(wot.OpReadProperty, thingID, name, nil, correlationID)
-	// use SendRequest so we can return the actual response message with the value
-	resp, err = co.SendRequest(req, true)
-	return resp, err
+	err = co.Rpc(wot.OpQueryAction, thingID, name, nil, &value)
+	return value, err
 }
 
-// QueryAllActions returns a map of action statuses for all actions of a thing.
+// QueryAllActions returns a map of action status for all actions of a thing.
 //
-// This returns a map of actionName and the last received action status message.
+// This returns a map of actionName and the last known action status.
+//
+// Q: http-basic protocol returns an array for each action. What is the use-case?
+//
+//	that can have multiple concurrent actions? An actuator can only move in
+//	one direction at the same time.
+//	Maybe the array only applies to stateless actions?
 //
 // This depends on the underlying protocol binding to construct appropriate
-// ResponseMessages and include information such as Updated. All hiveot protocols
-// include full information. WoT bindings might be too limited.
+// ActionStatus message. All hiveot protocols include full information.
+// WoT bindings might not include update timestamp and such.
 func (co *Consumer) QueryAllActions(thingID string) (
-	values map[string]*transports.ResponseMessage, err error) {
+	values map[string]transports.ActionStatus, err error) {
 
 	err = co.Rpc(wot.OpQueryAllActions, thingID, "", nil, &values)
 	return values, err
@@ -198,7 +205,7 @@ func (co *Consumer) QueryAllActions(thingID string) (
 // ResponseMessages and include information such as Updated. All hiveot protocols
 // include full information. WoT bindings might be too limited.
 func (co *Consumer) ReadAllEvents(thingID string) (
-	values map[string]*transports.ResponseMessage, err error) {
+	values map[string]transports.ThingValue, err error) {
 
 	err = co.Rpc(wot.HTOpReadAllEvents, thingID, "", nil, &values)
 	return values, err
@@ -210,7 +217,7 @@ func (co *Consumer) ReadAllEvents(thingID string) (
 // ResponseMessages and include information such as Updated. All hiveot protocols
 // include full information. WoT bindings might be too limited.
 func (co *Consumer) ReadAllProperties(thingID string) (
-	values map[string]*transports.ResponseMessage, err error) {
+	values map[string]transports.ThingValue, err error) {
 
 	err = co.Rpc(wot.OpReadAllProperties, thingID, "", nil, &values)
 	return values, err
@@ -234,13 +241,10 @@ func (co *Consumer) ReadAllTDs() (tdJSONs []string, err error) {
 // include full information. WoT bindings might be too limited.
 // This is not a WoT operation (but maybe it should be)
 func (co *Consumer) ReadEvent(thingID, name string) (
-	resp *transports.ResponseMessage, err error) {
+	value transports.ThingValue, err error) {
 
-	correlationID := shortid.MustGenerate()
-	req := transports.NewRequestMessage(wot.HTOpReadEvent, thingID, name, nil, correlationID)
-	// use SendRequest so we can return the actual response message with the value
-	resp, err = co.SendRequest(req, true)
-	return resp, err
+	err = co.Rpc(wot.HTOpReadEvent, thingID, name, nil, &value)
+	return value, err
 }
 
 // ReadProperty sends a request to read a Thing property value.
@@ -249,13 +253,10 @@ func (co *Consumer) ReadEvent(thingID, name string) (
 // ResponseMessages and include information such as Updated. All hiveot protocols
 // include full information. WoT bindings might be too limited.
 func (co *Consumer) ReadProperty(thingID, name string) (
-	resp *transports.ResponseMessage, err error) {
+	value transports.ThingValue, err error) {
 
-	correlationID := shortid.MustGenerate()
-	req := transports.NewRequestMessage(wot.OpReadProperty, thingID, name, nil, correlationID)
-	// use SendRequest so we can return the actual response message with the value
-	resp, err = co.SendRequest(req, true)
-	return resp, err
+	err = co.Rpc(wot.OpReadProperty, thingID, name, nil, &value)
+	return value, err
 }
 
 // ReadTD sends a request to read the latest Thing TD
@@ -310,6 +311,7 @@ func (co *Consumer) Rpc(operation, thingID, name string, input any, output any) 
 // If waitForCompletion is true and no correlationID is provided then a correlationID will
 // be generated to wait for completion.
 // If waitForCompletion is false then the response will go to the response handler
+// If the request has no correlation ID, one will be generated.
 func (co *Consumer) SendRequest(req *transports.RequestMessage, waitForCompletion bool) (
 	resp *transports.ResponseMessage, err error) {
 

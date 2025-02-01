@@ -201,7 +201,7 @@ func (svc *LauncherService) Start() error {
 
 	// 3: a connection to the hub is needed to receive requests
 	if svc.ag == nil {
-		cc, err := clients.ConnectClient(svc.serverURL, svc.clientID, svc.certsDir)
+		cc, err := clients.ConnectClient(svc.serverURL, svc.clientID, svc.certsDir, "")
 		svc.ag = messaging.NewAgent(cc, nil, nil, nil, 0)
 		if err != nil {
 			err = fmt.Errorf("failed starting launcher service: %w", err)

@@ -164,7 +164,14 @@ func TestReadEvent(t *testing.T) {
 	// in this case the consumer connects to the agent (unlike when using a hub)
 	agentReqHandler := func(req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
 		if req.Operation == wot.HTOpReadEvent && req.ThingID == thingID && req.Name == eventKey {
-			resp := req.CreateResponse(eventValue, nil)
+			evVal := transports.ThingValue{
+				ID:      "ud1",
+				Name:    req.Name,
+				Output:  eventValue,
+				ThingID: thingID,
+				Updated: timestamp,
+			}
+			resp := req.CreateResponse(evVal, nil)
 			resp.Updated = timestamp
 			return resp
 		}

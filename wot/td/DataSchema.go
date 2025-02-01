@@ -61,6 +61,9 @@ type DataSchema struct {
 	// Type provides JSON based data type,  one of WoTDataTypeNumber, ...object, array, string, integer, boolean or null
 	Type string `json:"type,omitempty"`
 
+	// Reference to an external data schema when type is object
+	Schema string `json:"schema,omitempty"`
+
 	// Unit as used in international science, engineering, and business.
 	// See vocab UnitNameXyz for units in the vocabulary
 	Unit string `json:"unit,omitempty"`
@@ -102,8 +105,6 @@ type DataSchema struct {
 	Properties map[string]*DataSchema `json:"properties,omitempty"`
 	// Defines which members of the object type are mandatory
 	Required []string `json:"required,omitempty"`
-	// reference to a schema defined in $defs or elsewhere
-	Ref string `json:"$ref,omitempty"`
 	// object schema is a map with the data type defined in AdditionalProperties
 	// this datatype can be a dataschema or a $ref string
 	AdditionalProperties map[string]any `json:"additionalProperties,omitempty"`

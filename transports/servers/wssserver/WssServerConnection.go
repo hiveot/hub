@@ -50,7 +50,7 @@ type WssServerConnection struct {
 	observations  connections.Subscriptions
 	subscriptions connections.Subscriptions
 
-	// convert the
+	// converter for request/response messages
 	messageConverter transports.IMessageConverter
 
 	// underlying websocket connection

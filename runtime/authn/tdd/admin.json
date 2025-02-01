@@ -151,7 +151,8 @@
       },
       "output": {
         "title": "Profile",
-        "type": "ClientProfile"
+        "type": "object",
+        "schema": "ClientProfile"
       }
     },
 

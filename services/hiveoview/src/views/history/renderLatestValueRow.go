@@ -3,8 +3,6 @@ package history
 import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
-	"github.com/hiveot/hub/runtime/consumedthing"
-	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/transports/tputils"
 	"net/http"
@@ -45,26 +43,11 @@ func RenderLatestValueRow(w http.ResponseWriter, r *http.Request) {
 		sess.WriteError(w, err, 0)
 		return
 	}
-
-	//latestValues, err := thing.GetLatest(thingID, hc)
-	latestValue, err := digitwin.ThingValuesReadEvent(sess.GetConsumer(), name, thingID)
-	if err != nil {
-		// hiveoview does not show property history so no event means no data
-		//latestValue, err = digitwin.ValuesReadProperty(hc, name, thingID)
-	}
-	if err != nil {
-		sess.WriteError(w, err, 0)
-		return
-	}
-	consumedThing, err := sess.Consume(thingID)
+	ct, err := sess.Consume(thingID)
 	if err == nil {
-		tdi := consumedThing.GetTD()
-		iout := consumedthing.NewInteractionOutputFromValue(
-			tdi, consumedthing.AffordanceTypeEvent, latestValue)
-
-		// TODO: get unit symbol
+		iout := ct.ReadEvent(name)
 		fragment = fmt.Sprintf(addRowTemplate,
-			tputils.DecodeAsDatetime(iout.Updated), latestValue.Output, unit)
+			tputils.DecodeAsDatetime(iout.Updated), iout.Value.Text(), unit)
 	} else {
 		fragment = fmt.Sprintf("")
 	}

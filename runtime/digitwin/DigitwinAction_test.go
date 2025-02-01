@@ -51,14 +51,14 @@ func TestActionFlow(t *testing.T) {
 	require.NoError(t, err)
 	inputVal := tputils.DecodeAsInt(as.Input)
 	require.Equal(t, actionValue, inputVal)
-	require.Equal(t, correlationID, as.CorrelationID)
+	require.Equal(t, correlationID, as.Id)
 
 	// complete the action
 	resp := transports.NewResponseMessage(
 		wot.OpInvokeAction, dThingID, actionName, actionValue, nil, correlationID)
 	as, err = dtwStore.UpdateActionStatus(agentID, resp)
 	require.NoError(t, err)
-	require.Equal(t, correlationID, as.CorrelationID)
+	require.Equal(t, correlationID, as.Id)
 
 	// read action status
 	as, err = svc.ValuesSvc.QueryAction(consumerID, digitwin.ThingValuesQueryActionArgs{
