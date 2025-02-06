@@ -22,10 +22,10 @@ import (
 // to the connection, the http binding expects a connection-ID in the request header.
 // This problem is specific to the http binding and not a concern of this connection manager.
 type ConnectionManager struct {
-	// connections by client-cid
+	// connections by clcid = {clientID}:{connectionID}
 	connectionsByConnectionID map[string]transports.IServerConnection
 
-	// connection IDs by clientID
+	// connectionIDs by clientID
 	connectionsByClientID map[string][]string
 
 	// mutex to manage the connections
@@ -42,19 +42,21 @@ func (cm *ConnectionManager) AddConnection(c transports.IServerConnection) error
 
 	connectionID := c.GetConnectionID()
 	clientID := c.GetClientID()
+	// the client's connectionID for lookup
+	clcid := clientID + ":" + connectionID
 
 	// Refuse this if an existing connection with this ID exist
-	existingConn, _ := cm.connectionsByConnectionID[connectionID]
+	existingConn, _ := cm.connectionsByConnectionID[clcid]
 	if existingConn != nil {
 		err := fmt.Errorf("AddConnection. The connection ID '%s' of client '%s' already exists",
 			connectionID, existingConn.GetClientID())
 		slog.Error("AddConnection: duplicate ConnectionID", "connectionID", connectionID, "err", err.Error())
 		existingConn.Disconnect()
 		c.Disconnect()
-		go cm.RemoveConnection(connectionID)
+		go cm.RemoveConnection(existingConn)
 		return err
 	}
-	cm.connectionsByConnectionID[connectionID] = c
+	cm.connectionsByConnectionID[clcid] = c
 	// update the client index
 	clientList := cm.connectionsByClientID[clientID]
 	if clientList == nil {
@@ -74,9 +76,10 @@ func (cm *ConnectionManager) CloseAllClientConnections(clientID string) {
 	cList := cm.connectionsByClientID[clientID]
 	for _, cid := range cList {
 		// force-close the connection
-		c := cm.connectionsByConnectionID[cid]
+		clcid := clientID + ":" + cid
+		c := cm.connectionsByConnectionID[clcid]
 		if c != nil {
-			delete(cm.connectionsByConnectionID, cid)
+			delete(cm.connectionsByConnectionID, clcid)
 			c.Disconnect()
 		}
 	}
@@ -89,8 +92,8 @@ func (cm *ConnectionManager) CloseAll() {
 	defer cm.mux.Unlock()
 
 	slog.Info("RemoveAll. Closing remaining connections", "count", len(cm.connectionsByConnectionID))
-	for cid, c := range cm.connectionsByConnectionID {
-		_ = cid
+	for clcid, c := range cm.connectionsByConnectionID {
+		_ = clcid
 		c.Disconnect()
 	}
 	cm.connectionsByConnectionID = make(map[string]transports.IServerConnection)
@@ -115,13 +118,14 @@ func (cm *ConnectionManager) ForEachConnection(handler func(c transports.IServer
 	}
 }
 
-// GetConnectionByConnectionID locates the connection of the client using the client connectionID
+// GetConnectionByConnectionID locates the connection of the client using the client's connectionID
 // This returns nil if no connection was found with the given connectionID
-func (cm *ConnectionManager) GetConnectionByConnectionID(connectionID string) (c transports.IServerConnection) {
+func (cm *ConnectionManager) GetConnectionByConnectionID(clientID, connectionID string) (c transports.IServerConnection) {
 
+	clcid := clientID + ":" + connectionID
 	cm.mux.Lock()
 	defer cm.mux.Unlock()
-	c = cm.connectionsByConnectionID[connectionID]
+	c = cm.connectionsByConnectionID[clcid]
 	return c
 }
 
@@ -136,31 +140,16 @@ func (cm *ConnectionManager) GetConnectionByClientID(clientID string) (c transpo
 	if len(cList) == 0 {
 		return nil
 	}
+	clcid := clientID + ":" + cList[0]
+
 	// return the first connection of this client
-	c = cm.connectionsByConnectionID[cList[0]]
+	c = cm.connectionsByConnectionID[clcid]
 	if c == nil {
 		slog.Error("GetConnectionByClientID: the client's connection list has disconnected endpoints",
 			"clientID", clientID, "nr alleged connections", len(cList))
 	}
 	return c
 }
-
-//
-//// GetConnectionByProtocol returns the list of connections for a specific protocol
-//func (cm *ConnectionManager) GetConnectionByProtocol(protocolType string) []transports.IServerConnection {
-//	cm.mux.Lock()
-//	defer cm.mux.Unlock()
-//	// Not the most efficient way
-//	// what is really needed is a way to get connections that don't supports broadcast
-//	// using a message bus.
-//	cList := make([]transports.IServerConnection, 0, len(cm.connectionsByClientID))
-//	for _, c := range cm.connectionsByConnectionID {
-//		if c.GetProtocolType() == protocolType {
-//			cList = append(cList, c)
-//		}
-//	}
-//	return cList
-//}
 
 // GetNrConnections returns the number of client connections and nr of unique clients
 func (cm *ConnectionManager) GetNrConnections() (int, int) {
@@ -189,21 +178,23 @@ func (cm *ConnectionManager) SendNotification(resp *transports.ResponseMessage) 
 // RemoveConnection removes the connection by its connectionID
 // This will close the connnection if it isn't closed already.
 // Call this after the connection is closed or before closing.
-func (cm *ConnectionManager) RemoveConnection(connectionID string) {
+func (cm *ConnectionManager) RemoveConnection(c transports.IServerConnection) {
 	cm.mux.Lock()
 	defer cm.mux.Unlock()
 
-	var clientID = ""
-	existingConn := cm.connectionsByConnectionID[connectionID]
+	clientID := c.GetClientID()
+	connectionID := c.GetConnectionID()
+	clcid := clientID + ":" + connectionID
+	existingConn := cm.connectionsByConnectionID[clcid]
 	// force close the existing connection just in case
 	if existingConn != nil {
-		clientID = existingConn.GetClientID()
+		//clientID = existingConn.GetClientID()
 		existingConn.Disconnect()
-		delete(cm.connectionsByConnectionID, connectionID)
+		delete(cm.connectionsByConnectionID, clcid)
 	} else if len(cm.connectionsByConnectionID) > 0 {
 		// this is unexpected. Not all connections were closed but this one is gone.
 		slog.Warn("RemoveConnection: connectionID not found",
-			"connectionID", connectionID)
+			"clcid", clcid)
 		return
 	}
 	// remove the cid from the client connection list

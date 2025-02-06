@@ -62,7 +62,8 @@ func getHiveoviewForm(op, thingID, name string) *td.Form {
 	return &f
 }
 
-// Helper function to login as a web client and sse listener
+// Helper function to login as a web client to the hiveoview server using
+// the same sse client as the transport provides.
 // The TestLogin test must succeed before using this.
 // This returns a client. Call Close() when done.
 func WebLogin(fullURL string, clientID string,
@@ -84,7 +85,7 @@ func WebLogin(fullURL string, clientID string,
 	// htmx sse triggers rely on this format. (for now)
 	// FIXME: can htmx sse trigger using additional fields (type=notification, thingID/name=blah?)
 	// or is this too painful in htmx.
-	sseCl := httpsseclient.NewHttpSseClientConnection(fullURL,
+	sseCl := httpsseclient.NewHiveotSseClient(fullURL,
 		clientID, nil, ts.Certs.CaCert,
 		getHiveoviewForm, time.Minute)
 	// hiveoview uses a different login path as the hub

@@ -11,8 +11,7 @@ import (
 
 // SubmitActionRequest posts the request to start an action
 func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
-	var tdi *td.TD
-	var actionAff *td.ActionAffordance
+	//var tdi *td.TD
 	var newValue any
 	actionTitle := ""
 
@@ -30,14 +29,15 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 		sess.WriteError(w, err, http.StatusBadRequest)
 	}
 
-	// convert the value from string to the data type
+	// convert the input value from string to the data type
 	ct, err := sess.Consume(thingID)
 	//tdi, actionAff, err = getActionAff(sess.GetConsumer(), thingID, actionName)
 	if err != nil || ct == nil {
 		sess.WriteError(w, err, http.StatusInternalServerError)
 		return
 	}
-
+	tdi := ct.GetTD()
+	actionAff := ct.GetTD().GetAction(actionName)
 	if actionAff.Input != nil {
 		newValue, err = td.ConvertToNative(valueStr, actionAff.Input)
 	}
@@ -50,6 +50,7 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 		// FIXME: use async progress updates instead of RPC
 		//stat = hc.HandleActionFlow(thingID, actionName, newValue)
 		var resp interface{}
+		//iout,err = ct.InvokeAction(actionName, newValue, &resp)
 		err = sess.GetConsumer().InvokeAction(thingID, actionName, newValue, &resp)
 		if resp != nil {
 			// stringify the reply for presenting in the notification
@@ -66,12 +67,9 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 		// notify UI via SSE. This is handled by a toast component.
 		// todo, differentiate between server error, invalid value and unauthorized
 		// use human title from TD instead of action key to make error more presentable
-		aff := tdi.GetAction(actionName)
-		if aff != nil {
-			actionTitle = aff.Title
-		}
-		if actionTitle == "" {
-			actionTitle = actionName
+		actionTitle = actionName
+		if actionAff.Title != "" {
+			actionTitle = actionAff.Title
 		}
 
 		err = fmt.Errorf("action '%s' of Thing '%s' failed: %w", actionTitle, tdi.Title, err)

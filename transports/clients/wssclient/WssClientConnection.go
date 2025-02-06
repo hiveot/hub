@@ -103,6 +103,8 @@ func (cl *WssClientConnection) _send(wssMsg any) (err error) {
 func (cl *WssClientConnection) ConnectWithPassword(password string) (newToken string, err error) {
 	// Login using the http endpoint
 
+	cl.Disconnect()
+
 	// TODO: use configurable auth method
 	parts, err := url.Parse(cl.fullURL)
 	if err != nil {
@@ -118,10 +120,12 @@ func (cl *WssClientConnection) ConnectWithPassword(password string) (newToken st
 	}
 	urlParts, _ := url.Parse(loginURL)
 	tlsClient := tlsclient.NewTLSClient(urlParts.Host, nil, cl.caCert, cl.timeout)
-	argsJSON, _ := jsoniter.Marshal(loginMessage)
+	argsJSON, _ := jsoniter.MarshalToString(loginMessage)
 	defer tlsClient.Close()
-	resp, statusCode, err2 := tlsClient.Post(httpserver.HttpPostLoginPath, argsJSON)
+	resp, statusCode, err2 := tlsClient.Post(httpserver.HttpPostLoginPath, []byte(argsJSON))
 	if err2 != nil {
+		// cancel the existing connection
+		cl.authToken = ""
 		err = fmt.Errorf("%d: Login failed: %s", statusCode, err2)
 		return "", err
 	}
@@ -286,6 +290,7 @@ func (cl *WssClientConnection) SendResponse(resp *transports.ResponseMessage) er
 		slog.String("clientID", cl.clientID),
 		slog.String("thingID", resp.ThingID),
 		slog.String("name", resp.Name),
+		slog.String("status", resp.Status),
 		slog.String("correlationID", resp.CorrelationID),
 	)
 

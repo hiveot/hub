@@ -310,9 +310,12 @@ func NewTestServer() *TestServer {
 		Certs:   certs.CreateTestCertBundle(),
 		Config:  runtime.NewRuntimeConfig(),
 		// change these for running all tests with different protocols
-		AgentProtocol:    transports.ProtocolTypeHiveotWSS,
-		ServiceProtocol:  transports.ProtocolTypeHiveotWSS,
-		ConsumerProtocol: transports.ProtocolTypeHiveotWSS,
+		//AgentProtocol: transports.ProtocolTypeHiveotWSS,
+		AgentProtocol: transports.ProtocolTypeHiveotSSE,
+		//ServiceProtocol: transports.ProtocolTypeHiveotWSS,
+		ServiceProtocol: transports.ProtocolTypeHiveotSSE,
+		//ConsumerProtocol: transports.ProtocolTypeHiveotWSS,
+		ConsumerProtocol: transports.ProtocolTypeHiveotSSE,
 		ConnectTimeout:   time.Second * 120, // testing extra long
 	}
 

@@ -443,8 +443,7 @@ func (sess *WebClientSession) WritePage(w http.ResponseWriter, buff *bytes.Buffe
 	}
 }
 
-// NewWebClientSession creates a new webclient session for the given Hub connection
-// Intended for use by the session manager.
+// NewWebClientSession creates a new webclient session for the given Hub consumer.
 //
 // A Web Client session is created on the first request from a web browser, after
 // establishing a hub connection using its credentials.

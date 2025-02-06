@@ -145,9 +145,9 @@ func TestByteArrayArgs(t *testing.T) {
 	require.NoError(t, err)
 }
 func TestTwoArgsFail(t *testing.T) {
-	sargJson, _ := jsoniter.Marshal("Hello world")
+	sargJson, _ := jsoniter.MarshalToString("Hello world")
 	// this method has 2 args, we only pass 1. Does it blow up?
-	data, err := hubagent.HandleRequestMessage(senderID, Method8TwoArgs, string(sargJson))
+	data, err := hubagent.HandleRequestMessage(senderID, Method8TwoArgs, sargJson)
 	assert.Error(t, err)
 	assert.Empty(t, data)
 }

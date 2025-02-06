@@ -148,9 +148,10 @@ func (co *Consumer) onResponse(resp *transports.ResponseMessage) error {
 }
 
 // Ping the server and wait for a pong response
+// This uses the underlying transport native method of ping-pong.
 func (co *Consumer) Ping() error {
 	correlationID := shortid.MustGenerate()
-	req := transports.NewRequestMessage(wot.HTOpPing, "", "", "", correlationID)
+	req := transports.NewRequestMessage(wot.HTOpPing, "", "", nil, correlationID)
 	resp, err := co.SendRequest(req, true)
 	if err != nil {
 		return err
@@ -268,7 +269,7 @@ func (co *Consumer) ReadTD(thingID string) (tdJSON string, err error) {
 }
 
 // RefreshToken refreshes the authentication token
-// The resulting token can be used with 'ConnectWithToken'
+// The resulting token can be used with 'SetBearerToken'
 // This is specific to the Hiveot Hub.
 func (co *Consumer) RefreshToken(oldToken string) (newToken string, err error) {
 
@@ -339,7 +340,7 @@ func (co *Consumer) SendRequest(req *transports.RequestMessage, waitForCompletio
 	err = co.cc.SendRequest(req)
 
 	if err != nil {
-		slog.Warn("SendRequest: failed sending request",
+		slog.Warn("SendRequest: error in sending request",
 			"dThingID", req.ThingID,
 			"name", req.Name,
 			"correlationID", req.CorrelationID,

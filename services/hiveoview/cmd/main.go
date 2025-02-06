@@ -40,6 +40,9 @@ const TemplateRootPath = "services/hiveoview/src"
 // "hubcli gentoken __hiveoview", which generates token in: certs/__hiveoview.token
 // If the test user __hiveoview doesn't exist it will be added and a private key
 // generated.
+//
+// By default the templates are embedded. For development it can be useful to reload
+// the templates for each request. Use the --extfs flag for this.
 func main() {
 	var signingKey ed25519.PrivateKey
 	serverPort := port

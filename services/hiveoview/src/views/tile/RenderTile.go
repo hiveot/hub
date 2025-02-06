@@ -7,6 +7,7 @@ import (
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"github.com/hiveot/hub/services/hiveoview/src/views/history"
+	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot/td"
 	"net/http"
@@ -58,7 +59,7 @@ func (d RenderTileTemplateData) GetOutputValue(thingID string, name string) (iou
 		// Thing not found. return a dummy interaction output with a non-schema
 		tdi := td.NewTD(thingID, "unknown", vocab.ThingDevice)
 		dummy := consumedthing.NewInteractionOutput(
-			tdi, consumedthing.AffordanceTypeProperty, name, nil, "")
+			tdi, transports.AffordanceTypeProperty, name, nil, "")
 		dummy.Value = consumedthing.NewDataSchemaValue("n/a")
 		return dummy
 	}
@@ -74,7 +75,8 @@ func (d RenderTileTemplateData) GetOutputValue(thingID string, name string) (iou
 	if iout == nil {
 		aff := tdi.GetAction(name)
 		if aff != nil {
-			iout = ct.QueryAction(name)
+			as := ct.QueryAction(name)
+			iout = ct.GetActionOutput(as)
 		}
 	}
 	if iout == nil {

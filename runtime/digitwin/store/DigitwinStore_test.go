@@ -6,6 +6,7 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/runtime/digitwin/store"
+	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	"github.com/stretchr/testify/assert"
@@ -71,10 +72,11 @@ func addValues(svc *store.DigitwinStore,
 		value := fmt.Sprintf("%2.3f", randomValue)
 		name := valueNames[randomName]
 		tv := digitwin.ThingValue{
-			Updated: time.Now().Format(wot.RFC3339Milli),
-			Output:  value,
-			Name:    name,
-			ThingID: dThingID,
+			Updated:        time.Now().Format(wot.RFC3339Milli),
+			Output:         value,
+			Name:           name,
+			ThingID:        dThingID,
+			AffordanceType: transports.AffordanceTypeProperty,
 		}
 		_ = svc.UpdateEventValue(tv)
 	}
@@ -181,10 +183,11 @@ func TestUpdateProps(t *testing.T) {
 	addValues(svc, 10, agent1ID, []string{thing1ID}, 3600*24*30)
 
 	tv := digitwin.ThingValue{
-		Updated: time.Now().Format(wot.RFC3339Milli),
-		Output:  prop1Value,
-		Name:    prop1Name,
-		ThingID: dThingID1,
+		Updated:        time.Now().Format(wot.RFC3339Milli),
+		Output:         prop1Value,
+		Name:           prop1Name,
+		ThingID:        dThingID1,
+		AffordanceType: transports.AffordanceTypeProperty,
 	}
 	changed, err := svc.UpdatePropertyValue(tv)
 	require.NoError(t, err)
@@ -204,10 +207,11 @@ func TestAddPropsFail(t *testing.T) {
 	defer closeFn()
 
 	tv := digitwin.ThingValue{
-		Updated: time.Now().Format(wot.RFC3339Milli),
-		Output:  "val1",
-		Name:    "prop1",
-		ThingID: dThingID,
+		Updated:        time.Now().Format(wot.RFC3339Milli),
+		Output:         "val1",
+		Name:           "prop1",
+		ThingID:        dThingID,
+		AffordanceType: transports.AffordanceTypeProperty,
 	}
 	changed, err := svc.UpdatePropertyValue(tv)
 

@@ -44,9 +44,9 @@ func StartHistoryAgent(svc *HistoryService, ag *messaging.Agent) {
 	// receive subscribed updates for events and properties
 	ag.Consumer.SetResponseHandler(func(resp *transports.ResponseMessage) error {
 		if resp.Operation == wot.OpSubscribeEvent {
-			return svc.addHistory.AddEvent(resp)
+			return svc.addHistory.AddMessage(resp)
 		} else if resp.Operation == wot.OpObserveProperty {
-			return svc.addHistory.AddProperty(resp)
+			return svc.addHistory.AddMessage(resp)
 		}
 		//ignore the rest
 		return nil

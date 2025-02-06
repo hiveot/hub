@@ -301,14 +301,14 @@ Forms to connect, subscribe and unsubscribe events of a Thing could look like:
       "op": "subscribeallevents",
       "href": "/ssesc/subscribeallevents/dtw:agent1:thing1",
       "htv:methodName": "GET",
-      "subprotocol": "ssesc",
+      "subprotocol": "sse-hiveot",
       "headers": ["cid", "correlationID"]
     },
     {
       "op": "observerproperty",
       "href": "/ssesc/observerproperty/dtw:agent1:thing1/property1",
       "htv:methodName": "GET",
-      "subprotocol": "ssesc",
+      "subprotocol": "sse-hiveot",
       "headers": ["cid"]
     }
   ]

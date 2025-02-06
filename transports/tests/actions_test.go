@@ -141,7 +141,16 @@ func TestInvokeActionFromServerToAgent(t *testing.T) {
 		slog.Info("Agent receives request", "op", req.Operation)
 		assert.Equal(t, testClientID1, req.SenderID)
 		reqVal.Store(req.Input)
-		return req.CreateResponse(testMsg2, nil)
+		go func() {
+			time.Sleep(time.Millisecond)
+			// separately send a completed response
+			resp := req.CreateResponse(testMsg2, nil)
+			_ = replyTo.SendResponse(resp)
+		}()
+		// return a pending
+		resp := req.CreateResponse(testMsg2, nil)
+		resp.Status = transports.StatusPending
+		return resp
 	})
 
 	// Send the action request from the server to the agent (the agent is connected as a client)
@@ -157,6 +166,7 @@ func TestInvokeActionFromServerToAgent(t *testing.T) {
 
 	// wait until the agent has sent a reply
 	<-ctx1.Done()
+	time.Sleep(time.Millisecond * 10)
 
 	// if all went well the agent received the request and the server its response
 	assert.Equal(t, testMsg1, reqVal.Load())

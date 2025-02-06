@@ -311,7 +311,7 @@ var AttrConfig = map[string]AttrConversion{
 	},
 	"RelayState": {
 		IsProp:   true,
-		Title:    "Relay control",
+		Title:    "Relay State",
 		DataType: vocab.WoTDataTypeBool, VocabType: vocab.ActionSwitchOnOff, ChangeNotify: 1,
 	},
 	"ROMId": {

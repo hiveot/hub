@@ -14,8 +14,8 @@ type ITransportServer interface {
 	// Intended to close connections after a logout.
 	CloseAllClientConnections(clientID string)
 
-	// GetConnectionByConnectionID returns the connection with the given ID from this server
-	GetConnectionByConnectionID(cid string) IConnection
+	// GetConnectionByConnectionID returns a client connection on the server
+	GetConnectionByConnectionID(clientID, cid string) IConnection
 
 	// GetConnectionByClientID returns the connection with the given client ID.
 	// Intended to find agents to route requests to.

@@ -1,18 +1,15 @@
 package servers
 
 import (
+	"github.com/hiveot/hub/transports/servers/httpserver"
 	"github.com/hiveot/hub/transports/tputils/discovery"
 	"os"
 )
 
-const DefaultHttpsPort = 8444
-const DefaultHiveotWssPath = "/hiveot/wss"
-const DefaultHiveotSsePath = "/hiveot/sse"
-const DefaultMqttTcpPort = 8883
-const DefaultMqttWssPort = 8884
-
-// const DefaultWotSsePath = "/wot/sse"
-const DefaultWotWssPath = "/wot/wss"
+const (
+	DefaultMqttTcpPort = 8883
+	DefaultMqttWssPort = 8884
+)
 
 type ProtocolsConfig struct {
 
@@ -68,7 +65,7 @@ func NewProtocolsConfig() ProtocolsConfig {
 		//HttpSsePath:     transports.DefaultSSEPath,
 		//HttpSseScPath:     transports.DefaultSSESCPath,
 		HttpHost:    hostName,
-		HttpsPort:   DefaultHttpsPort,
+		HttpsPort:   httpserver.DefaultHttpsPort,
 		MqttHost:    hostName,
 		MqttTcpPort: DefaultMqttTcpPort,
 		MqttWssPort: DefaultMqttWssPort,

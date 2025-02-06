@@ -65,9 +65,7 @@ func (svc *DirectoryService) MakeDigitalTwinTD(
 func (svc *DirectoryService) ReadTD(senderID string, dThingID string) (tdJSON string, err error) {
 	dtd, err := svc.dtwStore.ReadDThing(dThingID)
 	if err == nil {
-		var tdByte []byte
-		tdByte, err = jsoniter.Marshal(dtd)
-		tdJSON = string(tdByte)
+		tdJSON, err = jsoniter.MarshalToString(dtd)
 	}
 	return tdJSON, err
 }
@@ -81,9 +79,9 @@ func (svc *DirectoryService) ReadAllTDs(
 	if err == nil {
 		tdList = make([]string, 0, len(dtdList))
 		for _, dtd := range dtdList {
-			tdByte, err2 := jsoniter.Marshal(dtd)
+			tdJSON, err2 := jsoniter.MarshalToString(dtd)
 			if err2 == nil {
-				tdList = append(tdList, string(tdByte))
+				tdList = append(tdList, tdJSON)
 			}
 		}
 	}
@@ -122,12 +120,12 @@ func (svc *DirectoryService) UpdateTD(agentID string, tdJson string) error {
 
 	// notify subscribers of TD updates
 	if svc.notifHandler != nil {
-		dtdJSON, _ := jsoniter.Marshal(digitalTwinTD)
+		dtdJSON, _ := jsoniter.MarshalToString(digitalTwinTD)
 		// todo: only send notification on changes
 		// publish an event that the directory TD has updated with a new TD
 		notif := transports.NewNotificationResponse(wot.OpSubscribeEvent,
 			digitwin.ThingDirectoryDThingID, digitwin.ThingDirectoryEventThingUpdated,
-			string(dtdJSON), nil)
+			dtdJSON, nil)
 		go svc.notifHandler(notif)
 	}
 	return err

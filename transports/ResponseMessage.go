@@ -8,8 +8,13 @@ import (
 	"time"
 )
 
-// ResponseMessage defines the standardized message envelope for handling responses.
+// ResponseMessage, ActionStatus and ThingValue define the standardized messaging
+// envelopes for handling responses.
 // Each transport protocol bindings map this format to this specific format.
+
+const AffordanceTypeEvent = "event"
+const AffordanceTypeProperty = "property"
+const AffordanceTypeAction = "action"
 
 // MessageTypeResponse identify the message as a response.
 const MessageTypeResponse = "response"
@@ -88,13 +93,12 @@ type ActionStatus struct {
 // ThingValue is the response payload to subscribeevent, observeproperty,
 // readevent and readproperty operations.
 type ThingValue struct {
-
 	// ID is the unique identification of the value
 	ID string `json:"id,omitempty"`
 
-	// Name with Name
+	// Name with affordance name
 	//
-	// Name of the property holding the value
+	// Name of the affordance holding the value
 	Name string `json:"name,omitempty"`
 
 	// Output with Payload
@@ -111,6 +115,14 @@ type ThingValue struct {
 	//
 	// Time the value was last updated
 	Updated string `json:"updated,omitempty"`
+
+	// Type of value: AffordanceTypeProperty|Event|Action
+	AffordanceType string `json:"affType"`
+}
+
+// ToString is a helper to easily read the response output as a string
+func (tv *ThingValue) ToString(maxlen int) string {
+	return tputils.DecodeAsString(tv.Output, maxlen)
 }
 
 // ResponseMessage serves to notify a client of the result of a request.
@@ -215,7 +227,7 @@ func NewResponseMessage(operation string, thingID, name string, output any, err 
 	}
 	if err != nil {
 		resp.Error = err.Error()
-		//resp.Status = StatusFailed
+		resp.Status = StatusFailed
 	}
 	return resp
 }

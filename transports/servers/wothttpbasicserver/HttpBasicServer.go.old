@@ -94,8 +94,7 @@ func (srv *HttpBasicServer) createRoutes() {
 // ActionStatus message.
 func (svc *HttpBasicServer) HandleRequestMessage(w http.ResponseWriter, r *http.Request) {
 
-	var response *transports.ResponseMessage
-	rp, err := httpserver.GetRequestParams(r)
+	rp, err := httpserver.GetRequestParams(r, nil)
 	if err != nil {
 		slog.Error(err.Error())
 		w.WriteHeader(http.StatusUnauthorized)
@@ -120,6 +119,7 @@ func (svc *HttpBasicServer) HandleRequestMessage(w http.ResponseWriter, r *http.
 	rh := svc.serverRequestHandler
 	svc.mux.RUnlock()
 
+	var response *transports.ResponseMessage
 	// ping is handled internally
 	if rp.Op == wot.HTOpPing {
 		// regular http server returns with pong -

@@ -97,7 +97,7 @@ func BenchmarkSetState(b *testing.B) {
 	testData := makeTestData()
 
 	for _, tbl := range DataSizeTable {
-
+		fmt.Println(fmt.Sprintf("--- BenchmarkSetState - run %d sets", tbl.nrSets))
 		svc, stateCl, stopFn := startStateService(true)
 		_ = svc
 		logging.SetLogging("warning", "")

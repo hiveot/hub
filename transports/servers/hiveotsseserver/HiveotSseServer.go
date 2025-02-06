@@ -8,7 +8,19 @@ import (
 	"sync"
 )
 
-const SSEOpConnect = "sse-connect"
+const (
+	DefaultHiveotSsePath = "/hiveot/sse"
+
+	// DefaultHiveotPostRequestHRef HTTP endpoint that accepts HiveOT RequestMessage envelopes
+	DefaultHiveotPostRequestHRef = "/hiveot/request"
+
+	// DefaultHiveotPostResponseHRef HTTP endpoint that accepts HiveOT ResponseMessage envelopes
+	DefaultHiveotPostResponseHRef = "/hiveot/response"
+
+	SSEOpConnect         = "sse-connect"
+	SubprotocolSSE       = "sse"
+	SubprotocolSSEHiveot = "sse-hiveot"
+)
 
 // HiveotSseServer is a protocol binding transport server of http for the SSE-SC
 // Single-Connection protocol. This protocol supports full asynchronous messaging
@@ -25,9 +37,9 @@ const SSEOpConnect = "sse-connect"
 // Usages:
 //
 //  1. Thing Agents that run servers. For example the HiveOT Hub. The agent
-//     serves HTTP/SSE connections from consumers. Requests are received over HTTP
+//     serves HTTP/SSE cm from consumers. Requests are received over HTTP
 //     and asynchronous responses are sent back over SSE. HTTP requests and SSE
-//     connections must carry the same 'cid' to correlate HTTP requests with the
+//     cm must carry the same 'cid' to correlate HTTP requests with the
 //     SSE return channel from the same client.
 //     The HiveOT Hub uses this as part of multiple servers that serve the
 //     digital twin repository content.
@@ -51,15 +63,15 @@ const SSEOpConnect = "sse-connect"
 // message payload.
 type HiveotSseServer struct {
 
-	// manage the incoming SSE connections
-	connections *connections.ConnectionManager
+	// manage the incoming SSE cm
+	cm *connections.ConnectionManager
 
 	httpTransport *httpserver.HttpTransportServer
 
-	// mutex for updating connections
+	// mutex for updating cm
 	mux sync.RWMutex
 
-	// registered handler of incoming connections
+	// registered handler of incoming cm
 	serverConnectHandler transports.ConnectionHandler
 
 	// The listening path
@@ -79,6 +91,7 @@ type HiveotSseServer struct {
 // using hiveot RequestMessage and ResponseMessage envelopes.
 func (srv *HiveotSseServer) AddTDForms(tdi *td.TD) error {
 
+	// TODO: add the hiveot http endpoints
 	//srv.httpTransport.AddOps()
 	// forms are handled through the http binding
 	//return srv.httpTransport.AddTDForms(tdi)
@@ -86,13 +99,13 @@ func (srv *HiveotSseServer) AddTDForms(tdi *td.TD) error {
 }
 
 func (srv *HiveotSseServer) CloseAll() {
-	srv.connections.CloseAll()
+	srv.cm.CloseAll()
 }
 
-// CloseAllClientConnections close all connections from the given client.
-// Intended to close connections after a logout.
+// CloseAllClientConnections close all cm from the given client.
+// Intended to close cm after a logout.
 func (srv *HiveotSseServer) CloseAllClientConnections(clientID string) {
-	srv.connections.ForEachConnection(func(c transports.IServerConnection) {
+	srv.cm.ForEachConnection(func(c transports.IServerConnection) {
 		if c.GetClientID() == clientID {
 			c.Disconnect()
 		}
@@ -105,13 +118,13 @@ func (srv *HiveotSseServer) GetConnectURL(_ string) string {
 }
 
 // GetConnectionByConnectionID returns the connection with the given connection ID
-func (srv *HiveotSseServer) GetConnectionByConnectionID(cid string) transports.IConnection {
-	return srv.connections.GetConnectionByConnectionID(cid)
+func (srv *HiveotSseServer) GetConnectionByConnectionID(clientID, cid string) transports.IConnection {
+	return srv.cm.GetConnectionByConnectionID(clientID, cid)
 }
 
 // GetConnectionByClientID returns the connection with the given client ID
 func (srv *HiveotSseServer) GetConnectionByClientID(agentID string) transports.IConnection {
-	return srv.connections.GetConnectionByClientID(agentID)
+	return srv.cm.GetConnectionByClientID(agentID)
 }
 
 // GetForm returns a new SSE form for the given operation
@@ -123,8 +136,8 @@ func (srv *HiveotSseServer) GetForm(op, thingID, name string) *td.Form {
 
 // GetSseConnection returns the SSE Connection with the given ID
 // This returns nil if not found or if the connectionID is not
-func (srv *HiveotSseServer) GetSseConnection(connectionID string) *HiveotSseServerConnection {
-	c := srv.connections.GetConnectionByConnectionID(connectionID)
+func (srv *HiveotSseServer) GetSseConnection(clientID, connectionID string) *HiveotSseServerConnection {
+	c := srv.cm.GetConnectionByConnectionID(clientID, connectionID)
 	if c == nil {
 		return nil
 	}
@@ -137,25 +150,25 @@ func (srv *HiveotSseServer) GetSseConnection(connectionID string) *HiveotSseServ
 
 // SendNotification sends a property update or event response message to subscribers
 func (srv *HiveotSseServer) SendNotification(msg *transports.ResponseMessage) {
-	// pass the response to all subscribed connections
-	// FIXME: track connections
-	srv.connections.ForEachConnection(func(c transports.IServerConnection) {
+	// pass the response to all subscribed cm
+	// FIXME: track cm
+	srv.cm.ForEachConnection(func(c transports.IServerConnection) {
 		c.SendNotification(*msg)
 	})
 }
 
 func (srv *HiveotSseServer) Stop() {
-	//Close all incoming SSE connections
-	srv.connections.CloseAll()
+	//Close all incoming SSE cm
+	srv.cm.CloseAll()
 }
 
 // StartHiveotSseServer returns a new SSE-SC sub-protocol binding.
 // This is only a 1-way binding that adds an SSE based return channel to the http binding.
 //
 // This adds http methods for (un)subscribing to events and properties and
-// adds new connections to the connection manager for callbacks.
+// adds new cm to the connection manager for callbacks.
 //
-// If no ssePath is provided, the default DefaultSSESCPath (/ssesc) is used
+// This fails if no ssePath is provided
 func StartHiveotSseServer(
 	ssePath string,
 	httpTransport *httpserver.HttpTransportServer,
@@ -163,8 +176,11 @@ func StartHiveotSseServer(
 	handleRequest transports.RequestHandler,
 	handleResponse transports.ResponseHandler,
 ) *HiveotSseServer {
+	if ssePath == "" {
+		return nil
+	}
 	srv := &HiveotSseServer{
-		connections:           connections.NewConnectionManager(),
+		cm:                    connections.NewConnectionManager(),
 		serverConnectHandler:  handleConnect,
 		serverRequestHandler:  handleRequest,
 		serverResponseHandler: handleResponse,

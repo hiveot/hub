@@ -57,7 +57,8 @@
 {{else if eq .Schema.Type "string"}}
     {{/*	=== Text Input ===*/}}
 		<input id="input-{{.Name}}" name="{{.Name}}"
-		       type="text" autofocus
+		       type="text" autofocus 
+		       value="{{.Value.Text}}"
 		/>
 {{else}}
     {{/*	=== Complex Input is not supported ===*/}}

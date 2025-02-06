@@ -63,7 +63,7 @@ func (svc *DigitwinRouter) HandleActionResponse(resp *transports.ResponseMessage
 	_, _ = svc.dtwStore.UpdateActionStatus(resp.SenderID, resp)
 
 	// 3: Forward the response to the sender of the request
-	c := svc.transportServer.GetConnectionByConnectionID(as.ReplyTo)
+	c := svc.transportServer.GetConnectionByConnectionID(as.SenderID, as.ReplyTo)
 	if c != nil {
 		err = c.SendResponse(resp)
 	} else {
@@ -100,10 +100,11 @@ func (svc *DigitwinRouter) HandleSubscriptionNotification(resp *transports.Respo
 	// Update the digital twin with this event or property value
 	if resp.Operation == wot.OpSubscribeEvent {
 		tv := digitwin.ThingValue{
-			Name:    resp.Name,
-			Output:  resp.Output,
-			ThingID: resp.ThingID,
-			Updated: resp.Updated,
+			Name:           resp.Name,
+			Output:         resp.Output,
+			ThingID:        resp.ThingID,
+			Updated:        resp.Updated,
+			AffordanceType: transports.AffordanceTypeEvent,
 		}
 		err = svc.dtwStore.UpdateEventValue(tv)
 		if err == nil {
@@ -112,10 +113,11 @@ func (svc *DigitwinRouter) HandleSubscriptionNotification(resp *transports.Respo
 		}
 	} else if resp.Operation == wot.OpObserveProperty {
 		tv := digitwin.ThingValue{
-			Name:    resp.Name,
-			Output:  resp.Output,
-			ThingID: resp.ThingID,
-			Updated: resp.Updated,
+			Name:           resp.Name,
+			Output:         resp.Output,
+			ThingID:        resp.ThingID,
+			Updated:        resp.Updated,
+			AffordanceType: transports.AffordanceTypeProperty,
 		}
 		changed, _ := svc.dtwStore.UpdatePropertyValue(tv)
 		// unchanged values are still updated in the store but not published

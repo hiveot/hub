@@ -7,7 +7,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/transports/tputils/tlsserver"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
@@ -18,25 +17,18 @@ import (
 	"net/http"
 )
 
-// HTTP protoocol constants
+// HTTP protoocol headers constants
 const (
-	// StatusHeader contains the result of the request, eg Pending, Completed or Failed
-	StatusHeader = "status"
-	// CorrelationIDHeader for transports that support headers can include a message-ID
-	CorrelationIDHeader = "correlation-id"
-	// ConnectionIDHeader identifies the client's connection in case of multiple
-	// connections from the same client.
-	ConnectionIDHeader = "cid"
-	// DataSchemaHeader to indicate which  'additionalresults' dataschema being returned.
-	DataSchemaHeader = "dataschema"
-
-	// HTTP Paths for auth
-	// TO be REMOVED AFTER auth is implemented using the TD and forms.
-	// The hub client will need the TD (ConsumedThing) to determine the paths.
+	ConnectionIDHeader  = "cid"
+	DefaultHttpsPort    = 8444
 	HttpPostLoginPath   = "/authn/login"
 	HttpPostLogoutPath  = "/authn/logout"
 	HttpPostRefreshPath = "/authn/refresh"
 	HttpGetPingPath     = "/ping"
+
+	// HttpBasicRequestHRef is the generic HTTP path for sending requests to the server.
+	// this can be used with http-basic profile when building forms
+	HttpBasicRequestHRef = "/httpbasic/{operation}/{thingID}/{name}"
 )
 
 type HttpOperation struct {
@@ -144,11 +136,11 @@ func (svc *HttpTransportServer) setupRouting(router chi.Router) http.Handler {
 		svc.AddOps(r, []string{wot.HTOpLogin},
 			http.MethodPost, HttpPostLoginPath, svc.HandleLogin)
 
-		svc.AddOps(r, []string{wot.HTOpPing}, http.MethodGet, HttpGetPingPath, svc.HandlePing)
+		svc.AddOps(r, []string{wot.HTOpPing},
+			http.MethodGet, HttpGetPingPath, svc.HandlePing)
 	})
 
 	//--- private routes that requires authentication (as published in the TD)
-	// general format for digital twins: /digitwin/{operation}/{thingID}/{name}
 	router.Group(func(r chi.Router) {
 		r.Use(middleware.Compress(5,
 			"text/html", "text/css", "text/javascript", "image/svg+xml"))
@@ -159,7 +151,7 @@ func (svc *HttpTransportServer) setupRouting(router chi.Router) http.Handler {
 		// Using AddOps without provider router will add paths to this route.
 		svc.protectedRoutes = r
 
-		// authn service actions
+		// authn service actions needed for all http (sub)protocols
 		svc.AddOps(r, []string{wot.HTOpRefresh},
 			http.MethodPost, HttpPostRefreshPath, svc.HandleLoginRefresh)
 		svc.AddOps(r, []string{wot.HTOpLogout},
@@ -192,8 +184,7 @@ func (svc *HttpTransportServer) GetForm(op, thingID, name string) *td.Form {
 		}
 	}
 
-	slog.Warn("GetForm. No form found for operation",
-		"op", op)
+	slog.Info("GetForm. No form found for operation", "op", op)
 	return nil
 }
 
@@ -232,10 +223,7 @@ func (svc *HttpTransportServer) HandleLogin(w http.ResponseWriter, r *http.Reque
 func (svc *HttpTransportServer) HandleLoginRefresh(w http.ResponseWriter, r *http.Request) {
 	var newToken string
 	var oldToken string
-	rp, err := GetRequestParams(r)
-	if err == nil {
-		err = tputils.Decode(rp.Data, &oldToken)
-	}
+	rp, err := GetRequestParams(r, &oldToken)
 	if err == nil {
 		newToken, err = svc.authenticator.RefreshToken(rp.ClientID, oldToken)
 	}
@@ -250,26 +238,17 @@ func (svc *HttpTransportServer) HandleLoginRefresh(w http.ResponseWriter, r *htt
 // HandleLogout ends the session and closes all client connections
 func (svc *HttpTransportServer) HandleLogout(w http.ResponseWriter, r *http.Request) {
 	// use the authenticator
-	rp, err := GetRequestParams(r)
+	rp, err := GetRequestParams(r, nil)
 	if err == nil {
 		svc.authenticator.Logout(rp.ClientID)
 	}
 	svc.WriteReply(w, nil, transports.StatusCompleted, err)
 }
 
-// HandlePing with http handler of ping as a request
+// HandlePing with http handler returns a pong response
 func (svc *HttpTransportServer) HandlePing(w http.ResponseWriter, r *http.Request) {
 	// simply return a pong message
-	rp, err := GetRequestParams(r)
-	if err != nil {
-		svc.WriteError(w, err, http.StatusBadRequest)
-		return
-	}
-
-	replyHeader := w.Header()
-	replyHeader.Set(CorrelationIDHeader, rp.CorrelationID)
-
-	svc.WriteReply(w, "pong", transports.StatusCompleted, err)
+	svc.WriteReply(w, "pong", transports.StatusCompleted, nil)
 }
 
 //
@@ -300,8 +279,8 @@ func (svc *HttpTransportServer) WriteError(w http.ResponseWriter, err error, cod
 		slog.Warn("Request error: ", "err", err.Error())
 		http.Error(w, err.Error(), code)
 	} else {
-		replyHeader := w.Header()
-		replyHeader.Set(StatusHeader, transports.StatusCompleted)
+		//replyHeader := w.Header()
+		//replyHeader.Set(StatusHeader, transports.StatusCompleted)
 		w.WriteHeader(code)
 	}
 }
@@ -313,21 +292,42 @@ func (svc *HttpTransportServer) WriteError(w http.ResponseWriter, err error, cod
 // only used by hiveot.
 func (svc *HttpTransportServer) WriteReply(
 	w http.ResponseWriter, data any, status string, err error) {
+	var payloadJSON string
 
 	if status != "" {
-		replyHeader := w.Header()
-		replyHeader.Set(StatusHeader, status)
+		//replyHeader := w.Header()
+		//replyHeader.Set(StatusHeader, status)
 	}
-	if err != nil {
-		slog.Warn("Request error: ", "err", err.Error())
-		http.Error(w, err.Error(), http.StatusBadRequest)
-	} else if data != nil {
-		// If no header is written then w.Write writes a StatusOK
-		payload, _ := jsoniter.Marshal(data)
-		_, _ = w.Write(payload)
-	} else {
-		// Only write header if no data is written
+	if data != nil {
+		payloadJSON, _ = jsoniter.MarshalToString(data)
+	}
+	if status == transports.StatusFailed {
+		var payload string
+		if err != nil {
+			payload = err.Error()
+		}
+		http.Error(w, payload, http.StatusBadRequest)
+
+	} else if status == transports.StatusCompleted {
+		if payloadJSON != "" {
+			_, _ = w.Write([]byte(payloadJSON))
+		}
 		w.WriteHeader(http.StatusOK)
+	} else if status == transports.StatusRunning {
+		// Code 200: https://w3c.github.io/wot-profile/#example-17
+		w.WriteHeader(http.StatusOK)
+		if payloadJSON != "" {
+			_, _ = w.Write([]byte(payloadJSON))
+		} else {
+			slog.Error("Expected a ActionStatus or ResponseMessage payload. Got nothing")
+		}
+	} else {
+		// status is pending, possibly an ActionStatus payload
+		// Code 201: https://w3c.github.io/wot-profile/#sec-http-sse-profile
+		w.WriteHeader(201)
+		if payloadJSON != "" {
+			_, _ = w.Write([]byte(payloadJSON))
+		}
 	}
 }
 
@@ -352,10 +352,10 @@ func StartHttpTransportServer(host string, port int,
 	//wssURL := fmt.Sprintf("wss://%s:%d", config.Host, config.Port)
 	svc := HttpTransportServer{
 		authenticator: authenticator,
-		hostName:   host,
-		port:       port,
-		httpServer: httpServer,
-		router:     httpRouter,
+		hostName:      host,
+		port:          port,
+		httpServer:    httpServer,
+		router:        httpRouter,
 		//cm:         cm,
 	}
 

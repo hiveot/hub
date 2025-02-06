@@ -25,7 +25,7 @@ type HistoryTemplateData struct {
 	Timestamp      time.Time
 	TimestampStr   string
 	DurationSec    int
-	Values         []*transports.ResponseMessage
+	Values         []*transports.ThingValue
 	ItemsRemaining bool // for paging, if supported
 	Stepped        bool // stepped graph
 

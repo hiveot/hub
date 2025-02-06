@@ -91,7 +91,7 @@ func RenderSelectSources(w http.ResponseWriter, r *http.Request) {
 			//eventValues, _ := digitwin.ThingValuesReadAllEvents(sess.GetConsumer(), thingID)
 			//allValues := append(propValues, eventValues...)
 			data.IOValues[thingID] = consumedthing.NewInteractionOutputFromValueList(
-				td, consumedthing.AffordanceTypeEvent, allValues)
+				td, transports.AffordanceTypeEvent, allValues)
 		}
 	}
 	buff, err := app.RenderAppOrFragment(r, RenderSelectSourceTemplateFile, data)

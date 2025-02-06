@@ -199,7 +199,7 @@ func NewInteractionOutputFromResponse(
 func NewInteractionOutputFromActionStatus(
 	tdi *td.TD, as transports.ActionStatus) *InteractionOutput {
 
-	iout := NewInteractionOutput(tdi, AffordanceTypeAction, as.Name, as.Output, as.Updated)
+	iout := NewInteractionOutput(tdi, transports.AffordanceTypeAction, as.Name, as.Output, as.Updated)
 	iout.SenderID = as.SenderID
 	return iout
 }
@@ -218,21 +218,21 @@ func NewInteractionOutput(tdi *td.TD, affType string, name string, raw any, upda
 	var title string
 
 	switch affType {
-	case AffordanceTypeAction:
+	case transports.AffordanceTypeAction:
 		aff := tdi.Actions[name]
 		if aff == nil {
 			break
 		}
 		title = aff.Title
 		schema = aff.Output
-	case AffordanceTypeEvent:
+	case transports.AffordanceTypeEvent:
 		aff := tdi.Events[name]
 		if aff == nil {
 			break
 		}
 		title = aff.Title
 		schema = aff.Data
-	case AffordanceTypeProperty:
+	case transports.AffordanceTypeProperty:
 		aff := tdi.Properties[name]
 		if aff == nil {
 			break

@@ -81,10 +81,9 @@ func (c *DummyConnection) UnobserveProperty(dThingID, name string) {
 //}
 
 func NewDummyConnection(clientID, remoteAddr, cid string) *DummyConnection {
-	clcid := clientID + "." + remoteAddr + "." + cid
 	return &DummyConnection{
 		remoteAddr:   remoteAddr,
-		connectionID: clcid,
+		connectionID: cid,
 		clientID:     clientID,
 	}
 }

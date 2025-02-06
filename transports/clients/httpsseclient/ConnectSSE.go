@@ -6,12 +6,15 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/servers/hiveotsseserver"
 	"github.com/hiveot/hub/transports/servers/httpserver"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/tmaxmax/go-sse"
 	"log/slog"
 	"net/http"
 	"net/url"
+	"sync/atomic"
 	"time"
 )
 
@@ -54,7 +57,6 @@ func ConnectSSE(
 	sseClient := &sse.Client{
 		//HTTPClient: httpClient,
 		HTTPClient: httcl,
-		// todo honor the backoff period
 		OnRetry: func(err error, backoff time.Duration) {
 			slog.Warn("SSE Connection retry", "err", err, "clientID", clientID,
 				"backoff", backoff)
@@ -83,21 +85,22 @@ func ConnectSSE(
 		onConnect(true, nil)
 		waitConnectCancelFn()
 	})
-
+	var sseConnErr atomic.Pointer[sse.ConnectionError]
 	go func() {
 		// connect and wait until the connection ends
 		// and report an error if connection ends due to reason other than context cancelled
 		// onConnect will be called on receiving the first (ping) message
 		//onConnect(true, nil)
 		err := conn.Connect()
-
+		// FIXME: pass 401 unauthorized to caller
 		if connError, ok := err.(*sse.ConnectionError); ok {
 			// since sse retries, this is likely an authentication error
 			slog.Error("SSE connection failed (server shutdown or connection interrupted)",
 				"clientID", clientID,
 				"err", err.Error())
-			_ = connError
-			err = fmt.Errorf("Reconnect Failed: %w", connError.Err) //connError.Err
+			sseConnErr.Store(connError)
+			//err = fmt.Errorf("connect Failed: %w", connError.Err) //connError.Err
+			waitConnectCancelFn()
 		} else if errors.Is(err, context.Canceled) {
 			// context was cancelled. no error
 			err = nil
@@ -112,12 +115,136 @@ func ConnectSSE(
 	if errors.Is(e, context.DeadlineExceeded) {
 		err = fmt.Errorf("ConnectSSE: Timeout connecting to the server")
 		slog.Warn(err.Error())
-		waitConnectCancelFn()
 		sseCancelFn()
+	} else if sseConnErr.Load() != nil {
+		err = sseConnErr.Load()
+		// something else went wrong
+		slog.Warn("ConnectSSE: error" + err.Error())
 	}
 	closeSSEFn := func() {
 		// any other cleanup?
 		sseCancelFn()
 	}
 	return closeSSEFn, err
+}
+
+// ConnectSSE establishes the sse connection using the given bearer token
+// cl.handleSseEvent will set 'connected' status when the first ping event is
+// received from the server. (go-sse doesn't have a connected callback)
+func (cc *HiveotSseClient) ConnectSSE(token string) (err error) {
+	if cc.ssePath == "" {
+		return fmt.Errorf("connectSSE: Missing SSE path")
+	}
+	// establish the SSE connection for the return channel
+	sseURL := fmt.Sprintf("https://%s%s", cc.hostPort, cc.ssePath)
+	cc.sseCancelFn, err = ConnectSSE(
+		cc.GetClientID(),
+		cc.GetConnectionID(),
+		sseURL, token, cc.caCert,
+		cc.GetTlsClient(),
+		cc.handleSSEConnect,
+		cc.handleSseEvent,
+		cc.timeout)
+
+	return err
+}
+
+// handler when the SSE connection is established or fails.
+// This invokes the connectHandler callback if provided.
+func (cc *HiveotSseClient) handleSSEConnect(connected bool, err error) {
+	errMsg := ""
+
+	// if the context is cancelled this is not an error
+	if err != nil {
+		errMsg = err.Error()
+	}
+	slog.Info("handleSSEConnect",
+		slog.String("clientID", cc.GetClientID()),
+		slog.String("cid", cc.GetConnectionID()),
+		slog.Bool("connected", connected),
+		slog.String("err", errMsg))
+
+	var connectionChanged bool = false
+	if cc.isConnected.Load() != connected {
+		connectionChanged = true
+	}
+	cc.isConnected.Store(connected)
+	if err != nil {
+		cc.mux.Lock()
+		cc.lastError.Store(&err)
+		cc.mux.Unlock()
+	}
+	cc.mux.RLock()
+	handler := cc.appConnectHandler
+	cc.mux.RUnlock()
+
+	// Note: this callback can send notifications to the client,
+	// so prevent deadlock by running in the background.
+	// (caught by readhistory failing for unknown reason)
+	if connectionChanged && handler != nil {
+		go func() {
+			handler(connected, err, cc)
+		}()
+	}
+}
+
+// handleSSEEvent processes the push-event received from the hub.
+// This splits the message into notification, response and request
+// requests have an operation and correlationID
+// responses have no operations and a correlationID
+// notifications have an operations and no correlationID
+func (cc *HiveotSseClient) handleSseEvent(event sse.Event) {
+
+	// no further processing of a ping needed
+	if event.Type == hiveotsseserver.SSEPingEvent {
+		return
+	}
+
+	// Use the hiveot message envelopes for request, response and notification
+	if event.Type == transports.MessageTypeRequest {
+		req := transports.RequestMessage{}
+		_ = jsoniter.UnmarshalFromString(event.Data, &req)
+		slog.Info("handle request: ",
+			slog.String("thingID", req.ThingID),
+			slog.String("name", req.Name),
+			slog.String("created", req.Created),
+		)
+		go func() {
+			cc.mux.RLock()
+			h := cc.appRequestHandler
+			cc.mux.RUnlock()
+			resp := h(&req, cc)
+			_ = cc.SendResponse(resp)
+		}()
+	} else if event.Type == transports.MessageTypeResponse {
+		resp := transports.ResponseMessage{}
+		_ = jsoniter.UnmarshalFromString(event.Data, &resp)
+		// don't block the receiver flow
+		slog.Info("handle response: ",
+			slog.String("thingID", resp.ThingID),
+			slog.String("name", resp.Name),
+			slog.String("correlationID", resp.CorrelationID),
+			slog.String("created", resp.Updated),
+		)
+		// don't block the receiver flow
+		go func() {
+			cc.mux.RLock()
+			h := cc.appResponseHandler
+			cc.mux.RUnlock()
+			_ = h(&resp)
+		}()
+	} else {
+		// everything else is in a different format. Attempt to deliver for
+		// compatibility with other protocols (such has hiveoview test client)
+		resp := transports.ResponseMessage{}
+		resp.Output = event.Data
+		resp.Operation = event.Type
+		// don't block the receiver flow
+		go func() {
+			cc.mux.RLock()
+			h := cc.appResponseHandler
+			cc.mux.RUnlock()
+			_ = h(&resp)
+		}()
+	}
 }

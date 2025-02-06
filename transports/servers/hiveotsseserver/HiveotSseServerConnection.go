@@ -1,6 +1,7 @@
 package hiveotsseserver
 
 import (
+	"errors"
 	"fmt"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/connections"
@@ -43,7 +44,7 @@ type HiveotSseServerConnection struct {
 
 	isConnected atomic.Bool
 
-	// track last used time to auto-close inactive connections
+	// track last used time to auto-close inactive cm
 	lastActivity time.Time
 
 	// mutex for controlling writing and closing
@@ -51,9 +52,12 @@ type HiveotSseServerConnection struct {
 
 	// notify client of a connect or disconnect
 	connectionHandler transports.ConnectionHandler
+	// handler for requests send by clients
+	appRequestHandlerPtr atomic.Pointer[transports.RequestHandler]
+	// handler for responses sent by agents
+	responseHandlerPtr atomic.Pointer[transports.ResponseHandler]
 
-	sseChan  chan SSEEvent
-	isClosed atomic.Bool
+	sseChan chan SSEEvent
 
 	subscriptions connections.Subscriptions
 	observations  connections.Subscriptions
@@ -78,15 +82,14 @@ type HiveotSseServerConnection struct {
 // message envelope and can carry any operation.
 func (c *HiveotSseServerConnection) _send(msgType string, msg any) (err error) {
 
-	var payload []byte = nil
-	payload, _ = jsoniter.Marshal(msg)
+	payloadJSON, _ := jsoniter.MarshalToString(msg)
 	sseMsg := SSEEvent{
 		EventType: msgType,
-		Payload:   string(payload),
+		Payload:   payloadJSON,
 	}
 	c.mux.Lock()
 	defer c.mux.Unlock()
-	if !c.isClosed.Load() {
+	if c.isConnected.Load() {
 		slog.Debug("_send",
 			slog.String("to", c.clientID),
 			slog.String("MessageType", msgType),
@@ -101,9 +104,9 @@ func (c *HiveotSseServerConnection) _send(msgType string, msg any) (err error) {
 func (c *HiveotSseServerConnection) Disconnect() {
 	c.mux.Lock()
 	defer c.mux.Unlock()
-	if !c.isClosed.Load() {
+	if c.isConnected.Load() {
 		close(c.sseChan)
-		c.isClosed.Store(true)
+		c.isConnected.Store(false)
 	}
 }
 
@@ -132,58 +135,48 @@ func (c *HiveotSseServerConnection) IsConnected() bool {
 	return c.isConnected.Load()
 }
 
-// GetSessionID returns the client's authentication session ID
-//func (c *HiveotSseServerConnection) GetSessionID() string {
-//	return c.sessionID
-//}
-
-//// IsSubscribed returns true if subscription for thing and name exists
-//// If dThingID or name are empty, then "+" is used as wildcard
-//func (c *HiveotSseServerConnection) IsSubscribed(subs []string, dThingID string, name string) bool {
-//	if dThingID == "" {
-//		dThingID = "+"
-//	}
-//	if name == "" {
-//		name = "+"
-//	}
-//	subKey := dThingID + "." + name
-//	for _, v := range subs {
-//		if v == subKey {
-//			return true
-//		}
-//	}
-//	return false
-//}
-
-// ObserveProperty adds a subscription for a thing property
-//func (c *HiveotSseServerConnection) ObserveProperty(dThingID string, name string) {
-//	c.observations.Subscribe(dThingID, name, correlationID)
-//}
+// Handle incoming request messages.
+// This handles subscriptions or forwards the request to the registered handler
 //
-//// SendNotification sends a notification message if the client is subscribed
-//func (c *HiveotSseServerConnection) SendNotification(noti transports.NotificationMessage) {
-//
-//	switch noti.Operation {
-//	case wot.HTOpUpdateTD:
-//		// update the TD if the client is subscribed to its events
-//		if c.subscriptions.IsSubscribed(noti.ThingID, "") {
-//			_ = c._send(transports.MessageTypeNotification, noti)
-//		}
-//	case wot.HTOpEvent:
-//		if c.subscriptions.IsSubscribed(noti.ThingID, noti.Name) {
-//			_ = c._send(transports.MessageTypeNotification, noti)
-//		}
-//	case wot.HTOpUpdateProperty, wot.HTOpUpdateMultipleProperties:
-//		if c.observations.IsSubscribed(noti.ThingID, noti.Name) {
-//			_ = c._send(transports.MessageTypeNotification, noti)
-//		}
-//	default:
-//		slog.Error("SendNotification: Unknown notification operation",
-//			"op", noti.Operation,
-//			"thingID", noti.ThingID,
-//			"to", c.clientID)
-//	}
-//}
+// This returns nil on completion, or a response message if status info is to be returned.
+func (c *HiveotSseServerConnection) onRequestMessage(
+	req *transports.RequestMessage) (output any, status string, err error) {
+
+	// handle subscriptions
+	handled := true
+	switch req.Operation {
+	case wot.OpSubscribeEvent, wot.OpSubscribeAllEvents:
+		c.subscriptions.Subscribe(req.ThingID, req.Name, req.CorrelationID)
+	case wot.OpUnsubscribeEvent, wot.OpUnsubscribeAllEvents:
+		c.subscriptions.Unsubscribe(req.ThingID, req.Name)
+	case wot.OpObserveProperty, wot.OpObserveAllProperties:
+		c.observations.Subscribe(req.ThingID, req.Name, req.CorrelationID)
+	case wot.OpUnobserveProperty, wot.OpUnobserveAllProperties:
+		c.observations.Unsubscribe(req.ThingID, req.Name)
+	default:
+		handled = false
+	}
+	if handled {
+		output = nil
+		status = transports.StatusCompleted
+		err = nil
+		return output, status, err
+	}
+	// or pass it to the application
+	hPtr := c.appRequestHandlerPtr.Load()
+	if hPtr == nil {
+		err = fmt.Errorf("HiveotSseServerConnection:onRequestMessage: no request handler registered")
+		return output, status, err
+	}
+
+	resp := (*hPtr)(req, c)
+	output = resp.Output
+	status = resp.Status
+	if resp.Error != "" {
+		err = errors.New(resp.Error)
+	}
+	return output, status, err
+}
 
 // SendNotification sends a response to the client if subscribed.
 // this is a response to a long-running subscription request
@@ -215,19 +208,19 @@ func (c *HiveotSseServerConnection) SendNotification(resp transports.ResponseMes
 	return
 }
 
-// SendRequest sends a request message to an agent over SSE
+// SendRequest sends a request message to an agent over SSE.
 func (c *HiveotSseServerConnection) SendRequest(req *transports.RequestMessage) error {
 	// This simply sends the message as-is
 	return c._send(transports.MessageTypeRequest, req)
 }
 
-// SendResponse send a response from server to client.
+// SendResponse send a response from server to client over SSE.
 func (c *HiveotSseServerConnection) SendResponse(resp *transports.ResponseMessage) error {
 	// This simply sends the message as-is
 	return c._send(transports.MessageTypeResponse, resp)
 }
 
-// Serve serves SSE connections.
+// Serve serves SSE cm.
 // This listens for outgoing requests on the given channel
 // It ends when the client disconnects or the connection is closed with Close()
 // Sse requests are refused if no valid session is found.
@@ -323,18 +316,55 @@ func (c *HiveotSseServerConnection) Serve(w http.ResponseWriter, r *http.Request
 	)
 }
 
-func (c *HiveotSseServerConnection) SetConnectHandler(h transports.ConnectionHandler) {
+// SetConnectHandler set the connection changed callback. Used by the connection manager.
+func (c *HiveotSseServerConnection) SetConnectHandler(cb transports.ConnectionHandler) {
 	c.mux.Lock()
-	c.connectionHandler = h
+	c.connectionHandler = cb
 	c.mux.Unlock()
 }
 
-// SetRequestHandler is ignored as this is an outgoing 1-way connection
-func (c *HiveotSseServerConnection) SetRequestHandler(h transports.RequestHandler) {
+// SetRequestHandler sets the handler for incoming request messages from the
+// http connection.
+//
+// The hiveot server design requires that the messages are coming from the connections.
+// Handlers of requests must register a callback using SetRequestHandler on the connection.
+//
+// Note on how this works: The global http server receives http requests. To make
+// it look like the request came from this connection it looks up the connection
+// using the clientID and connectionID and passes the message to the registered
+// request handler on this connection.
+//
+// By default the server registers itself as the request handler when the connection
+// is created. It is safe to set a different request handler for applications that
+// handle each connection separately, for example an 'Agent' instance.
+func (c *HiveotSseServerConnection) SetRequestHandler(cb transports.RequestHandler) {
+	if cb == nil {
+		c.appRequestHandlerPtr.Store(nil)
+	} else {
+		c.appRequestHandlerPtr.Store(&cb)
+	}
 }
 
-// SetResponseHandler is ignored as this is an outgoing 1-way connection
-func (c *HiveotSseServerConnection) SetResponseHandler(h transports.ResponseHandler) {
+// SetResponseHandler sets the handler for incoming response messages from the
+// http connection.
+//
+// The hiveot server design requires that the messages are coming from the connections.
+// Handlers of responses must register a callback using SetResponseHandler on the connection.
+//
+// Note on how this works: The global http server receives responses as http requests.
+// To make it look like the response came from this connection it looks up the
+// connection using the clientID and connectionID and passes the message to the
+// registered response handler on this connection.
+//
+// By default the server registers itself as the response handler when the connection
+// is created. It is safe to set a different response handler for applications that
+// handle each connection separately, for example a server side consumer instance.
+func (c *HiveotSseServerConnection) SetResponseHandler(cb transports.ResponseHandler) {
+	if cb == nil {
+		c.responseHandlerPtr.Store(nil)
+	} else {
+		c.responseHandlerPtr.Store(&cb)
+	}
 }
 
 // SubscribeEvent handles a subscription request for an event
@@ -367,14 +397,12 @@ func (c *HiveotSseServerConnection) SetResponseHandler(h transports.ResponseHand
 func NewHiveotSseConnection(clientID string, cid string, remoteAddr string,
 	httpReq *http.Request, sseFallback bool) *HiveotSseServerConnection {
 
-	connectionID := clientID + "-" + cid // -> must match subscribe/observe requests
-
 	c := &HiveotSseServerConnection{
-		connectionID:  connectionID,
+		connectionID:  cid,
 		clientID:      clientID,
 		remoteAddr:    remoteAddr,
 		httpReq:       httpReq,
-		lastActivity:  time.Time{},
+		lastActivity:  time.Now(),
 		mux:           sync.RWMutex{},
 		observations:  connections.Subscriptions{},
 		subscriptions: connections.Subscriptions{},
@@ -383,6 +411,8 @@ func NewHiveotSseConnection(clientID string, cid string, remoteAddr string,
 		//requestHandler:  reqHandler,
 		//responseHandler: respHandler,
 	}
+	c.isConnected.Store(true)
+
 	// interface check
 	var _ transports.IServerConnection = c
 	return c

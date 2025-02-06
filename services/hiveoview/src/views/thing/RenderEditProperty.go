@@ -20,9 +20,10 @@ type RenderEditPropertyTemplateData struct {
 	ThingID    string
 	Name       string
 	DataSchema *td.DataSchema
-	Value      string
+	//Value      string
 	// The last known value of the property to edit
 	PropertyValue      consumedthing.InteractionOutput
+	PropertyInput      consumedthing.InteractionInput
 	SubmitPropertyPath string
 }
 
@@ -57,6 +58,7 @@ func getConfigValue(
 	if iout == nil {
 		return sv, errors.New("No such property: " + name)
 	}
+	iin := ct.GetPropInput(name)
 
 	// FIXME: Readproperty - handled by whom? is the digitwin service name relevant
 	// What does the wot specification for directory say?
@@ -64,11 +66,12 @@ func getConfigValue(
 	//io := consumedthing.NewInteractionOutputFromValue(&propValue, td)
 	sv = RenderEditPropertyTemplateData{
 		//TD:         &td,
-		ThingID:       thingID,
-		Name:          name,
-		DataSchema:    &iout.Schema,
-		Value:         iout.Value.Text(),
+		ThingID:    thingID,
+		Name:       name,
+		DataSchema: &iout.Schema,
+		//Value:         iout.Value.Text(),
 		PropertyValue: *iout,
+		PropertyInput: *iin,
 	}
 	return sv, nil
 }

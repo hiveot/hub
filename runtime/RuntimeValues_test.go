@@ -222,8 +222,8 @@ func TestWriteProperties(t *testing.T) {
 	defer r.Stop()
 	ag1, _ := ts.AddConnectAgent(agentID)
 	defer ag1.Disconnect()
-	cl1, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
-	defer cl1.Disconnect()
+	co1, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
+	defer co1.Disconnect()
 
 	// step 1: agent publishes a TD first: dtw:agent1:thing-1
 	td1 := ts.CreateTestTD(0)
@@ -240,10 +240,10 @@ func TestWriteProperties(t *testing.T) {
 	})
 
 	// consumer subscribes to events/properties changes
-	err = cl1.ObserveProperty("", "")
+	err = co1.ObserveProperty("", "")
 	require.NoError(t, err)
 
-	cl1.SetResponseHandler(func(msg *transports.ResponseMessage) error {
+	co1.SetResponseHandler(func(msg *transports.ResponseMessage) error {
 		// expect an action status message that is the result of invokeaction
 		if msg.Name == key1 {
 			msgCount.Add(1)
@@ -253,9 +253,9 @@ func TestWriteProperties(t *testing.T) {
 	time.Sleep(time.Millisecond * 100)
 
 	dThingID := td.MakeDigiTwinThingID(agentID, td1.ID)
-	//stat2 := cl1.WriteProperty(dThingID, key1, data1)
+	//stat2 := co1.WriteProperty(dThingID, key1, data1)
 	//require.Empty(t, stat2.Error)
-	err = cl1.Rpc(wot.OpWriteProperty, dThingID, key1, data1, nil)
+	err = co1.Rpc(wot.OpWriteProperty, dThingID, key1, data1, nil)
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond * 100)
 
@@ -263,8 +263,8 @@ func TestWriteProperties(t *testing.T) {
 	// the confirmation response is handled in the rpc
 	assert.Equal(t, int32(1), msgCount.Load())
 
-	err = cl1.ObserveProperty("", "")
+	err = co1.ObserveProperty("", "")
 	assert.NoError(t, err)
-	err = cl1.UnobserveProperty("", "")
+	err = co1.UnobserveProperty("", "")
 	assert.NoError(t, err)
 }

@@ -216,20 +216,6 @@ func (svc *DigitwinStore) ReadProperty(
 	return v, nil
 }
 
-// ReadDTW returns the Digitwin instance.
-//func (svc *DigitwinStore) ReadDTW(
-//	dThingID string) (resp digitwin.DigitalTwinInstance, err error) {
-//
-//	svc.cacheMux.RLock()
-//	defer svc.cacheMux.RUnlock()
-//	dtw, found := svc.dtwCache[dThingID]
-//	if !found {
-//		err = fmt.Errorf("dThing with ID '%s' not found", dThingID)
-//		return resp, err
-//	}
-//	return *dtw, err
-//}
-
 // ReadDThing returns the Digitwin TD document in the store.
 func (svc *DigitwinStore) ReadDThing(dThingID string) (dtd *td.TD, err error) {
 
@@ -392,7 +378,7 @@ func (svc *DigitwinStore) NewActionStart(req *transports.RequestMessage) (stored
 	aff, found := dtw.DtwTD.Actions[req.Name]
 	_ = aff
 	if !found {
-		// The request might not be an action but could also be a Thing level operation
+		// FIXME:The request might not be an action but could also be a Thing level operation
 		// Need to understand the use-cases this might occur before changing this
 		// into an error or info. Most operations should be handled by the digital twin,
 		// not by remote agents.
@@ -481,6 +467,7 @@ func (svc *DigitwinStore) UpdateEventValue(ev digitwin.ThingValue) error {
 	svc.cacheMux.Lock()
 	defer svc.cacheMux.Unlock()
 
+	ev.AffordanceType = transports.AffordanceTypeEvent
 	dtw, found := svc.dtwCache[ev.ThingID]
 	if !found {
 		err := fmt.Errorf("dThing with ID '%s' not found", ev.ThingID)
@@ -504,6 +491,7 @@ func (svc *DigitwinStore) UpdatePropertyValue(newValue digitwin.ThingValue) (
 	svc.cacheMux.Lock()
 	defer svc.cacheMux.Unlock()
 
+	newValue.AffordanceType = transports.AffordanceTypeProperty
 	dtw, found := svc.dtwCache[newValue.ThingID]
 	if !found {
 		err := fmt.Errorf("dThing with ID '%s' not found", newValue.ThingID)
@@ -531,62 +519,6 @@ func (svc *DigitwinStore) UpdatePropertyValue(newValue digitwin.ThingValue) (
 
 	return hasChanged, nil
 }
-
-// UpdateProperties updates the last known thing property values with a new
-// property value notification.
-//
-// This will bulk update all properties in the map. They are stored separately.
-//
-// agentID is the ID of the agent sending the update.
-// dThingID is the ID of the digital twin.
-// propMap map of property name-value pairs
-// correlationID provided by the agent, in response to an action or write
-//
-// This returns a map with changed property values.
-//func (svc *DigitwinStore) UpdateProperties(dThingID string, created string, propMap map[string]any) (
-//	changes map[string]any, err error) {
-//
-//	changes = make(map[string]any)
-//	for k, v := range propMap {
-//		newValue := digitwin.ThingValue{
-//			Created: created,
-//			Data:    v,
-//			Name:    k,
-//			ThingID: dThingID,
-//		}
-//
-//		//	wot.HTOpUpdateProperty, dThingID, k, v)
-//		//}
-//		changed, _ := svc.UpdatePropertyValue(newValue)
-//		if changed {
-//			changes[k] = v
-//		}
-//	}
-//	return changes, nil
-//}
-
-// WriteProperty stores a new  property value
-// This sets the 'updated' timestamp if empty
-//
-//	dThingID is the digital twin ID
-//	tv is the new thing value of the property
-//func (svc *DigitwinStore) WriteProperty(dThingID string, tv digitwin.ThingValue) error {
-//	svc.cacheMux.Lock()
-//	defer svc.cacheMux.Unlock()
-//
-//	dtw, found := svc.dtwCache[dThingID]
-//	if !found {
-//		err := fmt.Errorf("dThing with ID '%s' not found", dThingID)
-//		return err
-//	}
-//	if tv.Updated == "" {
-//		tv.Updated = time.Now().Format(wot.RFC3339Milli)
-//	}
-//	dtw.PropValues[tv.Name] = tv
-//	svc.changedThings[dThingID] = true
-//
-//	return nil
-//}
 
 // OpenDigitwinStore initializes the digitwin store using the given storage bucket.
 // This will load the digitwin directory into a memory cache.

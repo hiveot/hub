@@ -1,7 +1,6 @@
 package consumedthing
 
 import (
-	"errors"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
@@ -19,10 +18,6 @@ import (
 // InteractionListener is the handler that receives updates to interaction
 // requests, eg write property, invoke action or subscribe to events.
 type InteractionListener func(*InteractionOutput)
-
-const AffordanceTypeEvent = "event"
-const AffordanceTypeProperty = "property"
-const AffordanceTypeAction = "action"
 
 // ConsumedThing implements the ConsumedThing interface for accessing a Thing's
 // schema and values roughly in line with the WoT scripting API.
@@ -45,8 +40,8 @@ type ConsumedThing struct {
 	// subscribers to events by eventName
 	subscribers map[string]InteractionListener
 
-	// action status values
-	actionStatus map[string]*InteractionOutput
+	// action status output values
+	actionOutputs map[string]*InteractionOutput
 	// prop values
 	propValues map[string]*InteractionOutput
 	// event values
@@ -74,41 +69,29 @@ type ConsumedThing struct {
 //}
 
 // GetActionInput returns the action input value of the given action, if available
-func (ct *ConsumedThing) GetActionInput(as *transports.ActionStatus) *InteractionInput {
-	if as == nil || as.Name == "" {
-		return nil
-	}
+func (ct *ConsumedThing) GetActionInput(as transports.ActionStatus) *InteractionInput {
 	iin := NewInteractionInput(ct.tdi, as.Name, as.Input)
 	return iin
 }
 
-// GetActionOutput returns the interaction output of the latest action value.
+// GetActionOutput returns the interaction output of the given action status
 // See also GetValue that always return an iout (for rendering purpose)
 //
 // This returns nil if name is not a known action
-func (ct *ConsumedThing) GetActionOutput(name string, output any, err error, updated string) (iout *InteractionOutput) {
-	if name == "" {
-		iout = NewInteractionOutput(ct.GetTD(), AffordanceTypeAction, "",
-			"no output", "")
-		iout.Err = errors.New("No record for this action")
-	} else {
-		iout = NewInteractionOutput(ct.GetTD(), AffordanceTypeAction, name, output, updated)
-		if err != nil {
-			iout.Err = err
-		}
-	}
+func (ct *ConsumedThing) GetActionOutput(as transports.ActionStatus) (iout *InteractionOutput) {
+	iout = NewInteractionOutput(ct.GetTD(), transports.AffordanceTypeAction, as.Name, as.Output, as.Updated)
 	return iout
 }
 
 // GetActionStatus returns the ActionStatus object of the latest action value.
 //
 // This returns nil if not found
-func (ct *ConsumedThing) GetActionStatus(name string) (iout *InteractionOutput) {
-	ct.mux.RLock()
-	iout, _ = ct.actionStatus[name]
-	ct.mux.RUnlock()
-	return iout
-}
+//func (ct *ConsumedThing) GetActionStatus(name string) (as *transports.ActionStatus) {
+//	ct.mux.RLock()
+//	as, _ = ct.actionStatus[name]
+//	ct.mux.RUnlock()
+//	return as
+//}
 
 // GetAtTypeTitle return the Thing @type field as a human readable text
 // If @type contains an array then the title of the first value is returned.
@@ -139,6 +122,18 @@ func (ct *ConsumedThing) GetEventOutput(name string) (iout *InteractionOutput) {
 	iout, _ = ct.eventValues[name]
 	ct.mux.RUnlock()
 	return iout
+}
+
+// GetPropInput returns the property input value for writing
+func (ct *ConsumedThing) GetPropInput(name string) *InteractionInput {
+	ct.mux.RLock()
+	iout, _ := ct.propValues[name]
+	ct.mux.RUnlock()
+	if iout == nil {
+		return nil
+	}
+	iin := NewInteractionInput(ct.tdi, name, iout.Value.Raw)
+	return iin
 }
 
 // GetPropOutput returns the interaction output of the latest property value.
@@ -183,7 +178,7 @@ func (ct *ConsumedThing) GetValue(name string) *InteractionOutput {
 		iout, found = ct.propValues[name]
 	}
 	if !found {
-		iout, found = ct.actionStatus[name]
+		iout, found = ct.actionOutputs[name]
 	}
 	ct.mux.RUnlock()
 	_ = found
@@ -206,7 +201,7 @@ func (ct *ConsumedThing) GetAllProperties() map[string]*InteractionOutput {
 // GetAllActions returns all Thing action status values and returns them in a
 // map of InteractionOutputs.
 func (ct *ConsumedThing) GetAllActions() map[string]*InteractionOutput {
-	return ct.actionStatus
+	return ct.actionOutputs
 }
 
 // InvokeAction requests an action on the Thing
@@ -221,9 +216,9 @@ func (ct *ConsumedThing) InvokeAction(name string, iin InteractionInput) (*Inter
 		return nil, err
 	}
 	// update the
-	iout := NewInteractionOutput(ct.tdi, AffordanceTypeAction, name, resp.Output, resp.Updated)
+	iout := NewInteractionOutput(ct.tdi, transports.AffordanceTypeAction, name, resp.Output, resp.Updated)
 	ct.mux.Lock()
-	ct.actionStatus[name] = iout
+	ct.actionOutputs[name] = iout
 	ct.mux.Unlock()
 	return iout, nil
 }
@@ -264,7 +259,7 @@ func (ct *ConsumedThing) OnResponse(msg *transports.ResponseMessage) {
 		ct.mux.Unlock()
 	} else if msg.Operation == wot.OpObserveProperty {
 		// update value
-		iout := NewInteractionOutputFromResponse(ct.tdi, AffordanceTypeProperty, msg)
+		iout := NewInteractionOutputFromResponse(ct.tdi, transports.AffordanceTypeProperty, msg)
 		ct.mux.Lock()
 		ct.propValues[msg.Name] = iout
 		ct.mux.Unlock()
@@ -273,7 +268,7 @@ func (ct *ConsumedThing) OnResponse(msg *transports.ResponseMessage) {
 			subscr(iout)
 		}
 	} else if msg.Operation == wot.OpSubscribeEvent {
-		iout := NewInteractionOutputFromResponse(ct.tdi, AffordanceTypeEvent, msg)
+		iout := NewInteractionOutputFromResponse(ct.tdi, transports.AffordanceTypeEvent, msg)
 		// this is a regular value event
 		ct.mux.Lock()
 		ct.eventValues[msg.Name] = iout
@@ -283,10 +278,10 @@ func (ct *ConsumedThing) OnResponse(msg *transports.ResponseMessage) {
 			subscr(iout)
 		}
 	} else if msg.Operation == wot.OpInvokeAction {
-		iout := NewInteractionOutputFromResponse(ct.tdi, AffordanceTypeAction, msg)
+		iout := NewInteractionOutputFromResponse(ct.tdi, transports.AffordanceTypeAction, msg)
 		// this is a regular action progress event
 		ct.mux.Lock()
-		ct.actionStatus[msg.Name] = iout
+		ct.actionOutputs[msg.Name] = iout
 		ct.mux.Unlock()
 		subscr, _ := ct.subscribers[msg.Name]
 		if subscr != nil {
@@ -300,17 +295,9 @@ func (ct *ConsumedThing) OnResponse(msg *transports.ResponseMessage) {
 // # The cached interaction output of this value can be obtained with GetActionOutput
 //
 // This returns an empty ActionStatus if not found
-func (ct *ConsumedThing) QueryAction(name string) *InteractionOutput {
-	as, err := ct.co.QueryAction(ct.ThingID, name)
-	if err == nil {
-		iout := NewInteractionOutput(
-			ct.tdi, AffordanceTypeAction, name, as.Output, as.Updated)
-		ct.mux.Lock()
-		ct.actionStatus[name] = iout
-		ct.mux.Unlock()
-		return iout
-	}
-	return nil
+func (ct *ConsumedThing) QueryAction(name string) transports.ActionStatus {
+	as, _ := ct.co.QueryAction(ct.ThingID, name)
+	return as
 }
 
 // ReadEvent refreshes the last event value by reading it from the hub
@@ -320,7 +307,7 @@ func (ct *ConsumedThing) ReadEvent(name string) *InteractionOutput {
 	if err != nil {
 		return nil
 	}
-	iout := NewInteractionOutput(ct.tdi, AffordanceTypeEvent, name, resp.Output, resp.Updated)
+	iout := NewInteractionOutput(ct.tdi, transports.AffordanceTypeEvent, name, resp.Output, resp.Updated)
 	//iout.setSchemaFromTD(ct.tdi)
 	ct.mux.Lock()
 	ct.eventValues[name] = iout
@@ -337,7 +324,7 @@ func (ct *ConsumedThing) ReadEvent(name string) *InteractionOutput {
 // get the remaining values.
 func (ct *ConsumedThing) ReadHistory(
 	name string, timestamp time.Time, duration time.Duration) (
-	values []*transports.ResponseMessage, itemsRemaining bool, err error) {
+	values []*transports.ThingValue, itemsRemaining bool, err error) {
 
 	// FIXME: ReadHistory is not (yet) part of the WoT specification. Ege mentioned it would
 	// be added soon so this will change to follow the WoT specification.
@@ -359,7 +346,7 @@ func (ct *ConsumedThing) ReadProperty(name string) *InteractionOutput {
 	if err != nil {
 		return nil
 	}
-	iout := NewInteractionOutput(ct.tdi, AffordanceTypeProperty, name, resp.Output, resp.Updated)
+	iout := NewInteractionOutput(ct.tdi, transports.AffordanceTypeProperty, name, resp.Output, resp.Updated)
 	ct.mux.Lock()
 	ct.propValues[name] = iout
 	ct.mux.Unlock()
@@ -378,9 +365,9 @@ func (ct *ConsumedThing) Refresh() error {
 	for name, _ := range ct.tdi.Events {
 		tv, found := valueMap[name]
 		if found {
-			iout = NewInteractionOutputFromValue(ct.tdi, AffordanceTypeEvent, tv)
+			iout = NewInteractionOutputFromValue(ct.tdi, transports.AffordanceTypeEvent, tv)
 		} else {
-			iout = NewInteractionOutput(ct.tdi, AffordanceTypeEvent, name, nil, "")
+			iout = NewInteractionOutput(ct.tdi, transports.AffordanceTypeEvent, name, nil, "")
 		}
 		ct.propValues[name] = iout
 	}
@@ -392,10 +379,10 @@ func (ct *ConsumedThing) Refresh() error {
 	for name, _ := range ct.tdi.Properties {
 		tv, found := valueMap[name]
 		if found {
-			iout = NewInteractionOutputFromValue(ct.tdi, AffordanceTypeProperty, tv)
+			iout = NewInteractionOutputFromValue(ct.tdi, transports.AffordanceTypeProperty, tv)
 		} else {
 			iout = NewInteractionOutput(
-				ct.tdi, AffordanceTypeProperty, name, nil, "")
+				ct.tdi, transports.AffordanceTypeProperty, name, nil, "")
 		}
 		ct.propValues[name] = iout
 	}
@@ -409,7 +396,7 @@ func (ct *ConsumedThing) Refresh() error {
 		actionAff := ct.tdi.GetAction(name)
 		if actionAff != nil {
 			iout := NewInteractionOutputFromActionStatus(ct.tdi, as)
-			ct.actionStatus[name] = iout
+			ct.actionOutputs[name] = iout
 		}
 	}
 	return nil
@@ -446,14 +433,14 @@ func (ct *ConsumedThing) WriteProperty(name string, ii InteractionInput) (err er
 // Call Stop() when done
 func NewConsumedThing(tdi *td.TD, co *messaging.Consumer) *ConsumedThing {
 	c := ConsumedThing{
-		ThingID:      tdi.ID,
-		tdi:          tdi,
-		co:           co,
-		observers:    make(map[string]InteractionListener),
-		subscribers:  make(map[string]InteractionListener),
-		actionStatus: make(map[string]*InteractionOutput),
-		eventValues:  make(map[string]*InteractionOutput),
-		propValues:   make(map[string]*InteractionOutput),
+		ThingID:       tdi.ID,
+		tdi:           tdi,
+		co:            co,
+		observers:     make(map[string]InteractionListener),
+		subscribers:   make(map[string]InteractionListener),
+		actionOutputs: make(map[string]*InteractionOutput),
+		eventValues:   make(map[string]*InteractionOutput),
+		propValues:    make(map[string]*InteractionOutput),
 	}
 	return &c
 }

@@ -15,13 +15,13 @@ const ContextClientID = "clientID"
 
 // RequestParams contains the parameters read from the HTTP request
 type RequestParams struct {
-	ClientID      string
-	ThingID       string // the thing ID if defined in the URL as {thingID}
-	CorrelationID string
-	Name          string // the affordance name if defined in the URL as {name}
-	Data          any
-	ConnectionID  string
-	Op            string // the operation if defined in the URL as {op}
+	ClientID string
+	ThingID  string // the thing ID if defined in the URL as {thingID}
+	//CorrelationID string
+	Name         string // the affordance name if defined in the URL as {name}
+	Data         any
+	ConnectionID string // connectionID as provided by the client
+	Op           string // the operation if defined in the URL as {op}
 }
 
 // GetRequestParams reads the client session, URL parameters and body payload from the
@@ -32,12 +32,12 @@ type RequestParams struct {
 // that requires a session.
 //
 // This protocol binding determines three variables, {thingID}, {name} and {op} from the path.
-// It unmarshals the request body if given.
+// It unmarshals the request body into 'data', if given.
 //
 //	{operation} is the operation
 //	{thingID} is the agent or digital twin thing ID
 //	{name} is the property, event or action name. '+' means 'all'
-func GetRequestParams(r *http.Request) (reqParam RequestParams, err error) {
+func GetRequestParams(r *http.Request, data any) (reqParam RequestParams, err error) {
 
 	// get the required client session of this agent
 	reqParam.ClientID, err = GetClientIdFromContext(r)
@@ -58,8 +58,8 @@ func GetRequestParams(r *http.Request) (reqParam RequestParams, err error) {
 	}
 
 	// the connection ID is the clientID + provided clcid
-	reqParam.ConnectionID = reqParam.ClientID + "-" + headerCID
-	reqParam.CorrelationID = r.Header.Get(CorrelationIDHeader)
+	reqParam.ConnectionID = headerCID
+	//reqParam.CorrelationID = r.Header.Get(CorrelationIDHeader)
 
 	// build a message from the URL and payload
 	// URLParam names are defined by the path variables set in the router.
@@ -69,7 +69,13 @@ func GetRequestParams(r *http.Request) (reqParam RequestParams, err error) {
 	if r.Body != nil {
 		payload, _ := io.ReadAll(r.Body)
 		if payload != nil && len(payload) > 0 {
-			err = jsoniter.Unmarshal(payload, &reqParam.Data)
+			// unmarshal in the data type, if given
+			if data != nil {
+				err = jsoniter.Unmarshal(payload, data)
+				reqParam.Data = data
+			} else {
+				err = jsoniter.Unmarshal(payload, &reqParam.Data)
+			}
 		}
 	}
 
@@ -103,16 +109,13 @@ func GetHiveotParams(r *http.Request) (clientID, connID string, payload []byte, 
 		return
 	}
 
-	// the connection ID is the clientID + provided cid field
-	connID = clientID + "-" + headerCID
-
 	// build a message from the URL and payload
 	// URLParam names are defined by the path variables set in the router.
 	if r.Body != nil {
 		payload, _ = io.ReadAll(r.Body)
 	}
 
-	return clientID, connID, payload, err
+	return clientID, headerCID, payload, err
 }
 
 // GetClientIdFromContext returns the clientID for the given request

@@ -106,9 +106,9 @@ func (svc *TransportManager) GetConnectionByClientID(clientID string) transports
 
 // GetConnectionByConnectionID returns the connection of the given ID
 // If a protocol isn't available the default https url is returned
-func (svc *TransportManager) GetConnectionByConnectionID(cid string) transports.IConnection {
+func (svc *TransportManager) GetConnectionByConnectionID(clientID, cid string) transports.IConnection {
 	for _, srv := range svc.servers {
-		c := srv.GetConnectionByConnectionID(cid)
+		c := srv.GetConnectionByConnectionID(clientID, cid)
 		if c != nil {
 			return c
 		}
@@ -217,7 +217,7 @@ func StartTransportManager(cfg *ProtocolsConfig,
 
 		// 2. HTTP HiveOT SSE-SC sub-protocol
 		if cfg.EnableHiveotSSE {
-			ssePath := DefaultHiveotSsePath
+			ssePath := hiveotsseserver.DefaultHiveotSsePath
 			hiveotSseServer := hiveotsseserver.StartHiveotSseServer(ssePath,
 				svc.httpsTransport, nil, svc.handleRequest, svc.handleResponse)
 			svc.servers[transports.ProtocolTypeHiveotSSE] = hiveotSseServer
@@ -226,7 +226,7 @@ func StartTransportManager(cfg *ProtocolsConfig,
 		// 3. HTTP HiveOT WSS protocol
 		if cfg.EnableHiveotWSS {
 			converter := &wssserver.HiveotMessageConverter{}
-			wssPath := DefaultHiveotWssPath
+			wssPath := wssserver.DefaultHiveotWssPath
 			hiveotWssServer, err := wssserver.StartHiveotWssServer(
 				wssPath, converter, transports.ProtocolTypeHiveotWSS,
 				svc.httpsTransport,

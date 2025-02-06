@@ -290,8 +290,8 @@ func (tdoc *TD) AsMap() map[string]interface{} {
 	//defer tdoc.updateMutex.RUnlock()
 
 	var asMap map[string]interface{}
-	asJSON, _ := jsoniter.Marshal(tdoc)
-	_ = jsoniter.Unmarshal(asJSON, &asMap)
+	asJSON, _ := jsoniter.MarshalToString(tdoc)
+	_ = jsoniter.UnmarshalFromString(asJSON, &asMap)
 	return asMap
 }
 

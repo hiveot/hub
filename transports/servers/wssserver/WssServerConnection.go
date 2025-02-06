@@ -33,7 +33,7 @@ type WssServerConnection struct {
 
 	isConnected atomic.Bool
 
-	// track last used time to auto-close inactive connections
+	// track last used time to auto-close inactive cm
 	lastActivity time.Time
 
 	// mutex for controlling writing and closing
@@ -65,11 +65,11 @@ func (c *WssServerConnection) _send(msg any) (err error) {
 			"_send: connection with client '%s' is now closed", c.clientID)
 		slog.Warn(err.Error())
 	} else {
-		raw, _ := jsoniter.Marshal(msg)
+		raw, _ := jsoniter.MarshalToString(msg)
 		// websockets do not allow concurrent write
 		c.mux.Lock()
 		defer c.mux.Unlock()
-		err = c.wssConn.WriteMessage(websocket.TextMessage, raw)
+		err = c.wssConn.WriteMessage(websocket.TextMessage, []byte(raw))
 		if err != nil {
 			err = fmt.Errorf("_send write error: %s", err)
 		}
@@ -205,7 +205,7 @@ func (c *WssServerConnection) ReadLoop(ctx context.Context, wssConn *websocket.C
 
 // SendRequest sends the request to the client (agent).
 //
-// Intended to be used on connections that are agents for Things and connect to the hub
+// Intended to be used on cm that are agents for Things and connect to the hub
 // as a client (connection reversal).
 // If this server is the Thing agent then there is no need for this method.
 //
@@ -241,7 +241,7 @@ func (c *WssServerConnection) SendResponse(resp *transports.ResponseMessage) (er
 // If this returns an error then no response was sent.
 func (c *WssServerConnection) SendNotification(resp transports.ResponseMessage) {
 
-	slog.Info("SendNotification (subscription response)",
+	slog.Info("SendNotification",
 		slog.String("clientID", c.clientID),
 		slog.String("correlationID", resp.CorrelationID),
 		slog.String("operation", resp.Operation),
@@ -275,14 +275,14 @@ func (c *WssServerConnection) SetConnectHandler(cb transports.ConnectionHandler)
 }
 func (c *WssServerConnection) SetRequestHandler(cb transports.RequestHandler) {
 	if cb == nil {
-		c.connectionHandlerPtr.Store(nil)
+		c.requestHandlerPtr.Store(nil)
 	} else {
 		c.requestHandlerPtr.Store(&cb)
 	}
 }
 func (c *WssServerConnection) SetResponseHandler(cb transports.ResponseHandler) {
 	if cb == nil {
-		c.connectionHandlerPtr.Store(nil)
+		c.responseHandlerPtr.Store(nil)
 	} else {
 		c.responseHandlerPtr.Store(&cb)
 	}
@@ -297,11 +297,11 @@ func NewWSSServerConnection(
 	messageConverter transports.IMessageConverter,
 ) *WssServerConnection {
 
-	clcid := "WSS" + shortid.MustGenerate()
+	cid := "WSS" + shortid.MustGenerate()
 
 	c := &WssServerConnection{
 		wssConn:          wssConn,
-		connectionID:     clcid,
+		connectionID:     cid,
 		clientID:         clientID,
 		messageConverter: messageConverter,
 		httpReq:          r,

@@ -6,8 +6,9 @@ import (
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/clients/httpsseclient"
 	"github.com/hiveot/hub/transports/clients/wssclient"
-	"github.com/hiveot/hub/transports/servers"
+	"github.com/hiveot/hub/transports/servers/hiveotsseserver"
 	"github.com/hiveot/hub/transports/servers/wssserver"
 	"github.com/hiveot/hub/transports/tputils/discovery"
 	"github.com/hiveot/hub/wot/td"
@@ -155,18 +156,18 @@ func GetProtocolFromURL(fullURL string) string {
 	protocolType := ""
 
 	if strings.HasPrefix(fullURL, "https") {
-		if strings.HasSuffix(fullURL, servers.DefaultHiveotSsePath) {
+		if strings.HasSuffix(fullURL, hiveotsseserver.DefaultHiveotSsePath) {
 			protocolType = transports.ProtocolTypeHiveotSSE
-		} else if strings.HasSuffix(fullURL, servers.DefaultHiveotWssPath) {
+		} else if strings.HasSuffix(fullURL, wssserver.DefaultHiveotWssPath) {
 			protocolType = transports.ProtocolTypeHiveotWSS
-		} else if strings.HasSuffix(fullURL, servers.DefaultWotWssPath) {
+		} else if strings.HasSuffix(fullURL, wssserver.DefaultWotWssPath) {
 			protocolType = transports.ProtocolTypeHiveotSSE
 		} else {
 			protocolType = transports.ProtocolTypeWotHTTPBasic
 		}
 	} else if strings.HasPrefix(fullURL, "wss") {
 		protocolType = transports.ProtocolTypeWotWSS
-		if strings.HasSuffix(fullURL, servers.DefaultHiveotWssPath) {
+		if strings.HasSuffix(fullURL, wssserver.DefaultHiveotWssPath) {
 			protocolType = transports.ProtocolTypeHiveotWSS
 		}
 	} else if strings.HasPrefix(fullURL, "mqtts") {
@@ -233,9 +234,8 @@ func NewClient(
 	// Create the client for the protocol
 	switch protocolType {
 	case transports.ProtocolTypeHiveotSSE:
-		//bc = sseclient.NewSsescAgentClient(
-		//	fullURL, clientID, nil, caCert, timeout)
-		panic("sse-sc client is broken")
+		cc = httpsseclient.NewHiveotSseClient(
+			fullURL, clientID, nil, caCert, getForm, timeout)
 
 	case transports.ProtocolTypeHiveotWSS:
 		msgConverter := &wssserver.HiveotMessageConverter{}
@@ -247,7 +247,7 @@ func NewClient(
 		//cc = hiveotwssclient.NewHiveotWssClientConnection(
 		//	fullURL, clientID, nil, caCert,
 		//	msgConverter, nil, timeout)
-		panic("wss client is broken")
+		panic("wot wss client is broken")
 
 	case transports.ProtocolTypeWotHTTPBasic:
 		panic("Don't use HTTPS protocol, use the SSESC or WSS subprotocol instead")

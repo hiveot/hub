@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/hiveot/hub/transports/messaging"
+	"github.com/hiveot/hub/transports/tputils"
 	"github.com/urfave/cli/v2"
 )
 
@@ -122,9 +123,10 @@ func HandleListEvents(hc *messaging.Consumer, dThingID string, name string, limi
 	fmt.Println("ThingID                        Timestamp                      Event                Value (truncated)")
 	fmt.Println("-----------                    ---------                      -----                ---------------- ")
 	count := 0
-	for msg, valid, err := cursor.Last(); err == nil && valid && count < limit; msg, valid, err = cursor.Prev() {
+	for tv, valid, err := cursor.Last(); err == nil && valid && count < limit; tv, valid, err = cursor.Prev() {
+
 		count++
-		value := msg.ToString(30)
+		value := tputils.DecodeAsString(tv.Output, 30)
 		// show number of properties
 		//if msg.Name == vocab.EventNameProperties {
 		//	props := make(map[string]interface{})
@@ -132,11 +134,11 @@ func HandleListEvents(hc *messaging.Consumer, dThingID string, name string, limi
 		//	value = fmt.Sprintf("(%d properties)", len(props))
 		//}
 		// FIXME: reformat timestmp
-		updated := msg.Updated
+		updated := tv.Updated
 		fmt.Printf("%-30s %-30s %-20.20s %-30s\n",
-			msg.ThingID,
+			tv.ThingID,
 			updated,
-			msg.Name,
+			tv.Name,
 			value,
 		)
 	}

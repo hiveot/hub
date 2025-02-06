@@ -20,9 +20,8 @@ func BenchmarkUpdateDTW(b *testing.B) {
 	for m := range 1000 {
 		thingID := fmt.Sprintf("%s-%d", thing1ID, m)
 		tdDoc := createTDDoc(thingID, 20, 10, 3)
-		tdDocJson, _ := jsoniter.Marshal(tdDoc)
-		//tdDocJson, _ := msgpack.Marshal(tdDoc)
-		tddocs = append(tddocs, string(tdDocJson))
+		tdDocJson, _ := jsoniter.MarshalToString(tdDoc)
+		tddocs = append(tddocs, tdDocJson)
 	}
 	logging.SetLogging("warning", "")
 	svc, store, stopFn := startService(true)

@@ -13,6 +13,14 @@ import (
 	"sync"
 )
 
+const (
+	DefaultWotWssPath    = "/wot/wss"
+	DefaultHiveotWssPath = "/hiveot/wss"
+
+	SubprotocolWSS       = "websocket"
+	SubprotocolWSSHiveot = "wss-hiveot"
+)
+
 // WssServer is a websocket transport protocol server for use with HiveOT and WoT
 // messages.
 //
@@ -31,7 +39,7 @@ type WssServer struct {
 	// The http server to register the endpoints with
 	httpTransport *httpserver.HttpTransportServer
 
-	// registered handler of incoming connections
+	// registered handler of incoming cm
 	serverConnectHandler transports.ConnectionHandler
 
 	// registered handler of incoming requests (which return a reply)
@@ -42,11 +50,11 @@ type WssServer struct {
 	// Conversion between request/response messages and protocol messages.
 	messageConverter transports.IMessageConverter
 
-	// mutex for updating connections
+	// mutex for updating cm
 	mux sync.RWMutex
 
-	// manage the incoming connections
-	connections *connections.ConnectionManager
+	// manage the incoming cm
+	cm *connections.ConnectionManager
 
 	// The http websocket sub-protocol served, ProtocolTypeWotWSS or ProtocolTypeHiveotWSS
 	protocol string
@@ -56,9 +64,9 @@ type WssServer struct {
 
 // AddTDForms adds forms for use of this protocol to the given TD
 func (svc *WssServer) AddTDForms(tdi *td.TD) error {
-	subProtocol := "wss-hiveot"
+	subProtocol := SubprotocolWSSHiveot
 	if svc.protocol == transports.ProtocolTypeWotWSS {
-		subProtocol = "websocket"
+		subProtocol = SubprotocolWSS
 	}
 	// 1 form for all operations
 	form := td.Form{}
@@ -71,13 +79,13 @@ func (svc *WssServer) AddTDForms(tdi *td.TD) error {
 }
 
 func (svc *WssServer) CloseAll() {
-	svc.connections.CloseAll()
+	svc.cm.CloseAll()
 }
 
-// CloseAllClientConnections close all connections from the given client.
-// Intended to close connections after a logout.
+// CloseAllClientConnections close all cm from the given client.
+// Intended to close cm after a logout.
 func (svc *WssServer) CloseAllClientConnections(clientID string) {
-	svc.connections.ForEachConnection(func(c transports.IServerConnection) {
+	svc.cm.ForEachConnection(func(c transports.IServerConnection) {
 		if c.GetClientID() == clientID {
 			c.Disconnect()
 		}
@@ -93,13 +101,13 @@ func (svc *WssServer) GetConnectURL(_ string) string {
 }
 
 // GetConnectionByConnectionID returns the connection with the given connection ID
-func (svc *WssServer) GetConnectionByConnectionID(cid string) transports.IConnection {
-	return svc.connections.GetConnectionByConnectionID(cid)
+func (svc *WssServer) GetConnectionByConnectionID(clientID, cid string) transports.IConnection {
+	return svc.cm.GetConnectionByConnectionID(clientID, cid)
 }
 
 // GetConnectionByClientID returns the connection with the given client ID
 func (svc *WssServer) GetConnectionByClientID(agentID string) transports.IConnection {
-	return svc.connections.GetConnectionByClientID(agentID)
+	return svc.cm.GetConnectionByClientID(agentID)
 }
 
 // GetForm returns a form for the given operation
@@ -110,9 +118,9 @@ func (svc *WssServer) GetForm(operation string, thingID string, name string) *td
 
 // SendNotification sends a property update or event response message to subscribers
 func (svc *WssServer) SendNotification(msg *transports.ResponseMessage) {
-	// pass the response to all subscribed connections
-	// FIXME: track connections
-	svc.connections.ForEachConnection(func(c transports.IServerConnection) {
+	// pass the response to all subscribed cm
+	// FIXME: track cm
+	svc.cm.ForEachConnection(func(c transports.IServerConnection) {
 		c.SendNotification(*msg)
 	})
 }
@@ -122,9 +130,12 @@ func (svc *WssServer) SendNotification(msg *transports.ResponseMessage) {
 // writing messages.
 //
 // This doesn't return until the connection is closed by either client or server.
+//
+// serverRequestHandler and serverResponseHandler are used as handlers for incoming
+// messages.
 func (svc *WssServer) Serve(w http.ResponseWriter, r *http.Request) {
 	//An active session is required before accepting the request. This is created on
-	//authentication/login. Until then SSE connections are blocked.
+	//authentication/login. Until then SSE cm are blocked.
 	clientID, err := httpserver.GetClientIdFromContext(r)
 
 	if err != nil {
@@ -148,7 +159,7 @@ func (svc *WssServer) Serve(w http.ResponseWriter, r *http.Request) {
 	c.SetRequestHandler(svc.serverRequestHandler)
 	c.SetResponseHandler(svc.serverResponseHandler)
 
-	err = svc.connections.AddConnection(c)
+	err = svc.cm.AddConnection(c)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
@@ -160,13 +171,13 @@ func (svc *WssServer) Serve(w http.ResponseWriter, r *http.Request) {
 	err = wssConn.Close()
 	_ = err
 	// finally cleanup the connection
-	svc.connections.RemoveConnection(c.GetConnectionID())
+	svc.cm.RemoveConnection(c)
 	if svc.serverConnectHandler != nil {
 		svc.serverConnectHandler(false, nil, c)
 	}
 }
 
-// Stop closes all connections
+// Stop closes all cm
 func (svc *WssServer) Stop() {
 	svc.CloseAll()
 }
@@ -194,7 +205,7 @@ func StartHiveotWssServer(
 		serverResponseHandler: handleResponse,
 		wssPath:               wssPath,
 		messageConverter:      converter,
-		connections:           connections.NewConnectionManager(),
+		cm:                    connections.NewConnectionManager(),
 	}
 	httpTransport.AddOps(nil, nil, http.MethodGet, wssPath, srv.Serve)
 

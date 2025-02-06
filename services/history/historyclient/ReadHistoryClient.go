@@ -47,7 +47,7 @@ func (cl *ReadHistoryClient) GetCursor(thingID string, filterOnName string) (
 // to continue reading the next page.
 func (cl *ReadHistoryClient) ReadHistory(thingID string, filterOnName string,
 	timestamp time.Time, duration time.Duration, limit int) (
-	batch []*transports.ResponseMessage, itemsRemaining bool, err error) {
+	batch []*transports.ThingValue, itemsRemaining bool, err error) {
 
 	args := historyapi.ReadHistoryArgs{
 		ThingID:      thingID,

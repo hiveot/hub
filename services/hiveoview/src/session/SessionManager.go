@@ -8,7 +8,6 @@ import (
 	"github.com/hiveot/hub/transports/clients"
 	"github.com/hiveot/hub/transports/messaging"
 	"github.com/hiveot/hub/transports/servers/httpserver"
-	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"net/http"
 	"sync"
@@ -42,7 +41,6 @@ type WebSessionManager struct {
 }
 
 // add a new session with the given hub connection and send a session count event
-// This sets the getForm handler for the client for using this session TD directory
 func (sm *WebSessionManager) _addSession(
 	r *http.Request, cid string, hc transports.IClientConnection) (
 	cs *WebClientSession, err error) {
@@ -150,12 +148,6 @@ func (sm *WebSessionManager) CloseAllWebSessions() {
 	}
 }
 
-// GetForm returns the form for an operation on a Thing
-func (sm *WebSessionManager) GetForm(op, thingID, name string) *td.Form {
-	//return sess.coDir.GetForm(op, thingID, name)
-	return nil
-}
-
 // onClose handles closing of the client connection
 func (sm *WebSessionManager) onClose(cs *WebClientSession) {
 	sm._removeSession(cs)
@@ -192,7 +184,8 @@ func (sm *WebSessionManager) ConnectWithPassword(
 	w http.ResponseWriter, r *http.Request,
 	loginID string, password string, cid string) (newToken string, err error) {
 
-	hc, err := clients.NewClient(sm.hubURL, loginID, sm.caCert, sm.GetForm, sm.timeout)
+	// FIXME: use the session's directory cache to get the form
+	hc, err := clients.NewClient(sm.hubURL, loginID, sm.caCert, nil, sm.timeout)
 	if err == nil {
 		newToken, err = hc.ConnectWithPassword(password)
 	}
@@ -230,7 +223,7 @@ func (sm *WebSessionManager) ConnectWithToken(
 	w http.ResponseWriter, r *http.Request, loginID string, cid string, authToken string) (
 	cs *WebClientSession, err error) {
 
-	slog.Info("ConnectWithToken",
+	slog.Info("SetBearerToken",
 		"clientID", loginID, "cid", cid, "remoteAddr", r.RemoteAddr,
 		"nr websessions", len(sm.sessions))
 	//var newToken string
@@ -266,7 +259,7 @@ func (sm *WebSessionManager) GetSession(clientID, cid string) *WebClientSession 
 	sm.mux.RLock()
 	defer sm.mux.RUnlock()
 
-	// The following should match ConnectWithToken
+	// The following should match SetBearerToken
 	clientConnID := clientID + "-" + cid
 
 	session, found := sm.sessions[clientConnID]

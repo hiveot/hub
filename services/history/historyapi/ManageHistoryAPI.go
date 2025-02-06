@@ -48,6 +48,8 @@ type GetRetentionRuleArgs struct {
 	ThingID string `json:"thingID,omitempty"`
 	// Name of the event whose retention settings to get
 	Name string `json:"name,omitempty"`
+	// Retention for events,properties,actions or empty for all
+	AffordanceType string `json:"affordanceType,omitempty"`
 }
 type GetRetentionRuleResp struct {
 	Rule *RetentionRule `json:"rule"`

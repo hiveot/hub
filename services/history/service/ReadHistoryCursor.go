@@ -41,8 +41,9 @@ import (
 // This returns the value, or nil if the key is invalid
 // If the json in the store is invalid this returns an error
 func decodeValue(bucketID string, storageKey string, raw []byte) (
-	thingValue *transports.ResponseMessage, valid bool, err error) {
+	thingValue *transports.ThingValue, valid bool, err error) {
 
+	var senderID string
 	// key is constructed as  timestamp/name/{a|e|c}/sender, where sender can be omitted
 	parts := strings.Split(storageKey, "/")
 	if len(parts) < 2 {
@@ -52,13 +53,12 @@ func decodeValue(bucketID string, storageKey string, raw []byte) (
 	createdMsec, _ := strconv.ParseInt(parts[0], 10, 64)
 	createdTime := time.UnixMilli(createdMsec)
 	name := parts[1]
-	senderID := ""
-	operation := wot.OpSubscribeEvent
+	valueType := transports.AffordanceTypeEvent
 	if len(parts) >= 2 {
 		if parts[2] == "a" {
-			operation = wot.OpInvokeAction
+			valueType = transports.AffordanceTypeAction
 		} else if parts[2] == "p" {
-			operation = wot.OpObserveProperty
+			valueType = transports.AffordanceTypeProperty
 		}
 	}
 	if len(parts) > 3 {
@@ -75,14 +75,14 @@ func decodeValue(bucketID string, storageKey string, raw []byte) (
 			"thingID", bucketID, "name", name, "err", err.Error())
 	}
 
-	thingValue = &transports.ResponseMessage{
-		ThingID:   bucketID, // digital twin thingID that includes the agent prefix
-		Name:      name,
-		Output:    data,
-		Updated:   createdTime.Format(wot.RFC3339Milli),
-		Operation: operation,
-		SenderID:  senderID,
+	thingValue = &transports.ThingValue{
+		ThingID:        bucketID, // digital twin thingID that includes the agent prefix
+		Name:           name,
+		Output:         data,
+		Updated:        createdTime.Format(wot.RFC3339Milli),
+		AffordanceType: valueType,
 	}
+	_ = senderID
 	return thingValue, true, err
 }
 
@@ -155,7 +155,7 @@ func (svc *ReadHistory) Last(senderID string, args historyapi.CursorArgs) (*hist
 //	until is the time not to exceed in the result. Intended to avoid unnecessary iteration in range queries
 func (svc *ReadHistory) next(
 	cursor buckets.IBucketCursor, name string, until time.Time) (
-	thingValue *transports.ResponseMessage, found bool) {
+	thingValue *transports.ThingValue, found bool) {
 
 	untilMilli := until.UnixMilli()
 	found = false
@@ -214,9 +214,9 @@ func (svc *ReadHistory) Next(senderID string, args historyapi.CursorArgs) (*hist
 // Read the next number of items until time or count limit is reached
 func (svc *ReadHistory) nextN(
 	cursor buckets.IBucketCursor, filterKey string, endTime time.Time, limit int) (
-	items []*transports.ResponseMessage, itemsRemaining bool) {
+	items []*transports.ThingValue, itemsRemaining bool) {
 
-	items = make([]*transports.ResponseMessage, 0, limit)
+	items = make([]*transports.ThingValue, 0, limit)
 	itemsRemaining = true
 
 	for i := 0; i < limit; i++ {
@@ -270,7 +270,7 @@ func (svc *ReadHistory) NextN(senderID string, args historyapi.CursorNArgs) (*hi
 //	to avoid unnecessary iteration in range queries
 func (svc *ReadHistory) prev(
 	cursor buckets.IBucketCursor, name string, until time.Time) (
-	thingValue *transports.ResponseMessage, found bool) {
+	thingValue *transports.ThingValue, found bool) {
 
 	untilMilli := until.UnixMilli()
 	found = false
@@ -310,9 +310,9 @@ func (svc *ReadHistory) prev(
 // Read the previous number of items until time or count limit is reached
 func (svc *ReadHistory) prevN(
 	cursor buckets.IBucketCursor, filterKey string, endTime time.Time, limit int) (
-	items []*transports.ResponseMessage, itemsRemaining bool) {
+	items []*transports.ThingValue, itemsRemaining bool) {
 
-	items = make([]*transports.ResponseMessage, 0, limit)
+	items = make([]*transports.ThingValue, 0, limit)
 	itemsRemaining = true
 
 	for i := 0; i < limit; i++ {
@@ -379,7 +379,7 @@ func (svc *ReadHistory) Release(senderID string, args historyapi.CursorReleaseAr
 
 // seek internal function for seeking with a cursor
 func (svc *ReadHistory) seek(cursor buckets.IBucketCursor, ts time.Time, key string) (
-	tm *transports.ResponseMessage, valid bool) {
+	tm *transports.ThingValue, valid bool) {
 	until := time.Now()
 
 	// search the first occurrence at or after the given timestamp

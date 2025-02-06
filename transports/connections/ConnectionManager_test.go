@@ -30,28 +30,28 @@ func TestAddRemoveConnection(t *testing.T) {
 
 	// connection must exist
 	cid1 := c1.GetConnectionID()
-	c1b := cm.GetConnectionByConnectionID(cid1)
+	c1b := cm.GetConnectionByConnectionID(clientID, cid1)
 	require.NotEmpty(t, c1b)
 
 	// remove the connection
-	cm.RemoveConnection(cid1)
+	cm.RemoveConnection(c1b)
 	require.NoError(t, err)
 
 	// connection no longer exists
-	c1c := cm.GetConnectionByConnectionID(cid1)
+	c1c := cm.GetConnectionByConnectionID(clientID, cid1)
 	require.Empty(t, c1c)
 
 	// c2 should remain
 	cid2 := c2.GetConnectionID()
-	c2a := cm.GetConnectionByConnectionID(cid2)
+	c2a := cm.GetConnectionByConnectionID(clientID, cid2)
 	require.NotEmpty(t, c2a)
 
 	// again but this time closing connection 2
 	c2b := cm.GetConnectionByClientID(clientID)
-	cm.RemoveConnection(cid2)
+	cm.RemoveConnection(c2b)
 	//isClosed := c2b.IsClosed()
 	//assert.True(t,isClosed)
-	c2b = cm.GetConnectionByConnectionID(cid2)
+	c2b = cm.GetConnectionByConnectionID(clientID, cid2)
 	require.Empty(t, c2b)
 
 	// close all
@@ -75,24 +75,24 @@ func TestCloseClientConnection(t *testing.T) {
 	require.NoError(t, err)
 
 	// connection must exist
-	c1a := cm.GetConnectionByConnectionID(c1.GetConnectionID())
+	c1a := cm.GetConnectionByConnectionID(client1ID, c1.GetConnectionID())
 	require.NotNil(t, c1a)
 
 	// close the connection of user1
 	cm.CloseAllClientConnections(client1ID)
 
 	// connection no longer exists
-	c1b := cm.GetConnectionByConnectionID(c1.GetConnectionID())
+	c1b := cm.GetConnectionByConnectionID(client1ID, c1.GetConnectionID())
 	require.Empty(t, c1b)
 
 	// connection user 2 must still exist
-	c2a := cm.GetConnectionByConnectionID(c2.GetConnectionID())
+	c2a := cm.GetConnectionByConnectionID(client2ID, c2.GetConnectionID())
 	require.NotEmpty(t, c2a)
 
 	// close all
 	cm.CloseAll()
 
-	c2b := cm.GetConnectionByConnectionID(c2.GetConnectionID())
+	c2b := cm.GetConnectionByConnectionID(client2ID, c2.GetConnectionID())
 	require.Empty(t, c2b)
 }
 
@@ -136,7 +136,7 @@ func TestConnectionTwice(t *testing.T) {
 	require.Error(t, err)
 
 	// One connection remains
-	c1a := cm.GetConnectionByConnectionID(c1.GetConnectionID())
+	c1a := cm.GetConnectionByConnectionID(client1ID, c1.GetConnectionID())
 	require.NotNil(t, c1a)
 }
 

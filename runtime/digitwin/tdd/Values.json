@@ -125,6 +125,11 @@
 					"title": "Updated time",
 					"description": "Time the value was last updated",
 					"type": "string"
+				},
+				"affordanceType": {
+					"title": "Type of value",
+					"description": "Value of an 'property', 'event', or 'action'",
+					"type": "string"
 				}
 			}
 		}

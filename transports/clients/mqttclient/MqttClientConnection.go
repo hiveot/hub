@@ -520,7 +520,7 @@ func (cl *MqttClientConnection) _parseResponse(data []byte, resp interface{}) er
 //}
 
 // RefreshToken refreshes the authentication token
-// The resulting token can be used with 'ConnectWithToken'
+// The resulting token can be used with 'SetBearerToken'
 // This is specific to the Hiveot Hub.
 func (cl *MqttClientConnection) RefreshToken(oldToken string) (newToken string, err error) {
 	return oldToken, fmt.Errorf("not implemented")

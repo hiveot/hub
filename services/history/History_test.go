@@ -88,10 +88,10 @@ func startHistoryService(clean bool) (
 // generate a random batch of property and event values for testing
 // timespanSec is the range of timestamps up until now
 func makeValueBatch(agentID string, nrValues, nrThings, timespanSec int) (
-	batch []*transports.ResponseMessage, highest map[string]*transports.ResponseMessage) {
+	batch []transports.ThingValue, highest map[string]transports.ThingValue) {
 
-	highest = make(map[string]*transports.ResponseMessage)
-	valueBatch := make([]*transports.ResponseMessage, 0, nrValues)
+	highest = make(map[string]transports.ThingValue)
+	valueBatch := make([]transports.ThingValue, 0, nrValues)
 	for j := 0; j < nrValues; j++ {
 		randomID := rand.Intn(nrThings)
 		randomName := rand.Intn(10)
@@ -103,31 +103,35 @@ func makeValueBatch(agentID string, nrValues, nrThings, timespanSec int) (
 		dThingID := td.MakeDigiTwinThingID(agentID, thingID)
 
 		randomMsgType := rand.Intn(2)
-		op := wot.OpSubscribeEvent
+		affType := transports.AffordanceTypeEvent
 		if randomMsgType == 1 {
-			op = wot.OpObserveProperty
+			affType = transports.AffordanceTypeProperty
 		}
 
-		msg := transports.NewNotificationResponse(op, dThingID, names[randomName],
-			fmt.Sprintf("%2.3f", randomValue), nil)
-		msg.SenderID = agentID
-		msg.Updated = randomTime.Format(wot.RFC3339Milli)
+		tv := transports.ThingValue{
+			ID:             fmt.Sprintf("%d", randomID),
+			Name:           names[randomName],
+			Output:         fmt.Sprintf("%2.3f", randomValue),
+			ThingID:        dThingID,
+			Updated:        randomTime.Format(wot.RFC3339Milli),
+			AffordanceType: affType,
+		}
 
 		// track the actual most recent event for the name for things 3
 		if randomID == 0 {
-			if _, exists := highest[msg.Name]; !exists ||
-				highest[msg.Name].Updated < msg.Updated {
-				highest[msg.Name] = msg
+			if _, exists := highest[tv.Name]; !exists ||
+				highest[tv.Name].Updated < tv.Updated {
+				highest[tv.Name] = tv
 			}
 		}
-		valueBatch = append(valueBatch, msg)
+		valueBatch = append(valueBatch, tv)
 	}
 	return valueBatch, highest
 }
 
 // add some history to the store. This bypasses the check for thingID to exist.
 func addBulkHistory(svc *service.HistoryService, agentID string, count int, nrThings int,
-	timespanSec int) (highest map[string]*transports.ResponseMessage) {
+	timespanSec int) (highest map[string]transports.ThingValue) {
 
 	var batchSize = 1000
 	if batchSize > count {
@@ -142,9 +146,11 @@ func addBulkHistory(svc *service.HistoryService, agentID string, count int, nrTh
 		// no thingID constraint allows adding events from any things
 		start := batchSize * i
 		end := batchSize * (i + 1)
-		err := addHist.AddMessages(evBatch[start:end])
-		if err != nil {
-			slog.Error("Problem adding events.", "err", err)
+		for j := start; j < end; j++ {
+			err := addHist.AddValue(agentID, evBatch[j])
+			if err != nil {
+				slog.Error("Problem adding events.", "err", err)
+			}
 		}
 	}
 	return highest
@@ -192,7 +198,7 @@ func TestAddGetEvent(t *testing.T) {
 		SenderID:  agent1ID, ThingID: dThing1ID, Name: evTemperature,
 		Output: "12.5", Updated: fivemago.Format(wot.RFC3339Milli),
 	}
-	err := addHist.AddEvent(ev1_1)
+	err := addHist.AddMessage(ev1_1)
 	assert.NoError(t, err)
 	// add thing1 humidity from 55 minutes ago
 	ev1_2 := &transports.ResponseMessage{
@@ -200,7 +206,7 @@ func TestAddGetEvent(t *testing.T) {
 		SenderID:  agent1ID, ThingID: dThing1ID, Name: evHumidity,
 		Output: "70", Updated: fiftyfivemago.Format(wot.RFC3339Milli),
 	}
-	err = addHist.AddEvent(ev1_2)
+	err = addHist.AddMessage(ev1_2)
 	assert.NoError(t, err)
 
 	// add thing2 humidity from 5 minutes ago
@@ -210,7 +216,7 @@ func TestAddGetEvent(t *testing.T) {
 		SenderID:  agent1ID, ThingID: dThing2ID, Name: evHumidity,
 		Output: "50", Updated: fivemago.Format(wot.RFC3339Milli),
 	}
-	err = addHist.AddEvent(ev2_1)
+	err = addHist.AddMessage(ev2_1)
 	assert.NoError(t, err)
 
 	// add thing2 temperature from 55 minutes ago
@@ -219,7 +225,7 @@ func TestAddGetEvent(t *testing.T) {
 		SenderID:  agent1ID, ThingID: dThing2ID, Name: evTemperature,
 		Output: "17.5", Updated: fiftyfivemago.Format(wot.RFC3339Milli),
 	}
-	err = addHist.AddEvent(ev2_2)
+	err = addHist.AddMessage(ev2_2)
 	assert.NoError(t, err)
 
 	// Test 1: get events of thing1 older than 300 minutes ago - expect 1 humidity from 55 minutes ago
@@ -362,7 +368,7 @@ func TestAddProperties(t *testing.T) {
 	assert.NotEmpty(t, msg)
 	hasProps := false
 	for valid && err == nil {
-		if msg.Operation == wot.OpObserveProperty {
+		if msg.AffordanceType == transports.AffordanceTypeProperty {
 			hasProps = true
 			require.NotEmpty(t, msg.Name)
 			require.NotEmpty(t, msg.Output)

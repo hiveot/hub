@@ -114,22 +114,22 @@ func (rnr *RnRChan) Open(correlationID string) chan *transports.ResponseMessage 
 // Use 'autoclose' to immediately close the channel when no further responses are
 // expected. (they would not be read and thus lost)
 //
-// If the channel was closed this returns completed with no reply
+// If the channel was closed this returns hasResponse with no reply
 func (rnr *RnRChan) WaitForResponse(
 	replyChan chan *transports.ResponseMessage, timeout time.Duration) (
-	completed bool, resp *transports.ResponseMessage) {
+	hasResponse bool, resp *transports.ResponseMessage) {
 
 	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
 	defer cancelFunc()
 	select {
 	case rData := <-replyChan:
 		resp = rData
-		completed = true
+		hasResponse = true
 		break
 	case <-ctx.Done():
-		completed = false
+		hasResponse = false
 	}
-	return completed, resp
+	return hasResponse, resp
 }
 
 func NewRnRChan() *RnRChan {
