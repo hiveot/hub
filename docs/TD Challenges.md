@@ -1,19 +1,19 @@
 # Questions related to the use of TD in hiveot
 
-1. How to define an event or action in the TD that carries a TD? [Workaround]
+1. How to define an event or action in the TD that carries a TD? [Solved]
 > Use-case: Thing agents (like protocol bindings) publish events with the TD of the things they manage.
-> Use-case: Consumers query TDD's from the directory.
-* Workaround: return a string with the JSON serialized TD.
+> Use-case: Consumers query TD's from the directory.
+* Solution: use the JSON serialized TD.
 
 2. How to notify consumers of changed property values? [Solved]
 > Use-case: When one or more property values have changed, consumers must be notified.
 * Sending them as an event would mean duplicating all properties in the TD as events which seems overkill and not the intended use.
-* Current solution: define a '$properties' event that contains a list of property values, similar to [webthings.io events resource](https://webthings.io/api/#events-resource).
-* New solution: define using the observeproperty Form operation and let the protocol handle it
+* Old solution: define a '$properties' event that contains a list of property values, similar to [webthings.io events resource](https://webthings.io/api/#events-resource).
+* New solution: Use the WoT 'observeproperty' operation and let the protocol handle it.
 
-3. How to updates multiple properties? [Answered]
->  Use-case: user applies changes to multiple properties values in one request.
-* Answer: The TD form defines "writemultipleproperties" operations. 
+3. How to write multiple properties? [solved]
+> Use-case: user applies changes to multiple properties values in one request.
+> Solution: Don't support writing multiple properties. Use writeproperty instead. This avoids the ambiguity of the payload. Writing properties is rare enough so it isn't needed.
 
 4. How to identify the actual "meaning" of a property/event/action? [ambiguous, unsolved]
 > How does the consumer know a property or event holds a temperature?
@@ -22,24 +22,24 @@
 * This doesn't allow multiple manufacturers though and isn't really standard.
 * Ideal solution: WoT defines an IoT vocabulary using ISO standards, that manufacturers follow. Better to have an 80% standardized vocabulary than none at all. This still needs the use of @type or something similar for identification.
 
-5. How does discovery describe the place where things are kept? [Answered]
-* Answer: Ege sent a [link](https://w3c.github.io/wot-discovery/#introduction-dns-sd-sec). To be further investigated.
+5. How does discovery describe the place where Things are kept? [Answered]
+* Answer: Ege sent a [link](https://w3c.github.io/wot-discovery/#introduction-dns-sd-sec) to the discovery specification. To be further investigated.
 
 6. Is there an implied or intended relationship between properties, events/actions, or should they be considered independent? [Answered]
 > Use-case 1: send an event if one or more properties change.
 * option1: send an event with the property value
 > Use-case 2: send an event if an action has completed to notify other consumers.
-* Current solution: property and actions keys refer to the same Thing state. When an action completes, a property with the same name updates with the action result. Note that the property value can have a different dataschema as the action result. This is NOT WoT.
-* Answer: Officially, there is no relationship between properties, actions and events. There is however a discussion to use properties to reflect state resulting from actions.
-* Conclusion: Anything stateful is best represented with properties if possible. 
-  * Don't use actions if it can be a property. 
-  * Use action if there is no input (a property would have input)
-  * Use action if the input is complex (multiple parameters)
-  * Use action if the action is 'safe' (Thing state is not affected - the output is thus only of interest to the consumer invoking the action)
-  * This leads to another problem, differentiating between primary and secondary properties. (see below) 
+* Current solution: property, events and actions with the same name refer to the same Thing state. 
+* Answer: Officially, there is no relationship between properties, actions and events names.
+* HiveOT's approach:
+  1. HiveOT agents use events to report sensor state changes and changes that do not affect the state of the device.
+  2. HiveOT agents use actions to control actuators and for invoking stateless actions.
+  3. Everything else is considered an attribute or configuration property. 
+  4. The digital twin makes the current state of sensors and actuator available as read-only properties with the same name. This is for convenience of consumers that expects all state to exist as properties. 
 
 7. How best to request reading the 'latest' value of an event? [Answered]
-* Answer: the Thing level form can include an operation 'readevent' and 'readallevents'. This is not standard WoT. Alternatively this can be defined as actions of the digital twin service TD.
+* Answer: If the event represents a state, read its corresponding property value.
+* Answer: Support Thing Level operations 'readevent' and 'readallevents' to read the latest value of any event. This is provided by the digital twin service and not expected from Thing protocol bindings.
 
 8. How to define global constants? [Workaround]
 > Use-case: Various properties, events and actions use the same type of values. For example, unit names, on/off and state values, etc.
@@ -49,8 +49,9 @@
   The code generator creates the type and constants in the scope of the agent defining the thing.
 
 9. Would it be out of scope to use a TD to define a RPC service API? [Non-WoT Workaround]
- * Hiveot provides services for the directory, value storage, history storage, authentication and others using a TD, and generates the API with documentation from it (experimental).  
- * Answer: In HiveOT all services are defined through a TDD and tdd2go will generate golang code for it. Service calls behave exactly as any other 'safe' action. It is up to the protocol binding to link responses to the requests.   
+ * Hiveot provides services for the directory, value storage, history storage, authentication and others using a TD, and generates the API with documentation from it (experimental).
+ * Answer 1: yes out of scope for WoT
+ * Answer 2: Hiveot provides a 'Consumer' client that runs of top of the transport protocol bindings and correlate a response with a request using the 'correlationID' field contained in request and response messages.
   
 10. 5.3.3.1 SecurityScheme  [Ambiguous]
 > The forth paragraph: "Security schemes generally may require additional authentication parameters, such as a password or key. The location of this information is indicated by the value associated with the name in, often in combination with the value associated with name."
@@ -102,14 +103,20 @@ Answer: encoding is handled in the transport protocol. The forms in the TD conta
 
 18. How to describe a map of objects in the action output dataschema? [Workaround]
 * Workaround: don't use maps, use arrays.
+* Solution: Define the output as an object schema with a single property without a name. That property then defines a nested schema of the actual data.
+* Recommendation: As this is very obfuscated and there is already an array type, it would be helpful to add a 'map' type. 
 
 19. How to describe basic vs advanced properties, events and actions in the TD? [Ambiguous, unsolved]
-Use case: human consumers might be interested in some properties, events or actions but not all of them. The human consumer should be able to just look at the essential data without being overwhelmed with more advanced ones. Some zwave devices have close to 100 properties of which only a handful are useful to the regular consumer. How to differentiate them?
+Use case: human consumers might be interested in some properties but not all of them. The human consumer should be able to just look at the key properties without being overwhelmed with less important or more advanced ones. Some zwave devices have close to 100 properties of which only a handful are useful to the regular consumer. How to differentiate them?
     * Note: also check out https://webthings.io/schemas/
-    * option1: use the hiveot vocabulary to indicate basic properties using @type and the hiveot @context vocabulary. 'sensor', 'actuator' 
-    * option2: add a custom field 'isSensor' and 'isActuator' to property affordance to differentiate configuration from sensor/actuator type properties
-    * option3: start an initiative to combine all existing ontologies into a single world wide accepted ontology, vocabulary and classification of the majority of IoT devices with their properties, events and actions. Great idea, ... but erm, this looks like a lot of work, unless you enjoy herding cats as a hobby.
-    * Option4: push the problem to the client. Maybe use @type to identify which properties are considered important. This requires standardization of property @type which doesn't exist. 
+Options:
+    * option1: use the hiveot vocabulary to indicate basic properties using @type and the hiveot @context vocabulary. 'sensor', 'actuator'
+    * option2: use events for sensors and actions for actuators.
+    * option3: add a custom field 'isSensor' and 'isActuator' to property affordance to differentiate configuration from sensor/actuator type properties
+    * option4: start an initiative to combine all existing ontologies into a single world wide accepted ontology, vocabulary and classification of the majority of IoT devices with their properties, events and actions. Great idea, ... but erm, this looks like a lot of work, unless you enjoy herding cats as a hobby.
+    * Option5: push the problem to the client. Maybe use @type to identify which properties are considered important. This requires standardization of property @type which doesn't exist. 
+Current solution:
+    * option 2: sensors publish as events and actuators are controlled with actions.
 
 20. Can authorization rules (eg required roles) be applied to a TD? [not supported] 
 Use case: Only show allowed actions and properties to a user based on their authorization. 
@@ -123,5 +130,5 @@ Use case: client invokes action and expects an output value. The TD describes a 
 Section "5.3.4.2.2 Response-related Terms Usage" describes a response name-value pair that can be used, but where is it described? How does this fit in the response data? 
 * Workaround 1: use one-of as the data schema and describe the output based on a flag. This leads to all action outputs to have a dataschema of type one-of. This defeats the purpose of additionalResponses as it doesn't use it.
 * Workaround 2: parse the expected output and on failure parse using the schemas from additionalResponses. There is no way of telling which one to use until one fails. 'Try it until it works' is not a specification.
-* Workaround 3: include a 'dataschema' metadata field in the transport that describes the dataschema used in the result.  
+* Workaround 3: include a 'dataschema' metadata field in the transport that identifies the dataschema of the output.  
 

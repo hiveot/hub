@@ -11,22 +11,25 @@ The WoT specification is closer to a framework than an application. As such it d
 
 ## What Are 'Things'?
 
-Things are I/O Devices and services that are a source of information. 
+Things are I/O Devices and Services that are a source of information. 
 
-Most IoT 'things' are pieces of hardware that have embedded software that manages its behavior. IoT devices build with software are also considered Things as are services that provide a capability to retrieve information, for example a weather forecasting service.
+Most IoT 'things' are pieces of hardware that have embedded software that manages its behavior. Virtual IOT devices build with software are also considered Things as are Services that provide a capability to retrieve information, for example a weather forecasting service.
 
 HiveOT makes the following distinction based on the primary role of the device. These are identified by their device type as provided in the TD @type field and defined in the HiveOT vocabulary.
 
-* A gateway is a device that provides access to other Things. A Z-Wave controller USB-stick is a gateway that uses the Z-Wave protocol to connect to Z-Wave devices. A gateway is a Thing independent of the Things it provides access to and can have its own inputs, outputs or configuration. When gateways are not WoT compatible, an agent is needed as a bridge to the Hub.
-* An agent is a service that communicates with the Hub to publishes Thing information and receive action requests. An agent has authorization to update the digital twin representation on the Hub of the things it is the publisher of. For example, the Z-Wave agent publishes Thing information of the Z-Wave controller and the devices obtained from that controller, whose digital twin representation can be interacted with by consumers. 
-* An I/O device is a Thing whose primary role is to provide access to inputs and outputs and has its own attributes and configuration.
-* A service is a software Thing that offers a capability in the IoT ecosystem. For example, a history service provides a history of Thing values.
+* A gateway is a device that provides access to other Things. A Z-Wave controller USB-stick is a gateway that uses the Z-Wave protocol to connect to Z-Wave devices. A gateway is a Thing independent of the Things it provides access to and can have its own inputs, outputs or configuration. When gateways are not WoT compatible, an agent is used as a bridge to the Hub.
+* An agent is a protocol binding service that provides access to the 'Exposed Things' it manages using a WoT compatible API. HiveOT agents use connection reversal, in that they connect to the Hub instead of the other way around. 
+For example, the Z-Wave agent publishes Thing information of the Z-Wave controller and the devices obtained from that controller, whose digital twin representation can be interacted with by consumers. 
+* A service is a software agent that offers its capabilities as Things. For example, a history service provides a Thing that contains actions to read the history of collected data.
 
 ## Thing Description Document (TD)
 
 The Thing Description document is a [W3C WoT standard](https://www.w3.org/TR/wot-thing-description11/#thing) to describe Things, their configuration, inputs and outputs. TDs that are published to the Hub by agents  MUST adhere to this standard and use the JSON representation format. 
 
-The Hub creates a digital twin TD from the published TD to be provided to consumers. In the process it will update the Thing ID, replace TD Forms and replace authentication information.  
+The Hub digitwin (digital twin) service is a consumer of Things provided by protocol binding agents. It creates a digital twin representation of the Things it consumers. 
+
+The hub acts as an agent of the digital twin Things it has consumed and makes the digital twin Things available to consumers. It therefore contains two TD's for each Thing, the native TD it consumed and the digital twin TD it exposes. 
+The digital twin TD will have an updated Thing ID, TD Forms and authentication information.  
 
 
 **TD Attributes:**
@@ -121,7 +124,7 @@ With the core device types standardized, the related device title and descriptio
 
 The 'id' field uniquely identifies the Thing using a URI.
 
-The WoT standard defines the ID to start with the "urn:" prefix. HiveOT uses the 'dtw:{agentID}' prefix for Things provided by agents. (still not sure if the urn: prefix is required and why. Various examples doesn't include it)
+The WoT standard defines the ID to start with the "urn:" prefix. HiveOT uses the 'dtw:{agentID}' prefix for digital twin Things provided by agents. (still not sure if the urn: prefix is required and why. Various examples don't include it)
 
 HiveOT bindings use the hardware device identification where possible. For example, zwave node 15 on homeID "aabbccdd" would have an 'id' value of "aabbccdd.15". When published by an agent with account ID 'zwavejs' the digitwin Thing-ID will be "dtw:zwavejs:aaabbbcc.15".
 
@@ -154,6 +157,7 @@ Properties are defined with the so-called [property affordance](https://www.w3.o
 |--------------|-------------------------------------------------------------------------------------|
 | @type        | property type classification (see [1])                                              | 
 | type         | WoT defined data-type: string, number, integer, boolean, object, array, or null [2] |
+| schema       | Name of the schema defined in the 'schemaDefinitions' section in the TD             |
 | title        | Short human readable label for the property.                                        |
 | description  | Longer human readable description.                                                  |
 | enum         | Restricted set of values [3]                                                        |
@@ -176,31 +180,42 @@ Notes:
 2. type. WoT defines native types. HiveOT also allows the use of types defined in schemaDefinitions. This is contentious as WoT only allows schemaDefinitions in the forms 'AdditionalExpectedResponse' section. 
 3. Enum values are machine identifiers. They are not translatable as this would change their value. Unfortunately the WoT TD standard does not define a method to relate an enum value to a title or description. HiveOT partly works around this by using the @type classification for presentation of enum values for standard properties.
 4. With almost everything being a property, these is a need to identify whether it is a sensor, actuator, configuration or Thing attribute. 
-5. Forms in development. The WoT specifies Forms to define the protocol for operations. The hub only uses top level forms. Forms in affordances are empty.
+5. Forms in development. The WoT specifies Forms to define the protocol for operations. The hub only uses top level forms. Forms in affordances are currently empty.
 
 ### Use of properties vs actions?
 
-The WoT specifications does not describe how best to link Thing state that is the result of actions on the Thing. One recommended approach however is to represent the state with a property where possible. 
+The WoT specifications does not describe how best to link Thing state that is the result of actions on the Thing. 
 
-HiveOT bindings therefore only use Actions for 'safe' stateless actions, actions that have no input, and actions that require multiple input parameters. 
+Since properties are intended to present device state, all stateful action output therefore has a corresponding property. Configuration is handled through writable properties and do not use actions.
 
-As a convention, hiveot actions that do affect state always include this as one or more properties in the output schema. If the consumer is not aware of this then it isn't affected. If it is aware of this then it can use this to present the current output state.
+There are 2 types of actions to consider, stateless and stateful. An example of stateless actions are services that provide output based on request input. An example of a stateful action is an actuator such as a light switch.
 
-Consumers are notified when properties changes if they are observed. 
+Actuators are often controlled through inputs that can have one or multiple input values. For this reason, properties are not used to control actuators, as doing so would define some actuators as properties and others as actions, depending on the number of inputs. 
+
+HiveOT bindings therefore use actions for actuators. 
+
+Action output: The convention followed is that the action output for actuators provides the resulting state change(s). If multiple states/properties are affected then the output is an object with a field for each affected state/property. This links the action output to the properties that holds the current state. This convention is followed by all hiveot IoT protocol bindings where possible.
+
+Consumers are notified when properties change if they are observed, or can subscribe to an event (see below)  
 
 ## Events
 
 When to use events? 
-HiveOT bindings use events to notify of something that doesn't affect the state of the thing. Stateful events are handled through properties.
+HiveOT bindings use events in two cases:
+1. To notify of something that doesn't affect the state of the thing. 
+2. Sensor or actuator output state changes.
 
-Some examples:
-* the update of a TD is sent as an Event with the operation "updateTD". This is not supported in WoT.  
-* alarm status is a property as it is state of a thing.
+This means that a stateful action has a corresponding property and a corresponding event. 
 
+The motivation behind this approach is to distinguish sensor and actuator output from other properties. Consumers only need to subscribe to events to display sensor and actuator status in a dashboard for example. Most devices have many more properties than sensor/actuator outputs so this serves to distinguish between them. At the same time this approach still allows the use of properties, in case presentation is not relevant.
+
+It is recommended that WoT addresses the lack of classification in the property affordance so it can be used to present sensors and actuators separate from other properties.
+
+In addition, hiveot uses the @type field to classify a property but this is too fine of a granularity for this purpose and harder to apply consistently.
 
 ## Actions
 
-Actions are used to ~~control device inputs or~~ request an operation on a service or perform an operation on a thing that has no input or complex input.
+Actions are used to control actuators or to request an operation on a service.
 
 The format of actions is defined in the Thing Description document
 through [action affordances](https://www.w3.org/TR/wot-thing-description/#actionaffordance).
@@ -216,7 +231,7 @@ The action name is the instance name of the action. In case the device supports 
 }
 ```
 
-Where {name} is the instance name of the action, and ActionAffordance describes the action details. The action name shares the namespace with properties. The main internal state affected by an action is represented with a property of the same name:
+Where {name} is the instance name of the action, and ActionAffordance describes the action details. The action name shares the namespace with events and properties. The main internal state affected by an action is represented with a property of the same name. If multuple states are affected, the output schema defines an object with a nested property for each affected state.
 
 For example, the schema of an action to control an onoff switch might be defined as:
 
@@ -240,7 +255,8 @@ For example, the schema of an action to control an onoff switch might be defined
     "onoff-1": {
        "@type": "hiveot:actuator:switch",
        "title": "Switch 1 Status",
-       "type": "boolean" 
+       "type": "boolean", 
+       "readOnly": true
     }
 }
 ```
@@ -256,55 +272,58 @@ The action message to turn the switch on then looks like this:
 
 In HiveOT actions result in an update of the property that presents the internal state affected by the action with the same name.
 
-
+Properties that reflect action output state can be read-only or writable. When writable they behave the same as actions that take only a single input parameter and affect a single state value. To avoid confusion it is convention in HiveOT to have these properties defined as read-only.  
 
 ## Thoughts, Notes, Q&A
 
 ### How to track action progress?
 
-Updated: 2025-01-14: Action progress is no longer tracked through properties. Instead actions are only used in either stateless, no-input, or complex input situations.  
-The action returns the result as an output which is returned to the caller.
+The consumer that initiates the action receives responses to the actions containing an ActionStatus object. Long running actions return a 'running' state and can optionally contain an intermediate output as per dataschema. When completed the last ActionStatus message contains status completed and the output as defined in the action affordance. 
 
-If an action affects Thing state, eg properties, the action out has corresponding field names in its data schema. This is a hiveot convention and not part of WoT.
+If an action affects Thing state, eg properties, the action out has corresponding field names in its data schema. This is a HiveOT convention and not part of WoT.
+
+Actuator output state changes are also reported as events with the same name as the property. This too is a HiveOT convention and not a WoT specification. 
 
 ### How to distinguish between important properties and auxiliary properties?
 
-Properties that represent state that is considered important to the consumer are defined as 'observable' in the TDD. 
+The WoT does not specify how to distinguish between a less and more important property. In presentation the consumer will see a long list of all possible properties. 
+This is not very user-friendly so HiveOT uses the following convention to help differentiate:
+
+1. The property @type field classifies the property usage.
+2. An extra 'advanced' field indicates this is an advanced property not for common use. A user interface can hide these under normal circumstances.
+
+Neither solution is standard though.
 
 ### When to use events over properties?
 
-Events can be used to indicate a change that has no corresponding observable state in the Thing. 
+Events are used to indicate a change that has no corresponding observable state in the Thing.
 
-Question: if a light switch state has an observable property, is it still useful to have an event indicating a change? Do observable properties replace events?
-Answer: In this case there is no need for an event.
+In addition, events are also used to indicate a change in sensor or actuator output. In these cases there will be a corresponding property change so consumers can observe the property or subscribe to the event. In most cases event subscription is all that is needed for day to day use.
 
 
 ### How to prevent ghost actions?
 
 Action request can take some time to be processed due to communication delays, and the ability for some devices to sleep to conserve power. The request can be delayed or aborted at any step along the way.
 
-Actions can be time sensitive. For example, a request to turn on a light might is likely not applicable an hour later. Queuing these requests could lead to 'ghost' actions. Ghost actions are actions that are 'lost in time' and are applied when they no longer should be.
+Actions can be time-sensitive. For example, a request to turn on a light might is likely not applicable an hour later. Queuing these requests could lead to 'ghost' actions. Ghost actions are actions that are 'lost in time' and are applied when they no longer should be.
 
-To avoid ghost actions, each action request carries an expiry timestamp that indicates when the request should be discarded if it cannot be handed over to the actual device in time.
+To avoid ghost actions, each action request carries an expiry timestamp that indicates when the request should be discarded if it cannot be handed over to the actual device in time. As a convention, HiveOT protocol bindings assume a default time window of 1 hour if no expiry is provided.
 
-Where to define the maximum lifetime or  expiry of an action? Is this determined by the consumer or the Thing?
+Where to define the maximum lifetime or expiry of an action? Is this determined by the consumer or the Thing? A configuration property? 
 
-### How to track the life cycle of an action?
+### How to track the life cycle of a request?
 
 The lifecycle states of an action are:
-1. requested - the request is sent but not yet acknowledged by the agent. This state is only known on the sending client.
-2. pending - the request is received by the agent. The agent responds with this status immediately, even if the underlying device is not reachable.
-3. applied - the underlying device has received and applied the request. It has not yet completed and can still be rejected by the device. 
+1. pending - the request is received by the agent. The agent responds with this status immediately, even if the underlying device is not reachable.
+2. running - the underlying device has received and applied the request. It has not yet completed and can still be rejected by the device. 
+3. failed - something went wrong
 4. completed - the agent has received confirmation that the action has been completed. This is the endpoint of the request lifecycle. The agent can reply with this status immediate or it can be sent as a lifecycle event.
 
-When things don't go to plan:
-5. aborted - the request is aborted by the consumer, agent, device, or has expired.
+Agents can immediately respond with the status pending, running, completed or failed. The status completed and failed indicate the end of the request lifecycle.
 
-Agents can immediately respond with the status pending, applied, completed or aborted. The status completed and aborted indicate the end of the request lifecycle.
+When the agent responds with pending or running, it must include a correlationID that can be used to abort a request, if supported, and to correlate them with action lifecycle events.
 
-When the agent responds with pending or accepted, it must include a request ID that can be used to abort a request, if supported, and to correlate them with action lifecycle events.
-
-While intermediate lifecycle states (pending or accepted) are optional, a completion state - completed or aborted - MUST be sent by the agent when ending the action request lifecycle.
+While intermediate lifecycle states (pending or running) are optional, a completion state - completed or aborted - MUST be sent by the agent when ending the action lifecycle.
 
 TODO: use properties. How to include a request ID with a lifecycle state change? 
 
@@ -331,6 +350,10 @@ The WoT specification for a [Form](https://www.w3.org/TR/wot-thing-description11
 can be viewed as a statement of "To perform an operation type operation on form context, make a request method request to submission target" where the optional form fields may further describe the required request."
 
 HiveOT only uses forms at the Thing level for operations to read/write properties and subscribe to events. Agents can define form items with instructions for the Hub to interact with the Thing but these are removed by the Hub when publishing the digitwin TDD.
+
+The HiveOT implementation of forms is incomplete. The hesitation is that to define a forms for each affordance would easily double the size of TD without adding value. The mqtt and websocket protocols don't really need it as the message envelope contains all needed information and the http-basic protocol gets by with a form for thing level operations and URI variables in href.  
+
+HiveOT prefers the use of message envelopes in combination with operations, over the use of forms.
 
 TODO: media servers and their endpoints might be an exception to the rule that Things don't run servers. TBD.
 

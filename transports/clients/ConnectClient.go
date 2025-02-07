@@ -60,6 +60,8 @@ func ConnectClient(fullURL string, clientID string, certDir string, password str
 		if fullURL == "" {
 			fullURL = disco.HiveotSseURL
 		}
+		// TODO: remove this after testing
+		fullURL = disco.HiveotSseURL
 	}
 
 	// 2. obtain the CA public cert to verify the server
@@ -86,6 +88,10 @@ func ConnectClient(fullURL string, clientID string, certDir string, password str
 	}
 
 	if err != nil {
+		slog.Warn("ConnectClient: Client created but connect failed",
+			"fullURL", fullURL,
+			"err", err.Error())
+		cc.Disconnect()
 		return nil, err
 	}
 	return cc, err

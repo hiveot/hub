@@ -7,37 +7,30 @@ USB sticks. It builds 'WOT TD', Thing Description documents using the ZWaveJS ZW
 events to the Hub pubsub message bus. Action requests received from the pubsub message bus are passed on to the
 corresponding ZWave node.
 
-## HiveOT PubSub over WebSocket/Capnproto
+## Communication Protocols
 
-This binding uses the pubsub capability of the Hub which is accessible using a MQTT or NATS client.
+This binding uses one of the HiveOT protocols available on JS. Currently this is the Http/SSE transport protocol. 
 
-This binding, being dependent on ZWaveJS, runs on nodejs. This leads to several problems:
-
-1. nodejs does not allow TCP socket connections. Instead websockets are used.
-2. NATS server websocket support is not yet tested.
-
+Javascript transport bindings using Websocket and MQTT planned.
 
 # Mapping ZWave to HiveOT
 
-ZWaveJS uses 'Value IDs', containing command class, propertyName and propertyKey and CC metadata to define type and
-capabilities of ZWave devices. HiveOT uses the WoT TD standard to describe IoT devices using properties (attributes and
-configuration), actions (inputs) and events (outputs). How are value IDs mapped to the WoT TD? Read on for the answer to
-this exciting question.
+ZWaveJS uses 'Value IDs', containing command class, propertyName and propertyKey and CC metadata to define type and capabilities of ZWave devices. HiveOT uses the WoT TD standard to describe IoT devices using properties (attributes and configuration), actions (inputs) and events (outputs). How are value IDs mapped to the WoT TD? Read on for the answer to this exciting question.
+
+One problem is that WoT does not distinguish between attributes and device sensor values, nor between writable attributes (configuration) and device actuator values.
+
+This binding follows the hiveot approach that sensors and actuator states are read-only properties, sensor changes are sent as events, and actuators are controlled through actions.
+
 
 ## Mapping of Value ID to Property, Event and Action keys
 
-The TD document contains three maps: properties, events and actions. The keys of these maps are unique property instance
-IDs that are used when sending events and receiving actions. These IDs are not for humans but must be immutable within
-the device.
+The TD document contains three maps: properties, events and actions. The keys of these maps are unique property instance IDs that are used when sending events and receiving actions. These IDs are not for human presentation but must be immutable within the device.
 
-The property, event and action IDs are constructed from: VID property + propertyKey + endpoint, where propertyKey is
-only used when it is defined, and endpoint is only used when multiple instances exist.
+The property, event and action IDs are constructed from: VID property + propertyKey + endpoint, where propertyKey is only used when it is defined, and endpoint is only used when multiple instances exist.
 
-For example, a scene controller has a VID with property 'scene' and propertyKey '001' for the first scene. When a scene
-key is touched, the event will have a key of 'scene-001'.
+For example, a scene controller has a VID with property 'scene' and propertyKey '001' for the first scene. When a scene key is touched, the event will have a key of 'scene-001'.
 
-Clients will receive a TD and events with this event key. In order to automatically understand the meaning of this
-event, the @type holds the vocabulary defined term for this event. In this case 'scene'.
+Clients will receive a TD and events with this event key. In order to automatically understand the meaning of this event, the @type holds the vocabulary defined term for this event. In this case 'scene'.
 
 ...but wait, there is more...
 
@@ -45,11 +38,9 @@ event, the @type holds the vocabulary defined term for this event. In this case 
 
 VIDs need to be mapped to a TD property, event or an action. How to decide?
 
-ZWave Command Classes are used to decide if a VID is a property, action or event. CC's for actuator devices are actions,
-while CC's for data reporting devices are events. The remainder are properties.
+ZWave Command Classes are used to decide if a VID is a property, action or event. CC's for actuator devices are actions, while CC's for data reporting devices are events. The remainder are properties.
 
-An override map can override of the general rules for each ValueID and change whether it is a property, action or event,
-name the property type, and data type.
+An override map can override of the general rules for each ValueID and change whether it is a property, action or event, name the property type, and data type.
 
 ...but wait, there is even more...
 
@@ -57,8 +48,7 @@ name the property type, and data type.
 
 Information is easiest consumed if the terminology used is consistent among various data sources.
 
-Different technologies and device manufacturers however can use different terminology to indicate the same thing. Some
-might use 'temp', 'temperature' or 'degrees' for example. HiveOT attempts to adhere to a common ontology, but this seems
+Different technologies and device manufacturers however can use different terminology to indicate the same thing. Some might use 'temp', 'temperature' or 'degrees' for example. HiveOT attempts to adhere to a common ontology, but this seems
 to be a rather complex topic. See for example W3C's sematic sensor network
 ontology : https://www.w3.org/TR/vocab-ssn/#intro. Without a well known common vocabulary for IoT data, HiveOT
 vocabulary is based on terminology used in ZWave, Zigbee, Ocap, and other automation solutions. Units are based on SI

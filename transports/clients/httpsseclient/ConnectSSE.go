@@ -205,6 +205,7 @@ func (cc *HiveotSseClient) handleSseEvent(event sse.Event) {
 		req := transports.RequestMessage{}
 		_ = jsoniter.UnmarshalFromString(event.Data, &req)
 		slog.Info("handle request: ",
+			slog.String("op", req.Operation),
 			slog.String("thingID", req.ThingID),
 			slog.String("name", req.Name),
 			slog.String("created", req.Created),
@@ -221,6 +222,7 @@ func (cc *HiveotSseClient) handleSseEvent(event sse.Event) {
 		_ = jsoniter.UnmarshalFromString(event.Data, &resp)
 		// don't block the receiver flow
 		slog.Info("handle response: ",
+			slog.String("op", resp.Operation),
 			slog.String("thingID", resp.ThingID),
 			slog.String("name", resp.Name),
 			slog.String("correlationID", resp.CorrelationID),

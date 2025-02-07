@@ -4,7 +4,7 @@ import type {ValueID} from "@zwave-js/core";
 let  key2vidMap = new Map<string,ValueID>()
 
 
-// getPropName returns the property key for identifying the property used in
+// getPropName returns the property key for identifying the vid property used in
 // the TD property map and events.
 //
 //  Format: {vid.commandClass}-{vid.property}{vid.endpoint}[-{vid.propertyKey}]

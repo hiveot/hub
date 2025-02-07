@@ -241,12 +241,12 @@ func (c *WssServerConnection) SendResponse(resp *transports.ResponseMessage) (er
 // If this returns an error then no response was sent.
 func (c *WssServerConnection) SendNotification(resp transports.ResponseMessage) {
 
-	slog.Info("SendNotification",
-		slog.String("clientID", c.clientID),
-		slog.String("correlationID", resp.CorrelationID),
-		slog.String("operation", resp.Operation),
-		slog.String("senderID", resp.SenderID),
-	)
+	//slog.Info("SendNotification",
+	//	slog.String("clientID", c.clientID),
+	//	slog.String("correlationID", resp.CorrelationID),
+	//	slog.String("operation", resp.Operation),
+	//	slog.String("senderID", resp.SenderID),
+	//)
 
 	if resp.Operation == wot.OpSubscribeEvent || resp.Operation == wot.OpSubscribeAllEvents {
 		correlationID := c.subscriptions.GetSubscription(resp.ThingID, resp.Name)

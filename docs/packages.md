@@ -13,7 +13,7 @@ HiveOT golang packages provide the core services along with a starter set of pro
 	* digitwin - digital twin inbox, outbox and directory
       * inbox: stores action requests and tracks delivery progress. The latest value can be queried by consumers.
       * outbox: stores events for delivery to consumers. The latest value of each event can be queried by consumers.
-      * directory: stores the TDD's published by agents. The latest TDD of each Thing can be queried by consumers. 
+      * directory: stores the TD's published by agents. The latest TDD of each Thing can be queried by consumers. 
   
 * services - hub core services
 	* history - collects and serves a history of Thing events

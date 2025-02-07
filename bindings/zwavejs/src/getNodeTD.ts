@@ -300,9 +300,11 @@ export function getNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | unde
         // the vid is either config, attr, action or event based on CC
         switch (va?.vidType) {
             case "action":
+                // actuators accept input actions
                 addAction(td, node, vid, tdPropName, va)
                 break;
             case "event":
+                // sensors emit events
                 addEvent(td, node, vid, tdPropName, va)
                 break;
             // these are varieties of properties
@@ -341,9 +343,12 @@ function SetDataSchema(ds: DataSchema | undefined, node: ZWaveNode, vid: Transla
     if (!vidMeta.readable) {
         ds.readOnly = false
         ds.writeOnly = true  // action
-    }
-    if (!vidMeta.writeable) {
+    } else if (!vidMeta.writeable) {
         ds.readOnly = true   // attribute or event
+        ds.writeOnly = false
+    } else {
+        ds.readOnly = false   // config
+        ds.writeOnly = false
     }
     // get more details on this property using its metadata and command class(es)
     switch (vidMeta.type) {

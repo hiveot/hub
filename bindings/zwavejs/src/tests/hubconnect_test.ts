@@ -73,7 +73,7 @@ async function test3() {
         console.error(err);
     })
 
-    let body = '{"clientID":"test", "password":"test22"}';
+    let body = '{"login":"test", "password":"test22"}';
     const req = client.request({
         origin: testURL,
         authorization: "bearer "+authToken,

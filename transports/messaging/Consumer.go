@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-const DefaultRpcTimeout = time.Second * 3
+const DefaultRpcTimeout = time.Second * 60 // 60 for testing; 3 seconds
 
 // Consumer provides the messaging functionality for consumers
 // This provides a golang API to consumer operations.

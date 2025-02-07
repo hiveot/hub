@@ -40,6 +40,7 @@ func (svc *DigitwinRouter) HandleActionResponse(resp *transports.ResponseMessage
 	svc.mux.Unlock()
 	if !found {
 		err = fmt.Errorf(
+			// FIXME: this happens with writeproperty operations. These should also be in the activeCache
 			"HandleResponse: Message '%s' from agent '%s' not in action cache. It is ignored",
 			resp.CorrelationID, resp.SenderID)
 

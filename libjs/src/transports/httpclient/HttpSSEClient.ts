@@ -65,7 +65,7 @@ const HttpGetDigitwinPath = "/digitwin/{operation}/{thingID}/{name}"
 // Generic form href that maps to all operations for the http client, using URI variables
 // Generic HiveOT HTTP urls when Forms are not available. The payload is a
 // corresponding standardized message.
-const HiveOTPostNotificationHRef = "/hiveot/notification"
+// const HiveOTPostNotificationHRef = "/hiveot/notification"
 const HiveOTPostRequestHRef      = "/hiveot/request"
 const HiveOTPostResponseHRef     = "/hiveot/response"
 
@@ -73,8 +73,8 @@ const HiveOTPostResponseHRef     = "/hiveot/response"
 
 const hclog = new tslog.Logger({prettyLogTimeZone:"local"})
 
-// HubClient implements the javascript client for connecting to the hub
-// using HTTPS and SSESC for the return channel.
+// HttpSSEClient implements the javascript client for connecting to the hub
+// using HiveOT's HTTPS and SSE-SC protocol for the return channel.
 export class HttpSSEClient implements IAgentConnection {
     _clientID: string;
     _baseURL: string;
@@ -306,7 +306,7 @@ export class HttpSSEClient implements IAgentConnection {
     //     })
     // }
 
-    // publish a request to the path with the given data
+    // publish a http request to the path
     // if the http/2 connection is closed, then try to initialize it again.
     async pubMessage(methodName: string, path: string, data: any, correlationID?:string):Promise<string> {
         // if the session is invalid, restart it
@@ -326,7 +326,7 @@ export class HttpSSEClient implements IAgentConnection {
                 // the debugger shows a value.
                 reject(new Error("Unable to send. Connection was closed"))
             } else {
-                let req = this._http2Session.request({
+                let h2req = this._http2Session.request({
                     origin: this._baseURL,
                     authorization: "bearer " + this.authToken,
                     ':path': path,
@@ -337,9 +337,9 @@ export class HttpSSEClient implements IAgentConnection {
                     "cid": this._cid,
                 })
 
-                req.setEncoding('utf8');
+                h2req.setEncoding('utf8');
 
-                req.on('response', (r) => {
+                h2req.on('response', (r) => {
                     if (r[":status"]) {
                         statusCode = r[":status"]
                         if (statusCode >= 400) {
@@ -347,33 +347,32 @@ export class HttpSSEClient implements IAgentConnection {
                         }
                     }
                 })
-                req.on('data', (chunk) => {
+                h2req.on('data', (chunk) => {
                     replyData = replyData + chunk
                 });
-                req.on('end', () => {
-                    req.destroy()
+                h2req.on('end', () => {
+                    h2req.destroy()
                     if (statusCode >= 400) {
                         hclog.warn(`pubMessage status code  ${statusCode}`)
                         reject(new Error("Error " + statusCode + ": " + replyData))
                     } else {
                         // hclog.info(`pubMessage to ${path}. Received reply. size=` + replyData.length)
-                        reject(new Error(replyData))
+                        // reject(new Error(replyData))
+                        resolve(replyData)
                     }
                 });
-                req.on('error', (err) => {
-                    req.destroy()
+                h2req.on('error', (err) => {
+                    h2req.destroy()
                     reject(err)
                 });
                 // write the body and complete the request
-                req.end(payload)
-
-                resolve(replyData)
+                h2req.end(payload)
             }
         })
     }
 
     // invokeAction publishes a request for action from a Thing.
-    // This is a simple helper that uses sendRequest(wot.OpInvokeAction, ...)
+    // This is a simple helper that uses sendRequest(...)
     //
     //	@param agentID: of the device or service that handles the action.
     //	@param thingID: is the destination thingID to whom the action applies.
@@ -419,7 +418,7 @@ export class HttpSSEClient implements IAgentConnection {
 
         hclog.info("pubEvent. thingID:", thingID, ", name:", name)
         let msg = new ResponseMessage(OpSubscribeEvent, thingID,name,data)
-        return this.sendNotification(msg)
+        return this.sendResponse(msg)
 
         // let eventPath = PostAgentPublishEventPath.replace("{thingID}", thingID)
         // eventPath = eventPath.replace("{name}", name)
@@ -437,14 +436,14 @@ export class HttpSSEClient implements IAgentConnection {
 
         hclog.info("pubMultipleProperties. thingID:", thingID)
         let msg = new ResponseMessage(OpObserveAllProperties, thingID,"",propMap)
-        return this.sendNotification(msg)
+        return this.sendResponse(msg)
     }
 
     // Publish thing property value update to property observers
     pubProperty(thingID: string, name:string, value: any) {
         hclog.info("pubProperty. thingID:", thingID)
         let msg = new ResponseMessage(OpObserveProperty, thingID,name,value)
-        return this.sendNotification(msg)
+        return this.sendResponse(msg)
     }
 
     // PubTD publishes a req with a Thing TD document.
@@ -452,8 +451,12 @@ export class HttpSSEClient implements IAgentConnection {
     pubTD(td: TD) {
         hclog.info("pubTD. thingID:", td.id)
         let tdJSON = JSON.stringify(td, null, ' ');
-        let msg = new ResponseMessage(HTOpUpdateTD, td.id,"",tdJSON)
-        return this.sendNotification(msg)
+        let msg = new RequestMessage({
+            operation:HTOpUpdateTD,
+            thingID: td.id,
+            input: tdJSON,
+        })
+        return this.sendRequest(msg)
     }
 
     // obtain a new token
@@ -475,15 +478,15 @@ export class HttpSSEClient implements IAgentConnection {
             throw e
         }
     }
-
-    // sendNotification [agent] sends a notification message to the hub.
-    // @param msg: notification to send
-    sendNotification(notif: ResponseMessage) {
-        // notifications can only be send to the fixed endpoint
-        this.pubMessage(
-            "POST",HiveOTPostNotificationHRef, notif)
-            .then().catch()
-    }
+    //
+    // // sendNotification [agent] sends a notification message to the hub.
+    // // @param msg: notification to send
+    // sendNotification(notif: ResponseMessage) {
+    //     // notifications can only be send to the fixed endpoint
+    //     this.pubMessage(
+    //         "POST",HiveOTPostNotificationHRef, notif)
+    //         .then().catch()
+    // }
 
     // sendResponse [agent] sends a response status message to the hub.
     // @param resp: response to send
@@ -500,6 +503,7 @@ export class HttpSSEClient implements IAgentConnection {
                 href = f.getHRef()
             }
             if (href) {
+                // using a form means following http-basic
                 this.pubMessage("POST", href, req.input, req.correlationID)
                     .then((reply: string) => {
                         let output = JSON.parse(reply)
@@ -508,9 +512,16 @@ export class HttpSSEClient implements IAgentConnection {
                         resolve(resp)
                     })
             } else {
-                this.pubMessage("POST", HiveOTPostRequestHRef, input, req.correlationID)
+                // no form, use the 'well-known' RequestMessage path
+                this.pubMessage("POST", HiveOTPostRequestHRef, req, req.correlationID)
                     .then((reply: string) => {
-                        let resp: ResponseMessage = JSON.parse(reply)
+                        let resp: ResponseMessage;
+                        if (reply) {
+                            resp = JSON.parse(reply)
+                        } else {
+                            let err = new Error("Response without responseMessage envelope")
+                            resp = req.createResponse(undefined, err)
+                        }
                         resolve(resp)
                     })
             }

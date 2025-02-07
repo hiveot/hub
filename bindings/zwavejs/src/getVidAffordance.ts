@@ -8,7 +8,7 @@ export interface VidAffordance {
     // @type of the property, event or action, "" if not known
     atType: string,
     // attr is read-only property; config is writable property
-    vidType: "action" | "event" | "property" | undefined
+    vidType: "action" | "event" | "property"  | undefined
 }
 
 // Override map of zwavejs VID to HiveOT action, event, config or attributes.
@@ -24,24 +24,24 @@ const overrideMap: Map<string, Partial<VidAffordance> | undefined> = new Map([
     ["32-restorePrevious", {}],
 
     // Binary Switch 0x25 (37) is an actuator
-    ["37-currentValue", {atType: vocab.PropSwitch, vidType: "property"} ],
-    ["37-targetValue", {atType: vocab.ActionSwitch, vidType: "property"}],
+    ["37-currentValue", {atType: vocab.PropSwitch, vidType: "event"} ],
+    ["37-targetValue", {atType: vocab.ActionSwitch, vidType: "action"}],
 
     // Multilevel Switch (38) is an actuator
 
     // Binary Sensor (48)
-    ["48-Any", {atType: vocab.PropAlarmStatus, vidType: "property"}],
+    ["48-Any", {atType: vocab.PropAlarmStatus, vidType: "event"}],
 
     // Meter - electrical
-    ["50-value-65537", {atType: vocab.PropElectricEnergy, vidType: "property"}],
-    ["50-value-66049", {atType: vocab.PropElectricPower, vidType: "property"}],
-    ["50-value-66561", {atType: vocab.PropElectricVoltage, vidType: "property"}],
-    ["50-value-66817", {atType: vocab.PropElectricCurrent, vidType: "property"}],
+    ["50-value-65537", {atType: vocab.PropElectricEnergy, vidType: "event"}],
+    ["50-value-66049", {atType: vocab.PropElectricPower, vidType: "event"}],
+    ["50-value-66561", {atType: vocab.PropElectricVoltage, vidType: "event"}],
+    ["50-value-66817", {atType: vocab.PropElectricCurrent, vidType: "event"}],
     ["50-reset", {vidType: "action"}], // for managers, not operators
 
     // Notification
     ["113-Home Security-Motion sensor status",
-        {atType: vocab.PropAlarmMotion, vidType: "property"}],
+        {atType: vocab.PropAlarmMotion, vidType: "event"}],
 ]);
 
 
@@ -86,7 +86,7 @@ function defaultVidAffordance(node: ZWaveNode, vid: ValueID, maxNrScenes: number
         case CommandClasses["Multilevel Switch"]:
         case CommandClasses["Simple AV Control"]:
         case CommandClasses["Window Covering"]: {
-            return "property";
+            return "action";
         }
 
         //-- CC's for data reporting devices (sensor)
@@ -104,7 +104,7 @@ function defaultVidAffordance(node: ZWaveNode, vid: ValueID, maxNrScenes: number
         case CommandClasses["Sound Switch"]:
         case CommandClasses["Thermostat Fan State"]:
         case CommandClasses["Thermostat Operating State"]: {
-            return "property"
+            return "event"
         }
 
         //--- CC's for configuration or attributes
@@ -161,6 +161,7 @@ function defaultVidAffordance(node: ZWaveNode, vid: ValueID, maxNrScenes: number
         }
     }
 
+    // write-only
     if (!vidMeta.readable) {
         return vidMeta.writeable ? "action" : "event"
     }

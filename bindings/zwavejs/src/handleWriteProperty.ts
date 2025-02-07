@@ -4,7 +4,13 @@ import {getPropVid} from "./getPropName";
 import {IAgentConnection} from "@hivelib/transports/IAgentConnection";
 import {getEnumFromMemberName, getVidValue,  ZWAPI} from "@zwavejs/ZWAPI";
 import {setValue} from "@zwavejs/setValue";
-import {RequestMessage, ResponseMessage} from "@hivelib/transports/Messages";
+import {
+    RequestMessage,
+    ResponseMessage,
+    StatusCompleted,
+    StatusFailed,
+    StatusRunning
+} from "@hivelib/transports/Messages";
 import {getlogger} from "@zwavejs/getLogger";
 
 const log = getlogger()
@@ -16,12 +22,13 @@ const log = getlogger()
 export function handleWriteProperty(
     req: RequestMessage, node: ZWaveNode, zwapi: ZWAPI, hc: IAgentConnection):  ResponseMessage {
 
+    let status = StatusCompleted
     let err: Error | undefined
 
     let propKey = req.name
     let propValue = req.input
 
-    log.info("handleConfigRequest: node '" + node.nodeId + "' setting prop '" + propKey + "' to value: " + propValue)
+    log.info("handleWriteProperty: node '" + node.nodeId + "' setting prop '" + propKey + "' to value: " + propValue)
 
     // FIXME: use of location CC to set name and location as per doc:
     //   https://zwave-js.github.io/node-zwave-js/#/api/node?id=name
@@ -30,15 +37,18 @@ export function handleWriteProperty(
     let propVid = getPropVid(propKey)
     if (!propVid) {
         err = new Error("failed: unknown config: " + propKey)
+        status = StatusFailed
     } else if (propVid?.commandClass == 119 && propVid.property == "name") {
         // note that this title change requires the TD to be republished so it shows up.
         node.name = propValue
         // this also changes the title of the TD, so resend the TD
         zwapi.onNodeUpdate(node)
+        status = StatusCompleted
     } else if (propVid?.commandClass == 119 && propVid.property == "location") {
         // TODO: use CC to set location as per doc. Doc doesn't say how though.
         node.location = propValue
         // zwapi.onValueUpdate(node, propKey, node.location)
+        status = StatusCompleted
     } else {
         // convert the value if this is an enum
         // async update
@@ -57,12 +67,17 @@ export function handleWriteProperty(
             .catch(reqerr=>{
                 err = new Error(reqerr)
             })
+        status = StatusRunning
     }
 
     // delivery completed with error
     if (err) {
         log.error(err)
     }
-    return req.createResponse(null,err)
+    let resp =  req.createResponse(null,err)
+    if (!err) {
+        resp.status = status
+    }
+    return resp
 }
 

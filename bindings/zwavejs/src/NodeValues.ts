@@ -11,7 +11,7 @@ import {getPropName} from "./getPropName";
 import {getVidValue} from "@zwavejs/ZWAPI";
 
 
-// NodeValues holds the latest values of a single node
+// NodeValues holds the latest values of a single node regardless if it is a prop, event or action
 export class NodeValues {
     values: { [key: string]: any }
 
