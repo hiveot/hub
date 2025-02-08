@@ -36,15 +36,16 @@ type Consumer struct {
 	rnrChan *RnRChan
 }
 
-// Disconnect the client connection and remove the callbacks linked to it.
+// Disconnect the client connection.
 // Do not use this consumer after disconnect.
 func (co *Consumer) Disconnect() {
 	co.cc.Disconnect()
 	co.mux.Lock()
 	co.mux.Unlock()
-	co.cc.SetConnectHandler(nil)
-	co.cc.SetRequestHandler(nil)
-	co.cc.SetResponseHandler(nil)
+	// the connect callback is still needed to notify the client of a disconnect
+	//co.cc.SetConnectHandler(nil)
+	//co.cc.SetRequestHandler(nil)
+	//co.cc.SetResponseHandler(nil)
 }
 
 // GetClientID returns the client's account ID
@@ -105,7 +106,7 @@ func (co *Consumer) ObserveProperty(thingID string, name string) error {
 	return err
 }
 
-// websocket connection status handler
+// connection status handler
 func (co *Consumer) onConnect(connected bool, err error, c transports.IConnection) {
 	hPtr := co.appConnectHandlerPtr.Load()
 	if hPtr != nil {

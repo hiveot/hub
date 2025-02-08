@@ -231,13 +231,13 @@ func (cl *HiveotSseClient) Disconnect() {
 	)
 
 	cl.mux.Lock()
-	sseCancelFn := cl.sseCancelFn
+	cb := cl.sseCancelFn
 	cl.sseCancelFn = nil
 	cl.mux.Unlock()
 
 	// the connection status will update, if changed, through the sse callback
-	if sseCancelFn != nil {
-		sseCancelFn()
+	if cb != nil {
+		cb()
 	}
 
 	cl.mux.Lock()

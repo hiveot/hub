@@ -520,7 +520,7 @@ func NewWebClientSession(
 	// prevent orphaned sessions. Cleanup after 3 sec
 	// the number is arbitrary and not sensitive.
 	go func() {
-		time.Sleep(time.Second * 300) // for testing change to 300
+		time.Sleep(time.Second * 30) // for testing change from 3 to 30
 		webSess.mux.RLock()
 		hasSSE := webSess.sseChan != nil
 		webSess.mux.RUnlock()

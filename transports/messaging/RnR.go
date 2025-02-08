@@ -32,7 +32,7 @@ func (rnr *RnRChan) Close(correlationID string) {
 	rnr.mux.Lock()
 	defer rnr.mux.Unlock()
 
-	slog.Info("closing channel. ", "correlationID", correlationID)
+	//slog.Info("closing channel. ", "correlationID", correlationID)
 	rChan, found := rnr.correlData[correlationID]
 	if found {
 		delete(rnr.correlData, correlationID)
@@ -66,11 +66,11 @@ func (rnr *RnRChan) HandleResponse(msg *transports.ResponseMessage) bool {
 	rChan, isRPC := rnr.correlData[msg.CorrelationID]
 	defer rnr.mux.Unlock()
 	if isRPC {
-		slog.Info("HandleResponse: writing response to channel. ",
-			slog.String("correlationID", msg.CorrelationID),
-			slog.String("operation", msg.Operation),
-			slog.String("status", msg.Status),
-		)
+		//slog.Info("HandleResponse: writing response to channel. ",
+		//	slog.String("correlationID", msg.CorrelationID),
+		//	slog.String("operation", msg.Operation),
+		//	slog.String("status", msg.Status),
+		//)
 		ctx, cancelFn := context.WithTimeout(context.Background(), rnr.writeTimeout)
 		select {
 		case rChan <- msg:
@@ -97,8 +97,7 @@ func (rnr *RnRChan) Len() int {
 // This returns a reply channel on which the data is received. Use
 // WaitForResponse(rChan)
 func (rnr *RnRChan) Open(correlationID string) chan *transports.ResponseMessage {
-	// todo: is there a use-case for a buffer?
-	slog.Info("opening channel. ", "correlationID", correlationID)
+	//slog.Info("opening channel. ", "correlationID", correlationID)
 	// this needs to be able to buffer 1 response in case completed and pending
 	// are received out of order.
 	rChan := make(chan *transports.ResponseMessage, 1)

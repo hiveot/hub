@@ -204,36 +204,44 @@ func (cc *HiveotSseClient) handleSseEvent(event sse.Event) {
 	if event.Type == transports.MessageTypeRequest {
 		req := transports.RequestMessage{}
 		_ = jsoniter.UnmarshalFromString(event.Data, &req)
-		slog.Info("handle request: ",
-			slog.String("op", req.Operation),
-			slog.String("thingID", req.ThingID),
-			slog.String("name", req.Name),
-			slog.String("created", req.Created),
-		)
+		//slog.Info("handle request: ",
+		//	slog.String("op", req.Operation),
+		//	slog.String("thingID", req.ThingID),
+		//	slog.String("name", req.Name),
+		//	slog.String("created", req.Created),
+		//)
 		go func() {
 			cc.mux.RLock()
 			h := cc.appRequestHandler
 			cc.mux.RUnlock()
-			resp := h(&req, cc)
-			_ = cc.SendResponse(resp)
+			if h == nil {
+				slog.Error("appRequestHandler is nil")
+			} else {
+				resp := h(&req, cc)
+				_ = cc.SendResponse(resp)
+			}
 		}()
 	} else if event.Type == transports.MessageTypeResponse {
 		resp := transports.ResponseMessage{}
 		_ = jsoniter.UnmarshalFromString(event.Data, &resp)
 		// don't block the receiver flow
-		slog.Info("handle response: ",
-			slog.String("op", resp.Operation),
-			slog.String("thingID", resp.ThingID),
-			slog.String("name", resp.Name),
-			slog.String("correlationID", resp.CorrelationID),
-			slog.String("created", resp.Updated),
-		)
+		//slog.Info("handle response: ",
+		//	slog.String("op", resp.Operation),
+		//	slog.String("thingID", resp.ThingID),
+		//	slog.String("name", resp.Name),
+		//	slog.String("correlationID", resp.CorrelationID),
+		//	slog.String("created", resp.Updated),
+		//)
 		// don't block the receiver flow
 		go func() {
 			cc.mux.RLock()
 			h := cc.appResponseHandler
 			cc.mux.RUnlock()
-			_ = h(&resp)
+			if h == nil {
+				slog.Error("appResponseHandler is nil")
+			} else {
+				_ = h(&resp)
+			}
 		}()
 	} else {
 		// everything else is in a different format. Attempt to deliver for
@@ -246,7 +254,11 @@ func (cc *HiveotSseClient) handleSseEvent(event sse.Event) {
 			cc.mux.RLock()
 			h := cc.appResponseHandler
 			cc.mux.RUnlock()
-			_ = h(&resp)
+			if h == nil {
+				slog.Error("appRequestHandler is nil")
+			} else {
+				_ = h(&resp)
+			}
 		}()
 	}
 }

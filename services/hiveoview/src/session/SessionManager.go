@@ -77,14 +77,6 @@ func (sm *WebSessionManager) _addSession(
 	} else {
 		co := messaging.NewConsumer(hc, sm.timeout)
 		cs = NewWebClientSession(cid, co, r.RemoteAddr, sm.noState, sm.onClose)
-		hccid := hc.GetConnectionID()
-		slog.Info("_addSession",
-			slog.String("clientID", clientID),
-			slog.String("clcid", cs.clcid),
-			slog.String("remoteAdddr", r.RemoteAddr),
-			slog.String("hc.cid", hccid),
-			slog.Int("nr sessions", len(sm.sessions)),
-		)
 	}
 	sm.sessions[cs.clcid] = cs
 	nrSessions := len(sm.sessions)
@@ -93,8 +85,13 @@ func (sm *WebSessionManager) _addSession(
 	//Update the session cookie with the new auth token (default 14 days)
 	//maxAge := time.Hour * 24 * 14
 	//err = SetSessionCookie(w, clientID, newToken, maxAge, sm.signingKey)
-
-	// publish the new nr of sessions
+	slog.Info("_addSession",
+		slog.String("clientID", clientID),
+		slog.String("clcid", cs.clcid),
+		slog.String("remoteAdddr", r.RemoteAddr),
+		slog.String("hc.cid", hc.GetConnectionID()),
+		slog.Int("nr sessions", len(sm.sessions)),
+	)
 	_ = sm.ag.PubEvent(src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions)
 	return cs, err
 }
@@ -105,12 +102,7 @@ func (sm *WebSessionManager) _removeSession(cs *WebClientSession) {
 	// do not call back into cs as this callback takes place in a locked section.
 	isConnected := cs.co.IsConnected()
 	//hccid := cs.clcid//GetConnectionID()
-	slog.Info("_removeSession",
-		slog.String("clientID", cs.GetClientID()),
-		slog.String("clcid", cs.GetCLCID()),
-		slog.Bool("isConnected", isConnected),
-		//slog.String("hc.cid", hccid),
-	)
+
 	if isConnected {
 		slog.Warn("_removeSession. session still has a connection")
 	}
@@ -118,7 +110,7 @@ func (sm *WebSessionManager) _removeSession(cs *WebClientSession) {
 	sm.mux.Lock()
 	_, hasSession := sm.sessions[cs.clcid]
 	if !hasSession {
-		slog.Error("_removeSession is missing",
+		slog.Error("_removeSession unknown client connection ID",
 			"clientID", cs.GetClientID(),
 			"clcid", cs.clcid)
 	}
@@ -128,6 +120,13 @@ func (sm *WebSessionManager) _removeSession(cs *WebClientSession) {
 	sm.mux.Unlock()
 
 	// 5. publish the new nr of sessions
+	slog.Info("_removeSession",
+		slog.String("clientID", cs.GetClientID()),
+		slog.String("clcid", cs.GetCLCID()),
+		slog.Bool("isConnected", isConnected),
+		slog.Int("nrSessions", nrSessions),
+		//slog.String("hc.cid", hccid),
+	)
 	go func() {
 		_ = sm.ag.PubEvent(src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions)
 	}()
