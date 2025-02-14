@@ -10,7 +10,7 @@ import (
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/clients"
-	"github.com/hiveot/hub/transports/messaging"
+	"github.com/hiveot/hub/transports/consumer"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
@@ -72,19 +72,21 @@ type TestServer struct {
 
 // GetAgentConnection returns a hub connection for an agent and protocol.
 // This sets 'getForm' to the handler provided by the protocol server. For testing only.
-func (test *TestServer) GetAgentConnection(agentID string, protocolName string) (transports.IClientConnection, *messaging.Agent) {
+func (test *TestServer) GetAgentConnection(agentID string, protocolName string) (
+	transports.IClientConnection, *consumer.Agent) {
+
 	connectURL := test.Runtime.TransportsMgr.GetConnectURL(protocolName)
 
 	server := test.Runtime.TransportsMgr.GetServer(protocolName)
-	cc, _ := clients.NewClient(connectURL, agentID, test.Certs.CaCert, server.GetForm, test.ConnectTimeout)
-	agent := messaging.NewAgent(cc, nil, nil, nil, test.ConnectTimeout)
-	return cc, agent
+	cc, _ := clients.NewClient(agentID, test.Certs.CaCert, server.GetForm, connectURL, test.ConnectTimeout)
+	ag := consumer.NewAgent(cc, nil, nil, nil, test.ConnectTimeout)
+	return cc, ag
 }
 
 // GetConsumerConnection returns a hub connection for a consumer and protocol.
 // This sets 'getForm' to the handler provided by the protocol server. For testing only.
 func (test *TestServer) GetConsumerConnection(
-	clientID string, protocolName string) (transports.IClientConnection, *messaging.Consumer) {
+	clientID string, protocolName string) (transports.IClientConnection, *consumer.Consumer) {
 
 	getForm := func(op string, thingID string, name string) *td.Form {
 		return test.Runtime.GetForm(op, protocolName)
@@ -92,15 +94,16 @@ func (test *TestServer) GetConsumerConnection(
 
 	connectURL := test.Runtime.TransportsMgr.GetConnectURL(protocolName)
 
-	cc, _ := clients.NewClient(connectURL, clientID, test.Certs.CaCert, getForm, test.ConnectTimeout)
-	consumer := messaging.NewConsumer(cc, test.ConnectTimeout)
-	return cc, consumer
+	cc, _ := clients.NewClient(clientID, test.Certs.CaCert, getForm, connectURL, test.ConnectTimeout)
+	co := consumer.NewConsumer(cc, test.ConnectTimeout)
+	return cc, co
 }
 
-// AddConnectConsumer creates a new test user with the given role and returns a client, consumer and a new session token.
+// AddConnectConsumer creates a new test user with the given role and returns a client,
+// consumer and a new session token.
 // In case of error this panics.
 func (test *TestServer) AddConnectConsumer(
-	clientID string, clientRole authz.ClientRole) (consumer *messaging.Consumer, token string) {
+	clientID string, clientRole authz.ClientRole) (consumer *consumer.Consumer, token string) {
 
 	password := clientID
 	err := test.Runtime.AuthnSvc.AdminSvc.AddConsumer(clientID,
@@ -113,19 +116,25 @@ func (test *TestServer) AddConnectConsumer(
 		panic("Failed adding client:" + err.Error())
 	}
 
-	cc, consumer := test.GetConsumerConnection(clientID, test.ConsumerProtocol)
-	token, err = cc.ConnectWithPassword(password)
+	loginArgs := authn.UserLoginArgs{
+		ClientID: clientID,
+		Password: password,
+	}
+	token, err = test.Runtime.AuthnSvc.UserSvc.Login(clientID, loginArgs)
 
 	if err != nil {
 		panic("Failed connect with password:" + err.Error())
 	}
-	return consumer, token
+
+	cc, co := test.GetConsumerConnection(clientID, test.ConsumerProtocol)
+	_ = cc.ConnectWithToken(token)
+	return co, token
 }
 
 // AddConnectAgent creates a new agent test client.
 // Agents use non-session tokens and survive a server restart.
 // This returns the agent's connection token.
-func (test *TestServer) AddConnectAgent(agentID string) (agent *messaging.Agent, token string) {
+func (test *TestServer) AddConnectAgent(agentID string) (agent *consumer.Agent, token string) {
 
 	token, err := test.Runtime.AuthnSvc.AdminSvc.AddAgent(agentID,
 		authn.AdminAddAgentArgs{ClientID: agentID, DisplayName: "agent name"})
@@ -137,7 +146,7 @@ func (test *TestServer) AddConnectAgent(agentID string) (agent *messaging.Agent,
 	if err != nil {
 		panic("AddConnectAgent: Failed adding client:" + err.Error())
 	}
-	cc, agent := test.GetAgentConnection(agentID, test.AgentProtocol)
+	cc, ag := test.GetAgentConnection(agentID, test.AgentProtocol)
 
 	err = cc.ConnectWithToken(token)
 	if err != nil {
@@ -146,7 +155,7 @@ func (test *TestServer) AddConnectAgent(agentID string) (agent *messaging.Agent,
 		panic(err)
 	}
 
-	return agent, token
+	return ag, token
 }
 
 // AddConnectService creates a new service test client.
@@ -156,7 +165,7 @@ func (test *TestServer) AddConnectAgent(agentID string) (agent *messaging.Agent,
 // This sets the getForm handler of the client to the protocol server. (for testing)
 //
 // clientType can be one of ClientTypeAgent or ClientTypeService
-func (test *TestServer) AddConnectService(serviceID string) (ag *messaging.Agent, token string) {
+func (test *TestServer) AddConnectService(serviceID string) (ag *consumer.Agent, token string) {
 
 	// 1: register the service
 	token, err := test.Runtime.AuthnSvc.AdminSvc.AddService(serviceID,
@@ -172,10 +181,10 @@ func (test *TestServer) AddConnectService(serviceID string) (ag *messaging.Agent
 	connectURL := test.Runtime.TransportsMgr.GetConnectURL(test.ServiceProtocol)
 	server := test.Runtime.TransportsMgr.GetServer(test.ServiceProtocol)
 	getForm := server.GetForm
-	cc, err := clients.NewClient(connectURL, serviceID, test.Certs.CaCert, getForm, test.ConnectTimeout)
+	cc, err := clients.NewClient(serviceID, test.Certs.CaCert, getForm, connectURL, test.ConnectTimeout)
 	if err == nil {
 		err = cc.ConnectWithToken(token)
-		ag = messaging.NewAgent(cc, nil, nil, nil, 0)
+		ag = consumer.NewAgent(cc, nil, nil, nil, 0)
 	}
 	if err != nil {
 		panic("AddConnectService: Failed connecting using token. serviceID=" + serviceID)
@@ -268,6 +277,12 @@ func (test *TestServer) GetServerURL(clientType authn.ClientType) string {
 	return test.Runtime.GetConnectURL(test.ConsumerProtocol)
 }
 
+// LoginWithPassword helper function to obtain an auth token from a password
+func (test *TestServer) LoginWithPassword(loginID string, password string) (string, error) {
+	token, err := test.Runtime.AuthnSvc.SessionAuth.Login(loginID, password)
+	return token, err
+}
+
 // Start the test server.
 // This panics if something goes wrong.
 func (test *TestServer) Start(clean bool) {
@@ -278,11 +293,11 @@ func (test *TestServer) Start(clean bool) {
 	}
 	test.AppEnv = plugin.GetAppEnvironment(test.TestDir, false)
 	//
-	test.Config.ProtocolConfig.HttpHost = "localhost"
-	test.Config.ProtocolConfig.HttpsPort = TestHttpsPort
-	test.Config.ProtocolConfig.MqttHost = "localhost"
-	test.Config.ProtocolConfig.MqttTcpPort = TestMqttTcpPort
-	test.Config.ProtocolConfig.MqttWssPort = TestMqttWssPort
+	test.Config.ProtocolsConfig.HttpHost = "localhost"
+	test.Config.ProtocolsConfig.HttpsPort = TestHttpsPort
+	test.Config.ProtocolsConfig.MqttHost = "localhost"
+	test.Config.ProtocolsConfig.MqttTcpPort = TestMqttTcpPort
+	test.Config.ProtocolsConfig.MqttWssPort = TestMqttWssPort
 	test.Config.CaCert = test.Certs.CaCert
 	test.Config.CaKey = test.Certs.CaKey
 	test.Config.ServerKey = test.Certs.ServerKey

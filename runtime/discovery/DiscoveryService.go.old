@@ -1,0 +1,27 @@
+package service
+
+import (
+	"github.com/hiveot/hub/runtime/digitwin/store"
+)
+
+// DiscoveryService provides the digital twin discovery service.
+// This is based on the W3C WoT Discovery draft specification: https://w3c.github.io/wot-discovery
+//
+// This provides the following introduction mechanisms:
+// 1. Well known URIs (defined in transports)
+// 2. DNS-SD based service discovery
+// 3. Bluetooth beacon [planned]
+// 4. NFC [planned]
+// 5. Barcode (QR) [planned]
+type DiscoveryService struct {
+	dtwStore *store.DigitwinStore
+}
+
+// NewDiscoveryService creates a new instance of the discovery service
+func NewDiscoveryService(dtwStore *store.DigitwinStore) *DiscoveryService {
+
+	svc := &DiscoveryService{
+		dtwStore: dtwStore,
+	}
+	return svc
+}

@@ -64,5 +64,8 @@ func ReadTD(sourceFile string) (*TD, error) {
 		// json has better error reporting
 		err = json.Unmarshal(tdJSON, &tdi)
 	}
+	if err != nil {
+		err = fmt.Errorf("ReadTD failed for file '%s': %w", sourceFile, err)
+	}
 	return &tdi, err
 }

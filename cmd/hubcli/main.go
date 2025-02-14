@@ -12,8 +12,9 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/clients"
-	"github.com/hiveot/hub/transports/messaging"
+	"github.com/hiveot/hub/transports/consumer"
 	"github.com/urfave/cli/v2"
 	"log/slog"
 	"os"
@@ -29,13 +30,14 @@ var nowrap bool
 // commandline:  hubcli command options
 
 func main() {
-	var hc *messaging.Consumer
+	var hc *consumer.Consumer
 	var verbose bool
 	var loginID = "admin"
 	var password = ""
 	var homeDir string
 	var certsDir string
 	var serverURL string
+	var protocol = transports.ProtocolTypeHiveotWSS
 
 	// environment defaults
 	env := plugin.GetAppEnvironment("", false)
@@ -78,6 +80,12 @@ func main() {
 				Destination: &password,
 			},
 			&cli.StringFlag{
+				Name:        "protocol",
+				Usage:       "preferred transport protocol: hiveot-wss, hiveot-sse, wot-wss",
+				Value:       protocol,
+				Destination: &protocol,
+			},
+			&cli.StringFlag{
 				Name:        "server",
 				Usage:       "server URL (default: use DNS-SD discovery)",
 				Value:       serverURL,
@@ -100,13 +108,20 @@ func main() {
 			if nowrap {
 				fmt.Printf(utils.WrapOff)
 			}
-			// the CLI uses the built-in hiveot messaging protocol
-			cc, err := clients.ConnectClient(serverURL, loginID, certsDir, password)
+			// TODO: cleanup: don't connect for these commands
+			cmd := c.Args().First()
+			if cmd == "" || cmd == "disco" || cmd == "cca" || cmd == "vca" {
+				return nil
+			}
+
+			caCert, _ := clients.LoadCA(certsDir)
+			cc, _, err := clients.ConnectWithPassword(loginID, password, caCert, "", "", 0)
+
 			if err != nil {
 				slog.Error("Unable to connect to the server", "err", err)
-				return err
+				return fmt.Errorf("Unable to connect to the hub")
 			}
-			hc = messaging.NewConsumer(cc, 0)
+			hc = consumer.NewConsumer(cc, 0)
 			return nil
 		},
 		// commands arguments are passed by reference so they are updated in the Before section
@@ -126,6 +141,7 @@ func main() {
 			launchercli.LauncherStopCommand(&hc),
 
 			directorycli.DirectoryListCommand(&hc),
+			directorycli.DiscoListCommand(),
 
 			//historycli.HistoryLatestCommand(&hc),
 			historycli.HistoryListCommand(&hc),

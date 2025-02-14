@@ -53,7 +53,7 @@ type HiveotSseClient struct {
 	// This client's connection ID
 	cid string
 
-	// The full server's base URL schema://host:port/path
+	// The full server's base URL sse://host:port/path
 	fullURL string
 	// The server host:port
 	hostPort string
@@ -80,13 +80,12 @@ type HiveotSseClient struct {
 	getForm transports.GetFormHandler
 
 	// custom headers to include in each request
-
 	headers map[string]string
 
 	lastError atomic.Pointer[error]
 }
 
-// _send a HTTPS method and return the http response.
+// Send a HTTPS method and return the http response.
 //
 // If token authentication is enabled then add the bearer token to the header
 //
@@ -99,30 +98,31 @@ type HiveotSseClient struct {
 //	correlationID: optional correlationID header value
 //
 // This returns the raw serialized response data, a response message ID, return status code or an error
-func (cl *HiveotSseClient) _send(
+func (cl *HiveotSseClient) Send(
 	method string, methodPath string, body []byte) (
 	resp []byte, headers http.Header, code int, err error) {
 
 	if cl.httpClient == nil {
-		err = fmt.Errorf("_send: '%s'. Client is not started", methodPath)
+		err = fmt.Errorf("Send: '%s'. Client is not started", methodPath)
 		return nil, nil, 0, err
 	}
 	// Caution! a double // in the path causes a 301 and changes post to get
 	bodyReader := bytes.NewReader(body)
 	serverURL := cl.GetConnectURL()
 	parts, _ := url.Parse(serverURL)
+	parts.Scheme = "https" // the sse path has the sse scheme
 	parts.Path = methodPath
 	fullURL := parts.String()
 	//fullURL := parts.cl.GetServerURL() + reqPath
 	req, err := http.NewRequest(method, fullURL, bodyReader)
 	if err != nil {
-		err = fmt.Errorf("_send %s %s failed: %w", method, fullURL, err)
+		err = fmt.Errorf("Send %s %s failed: %w", method, fullURL, err)
 		return nil, nil, 0, err
 	}
 
 	// set the origin header to the intended destination without the path
 	//parts, err := url.Parse(fullURL)
-	origin := fmt.Sprintf("%s://%s", parts.Scheme, parts.Host)
+	origin := fmt.Sprintf("https://%s", parts.Host)
 	req.Header.Set("Origin", origin)
 
 	// set the authorization header
@@ -161,9 +161,9 @@ func (cl *HiveotSseClient) _send(
 		}
 	} else if httpStatus >= 500 {
 		err = fmt.Errorf("Error %d (%s): %s", httpStatus, httpResp.Status, respBody)
-		slog.Error("_send returned internal server error", "reqPath", methodPath, "err", err.Error())
+		slog.Error("Send returned internal server error", "reqPath", methodPath, "err", err.Error())
 	} else if err != nil {
-		err = fmt.Errorf("_send: Error %s %s: %w", method, methodPath, err)
+		err = fmt.Errorf("Send: Error %s %s: %w", method, methodPath, err)
 	}
 	return respBody, httpResp.Header, httpStatus, err
 }
@@ -200,17 +200,21 @@ func (cl *HiveotSseClient) _send(
 // and on success establish an SSE connection using the same TLS client.
 //
 // This returns an authentication token for use with ConnectWithToken.
-func (cc *HiveotSseClient) ConnectWithPassword(password string) (newToken string, err error) {
-	newToken, err = cc.LoginWithPassword(password)
-	if err == nil {
-		err = cc.ConnectWithToken(newToken)
-	}
-	return newToken, err
-}
+//func (cc *HiveotSseClient) ConnectWithPassword(password string) (newToken string, err error) {
+//	newToken, err = cc.LoginWithPassword(password)
+//	if err == nil {
+//		err = cc.ConnectWithToken(newToken)
+//	}
+//	return newToken, err
+//}
 
 // ConnectWithToken sets the bearer token to use with requests and establishes
 // an SSE connection.
 func (cc *HiveotSseClient) ConnectWithToken(token string) error {
+	if cc.IsConnected() {
+		slog.Error("ConnectWithToken: already connected")
+		return fmt.Errorf("ConnectWithToken: already connected")
+	}
 	err := cc.SetBearerToken(token)
 	if err != nil {
 		return err
@@ -366,44 +370,44 @@ func (cl *HiveotSseClient) IsConnected() bool {
 // FIXME: use a WoT standardized auth method
 //
 // If the connection fails then any existing connection is cancelled.
-func (cl *HiveotSseClient) LoginWithPassword(password string) (newToken string, err error) {
-
-	slog.Info("ConnectWithPassword",
-		"clientID", cl.GetClientID(), "connectionID", cl.GetConnectionID())
-
-	// FIXME: figure out how a standard login method is used to obtain an auth token
-	loginMessage := map[string]string{
-		"login":    cl.GetClientID(),
-		"password": password,
-	}
-	f := cl.getForm(wot.HTOpLogin, "", "")
-	if f == nil {
-		err = fmt.Errorf("missing form for login operation")
-		slog.Error(err.Error())
-		return "", err
-	}
-	method, _ := f.GetMethodName()
-	href, _ := f.GetHRef()
-
-	dataJSON, _ := jsoniter.Marshal(loginMessage)
-	outputRaw, _, _, err := cl._send(method, href, dataJSON)
-
-	if err == nil {
-		err = jsoniter.Unmarshal(outputRaw, &newToken)
-	}
-	// store the bearer token further requests
-	// when login fails this clears the existing token. Someone else
-	// logging in cannot continue on a previously valid token.
-	cl.mux.Lock()
-	cl.bearerToken = newToken
-	cl.mux.Unlock()
-	//cl.BaseIsConnected.Store(true)
-	if err != nil {
-		slog.Warn("connectWithPassword failed: " + err.Error())
-	}
-
-	return newToken, err
-}
+//func (cl *HiveotSseClient) LoginWithPassword(password string) (newToken string, err error) {
+//
+//	slog.Info("ConnectWithPassword",
+//		"clientID", cl.GetClientID(), "connectionID", cl.GetConnectionID())
+//
+//	// FIXME: figure out how a standard login method is used to obtain an auth token
+//	loginMessage := map[string]string{
+//		"login":    cl.GetClientID(),
+//		"password": password,
+//	}
+//	f := cl.getForm(wot.HTOpLogin, "", "")
+//	if f == nil {
+//		err = fmt.Errorf("missing form for login operation")
+//		slog.Error(err.Error())
+//		return "", err
+//	}
+//	method, _ := f.GetMethodName()
+//	href, _ := f.GetHRef()
+//
+//	dataJSON, _ := jsoniter.Marshal(loginMessage)
+//	outputRaw, _, _, err := cl.Send(method, href, dataJSON)
+//
+//	if err == nil {
+//		err = jsoniter.Unmarshal(outputRaw, &newToken)
+//	}
+//	// store the bearer token further requests
+//	// when login fails this clears the existing token. Someone else
+//	// logging in cannot continue on a previously valid token.
+//	cl.mux.Lock()
+//	cl.bearerToken = newToken
+//	cl.mux.Unlock()
+//	//cl.BaseIsConnected.Store(true)
+//	if err != nil {
+//		slog.Warn("connectWithPassword failed: " + err.Error())
+//	}
+//
+//	return newToken, err
+//}
 
 // Logout from the server and end the session.
 // This is specific to the Hiveot Hub.
@@ -411,7 +415,7 @@ func (cl *HiveotSseClient) LoginWithPassword(password string) (newToken string, 
 //	// TODO: can this be derived from a form?
 //	slog.Info("Logout",
 //		slog.String("clientID", cl.GetClientID()))
-//	_, _, err := cl._send(http.MethodPost, httpserver.HttpPostLogoutPath, nil, "")
+//	_, _, err := cl.Send(http.MethodPost, httpserver.HttpPostLogoutPath, nil, "")
 //	return err
 //}
 
@@ -459,7 +463,7 @@ func (cl *HiveotSseClient) SendRequest(req *transports.RequestMessage) error {
 		href, _ = f.GetHRef()
 		subprotocol, _ := f.GetSubprotocol()
 		// the SSE-Hiveot subprotocol sends the RequestMessage envelope as payload
-		useRequestEnvelope = subprotocol == hiveotsseserver.SubprotocolSSEHiveot
+		useRequestEnvelope = subprotocol == hiveotsseserver.HiveotSSESchema
 	}
 
 	if f == nil {
@@ -492,7 +496,7 @@ func (cl *HiveotSseClient) SendRequest(req *transports.RequestMessage) error {
 		"name":      name,
 		"operation": req.Operation}
 	reqPath := tputils.Substitute(href, vars)
-	outputRaw, headers, code, err := cl._send(method, reqPath, []byte(inputJSON))
+	outputRaw, headers, code, err := cl.Send(method, reqPath, []byte(inputJSON))
 	_ = headers
 
 	// 1. error response
@@ -568,7 +572,7 @@ func (cl *HiveotSseClient) SendRequest(req *transports.RequestMessage) error {
 // agents that use connection-reversal.
 func (cl *HiveotSseClient) SendResponse(resp *transports.ResponseMessage) error {
 	outputJSON, _ := jsoniter.MarshalToString(resp)
-	_, _, _, err := cl._send(http.MethodPost,
+	_, _, _, err := cl.Send(http.MethodPost,
 		hiveotsseserver.DefaultHiveotPostResponseHRef, []byte(outputJSON))
 	return err
 }
@@ -611,7 +615,7 @@ func (cl *HiveotSseClient) SetResponseHandler(cb transports.ResponseHandler) {
 // This uses TD forms to perform an operation.
 //
 //	sseURL of the http and sse server to connect to, including the schema
-//	clientID to connect as; for logging and ConnectWithPassword. It is ignored if auth token is used.
+//	clientID to identify as. Must match the auth token
 //	clientCert optional client certificate to connect with
 //	caCert of the server to validate the server or nil to not check the server cert
 //	getForm is the handler for return a form for invoking an operation. nil for default

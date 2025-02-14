@@ -4,15 +4,15 @@ import (
 	"crypto/x509"
 	"fmt"
 	"github.com/hiveot/hub/lib/certs"
-	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/clients/authenticator"
+	"github.com/hiveot/hub/transports/clients/discovery"
 	"github.com/hiveot/hub/transports/clients/httpsseclient"
 	"github.com/hiveot/hub/transports/clients/wssclient"
+	"github.com/hiveot/hub/transports/servers/discoserver"
 	"github.com/hiveot/hub/transports/servers/hiveotsseserver"
 	"github.com/hiveot/hub/transports/servers/wssserver"
-	"github.com/hiveot/hub/transports/tputils/discovery"
-	"github.com/hiveot/hub/wot/td"
-	"log/slog"
+	"net/url"
 	"os"
 	"path"
 	"strings"
@@ -25,125 +25,104 @@ const TokenFileExt = ".token"
 
 var DefaultTimeout = time.Second * 3
 
-// ConnectClient helper function creates a client transport connection to the
-// server using the given CA certificate from a directory.
-// Intended for consumers and Thing agents.
+// ConnectWithPassword is a convenience function to authenticate with a password
+// and create a secured client connection using a CA from the directory.
 //
-// This assumes that CA cert and auth token have already been set up and are available
-// in the certDir.
+// This discovers the server if no URL is provided or the url is not able to authenticate.
 //
-// The token file is named {certDir}/{clientID}.token
+//	loginID is the clientID to login as
+//	password to authenticate with
+//	caCert is the server CA. See also LoadCA()
+//	connectURL of the server to connect to, or "" to use discovery
+//	authURL of the authentication server, or "" to use connectURL
 //
-// 1. If no fullURL is given then use discovery to determine the URL
-// 2. Load the CA cert
-// 3. Create an agent client
-// 4. Connect using token file (agents do not use passwords)
+// This returns the client connection with the authentication token used or an error if invalid
+func ConnectWithPassword(
+	loginID string, password string, caCert *x509.Certificate, connectURL string, authURL string, timeout time.Duration) (
+	cc transports.IClientConnection, token string, err error) {
+
+	// 1. obtain the CA public cert to verify the server
+	//caCert, err := LoadCA(caDir)
+	//if err != nil {
+	//	return nil, "", err
+	//}
+
+	// 2. discover the server
+	if connectURL == "" {
+		var records []*discovery.DiscoveryResult
+
+		records, err = discovery.DiscoverWithDnsSD(
+			"", discoserver.DefaultServiceName, DefaultTimeout, true)
+		if err == nil && len(records) > 0 {
+			rec0 := records[0]
+			connectURL = rec0.ConnectURL
+			if connectURL == "" {
+				connectURL = rec0.TD
+			}
+			if authURL == "" {
+				authURL = rec0.AuthURL
+			}
+		}
+	}
+	if authURL == "" {
+		authURL = connectURL
+	}
+
+	if err != nil {
+		return nil, "", err
+	} else if connectURL == "" {
+		return nil, "", fmt.Errorf("WoT Server discovery failed")
+	}
+
+	// 3. authenticate. A cid is required to link the authenticated session with
+	// the connections using it.
+	newToken, err := authenticator.AuthenticateWithPassword(
+		authURL, "", loginID, password, caCert, "")
+	if err != nil {
+		return nil, "", err
+	}
+
+	// 4. connect with token
+	cc, err = ConnectWithToken(loginID, token, caCert, connectURL, timeout)
+	return cc, newToken, err
+}
+
+// ConnectWithToken is a convenience function to create a client and connect with a token
+// and CA certificate.
 //
-//	fullURL is the scheme://addr:port/[wssPath] the server is listening on. "" for auto discovery
-//	clientID to connect as. Also used for the key and token file names
-//	certDir is the credentials directory containing the CA cert (caCert.pem) and key/token files ({clientID}.token)
-func ConnectClient(fullURL string, clientID string, certDir string, password string) (
+//	connectURL is the optional URL of the server. Leave empty to auto-discover
+//	clientID to identify
+//
+// This returns the client connection or an error if invalid
+func ConnectWithToken(
+	clientID string, token string, caCert *x509.Certificate, connectURL string, timeout time.Duration) (
 	cc transports.IClientConnection, err error) {
 
-	if clientID == "" {
-		return nil, fmt.Errorf("missing clientID")
-	}
-	// 1. determine the actual address
-	if fullURL == "" {
-		// return after first result
-		disco, err := discovery.LocateHub(time.Second, true)
-		if err != nil {
-			return nil, fmt.Errorf("Hub not found")
-		}
-		// FIXME: specified a protocol
-		fullURL = disco.HiveotWssURL
-		if fullURL == "" {
-			fullURL = disco.HiveotSseURL
-		}
-		// TODO: remove this after testing
-		fullURL = disco.HiveotSseURL
-	}
-
-	// 2. obtain the CA public cert to verify the server
-	caCertFile := path.Join(certDir, certs.DefaultCaCertFile)
-	caCert, err := certs.LoadX509CertFromPEM(caCertFile)
-	if err != nil {
-		return nil, err
-	}
-
-	// 3. Determine which protocol to use and setup the key and token filenames
-	// getForm should be set by the application that has the Thing directory
-	cc, _ = NewClient(fullURL, clientID, caCert, nil, 0)
-	if cc == nil {
-		return nil, fmt.Errorf("unable to create client for URL: %s", fullURL)
-	}
-
-	// 4. Connect and auth with token from file
-	slog.Info("connecting to", "serverURL", fullURL)
-	if password != "" {
-		_, err = cc.ConnectWithPassword(password)
-	} else {
-		// login with token file
-		err = ConnectWithTokenFile(cc, certDir)
-	}
-
-	if err != nil {
-		slog.Warn("ConnectClient: Client created but connect failed",
-			"fullURL", fullURL,
-			"err", err.Error())
-		cc.Disconnect()
-		return nil, err
+	cc, err = NewClient(clientID, caCert, nil, connectURL, timeout)
+	if err == nil {
+		err = cc.ConnectWithToken(token)
 	}
 	return cc, err
 }
 
-// ConnectWithPassword is a convenience function to connect with a server and
-// authenticate with the given password.
-// This returns a new auth token and a client connection that can be used with consumers or agents.
-func ConnectWithPassword(fullURL string, clientID string, certDir string, password string) (
-	newToken string, cc transports.IClientConnection, err error) {
-
-	// 1. obtain the CA public cert to verify the server
-	caCertFile := path.Join(certDir, certs.DefaultCaCertFile)
-	caCert, err := certs.LoadX509CertFromPEM(caCertFile)
-	if err != nil {
-		return "", nil, err
-	}
-
-	cc, err = NewClient(fullURL, clientID, caCert, nil, 0)
-	if err != nil {
-		return "", nil, err
-	}
-	newToken, err = cc.ConnectWithPassword(password)
-	return newToken, cc, err
-}
-
-// ConnectWithTokenFile is a convenience function to read token and key
-// from file and connect to the server. Also used by agents.
+// ConnectWithTokenFile is a convenience function to create a connection using
+// a saved token and optional CA file.
+// This is similar to ConnectWithToken but reads a token and CA from file.
 //
-// keysDir is the directory with the {clientID}.key and {clientID}.token files.
-func ConnectWithTokenFile(cc transports.IClientConnection, keysDir string) error {
-	var kp keys.IHiveKey
+// keysDir is the directory with the {clientID}.key, {clientID}.token and caCert.pem files.
+//
+// This returns the connection, token and CaCert used or an error if invalid
+func ConnectWithTokenFile(clientID string, keysDir string, connectURL string, timeout time.Duration) (
+	cc transports.IClientConnection, token string, caCert *x509.Certificate, err error) {
 
-	clientID := cc.GetClientID()
-
-	slog.Info("ConnectWithTokenFile",
-		slog.String("keysDir", keysDir),
-		slog.String("clientID", clientID))
-	keyFile := path.Join(keysDir, clientID+keys.KPFileExt)
-	tokenFile := path.Join(keysDir, clientID+TokenFileExt)
-	token, err := os.ReadFile(tokenFile)
-	if err == nil && keyFile != "" {
-		kp, err = keys.NewKeyFromFile(keyFile)
-		//TODO: future use for key-pair?
-		_ = kp
+	caCert, err = LoadCA(keysDir)
+	if err == nil {
+		token, err = LoadToken(clientID, keysDir)
 	}
-	if err != nil {
-		return fmt.Errorf("ConnectWithTokenFile failed: %w", err)
+	if err == nil {
+		cc, err = ConnectWithToken(clientID, token, caCert, connectURL, timeout)
 	}
-	//cc.kp = kp
-	err = cc.ConnectWithToken(string(token))
-	return err
+	return cc, token, caCert, err
 }
 
 // GetProtocolFromURL determines which transport protocol type the URL represents
@@ -152,8 +131,8 @@ func ConnectWithTokenFile(cc transports.IClientConnection, keysDir string) error
 // fullURL contains the full server address as provided by discovery:
 //
 //	https://addr:port/ for http without sse
-//	https://addr:port/wot/sse for http with the sse subprotocol binding
-//	https://addr:port/hiveot/sse for http with the ssesc subprotocol binding
+//	sse://addr:port/wot/sse for http with the sse subprotocol binding
+//	sse://addr:port/hiveot/sse for http with the ssesc subprotocol binding
 //	wss://addr:port/wot/wss for websocket over TLS
 //	wss://addr:port/hiveot/wss for direct messaging websocket over TLS
 //	mqtts://addr:port/ for mqtt over websocket over TLS
@@ -161,21 +140,27 @@ func GetProtocolFromURL(fullURL string) string {
 	// determine the protocol to use from the URL
 	protocolType := ""
 
-	if strings.HasPrefix(fullURL, "https") {
-		if strings.HasSuffix(fullURL, hiveotsseserver.DefaultHiveotSsePath) {
-			protocolType = transports.ProtocolTypeHiveotSSE
-		} else if strings.HasSuffix(fullURL, wssserver.DefaultHiveotWssPath) {
-			protocolType = transports.ProtocolTypeHiveotWSS
-		} else if strings.HasSuffix(fullURL, wssserver.DefaultWotWssPath) {
-			protocolType = transports.ProtocolTypeHiveotSSE
-		} else {
-			protocolType = transports.ProtocolTypeWotHTTPBasic
-		}
-	} else if strings.HasPrefix(fullURL, "wss") {
+	parts, err := url.Parse(fullURL)
+	if err != nil {
+		return ""
+	}
+	if parts.Scheme == "https" {
+		protocolType = transports.ProtocolTypeWotHTTPBasic
+	} else if parts.Scheme == wssserver.HiveotWssSchema {
+		// websocket protocol can use either WoT or hiveot message envelopes
 		protocolType = transports.ProtocolTypeWotWSS
 		if strings.HasSuffix(fullURL, wssserver.DefaultHiveotWssPath) {
 			protocolType = transports.ProtocolTypeHiveotWSS
 		}
+	} else if parts.Scheme == hiveotsseserver.HiveotSSESchema {
+		protocolType = transports.ProtocolTypeHiveotSSE
+		// wot SSE is not supported
+	} else {
+		protocolType = transports.ProtocolTypeWotWSS
+	}
+	// there are 2 wss protocols, differentiate using the path
+	if strings.HasSuffix(fullURL, wssserver.DefaultHiveotWssPath) {
+		protocolType = transports.ProtocolTypeHiveotWSS
 	} else if strings.HasPrefix(fullURL, "mqtts") {
 		protocolType = transports.ProtocolTypeWotMQTTWSS
 	}
@@ -183,55 +168,96 @@ func GetProtocolFromURL(fullURL string) string {
 }
 
 // GetProtocolFromForm determine the protocol type from a WoT form.
-// FIXME: forms can contain relative paths instead of full URL. The TD
+// FIXME: forms can contain relative paths instead of full URL. The TD is needed
 //
 //	base is the TD base URI used for all relative URI references.
 //	form is the form whose (sub)protocol to determine.
-func GetProtocolFromForm(base string, form *td.Form) string {
-	subProto, _ := form.GetSubprotocol()
-	if subProto != "" {
-		return subProto
-	}
-	url, _ := form.GetHRef()
+//func GetProtocolFromForm(base string, form *td.Form) string {
+//	subProto, _ := form.GetSubprotocol()
+//	if subProto != "" {
+//		return subProto
+//	}
+//	href, _ := form.GetHRef()
+//	return GetProtocolFromURL(href)
+//}
 
-	return GetProtocolFromURL(url)
+// LoadCA is a simple helper to load the default CA from file
+func LoadCA(caDir string) (*x509.Certificate, error) {
+	caCertFile := path.Join(caDir, certs.DefaultCaCertFile)
+	caCert, err := certs.LoadX509CertFromPEM(caCertFile)
+	return caCert, err
 }
 
-// NewClient returns a new client connection for connecting to a wot server.
+// LoadToken is a simple helper to load a saved auth token from file
+func LoadToken(clientID string, keysDir string) (string, error) {
+	//keyFile := path.Join(keysDir, clientID+keys.KPFileExt)
+	tokenFile := path.Join(keysDir, clientID+TokenFileExt)
+	token, err := os.ReadFile(tokenFile)
+	return string(token), err
+}
+
+// NewClient returns a new unconnected client ready for connecting to a thing server.
+// Intended for use with the hiveot hub, but should be usable with other things.
 //
-// fullURL contains the full server address as provided by discovery. See GetProtocolFromURL for details.
-// clientID is the ID to authenticate as when using one of the Connect... methods
-// caCert is the server's CA certificate to verify the connection. Using nil will
-// ignore the server certificate check.
+// This expects the thing level base URL and uses the schema to determine what
+// protocol to use. Supported schema's:
+// * 'https'  - plain https no async return channel
+// * 'wss'    - secure websocket connection.
+// * 'sse'    - secure http/hiveot SSE connection. Not an IANA schema.
+// * 'mqtts'  - for mqtt over tcp  (future)
 //
-// Agents do not use forms as WoT does not support agents. This will fall back to
-// the hiveot message envelopes.
+// Note 1: individual thing affordances can specify a different protocol in its form.
+// This is currently not supported.
+// Note 2: wss does not support https request other than establishing a connection
+// Note 3: ssesc is hiveot only. WoT SSE has too many restrictions. Will likely be phased out in the future.
+// Note 4: Use the separate auth method to get a token
+//
+//	clientID is the ID to authenticate as when using one of the Connect... methods
+//	connectURL contains the connection URL for the protocol. Typically the TD baseURL.
+//
+// caCert is the server's CA certificate to verify the connection.
+//
+//	If caCert is not provided then the server connection is not verified
+//
+// getForm handler to return a Form when invoking a Thing request.
+//
+//	This is intended to be provided by a directory which can retrieve the forms of
+//	a Thing for issuing requests. HiveOT presents all Things as a digital twin.
+//	The forms of all Things are identical and use URI variables to fill in the
+//	operation, thingID and name of the affordance.
+//
+// The WoT basic sse protocol is not supported as its use-case is too limited.
+// Instead the hiveot SSE-Single-Connection protocol is used which wraps the
+// sse event payload in a RequestMessage or ResponseMessage envelope. This supports
+// messages for multiple Things and multiple affordances.
+//
+// If no connectURL is specified then this falls back to using the "baseURL" param
+// in the discovery record of the hiveot instance to connect to.
 //
 // timeout is optional maximum wait time for connecting or waiting for responses.
 // Use 0 for default.
 func NewClient(
-	fullURL string, clientID string, caCert *x509.Certificate,
-	getForm transports.GetFormHandler, timeout time.Duration) (
+	clientID string, caCert *x509.Certificate,
+	getForm transports.GetFormHandler, connectURL string, timeout time.Duration) (
 	cc transports.IClientConnection, err error) {
 
-	// 1. determine the actual address
-	if fullURL == "" {
-		// return after first result
-		disco, err := discovery.LocateHub(time.Second, true)
-		if err != nil {
-			return nil, fmt.Errorf("Hub not found")
+	// 1. determine the connection address
+	if connectURL == "" {
+
+		// use the first hiveot instance to connect to
+		discoList, err := discovery.DiscoverWithDnsSD(
+			discoserver.DefaultInstanceName, discoserver.DefaultServiceName,
+			timeout, true)
+		if err != nil || len(discoList) == 0 {
+			return nil, fmt.Errorf("hub not found")
 		}
-		// FIXME: specified a protocol
-		fullURL = disco.HiveotWssURL
-		if fullURL == "" {
-			fullURL = disco.HiveotSseURL
-		}
+		connectURL = discoList[0].ConnectURL
 	}
 
 	// determine the protocol to use from the URL
-	protocolType := GetProtocolFromURL(fullURL)
+	protocolType := GetProtocolFromURL(connectURL)
 	if protocolType == "" {
-		return nil, fmt.Errorf("Unknown protocol type in URL: " + fullURL)
+		return nil, fmt.Errorf("Unknown protocol type in URL: " + connectURL)
 	}
 	if timeout <= 0 {
 		timeout = DefaultTimeout
@@ -241,19 +267,17 @@ func NewClient(
 	switch protocolType {
 	case transports.ProtocolTypeHiveotSSE:
 		cc = httpsseclient.NewHiveotSseClient(
-			fullURL, clientID, nil, caCert, getForm, timeout)
+			connectURL, clientID, nil, caCert, getForm, timeout)
 
 	case transports.ProtocolTypeHiveotWSS:
 		msgConverter := &wssserver.HiveotMessageConverter{}
-		cc = wssclient.NewHiveotWssClientConnection(fullURL, clientID, caCert,
+		cc = wssclient.NewHiveotWssClient(connectURL, clientID, caCert,
 			msgConverter, transports.ProtocolTypeHiveotWSS, timeout)
 
 	case transports.ProtocolTypeWotWSS:
-		//msgConverter := &hiveotwssserver.WotWssMessageConverter{}
-		//cc = hiveotwssclient.NewHiveotWssClientConnection(
-		//	fullURL, clientID, nil, caCert,
-		//	msgConverter, nil, timeout)
-		panic("wot wss client is broken")
+		msgConverter := &wssserver.WotWssMessageConverter{}
+		cc = wssclient.NewHiveotWssClient(connectURL, clientID, caCert,
+			msgConverter, transports.ProtocolTypeWotWSS, timeout)
 
 	case transports.ProtocolTypeWotHTTPBasic:
 		panic("Don't use HTTPS protocol, use the SSESC or WSS subprotocol instead")

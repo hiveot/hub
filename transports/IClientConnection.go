@@ -19,16 +19,6 @@ type IClientConnection interface {
 	// This authentication method is optional
 	//ConnectWithClientCert(kp keys.IHiveKey, cert *tls.Certificate) (err error)
 
-	// ConnectWithPassword connects to the messaging server using password authentication.
-	// If a connection already exists it will be closed first.
-	//
-	// This returns a connection token that can be used with ConnectWithToken.
-	//
-	//  password is created when registering the user with the auth service.
-	//
-	// This authentication method must be supported by all transport implementations.
-	ConnectWithPassword(password string) (newToken string, err error)
-
 	// ConnectWithToken connects to the messaging server using an authentication token.
 	//
 	// If a connection is already established on this client then it will be closed first.

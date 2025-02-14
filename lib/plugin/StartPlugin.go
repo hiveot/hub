@@ -2,7 +2,7 @@ package plugin
 
 import (
 	"github.com/hiveot/hub/transports/clients"
-	"github.com/hiveot/hub/transports/messaging"
+	"github.com/hiveot/hub/transports/consumer"
 	"log/slog"
 	"os"
 )
@@ -15,7 +15,7 @@ type PluginConfig struct {
 type IPlugin interface {
 	// Start the plugin with the given environment settings and hub connection
 	//	ag is the agent with the capability for publishing and subscribing
-	Start(ag *messaging.Agent) error
+	Start(ag *consumer.Agent) error
 	Stop()
 }
 
@@ -30,22 +30,19 @@ type IPlugin interface {
 //	plugin is the instance of the plugin with Start and Stop methods.
 //	clientID is the client's connect ID. certsDir is the location with the service token
 //	file, primary key, and CA certificate.
-//	env is the application environment with clientID, certs directory
+//	certDir contains the service auth tokens
+//	protocol is the preferred transport protocol, if available. For example: ProtocolTypeHiveotWss
 func StartPlugin(plugin IPlugin, clientID string, certsDir string) {
 
-	// locate the hub, load CA certificate, load service key and token and connect
-	//caCertFile := path.Join(certsDir, certs.DefaultCaCertFile)
-	//caCert, err := certs.LoadX509CertFromPEM(caCertFile)
-
-	// FIXME: the plugin needs a bootstrap form to connect to the server
-	hc, err := clients.ConnectClient("", clientID, certsDir, "")
+	cc, token, _, err := clients.ConnectWithTokenFile(clientID, certsDir, "", 0)
+	_ = token
 
 	if err != nil {
 		slog.Error("Failed connecting to the Hub", "err", err)
 		os.Exit(1)
 	}
 	// start the service with the agent.
-	ag := messaging.NewAgent(hc, nil, nil, nil, 0)
+	ag := consumer.NewAgent(cc, nil, nil, nil, 0)
 	err = plugin.Start(ag)
 	if err != nil {
 		slog.Error("failed starting service", "err", err.Error())

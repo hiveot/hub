@@ -1,8 +1,8 @@
 package servers
 
 import (
+	"github.com/hiveot/hub/transports/servers/discoserver"
 	"github.com/hiveot/hub/transports/servers/httpserver"
-	"github.com/hiveot/hub/transports/tputils/discovery"
 	"os"
 )
 
@@ -26,8 +26,12 @@ type ProtocolsConfig struct {
 	// Enable the MQTT protocol binding, default is false.
 	//EnableMQTT bool `yaml:"enableMQTT"`
 
-	// Enable mDNS discovery. Default is true
+	// Enable mDNS discovery. Default is true.
+	// The DiscoveryTDPath must be resolved by the http server
 	EnableDiscovery bool `yaml:"enableDiscovery"`
+	// DigitwinTDPath contains the HTTP path to read the digitwin directory TD
+	// Published by discovery and served by the http server.
+	DirectoryTDPath string `json:"directoryTDPath"`
 
 	// Http host interface
 	HttpHost string `yaml:"host"`
@@ -46,7 +50,8 @@ type ProtocolsConfig struct {
 	MqttWssPort int `yaml:"mqttWssPort"`
 
 	// each protocol binding has its own config section
-	Discovery discovery.DiscoveryConfig `yaml:"discovery"`
+	//Discovery discotransport.DiscoveryConfig `yaml:"discovery"`
+
 }
 
 // NewProtocolsConfig creates the default configuration of communication protocols
@@ -55,6 +60,7 @@ func NewProtocolsConfig() ProtocolsConfig {
 	hostName, _ := os.Hostname()
 
 	cfg := ProtocolsConfig{
+		DirectoryTDPath:    discoserver.DefaultHttpGetDirectoryTDPath,
 		EnableHiveotSSE:    true,
 		EnableHiveotWSS:    true,
 		EnableWotHTTPBasic: true,
@@ -70,7 +76,8 @@ func NewProtocolsConfig() ProtocolsConfig {
 		MqttTcpPort: DefaultMqttTcpPort,
 		MqttWssPort: DefaultMqttWssPort,
 
-		Discovery: discovery.NewDiscoveryConfig(hostName),
+		//Discovery: discotransport.NewDiscoveryConfig(hostName),
+		//DiscoveryTDPath: DefaultDiscoveryPath,
 	}
 	return cfg
 }

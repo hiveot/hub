@@ -88,10 +88,6 @@ func startService() (l *launcherclient.LauncherClient, stopFn func()) {
 
 func TestMain(m *testing.M) {
 	logging.SetLogging("info", "")
-	var err error
-	if err != nil {
-		panic(err)
-	}
 	res := m.Run()
 	os.Exit(res)
 }
@@ -231,5 +227,6 @@ func TestStartStopAll(t *testing.T) {
 	info, err = svc.List(true)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(info))
-	svc.Stop()
+	err = svc.Stop()
+	assert.NoError(t, err)
 }

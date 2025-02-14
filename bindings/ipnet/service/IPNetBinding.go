@@ -6,7 +6,7 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/messaging"
+	"github.com/hiveot/hub/transports/consumer"
 	"log/slog"
 	"time"
 )
@@ -14,7 +14,7 @@ import (
 type IPNetBinding struct {
 	config *config.IPNetConfig
 	// Hub connection
-	ag *messaging.Agent
+	ag *consumer.Agent
 
 	// discovered devices
 	devicesMap      map[string]*IPDeviceInfo
@@ -31,7 +31,7 @@ func (svc *IPNetBinding) ActionHandler(req *transports.RequestMessage,
 }
 
 // Start the binding
-func (svc *IPNetBinding) Start(ag *messaging.Agent) (err error) {
+func (svc *IPNetBinding) Start(ag *consumer.Agent) (err error) {
 	if svc.config.LogLevel != "" {
 		logging.SetLogging(svc.config.LogLevel, "")
 	}

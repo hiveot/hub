@@ -6,6 +6,7 @@ import (
 )
 
 // AgentHandler is a helper that maps messages to a Thing (service) invocation
+//
 // On receiving a message for a Thing:
 //  1. looks-up the method name and obtains the registered method
 //     2a. if the method has an argument (args struct) then
@@ -15,7 +16,7 @@ import (
 //     2b. if the method doesn't have an argument
 //     2.4 invoke the method without an argument
 //
-// TODO: merge with messaging agent
+// Replace with generated clients using td2go, that doesnt use reflection.
 type AgentHandler struct {
 	// the thing this agent is a handler for
 	thingID string

@@ -90,13 +90,6 @@ type MqttClientConnection struct {
 	agentRequestHandler func(m *paho.Publish)
 }
 
-// ConnectWithPassword connects to the Hub server using a login ID and password.
-func (cl *MqttClientConnection) ConnectWithPassword(password string) (newToken string, err error) {
-	// same process using password or token
-	newToken, err = cl.ConnectWithToken(password)
-	return newToken, err
-}
-
 // ConnectWithToken establishes a connection to the MQTT broker using the paho client
 func (cl *MqttClientConnection) ConnectWithToken(token string) (newToken string, err error) {
 	// setup TLS

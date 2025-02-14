@@ -28,9 +28,10 @@ func AddSessionToContext(sm *WebSessionManager) func(next http.Handler) http.Han
 			cs, clientID, cid, authToken, err := sm.GetSessionFromCookie(r)
 			if err != nil {
 				// FIXME: if this is an SSE connection request then ask to back off
-				//slog.Warn("AddSessionToContext: No valid authentication. Redirect to login.",
-				//	slog.String("remoteAdd", r.RemoteAddr),
-				//	slog.String("path", r.URL.String()))
+				slog.Warn("Hiveoview.AddSessionToContext: No valid authentication. Redirect to login.",
+					slog.String("remoteAdd", r.RemoteAddr),
+					slog.String("path", r.URL.String()),
+					slog.String("err", err.Error()))
 
 				// FIXME: the sse connection needs the login session cookie; either that or fix bearer token auth
 

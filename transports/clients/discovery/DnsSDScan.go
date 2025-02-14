@@ -14,10 +14,11 @@ import (
 // The zeroconf library does not support browsing of all services, but a workaround is
 // to search the service types with "_services._dns-sd._udp" then query each of the service types.
 //
+//	instanceName optional filter on a particual implementation
 //	serviceType to look for in format "_name._tcp", or "" to discover all service types (not all services)
 //	waitTime with duration to wait while collecting results. 0 means exit on the first result.
-//	firstResult return immediatel
-func DnsSDScan(serviceType string, waitTime time.Duration, firstResult bool) ([]*zeroconf.ServiceEntry, error) {
+//	firstResult return immediately
+func DnsSDScan(instanceName string, serviceType string, waitTime time.Duration, firstResult bool) ([]*zeroconf.ServiceEntry, error) {
 	sdDomain := "local"
 	mu := &sync.Mutex{}
 
@@ -40,13 +41,18 @@ func DnsSDScan(serviceType string, waitTime time.Duration, firstResult bool) ([]
 		for entry := range results {
 			rec := entry.ServiceRecord
 			slog.Info("DnsSDScan: Found service",
-				"instance", rec.Instance, "type", rec.ServiceName(),
-				"domain", rec.Domain, "ip4", entry.AddrIPv4, slog.Int("port", entry.Port))
-			mu.Lock()
-			records = append(records, entry)
-			mu.Unlock()
-			if firstResult {
-				cancel()
+				"instance", rec.Instance,
+				"service", rec.Service,
+				"domain", rec.Domain,
+				"ip4", entry.AddrIPv4,
+				slog.Int("port", entry.Port))
+			if instanceName == "" || instanceName == rec.Instance {
+				mu.Lock()
+				records = append(records, entry)
+				mu.Unlock()
+				if firstResult {
+					cancel()
+				}
 			}
 		}
 		slog.Debug("DnsSDScan: No more entries.")

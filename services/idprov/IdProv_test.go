@@ -10,7 +10,7 @@ import (
 	"github.com/hiveot/hub/services/idprov/idprovclient"
 	"github.com/hiveot/hub/services/idprov/service"
 	"github.com/hiveot/hub/transports/clients"
-	"github.com/hiveot/hub/transports/messaging"
+	"github.com/hiveot/hub/transports/consumer"
 	"github.com/hiveot/hub/transports/tputils/tlsclient"
 	"os"
 	"testing"
@@ -29,7 +29,7 @@ var testPort = 23001
 var ts *testenv.TestServer
 
 // Create a new store, delete if it already exists
-func newIdProvService() (svc *service.IdProvService, co *messaging.Consumer, stopFn func()) {
+func newIdProvService() (svc *service.IdProvService, co *consumer.Consumer, stopFn func()) {
 
 	ts = testenv.StartTestServer(true)
 	agentConn, token1 := ts.AddConnectService(idprovapi.AgentID)
@@ -46,9 +46,6 @@ func newIdProvService() (svc *service.IdProvService, co *messaging.Consumer, sto
 	// create an end user client for testing
 	co, token2 := ts.AddConnectConsumer("test-client", authz.ClientRoleManager)
 	_ = token2
-	if err != nil {
-		panic("can't connect operator")
-	}
 	return svc, co, func() {
 		co.Disconnect()
 		svc.Stop()
@@ -125,11 +122,11 @@ func TestAutomaticProvisioning(t *testing.T) {
 	// token should be used to connect
 	srvURL := ts.GetServerURL(authn.ClientTypeAgent)
 
-	agConn, err := clients.NewClient(srvURL, device1ID, ts.Certs.CaCert, ts.GetForm, 0)
+	agConn, err := clients.NewClient(device1ID, ts.Certs.CaCert, ts.GetForm, srvURL, 0)
 	require.NoError(t, err)
 	err = agConn.ConnectWithToken(token1)
 	require.NoError(t, err)
-	ag1 := messaging.NewAgent(agConn, nil, nil, nil, 0)
+	ag1 := consumer.NewAgent(agConn, nil, nil, nil, 0)
 	//ag1.SetRetryConnect(false)
 	ag1.Disconnect()
 }

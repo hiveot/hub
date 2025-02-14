@@ -6,24 +6,20 @@ import (
 	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/servers/httpserver"
-	"github.com/hiveot/hub/transports/tputils/tlsclient"
-	jsoniter "github.com/json-iterator/go"
 	"github.com/teris-io/shortid"
 	"log/slog"
-	"net/url"
 	"sync"
 	"sync/atomic"
 	"time"
 )
 
-// WssClientConnection manages the connection to a websocket server.
+// WssClient manages the connection to a websocket server.
 // This implements the IConnection interface.
 //
 // This supports multiple message formats using a 'messageConverter'. The hiveot
 // converts is a straight passthrough of RequestMessage and ResponseMessage, while
 // the wotwssConverter maps the messages to the WoT websocket specification.
-type WssClientConnection struct {
+type WssClient struct {
 
 	// handler for requests send by clients
 	appConnectHandlerPtr atomic.Pointer[transports.ConnectionHandler]
@@ -65,7 +61,7 @@ type WssClientConnection struct {
 }
 
 // websocket connection status handler
-func (cl *WssClientConnection) _onConnectionChanged(connected bool, err error) {
+func (cl *WssClient) _onConnectionChanged(connected bool, err error) {
 
 	hPtr := cl.appConnectHandlerPtr.Load()
 
@@ -80,7 +76,7 @@ func (cl *WssClientConnection) _onConnectionChanged(connected bool, err error) {
 }
 
 // _send publishes a message over websockets
-func (cl *WssClientConnection) _send(wssMsg any) (err error) {
+func (cl *WssClient) _send(wssMsg any) (err error) {
 	if !cl.isConnected.Load() {
 		// note, it might be trying to reconnect in the background
 		err := fmt.Errorf("_send: Not connected to the hub")
@@ -93,54 +89,8 @@ func (cl *WssClientConnection) _send(wssMsg any) (err error) {
 	return err
 }
 
-// ConnectWithPassword connects to the TLS server using a login ID and password
-// and obtain an auth token for use with ConnectWithToken.
-//
-// FIXME:
-// 1. This currently only works on the Hub.
-// 2. This has a hard coded paths for auth instead of using the TD
-// 3. This should download the TD from the discovered endpoint
-func (cl *WssClientConnection) ConnectWithPassword(password string) (newToken string, err error) {
-	// Login using the http endpoint
-
-	cl.Disconnect()
-
-	// TODO: use configurable auth method
-	parts, err := url.Parse(cl.fullURL)
-	if err != nil {
-		return "", err
-	}
-	loginURL := fmt.Sprintf("https://%s%s", parts.Host, httpserver.HttpPostLoginPath)
-	slog.Info("ConnectWithPassword", "clientID", cl.clientID)
-
-	// FIXME: figure out how to discover the login method used to obtain an auth token
-	loginMessage := map[string]string{
-		"login":    cl.GetClientID(),
-		"password": password,
-	}
-	urlParts, _ := url.Parse(loginURL)
-	tlsClient := tlsclient.NewTLSClient(urlParts.Host, nil, cl.caCert, cl.timeout)
-	argsJSON, _ := jsoniter.MarshalToString(loginMessage)
-	defer tlsClient.Close()
-	resp, statusCode, err2 := tlsClient.Post(httpserver.HttpPostLoginPath, []byte(argsJSON))
-	if err2 != nil {
-		// cancel the existing connection
-		cl.authToken = ""
-		err = fmt.Errorf("%d: Login failed: %s", statusCode, err2)
-		return "", err
-	}
-	token := ""
-	err = jsoniter.Unmarshal(resp, &token)
-	if err != nil {
-		err = fmt.Errorf("ConnectWithPassword: Login to %s has unexpected response message: %s", loginURL, err)
-		return "", err
-	}
-	err = cl.ConnectWithToken(token)
-	return token, err
-}
-
 // ConnectWithToken attempts to establish a websocket connection using a valid auth token
-func (cl *WssClientConnection) ConnectWithToken(token string) error {
+func (cl *WssClient) ConnectWithToken(token string) error {
 
 	// ensure disconnected (note that this resets retryOnDisconnect)
 	cl.Disconnect()
@@ -162,7 +112,7 @@ func (cl *WssClientConnection) ConnectWithToken(token string) error {
 }
 
 // Disconnect from the server
-func (cl *WssClientConnection) Disconnect() {
+func (cl *WssClient) Disconnect() {
 	slog.Debug("Disconnect",
 		slog.String("clientID", cl.clientID),
 	)
@@ -178,29 +128,29 @@ func (cl *WssClientConnection) Disconnect() {
 }
 
 // GetClientID returns the client's account ID
-func (cl *WssClientConnection) GetClientID() string {
+func (cl *WssClient) GetClientID() string {
 	return cl.clientID
 }
 
 // GetConnectionID returns the client's connection ID
-func (cl *WssClientConnection) GetConnectionID() string {
+func (cl *WssClient) GetConnectionID() string {
 	return cl.connectionID
 }
 
 // GetProtocolType returns the type of protocol this client supports
-func (cl *WssClientConnection) GetProtocolType() string {
+func (cl *WssClient) GetProtocolType() string {
 	return cl.protocolType
 }
 
 // GetConnectURL returns the schema://address:port/path of the server connection
-func (cl *WssClientConnection) GetConnectURL() string {
+func (cl *WssClient) GetConnectURL() string {
 	return cl.fullURL
 }
 
 // HandleWssMessage processes the websocket message received from the server.
 // This decodes the message into a request or response message and passes
 // it to the application handler.
-func (cl *WssClientConnection) HandleWssMessage(raw []byte) {
+func (cl *WssClient) HandleWssMessage(raw []byte) {
 
 	req, resp, err := cl.messageConverter.DecodeMessage(raw)
 	if err != nil {
@@ -231,12 +181,12 @@ func (cl *WssClientConnection) HandleWssMessage(raw []byte) {
 }
 
 // IsConnected return whether the return channel is connection, eg can receive data
-func (cl *WssClientConnection) IsConnected() bool {
+func (cl *WssClient) IsConnected() bool {
 	return cl.isConnected.Load()
 }
 
 // Reconnect attempts to re-establish a dropped connection using the last token
-func (cl *WssClientConnection) Reconnect() {
+func (cl *WssClient) Reconnect() {
 	var err error
 	for i := 0; cl.maxReconnectAttempts == 0 || i < cl.maxReconnectAttempts; i++ {
 		slog.Warn("Reconnecting attempt",
@@ -260,7 +210,7 @@ func (cl *WssClientConnection) Reconnect() {
 
 // SendRequest send a request message over websockets
 // This transforms the request to the protocol message and sends it to the server.
-func (cl *WssClientConnection) SendRequest(req *transports.RequestMessage) error {
+func (cl *WssClient) SendRequest(req *transports.RequestMessage) error {
 
 	slog.Info("SendRequest",
 		slog.String("operation", req.Operation),
@@ -283,7 +233,7 @@ func (cl *WssClientConnection) SendRequest(req *transports.RequestMessage) error
 // SendResponse send a response message over websockets
 // This transforms the response to the protocol message and sends it to the server.
 // Responses without correlationID are subscription notifications.
-func (cl *WssClientConnection) SendResponse(resp *transports.ResponseMessage) error {
+func (cl *WssClient) SendResponse(resp *transports.ResponseMessage) error {
 
 	slog.Info("SendResponse",
 		slog.String("operation", resp.Operation),
@@ -307,7 +257,7 @@ func (cl *WssClientConnection) SendResponse(resp *transports.ResponseMessage) er
 }
 
 // SetConnectHandler set the application handler for connection status updates
-func (cl *WssClientConnection) SetConnectHandler(cb transports.ConnectionHandler) {
+func (cl *WssClient) SetConnectHandler(cb transports.ConnectionHandler) {
 	if cb == nil {
 		cl.appConnectHandlerPtr.Store(nil)
 	} else {
@@ -316,7 +266,7 @@ func (cl *WssClientConnection) SetConnectHandler(cb transports.ConnectionHandler
 }
 
 // SetRequestHandler set the application handler for incoming requests
-func (cl *WssClientConnection) SetRequestHandler(cb transports.RequestHandler) {
+func (cl *WssClient) SetRequestHandler(cb transports.RequestHandler) {
 	if cb == nil {
 		cl.appRequestHandlerPtr.Store(nil)
 	} else {
@@ -325,7 +275,7 @@ func (cl *WssClientConnection) SetRequestHandler(cb transports.RequestHandler) {
 }
 
 // SetResponseHandler set the application handler for received responses
-func (cl *WssClientConnection) SetResponseHandler(cb transports.ResponseHandler) {
+func (cl *WssClient) SetResponseHandler(cb transports.ResponseHandler) {
 	if cb == nil {
 		cl.appResponseHandlerPtr.Store(nil)
 	} else {
@@ -333,7 +283,7 @@ func (cl *WssClientConnection) SetResponseHandler(cb transports.ResponseHandler)
 	}
 }
 
-// NewHiveotWssClientConnection creates a new instance of the websocket client.
+// NewHiveotWssClient creates a new instance of the websocket client.
 //
 // messageConverter offers the ability to use any websocket message format that
 // can be mapped to a RequestMessage and ResponseMessage. It is used to support
@@ -345,16 +295,16 @@ func (cl *WssClientConnection) SetResponseHandler(cb transports.ResponseHandler)
 //	converter is the message format converter
 //	protocol is the protocol ID of the websocket messages
 //	timeout is the maximum connection wait time
-func NewHiveotWssClientConnection(
+func NewHiveotWssClient(
 	fullURL string, clientID string, caCert *x509.Certificate,
 	converter transports.IMessageConverter, protocol string,
-	timeout time.Duration) *WssClientConnection {
+	timeout time.Duration) *WssClient {
 
 	if protocol == "" {
 		protocol = transports.ProtocolTypeHiveotWSS
 	}
 
-	cl := WssClientConnection{
+	cl := WssClient{
 		caCert:               caCert,
 		clientID:             clientID,
 		connectionID:         shortid.MustGenerate(),

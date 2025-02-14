@@ -12,7 +12,7 @@ import (
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views"
-	"github.com/hiveot/hub/transports/messaging"
+	"github.com/hiveot/hub/transports/consumer"
 	"github.com/hiveot/hub/transports/tputils/tlsserver"
 	"log/slog"
 	"net/http"
@@ -45,7 +45,7 @@ type HiveovService struct {
 
 	// ag agent hub client of this service.
 	// This client's CA and URL is also used to establish client sessions.
-	ag *messaging.Agent
+	ag *consumer.Agent
 
 	// cookie signing
 	signingKey ed25519.PrivateKey
@@ -73,7 +73,7 @@ func (svc *HiveovService) GetSM() *session.WebSessionManager {
 // This is invoked by the plugin library.
 //
 //	ag is the service agent connection to the hub for publishing notifications
-func (svc *HiveovService) Start(ag *messaging.Agent) error {
+func (svc *HiveovService) Start(ag *consumer.Agent) error {
 	slog.Info("Starting HiveovService", "clientID", ag.GetClientID())
 	svc.ag = ag
 

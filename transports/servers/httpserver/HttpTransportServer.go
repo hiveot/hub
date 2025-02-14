@@ -28,7 +28,7 @@ const (
 
 	// HttpBasicRequestHRef is the generic HTTP path for sending requests to the server.
 	// this can be used with http-basic profile when building forms
-	HttpBasicRequestHRef = "/httpbasic/{operation}/{thingID}/{name}"
+	//HttpBasicRequestHRef = "/httpbasic/{operation}/{thingID}/{name}"
 )
 
 type HttpOperation struct {
@@ -171,6 +171,12 @@ func (svc *HttpTransportServer) GetConnectURL() string {
 	return baseURL
 }
 
+// GetAuthURL returns the url of the http basic authentication service
+func (svc *HttpTransportServer) GetAuthURL() string {
+	authURL := fmt.Sprintf("https://%s:%d%s", svc.hostName, svc.port, HttpPostLoginPath)
+	return authURL
+}
+
 // GetForm returns a new HTTP form for the given operation
 // Intended for Thing level operations
 func (svc *HttpTransportServer) GetForm(op, thingID, name string) *td.Form {
@@ -209,7 +215,7 @@ func (svc *HttpTransportServer) HandleLogin(w http.ResponseWriter, r *http.Reque
 	}
 	if err != nil {
 		slog.Warn("HandleLogin failed:", "err", err.Error())
-		svc.WriteError(w, err, http.StatusUnauthorized)
+		svc.WriteError(w, err, http.StatusBadRequest)
 		return
 	}
 	// TODO: set client session cookie for browser clients
@@ -250,15 +256,6 @@ func (svc *HttpTransportServer) HandlePing(w http.ResponseWriter, r *http.Reques
 	// simply return a pong message
 	svc.WriteReply(w, "pong", transports.StatusCompleted, nil)
 }
-
-//
-//// SendNotification broadcast an event or property change to subscribers clients
-//func (svc *HttpTransportServer) SendNotification(msg transports.NotificationMessage) {
-//	cList := svc.cm.GetConnectionByProtocol(transports.ProtocolTypeHTTPS)
-//	for _, c := range cList {
-//		c.SendNotification(msg)
-//	}
-//}
 
 // Stop the https server
 func (svc *HttpTransportServer) Stop() {

@@ -6,7 +6,8 @@ import (
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/clients"
-	"github.com/hiveot/hub/transports/messaging"
+	"github.com/hiveot/hub/transports/clients/authenticator"
+	"github.com/hiveot/hub/transports/consumer"
 	"github.com/hiveot/hub/transports/servers/httpserver"
 	"log/slog"
 	"net/http"
@@ -32,7 +33,7 @@ type WebSessionManager struct {
 	// Hub CA certificate
 	caCert *x509.Certificate
 	// this service's agent for publishing events
-	ag *messaging.Agent
+	ag *consumer.Agent
 	// disable persistence from state service (for testing)
 	noState bool
 
@@ -72,10 +73,10 @@ func (sm *WebSessionManager) _addSession(
 		// session (plus its waiting for a lock).
 		// If the connection has been replaced then it won't match so ignore the
 		// callback if the connection differs.
-		co := messaging.NewConsumer(hc, sm.timeout)
+		co := consumer.NewConsumer(hc, sm.timeout)
 		existingSession.ReplaceConsumer(co)
 	} else {
-		co := messaging.NewConsumer(hc, sm.timeout)
+		co := consumer.NewConsumer(hc, sm.timeout)
 		cs = NewWebClientSession(cid, co, r.RemoteAddr, sm.noState, sm.onClose)
 	}
 	sm.sessions[cs.clcid] = cs
@@ -164,13 +165,13 @@ func (sm *WebSessionManager) onClose(cs *WebClientSession) {
 //		//w.WriteHeader(http.StatusBadRequest)
 //		return
 //	}
-//	_, err := sm.ConnectWithPassword(w, r, loginID, password, cid)
+//	_, err := sm.HandleConnectWithPassword(w, r, loginID, password, cid)
 //	if err != nil {
 //		http.Error(w, err.Error(), http.StatusUnauthorized)
 //	}
 //}
 
-// ConnectWithPassword handles the request to log a consumer in to the Hub
+// HandleConnectWithPassword handles the request to log a consumer in to the Hub
 // (or any Thing server) using the given password.
 // A cid (connection-id) is required to differentiate between browser tabs.
 //
@@ -179,20 +180,23 @@ func (sm *WebSessionManager) onClose(cs *WebClientSession) {
 //  2. Creates a hiveoview session using the given connection-id.
 //  3. Set a secure session cookie with the browser that contains the clientID and
 //     auth token for reconnecting without password.
-func (sm *WebSessionManager) ConnectWithPassword(
+func (sm *WebSessionManager) HandleConnectWithPassword(
 	w http.ResponseWriter, r *http.Request,
 	loginID string, password string, cid string) (newToken string, err error) {
 
-	// FIXME: use the session's directory cache to get the form
-	hc, err := clients.NewClient(sm.hubURL, loginID, sm.caCert, nil, sm.timeout)
-	if err == nil {
-		newToken, err = hc.ConnectWithPassword(password)
+	// attempt to login
+	newToken, err = authenticator.AuthenticateWithPassword(
+		sm.hubURL, httpserver.HttpPostLoginPath, loginID, password, sm.caCert, cid)
+	if err != nil {
+		return "", err
 	}
+	// FIXME: use the session's directory cache to get the form
+	cc, err := clients.ConnectWithToken(loginID, newToken, sm.caCert, sm.hubURL, sm.timeout)
 	if err == nil {
 		if cid != "" {
-			_, err = sm._addSession(r, cid, hc)
+			_, err = sm._addSession(r, cid, cc)
 		} else {
-			hc.Disconnect()
+			cc.Disconnect()
 		}
 		// Update the session cookie with the new auth token (default 14 days)
 		maxAge := time.Hour * 24 * 14
@@ -226,12 +230,9 @@ func (sm *WebSessionManager) ConnectWithToken(
 		"clientID", loginID, "cid", cid, "remoteAddr", r.RemoteAddr,
 		"nr websessions", len(sm.sessions))
 	//var newToken string
-	hc, err := clients.NewClient(sm.hubURL, loginID, sm.caCert, nil, sm.timeout)
+	cc, err := clients.ConnectWithToken(loginID, authToken, sm.caCert, sm.hubURL, sm.timeout)
 	if err == nil {
-		err = hc.ConnectWithToken(authToken)
-	}
-	if err == nil {
-		cs, err = sm._addSession(r, cid, hc)
+		cs, err = sm._addSession(r, cid, cc)
 		// Update the session cookie with the new auth token (default 14 days)
 		maxAge := time.Hour * 24 * 14
 		err = SetSessionCookie(w, loginID, authToken, maxAge, sm.signingKey)
@@ -308,7 +309,7 @@ func (sm *WebSessionManager) GetSessionFromCookie(r *http.Request) (
 //	timeout of hub connections
 func NewWebSessionManager(hubURL string,
 	signingKey ed25519.PrivateKey, caCert *x509.Certificate,
-	ag *messaging.Agent, noState bool,
+	ag *consumer.Agent, noState bool,
 	timeout time.Duration) *WebSessionManager {
 	sm := &WebSessionManager{
 		sessions:   make(map[string]*WebClientSession),

@@ -138,7 +138,7 @@ func TestReadTDsRest(t *testing.T) {
 
 	serverURL := ts.GetServerURL(authn.ClientTypeConsumer)
 	// FIXME: use the consumer protocol
-	urlParts, err := url.Parse(serverURL)
+	urlParts, _ := url.Parse(serverURL)
 	cl2 := tlsclient.NewTLSClient(urlParts.Host, nil, ts.Certs.CaCert, time.Second*30)
 	cl2.SetAuthToken(token)
 
@@ -178,9 +178,9 @@ func TestTDEvent(t *testing.T) {
 			msg.Name == digitwin.ThingDirectoryEventThingUpdated {
 
 			// decode the TD
-			td := td.TD{}
+			tdi := td.TD{}
 			payload := msg.ToString(0)
-			err := jsoniter.UnmarshalFromString(payload, &td)
+			err := jsoniter.UnmarshalFromString(payload, &tdi)
 			assert.NoError(t, err)
 			tdCount.Add(1)
 		}

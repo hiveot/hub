@@ -127,6 +127,11 @@ func (cl *TLSClient) Send(
 		err = fmt.Errorf("Send: %s %s: %w", method, requrl, err)
 		slog.Error(err.Error())
 		return nil, 500, nil, err
+	} else if httpResp.StatusCode >= 300 {
+		err = fmt.Errorf("Send: %s %s: failed with (%d) %s",
+			method, requrl, httpResp.StatusCode, httpResp.Status)
+		slog.Error(err.Error())
+		return nil, httpResp.StatusCode, nil, err
 	}
 	respBody, err := io.ReadAll(httpResp.Body)
 	// response body MUST be closed
@@ -251,7 +256,9 @@ func (cl *TLSClient) SetHeader(name string, val string) {
 //	timeout duration of the request or 0 for default
 //
 // returns TLS client for submitting requests
-func NewTLSClient(hostPort string, clientCert *tls.Certificate, caCert *x509.Certificate, timeout time.Duration) *TLSClient {
+func NewTLSClient(hostPort string, clientCert *tls.Certificate, caCert *x509.Certificate,
+	timeout time.Duration) *TLSClient {
+
 	if timeout == 0 {
 		timeout = DefaultClientTimeout
 	}

@@ -3,7 +3,7 @@ package stateclient
 import (
 	"encoding/json"
 	"github.com/hiveot/hub/services/state/stateapi"
-	"github.com/hiveot/hub/transports/messaging"
+	"github.com/hiveot/hub/transports/consumer"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 )
@@ -13,7 +13,7 @@ type StateClient struct {
 	// dThingID digital twin service ID of the state management
 	dThingID string
 	// Thing consumer
-	co *messaging.Consumer
+	co *consumer.Consumer
 }
 
 // Delete removes the record with the given key.
@@ -70,7 +70,7 @@ func (cl *StateClient) SetMultiple(kv map[string]string) error {
 //
 //	co is the hub client connection to use.
 //	agentID is the instance name of the state agent. Use "" for default.
-func NewStateClient(co *messaging.Consumer) *StateClient {
+func NewStateClient(co *consumer.Consumer) *StateClient {
 	agentID := stateapi.AgentID
 	cl := StateClient{
 		co:       co,

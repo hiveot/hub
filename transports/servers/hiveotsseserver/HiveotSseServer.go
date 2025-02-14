@@ -1,10 +1,12 @@
 package hiveotsseserver
 
 import (
+	"fmt"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/connections"
 	"github.com/hiveot/hub/transports/servers/httpserver"
 	"github.com/hiveot/hub/wot/td"
+	"net/url"
 	"sync"
 )
 
@@ -17,9 +19,8 @@ const (
 	// DefaultHiveotPostResponseHRef HTTP endpoint that accepts HiveOT ResponseMessage envelopes
 	DefaultHiveotPostResponseHRef = "/hiveot/response"
 
-	SSEOpConnect         = "sse-connect"
-	SubprotocolSSE       = "sse"
-	SubprotocolSSEHiveot = "sse-hiveot"
+	SSEOpConnect    = "sse-connect"
+	HiveotSSESchema = "sse"
 )
 
 // HiveotSseServer is a protocol binding transport server of http for the SSE-SC
@@ -112,9 +113,16 @@ func (srv *HiveotSseServer) CloseAllClientConnections(clientID string) {
 	})
 }
 
-// GetConnectURL returns websocket connection URL of the server
+// GetConnectURL returns SSE connection URL of the server
+// This uses the custom 'ssesc' schema which is non-wot compatible.
 func (srv *HiveotSseServer) GetConnectURL(_ string) string {
-	return srv.httpTransport.GetConnectURL() + srv.ssePath
+	httpURL := srv.httpTransport.GetConnectURL()
+	parts, err := url.Parse(httpURL)
+	if err != nil {
+		return ""
+	}
+	ssePath := fmt.Sprintf("%s://%s%s", HiveotSSESchema, parts.Host, srv.ssePath)
+	return ssePath
 }
 
 // GetConnectionByConnectionID returns the connection with the given connection ID

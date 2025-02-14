@@ -134,11 +134,19 @@ func (srv *HiveotSseServer) HandleResponseMessage(w http.ResponseWriter, r *http
 	}
 	//resp := transports.NewResponseMessage(rp.Op, rp.ThingID, rp.Name, rp.Data, err, rp.CorrelationID)
 	resp.SenderID = rp.ClientID
+
+	// FIXME: a ResponseMessage (notification) was received but the client doesnt have an SSE connection
+	// http requests without connectionID should not receive responses.
+	// why is there a connectionID?
 	c := srv.GetSseConnection(rp.ClientID, rp.ConnectionID)
 	if c == nil {
-		err = fmt.Errorf("HandleResponseMessage: no corresponding connection")
-		slog.Error("HandleResponseMessage. No connection to handle the response.",
-			"clientID", rp.ClientID, "connectionID", rp.ConnectionID,
+		// this is possible when a connectionID is provided in a request but no SSE
+		// has been established. Not an error.
+		//err = fmt.Errorf("HandleResponseMessage: no corresponding connection")
+		slog.Info("HandleResponseMessage. No connection to handle the response/subscription.",
+			"clientID", rp.ClientID,
+			"connectionID", rp.ConnectionID,
+			"name", rp.Name,
 		)
 	} else {
 		h := c.responseHandlerPtr.Load()

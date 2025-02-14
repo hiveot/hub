@@ -1,4 +1,4 @@
-package messaging
+package consumer
 
 import (
 	"fmt"
@@ -12,6 +12,7 @@ import (
 )
 
 // Agent provides the messaging functions needed by hub agents.
+// Agents are also consumers as they are able to invoke services.
 //
 // Hub agents receive requests and return responses.
 // The underlying transport protocol binding handles subscription.

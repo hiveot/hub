@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/messaging"
+	"github.com/hiveot/hub/transports/consumer"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
@@ -31,9 +31,7 @@ func TestReadTDFromAgent(t *testing.T) {
 	defer cancelFn()
 
 	// 2. connect as an agent
-	agConn1, ag1 := NewAgent(testAgentID1)
-	_, err := agConn1.ConnectWithPassword(testAgentID1)
-	require.NoError(t, err)
+	agConn1, ag1, _ := NewAgent(testAgentID1)
 	defer agConn1.Disconnect()
 
 	// 3. agent creates TD
@@ -60,7 +58,7 @@ func TestReadTDFromAgent(t *testing.T) {
 	c := srv.GetConnectionByClientID(testAgentID1)
 	require.True(t, c.IsConnected())
 	// c is server side connection of the agent. The hub is the consumer of the agent.
-	consumer := messaging.NewConsumer(c, testTimeout)
+	consumer := consumer.NewConsumer(c, testTimeout)
 	tdList, err := consumer.ReadAllTDs()
 	require.NoError(t, err)
 	require.True(t, len(tdList) > 0)
@@ -127,12 +125,11 @@ func TestPublishTD(t *testing.T) {
 	defer cancelFn()
 
 	// 2. Connect as agent
-	cc1, ag1 := NewAgent(testAgentID1)
-	_, err := cc1.ConnectWithPassword(testAgentID1)
-	require.NoError(t, err)
+	cc1, ag1, _ := NewAgent(testAgentID1)
+	defer cc1.Disconnect()
 
 	// Agent publishes the TD
-	err = ag1.PubTD(td1)
+	err := ag1.PubTD(td1)
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond * 10)
 

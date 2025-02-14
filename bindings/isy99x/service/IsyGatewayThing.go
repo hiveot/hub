@@ -5,7 +5,7 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
 	"github.com/hiveot/hub/runtime/exposedthing"
-	"github.com/hiveot/hub/transports/messaging"
+	"github.com/hiveot/hub/transports/consumer"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"strconv"
@@ -286,73 +286,73 @@ func (igw *IsyGatewayThing) MakeTD() *td.TD {
 		return nil
 	}
 
-	td := td.NewTD(igw.thingID, igw.Configuration.DeviceSpecs.Model, vocab.ThingNetGateway)
-	td.Description = igw.Configuration.DeviceSpecs.Make + "-" + igw.Configuration.DeviceSpecs.Model
+	tdi := td.NewTD(igw.thingID, igw.Configuration.DeviceSpecs.Model, vocab.ThingNetGateway)
+	tdi.Description = igw.Configuration.DeviceSpecs.Make + "-" + igw.Configuration.DeviceSpecs.Model
 
 	//--- device read-only attributes
-	td.AddPropertyAsString(vocab.PropDeviceMake, "Manufacturer", "").
+	tdi.AddPropertyAsString(vocab.PropDeviceMake, "Manufacturer", "").
 		SetAtType(vocab.PropDeviceMake) // Universal Devices Inc.
-	td.AddPropertyAsString(vocab.PropDeviceModel, "Model", "").
+	tdi.AddPropertyAsString(vocab.PropDeviceModel, "Model", "").
 		SetAtType(vocab.PropDeviceModel) // ISY-C-99
-	td.AddPropertyAsString(vocab.PropDeviceSoftwareVersion, "AppVersion", "").
+	tdi.AddPropertyAsString(vocab.PropDeviceSoftwareVersion, "AppVersion", "").
 		SetAtType(vocab.PropDeviceSoftwareVersion) // 3.2.6
-	td.AddPropertyAsString(vocab.PropNetMAC, "MAC", "").
+	tdi.AddPropertyAsString(vocab.PropNetMAC, "MAC", "").
 		SetAtType(vocab.PropNetMAC) // 00:21:xx:yy:... (mac)
-	td.AddPropertyAsString(vocab.PropDeviceDescription, "Product description", "").
+	tdi.AddPropertyAsString(vocab.PropDeviceDescription, "Product description", "").
 		SetAtType(vocab.PropDeviceDescription) // ISY 99i 256
-	td.AddPropertyAsString("productID", "Product ID", "") // 1020
-	prop := td.AddPropertyAsString(PropIDSunrise, "Sunrise", "Current sunrise time").
+	tdi.AddPropertyAsString("productID", "Product ID", "") // 1020
+	prop := tdi.AddPropertyAsString(PropIDSunrise, "Sunrise", "Current sunrise time").
 		SetAtType(PropIDSunrise)
-	prop = td.AddPropertyAsString(PropIDSunset, "Sunset", "Current sunset time").
+	prop = tdi.AddPropertyAsString(PropIDSunset, "Sunset", "Current sunset time").
 		SetAtType(PropIDSunset)
 
 	//--- device configuration
 	// custom name
-	prop = td.AddPropertyAsString(vocab.PropDeviceTitle, "Title", "").
+	prop = tdi.AddPropertyAsString(vocab.PropDeviceTitle, "Title", "").
 		SetAtType(vocab.PropDeviceTitle)
 
 	prop.ReadOnly = false
 
 	// network config
-	prop = td.AddPropertyAsBool(PropIDDHCP, "DHCP enabled", "")
+	prop = tdi.AddPropertyAsBool(PropIDDHCP, "DHCP enabled", "")
 	prop.ReadOnly = false
-	prop = td.AddPropertyAsString(vocab.PropNetIP4, "IP4 address", "")
+	prop = tdi.AddPropertyAsString(vocab.PropNetIP4, "IP4 address", "")
 	prop.Description = "Configure gateway fix IP address"
 	prop.ReadOnly = igw.Network.Interface.IsDHCP == false
-	prop = td.AddPropertyAsString(vocab.PropNetPort, "Port", "Gateway connection port")
+	prop = tdi.AddPropertyAsString(vocab.PropNetPort, "Port", "Gateway connection port")
 	prop.ReadOnly = igw.Network.Interface.IsDHCP == false
-	prop = td.AddPropertyAsString(PropIDLogin, "Login Name", "Gateway login name")
+	prop = tdi.AddPropertyAsString(PropIDLogin, "Login Name", "Gateway login name")
 	prop.ReadOnly = false
-	prop = td.AddPropertyAsString(PropIDPassword, "Password", "Gateway password (hidden)")
+	prop = tdi.AddPropertyAsString(PropIDPassword, "Password", "Gateway password (hidden)")
 	prop.ReadOnly = false
 	prop.WriteOnly = true
 
 	// time config
-	prop = td.AddPropertyAsString(PropIDNTPHost, "Network time host", "")
+	prop = tdi.AddPropertyAsString(PropIDNTPHost, "Network time host", "")
 	prop.ReadOnly = false
 	prop.Default = "pool.ntp.org"
-	prop = td.AddPropertyAsBool(PropIDNTPEnabled, "Use network time", "")
+	prop = tdi.AddPropertyAsBool(PropIDNTPEnabled, "Use network time", "")
 	prop.ReadOnly = false
-	prop = td.AddPropertyAsInt(PropIDTMZOffset, "Timezone Offset", "")
+	prop = tdi.AddPropertyAsInt(PropIDTMZOffset, "Timezone Offset", "")
 	prop.ReadOnly = false
 	prop.Unit = vocab.UnitSecond
-	prop = td.AddPropertyAsBool(PropIDDSTEnabled, "DST Enabled", "")
+	prop = tdi.AddPropertyAsBool(PropIDDSTEnabled, "DST Enabled", "")
 	prop.ReadOnly = false
 
 	// TODO: any events?
 
 	// TODO: other actions?
-	action := td.AddAction("start-linking", "Start Linking",
+	action := tdi.AddAction("start-linking", "Start Linking",
 		"1. Press and hold the 'Set' button on your Insteon device for 3-5 seconds.\n"+
 			"2. Repeat step 1 for as many devices as you would like to link.\n"+
 			"3. When done, select 'Finish' on the menu.", nil)
 	_ = action
-	action = td.AddAction("remove-link", "Remove Link",
+	action = tdi.AddAction("remove-link", "Remove Link",
 		"1. Press and hold the 'Set' button on the Insteon device to unlink, for 3-5 seconds.\n"+
 			"2. Repeat step 1 for as many devices as you would like to remove.\n"+
 			"3. When done, select 'Finish' on the menu.", nil)
 	_ = action
-	return td
+	return tdi
 }
 
 //
@@ -364,7 +364,7 @@ func (igw *IsyGatewayThing) MakeTD() *td.TD {
 //}
 
 // PubTD read and publishes the gateway's TD
-func (svc *IsyGatewayThing) PubTD(ag *messaging.Agent) (err error) {
+func (svc *IsyGatewayThing) PubTD(ag *consumer.Agent) (err error) {
 	tdi := svc.MakeTD()
 	err = ag.PubTD(tdi)
 	if err != nil {

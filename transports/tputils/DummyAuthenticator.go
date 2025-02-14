@@ -13,8 +13,13 @@ type DummyAuthenticator struct {
 	tokens    map[string]string
 }
 
-func (d *DummyAuthenticator) AddClient(clientID string, password string) {
+// AddClient adds a test client and return an auth token
+func (d *DummyAuthenticator) AddClient(clientID string, password string) string {
 	d.passwords[clientID] = password
+	sessionID := clientID + shortid.MustGenerate()
+	token := d.CreateSessionToken(clientID, sessionID, 0)
+	d.tokens[clientID] = token
+	return token
 }
 
 //func (d *DummyAuthenticator) AddToken(clientID string, token string) {

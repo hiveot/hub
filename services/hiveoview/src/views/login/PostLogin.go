@@ -46,7 +46,7 @@ func PostLoginFormHandler(sm *session.WebSessionManager) http.HandlerFunc {
 		slog.Info("PostLoginFormHandler",
 			"loginID", loginID,
 			"cid", cid)
-		newToken, err := sm.ConnectWithPassword(w, r, loginID, password, cid)
+		newToken, err := sm.HandleConnectWithPassword(w, r, loginID, password, cid)
 		_ = newToken
 		if err != nil {
 			slog.Warn("PostLogin failed",
@@ -55,6 +55,8 @@ func PostLoginFormHandler(sm *session.WebSessionManager) http.HandlerFunc {
 				slog.String("err", err.Error()))
 			// do not cache the login form in the browser
 			w.Header().Add("Cache-Control", "no-cache, max-age=0, must-revalidate, no-store")
+			// FIXME: how to differentiate between a failed login and successful login?
+			// both return code SeeOther to redirect.
 			http.Redirect(w, r, src.RenderLoginPath+"?error="+err.Error(), http.StatusSeeOther)
 			return
 		}
@@ -106,14 +108,14 @@ func PostLoginHandler(sm *session.WebSessionManager) http.HandlerFunc {
 		}
 		cid := r.Header.Get(httpserver.ConnectionIDHeader)
 		if cid == "" {
-			slog.Error("ConnectWithPassword: Missing CID for client. Disconnecting", "loginID", loginID)
+			slog.Error("PostLoginHandler: Missing CID for client. Disconnecting", "loginID", loginID)
 			http.Error(w, "missing CID", http.StatusBadRequest)
 			return
 		}
 		slog.Info("PostLoginHandler",
 			"loginID", loginID,
 			"cid", cid)
-		newToken, err := sm.ConnectWithPassword(w, r, loginID, password, cid)
+		newToken, err := sm.HandleConnectWithPassword(w, r, loginID, password, cid)
 
 		// this will prevent a redirect from working
 		newTokenJSON, _ := jsoniter.Marshal(newToken)

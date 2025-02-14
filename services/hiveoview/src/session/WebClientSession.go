@@ -6,7 +6,7 @@ import (
 	"github.com/hiveot/hub/runtime/consumedthing"
 	"github.com/hiveot/hub/services/state/stateclient"
 	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/messaging"
+	"github.com/hiveot/hub/transports/consumer"
 	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot"
 	"log/slog"
@@ -55,7 +55,7 @@ type WebClientSession struct {
 	clientStateError error
 
 	// The consumer connection of this session
-	co *messaging.Consumer
+	co *consumer.Consumer
 
 	// Holder of consumed things for this session
 	coDir *consumedthing.ConsumedThingsDirectory
@@ -123,7 +123,7 @@ func (sess *WebClientSession) GetClientData() *ClientDataModel {
 }
 
 // GetConsumer returns the hub client connection for use in pub/sub
-func (sess *WebClientSession) GetConsumer() *messaging.Consumer {
+func (sess *WebClientSession) GetConsumer() *consumer.Consumer {
 	return sess.co
 }
 
@@ -339,7 +339,7 @@ func (sess *WebClientSession) onResponse(resp *transports.ResponseMessage) error
 
 // ReplaceConsumer replaces the hub consumer connection for this client session.
 // This closes the old connection and ignores the callback it gives.
-func (sess *WebClientSession) ReplaceConsumer(newCo *messaging.Consumer) {
+func (sess *WebClientSession) ReplaceConsumer(newCo *consumer.Consumer) {
 	oldCo := sess.co
 	oldCo.Disconnect()
 	sess.co = newCo
@@ -469,7 +469,7 @@ func (sess *WebClientSession) WritePage(w http.ResponseWriter, buff *bytes.Buffe
 //	remoteAddr is the web client remote address
 //	onClose is the callback to invoke when this session is closed.
 func NewWebClientSession(
-	cid string, co *messaging.Consumer, remoteAddr string, noState bool,
+	cid string, co *consumer.Consumer, remoteAddr string, noState bool,
 	onClosed func(*WebClientSession)) *WebClientSession {
 	var err error
 

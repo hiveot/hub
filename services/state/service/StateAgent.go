@@ -5,7 +5,7 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/services/state/stateapi"
 	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/messaging"
+	"github.com/hiveot/hub/transports/consumer"
 	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
@@ -14,7 +14,7 @@ import (
 
 // StateAgent agent for the state storage services
 type StateAgent struct {
-	ag  *messaging.Agent
+	ag  *consumer.Agent
 	svc *StateService
 }
 
@@ -172,18 +172,18 @@ func NewStateAgent(svc *StateService) *StateAgent {
 //
 //	svc is the state service whose capabilities to expose
 //	hc is the messaging client used to register a message handler
-func StartStateAgent(svc *StateService, ag *messaging.Agent) *StateAgent {
+func StartStateAgent(svc *StateService, ag *consumer.Agent) *StateAgent {
 
-	agent := StateAgent{ag: ag, svc: svc}
+	stateAgent := StateAgent{ag: ag, svc: svc}
 	if ag != nil {
-		ag.SetRequestHandler(agent.HandleRequest)
+		ag.SetRequestHandler(stateAgent.HandleRequest)
 
 		// publish the service TD
-		tdi := agent.CreateTD()
+		tdi := stateAgent.CreateTD()
 		err := ag.PubTD(tdi)
 		if err != nil {
 			slog.Error("Failed publishing the TD", "err", err.Error())
 		}
 	}
-	return &agent
+	return &stateAgent
 }

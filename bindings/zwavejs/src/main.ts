@@ -17,8 +17,11 @@ process.on("uncaughtException", (err) => {
 async function main() {
 console.log("Starting hiveot zwavejs binding...")
     //--- Step 1: load config
-    // let clientID = "zwavejs"
-    // the application name is the clientID
+
+    // the client ID is application binary. This allows using multiple instances for
+    // each client.
+    // The launcher automatically creates a token file. To manually create one:
+    // > hubcli addsvc zwavejs-1
     let clientID = path.basename(process.argv0)
 
     let appConfig = new BindingConfig(clientID)

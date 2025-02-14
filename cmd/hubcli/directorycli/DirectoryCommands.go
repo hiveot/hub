@@ -6,14 +6,14 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/lib/utils"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
-	"github.com/hiveot/hub/transports/messaging"
+	"github.com/hiveot/hub/transports/consumer"
 	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot/td"
 	"github.com/urfave/cli/v2"
 	"log/slog"
 )
 
-func DirectoryListCommand(hc **messaging.Consumer) *cli.Command {
+func DirectoryListCommand(hc **consumer.Consumer) *cli.Command {
 	var verbose = false
 	return &cli.Command{
 		Name:      "ld",
@@ -45,7 +45,7 @@ func DirectoryListCommand(hc **messaging.Consumer) *cli.Command {
 }
 
 // HandleListDirectory lists the directory content
-func HandleListDirectory(hc *messaging.Consumer) (err error) {
+func HandleListDirectory(hc *consumer.Consumer) (err error) {
 	// todo: iterate with offset and limit
 	tdListJson, err := digitwin.ThingDirectoryReadAllTDs(hc, 300, 0)
 	tdList, err2 := td.UnmarshalTDList(tdListJson)
@@ -78,7 +78,7 @@ func HandleListDirectory(hc *messaging.Consumer) (err error) {
 }
 
 // HandleListThing lists details of a Thing in the directory
-func HandleListThing(hc *messaging.Consumer, thingID string) error {
+func HandleListThing(hc *consumer.Consumer, thingID string) error {
 
 	tdDocJson, err := digitwin.ThingDirectoryReadTD(hc, thingID)
 	tdDoc, err2 := td.UnmarshalTD(tdDocJson)
@@ -166,7 +166,7 @@ func HandleListThing(hc *messaging.Consumer, thingID string) error {
 }
 
 // HandleListThingVerbose lists a Thing full TD
-func HandleListThingVerbose(hc *messaging.Consumer, thingID string) error {
+func HandleListThingVerbose(hc *consumer.Consumer, thingID string) error {
 	tdJSON, err := digitwin.ThingDirectoryReadTD(hc, thingID)
 
 	if err != nil {

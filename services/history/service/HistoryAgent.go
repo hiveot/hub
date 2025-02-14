@@ -6,7 +6,7 @@ import (
 	"github.com/hiveot/hub/lib/hubagent"
 	"github.com/hiveot/hub/services/history/historyapi"
 	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/messaging"
+	"github.com/hiveot/hub/transports/consumer"
 	"github.com/hiveot/hub/wot"
 )
 
@@ -18,7 +18,7 @@ import (
 //
 //	svc is the history service whose capabilities to expose
 //	ag is the optional connected agent connected to the server protocol
-func StartHistoryAgent(svc *HistoryService, ag *messaging.Agent) {
+func StartHistoryAgent(svc *HistoryService, ag *consumer.Agent) {
 
 	// TODO: load latest retention rules from state store
 	manageHistoryMethods := map[string]interface{}{

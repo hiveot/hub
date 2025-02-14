@@ -33,20 +33,14 @@ func TestSubscribeAll(t *testing.T) {
 	defer cancelFn()
 
 	// 2. connect as consumers
-	cconn1, cons1 := NewConsumer(testClientID1, srv.GetForm)
-	_, err := cconn1.ConnectWithPassword(testClientID1)
-	require.NoError(t, err)
+	cconn1, cons1, _ := NewConsumer(testClientID1, srv.GetForm)
 	defer cconn1.Disconnect()
 
-	cconn2, cons2 := NewConsumer(testClientID1, srv.GetForm)
-	_, err = cconn2.ConnectWithPassword(testClientID1)
-	require.NoError(t, err)
+	cconn2, cons2, _ := NewConsumer(testClientID1, srv.GetForm)
 	defer cconn2.Disconnect()
 
 	// ensure that agents can also subscribe (they cant use forms)
-	agConn1, agent1 := NewAgent(agentID)
-	_, err = agConn1.ConnectWithPassword(agentID)
-	require.NoError(t, err)
+	agConn1, agent1, _ := NewAgent(agentID)
 	defer agConn1.Disconnect()
 
 	// FIXME: test subscription by agent
@@ -74,7 +68,7 @@ func TestSubscribeAll(t *testing.T) {
 	})
 
 	// Subscribe to events. Each binding implements this as per its spec
-	err = cons1.Subscribe("", "")
+	err := cons1.Subscribe("", "")
 	assert.NoError(t, err)
 	err = cons2.Subscribe(thingID, eventKey)
 	assert.NoError(t, err)
@@ -136,13 +130,11 @@ func TestPublishEventsByAgent(t *testing.T) {
 	defer cancelFn()
 
 	// 2. connect as an agent
-	agConn1, agent1 := NewAgent(testAgentID1)
-	_, err := agConn1.ConnectWithPassword(testAgentID1)
-	require.NoError(t, err)
+	agConn1, agent1, _ := NewAgent(testAgentID1)
 	defer agConn1.Disconnect()
 
 	// 3. agent publishes an event
-	err = agent1.PubEvent(thingID, eventKey, testMsg)
+	err := agent1.PubEvent(thingID, eventKey, testMsg)
 	time.Sleep(time.Millisecond) // time to take effect
 	require.NoError(t, err)
 
@@ -182,9 +174,7 @@ func TestReadEvent(t *testing.T) {
 	defer cancelFn()
 
 	// 2. connect as a consumer
-	cc1, consumer1 := NewConsumer(testClientID1, srv.GetForm)
-	_, err := cc1.ConnectWithPassword(testClientID1)
-	require.NoError(t, err)
+	cc1, consumer1, _ := NewConsumer(testClientID1, srv.GetForm)
 	defer cc1.Disconnect()
 
 	rxVal, err := consumer1.ReadEvent(thingID, eventKey)
@@ -219,9 +209,7 @@ func TestReadAllEvents(t *testing.T) {
 	defer cancelFn()
 
 	// 2. connect as a consumer
-	cc1, consumer1 := NewConsumer(testClientID1, srv.GetForm)
-	_, err := cc1.ConnectWithPassword(testClientID1)
-	require.NoError(t, err)
+	cc1, consumer1, _ := NewConsumer(testClientID1, srv.GetForm)
 	defer cc1.Disconnect()
 
 	evMap, err := consumer1.ReadAllEvents(thingID)

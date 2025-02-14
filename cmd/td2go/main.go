@@ -224,7 +224,7 @@ func GenerateSource(gentype string, agentID string, sourceFile string, outDir st
 		outfilePath = filepath.Join(outDir, outFileName+TypesAPISuffix)
 		outfileStat, _ := os.Stat(outfilePath)
 		if !force && outfileStat != nil && outfileStat.ModTime().After(sourceStat.ModTime()) {
-			fmt.Printf("Destination %s is newer. Not updated.\n", outfilePath)
+			fmt.Printf("GenerateSource: Destination %s is newer. Not updated.\n", outfilePath)
 			return nil
 		} else {
 			err = gentypes.GenTypes(l, agentID, tdi)
@@ -234,7 +234,7 @@ func GenerateSource(gentype string, agentID string, sourceFile string, outDir st
 		outfilePath = filepath.Join(outDir, outFileName+AgentAPISuffix)
 		outfileStat, _ := os.Stat(outfilePath)
 		if !force && outfileStat != nil && outfileStat.ModTime().After(sourceStat.ModTime()) {
-			fmt.Printf("Destination %s is newer. Not updated.\n", outfilePath)
+			fmt.Printf("GenerateSource: Destination %s is newer. Not updated.\n", outfilePath)
 			return nil
 		} else {
 			err = genagent.GenAgent(l, agentID, tdi)
@@ -244,14 +244,14 @@ func GenerateSource(gentype string, agentID string, sourceFile string, outDir st
 		outfilePath = filepath.Join(outDir, outFileName+ConsumerAPISuffix)
 		outfileStat, _ := os.Stat(outfilePath)
 		if !force && outfileStat != nil && outfileStat.ModTime().After(sourceStat.ModTime()) {
-			fmt.Printf("Destination %s is newer. Not updated.\n", outfilePath)
+			fmt.Printf("GenerateSource: Destination %s is newer. Not updated.\n", outfilePath)
 			return nil
 		} else {
 			err = genconsumer.GenServiceConsumer(l, agentID, tdi)
 		}
 
 	} else {
-		err = fmt.Errorf("unknown generate command '%s'", gentype)
+		err = fmt.Errorf("GenerateSource: unknown generate command '%s'", gentype)
 	}
 	if err != nil {
 		return err
@@ -259,9 +259,9 @@ func GenerateSource(gentype string, agentID string, sourceFile string, outDir st
 	// 4: Save the types
 	err = l.Write(outfilePath)
 	if err != nil {
-		fmt.Printf("Failed to generated %s into %s: %s\n", gentype, outfilePath, err.Error())
+		fmt.Printf("GenerateSource: Failed to generated %s into %s: %s\n", gentype, outfilePath, err.Error())
 	} else {
-		fmt.Printf("Generated %s into %s\n", gentype, outfilePath)
+		fmt.Printf("GenerateSource: Generated %s into %s\n", gentype, outfilePath)
 	}
 	return err
 }

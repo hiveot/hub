@@ -6,7 +6,7 @@ import (
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/messaging"
+	"github.com/hiveot/hub/transports/consumer"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
@@ -28,7 +28,7 @@ type InteractionListener func(*InteractionOutput)
 // This keeps a copy of the Thing's property and event values and updates on changes.
 type ConsumedThing struct {
 	// The consumer instance this uses for invoking actions
-	co *messaging.Consumer
+	co *consumer.Consumer
 
 	// ID of this Thing for use by consumers
 	ThingID string
@@ -431,7 +431,7 @@ func (ct *ConsumedThing) WriteProperty(name string, ii InteractionInput) (err er
 
 // NewConsumedThing creates a new instance of a Thing
 // Call Stop() when done
-func NewConsumedThing(tdi *td.TD, co *messaging.Consumer) *ConsumedThing {
+func NewConsumedThing(tdi *td.TD, co *consumer.Consumer) *ConsumedThing {
 	c := ConsumedThing{
 		ThingID:       tdi.ID,
 		tdi:           tdi,

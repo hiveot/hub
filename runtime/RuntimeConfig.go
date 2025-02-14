@@ -29,9 +29,9 @@ const DefaultServerKeyFile = "hubKey.pem"
 type RuntimeConfig struct {
 
 	// middleware and services config. These all work out of the box with their defaults.
-	Authn          service2.AuthnConfig    `yaml:"authn"`
-	Authz          service.AuthzConfig     `yaml:"authz"`
-	ProtocolConfig servers.ProtocolsConfig `yaml:"protocols"`
+	Authn           service2.AuthnConfig    `yaml:"authn"`
+	Authz           service.AuthzConfig     `yaml:"authz"`
+	ProtocolsConfig servers.ProtocolsConfig `yaml:"protocols"`
 
 	// Runtime logging
 	LogLevel string `yaml:"logLevel,omitempty"` // default: warn
@@ -291,13 +291,13 @@ func (cfg *RuntimeConfig) Setup(env *plugin.AppEnvironment) error {
 // The CA and Server certificate and keys must be set after creation.
 func NewRuntimeConfig() *RuntimeConfig {
 	cfg := &RuntimeConfig{
-		Authn:          service2.NewAuthnConfig(),
-		Authz:          service.NewAuthzConfig(),
-		ProtocolConfig: servers.NewProtocolsConfig(),
-		LogLevel:       "info", // error, warning, info, debug
-		NotifLog:       "",     // no logfile
-		RequestLog:     "",     // no request logfile
-		RuntimeLog:     "",     // no logfile
+		Authn:           service2.NewAuthnConfig(),
+		Authz:           service.NewAuthzConfig(),
+		ProtocolsConfig: servers.NewProtocolsConfig(),
+		LogLevel:        "info", // error, warning, info, debug
+		NotifLog:        "",     // no logfile
+		RequestLog:      "",     // no request logfile
+		RuntimeLog:      "",     // no logfile
 
 		CaCertFile:     certs.DefaultCaCertFile,
 		CaKeyFile:      certs.DefaultCaKeyFile,

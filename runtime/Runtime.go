@@ -31,8 +31,7 @@ type Runtime struct {
 	AuthzAgent     *service2.AuthzAgent
 	DigitwinSvc    *service4.DigitwinService
 	DigitwinRouter *router.DigitwinRouter
-	//CM             *connections.ConnectionManager
-	TransportsMgr *servers.TransportManager
+	TransportsMgr  *servers.TransportManager
 
 	// logging of request and response messages
 	requestLogger  *slog.Logger
@@ -76,10 +75,8 @@ func (r *Runtime) GetTD(dThingID string) (td *td.TD) {
 	return td
 }
 
-// Start the Hub runtime
-// This verifies and repairs the setup if needed by creating missing directories and
-// generating the server keys and certificate files if missing.
-// This uses the directory structure obtained from the app environment.
+// Start the Hub runtime.
+// This starts the runtime authn, authz, digitwin and transport services.
 func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	err := r.cfg.Setup(env)
 	if err != nil {
@@ -118,7 +115,7 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 
 	// Start the servers. The digitwin router needs it to send messages
 	r.TransportsMgr, err = servers.StartTransportManager(
-		&r.cfg.ProtocolConfig,
+		&r.cfg.ProtocolsConfig,
 		r.cfg.ServerCert,
 		r.cfg.CaCert,
 		r.AuthnSvc.SessionAuth,
@@ -161,13 +158,23 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	// outgoing messages are handled by the sub-protocols of this transport
 	r.DigitwinSvc.SetFormsHook(r.TransportsMgr.AddTDForms)
 
-	// add the TDs of the built-in services (authn,authz,directory,values) to the directory
+	// Register the TDs of the built-in services (authn,authz,directory,values) to the directory
 	_ = r.DigitwinSvc.DirSvc.UpdateTD(authn.AdminAgentID, authn.AdminTD)
 	_ = r.DigitwinSvc.DirSvc.UpdateTD(authn.UserAgentID, authn.UserTD)
 	_ = r.DigitwinSvc.DirSvc.UpdateTD(authz.AdminAgentID, authz.AdminTD)
 	_ = r.DigitwinSvc.DirSvc.UpdateTD(digitwin.ThingDirectoryAgentID, digitwin.ThingDirectoryTD)
 	_ = r.DigitwinSvc.DirSvc.UpdateTD(digitwin.ThingValuesAgentID, digitwin.ThingValuesTD)
 
+	// start discovery and exploration of the digital twin directory
+	if r.cfg.ProtocolsConfig.EnableDiscovery {
+		dirTDJson, err := r.DigitwinSvc.DirSvc.ReadTD(digitwin.ThingDirectoryAgentID, digitwin.ThingDirectoryDThingID)
+		if err == nil {
+			err = r.TransportsMgr.StartDiscovery(
+				r.cfg.ProtocolsConfig.DirectoryTDPath, dirTDJson)
+		}
+	}
+
+	// setup agent permissions to update the directory
 	// agents can update to the directory
 	_ = r.AuthzSvc.SetPermissions(authn.AdminServiceID, authz.ThingPermissions{
 		AgentID: digitwin.ThingDirectoryAgentID,
@@ -181,6 +188,7 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 		ThingID: digitwin.ThingDirectoryServiceID,
 		Deny:    []authz.ClientRole{authz.ClientRoleNone},
 	})
+
 	return err
 }
 

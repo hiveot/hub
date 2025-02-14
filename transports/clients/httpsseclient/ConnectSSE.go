@@ -141,6 +141,7 @@ func (cc *HiveotSseClient) ConnectSSE(token string) (err error) {
 		cc.GetClientID(),
 		cc.GetConnectionID(),
 		sseURL, token, cc.caCert,
+		// use the same http client for both http requests and sse connection
 		cc.GetTlsClient(),
 		cc.handleSSEConnect,
 		cc.handleSseEvent,
@@ -160,7 +161,7 @@ func (cc *HiveotSseClient) handleSSEConnect(connected bool, err error) {
 	}
 	slog.Info("handleSSEConnect",
 		slog.String("clientID", cc.GetClientID()),
-		slog.String("cid", cc.GetConnectionID()),
+		slog.String("connectionID", cc.GetConnectionID()),
 		slog.Bool("connected", connected),
 		slog.String("err", errMsg))
 

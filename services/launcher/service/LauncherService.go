@@ -7,7 +7,7 @@ import (
 	"github.com/hiveot/hub/services/launcher/config"
 	"github.com/hiveot/hub/services/launcher/launcherapi"
 	"github.com/hiveot/hub/transports/clients"
-	"github.com/hiveot/hub/transports/messaging"
+	"github.com/hiveot/hub/transports/consumer"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -39,7 +39,7 @@ type LauncherService struct {
 	cmds []*exec.Cmd
 
 	// agent messaging client
-	ag *messaging.Agent
+	ag *consumer.Agent
 
 	// mutex to keep things safe
 	mux sync.Mutex
@@ -201,8 +201,10 @@ func (svc *LauncherService) Start() error {
 
 	// 3: a connection to the hub is needed to receive requests
 	if svc.ag == nil {
-		cc, err := clients.ConnectClient(svc.serverURL, svc.clientID, svc.certsDir, "")
-		svc.ag = messaging.NewAgent(cc, nil, nil, nil, 0)
+
+		cc, token, _, err := clients.ConnectWithTokenFile(svc.clientID, svc.certsDir, svc.serverURL, 0)
+		_ = token
+		svc.ag = consumer.NewAgent(cc, nil, nil, nil, 0)
 		if err != nil {
 			err = fmt.Errorf("failed starting launcher service: %w", err)
 			return err

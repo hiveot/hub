@@ -35,7 +35,6 @@ var ts *testenv.TestServer
 // All tests are run using the simulation file.
 func TestMain(m *testing.M) {
 	// setup environment
-	var err error
 
 	cwd, _ := os.Getwd()
 	simulationRoot := "file://" + path.Join(cwd, "test")
@@ -45,10 +44,6 @@ func TestMain(m *testing.M) {
 
 	//
 	ts = testenv.StartTestServer(true)
-	if err != nil {
-		panic("unable to start test server: " + err.Error())
-	}
-
 	result := m.Run()
 	time.Sleep(time.Second)
 
@@ -61,7 +56,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestStartStop(t *testing.T) {
-	os.Remove(nodesFile)
+	_ = os.Remove(nodesFile)
 
 	// appconfig, read from test/isy99.yaml, contains simulated gateway file
 	hc, _ := ts.AddConnectService(agentID)
@@ -83,7 +78,7 @@ func TestStartStop(t *testing.T) {
 }
 
 func TestBadAddress(t *testing.T) {
-	os.Remove(nodesFile)
+	_ = os.Remove(nodesFile)
 
 	hc, _ := ts.AddConnectService(agentID)
 	defer hc.Disconnect()
@@ -102,7 +97,7 @@ func TestBadAddress(t *testing.T) {
 }
 
 func TestIsyAppPoll(t *testing.T) {
-	os.Remove(nodesFile)
+	_ = os.Remove(nodesFile)
 	// appconfig, read from test/isy99.yaml, contains simulated gateway file
 	hc, _ := ts.AddConnectService(agentID)
 	defer hc.Disconnect()
@@ -122,7 +117,7 @@ func TestSwitch(t *testing.T) {
 	const deckThingLightsID = "13 57 73 1" // from simulation file
 	const name = "value"
 
-	os.Remove(nodesFile)
+	_ = os.Remove(nodesFile)
 	// appconfig, read from test/isy99.yaml, contains simulated gateway file
 	hc, _ := ts.AddConnectService(agentID)
 	defer hc.Disconnect()

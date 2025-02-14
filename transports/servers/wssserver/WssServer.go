@@ -19,6 +19,7 @@ const (
 
 	SubprotocolWSS       = "websocket"
 	SubprotocolWSSHiveot = "wss-hiveot"
+	HiveotWssSchema      = "wss"
 )
 
 // WssServer is a websocket transport protocol server for use with HiveOT and WoT
@@ -96,7 +97,7 @@ func (svc *WssServer) CloseAllClientConnections(clientID string) {
 func (svc *WssServer) GetConnectURL(_ string) string {
 	httpURL := svc.httpTransport.GetConnectURL()
 	parts, _ := url.Parse(httpURL)
-	wssURL := fmt.Sprintf("wss://%s%s", parts.Host, svc.wssPath)
+	wssURL := fmt.Sprintf("%s://%s%s", HiveotWssSchema, parts.Host, svc.wssPath)
 	return wssURL
 }
 

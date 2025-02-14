@@ -44,10 +44,8 @@ func TestInvokeActionFromConsumerToServer(t *testing.T) {
 	defer cancelFn()
 
 	// 2. connect a client
-	cc1, cl1 := NewConsumer(testClientID1, srv.GetForm)
-	token, err := cc1.ConnectWithPassword(testClientID1)
+	cc1, cl1, token := NewConsumer(testClientID1, srv.GetForm)
 	defer cc1.Disconnect()
-	require.NoError(t, err)
 	require.NotEmpty(t, token)
 	ctx1, release1 := context.WithTimeout(context.Background(), time.Minute)
 	defer release1()
@@ -129,9 +127,7 @@ func TestInvokeActionFromServerToAgent(t *testing.T) {
 	defer cancelFn2()
 
 	// 2a. connect as an agent
-	cc1, ag1client := NewAgent(testAgentID1)
-	token, err := cc1.ConnectWithPassword(testAgentID1)
-	require.NoError(t, err)
+	cc1, ag1client, token := NewAgent(testAgentID1)
 	require.NotEmpty(t, token)
 	defer cc1.Disconnect()
 
@@ -161,7 +157,7 @@ func TestInvokeActionFromServerToAgent(t *testing.T) {
 	req := transports.NewRequestMessage(wot.OpInvokeAction, thingID, actionKey, testMsg1, corrID)
 	req.SenderID = testClientID1
 	req.CorrelationID = "rpc-TestInvokeActionFromServerToAgent"
-	err = ag1Server.SendRequest(req)
+	err := ag1Server.SendRequest(req)
 	require.NoError(t, err)
 
 	// wait until the agent has sent a reply
@@ -223,14 +219,12 @@ func TestQueryActions(t *testing.T) {
 	defer cancelFn()
 
 	// 2. connect as a consumer
-	cc1, cl1 := NewConsumer(testClientID1, srv.GetForm)
-	_, err := cc1.ConnectWithPassword(testClientID1)
-	require.NoError(t, err)
+	cc1, cl1, _ := NewConsumer(testClientID1, srv.GetForm)
 	defer cc1.Disconnect()
 
 	// 3. Query action status
 	var output transports.ResponseMessage
-	err = cl1.Rpc(wot.OpQueryAction, thingID, actionKey, nil, &output)
+	err := cl1.Rpc(wot.OpQueryAction, thingID, actionKey, nil, &output)
 	require.NoError(t, err)
 	require.Equal(t, thingID, output.ThingID)
 	require.Equal(t, actionKey, output.Name)

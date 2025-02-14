@@ -5,7 +5,7 @@ import (
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/hiveot/hub/services/state/stateapi"
-	"github.com/hiveot/hub/transports/messaging"
+	"github.com/hiveot/hub/transports/consumer"
 	"log/slog"
 	"path"
 )
@@ -83,7 +83,7 @@ func (svc *StateService) SetMultiple(clientID string, kv map[string]string) (err
 }
 
 // Start the service
-func (svc *StateService) Start(ag *messaging.Agent) (err error) {
+func (svc *StateService) Start(ag *consumer.Agent) (err error) {
 	slog.Info("Starting the state service")
 	storePath := path.Join(svc.storeDir, StateStoreName)
 	svc.store = kvbtree.NewKVStore(storePath)

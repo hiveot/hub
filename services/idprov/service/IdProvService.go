@@ -5,7 +5,7 @@ import (
 	"crypto/x509"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
-	"github.com/hiveot/hub/transports/messaging"
+	"github.com/hiveot/hub/transports/consumer"
 	"log/slog"
 )
 
@@ -30,7 +30,7 @@ import (
 type IdProvService struct {
 
 	// Hub connection
-	ag *messaging.Agent
+	ag *consumer.Agent
 	// the manage service
 	ManageIdProv *ManageIdProvService
 
@@ -52,7 +52,7 @@ type IdProvService struct {
 // 5. start DNS-SD discovery server
 //
 // cc is the connection with the hub to receive requests
-func (svc *IdProvService) Start(ag *messaging.Agent) (err error) {
+func (svc *IdProvService) Start(ag *consumer.Agent) (err error) {
 
 	slog.Info("Starting the provisioning service", "clientID", ag.GetClientID())
 	svc.ag = ag

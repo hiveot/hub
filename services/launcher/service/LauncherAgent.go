@@ -3,7 +3,7 @@ package service
 import (
 	"github.com/hiveot/hub/lib/hubagent"
 	"github.com/hiveot/hub/services/launcher/launcherapi"
-	"github.com/hiveot/hub/transports/messaging"
+	"github.com/hiveot/hub/transports/consumer"
 )
 
 // StartLauncherAgent returns a new instance of the agent for the launcher service.
@@ -14,7 +14,7 @@ import (
 //
 //	svc is the service whose capabilities to expose
 //	ag is the optional message client connected to the server protocol
-func StartLauncherAgent(svc *LauncherService, ag *messaging.Agent) *hubagent.AgentHandler {
+func StartLauncherAgent(svc *LauncherService, ag *consumer.Agent) *hubagent.AgentHandler {
 
 	methods := map[string]interface{}{
 		launcherapi.ListMethod:            svc.List,

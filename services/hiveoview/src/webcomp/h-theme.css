@@ -37,6 +37,7 @@
     --pico-card-border: 1px solid var(--pico-table-border-color);
     --pico-card-border-color: green;
     --pico-card-border-radius: 8px;
+    --pico-switch-checked-background-color: rgba(252, 96, 96, 0.91);
 }
 
 :root[data-theme=dark] {
@@ -47,7 +48,8 @@
     --pico-card-border: 1px solid var(--pico-table-border-color);
     --pico-card-border-color: var(--pico-table-border-color);
     --pico-card-border-radius: 8px;
-
+    /*--pico-switch-color: red;*/
+    --pico-switch-checked-background-color: rgb(255, 0, 0);
 }
 
 /* Fix: element/icons within <a> are not vertically aligned */
@@ -94,6 +96,32 @@ button.link {
     display: inline-flex;
     align-items:center;
     gap: 5px;
+}
+
+/* Change the input toggle switch with color and larger knob */
+     /* Change the switch color when checked*/
+ input[type=checkbox][role=switch] {
+     height: 0.8em;
+     border-width:thin;
+     margin-left:2px;  /*prevent knob overrun*/
+ }
+/* Change the switch background color when checked*/
+input[type=checkbox][role=switch]:checked {
+    background-color: var(--pico-switch-checked-background-color););
+}
+/*increase size of knob*/
+input[type=checkbox][role=switch]:before {
+    height: 21px;
+    top: -5px;
+    left: -2px; 		    /*overlap the border with the slider*/
+    position:relative;
+    background-color: var(--pico-switch-background-color););
+    border:var(--pico-form-element-valid-border-color) solid 0.5px;
+}
+/*change the knob color when checked; a little darker red than the slider */
+input[type=checkbox][role=switch]:checked:before {
+    background-color:red;
+    left: 2px;		    /*overlap the border with the slider*/
 }
 
 /*---

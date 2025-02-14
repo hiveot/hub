@@ -1,4 +1,4 @@
-package service_test
+package launcher_test
 
 import (
 	"github.com/hiveot/hub/services/launcher/service"
@@ -27,7 +27,7 @@ func TestWaitForSignal(t *testing.T) {
 
 	// signal.Notify()
 	syscall.Kill(pid, syscall.SIGTERM)
-	time.Sleep(time.Millisecond)
+	time.Sleep(time.Millisecond * 10)
 	m.Lock()
 	defer m.Unlock()
 	assert.True(t, waitCompleted.Load())

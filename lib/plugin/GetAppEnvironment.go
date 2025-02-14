@@ -112,6 +112,8 @@ func GetAppEnvironment(homeDir string, withFlags bool) AppEnvironment {
 	var logsDir string
 	var storesDir string
 	var serverURL string
+	// The default clientID is the binary name. This allows for multiple instances
+	// by copying the binary.
 	clientID := path.Base(os.Args[0])
 	logLevel := os.Getenv("LOGLEVEL")
 	if logLevel == "" {

@@ -13,9 +13,11 @@ import (
 	"github.com/hiveot/hub/transports/tputils/tlsclient"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/teris-io/shortid"
+	"net/http"
 	"os"
 	"path"
 	"strings"
@@ -66,17 +68,17 @@ func getHiveoviewForm(op, thingID, name string) *td.Form {
 // the same sse client as the transport provides.
 // The TestLogin test must succeed before using this.
 // This returns a client. Call Close() when done.
-func WebLogin(fullURL string, clientID string,
+func WebLogin(sseURL string, clientID string,
 	onConnection func(bool, error, transports.IConnection),
 	onRequest transports.RequestHandler,
 	onResponse transports.ResponseHandler,
 ) (
 	cl transports.IConnection, err error) {
 
-	//sseCl := clients.NewHubClient(fullURL, clientID, ts.Certs.CaCert)
+	//sseCl := clients.NewHubClient(sseURL, clientID, ts.Certs.CaCert)
 	// websocket client
 	//sseCl := wssclient.NewWssTransportClient(
-	//	fullURL, clientID, nil, ts.Certs.CaCert, time.Minute)
+	//	sseURL, clientID, nil, ts.Certs.CaCert, time.Minute)
 	// or ssesc client
 
 	// use the hub's SSE client to connect to the hiveoview server as a browser.
@@ -85,7 +87,7 @@ func WebLogin(fullURL string, clientID string,
 	// htmx sse triggers rely on this format. (for now)
 	// FIXME: can htmx sse trigger using additional fields (type=notification, thingID/name=blah?)
 	// or is this too painful in htmx.
-	sseCl := httpsseclient.NewHiveotSseClient(fullURL,
+	sseCl := httpsseclient.NewHiveotSseClient(sseURL,
 		clientID, nil, ts.Certs.CaCert,
 		getHiveoviewForm, time.Minute)
 	// hiveoview uses a different login path as the hub
@@ -94,11 +96,32 @@ func WebLogin(fullURL string, clientID string,
 	sseCl.SetResponseHandler(onResponse)
 	sseCl.SetRequestHandler(onRequest)
 
-	//err = sseCl.ConnectWithLoginForm(clientID)
+	// a login is needed to create a session tied to the token
+	//cid := sseCl.GetConnectionID()
+	//token, err := authenticator.AuthenticateWithPassword(
+	//	sseURL, src.UIPostLoginPath, clientID, clientID, ts.Certs.CaCert, cid)
 	// FIXME: password is clientID
-	_, err = sseCl.ConnectWithPassword(clientID)
+	//token, err := ts.LoginWithPassword(clientID, clientID)
+	if err != nil {
+		return nil, err
+	}
+	// hiveot http requires a connection-id to link the return channel.
+	//cl2.SetHeader(httpserver.ConnectionIDHeader, shortid.MustGenerate())
 
-	//time.Sleep(time.Second * 10)
+	// The hiveoview server will set a cookie,needed for further requests.
+	// So the login must use the same client as the requests.
+	loginMessage := map[string]string{
+		"login":    clientID,
+		"password": clientID,
+	}
+	loginJSON, _ := jsoniter.Marshal(loginMessage)
+	outputRaw, _, status, err := sseCl.Send(http.MethodPost, src.UIPostLoginPath, loginJSON)
+	if err == nil {
+		var token string
+		err = jsoniter.Unmarshal(outputRaw, &token)
+		_ = status
+		err = sseCl.ConnectWithToken(token)
+	}
 	return sseCl, err
 }
 
@@ -108,7 +131,7 @@ func TestMain(m *testing.M) {
 	logging.SetLogging("warn", "")
 	// clean start
 	_ = os.RemoveAll(testFolder)
-	_ = os.MkdirAll(testFolder, 0700)
+	err = os.MkdirAll(testFolder, 0700)
 
 	ts = testenv.StartTestServer(true)
 	if err != nil {
@@ -250,6 +273,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	for range testConnections {
 		sseCl, err := WebLogin(
 			hiveoviewURL, clientID1, onConnection, nil, onResponse)
+		// an event streamm error occurs when auth fails
 		require.NoError(t, err)
 		require.NotNil(t, sseCl)
 		webClients = append(webClients, sseCl)

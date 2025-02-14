@@ -15,28 +15,21 @@ import (
 	"time"
 )
 
-const port = 8443 // default webserver TLS port
+const defaultServerPort = 8443
 const serverCertFile = runtime.DefaultServerCertFile
 
 // FYI, not all browsers support certificates with ed25519 keys, so this file contains a ecdsa key
 const serverKeyFile = runtime.DefaultServerKeyFile
 const TemplateRootPath = "services/hiveoview/src"
 
-// During development, run with 'air' and set home to a working hiveot directory
-// that has certs.
 // hiveoview will use the 'hubKey.pem' key and hubCert.pem for the server cert
 // and caCert.pem for connecting to the hub message bus.
 //
-// The easiest testing env is to run 'air', which automatically rebuilds the
-// application on changes. It is configured to use a running hiveot setup at
-// ~/bin/hiveot. (~ is expanded to the home directory)
-// Eg, tmp/hiveoview --home ~/bin/hiveot --clientID __hiveoview
-// See air.toml for the commandline.
-//
 // Note that the service requires a server cert, server CA and a client auth token.
-// For server TLS it uses the existing hubCert/hubKey.pem certificate and key.
 //
-// To generate a token the hubcli can be used:
+// The launcher will automatically generate an auth token in the certs directory
+// with the service name.
+// To generate a token manually the hubcli can be used:
 // "hubcli gentoken __hiveoview", which generates token in: certs/__hiveoview.token
 // If the test user __hiveoview doesn't exist it will be added and a private key
 // generated.
@@ -45,10 +38,10 @@ const TemplateRootPath = "services/hiveoview/src"
 // the templates for each request. Use the --extfs flag for this.
 func main() {
 	var signingKey ed25519.PrivateKey
-	serverPort := port
+	serverPort := defaultServerPort
 	extfs := false
 
-	flag.IntVar(&serverPort, "port", serverPort, "Webserver port")
+	flag.IntVar(&serverPort, "defaultServerPort", serverPort, "Webserver listening defaultServerPort")
 	flag.BoolVar(&extfs, "extfs", extfs, "Use external gohtml filesystem")
 	env := plugin.GetAppEnvironment("", true)
 	env.LogLevel = "info"

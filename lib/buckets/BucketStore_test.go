@@ -423,8 +423,10 @@ func TestPrevNextN(t *testing.T) {
 
 	// test NextN
 	cursor, err := bucket.Cursor()
+	// FIXME: this sometimes returns a buffer filled with FF's. Can't reproduce.
 	k1, v1, valid := cursor.First()
 	assert.True(t, valid)
+	assert.NotEmpty(t, v1)
 	docs, itemsRemaining := cursor.NextN(seekCount)
 	assert.True(t, itemsRemaining)
 	assert.Equal(t, seekCount, len(docs))

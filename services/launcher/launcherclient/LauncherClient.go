@@ -3,7 +3,7 @@ package launcherclient
 import (
 	"fmt"
 	"github.com/hiveot/hub/services/launcher/launcherapi"
-	"github.com/hiveot/hub/transports/messaging"
+	"github.com/hiveot/hub/transports/consumer"
 	"github.com/hiveot/hub/wot/td"
 )
 
@@ -13,7 +13,7 @@ type LauncherClient struct {
 	// ID of the launcher service that handles the requests
 	dThingID string // capability
 	//serviceID string
-	co *messaging.Consumer
+	co *consumer.Consumer
 }
 
 // List services
@@ -50,9 +50,9 @@ func (cl *LauncherClient) StartAllPlugins() error {
 	return err
 }
 
-// Stop cannot stop remotely
+// Stop all plugins but do not stop the launcher itself
 func (cl *LauncherClient) Stop() error {
-	return fmt.Errorf("cannot stop launcher remotely")
+	return cl.StopAllPlugins()
 }
 
 // StopPlugin stops a running plugin
@@ -78,7 +78,7 @@ func (cl *LauncherClient) StopAllPlugins() error {
 //
 //	launcherID is the optional ID of the launcher to use. Default is 'launcher'
 //	co is the hub client connection to use.
-func NewLauncherClient(agentID string, hc *messaging.Consumer) *LauncherClient {
+func NewLauncherClient(agentID string, hc *consumer.Consumer) *LauncherClient {
 	if agentID == "" {
 		agentID = launcherapi.AgentID
 	}

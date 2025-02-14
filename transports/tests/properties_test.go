@@ -33,13 +33,9 @@ func TestObservePropertyByConsumer(t *testing.T) {
 	defer cancelFn()
 
 	// 2. connect with two consumers
-	cc1, cl1 := NewConsumer(testClientID1, srv.GetForm)
-	_, err := cc1.ConnectWithPassword(testClientID1)
-	require.NoError(t, err)
+	cc1, cl1, _ := NewConsumer(testClientID1, srv.GetForm)
 	defer cc1.Disconnect()
-	cc2, cl2 := NewConsumer(testClientID1, srv.GetForm)
-	_, err = cc2.ConnectWithPassword(testClientID1)
-	require.NoError(t, err)
+	cc2, cl2, _ := NewConsumer(testClientID1, srv.GetForm)
 	defer cc2.Disconnect()
 
 	// set the handler for property updates and subscribe
@@ -53,7 +49,7 @@ func TestObservePropertyByConsumer(t *testing.T) {
 	})
 
 	// Client1 subscribes to one, client 2 to all property updates
-	err = cl1.ObserveProperty(thingID, propertyKey1)
+	err := cl1.ObserveProperty(thingID, propertyKey1)
 	require.NoError(t, err)
 	err = cl2.ObserveProperty("", "")
 	require.NoError(t, err)
@@ -120,13 +116,11 @@ func TestPublishPropertyByAgent(t *testing.T) {
 	defer cancelFn()
 
 	// 2. connect as an agent
-	agConn1, ag1 := NewAgent(testAgentID1)
-	_, err := agConn1.ConnectWithPassword(testAgentID1)
-	require.NoError(t, err)
+	agConn1, ag1, _ := NewAgent(testAgentID1)
 	defer agConn1.Disconnect()
 
 	// 3. agent publishes a property update
-	err = ag1.PubProperty(thingID, propKey1, propValue1)
+	err := ag1.PubProperty(thingID, propKey1, propValue1)
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond) // time to take effect
 
@@ -166,9 +160,7 @@ func TestReadProperty(t *testing.T) {
 	defer cancelFn()
 
 	// 2. connect as a consumer
-	cc1, consumer1 := NewConsumer(testClientID1, srv.GetForm)
-	_, err := cc1.ConnectWithPassword(testClientID1)
-	require.NoError(t, err)
+	cc1, consumer1, _ := NewConsumer(testClientID1, srv.GetForm)
 	defer cc1.Disconnect()
 
 	rxVal, err := consumer1.ReadProperty(thingID, propKey)
@@ -203,9 +195,7 @@ func TestReadAllProperties(t *testing.T) {
 	defer cancelFn()
 
 	// 2. connect as a consumer
-	cc1, consumer1 := NewConsumer(testClientID1, srv.GetForm)
-	_, err := cc1.ConnectWithPassword(testClientID1)
-	require.NoError(t, err)
+	cc1, consumer1, _ := NewConsumer(testClientID1, srv.GetForm)
 	defer cc1.Disconnect()
 
 	propMap, err := consumer1.ReadAllProperties(thingID)
