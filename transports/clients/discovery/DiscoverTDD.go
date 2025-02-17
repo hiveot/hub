@@ -21,12 +21,14 @@ type DiscoveryResult struct {
 	IsThing     bool   // URL is of a Thing
 	Instance    string
 	// predefined WoT discovery parameters
-	Scheme     string            // Scheme part of the URL
-	Type       string            // Thing or Directory
-	TD         string            // absolute pathname of the TD or TDD
-	AuthURL    string            // authentication service endpoint (not a WoT standard)
-	ConnectURL string            // the default connection with hiveot hubs (not a WoT standard)
-	Params     map[string]string // optional parameters
+	Scheme string // Scheme part of the URL
+	Type   string // Thing or Directory
+	TD     string // absolute pathname of the TD or TDD
+	// hiveot connection endpoints
+	AuthEndpoint string            // authentication service endpoint
+	SSEEndpoint  string            // Http/SSE-SC transport protocol
+	WSSEndpoint  string            // Websocket transport
+	Params       map[string]string // optional parameters
 }
 
 // DiscoverTDD supports introduction mechanisms to bootstrap the WoT discovery
@@ -71,6 +73,9 @@ func DiscoverWithDnsSD(instanceName string, serviceName string,
 	drList := make([]*DiscoveryResult, 0)
 
 	serviceType := fmt.Sprintf("_%s._tcp", serviceName)
+	if waitTime == 0 {
+		waitTime = time.Second * 3
+	}
 	records, err := DnsSDScan(instanceName, serviceType, waitTime, firstResult)
 	if err != nil {
 		return drList, err
@@ -126,11 +131,14 @@ func DiscoverWithDnsSD(instanceName string, serviceName string,
 			} else if key == "scheme" {
 				// http (default), https, coap+tcp, coaps+tcp
 				discoResult.Scheme = val // Scheme part of URL
-			} else if key == discoserver.ConnectParam {
+			} else if key == discoserver.WSSEndpoint {
 				// 'base' is specific to hiveot to provide a default connection URL
-				discoResult.ConnectURL = val
-			} else if key == discoserver.AuthParam {
-				discoResult.AuthURL = val
+				discoResult.WSSEndpoint = val
+			} else if key == discoserver.SSEEndpoint {
+				// 'base' is specific to hiveot to provide a default connection URL
+				discoResult.SSEEndpoint = val
+			} else if key == discoserver.AuthEndpoint {
+				discoResult.AuthEndpoint = val
 			}
 			discoResult.Params[key] = val
 		}

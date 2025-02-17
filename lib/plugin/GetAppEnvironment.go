@@ -28,7 +28,7 @@ type AppEnvironment struct {
 	LogsDir    string `yaml:"logsDir,omitempty"`    // Logging output
 	LogLevel   string `yaml:"logLevel,omitempty"`   // logging level: error, warning, info, debug
 	StoresDir  string `yaml:"storesDir,omitempty"`  // Root of the service stores
-	ServerURL  string `yaml:"serverURL,omitempty"`  // forced server to connect to: protocol://host/path or "" for auto
+	ServerURL  string `yaml:"serverURL,omitempty"`  // forced server to connect to: scheme://host/path or "" for auto
 
 	// Credentials
 	CaCert    *x509.Certificate `yaml:"-"`         // default cert if loaded

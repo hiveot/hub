@@ -29,18 +29,21 @@ type WssClient struct {
 	// handler for responses sent by agents
 	appResponseHandlerPtr atomic.Pointer[transports.ResponseHandler]
 
+	//clientID string
+	// Connection information such as clientID, cid, address, protocol etc
+	cinfo transports.ConnectionInfo
+
 	// authentication token
 	authToken string
-	caCert    *x509.Certificate
+	//caCert    *x509.Certificate
 
 	// clientID is the account ID of the agent or consumer
-	clientID     string
-	connectionID string
-	fullURL      string
+	//clientID     string
+	//connectionID string
+	//fullURL      string
 
-	isConnected  atomic.Bool
-	lastError    atomic.Pointer[error]
-	protocolType string
+	isConnected atomic.Bool
+	lastError   atomic.Pointer[error]
 
 	maxReconnectAttempts int // 0 for indefinite
 
@@ -53,7 +56,7 @@ type WssClient struct {
 	retryOnDisconnect atomic.Bool
 
 	// request timeout
-	timeout time.Duration
+	//timeout time.Duration
 
 	// underlying websocket connection
 	wssConn     *websocket.Conn
@@ -96,8 +99,7 @@ func (cl *WssClient) ConnectWithToken(token string) error {
 	cl.Disconnect()
 
 	cl.authToken = token
-	wssCancelFn, wssConn, err := ConnectWSS(
-		cl.clientID, cl.connectionID, cl.fullURL, token, cl.caCert,
+	wssCancelFn, wssConn, err := ConnectWSS(cl.cinfo, token,
 		cl._onConnectionChanged, cl.HandleWssMessage)
 
 	cl.mux.Lock()
@@ -114,7 +116,7 @@ func (cl *WssClient) ConnectWithToken(token string) error {
 // Disconnect from the server
 func (cl *WssClient) Disconnect() {
 	slog.Debug("Disconnect",
-		slog.String("clientID", cl.clientID),
+		slog.String("clientID", cl.cinfo.ClientID),
 	)
 	// dont try to reconnect
 	cl.retryOnDisconnect.Store(false)
@@ -127,24 +129,9 @@ func (cl *WssClient) Disconnect() {
 	}
 }
 
-// GetClientID returns the client's account ID
-func (cl *WssClient) GetClientID() string {
-	return cl.clientID
-}
-
-// GetConnectionID returns the client's connection ID
-func (cl *WssClient) GetConnectionID() string {
-	return cl.connectionID
-}
-
-// GetProtocolType returns the type of protocol this client supports
-func (cl *WssClient) GetProtocolType() string {
-	return cl.protocolType
-}
-
-// GetConnectURL returns the schema://address:port/path of the server connection
-func (cl *WssClient) GetConnectURL() string {
-	return cl.fullURL
+// GetConnectionInfo returns the client's connection details
+func (c *WssClient) GetConnectionInfo() transports.ConnectionInfo {
+	return c.cinfo
 }
 
 // HandleWssMessage processes the websocket message received from the server.
@@ -159,7 +146,7 @@ func (cl *WssClient) HandleWssMessage(raw []byte) {
 		hPtr := cl.appRequestHandlerPtr.Load()
 		if hPtr == nil {
 			slog.Error("HandleWssMessage: no request handler set",
-				"clientID", cl.clientID,
+				"clientID", cl.cinfo.ClientID,
 				"operation", req.Operation,
 			)
 			return
@@ -171,7 +158,7 @@ func (cl *WssClient) HandleWssMessage(raw []byte) {
 		hPtr := cl.appResponseHandlerPtr.Load()
 		if hPtr == nil {
 			slog.Error("HandleWssMessage: no response handler set",
-				"clientID", cl.clientID,
+				"clientID", cl.cinfo.ClientID,
 				"operation", resp.Operation,
 			)
 			return
@@ -190,7 +177,7 @@ func (cl *WssClient) Reconnect() {
 	var err error
 	for i := 0; cl.maxReconnectAttempts == 0 || i < cl.maxReconnectAttempts; i++ {
 		slog.Warn("Reconnecting attempt",
-			slog.String("clientID", cl.clientID),
+			slog.String("clientID", cl.cinfo.ClientID),
 			slog.Int("i", i))
 		err = cl.ConnectWithToken(cl.authToken)
 		if err == nil {
@@ -214,7 +201,7 @@ func (cl *WssClient) SendRequest(req *transports.RequestMessage) error {
 
 	slog.Info("SendRequest",
 		slog.String("operation", req.Operation),
-		slog.String("clientID", cl.clientID),
+		slog.String("clientID", cl.cinfo.ClientID),
 		slog.String("thingID", req.ThingID),
 		slog.String("name", req.Name),
 		slog.String("correlationID", req.CorrelationID),
@@ -237,7 +224,7 @@ func (cl *WssClient) SendResponse(resp *transports.ResponseMessage) error {
 
 	slog.Info("SendResponse",
 		slog.String("operation", resp.Operation),
-		slog.String("clientID", cl.clientID),
+		slog.String("clientID", cl.cinfo.ClientID),
 		slog.String("thingID", resp.ThingID),
 		slog.String("name", resp.Name),
 		slog.String("status", resp.Status),
@@ -289,30 +276,29 @@ func (cl *WssClient) SetResponseHandler(cb transports.ResponseHandler) {
 // can be mapped to a RequestMessage and ResponseMessage. It is used to support
 // both hiveot and WoT websocket message formats.
 //
-//	fullURL is the full websocket connection URL
+//	wssURL is the full websocket connection URL
 //	clientID is the authentication ID of the consumer or agent
 //	caCert is the server CA for TLS connection validation
 //	converter is the message format converter
 //	protocol is the protocol ID of the websocket messages
 //	timeout is the maximum connection wait time
 func NewHiveotWssClient(
-	fullURL string, clientID string, caCert *x509.Certificate,
-	converter transports.IMessageConverter, protocol string,
+	wssURL string, clientID string, caCert *x509.Certificate,
+	converter transports.IMessageConverter,
 	timeout time.Duration) *WssClient {
 
-	if protocol == "" {
-		protocol = transports.ProtocolTypeHiveotWSS
+	cinfo := transports.ConnectionInfo{
+		CaCert:       caCert,
+		ClientID:     clientID,
+		ConnectionID: "wss-" + shortid.MustGenerate(),
+		ConnectURL:   wssURL,
+		ProtocolType: converter.GetProtocolType(),
+		Timeout:      timeout,
 	}
-
 	cl := WssClient{
-		caCert:               caCert,
-		clientID:             clientID,
-		connectionID:         shortid.MustGenerate(),
-		fullURL:              fullURL,
-		protocolType:         protocol,
+		cinfo:                cinfo,
 		maxReconnectAttempts: 0,
 		messageConverter:     converter,
-		timeout:              timeout,
 	}
 	//cl.Init(fullURL, clientID, clientCert, caCert, getForm, timeout)
 	return &cl

@@ -255,6 +255,11 @@ func (sess *WebClientSession) LoadState() error {
 	return nil
 }
 
+func (sess *WebClientSession) Logout() {
+	// FIXME
+	panic("TODO")
+}
+
 // NewSseChan creates a new SSE return channel.
 // Intended for use by the sse connection handler.
 func (sess *WebClientSession) NewSseChan() chan SSEEvent {

@@ -8,6 +8,7 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/clients"
+	authenticator2 "github.com/hiveot/hub/transports/clients/authenticator"
 	"github.com/hiveot/hub/transports/consumer"
 	"github.com/hiveot/hub/transports/servers/hiveotsseserver"
 	"github.com/hiveot/hub/transports/servers/httpserver"
@@ -37,9 +38,10 @@ const testServerHiveotWssURL = "wss://localhost:9445" + wssserver.DefaultHiveotW
 const testServerWotWssURL = "wss://localhost:9445" + wssserver.DefaultWotWssPath
 const testServerMqttWssURL = "mqtts://localhost:9447"
 
-var defaultProtocol = transports.ProtocolTypeHiveotSSE
+// var defaultProtocol = transports.ProtocolTypeHiveotSSE
+var defaultProtocol = transports.ProtocolTypeHiveotWSS
 
-//var defaultProtocol = transports.ProtocolTypeHiveotWSS
+//var defaultProtocol = transports.ProtocolTypeWotWSS
 
 var transportServer transports.ITransportServer
 var authenticator *tputils.DummyAuthenticator
@@ -72,7 +74,7 @@ func NewTestClient(clientID string) (transports.IClientConnection, string) {
 		fullURL = testServerMqttWssURL
 	}
 	caCert := certBundle.CaCert
-	cc, err := clients.ConnectWithToken(clientID, token, caCert, fullURL, testTimeout)
+	cc, err := clients.ConnectWithToken(clientID, token, caCert, defaultProtocol, fullURL, testTimeout)
 	if err != nil {
 		panic("NewClient failed:" + err.Error())
 	}
@@ -143,21 +145,18 @@ func StartTransportServer(
 			hiveotsseserver.DefaultHiveotSsePath,
 			httpTransportServer, nil, reqHandler, respHandler)
 
-	case transports.ProtocolTypeWotWSS:
-		//httpTransportServer, err = httpserver.StartHttpTransportServer(
-		//	"localhost", testServerHttpPort, serverCert, caCert, authenticator, cm,
-		//	// FIXME: add handlers
-		//	nil, nil, nil)
-		//transportServer = wssserver.StartWssTransportServer(
-		//	"", cm, httpTransportServer,
-		//	notifHandler, reqHandler, respHandler)
-		panic("wss (strawman) is broken")
-
 	case transports.ProtocolTypeHiveotWSS:
-		transportServer, err = wssserver.StartHiveotWssServer(
+		transportServer, err = wssserver.StartWssServer(
 			wssserver.DefaultHiveotWssPath,
-			&wssserver.HiveotMessageConverter{}, transports.ProtocolTypeWotWSS,
+			&wssserver.HiveotMessageConverter{}, transports.ProtocolTypeHiveotWSS,
 			httpTransportServer, nil, reqHandler, respHandler)
+
+	case transports.ProtocolTypeWotWSS:
+		transportServer, err = wssserver.StartWssServer(
+			wssserver.DefaultWotWssPath,
+			&wssserver.WotWssMessageConverter{}, transports.ProtocolTypeWotWSS,
+			httpTransportServer, nil, reqHandler, respHandler)
+
 	default:
 		err = errors.New("unknown protocol name: " + defaultProtocol)
 	}
@@ -189,14 +188,14 @@ func DummyRequestHandler(req *transports.RequestMessage,
 	var err error
 
 	slog.Info("DummyRequestHandler: Received request", "op", req.Operation)
-	if req.Operation == wot.HTOpRefresh {
-		oldToken := req.ToString(0)
-		output, err = authenticator.RefreshToken(req.SenderID, oldToken)
-	} else if req.Operation == wot.HTOpLogout {
-		authenticator.Logout(c.GetClientID())
-	} else {
-		output = req.Input // echo
-	}
+	//if req.Operation == wot.HTOpRefresh {
+	//	oldToken := req.ToString(0)
+	//	output, err = authenticator.RefreshToken(req.SenderID, oldToken)
+	//} else if req.Operation == wot.HTOpLogout {
+	//	authenticator.Logout(c.GetClientID())
+	//} else {
+	output = req.Input // echo
+	//}
 	return req.CreateResponse(output, err)
 }
 func DummyResponseHandler(response *transports.ResponseMessage) error {
@@ -234,7 +233,7 @@ func TestLoginRefresh(t *testing.T) {
 	srv, cancelFn := StartTransportServer(nil, nil)
 	defer cancelFn()
 	cc1, co1, token1 := NewConsumer(testClientID1, srv.GetForm)
-	defer cc1.Disconnect()
+	_ = co1
 
 	isConnected := cc1.IsConnected()
 	// FIXME: separate auth from the client
@@ -258,8 +257,12 @@ func TestLoginRefresh(t *testing.T) {
 	isConnected = cc1.IsConnected()
 	assert.True(t, isConnected)
 
+	parts, _ := url.Parse(srv.GetConnectURL())
+	authCl := authenticator2.NewAuthClient(parts.Host, certBundle.CaCert, "cid1", testTimeout)
+	token2, err := authCl.RefreshToken(token1)
+
 	// refresh should succeed
-	token2, err := co1.RefreshToken(token1)
+	//token2, err := co1.RefreshToken(token1)
 	require.NoError(t, err)
 	require.NotEmpty(t, token2)
 
@@ -273,7 +276,8 @@ func TestLoginRefresh(t *testing.T) {
 	err = cc1.ConnectWithToken(token2)
 	require.NoError(t, err)
 
-	token3, err := co1.RefreshToken(token2)
+	//token3, err := co1.RefreshToken(token2)
+	token3, err := authCl.RefreshToken(token2)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, token3)
 
@@ -290,15 +294,22 @@ func TestLogout(t *testing.T) {
 	// check if this test still works with a valid login
 	cc1, co1, token1 := NewConsumer(testClientID1, srv.GetForm)
 	_ = cc1
+	_ = co1
+	defer co1.Disconnect()
 	assert.NotEmpty(t, token1)
 
 	// logout
-	err := co1.Logout()
+	authCl := authenticator2.NewAuthClientFromConnection(cc1, token1)
+	err := authCl.Logout()
+
+	//authenticator2.Logout(cc1, "")
+	//err := co1.Logout()
 	t.Log("logged out, some warnings are expected next")
 	assert.NoError(t, err)
 
 	// This causes Refresh to fail
-	token2, err := co1.RefreshToken(token1)
+	token2, err := authCl.RefreshToken(token1)
+	//token2, err := co1.RefreshToken(token1)
 	assert.Error(t, err)
 	assert.Empty(t, token2)
 }
@@ -343,6 +354,7 @@ func TestBadRefresh(t *testing.T) {
 	srv, cancelFn := StartTransportServer(nil, nil)
 	defer cancelFn()
 	cc1, co1, token1 := NewConsumer(testClientID1, srv.GetForm)
+	_ = co1
 	_ = token1
 	defer cc1.Disconnect()
 
@@ -351,25 +363,17 @@ func TestBadRefresh(t *testing.T) {
 	err := cc1.ConnectWithToken("badtoken")
 	require.Error(t, err)
 
-	// get a valid token and connect with a bad clientid
-	//token2, err := cc1.ConnectWithPassword(testClientID1)
-	//assert.NoError(t, err)
-	validToken, err := co1.RefreshToken(token1)
+	// reconnect with a valid token and connect with a bad clientid
+	err = cc1.ConnectWithToken(token1)
+	assert.NoError(t, err)
+	parts, _ := url.Parse(srv.GetConnectURL())
+	authCl := authenticator2.NewAuthClient(
+		parts.Host, certBundle.CaCert, "cid1", testTimeout)
+	validToken, err := authCl.RefreshToken(token1)
+	//validToken, err := co1.RefreshToken(token1)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, validToken)
 	cc1.Disconnect()
-
-	// this next test depends on whether the clientID is sent along or if the server
-	// uses only the token to determine/view the clientID.
-	// In that case, providing the clientID here is just for logging
-	//cl2 := NewClient("badclientidlogin")
-	//defer cl2.Disconnect()
-	//token, err = cl2.SetBearerToken(validToken)
-	//assert.Error(t, err)
-	//assert.Empty(t, token)
-	//token, err = cl2.RefreshToken(token)
-	//assert.Error(t, err)
-	//assert.Empty(t, token)
 }
 
 // Auto-reconnect using hub client and server
@@ -396,7 +400,8 @@ func TestReconnect(t *testing.T) {
 				time.Sleep(time.Millisecond * 10)
 				require.NotNil(t, c, "client doesnt have a SSE connection")
 				output := req.Input
-				c2 := srv.GetConnectionByConnectionID(c.GetClientID(), c.GetConnectionID())
+				cinfo := c.GetConnectionInfo()
+				c2 := srv.GetConnectionByConnectionID(cinfo.ClientID, cinfo.ConnectionID)
 				assert.NotEmpty(t, c2)
 				resp := req.CreateResponse(output, nil)
 				err = c.SendResponse(resp)
@@ -490,7 +495,7 @@ func TestServerURL(t *testing.T) {
 
 	srv, cancelFn := StartTransportServer(nil, nil)
 	defer cancelFn()
-	serverURL := srv.GetConnectURL("")
+	serverURL := srv.GetConnectURL()
 	_, err := url.Parse(serverURL)
 	require.NoError(t, err)
 }

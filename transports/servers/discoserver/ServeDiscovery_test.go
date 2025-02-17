@@ -32,10 +32,11 @@ func TestDNSSDScan(t *testing.T) {
 // Test the discovery client and server
 func TestDiscover(t *testing.T) {
 	testServiceAddress := net.GetOutboundIP("").String()
+	endpoints := map[string]string{"wss": "wss://localhost/wssendpoint"}
 
 	tddURL := fmt.Sprintf("https://%s:%d%s", testServiceAddress, testServicePort, testServicePath)
 	discoServer, err := discoserver.ServeTDDiscovery(
-		testServiceID, testServiceName, tddURL, "", "")
+		testServiceID, testServiceName, tddURL, endpoints)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, discoServer)

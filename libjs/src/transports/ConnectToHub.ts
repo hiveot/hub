@@ -35,6 +35,13 @@ export async function ConnectToHub(
     }
     // 2. Determine the client protocol to use
     // TODO: support multiple client protocols
+    //
+    // FIXME: (node:84862) [DEP0123] DeprecationWarning: Setting the TLS ServerName
+    //  to an IP address is not permitted by RFC 6066. This will be ignored in a
+    //  future version.
+    // Discovery provides an IP, not a servername. Also on local networks there is no
+    // local DNS or servername, just an IP. What to do?
+    //  https://stackoverflow.com/questions/73526773/tls-servername-as-ip-is-not-permitted
     let hc = new HttpSSEClient(fullURL, clientID, caCertPem, disableCertCheck)
     return hc
 }

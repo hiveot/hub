@@ -67,7 +67,7 @@ func startHistoryService(clean bool) (
 	}
 
 	// create an end user client for testing
-	co1, _ := ts.AddConnectConsumer(testClientID, authz.ClientRoleOperator)
+	co1, _, _ := ts.AddConnectConsumer(testClientID, authz.ClientRoleOperator)
 	histCl := historyclient.NewReadHistoryClient(co1)
 
 	return svc, histCl, func() {
@@ -682,7 +682,7 @@ func TestManageRetention(t *testing.T) {
 	dThing0ID := td.MakeDigiTwinThingID(agentID, td0.ID)
 
 	// connect as an admin user
-	co1, _ := ts.AddConnectConsumer(client1ID, authz.ClientRoleAdmin)
+	co1, _, _ := ts.AddConnectConsumer(client1ID, authz.ClientRoleAdmin)
 	mngHist := historyclient.NewManageHistoryClient(co1)
 
 	// should be able to read the current retention rules. Expect the default rules.
@@ -710,7 +710,7 @@ func TestManageRetention(t *testing.T) {
 	}
 
 	// connect as agent-1 and publish two events for thing0, one to be retained
-	ag1, _ := ts.AddConnectAgent(agentID)
+	ag1, _, _ := ts.AddConnectAgent(agentID)
 	require.NoError(t, err)
 	defer ag1.Disconnect()
 	err = ag1.PubEvent(td0.ID, event1Name, "event one")

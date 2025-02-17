@@ -9,8 +9,7 @@ import (
 // Dummy connection for testing connection manager
 // this implements the IServerConnection interface.
 type DummyConnection struct {
-	connectionID  string
-	clientID      string
+	cinfo         transports.ConnectionInfo
 	remoteAddr    string
 	observations  connections.Subscriptions
 	subscriptions connections.Subscriptions
@@ -21,11 +20,8 @@ type DummyConnection struct {
 
 func (c *DummyConnection) Disconnect() {}
 
-func (c *DummyConnection) GetConnectionID() string { return c.connectionID }
-func (c *DummyConnection) GetClientID() string     { return c.clientID }
-func (c *DummyConnection) GetConnectURL() string   { return "" }
-func (c *DummyConnection) GetProtocolType() string { return "dummy" }
-func (c *DummyConnection) IsConnected() bool       { return true }
+func (c *DummyConnection) GetConnectionInfo() transports.ConnectionInfo { return c.cinfo }
+func (c *DummyConnection) IsConnected() bool                            { return true }
 
 //func (c *DummyConnection) GetSessionID() string    { return c.sessID }
 
@@ -82,8 +78,10 @@ func (c *DummyConnection) UnobserveProperty(dThingID, name string) {
 
 func NewDummyConnection(clientID, remoteAddr, cid string) *DummyConnection {
 	return &DummyConnection{
-		remoteAddr:   remoteAddr,
-		connectionID: cid,
-		clientID:     clientID,
+		cinfo: transports.ConnectionInfo{
+			ConnectionID: cid,
+			ClientID:     clientID,
+		},
+		remoteAddr: remoteAddr,
 	}
 }

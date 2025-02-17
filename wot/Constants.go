@@ -6,12 +6,12 @@ const RFC3339Milli = "2006-01-02T15:04:05.999-0700"
 // HiveOT operations that are missing in WoT and those needed by hub connected agents
 // Keep in sync with vocab.yaml
 const (
-	HTOpLogin         = "login"
-	HTOpLoginWithForm = "loginform"
-	HTOpRefresh       = "refresh"
-	HTOpLogout        = "logout"
-	HTOpPing          = "ping"
-	HTOpError         = "error"
+	//HTOpLogin         = "login"
+	//HTOpLoginWithForm = "loginform"
+	//HTOpRefresh       = "refresh"
+	//HTOpLogout        = "logout"
+	HTOpPing  = "ping"
+	HTOpError = "error"
 
 	// FIXME: readallevents is not a WoT operation. Maybe it should be.
 	HTOpReadEvent     = "readevent"

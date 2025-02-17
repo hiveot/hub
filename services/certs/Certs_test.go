@@ -40,11 +40,11 @@ func startService() (cl *certsclient.CertsClient, stopFunc func()) {
 	}
 
 	//--- connect the certs client as admin
-	hc2, _ := ts.AddConnectConsumer("admin1", authz.ClientRoleAdmin)
-	certAdmin := certsclient.NewCertsClient(hc2)
+	co1, _, _ := ts.AddConnectConsumer("admin1", authz.ClientRoleAdmin)
+	certAdmin := certsclient.NewCertsClient(co1)
 
 	return certAdmin, func() {
-		hc2.Disconnect()
+		co1.Disconnect()
 		hc1.Disconnect()
 		svc.Stop()
 		ts.Stop()

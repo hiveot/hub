@@ -27,11 +27,11 @@ func TestQueryActions(t *testing.T) {
 	r := startRuntime()
 	defer r.Stop()
 	// agent receives actions and sends events
-	ag1, _ := ts.AddConnectAgent(agentID)
+	ag1, _, _ := ts.AddConnectAgent(agentID)
 	defer ag1.Disconnect()
 	// consumer sends actions and receives events
-	cl1, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
-	defer cl1.Disconnect()
+	co1, _, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
+	defer co1.Disconnect()
 
 	// step 1: agent publishes a TD: dtw:agent1:thing-1
 	td1 := ts.CreateTestTD(0)
@@ -44,13 +44,13 @@ func TestQueryActions(t *testing.T) {
 		return msg.CreateResponse(data, nil)
 	})
 
-	cl1.SetResponseHandler(func(msg *transports.ResponseMessage) error {
+	co1.SetResponseHandler(func(msg *transports.ResponseMessage) error {
 		slog.Info("notification: " + msg.Operation)
 		// signal notification received
 		updateChan1 <- true
 		return nil
 	})
-	err := cl1.Subscribe("", "")
+	err := co1.Subscribe("", "")
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond)
 	err = ag1.PubTD(td1)
@@ -61,12 +61,12 @@ func TestQueryActions(t *testing.T) {
 	<-updateChan1
 
 	// this action is recorded
-	err = cl1.InvokeAction(dThing1ID, actionID, data, nil)
+	err = co1.InvokeAction(dThing1ID, actionID, data, nil)
 	require.NoError(t, err)
 
 	// get the latest action values from the thing
 	// use the API generated from the digitwin TD document using tdd2api
-	//valueList, err := digitwin.ValuesQueryAllActions(cl1, dThing1ID)
+	//valueList, err := digitwin.ValuesQueryAllActions(co1, dThing1ID)
 	//require.NoError(t, err)
 	//valueMap := api.ActionListToMap(valueList)
 
@@ -87,10 +87,10 @@ func TestReadEvents(t *testing.T) {
 	defer r.Stop()
 
 	// agent for publishing events
-	ag1, _ := ts.AddConnectAgent(agentID)
+	ag1, _, _ := ts.AddConnectAgent(agentID)
 	defer ag1.Disconnect()
 	// consumer for reading events
-	co1, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
+	co1, _, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
 	defer co1.Disconnect()
 
 	// step 1: agent publishes a TD first: dtw:agent1:thing-1
@@ -134,10 +134,10 @@ func TestHttpsGetProps(t *testing.T) {
 	defer r.Stop()
 
 	// agent publishes properties
-	ag1, _ := ts.AddConnectAgent(agentID)
+	ag1, _, _ := ts.AddConnectAgent(agentID)
 	defer ag1.Disconnect()
 	// consumer reads properties
-	cl2, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
+	cl2, _, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
 	defer cl2.Disconnect()
 
 	// step 1: agent publishes a TD first: dtw:agent1:thing-1
@@ -176,9 +176,9 @@ func TestSubscribeValues(t *testing.T) {
 
 	r := startRuntime()
 	defer r.Stop()
-	ag1, _ := ts.AddConnectAgent(agentID)
+	ag1, _, _ := ts.AddConnectAgent(agentID)
 	defer ag1.Disconnect()
-	cl1, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
+	cl1, _, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
 	defer cl1.Disconnect()
 
 	// 1. consumer subscribes to events/properties
@@ -220,9 +220,9 @@ func TestWriteProperties(t *testing.T) {
 
 	r := startRuntime()
 	defer r.Stop()
-	ag1, _ := ts.AddConnectAgent(agentID)
+	ag1, _, _ := ts.AddConnectAgent(agentID)
 	defer ag1.Disconnect()
-	co1, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
+	co1, _, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
 	defer co1.Disconnect()
 
 	// step 1: agent publishes a TD first: dtw:agent1:thing-1

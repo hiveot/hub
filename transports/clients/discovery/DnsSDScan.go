@@ -26,6 +26,9 @@ func DnsSDScan(instanceName string, serviceType string, waitTime time.Duration, 
 		// https://github.com/grandcat/zeroconf/pull/15
 		serviceType = "_services._dns-sd._udp"
 	}
+	if waitTime == 0 {
+		waitTime = time.Second * 3
+	}
 	records := make([]*zeroconf.ServiceEntry, 0)
 	resolver, err := zeroconf.NewResolver(nil)
 	if err != nil {

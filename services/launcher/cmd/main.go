@@ -28,7 +28,7 @@ func main() {
 
 	// start the launcher but do not connect yet as the runtime can be started by the launcher itself.
 	// the runtime will generate the launcher key and token.
-	svc := service.NewLauncherService(env.ServerURL, env.ClientID,
+	svc := service.NewLauncherService("", env.ServerURL, env.ClientID,
 		env.BinDir, env.PluginsDir, env.CertsDir, cfg)
 	err = svc.Start()
 	if err != nil {

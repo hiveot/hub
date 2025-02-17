@@ -16,7 +16,6 @@ import (
 	"github.com/hiveot/hub/transports/tputils/tlsserver"
 	"log/slog"
 	"net/http"
-	"net/url"
 	"os"
 	"path"
 	"time"
@@ -26,6 +25,7 @@ import (
 // It utilizes gin, htmx and TempL for serving html.
 // credits go to: https://github.com/marco-souza/gx/blob/main/cmd/server/server.go
 type HiveovService struct {
+	//serverAddr   string // listening address
 	port         int  // listening port
 	dev          bool // development configuration
 	shouldUpdate bool
@@ -39,7 +39,7 @@ type HiveovService struct {
 	serverCert *tls.Certificate
 	caCert     *x509.Certificate
 	tlsServer  *tlsserver.TLSServer
-	serverURL  string
+
 	// a web session per connections
 	sm *session.WebSessionManager
 
@@ -58,9 +58,9 @@ type HiveovService struct {
 	timeout time.Duration
 }
 
-func (svc *HiveovService) GetServerURL() string {
-	return svc.serverURL
-}
+//func (svc *HiveovService) GetServerURL() string {
+//	return fmt.Sprintf("https://%s:%d%s", svc.serverAddr, svc.port, WebSsePath)
+//}
 
 // GetSM returns the web session manager
 // Intended for testing.
@@ -89,17 +89,17 @@ func (svc *HiveovService) Start(ag *consumer.Agent) error {
 
 	// Setup the handling of incoming web sessions
 	// re-use the runtime connection manager
-	hubURL := ag.GetConnection().GetConnectURL()
 	svc.sm = session.NewWebSessionManager(
-		hubURL, svc.signingKey, svc.caCert, ag, svc.noState, svc.timeout)
+		svc.signingKey, svc.caCert, ag, svc.noState, svc.timeout)
 
 	// parse the templates
 	svc.tm.ParseAllTemplates()
 
 	// TODO: hostname configurable as the server can live elsewhere
 	// This is an SSE server
-	urlParts, _ := url.Parse(hubURL)
-	svc.serverURL = fmt.Sprintf("https://%s:%d%s", urlParts.Hostname(), svc.port, WebSsePath)
+	//outbound := net.GetOutboundIP("")
+	//hostName := outbound.String()
+	//svc.serverURL = fmt.Sprintf("https://%s:%d%s", hostName, svc.port, WebSsePath)
 
 	// Start the TLS server for serving the UI
 	// The server certificate must match the domain name used here, so just

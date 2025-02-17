@@ -29,7 +29,7 @@ func TestAddRemoveConnection(t *testing.T) {
 	require.NoError(t, err)
 
 	// connection must exist
-	cid1 := c1.GetConnectionID()
+	cid1 := c1.cinfo.ConnectionID
 	c1b := cm.GetConnectionByConnectionID(clientID, cid1)
 	require.NotEmpty(t, c1b)
 
@@ -42,7 +42,7 @@ func TestAddRemoveConnection(t *testing.T) {
 	require.Empty(t, c1c)
 
 	// c2 should remain
-	cid2 := c2.GetConnectionID()
+	cid2 := c2.cinfo.ConnectionID
 	c2a := cm.GetConnectionByConnectionID(clientID, cid2)
 	require.NotEmpty(t, c2a)
 
@@ -75,24 +75,24 @@ func TestCloseClientConnection(t *testing.T) {
 	require.NoError(t, err)
 
 	// connection must exist
-	c1a := cm.GetConnectionByConnectionID(client1ID, c1.GetConnectionID())
+	c1a := cm.GetConnectionByConnectionID(client1ID, c1.cinfo.ConnectionID)
 	require.NotNil(t, c1a)
 
 	// close the connection of user1
 	cm.CloseAllClientConnections(client1ID)
 
 	// connection no longer exists
-	c1b := cm.GetConnectionByConnectionID(client1ID, c1.GetConnectionID())
+	c1b := cm.GetConnectionByConnectionID(client1ID, c1.cinfo.ConnectionID)
 	require.Empty(t, c1b)
 
 	// connection user 2 must still exist
-	c2a := cm.GetConnectionByConnectionID(client2ID, c2.GetConnectionID())
+	c2a := cm.GetConnectionByConnectionID(client2ID, c2.cinfo.ConnectionID)
 	require.NotEmpty(t, c2a)
 
 	// close all
 	cm.CloseAll()
 
-	c2b := cm.GetConnectionByConnectionID(client2ID, c2.GetConnectionID())
+	c2b := cm.GetConnectionByConnectionID(client2ID, c2.cinfo.ConnectionID)
 	require.Empty(t, c2b)
 }
 
@@ -136,7 +136,7 @@ func TestConnectionTwice(t *testing.T) {
 	require.Error(t, err)
 
 	// One connection remains
-	c1a := cm.GetConnectionByConnectionID(client1ID, c1.GetConnectionID())
+	c1a := cm.GetConnectionByConnectionID(client1ID, c1.cinfo.ConnectionID)
 	require.NotNil(t, c1a)
 }
 

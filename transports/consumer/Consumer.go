@@ -50,7 +50,8 @@ func (co *Consumer) Disconnect() {
 
 // GetClientID returns the client's account ID
 func (co *Consumer) GetClientID() string {
-	return co.cc.GetClientID()
+	cinfo := co.cc.GetConnectionInfo()
+	return cinfo.ClientID
 }
 
 // GetConnection returns the underlying connection of this consumer
@@ -84,15 +85,15 @@ func (co *Consumer) IsConnected() bool {
 }
 
 // Logout requests invalidating all client sessions.
-func (co *Consumer) Logout() (err error) {
-
-	slog.Info("Logout",
-		slog.String("clientID", co.GetClientID()))
-
-	req := transports.NewRequestMessage(wot.HTOpLogout, "", "", nil, "")
-	_, err = co.SendRequest(req, true)
-	return err
-}
+//func (co *Consumer) Logout() (err error) {
+//
+//	slog.Info("Logout",
+//		slog.String("clientID", co.GetClientID()))
+//
+//	req := transports.NewRequestMessage(wot.HTOpLogout, "", "", nil, "")
+//	_, err = co.SendRequest(req, true)
+//	return err
+//}
 
 // ObserveProperty sends a request to observe one or all properties
 func (co *Consumer) ObserveProperty(thingID string, name string) error {
@@ -272,21 +273,21 @@ func (co *Consumer) ReadTD(thingID string) (tdJSON string, err error) {
 // RefreshToken refreshes the authentication token
 // The resulting token can be used with 'SetBearerToken'
 // This is specific to the Hiveot Hub.
-func (co *Consumer) RefreshToken(oldToken string) (newToken string, err error) {
-
-	// FIXME: what is the WoT standard for refreshing a token using http?
-	slog.Info("RefreshToken",
-		slog.String("clientID", co.GetClientID()))
-
-	req := transports.NewRequestMessage(wot.HTOpRefresh, "", "", oldToken, "")
-	resp, err := co.SendRequest(req, true)
-
-	// set the new token as the bearer token
-	if err == nil {
-		newToken = tputils.DecodeAsString(resp.Output, 0)
-	}
-	return newToken, err
-}
+//func (co *Consumer) RefreshToken(oldToken string) (newToken string, err error) {
+//
+//	// FIXME: what is the WoT standard for refreshing a token using http?
+//	slog.Info("RefreshToken",
+//		slog.String("clientID", co.GetClientID()))
+//
+//	req := transports.NewRequestMessage(wot.HTOpRefresh, "", "", oldToken, "")
+//	resp, err := co.SendRequest(req, true)
+//
+//	// set the new token as the bearer token
+//	if err == nil {
+//		newToken = tputils.DecodeAsString(resp.Output, 0)
+//	}
+//	return newToken, err
+//}
 
 // Rpc sends a request message and waits for a response.
 // This returns an error if the request fails or if the response contains an error
@@ -351,8 +352,8 @@ func (co *Consumer) SendRequest(req *transports.RequestMessage, waitForCompletio
 	}
 	// hmm, not pretty but during login the connection status can be ignored
 	// the alternative is not to use SendRequest but plain TLS post
-	ignoreDisconnect := req.Operation == wot.HTOpLogin || req.Operation == wot.HTOpRefresh
-
+	//ignoreDisconnect := req.Operation == wot.HTOpLogin || req.Operation == wot.HTOpRefresh
+	ignoreDisconnect := false
 	resp, err = co.WaitForCompletion(rChan, req.Operation, req.CorrelationID, ignoreDisconnect)
 
 	t1 := time.Now()

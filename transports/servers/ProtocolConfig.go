@@ -13,14 +13,13 @@ const (
 
 type ProtocolsConfig struct {
 
-	// Enable the HiveOT SSE (sse-sc) sub protocol binding. Default is true.
+	// Enable the HiveOT HTTP/Authentication endpoint. Default is true.
+	EnableHiveotAuth bool `yaml:"enableHiveotAuth"`
+	// Enable the HiveOT HTTP/SSE (sse-sc) sub protocol binding. Default is true.
 	EnableHiveotSSE bool `yaml:"enableHiveotSSE"`
-	// Enable the HiveOT WSS sub protocol binding. Default is true.
+	// Enable the HiveOT HTTP/WSS sub protocol binding. Default is true.
 	EnableHiveotWSS bool `yaml:"enableHiveotWSS"`
-
-	// Enable the WoT HTTP Basic protocol binding. Default is true.
-	EnableWotHTTPBasic bool `yaml:"enableWotHTTPBasic"`
-	// Enable the WoT Websocket sub-protocol binding. Default is true.
+	// Enable the WoT HTTP/Websocket sub-protocol binding. Default is true.
 	EnableWotWSS bool `yaml:"enableWotWSS"`
 
 	// Enable the MQTT protocol binding, default is false.
@@ -29,18 +28,29 @@ type ProtocolsConfig struct {
 	// Enable mDNS discovery. Default is true.
 	// The DiscoveryTDPath must be resolved by the http server
 	EnableDiscovery bool `yaml:"enableDiscovery"`
-	// DigitwinTDPath contains the HTTP path to read the digitwin directory TD
-	// Published by discovery and served by the http server.
+
+	// DirectoryTDPath contains the HTTP path to read the digitwin directory TD
+	// Defaults to "/.well-known/wot" as per spec
+	// This is published by discovery and served by the http server.
 	DirectoryTDPath string `json:"directoryTDPath"`
 
-	// Http host interface
+	// Server hostname used in http
 	HttpHost string `yaml:"host"`
 	// https listening port
 	HttpsPort int `yaml:"httpsPort"`
-	// WoT SSE subprotocol paths
-	//WotSSEPath string `yaml:"wotSsePath"`
-	// HiveOT subprotocol prefix
-	//HiveotWSSPath string `yaml:"hiveotWssPath"`
+
+	// HiveOT websocket subprotocol connection path
+	// The full URL is included in discovery record parameters
+	// with this URL no forms are needed to connect to the hub
+	HiveotWSSPath string `yaml:"hiveotWssPath"`
+	// HiveOT sse subprotocol connection path
+	// The full URL is included in discovery record parameters
+	// with this URL no forms are needed to connect to the hub
+	HiveotSSEPath string `yaml:"hiveotSsePath"`
+	// WoT WSS subprotocol connection path
+	// The full URL is included in discovery record parameters
+	// with this URL no forms are needed to connect to the hub
+	WotWSSPath string `yaml:"wotWssPath"`
 
 	// MQTT host interface
 	MqttHost string `yaml:"mqttHost"`
@@ -48,10 +58,6 @@ type ProtocolsConfig struct {
 	MqttTcpPort int `yaml:"mqttTcpPort"`
 	// MQTT websocket port
 	MqttWssPort int `yaml:"mqttWssPort"`
-
-	// each protocol binding has its own config section
-	//Discovery discotransport.DiscoveryConfig `yaml:"discovery"`
-
 }
 
 // NewProtocolsConfig creates the default configuration of communication protocols
@@ -60,24 +66,17 @@ func NewProtocolsConfig() ProtocolsConfig {
 	hostName, _ := os.Hostname()
 
 	cfg := ProtocolsConfig{
-		DirectoryTDPath:    discoserver.DefaultHttpGetDirectoryTDPath,
-		EnableHiveotSSE:    true,
-		EnableHiveotWSS:    true,
-		EnableWotHTTPBasic: true,
-		EnableWotWSS:       true,
-		EnableDiscovery:    true,
-		//EnableMQTT:      false, // todo
-		//HttpWSSPath:     transports.DefaultWSSPath,
-		//HttpSsePath:     transports.DefaultSSEPath,
-		//HttpSseScPath:     transports.DefaultSSESCPath,
-		HttpHost:    hostName,
-		HttpsPort:   httpserver.DefaultHttpsPort,
-		MqttHost:    hostName,
-		MqttTcpPort: DefaultMqttTcpPort,
-		MqttWssPort: DefaultMqttWssPort,
-
-		//Discovery: discotransport.NewDiscoveryConfig(hostName),
-		//DiscoveryTDPath: DefaultDiscoveryPath,
+		DirectoryTDPath:  discoserver.DefaultHttpGetDirectoryTDPath,
+		EnableHiveotAuth: true,
+		EnableHiveotSSE:  true,
+		EnableHiveotWSS:  true,
+		EnableWotWSS:     true,
+		EnableDiscovery:  true,
+		HttpHost:         hostName,
+		HttpsPort:        httpserver.DefaultHttpsPort,
+		MqttHost:         hostName,
+		MqttTcpPort:      DefaultMqttTcpPort,
+		MqttWssPort:      DefaultMqttWssPort,
 	}
 	return cfg
 }

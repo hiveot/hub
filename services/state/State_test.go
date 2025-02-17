@@ -18,34 +18,32 @@ import (
 
 var ts *testenv.TestServer
 
-const agentUsesWSS = true
-
 // return an API to the state service
 func startStateService(cleanStart bool) (
 	svc *service.StateService, stateCl *stateclient.StateClient, stopFn func()) {
 	ts = testenv.StartTestServer(cleanStart)
 
 	// the service needs a server connection
-	agentConn, token1 := ts.AddConnectService(stateapi.AgentID)
+	ag1, token1 := ts.AddConnectService(stateapi.AgentID)
 	_ = token1
 
 	storeDir := path.Join(ts.TestDir, "test-state")
 	svc = service.NewStateService(storeDir)
-	err := svc.Start(agentConn)
+	err := svc.Start(ag1)
 
 	if err != nil {
 		panic("service fails to start: " + err.Error())
 	}
 
 	// connect as a user to the service above
-	hc2, token2 := ts.AddConnectConsumer("user1", authz.ClientRoleViewer)
+	co1, _, token2 := ts.AddConnectConsumer("user1", authz.ClientRoleViewer)
 	_ = token2
-	stateCl = stateclient.NewStateClient(hc2)
+	stateCl = stateclient.NewStateClient(co1)
 	time.Sleep(time.Millisecond)
 	return svc, stateCl, func() {
-		hc2.Disconnect()
-		//slog.Warn("Disconnected " + hc2.GetClientID())
-		agentConn.Disconnect()
+		co1.Disconnect()
+		//slog.Warn("Disconnected " + co1.GetClientID())
+		ag1.Disconnect()
 		//slog.Warn("Disconnected " + hc1.GetClientID())
 		svc.Stop()
 		ts.Stop()
@@ -186,10 +184,10 @@ func TestGetDifferentClientBuckets(t *testing.T) {
 	defer stopFn()
 
 	// Agents and Services must be able to use this state service
-	ag1, token1 := ts.AddConnectAgent(clientID1)
+	ag1, _, token1 := ts.AddConnectAgent(clientID1)
 	require.NotEmpty(t, token1)
 	defer ag1.Disconnect()
-	ag2, token2 := ts.AddConnectAgent(clientID2)
+	ag2, _, token2 := ts.AddConnectAgent(clientID2)
 	require.NotEmpty(t, token2)
 	defer ag2.Disconnect()
 

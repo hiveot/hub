@@ -15,10 +15,15 @@ import (
 )
 
 // Parameter names in the discovery record
-const AuthParam = "auth"       // authentication server
-const ConnectParam = "connect" // hub connection server
+// const AuthParam = "auth"       // authentication server
+// const ConnectParam = "connect" // hub connection server
 const DefaultInstanceName = "hiveot"
 const DefaultServiceName = "wot"
+
+// hiveot endpoint identifiers
+const AuthEndpoint = "login"
+const WSSEndpoint = "wss"
+const SSEEndpoint = "sse"
 
 // path to the digital twin directory TD document uses the 'well-known' path
 const DefaultHttpGetDirectoryTDPath = "/.well-known/wot"
@@ -41,10 +46,13 @@ const DefaultHttpGetDirectoryTDPath = "/.well-known/wot"
 //	tddURL is the URL the directory TD is served at.
 //	connectURL is the default connection URL for talking to Things. Empty if not supported.
 //	authURL is the default URL for password authentication. Empty if not supported.
+//	endpoints contains a map of {scheme:connection} URLs
 //
 // Returns the discovery service instance. Use Shutdown() when done.
 func ServeTDDiscovery(
-	instanceName string, serviceName string, tddURL string, connectURL string, authURL string) (
+	instanceName string, serviceName string,
+	tddURL string, endpoints map[string]string,
+) (
 	*zeroconf.Server, error) {
 
 	parts, err := url.Parse(tddURL)
@@ -73,11 +81,13 @@ func ServeTDDiscovery(
 
 	subType := "_directory._sub"
 	params := map[string]string{
-		"td":         tdPath,
-		"scheme":     scheme,
-		"type":       "Directory",
-		ConnectParam: connectURL,
-		AuthParam:    authURL,
+		"td":     tdPath,
+		"scheme": scheme,
+		"type":   "Directory",
+	}
+	// add the connection endpoints to the discovery record
+	for ep, url := range endpoints {
+		params[ep] = url
 	}
 	discoServer, err := ServeDnsSD(
 		instanceName, serviceName, subType,

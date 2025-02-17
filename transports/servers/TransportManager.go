@@ -12,6 +12,7 @@ import (
 	"github.com/hiveot/hub/transports/servers/wssserver"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
+	"net/url"
 )
 
 // TransportManager aggregates multiple transport protocol servers and manages
@@ -91,14 +92,11 @@ func (svc *TransportManager) GetForm(op string, thingID string, name string) (fo
 // GetConnectURL returns URL of the protocol.
 // If protocolType is empty then the 'preferred' protocol type is used.
 // This returns an empty URL if the protocol is not supported.
-func (svc *TransportManager) GetConnectURL(protocolType string) (connectURL string) {
-	if protocolType == "" {
-		protocolType = svc.PreferredProtocolType
-	}
-
+func (svc *TransportManager) GetConnectURL() (connectURL string) {
+	protocolType := svc.PreferredProtocolType
 	srv, found := svc.servers[protocolType]
 	if found {
-		return srv.GetConnectURL(protocolType)
+		return srv.GetConnectURL()
 	}
 	return ""
 }
@@ -128,6 +126,32 @@ func (svc *TransportManager) GetConnectionByConnectionID(clientID, cid string) t
 	return nil
 }
 
+// GetHiveotEndpoints return available hiveot endpoints
+func (svc *TransportManager) GetHiveotEndpoints() map[string]string {
+	endpoints := make(map[string]string)
+	for _, s := range svc.servers {
+		protocolType := s.GetProtocolType()
+		if protocolType == transports.ProtocolTypeWotWSS {
+			// ignore wot protocols
+		} else {
+			connectURL := s.GetConnectURL()
+			parts, _ := url.Parse(connectURL)
+			endpoints[parts.Scheme] = connectURL
+		}
+	}
+	return endpoints
+}
+
+// GetProtocolType returns the preferred protocol
+func (svc *TransportManager) GetProtocolType() string {
+	pref := svc.PreferredProtocolType
+	s := svc.servers[pref]
+	if s == nil {
+		return ""
+	}
+	return s.GetProtocolType()
+}
+
 // GetServer returns the server for the given protocol type
 // This returns nil if the protocol is not active.
 func (svc *TransportManager) GetServer(protocolType string) transports.ITransportServer {
@@ -135,6 +159,7 @@ func (svc *TransportManager) GetServer(protocolType string) transports.ITranspor
 	return s
 }
 
+// Pass incoming requests from any of the transport protocols to the registered handler
 func (svc *TransportManager) handleRequest(
 	req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
 	if svc.requestHandler != nil {
@@ -143,6 +168,7 @@ func (svc *TransportManager) handleRequest(
 	return req.CreateResponse(nil, errors.New("No request handler set"))
 }
 
+// Pass incoming responses from any of the transport protocols to the registered handler
 func (svc *TransportManager) handleResponse(resp *transports.ResponseMessage) error {
 	if svc.responseHandler != nil {
 		return svc.responseHandler(resp)
@@ -168,27 +194,33 @@ func (svc *TransportManager) SetResponseHandler(h transports.ResponseHandler) {
 
 // StartDiscovery starts the introduction and exploration discovery of the directory
 // TD document.
-// This is started separately as the TD to be served is created after the transport
-// manager has started.
+//
+// This serves two discovery mechanisms.
+// 1. The WoT discovery through the directory TD and Thing forms
+// 2. The HiveOT discovery through the use of connection URLs and Request/Response
+// message envelopes without the need for forms.
 func (svc *TransportManager) StartDiscovery(tdPath string, dirTD string) (err error) {
 	if svc.discoServer != nil {
 		err = fmt.Errorf("StartDiscovery: already running")
 		slog.Error(err.Error())
 		return err
 	}
-	// Use the server preferred protocol type for hiveot clients
-	connectURL := svc.GetConnectURL(svc.PreferredProtocolType)
+	// Get a list of hiveot endpoints for secondary discovery
+	endpoints := svc.GetHiveotEndpoints()
+
 	// start directory introduction and exploration discovery server
 	svc.discoServer, err = discoserver.StartDiscoveryServer(
-		"", "", dirTD, tdPath, svc.httpsTransport, connectURL)
+		"", "", dirTD, tdPath,
+		svc.httpsTransport, endpoints)
 	return err
 }
 
 // Stop the protocol servers
 func (svc *TransportManager) Stop() {
-	//if svc.discoveryTransport != nil {
-	//	svc.discoveryTransport.Stop()
-	//}
+	if svc.discoServer != nil {
+		svc.discoServer.Stop()
+		svc.discoServer = nil
+	}
 	for _, srv := range svc.servers {
 		srv.Stop()
 	}
@@ -224,8 +256,6 @@ func StartTransportManager(cfg *ProtocolsConfig,
 	serverCert *tls.Certificate,
 	caCert *x509.Certificate,
 	authenticator transports.IAuthenticator,
-	// handleRequest transports.RequestHandler,
-	// handleResponse transports.ResponseHandler,
 ) (svc *TransportManager, err error) {
 
 	svc = &TransportManager{
@@ -237,13 +267,13 @@ func StartTransportManager(cfg *ProtocolsConfig,
 	// Embedded services are: authn, authz, directory, inbox, outbox services
 	//svc.embeddedTransport = embedded.StartEmbeddedBinding()
 
-	// Http is needed for all subprotocols because of their auth endpoints
-	if cfg.EnableHiveotWSS || cfg.EnableHiveotSSE ||
-		cfg.EnableWotHTTPBasic || cfg.EnableWotWSS {
+	// Http is needed for all subprotocols and for the auth endpoint
+	if cfg.EnableHiveotAuth || cfg.EnableHiveotWSS || cfg.EnableHiveotSSE ||
+		cfg.EnableWotWSS {
 
 		svc.PreferredProtocolType = transports.ProtocolTypeWotHTTPBasic
 
-		// 1. HTTP server supports authentication and discovery
+		// 1. HTTP server supports authentication
 		httpServer, err2 := httpserver.StartHttpTransportServer(
 			cfg.HttpHost, cfg.HttpsPort,
 			serverCert, caCert,
@@ -252,23 +282,45 @@ func StartTransportManager(cfg *ProtocolsConfig,
 		err = err2
 		svc.httpsTransport = httpServer
 
-		// 2. HTTP HiveOT SSE-SC sub-protocol
+		// 2. HiveOT HTTP/SSE-SC sub-protocol
 		if cfg.EnableHiveotSSE {
 			ssePath := hiveotsseserver.DefaultHiveotSsePath
-			hiveotSseServer := hiveotsseserver.StartHiveotSseServer(ssePath,
-				svc.httpsTransport, nil, svc.handleRequest, svc.handleResponse)
+			hiveotSseServer := hiveotsseserver.StartHiveotSseServer(
+				ssePath,
+				svc.httpsTransport,
+				nil,
+				svc.handleRequest,
+				svc.handleResponse)
 			svc.servers[transports.ProtocolTypeHiveotSSE] = hiveotSseServer
 			// sse is better than http-basic
 			svc.PreferredProtocolType = transports.ProtocolTypeHiveotSSE
 		}
 
-		// 3. WoT WSS Protocol
+		// 3. HiveOT WSS protocol
+		if cfg.EnableHiveotWSS {
+			converter := &wssserver.HiveotMessageConverter{}
+			wssPath := wssserver.DefaultHiveotWssPath
+			hiveotWssServer, err := wssserver.StartWssServer(
+				wssPath, converter, transports.ProtocolTypeHiveotWSS,
+				svc.httpsTransport,
+				nil,
+				svc.handleRequest,
+				svc.handleResponse,
+			)
+			if err == nil {
+				svc.servers[transports.ProtocolTypeHiveotWSS] = hiveotWssServer
+			}
+			// wss is better than http, sse or wot wss
+			svc.PreferredProtocolType = transports.ProtocolTypeHiveotWSS
+		}
+
+		// 4. WoT WSS Protocol
 		if cfg.EnableWotWSS {
 			// WoT WSS uses the same wss socket server as hiveot but with a
 			// different message converter.
 			converter := &wssserver.WotWssMessageConverter{}
 			wssPath := wssserver.DefaultWotWssPath
-			wotWssServer, err := wssserver.StartHiveotWssServer(
+			wotWssServer, err := wssserver.StartWssServer(
 				wssPath, converter, transports.ProtocolTypeWotWSS,
 				svc.httpsTransport,
 				nil,
@@ -282,32 +334,6 @@ func StartTransportManager(cfg *ProtocolsConfig,
 			svc.PreferredProtocolType = transports.ProtocolTypeWotWSS
 		}
 
-		// 4. HiveOT WSS protocol
-		if cfg.EnableHiveotWSS {
-			converter := &wssserver.HiveotMessageConverter{}
-			wssPath := wssserver.DefaultHiveotWssPath
-			hiveotWssServer, err := wssserver.StartHiveotWssServer(
-				wssPath, converter, transports.ProtocolTypeHiveotWSS,
-				svc.httpsTransport,
-				nil,
-				svc.handleRequest,
-				svc.handleResponse,
-			)
-			if err == nil {
-				svc.servers[transports.ProtocolTypeHiveotWSS] = hiveotWssServer
-			}
-			// wss is better than http, sse or wot wss
-			svc.PreferredProtocolType = transports.ProtocolTypeHiveotWSS
-		}
-		if cfg.EnableWotHTTPBasic {
-			//	svc.wotHttpBasicServer = StartWotHttpBasicServer(
-			//		"", cm,
-			//		svc.httpsTransport,
-			//		handleRequest,
-			//		handleResponse,
-			//	)
-			//svc.servers = append(svc.servers, svc.wotHttpBasicServer)
-		}
 	}
 	//if cfg.EnableMQTT {
 	//svc.mqttsTransport, err = mqttserver.StartMqttTransportServer(
@@ -319,22 +345,5 @@ func StartTransportManager(cfg *ProtocolsConfig,
 	//)
 	//svc.servers = append(svc.servers, svc.mqttsTransport)
 	//}
-	if cfg.EnableDiscovery {
-		//dirTD := r.digitwin.GetTD()
-
-		// start directory introduction and exploration discovery server
-		//svc.discoServer, err = discoserver.StartDiscoveryServer(
-		//	"", "", "", dirTD, svc.httpsTransport)
-
-		// start discovery with the TDD endpoint
-		//cfg.Discovery.HiveotSseURL = svc.GetConnectURL(transports.ProtocolTypeHiveotSSE)
-		//cfg.Discovery.HiveotWssURL = svc.GetConnectURL(transports.ProtocolTypeHiveotWSS)
-		//cfg.Discovery.WotHttpBasicURL = svc.GetConnectURL(transports.ProtocolTypeWotHTTPBasic)
-		//cfg.Discovery.WotWssURL = svc.GetConnectURL(transports.ProtocolTypeWotWSS)
-		//cfg.Discovery.MqttWssURL = svc.GetConnectURL(transports.ProtocolTypeMQTTWSS)
-		//cfg.Discovery.MqttTcpURL = svc.GetConnectURL(transports.ProtocolTypeMQTTCP)
-
-		//svc.discoveryTransport, err = discotransport.StartDiscoveryTransport(cfg.Discovery)
-	}
 	return svc, err
 }

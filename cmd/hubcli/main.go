@@ -99,6 +99,7 @@ func main() {
 			},
 		},
 		Before: func(c *cli.Context) (err error) {
+			var cc transports.IClientConnection
 			// reload env in case home changes
 			env = plugin.GetAppEnvironment(homeDir, false)
 			certsDir = env.CertsDir
@@ -115,7 +116,12 @@ func main() {
 			}
 
 			caCert, _ := clients.LoadCA(certsDir)
-			cc, _, err := clients.ConnectWithPassword(loginID, password, caCert, "", "", 0)
+			if password != "" {
+				cc, _, err = clients.ConnectWithPassword(loginID, password, caCert, "", "", "", 0)
+			} else {
+				token, _ := clients.LoadToken(loginID, certsDir)
+				cc, err = clients.ConnectWithToken(loginID, token, caCert, "", "", 0)
+			}
 
 			if err != nil {
 				slog.Error("Unable to connect to the server", "err", err)

@@ -29,7 +29,7 @@ var testPort = 23001
 var ts *testenv.TestServer
 
 // Create a new store, delete if it already exists
-func newIdProvService() (svc *service.IdProvService, co *consumer.Consumer, stopFn func()) {
+func newIdProvService() (svc *service.IdProvService, co1 *consumer.Consumer, stopFn func()) {
 
 	ts = testenv.StartTestServer(true)
 	agentConn, token1 := ts.AddConnectService(idprovapi.AgentID)
@@ -44,10 +44,10 @@ func newIdProvService() (svc *service.IdProvService, co *consumer.Consumer, stop
 	//_ = ag
 
 	// create an end user client for testing
-	co, token2 := ts.AddConnectConsumer("test-client", authz.ClientRoleManager)
+	co1, _, token2 := ts.AddConnectConsumer("test-client", authz.ClientRoleManager)
 	_ = token2
-	return svc, co, func() {
-		co.Disconnect()
+	return svc, co1, func() {
+		co1.Disconnect()
 		svc.Stop()
 		agentConn.Disconnect()
 		ts.Stop()
@@ -120,13 +120,14 @@ func TestAutomaticProvisioning(t *testing.T) {
 	assert.True(t, hasDevice1)
 
 	// token should be used to connect
-	srvURL := ts.GetServerURL(authn.ClientTypeAgent)
+	protocol, srvURL := ts.GetServerURL(authn.ClientTypeAgent)
 
-	agConn, err := clients.NewClient(device1ID, ts.Certs.CaCert, ts.GetForm, srvURL, 0)
+	cc, err := clients.ConnectWithToken(device1ID, token1, ts.Certs.CaCert, protocol, srvURL, 0)
+	//agConn, err := clients.NewClient(device1ID, ts.Certs.CaCert, ts.GetForm, srvURL, 0)
 	require.NoError(t, err)
-	err = agConn.ConnectWithToken(token1)
-	require.NoError(t, err)
-	ag1 := consumer.NewAgent(agConn, nil, nil, nil, 0)
+	//err = agConn.ConnectWithToken(token1)
+	//require.NoError(t, err)
+	ag1 := consumer.NewAgent(cc, nil, nil, nil, 0)
 	//ag1.SetRetryConnect(false)
 	ag1.Disconnect()
 }

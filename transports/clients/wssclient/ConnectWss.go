@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"github.com/gorilla/websocket"
+	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/servers/httpserver"
 	"log/slog"
 	"net"
@@ -16,16 +17,16 @@ import (
 
 // ConnectWSS establishes a websocket session with a server
 func ConnectWSS(
-	clientID string, connectionID string, wssURL string,
-	bearerToken string, caCert *x509.Certificate,
+	cinfo transports.ConnectionInfo,
+	bearerToken string,
 	onConnect func(bool, error),
 	onMessage func(raw []byte),
 ) (cancelFn func(), conn *websocket.Conn, err error) {
 	var clientCertList []tls.Certificate
 
 	slog.Info("ConnectWSS (to hub) - establishing Websocket connection to server",
-		slog.String("URL", wssURL),
-		slog.String("clientID", clientID),
+		slog.String("URL", cinfo.ConnectURL),
+		slog.String("clientID", cinfo.ClientID),
 	)
 
 	// use context to disconnect the client
@@ -34,25 +35,25 @@ func ConnectWSS(
 
 	// the CA certificate is set in NewTLSClient
 	caCertPool := x509.NewCertPool()
-	if caCert != nil {
-		caCertPool.AddCert(caCert)
+	if cinfo.CaCert != nil {
+		caCertPool.AddCert(cinfo.CaCert)
 	}
 	//if clientCert != nil {
 	//	clientCertList = []tls.Certificate{*clientCert}
 	//}
-	wssURLParsed, _ := url.Parse(wssURL)
+	wssURLParsed, _ := url.Parse(cinfo.ConnectURL)
 	tlsConfig := &tls.Config{
 		RootCAs: caCertPool,
 		// ServerName is required with InsecureSkipVerify disabled
 		ServerName:         wssURLParsed.Hostname(), // how to know?
-		InsecureSkipVerify: caCert == nil,
+		InsecureSkipVerify: cinfo.CaCert == nil,
 		//InsecureSkipVerify: true,
 		Certificates: clientCertList,
 	}
 
 	wssHeader := http.Header{}
 	wssHeader.Add("Authorization", "bearer "+bearerToken)
-	wssHeader.Add(httpserver.ConnectionIDHeader, connectionID)
+	wssHeader.Add(httpserver.ConnectionIDHeader, cinfo.ConnectionID)
 	//parts, _ := url.Parse(hostPort)
 	//origin := fmt.Sprintf("%s://%s", parts.Scheme, parts.Host)
 	//opts.HTTPHeader.Add("Origin", origin)
@@ -87,7 +88,7 @@ func ConnectWSS(
 	//httpParts.Scheme = "https"
 	//httpsURL := httpParts.String()
 
-	wssConn, r, err := dialer.Dial(wssURL, wssHeader)
+	wssConn, r, err := dialer.Dial(cinfo.ConnectURL, wssHeader)
 	if err != nil {
 		// provide a bit more accurate error in case of unauthorized
 		if r != nil && r.StatusCode == http.StatusUnauthorized {

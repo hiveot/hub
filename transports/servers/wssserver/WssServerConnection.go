@@ -22,11 +22,14 @@ type WSSMessage map[string]any
 // This implements the IServerConnection interface for sending messages to
 // agent or consumers.
 type WssServerConnection struct {
+	// Connection information such as clientID, cid, address, protocol etc
+	cinfo transports.ConnectionInfo
+
 	// connection ID
-	connectionID string
+	//connectionID string
 
 	// clientID is the account ID of the agent or consumer
-	clientID string
+	//clientID string
 
 	// connection request remote address
 	httpReq *http.Request
@@ -62,7 +65,7 @@ func (c *WssServerConnection) _send(msg any) (err error) {
 
 	if !c.isConnected.Load() {
 		err = fmt.Errorf(
-			"_send: connection with client '%s' is now closed", c.clientID)
+			"_send: connection with client '%s' is now closed", c.cinfo.ClientID)
 		slog.Warn(err.Error())
 	} else {
 		raw, _ := jsoniter.MarshalToString(msg)
@@ -87,24 +90,9 @@ func (c *WssServerConnection) Disconnect() {
 	}
 }
 
-// GetConnectionID returns the client's unique connection ID
-func (c *WssServerConnection) GetConnectionID() string {
-	return c.connectionID
-}
-
-// GetClientID returns the client's account ID
-func (c *WssServerConnection) GetClientID() string {
-	return c.clientID
-}
-
-// GetProtocolType returns the type of protocol used in this connection
-func (c *WssServerConnection) GetProtocolType() string {
-	return transports.ProtocolTypeHiveotWSS
-}
-
-// GetConnectURL returns the URL used to establish the connection
-func (c *WssServerConnection) GetConnectURL() string {
-	return c.httpReq.URL.String()
+// GetConnectionInfo returns the client's connection details
+func (c *WssServerConnection) GetConnectionInfo() transports.ConnectionInfo {
+	return c.cinfo
 }
 
 // IsConnected returns the connection status
@@ -133,7 +121,7 @@ func (c *WssServerConnection) onMessage(raw []byte) {
 	if req != nil {
 		// sender is identified by the server, not the client
 		// note that this field is still useful for services that need to know the sender
-		req.SenderID = c.clientID
+		req.SenderID = c.cinfo.ClientID
 		switch req.Operation {
 		case wot.HTOpPing:
 			resp = req.CreateResponse("pong", nil)
@@ -161,7 +149,7 @@ func (c *WssServerConnection) onMessage(raw []byte) {
 		}
 		_ = c.SendResponse(resp)
 	} else if resp != nil {
-		resp.SenderID = c.GetClientID()
+		resp.SenderID = c.cinfo.ClientID
 		rhPtr := c.responseHandlerPtr.Load()
 		if rhPtr != nil {
 			err = (*rhPtr)(resp)
@@ -223,7 +211,7 @@ func (c *WssServerConnection) SendRequest(req *transports.RequestMessage) error 
 func (c *WssServerConnection) SendResponse(resp *transports.ResponseMessage) (err error) {
 
 	slog.Info("SendResponse",
-		slog.String("clientID", c.clientID),
+		slog.String("clientID", c.cinfo.ClientID),
 		slog.String("correlationID", resp.CorrelationID),
 		slog.String("operation", resp.Operation),
 		slog.String("senderID", resp.SenderID),
@@ -299,10 +287,18 @@ func NewWSSServerConnection(
 
 	cid := "WSS" + shortid.MustGenerate()
 
+	cinfo := transports.ConnectionInfo{
+		CaCert:       nil,
+		ClientID:     clientID,
+		ConnectionID: cid,
+		ConnectURL:   r.URL.String(),
+		ProtocolType: messageConverter.GetProtocolType(),
+		Timeout:      0,
+	}
 	c := &WssServerConnection{
-		wssConn:          wssConn,
-		connectionID:     cid,
-		clientID:         clientID,
+		wssConn: wssConn,
+		cinfo:   cinfo,
+		//clientID:         clientID,
 		messageConverter: messageConverter,
 		httpReq:          r,
 		lastActivity:     time.Time{},

@@ -40,17 +40,17 @@ func (cm *ConnectionManager) AddConnection(c transports.IServerConnection) error
 	cm.mux.Lock()
 	defer cm.mux.Unlock()
 
-	connectionID := c.GetConnectionID()
-	clientID := c.GetClientID()
+	cinfo := c.GetConnectionInfo()
 	// the client's connectionID for lookup
-	clcid := clientID + ":" + connectionID
+	clcid := cinfo.ClientID + ":" + cinfo.ConnectionID
 
 	// Refuse this if an existing connection with this ID exist
 	existingConn, _ := cm.connectionsByConnectionID[clcid]
 	if existingConn != nil {
 		err := fmt.Errorf("AddConnection. The connection ID '%s' of client '%s' already exists",
-			connectionID, existingConn.GetClientID())
-		slog.Error("AddConnection: duplicate ConnectionID", "connectionID", connectionID, "err", err.Error())
+			cinfo.ConnectionID, cinfo.ClientID)
+		slog.Error("AddConnection: duplicate ConnectionID", "connectionID",
+			cinfo.ConnectionID, "err", err.Error())
 		existingConn.Disconnect()
 		c.Disconnect()
 		go cm.RemoveConnection(existingConn)
@@ -58,13 +58,13 @@ func (cm *ConnectionManager) AddConnection(c transports.IServerConnection) error
 	}
 	cm.connectionsByConnectionID[clcid] = c
 	// update the client index
-	clientList := cm.connectionsByClientID[clientID]
+	clientList := cm.connectionsByClientID[cinfo.ClientID]
 	if clientList == nil {
-		clientList = []string{connectionID}
+		clientList = []string{cinfo.ConnectionID}
 	} else {
-		clientList = append(clientList, connectionID)
+		clientList = append(clientList, cinfo.ConnectionID)
 	}
-	cm.connectionsByClientID[clientID] = clientList
+	cm.connectionsByClientID[cinfo.ClientID] = clientList
 	return nil
 }
 
@@ -182,8 +182,9 @@ func (cm *ConnectionManager) RemoveConnection(c transports.IServerConnection) {
 	cm.mux.Lock()
 	defer cm.mux.Unlock()
 
-	clientID := c.GetClientID()
-	connectionID := c.GetConnectionID()
+	cinfo := c.GetConnectionInfo()
+	clientID := cinfo.ClientID
+	connectionID := cinfo.ConnectionID
 	clcid := clientID + ":" + connectionID
 	existingConn := cm.connectionsByConnectionID[clcid]
 	// force close the existing connection just in case

@@ -63,9 +63,9 @@ func startService() (l *launcherclient.LauncherClient, stopFn func()) {
 	//env.CertsDir = homeDir
 	//env.CaCert = ts.Certs.CaCert
 
-	serverURL := ts.GetServerURL(authn.ClientTypeService)
+	protocolType, serverURL := ts.GetServerURL(authn.ClientTypeService)
 	svc := service.NewLauncherService(
-		serverURL, clientID, binDir, pluginsDir, certsDir, launcherConfig)
+		protocolType, serverURL, clientID, binDir, pluginsDir, certsDir, launcherConfig)
 	err := svc.Start()
 	if err != nil {
 		slog.Error(err.Error())
@@ -75,10 +75,10 @@ func startService() (l *launcherclient.LauncherClient, stopFn func()) {
 	//agent := service.StartLauncherAgent(svc, hc1)
 	//_ = agent
 	//--- connect the launcher user
-	hc2, _ := ts.AddConnectConsumer(adminID, authz.ClientRoleAdmin)
-	lcl := launcherclient.NewLauncherClient(launcherID, hc2)
+	co1, _, _ := ts.AddConnectConsumer(adminID, authz.ClientRoleAdmin)
+	lcl := launcherclient.NewLauncherClient(launcherID, co1)
 	return lcl, func() {
-		hc2.Disconnect()
+		co1.Disconnect()
 		//hc1.Disconnect()
 		_ = svc.Stop()
 		time.Sleep(time.Millisecond)
@@ -112,9 +112,9 @@ func TestList(t *testing.T) {
 	require.NoError(t, err)
 	assert.Greater(t, len(info), 10)
 
-	hc, _ := ts.AddConnectConsumer(userID, authz.ClientRoleAdmin)
-	defer hc.Disconnect()
-	cl := launcherclient.NewLauncherClient("", hc)
+	co1, _, _ := ts.AddConnectConsumer(userID, authz.ClientRoleAdmin)
+	defer co1.Disconnect()
+	cl := launcherclient.NewLauncherClient("", co1)
 	info2, err := cl.List(false)
 	require.NoError(t, err)
 	require.NotEmpty(t, info2)
@@ -128,9 +128,9 @@ func TestListNoPermission(t *testing.T) {
 	defer cancelFunc()
 	require.NotNil(t, svc)
 
-	hc, _ := ts.AddConnectConsumer(userID, authz.ClientRoleNone)
-	defer hc.Disconnect()
-	cl := launcherclient.NewLauncherClient("", hc)
+	co1, _, _ := ts.AddConnectConsumer(userID, authz.ClientRoleNone)
+	defer co1.Disconnect()
+	cl := launcherclient.NewLauncherClient("", co1)
 	info2, err := cl.List(false)
 	require.Error(t, err, "user without role should not be able to use launcher")
 	require.Empty(t, info2)

@@ -180,7 +180,7 @@ func (svc *DigitwinRouter) ForwardActionToRemoteAgent(
 	}
 	replyTo := ""
 	if c2 != nil {
-		replyTo = c2.GetConnectionID()
+		replyTo = c2.GetConnectionInfo().ConnectionID
 	}
 
 	// track the action progress so async responses can be returned to the client (replyTo)

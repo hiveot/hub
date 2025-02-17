@@ -55,12 +55,9 @@ type MqttClientConnection struct {
 	// handler for responses sent by agents
 	appResponseHandlerPtr atomic.Pointer[transports.ResponseHandler]
 
-	// mqtt broker url
-	brokerURL string
-	// authentication ID and token
-	clientID  string
+	cinfo transports.ConnectionInfo
+
 	authToken string
-	caCert    *x509.Certificate
 
 	// paho mqtt client
 	pahoClient *autopaho.ConnectionManager
@@ -75,7 +72,6 @@ type MqttClientConnection struct {
 	connectionStatus string
 	isConnected      atomic.Bool
 	lastError        atomic.Pointer[error]
-	protocolType     string
 	//
 	correlData    map[string]chan *paho.Publish
 	subscriptions map[string]bool
@@ -94,24 +90,24 @@ type MqttClientConnection struct {
 func (cl *MqttClientConnection) ConnectWithToken(token string) (newToken string, err error) {
 	// setup TLS
 	caCertPool := x509.NewCertPool()
-	if cl.caCert == nil {
+	if cl.cinfo.CaCert == nil {
 		slog.Info("NewTLSClient: No CA certificate. InsecureSkipVerify used",
-			slog.String("destination", cl.brokerURL))
+			slog.String("destination", cl.cinfo.ConnectURL))
 	} else {
-		caCertPool.AddCert(cl.caCert)
+		caCertPool.AddCert(cl.cinfo.CaCert)
 	}
 	tlsCfg := &tls.Config{
 		RootCAs: caCertPool,
 		//Certificates:       clientCertList,
-		InsecureSkipVerify: cl.caCert == nil,
+		InsecureSkipVerify: cl.cinfo.CaCert == nil,
 	}
 
 	//safeConn := packets.NewThreadSafeConn(conn)
 	// Setup the Paho client configuration
 	hostName, _ := os.Hostname()
-	connectID := fmt.Sprintf("%s-%s-%s", cl.clientID, hostName, time.Now().Format("20060102150405.000"))
+	connectID := fmt.Sprintf("%s-%s-%s", cl.cinfo.ClientID, hostName, time.Now().Format("20060102150405.000"))
 	logger := log.Default()
-	u, err := url.Parse(cl.brokerURL)
+	u, err := url.Parse(cl.cinfo.ConnectURL)
 	autoCfg := autopaho.ClientConfig{
 		BrokerUrls: []*url.URL{u},
 		PahoErrors: logger,
@@ -129,7 +125,7 @@ func (cl *MqttClientConnection) ConnectWithToken(token string) (newToken string,
 		//CleanStartOnInitialConnection: true,
 		KeepAlive: 20, // Keepalive message should be sent every 20 seconds
 	}
-	autoCfg.ConnectUsername = cl.clientID
+	autoCfg.ConnectUsername = cl.cinfo.ClientID
 	autoCfg.ConnectPassword = []byte(cl.authToken)
 	autoCfg.OnConnectError = cl.onPahoConnectionError
 	autoCfg.OnConnectionUp = cl.onPahoConnect
@@ -200,24 +196,9 @@ func (cl *MqttClientConnection) Disconnect() {
 	}
 }
 
-// GetClientID returns the client's account ID
-func (cl *MqttClientConnection) GetClientID() string {
-	return cl.clientID
-}
-
-// GetConnectionID returns the client's connection ID
-func (cl *MqttClientConnection) GetConnectionID() string {
-	return cl.connectionID
-}
-
-// GetProtocolType returns the type of protocol this client supports
-func (cl *MqttClientConnection) GetProtocolType() string {
-	return cl.protocolType
-}
-
-// GetConnectURL returns the schema://address:port/path of the server connection
-func (cl *MqttClientConnection) GetConnectURL() string {
-	return cl.brokerURL
+// GetConnectionInfo returns the connection information
+func (cl *MqttClientConnection) GetConnectionInfo() transports.ConnectionInfo {
+	return cl.cinfo
 }
 
 //// handle receiving an action status update.
@@ -400,7 +381,7 @@ func (cl *MqttClientConnection) onPahoConnectionError(err error) {
 		default:
 			connStatus = ConnStatConnecting
 			connErr = fmt.Errorf("disconnected: %w", err)
-			slog.Error("connection error", "clientID", cl.clientID, "err", err)
+			slog.Error("connection error", "clientID", cl.cinfo.ClientID, "err", err)
 		}
 		// notify on change
 		cl.mux.RLock()
@@ -435,14 +416,14 @@ func (cl *MqttClientConnection) _parseResponse(data []byte, resp interface{}) er
 	if data == nil || len(data) == 0 {
 		if resp != nil {
 			err = fmt.Errorf("ParseResponse: client '%s', expected a response but none received",
-				cl.clientID)
+				cl.cinfo.ClientID)
 		} else {
 			err = nil // all good
 		}
 	} else {
 		if resp == nil {
 			err = fmt.Errorf("ParseResponse: client '%s', received response but none was expected. data=%s",
-				cl.clientID, data)
+				cl.cinfo.ClientID, data)
 		} else {
 			err = jsoniter.Unmarshal(data, resp)
 		}
@@ -512,12 +493,12 @@ func (cl *MqttClientConnection) _parseResponse(data []byte, resp interface{}) er
 //	return respMsg.Payload, err
 //}
 
-// RefreshToken refreshes the authentication token
-// The resulting token can be used with 'SetBearerToken'
-// This is specific to the Hiveot Hub.
-func (cl *MqttClientConnection) RefreshToken(oldToken string) (newToken string, err error) {
-	return oldToken, fmt.Errorf("not implemented")
-}
+//// RefreshToken refreshes the authentication token
+//// The resulting token can be used with 'SetBearerToken'
+//// This is specific to the Hiveot Hub.
+//func (cl *MqttClientConnection) RefreshToken(oldToken string) (newToken string, err error) {
+//	return oldToken, fmt.Errorf("not implemented")
+//}
 
 // Send a request message to a topic
 func (cl *MqttClientConnection) _send(topic string, msg any, correlationID string) error {
@@ -692,15 +673,16 @@ func NewMqttConsumerClient(fullURL string, clientID string,
 		timeout = time.Second * 3
 	}
 
-	cl.caCert = caCert
-	cl.clientID = clientID
+	cl.cinfo.CaCert = caCert
+	cl.cinfo.ClientID = clientID
 	cl.connectionID = "mqtt-" + shortid.MustGenerate()
 	cl.timeout = timeout
-	cl.protocolType = transports.ProtocolTypeWotMQTTWSS
+	cl.cinfo.ProtocolType = transports.ProtocolTypeWotMQTTWSS
 	//cl.rnrChan = NewRnRChan()
 
 	// max delay 3 seconds before a response is expected
-	cl.brokerURL = fullURL
+	cl.cinfo.ConnectURL = fullURL
+
 	cl.getForm = getForm
 	cl.correlData = make(map[string]chan *paho.Publish)
 	cl.subscriptions = make(map[string]bool)
@@ -708,7 +690,7 @@ func NewMqttConsumerClient(fullURL string, clientID string,
 	// setup an inbox to reply to
 	hostName, _ := os.Hostname()
 	cl.connectionID = fmt.Sprintf("%s-%s-%s",
-		cl.clientID, hostName, time.Now().Format("20060102150405.000"))
+		cl.cinfo.ClientID, hostName, time.Now().Format("20060102150405.000"))
 	cl.inboxTopic = fmt.Sprintf(InboxTopicFormat, cl.connectionID)
 
 	var onConnection transports.ConnectionHandler = func(connected bool, err error, c transports.IConnection) {

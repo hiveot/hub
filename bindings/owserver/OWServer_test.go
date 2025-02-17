@@ -71,7 +71,7 @@ func TestStartStop(t *testing.T) {
 
 	svc := service.NewOWServerBinding(&owsConfig)
 
-	ag, _ := ts.AddConnectAgent(agentID)
+	ag, _, _ := ts.AddConnectAgent(agentID)
 	//connected := ag.IsConnected()
 	//require.Equal(t, true, connected)
 	defer ag.Disconnect()
@@ -88,9 +88,9 @@ func TestPoll(t *testing.T) {
 	const userID = "user1"
 
 	t.Log("--- TestPoll (without state service)  ---")
-	ag1, _ := ts.AddConnectAgent(agentID)
+	ag1, _, _ := ts.AddConnectAgent(agentID)
 	defer ag1.Disconnect()
-	cl1, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
+	cl1, _, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
 	defer cl1.Disconnect()
 	svc := service.NewOWServerBinding(&owsConfig)
 
@@ -131,7 +131,7 @@ func TestPoll(t *testing.T) {
 func TestPollInvalidEDSAddress(t *testing.T) {
 	t.Log("--- TestPollInvalidEDSAddress ---")
 
-	hc, _ := ts.AddConnectAgent(agentID)
+	hc, _, _ := ts.AddConnectAgent(agentID)
 	defer hc.Disconnect()
 
 	badConfig := owsConfig // copy
@@ -156,11 +156,11 @@ func TestAction(t *testing.T) {
 	var actionName = "RelayFunction" // the action attribute as defined by the device
 	var actionValue = "1"
 
-	hc, _ := ts.AddConnectAgent(agentID)
-	defer hc.Disconnect()
+	ag1, _, _ := ts.AddConnectAgent(agentID)
+	defer ag1.Disconnect()
 
 	svc := service.NewOWServerBinding(&owsConfig)
-	err := svc.Start(hc)
+	err := svc.Start(ag1)
 	require.NoError(t, err)
 	defer svc.Stop()
 
@@ -168,12 +168,12 @@ func TestAction(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 
 	// note that the simulation file doesn't support writes so this logs an error
-	hc2, _ := ts.AddConnectConsumer(user1ID, authz.ClientRoleOperator)
+	co1, _, _ := ts.AddConnectConsumer(user1ID, authz.ClientRoleOperator)
 	require.NoError(t, err)
-	defer hc2.Disconnect()
-	err = hc2.WriteProperty(dThingID, actionName, &actionValue, true)
+	defer co1.Disconnect()
+	err = co1.WriteProperty(dThingID, actionName, &actionValue, true)
 
-	//err = hc2.SendRequest(dThingID, actionName, &actionValue, nil)
+	//err = co1.SendRequest(dThingID, actionName, &actionValue, nil)
 	// can't write to a simulation
 	assert.Error(t, err)
 
@@ -186,11 +186,11 @@ func TestConfig(t *testing.T) {
 	var configName = "LEDState"
 	var configValue = "1"
 
-	hc, _ := ts.AddConnectAgent(agentID)
-	defer hc.Disconnect()
+	ag1, _, _ := ts.AddConnectAgent(agentID)
+	defer ag1.Disconnect()
 
 	svc := service.NewOWServerBinding(&owsConfig)
-	err := svc.Start(hc)
+	err := svc.Start(ag1)
 	require.NoError(t, err)
 	defer svc.Stop()
 
@@ -198,10 +198,10 @@ func TestConfig(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 
 	// note that the simulation file doesn't support writes so this logs an error
-	hc2, _ := ts.AddConnectConsumer(user1ID, authz.ClientRoleManager)
-	defer hc2.Disconnect()
+	co1, _, _ := ts.AddConnectConsumer(user1ID, authz.ClientRoleManager)
+	defer co1.Disconnect()
 	dThingID := td.MakeDigiTwinThingID(agentID, device1ID)
-	err = hc2.WriteProperty(dThingID, configName, &configValue, true)
+	err = co1.WriteProperty(dThingID, configName, &configValue, true)
 
 	// can't write to a simulation file. Write should fail.
 	assert.Error(t, err)

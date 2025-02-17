@@ -133,7 +133,7 @@ func (svc *HttpTransportServer) setupRouting(router chi.Router) http.Handler {
 
 		//r.Get("/static/*", staticFileServer.ServeHTTP)
 		// build-in REST API for easy login to obtain a token
-		svc.AddOps(r, []string{wot.HTOpLogin},
+		svc.AddOps(r, []string{""},
 			http.MethodPost, HttpPostLoginPath, svc.HandleLogin)
 
 		svc.AddOps(r, []string{wot.HTOpPing},
@@ -152,9 +152,9 @@ func (svc *HttpTransportServer) setupRouting(router chi.Router) http.Handler {
 		svc.protectedRoutes = r
 
 		// authn service actions needed for all http (sub)protocols
-		svc.AddOps(r, []string{wot.HTOpRefresh},
-			http.MethodPost, HttpPostRefreshPath, svc.HandleLoginRefresh)
-		svc.AddOps(r, []string{wot.HTOpLogout},
+		svc.AddOps(r, []string{},
+			http.MethodPost, HttpPostRefreshPath, svc.HandleAuthRefresh)
+		svc.AddOps(r, []string{},
 			http.MethodPost, HttpPostLogoutPath, svc.HandleLogout)
 	})
 	return router
@@ -212,6 +212,7 @@ func (svc *HttpTransportServer) HandleLogin(w http.ResponseWriter, r *http.Reque
 		clientID := args["login"]
 		password := args["password"]
 		reply, err = svc.authenticator.Login(clientID, password)
+		slog.Info("HandleLogin", "clientID", clientID)
 	}
 	if err != nil {
 		slog.Warn("HandleLogin failed:", "err", err.Error())
@@ -223,18 +224,21 @@ func (svc *HttpTransportServer) HandleLogin(w http.ResponseWriter, r *http.Reque
 	svc.WriteReply(w, reply, transports.StatusCompleted, nil)
 }
 
-// HandleLoginRefresh refreshes the auth token using the session authenticator.
+// HandleAuthRefresh refreshes the auth token using the session authenticator.
 // The session authenticator is that of the authn service. This allows testing with a dummy
 // authenticator without having to run the authn service.
-func (svc *HttpTransportServer) HandleLoginRefresh(w http.ResponseWriter, r *http.Request) {
+func (svc *HttpTransportServer) HandleAuthRefresh(w http.ResponseWriter, r *http.Request) {
 	var newToken string
 	var oldToken string
 	rp, err := GetRequestParams(r, &oldToken)
+
+	slog.Info("HandleAuthRefresh", "clientID", rp.ClientID)
+
 	if err == nil {
 		newToken, err = svc.authenticator.RefreshToken(rp.ClientID, oldToken)
 	}
 	if err != nil {
-		slog.Warn("HandleLoginRefresh failed:", "err", err.Error())
+		slog.Warn("HandleAuthRefresh failed:", "err", err.Error())
 		svc.WriteError(w, err, 0)
 		return
 	}
@@ -246,6 +250,7 @@ func (svc *HttpTransportServer) HandleLogout(w http.ResponseWriter, r *http.Requ
 	// use the authenticator
 	rp, err := GetRequestParams(r, nil)
 	if err == nil {
+		slog.Info("HandleLogout", "clientID", rp.ClientID)
 		svc.authenticator.Logout(rp.ClientID)
 	}
 	svc.WriteReply(w, nil, transports.StatusCompleted, err)

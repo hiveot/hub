@@ -11,7 +11,6 @@ import (
 	"github.com/hiveot/hub/transports/clients/httpsseclient"
 	"github.com/hiveot/hub/transports/servers/httpserver"
 	"github.com/hiveot/hub/transports/tputils/tlsclient"
-	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
@@ -28,6 +27,7 @@ import (
 
 const serviceID = "hiveoview-test"
 const servicePort = 9999
+const serverAddr = "localhost"
 
 // set to true to test without state service
 const noState = true
@@ -44,18 +44,18 @@ func getHiveoviewForm(op, thingID, name string) *td.Form {
 	var href string
 	var method string
 	switch op {
-	case wot.HTOpLogin:
-		href = "/login"
-		method = "POST"
-	case wot.HTOpLoginWithForm:
-		href = "/loginForm"
-		method = "GET"
-	case wot.HTOpLogout:
-		href = "/logout"
-		method = "POST"
-	case wot.HTOpRefresh:
-		href = "/refresh" // todo
-		method = "POST"
+	//case wot.HTOpLogin:
+	//	href = "/login"
+	//	method = "POST"
+	//case wot.HTOpLoginWithForm:
+	//	href = "/loginForm"
+	//	method = "GET"
+	//case wot.HTOpLogout:
+	//	href = "/logout"
+	//	method = "POST"
+	//case wot.HTOpRefresh:
+	//	href = "/refresh" // todo
+	//	method = "POST"
 	default:
 		panic("Unexpected operation: " + op)
 	}
@@ -90,6 +90,7 @@ func WebLogin(sseURL string, clientID string,
 	sseCl := httpsseclient.NewHiveotSseClient(sseURL,
 		clientID, nil, ts.Certs.CaCert,
 		getHiveoviewForm, time.Minute)
+
 	// hiveoview uses a different login path as the hub
 	//sseCl.SetSSEPath(service.WebSsePath)
 	sseCl.SetConnectHandler(onConnection)
@@ -172,7 +173,7 @@ func TestLogin(t *testing.T) {
 	defer svc.Stop()
 
 	// make sure the client to login as exists
-	cl1, token1 := ts.AddConnectConsumer(clientID1, authz.ClientRoleOperator)
+	cl1, _, token1 := ts.AddConnectConsumer(clientID1, authz.ClientRoleOperator)
 	//defer cl1.Disconnect()
 	cl1.Disconnect()
 	_ = token1
@@ -232,7 +233,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	defer svc.Stop()
 
 	// the agent for publishing events. A TD is needed for them to be accepted.
-	ag1, _ := ts.AddConnectAgent(agentID)
+	ag1, _, _ := ts.AddConnectAgent(agentID)
 	_ = ag1
 	td1 := ts.AddTD(agentID, nil)
 	_ = td1
@@ -240,7 +241,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	// create the user account this test is going to connect as.
 	// no notifications are expected as it doesnt subscribe
 	// hiveoview server only supports HTTP/SSE
-	cl1, token1 := ts.AddConnectConsumer(clientID1, authz.ClientRoleOperator)
+	cl1, _, token1 := ts.AddConnectConsumer(clientID1, authz.ClientRoleOperator)
 	defer cl1.Disconnect()
 	//err = cl1.Subscribe("", "")
 	require.NoError(t, err)
@@ -268,8 +269,8 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	// 2: connect and subscribe web clients and verify
 	// each webclient connection will trigger a separate connection to the hub
 	// with its own subscription.
-	// The hiveoview server only supports SSE
-	hiveoviewURL := svc.GetServerURL()
+	// The hiveoview server only supports SSE on a fixed (WebSsePath) path
+	hiveoviewURL := fmt.Sprintf("https://localhost:%d%s", servicePort, service.WebSsePath)
 	for range testConnections {
 		sseCl, err := WebLogin(
 			hiveoviewURL, clientID1, onConnection, nil, onResponse)

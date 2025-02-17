@@ -37,7 +37,7 @@ func TestAddRemoveTD(t *testing.T) {
 	td1 := td.NewTD(agThing1ID, "Title", vocab.ThingSensorMulti)
 	td1JSON, _ := jsoniter.MarshalToString(td1)
 	tdList := []string{string(td1JSON)}
-	ag1, _ := ts.AddConnectAgent(agentID)
+	ag1, _, _ := ts.AddConnectAgent(agentID)
 	ag1.SetRequestHandler(func(req *transports.RequestMessage, _ transports.IConnection) *transports.ResponseMessage {
 		if req.Operation == wot.HTOpReadTD {
 			req.CreateResponse(td1JSON, nil)
@@ -49,12 +49,12 @@ func TestAddRemoveTD(t *testing.T) {
 	defer ag1.Disconnect()
 
 	// Create the consumer
-	cl1, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
-	//cl1.SetResponseHandler(func(msg *transports.ResponseMessage) error {
+	co1, _, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
+	//co1.SetResponseHandler(func(msg *transports.ResponseMessage) error {
 	//	return nil
 	//})
-	defer cl1.Disconnect()
-	//err := cl1.Subscribe("", "")
+	defer co1.Disconnect()
+	//err := co1.Subscribe("", "")
 	//require.NoError(t, err)
 
 	// Add the TD
@@ -64,22 +64,22 @@ func TestAddRemoveTD(t *testing.T) {
 
 	// Get returns a serialized TD object
 	// use the helper directory client rpc method
-	td3Json, err := cl1.ReadTD(dtThing1ID)
+	td3Json, err := co1.ReadTD(dtThing1ID)
 	require.NoError(t, err)
 	var td3 td.TD
 	err = jsoniter.UnmarshalFromString(td3Json, &td3)
 	require.NoError(t, err)
 	assert.Equal(t, dtThing1ID, td3.ID)
 
-	//stat = cl1.SendRequest(nil, directory.ThingID, directory.RemoveTDMethod, &args, nil)
+	//stat = co1.SendRequest(nil, directory.ThingID, directory.RemoveTDMethod, &args, nil)
 	// RemoveTD from the directory
-	err = cl1.Rpc(wot.OpInvokeAction, digitwin.ThingDirectoryDThingID,
+	err = co1.Rpc(wot.OpInvokeAction, digitwin.ThingDirectoryDThingID,
 		digitwin.ThingDirectoryRemoveTDMethod, dtThing1ID, nil)
 	require.NoError(t, err)
 
 	// after removal of the TD, getTD should return an error
 	//var tdJSON4 string
-	td4Json, err := cl1.ReadTD(dtThing1ID)
+	td4Json, err := co1.ReadTD(dtThing1ID)
 	require.Error(t, err)
 	require.Empty(t, td4Json)
 }
@@ -94,10 +94,10 @@ func TestReadTDs(t *testing.T) {
 
 	r := startRuntime()
 	defer r.Stop()
-	ag1, _ := ts.AddConnectAgent(agentID)
+	ag1, _, _ := ts.AddConnectAgent(agentID)
 	defer ag1.Disconnect()
-	cl1, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
-	defer cl1.Disconnect()
+	co1, _, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
+	defer co1.Disconnect()
 
 	// add a whole bunch of things
 	ts.AddTDs(agentID, 1200)
@@ -110,12 +110,12 @@ func TestReadTDs(t *testing.T) {
 	// 1. Use actions
 	args := digitwin.ThingDirectoryReadAllTDsArgs{Limit: 10}
 	tdList1 := []string{}
-	err := cl1.Rpc(wot.OpInvokeAction, digitwin.ThingDirectoryDThingID, digitwin.ThingDirectoryReadAllTDsMethod, args, &tdList1)
+	err := co1.Rpc(wot.OpInvokeAction, digitwin.ThingDirectoryDThingID, digitwin.ThingDirectoryReadAllTDsMethod, args, &tdList1)
 	require.NoError(t, err)
 	require.True(t, len(tdList1) > 0)
 
 	// 2. Try it the easy way using the generated client code
-	tdList2, err := digitwin.ThingDirectoryReadAllTDs(cl1, 333, 02)
+	tdList2, err := digitwin.ThingDirectoryReadAllTDs(co1, 333, 02)
 	require.NoError(t, err)
 	require.True(t, len(tdList2) > 0)
 }
@@ -128,21 +128,22 @@ func TestReadTDsRest(t *testing.T) {
 
 	r := startRuntime()
 	defer r.Stop()
-	ag, _ := ts.AddConnectAgent(agentID)
-	defer ag.Disconnect()
-	cl, token := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
-	defer cl.Disconnect()
+	ag1, _, _ := ts.AddConnectAgent(agentID)
+	defer ag1.Disconnect()
+	co1, _, token := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
+	defer co1.Disconnect()
 
 	// add a whole bunch of things
 	ts.AddTDs(agentID, 100)
 
-	serverURL := ts.GetServerURL(authn.ClientTypeConsumer)
+	protocolType, serverURL := ts.GetServerURL(authn.ClientTypeConsumer)
+	_ = protocolType
 	// FIXME: use the consumer protocol
 	urlParts, _ := url.Parse(serverURL)
 	cl2 := tlsclient.NewTLSClient(urlParts.Host, nil, ts.Certs.CaCert, time.Second*30)
 	cl2.SetAuthToken(token)
 
-	tdJSONList, err := digitwin.ThingDirectoryReadAllTDs(cl, 100, 0)
+	tdJSONList, err := digitwin.ThingDirectoryReadAllTDs(co1, 100, 0)
 	require.NoError(t, err)
 
 	// tds are sent as an array of JSON, first unpack the array of JSON strings
@@ -151,7 +152,7 @@ func TestReadTDsRest(t *testing.T) {
 	require.Equal(t, 100, len(tdList)) // 100 is the given limit
 
 	// check reading a single td
-	tdJSON, err := digitwin.ThingDirectoryReadTD(cl, tdList[0].ID)
+	tdJSON, err := digitwin.ThingDirectoryReadTD(co1, tdList[0].ID)
 	require.NoError(t, err)
 	require.NotEmpty(t, tdJSON)
 }
@@ -165,10 +166,9 @@ func TestTDEvent(t *testing.T) {
 
 	r := startRuntime()
 	defer r.Stop()
-	ag1, _ := ts.AddConnectAgent(agentID)
+	ag1, _, _ := ts.AddConnectAgent(agentID)
 	defer ag1.Disconnect()
-	cl1, token := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
-	_ = token
+	cl1, _, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
 	defer cl1.Disconnect()
 
 	// wait to directory TD updated events

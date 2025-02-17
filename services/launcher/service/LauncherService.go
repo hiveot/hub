@@ -25,8 +25,9 @@ type LauncherService struct {
 	cfg config.LauncherConfig
 	//env plugin.AppEnvironment
 	// server to use or "" for auto discovery
-	serverURL string
-	clientID  string
+	serverURL    string
+	protocolType string
+	clientID     string
 
 	// directories for launching plugins and obtaining certificates and keys
 	binDir     string
@@ -158,7 +159,8 @@ func (svc *LauncherService) ScanPlugins() error {
 	return nil
 }
 
-// Start the launcher service
+// Start the launcher service.
+//
 // This first starts the runtime defined in the config, then connects to the hub
 // to be able to create auth keys and tokens, and to subscribe to rpc requests.
 //
@@ -200,12 +202,15 @@ func (svc *LauncherService) Start() error {
 	}
 
 	// 3: a connection to the hub is needed to receive requests
+	// this was delayed until after the runtime is up and running
 	if svc.ag == nil {
 
-		cc, token, _, err := clients.ConnectWithTokenFile(svc.clientID, svc.certsDir, svc.serverURL, 0)
+		cc, token, _, err := clients.ConnectWithTokenFile(
+			svc.clientID, svc.certsDir, svc.protocolType, svc.serverURL, 0)
 		_ = token
-		svc.ag = consumer.NewAgent(cc, nil, nil, nil, 0)
-		if err != nil {
+		if err == nil {
+			svc.ag = consumer.NewAgent(cc, nil, nil, nil, 0)
+		} else {
 			err = fmt.Errorf("failed starting launcher service: %w", err)
 			return err
 		}
@@ -286,6 +291,7 @@ func (svc *LauncherService) WatchPlugins() error {
 // This scans the folder for executables, adds these to the list of available plugins and autostarts plugins
 // Logging will be enabled based on LauncherConfig.
 //
+//	protocolType of the client to use
 //	serverURL to connect to once runtime is started
 //	clientID of this service
 //	binDir with location of the runtime
@@ -294,6 +300,7 @@ func (svc *LauncherService) WatchPlugins() error {
 //
 // The hub client is used to create service accounts if needed.
 func NewLauncherService(
+	protocolType string,
 	serverURL string,
 	clientID string,
 	binDir string,
@@ -304,14 +311,15 @@ func NewLauncherService(
 ) *LauncherService {
 
 	ls := &LauncherService{
-		pluginsDir: pluginsDir,
-		binDir:     binDir,
-		certsDir:   certsDir,
-		serverURL:  serverURL,
-		clientID:   clientID,
-		cfg:        cfg,
-		plugins:    make(map[string]*launcherapi.PluginInfo),
-		cmds:       make([]*exec.Cmd, 0),
+		pluginsDir:   pluginsDir,
+		binDir:       binDir,
+		certsDir:     certsDir,
+		serverURL:    serverURL,
+		protocolType: protocolType,
+		clientID:     clientID,
+		cfg:          cfg,
+		plugins:      make(map[string]*launcherapi.PluginInfo),
+		cmds:         make([]*exec.Cmd, 0),
 		//ag:        ag,
 	}
 

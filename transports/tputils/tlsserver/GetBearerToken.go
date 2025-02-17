@@ -11,17 +11,17 @@ import (
 func GetBearerToken(req *http.Request) (string, error) {
 	authHeader := req.Header.Get("Authorization")
 	if authHeader == "" {
-		return "", fmt.Errorf("JWTAuthenticator: no Authorization header")
+		return "", fmt.Errorf("tlsserver: no Authorization header")
 	}
 
 	parts := strings.Split(authHeader, " ")
 	if len(parts) != 2 {
-		return "", fmt.Errorf("JWTAuthenticator: invalid Authorization header")
+		return "", fmt.Errorf("tlsserver: invalid Authorization header")
 	}
 	authType := strings.ToLower(parts[0])
 	authTokenString := parts[1]
 	if authType != "bearer" {
-		return "", fmt.Errorf("JWTAuthenticator: not a bearer token")
+		return "", fmt.Errorf("tlsserver: not a bearer token")
 	}
 	return authTokenString, nil
 }

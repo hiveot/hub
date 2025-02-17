@@ -108,7 +108,7 @@ export class HttpSSEClient implements IAgentConnection {
     // The flag disableCertCheck is intended for use with self-signed certificate
     // on the local network where the CA is not available.
     //
-    // @param fullURL: of HTTP/SSESC server to connect to or empty for auto-discovery
+    // @param fullURL: of HTTP/SSE server to connect to or empty for auto-discovery
     // @param clientID: connected as this client
     // @param caCertPem: verify server against this CA certificate
     // @param disableCertCheck: don't check the (self signed) server certificate

@@ -17,9 +17,9 @@ const (
 	DefaultWotWssPath    = "/wot/wss"
 	DefaultHiveotWssPath = "/hiveot/wss"
 
-	SubprotocolWSS       = "websocket"
-	SubprotocolWSSHiveot = "wss-hiveot"
-	HiveotWssSchema      = "wss"
+	SubprotocolWotWSS    = "websocket"
+	SubprotocolHiveotWSS = "hiveot-wss"
+	WssSchema            = "wss"
 )
 
 // WssServer is a websocket transport protocol server for use with HiveOT and WoT
@@ -65,9 +65,9 @@ type WssServer struct {
 
 // AddTDForms adds forms for use of this protocol to the given TD
 func (svc *WssServer) AddTDForms(tdi *td.TD) error {
-	subProtocol := SubprotocolWSSHiveot
+	subProtocol := SubprotocolHiveotWSS
 	if svc.protocol == transports.ProtocolTypeWotWSS {
-		subProtocol = SubprotocolWSS
+		subProtocol = SubprotocolWotWSS
 	}
 	// 1 form for all operations
 	form := td.Form{}
@@ -87,17 +87,18 @@ func (svc *WssServer) CloseAll() {
 // Intended to close cm after a logout.
 func (svc *WssServer) CloseAllClientConnections(clientID string) {
 	svc.cm.ForEachConnection(func(c transports.IServerConnection) {
-		if c.GetClientID() == clientID {
+		cinfo := c.GetConnectionInfo()
+		if cinfo.ClientID == clientID {
 			c.Disconnect()
 		}
 	})
 }
 
 // GetConnectURL returns websocket connection URL of the server
-func (svc *WssServer) GetConnectURL(_ string) string {
+func (svc *WssServer) GetConnectURL() string {
 	httpURL := svc.httpTransport.GetConnectURL()
 	parts, _ := url.Parse(httpURL)
-	wssURL := fmt.Sprintf("%s://%s%s", HiveotWssSchema, parts.Host, svc.wssPath)
+	wssURL := fmt.Sprintf("%s://%s%s", WssSchema, parts.Host, svc.wssPath)
 	return wssURL
 }
 
@@ -115,6 +116,10 @@ func (svc *WssServer) GetConnectionByClientID(agentID string) transports.IConnec
 func (svc *WssServer) GetForm(operation string, thingID string, name string) *td.Form {
 	// TODO: not applicable for websockets
 	return nil
+}
+
+func (srv *WssServer) GetProtocolType() string {
+	return srv.protocol
 }
 
 // SendNotification sends a property update or event response message to subscribers
@@ -138,6 +143,8 @@ func (svc *WssServer) Serve(w http.ResponseWriter, r *http.Request) {
 	//An active session is required before accepting the request. This is created on
 	//authentication/login. Until then SSE cm are blocked.
 	clientID, err := httpserver.GetClientIdFromContext(r)
+
+	slog.Info("Receiving Websocket connection", slog.String("clientID", clientID))
 
 	if err != nil {
 		slog.Warn("Serve. No clientID",
@@ -183,11 +190,15 @@ func (svc *WssServer) Stop() {
 	svc.CloseAll()
 }
 
-// StartHiveotWssServer returns a new websocket protocol binding that utilizes
+// StartWssServer returns a new websocket protocol server
 //
-// the given http transport protocol and message converter. This can be used by
-// both the hiveot websocket protocol and WoT websocket protocol.
-func StartHiveotWssServer(
+// The given message converter maps between the underlying websocket message and the
+// hiveot Request/ResponseMessage envelopes. This is used for hiveot direct messaging
+// and for the WoT (strawman) websocket messaging.
+//
+// protocol is the corresponding protocol identifier ProtocolTypeHiveotWSS or
+// ProtocolTypeWotWSS as returned in GetProtocol.
+func StartWssServer(
 	//authenticator transports.IAuthenticator,
 	wssPath string,
 	converter transports.IMessageConverter,

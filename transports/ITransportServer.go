@@ -29,13 +29,12 @@ type ITransportServer interface {
 	//	{name} the name of the property, event or action affordance
 	GetForm(op string, thingID string, name string) *td.Form
 
-	// GetConnectURL returns the URL to connect to this server
-	// protocolType is intended for servers that support multiple protocols.
-	// Use "" for default.
-	GetConnectURL(protocolType string) string
+	// GetConnectURL returns the URL to connect to this server .
+	GetConnectURL() string
 
-	// GetProtocol returns the server supported protocol
-	//GetProtocol() string
+	// GetProtocolType returns the server provided protocol type and scheme, where
+	// protocolType is one of the supported protocol identifiers
+	GetProtocolType() string
 
 	// SendNotification sends an event or property update notification to connected
 	// event subscribers or property observers.

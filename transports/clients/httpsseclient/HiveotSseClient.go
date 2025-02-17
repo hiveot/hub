@@ -45,16 +45,18 @@ type HiveotSseClient struct {
 	// handler for responses sent by agents
 	appResponseHandler transports.ResponseHandler
 
-	clientID string
+	//clientID string
+	// Connection information such as clientID, cid, address, protocol etc
+	cinfo transports.ConnectionInfo
 
 	// CA certificate to verify the server with
-	caCert *x509.Certificate
+	//caCert *x509.Certificate
 
 	// This client's connection ID
-	cid string
+	//cid string
 
 	// The full server's base URL sse://host:port/path
-	fullURL string
+	//fullURL string
 	// The server host:port
 	hostPort string
 
@@ -67,7 +69,7 @@ type HiveotSseClient struct {
 	isConnected atomic.Bool
 
 	// RPC timeout
-	timeout time.Duration
+	//timeout time.Duration
 	// protected operations
 	mux sync.RWMutex
 	// http2 client for posting messages
@@ -108,7 +110,7 @@ func (cl *HiveotSseClient) Send(
 	}
 	// Caution! a double // in the path causes a 301 and changes post to get
 	bodyReader := bytes.NewReader(body)
-	serverURL := cl.GetConnectURL()
+	serverURL := cl.cinfo.ConnectURL
 	parts, _ := url.Parse(serverURL)
 	parts.Scheme = "https" // the sse path has the sse scheme
 	parts.Path = methodPath
@@ -132,7 +134,7 @@ func (cl *HiveotSseClient) Send(
 
 	// set other headers
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set(httpserver.ConnectionIDHeader, cl.GetConnectionID())
+	req.Header.Set(httpserver.ConnectionIDHeader, cl.cinfo.ConnectionID)
 	//if correlationID != "" {
 	//	req.Header.Set(httpserver.CorrelationIDHeader, correlationID)
 	//}
@@ -231,7 +233,7 @@ func (cc *HiveotSseClient) ConnectWithToken(token string) error {
 // Disconnect from the server
 func (cl *HiveotSseClient) Disconnect() {
 	slog.Debug("HiveotSseClient.Disconnect",
-		slog.String("clientID", cl.clientID),
+		slog.String("clientID", cl.cinfo.ClientID),
 	)
 
 	cl.mux.Lock()
@@ -251,50 +253,55 @@ func (cl *HiveotSseClient) Disconnect() {
 	}
 }
 
+// GetConnectionInfo returns the client's connection details
+func (c *HiveotSseClient) GetConnectionInfo() transports.ConnectionInfo {
+	return c.cinfo
+}
+
 // GetClientID returns the client's account ID
-func (cl *HiveotSseClient) GetClientID() string {
-	return cl.clientID
-}
+//func (cl *HiveotSseClient) GetClientID() string {
+//	return cl.clientID
+//}
+//
+//// GetConnectionID returns the client's connection ID
+//func (cl *HiveotSseClient) GetConnectionID() string {
+//	return cl.cid
+//}
+//
+//// GetConnectURL returns the schema://address:port/path of the server SSE connection
+//func (cc *HiveotSseClient) GetConnectURL() string {
+//	return cc.fullURL
+//}
 
-// GetConnectionID returns the client's connection ID
-func (cl *HiveotSseClient) GetConnectionID() string {
-	return cl.cid
-}
-
-// GetConnectURL returns the schema://address:port/path of the server SSE connection
-func (cc *HiveotSseClient) GetConnectURL() string {
-	return cc.fullURL
-}
-
-// GetProtocolType returns the type of protocol this client supports
-func (cl *HiveotSseClient) GetProtocolType() string {
-	return transports.ProtocolTypeHiveotSSE
-}
+//GetProtocolType returns the type of protocol this client supports
+//func (cl *HiveotSseClient) GetProtocolType() string {
+//	return transports.ProtocolTypeHiveotSSE
+//}
 
 // GetDefaultForm return the default http form for the operation
 // This simply returns nil for anything else than login, logout, ping or refresh.
 func (cl *HiveotSseClient) GetDefaultForm(op, thingID, name string) (f *td.Form) {
 	// login has its own URL as it is unauthenticated
-	if op == wot.HTOpLogin {
-		href := httpserver.HttpPostLoginPath
-		nf := td.NewForm(op, href)
-		nf.SetMethodName(http.MethodPost)
-		f = &nf
-	} else if op == wot.HTOpLogout {
-		href := httpserver.HttpPostLogoutPath
-		nf := td.NewForm(op, href)
-		nf.SetMethodName(http.MethodPost)
-		f = &nf
-	} else if op == wot.HTOpPing {
+	if op == wot.HTOpPing {
 		href := httpserver.HttpGetPingPath
 		nf := td.NewForm(op, href)
 		nf.SetMethodName(http.MethodGet)
 		f = &nf
-	} else if op == wot.HTOpRefresh {
-		href := httpserver.HttpPostRefreshPath
-		nf := td.NewForm(op, href)
-		nf.SetMethodName(http.MethodPost)
-		f = &nf
+		//} else if op == wot.HTOpLogin {
+		//	href := httpserver.HttpPostLoginPath
+		//	nf := td.NewForm(op, href)
+		//	nf.SetMethodName(http.MethodPost)
+		//	f = &nf
+		//} else if op == wot.HTOpLogout {
+		//	href := httpserver.HttpPostLogoutPath
+		//	nf := td.NewForm(op, href)
+		//	nf.SetMethodName(http.MethodPost)
+		//	f = &nf
+		//} else if op == wot.HTOpRefresh {
+		//	href := httpserver.HttpPostRefreshPath
+		//	nf := td.NewForm(op, href)
+		//	nf.SetMethodName(http.MethodPost)
+		//	f = &nf
 	}
 	// everything else has no default form, so falls back to hiveot protocol endpoints
 	return f
@@ -550,20 +557,6 @@ func (cl *HiveotSseClient) SendRequest(req *transports.RequestMessage) error {
 	return nil
 }
 
-// RefreshToken refreshes the authentication token
-// The resulting token can be used with 'SetBearerToken'
-// This is specific to the Hiveot Hub.
-//func (cl *HiveotSseClient) RefreshToken(oldToken string) (newToken string, err error) {
-//
-//	newToken, err = cl.BaseClient.RefreshToken(oldToken)
-//	if err == nil {
-//		cl.BaseMux.Lock()
-//		cl.bearerToken = newToken
-//		cl.BaseMux.Unlock()
-//	}
-//	return newToken, err
-//}
-
 // SendResponse Agent posts a response using the hiveot protocol.
 // This passes the response as-is as a payload.
 //
@@ -582,10 +575,6 @@ func (cl *HiveotSseClient) SetBearerToken(token string) error {
 	cl.mux.Lock()
 	cl.bearerToken = token
 	cl.mux.Unlock()
-	//cl.BaseIsConnected.Store(true)
-
-	// HTTP connection is not yet established
-	//newToken, err = cl.RefreshToken(token)
 	return nil
 }
 
@@ -632,16 +621,25 @@ func NewHiveotSseClient(
 	hostPort := urlParts.Host
 	ssePath := urlParts.Path
 
+	cinfo := transports.ConnectionInfo{
+		CaCert:       caCert,
+		ClientID:     clientID,
+		ConnectionID: "http-" + shortid.MustGenerate(),
+		ConnectURL:   sseURL,
+		ProtocolType: transports.ProtocolTypeHiveotSSE,
+		Timeout:      timeout,
+	}
 	cl := HiveotSseClient{
-		clientID: clientID,
-		caCert:   caCert,
-		cid:      "http-" + shortid.MustGenerate(),
-		fullURL:  sseURL,
+		cinfo: cinfo,
+		//clientID: clientID,
+		//caCert:   caCert,
+		//cid:      "http-" + shortid.MustGenerate(),
+		//fullURL:  sseURL,
 		ssePath:  ssePath,
 		hostPort: hostPort,
-		timeout:  timeout,
-		getForm:  getForm,
-		headers:  make(map[string]string),
+		//timeout:  timeout,
+		getForm: getForm,
+		headers: make(map[string]string),
 	}
 	if cl.getForm == nil {
 		cl.getForm = cl.GetDefaultForm

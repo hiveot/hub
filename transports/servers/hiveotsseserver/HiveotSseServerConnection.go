@@ -30,11 +30,14 @@ const SSEPingEvent = "sseping"
 // This implements the IServerConnection interface for sending messages to
 // the client over SSE.
 type HiveotSseServerConnection struct {
-	// connection ID (from header, without clientID prefix)
-	connectionID string
+	// Connection information such as clientID, cid, address, protocol etc
+	cinfo transports.ConnectionInfo
 
-	// clientID is the account ID of the agent or consumer
-	clientID string
+	//// connection ID (from header, without clientID prefix)
+	//connectionID string
+	//
+	//// clientID is the account ID of the agent or consumer
+	//clientID string
 
 	// connection remote address
 	remoteAddr string
@@ -91,7 +94,7 @@ func (c *HiveotSseServerConnection) _send(msgType string, msg any) (err error) {
 	defer c.mux.Unlock()
 	if c.isConnected.Load() {
 		slog.Debug("_send",
-			slog.String("to", c.clientID),
+			slog.String("to", c.cinfo.ClientID),
 			slog.String("MessageType", msgType),
 		)
 		c.sseChan <- sseMsg
@@ -110,25 +113,15 @@ func (c *HiveotSseServerConnection) Disconnect() {
 	}
 }
 
-// GetClientID returns the client's account ID
-func (c *HiveotSseServerConnection) GetClientID() string {
-	return c.clientID
-}
-
-// GetConnectionID returns the clients connection ID unique within the sessions
-func (c *HiveotSseServerConnection) GetConnectionID() string {
-	return c.connectionID
-}
-
-// GetProtocolType returns the protocol used in this connection
-func (c *HiveotSseServerConnection) GetProtocolType() string {
-	return transports.ProtocolTypeHiveotSSE
+// GetConnectionInfo returns the client's connection details
+func (c *HiveotSseServerConnection) GetConnectionInfo() transports.ConnectionInfo {
+	return c.cinfo
 }
 
 // GetConnectURL returns the connection URL of this connection
-func (c *HiveotSseServerConnection) GetConnectURL() string {
-	return c.httpReq.URL.String()
-}
+//func (c *HiveotSseServerConnection) GetConnectURL() string {
+//	return c.httpReq.URL.String()
+//}
 
 // IsConnected returns the connection status
 func (c *HiveotSseServerConnection) IsConnected() bool {
@@ -184,7 +177,7 @@ func (c *HiveotSseServerConnection) onRequestMessage(
 func (c *HiveotSseServerConnection) SendNotification(resp transports.ResponseMessage) {
 
 	slog.Info("SendNotification (subscription response)",
-		slog.String("clientID", c.clientID),
+		slog.String("clientID", c.cinfo.ClientID),
 		slog.String("correlationID", resp.CorrelationID),
 		slog.String("operation", resp.Operation),
 		slog.String("senderID", resp.SenderID),
@@ -246,8 +239,8 @@ func (c *HiveotSseServerConnection) Serve(w http.ResponseWriter, r *http.Request
 	c.mux.Unlock()
 
 	slog.Debug("SseConnection.Serve new SSE connection",
-		slog.String("clientID", c.clientID),
-		slog.String("connectionID", c.connectionID),
+		slog.String("clientID", c.cinfo.ClientID),
+		slog.String("connectionID", c.cinfo.ConnectionID),
 		slog.String("protocol", r.Proto),
 		slog.String("remoteAddr", c.remoteAddr),
 	)
@@ -280,8 +273,8 @@ func (c *HiveotSseServerConnection) Serve(w http.ResponseWriter, r *http.Request
 			}
 			slog.Debug("SseConnection: sending sse event to client",
 				//slog.String("sessionID", c.sessionID),
-				slog.String("clientID", c.clientID),
-				slog.String("connectionID", c.connectionID),
+				slog.String("clientID", c.cinfo.ClientID),
+				slog.String("connectionID", c.cinfo.ConnectionID),
 				slog.String("sse eventType", sseMsg.EventType),
 			)
 			var n int
@@ -296,12 +289,12 @@ func (c *HiveotSseServerConnection) Serve(w http.ResponseWriter, r *http.Request
 				// closed go channels panic when written to. So keep reading.
 				slog.Error("SseConnection: Error writing SSE event",
 					slog.String("Event", sseMsg.EventType),
-					slog.String("SenderID", c.clientID),
+					slog.String("SenderID", c.cinfo.ClientID),
 					slog.Int("size", len(sseMsg.Payload)),
 				)
 			} else {
 				slog.Debug("SseConnection: SSE write to client",
-					slog.String("SenderID", c.clientID),
+					slog.String("SenderID", c.cinfo.ClientID),
 					slog.String("Event", sseMsg.EventType),
 					slog.Int("N bytes", n))
 			}
@@ -311,8 +304,8 @@ func (c *HiveotSseServerConnection) Serve(w http.ResponseWriter, r *http.Request
 	//cs.DeleteSSEChan(sseChan)
 	slog.Debug("SseConnection.Serve: sse connection closed",
 		slog.String("remote", r.RemoteAddr),
-		slog.String("clientID", c.clientID),
-		slog.String("connectionID", c.connectionID),
+		slog.String("clientID", c.cinfo.ClientID),
+		slog.String("connectionID", c.cinfo.ConnectionID),
 	)
 }
 
@@ -397,9 +390,18 @@ func (c *HiveotSseServerConnection) SetResponseHandler(cb transports.ResponseHan
 func NewHiveotSseConnection(clientID string, cid string, remoteAddr string,
 	httpReq *http.Request, sseFallback bool) *HiveotSseServerConnection {
 
+	cinfo := transports.ConnectionInfo{
+		CaCert:       nil,
+		ClientID:     clientID,
+		ConnectionID: cid,
+		ConnectURL:   httpReq.URL.String(),
+		ProtocolType: transports.ProtocolTypeHiveotSSE,
+		Timeout:      0,
+	}
 	c := &HiveotSseServerConnection{
-		connectionID:  cid,
-		clientID:      clientID,
+		cinfo: cinfo,
+		//connectionID:  cid,
+		//clientID:      clientID,
 		remoteAddr:    remoteAddr,
 		httpReq:       httpReq,
 		lastActivity:  time.Now(),

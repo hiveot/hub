@@ -19,4 +19,8 @@ type IMessageConverter interface {
 	// EncodeResponse converts a hiveot ResponseMessage to a native protocol message
 	// returns an error if the message cannot be converted
 	EncodeResponse(resp *ResponseMessage) (any, error)
+
+	// GetProtocolType provides the protocol type for these messages,
+	// eg ProtocolTypeWotWSS or ProtocolTypeHiveotWSS
+	GetProtocolType() string
 }

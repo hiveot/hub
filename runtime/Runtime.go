@@ -59,8 +59,8 @@ func (r *Runtime) GetForm(op string, protocol string) (f *td.Form) {
 
 // GetConnectURL returns the URL for connecting with the given protocol type.
 // If the protocol is not available, the https fallback is returned.
-func (r *Runtime) GetConnectURL(protocolType string) string {
-	return r.TransportsMgr.GetConnectURL(protocolType)
+func (r *Runtime) GetConnectURL() string {
+	return r.TransportsMgr.GetConnectURL()
 }
 
 // GetTD returns the TD with the given digitwin ID.
@@ -103,17 +103,16 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	if err != nil {
 		return err
 	}
-	// provide access to the authz agent
+	// provide admin access to the authz agent
 	prof := authn.ClientProfile{
 		ClientID:   authz.AdminAgentID,
 		ClientType: authn.ClientTypeService,
 	}
 	_ = r.AuthnSvc.AuthnStore.Add(authz.AdminAgentID, prof)
 	_ = r.AuthnSvc.AuthnStore.SetRole(authz.AdminAgentID, string(authz.ClientRoleService))
-
 	r.AuthzAgent, err = service2.StartAuthzAgent(r.AuthzSvc)
 
-	// Start the servers. The digitwin router needs it to send messages
+	// Start the transport servers.
 	r.TransportsMgr, err = servers.StartTransportManager(
 		&r.cfg.ProtocolsConfig,
 		r.cfg.ServerCert,
@@ -122,13 +121,15 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	)
 
 	// The digitwin service directs the message flow between agents and consumers
-	// It receives messages from the middleware and uses the protocol manager
+	// It receives messages from the middleware and uses the transport manager
 	// to send messages to clients.
 	r.DigitwinSvc, _, err = service4.StartDigitwinService(env.StoresDir, r.SendNotification)
 	dtwAgent := service4.NewDigitwinAgent(r.DigitwinSvc)
 
-	// The transport passes incoming messages on to the hub-router, which in
-	// turn updates the digital twin and forwards the requests.
+	// The digitwin router receives all incoming messages from the transport.
+	// The router passes requests to internal and external services and things
+	// and returns responses to the request sender.
+	// Internal services are authn,authz and the digital twin directory and value service.
 	r.DigitwinRouter = router.NewDigitwinRouter(
 		r.DigitwinSvc,
 		dtwAgent.HandleRequest,
@@ -139,6 +140,10 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	r.TransportsMgr.SetRequestHandler(r.DigitwinRouter.HandleRequest)
 	r.TransportsMgr.SetResponseHandler(r.DigitwinRouter.HandleResponse)
 
+	// When generating digitwin TDs use the forms produced by transport protocols
+	r.DigitwinSvc.SetFormsHook(r.TransportsMgr.AddTDForms)
+
+	// Setup  logging of requests and notifications
 	if r.cfg.RequestLog != "" {
 		requestLogfileName := path.Join(env.LogsDir, r.cfg.RequestLog)
 		r.requestLogger, r.requestLogFile = logging.NewFileLogger(
@@ -151,14 +156,11 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 			notifLogfileName, r.cfg.LogfileInJson)
 		r.DigitwinRouter.SetNotifLogger(r.notifLogger)
 	}
-
 	if err != nil {
 		return err
 	}
-	// outgoing messages are handled by the sub-protocols of this transport
-	r.DigitwinSvc.SetFormsHook(r.TransportsMgr.AddTDForms)
 
-	// Register the TDs of the built-in services (authn,authz,directory,values) to the directory
+	// Add the TDs of the built-in services (authn,authz,directory,values) to the directory
 	_ = r.DigitwinSvc.DirSvc.UpdateTD(authn.AdminAgentID, authn.AdminTD)
 	_ = r.DigitwinSvc.DirSvc.UpdateTD(authn.UserAgentID, authn.UserTD)
 	_ = r.DigitwinSvc.DirSvc.UpdateTD(authz.AdminAgentID, authz.AdminTD)
@@ -169,12 +171,14 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	if r.cfg.ProtocolsConfig.EnableDiscovery {
 		dirTDJson, err := r.DigitwinSvc.DirSvc.ReadTD(digitwin.ThingDirectoryAgentID, digitwin.ThingDirectoryDThingID)
 		if err == nil {
+			protocolsCfg := r.cfg.ProtocolsConfig
 			err = r.TransportsMgr.StartDiscovery(
-				r.cfg.ProtocolsConfig.DirectoryTDPath, dirTDJson)
+				protocolsCfg.DirectoryTDPath, dirTDJson,
+			)
 		}
 	}
 
-	// setup agent permissions to update the directory
+	// set agent permissions to update the directory
 	// agents can update to the directory
 	_ = r.AuthzSvc.SetPermissions(authn.AdminServiceID, authz.ThingPermissions{
 		AgentID: digitwin.ThingDirectoryAgentID,
@@ -182,7 +186,6 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 		Allow:   []authz.ClientRole{authz.ClientRoleAgent},
 	})
 	// anyone else can read the directory, except those with no role
-	// FIXME: differentiate per action based on TD default?
 	_ = r.AuthzSvc.SetPermissions(authn.AdminServiceID, authz.ThingPermissions{
 		AgentID: digitwin.ThingDirectoryAgentID,
 		ThingID: digitwin.ThingDirectoryServiceID,
@@ -193,6 +196,7 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 }
 
 // SendNotification sends an event or property response message to subscribers.
+// This simply forwards the notification to the transport manager.
 func (r *Runtime) SendNotification(notif *transports.ResponseMessage) error {
 	r.TransportsMgr.SendNotification(notif)
 	return nil
@@ -215,11 +219,6 @@ func (r *Runtime) Stop() {
 	if r.TransportsMgr != nil {
 		r.TransportsMgr.Stop()
 	}
-	//r.CM.CloseAll()
-	//if nrConnections > 0 {
-	//	slog.Warn(fmt.Sprintf(
-	//		"HiveOT Hub Runtime stopped. Force closed %d connections", nrConnections))
-	//}
 	if r.notifLogFile != nil {
 		_ = r.notifLogFile.Close()
 		r.notifLogFile = nil
@@ -237,7 +236,6 @@ func (r *Runtime) Stop() {
 func NewRuntime(cfg *RuntimeConfig) *Runtime {
 	r := &Runtime{
 		cfg: cfg,
-		//CM:  connections.NewConnectionManager(),
 	}
 	return r
 }

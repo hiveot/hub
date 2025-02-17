@@ -44,3 +44,8 @@ func (svc *HiveotMessageConverter) EncodeRequest(req *transports.RequestMessage)
 func (svc *HiveotMessageConverter) EncodeResponse(resp *transports.ResponseMessage) (any, error) {
 	return resp, nil
 }
+
+// GetProtocolType returns the hiveot WSS protocol type identifier
+func (svc *HiveotMessageConverter) GetProtocolType() string {
+	return transports.ProtocolTypeHiveotWSS
+}

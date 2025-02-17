@@ -34,7 +34,7 @@ type IPlugin interface {
 //	protocol is the preferred transport protocol, if available. For example: ProtocolTypeHiveotWss
 func StartPlugin(plugin IPlugin, clientID string, certsDir string) {
 
-	cc, token, _, err := clients.ConnectWithTokenFile(clientID, certsDir, "", 0)
+	cc, token, _, err := clients.ConnectWithTokenFile(clientID, certsDir, "", "", 0)
 	_ = token
 
 	if err != nil {

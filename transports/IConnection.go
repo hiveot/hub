@@ -1,5 +1,10 @@
 package transports
 
+import (
+	"crypto/x509"
+	"time"
+)
+
 // Supported transport protocol bindings types
 const (
 	// WoT http basic protocol without return channel
@@ -18,6 +23,29 @@ const (
 	// Internal embedded direct call, for testing
 	ProtocolTypeHTEmbedded = "embedded" // for testing
 )
+
+// ConnectionInfo provides details of a connection
+type ConnectionInfo struct {
+
+	// Connection CA
+	CaCert *x509.Certificate
+
+	// GetClientID returns the authenticated clientID of this connection
+	ClientID string
+
+	// GetConnectionID returns the client's connection ID belonging to this endpoint
+	ConnectionID string
+
+	// GetConnectURL returns the full server URL used to establish this connection
+	ConnectURL string
+
+	// GetProtocolType returns the name of the protocol of this connection
+	// See ProtocolType... constants above for valid values.
+	ProtocolType string
+
+	// Connection timeout settings (clients only)
+	Timeout time.Duration
+}
 
 // ConnectionHandler handles a change in connection status
 //
@@ -47,18 +75,21 @@ type IConnection interface {
 	// Disconnect the client.
 	Disconnect()
 
+	// GetConnectionInfo return details of the connection
+	GetConnectionInfo() ConnectionInfo
+
 	// GetClientID returns the authenticated clientID of this connection
-	GetClientID() string
+	//GetClientID() string
 
 	// GetConnectionID returns the client's connection ID belonging to this endpoint
-	GetConnectionID() string
+	//GetConnectionID() string
 
 	// GetProtocolType returns the name of the protocol of this connection
 	// See ProtocolType... constants above for valid values.
-	GetProtocolType() string
+	//GetProtocolType() string
 
 	// GetConnectURL returns the full URL used to establish this connection
-	GetConnectURL() string
+	//GetConnectURL() string
 
 	// IsConnected returns the current connection status
 	IsConnected() bool

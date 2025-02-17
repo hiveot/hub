@@ -14,7 +14,7 @@ import (
 type DiscoveryServer struct {
 
 	//connectURL to publish with the default connection endpoint
-	connectURL string
+	//endpoints map[string]string
 
 	// tdPath holds the path the directory TD can be reached at (well known)
 	tdPath string
@@ -68,16 +68,15 @@ func (svc *DiscoveryServer) ServeDirectoryTD(tdPath string, tdJSON string) {
 //	dirTD is the directory TD in json (required)
 //	tdPath is the path on which to server the directory TD (Default is /.well-known/wot)
 //	httpServer is the server to use for serving the TD
-//	connectURL is used to determine the server default connection address
+//	endpoints with hiveot protocol connection endpoints
 func StartDiscoveryServer(instanceName string, serviceName string,
 	dirTD string, tdPath string, httpTransport *httpserver.HttpTransportServer,
-	connectURL string) (
+	endpoints map[string]string) (
 	*DiscoveryServer, error) {
 
 	svc := &DiscoveryServer{
 		dirTD:         dirTD,
 		tdPath:        tdPath,
-		connectURL:    connectURL,
 		dnssdServer:   nil,
 		httpTransport: httpTransport,
 	}
@@ -87,12 +86,12 @@ func StartDiscoveryServer(instanceName string, serviceName string,
 
 	// serve the introduction mechanism
 	tddURL, _ := url.JoinPath(httpTransport.GetConnectURL(), tdPath)
-	authURL := httpTransport.GetAuthURL()
-	dnssdServer, err := ServeTDDiscovery(instanceName, serviceName, tddURL, connectURL, authURL)
+	dnssdServer, err := ServeTDDiscovery(
+		instanceName, serviceName, tddURL, endpoints)
 	if err != nil {
 		slog.Error("Failed starting introduction server for DNS-SD",
 			"ServerURL", tddURL,
-			"connectURL", connectURL,
+			"tdPath", tdPath,
 			"err", err.Error())
 	}
 	svc.dnssdServer = dnssdServer

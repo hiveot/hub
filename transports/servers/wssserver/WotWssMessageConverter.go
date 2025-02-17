@@ -16,12 +16,12 @@ const WSSOpConnect = "wss-connect"
 
 // WoT websocket binding message type names
 const (
-	MsgTypeActionStatus           = "actionStatus"
-	MsgTypeActionStatuses         = "actionStatuses"
-	MsgTypeCancelAction           = "cancelAction"
-	MsgTypeInvokeAction           = "invokeAction"
-	MsgTypeLogin                  = "login"
-	MsgTypeLogout                 = "logout"
+	MsgTypeActionStatus   = "actionStatus"
+	MsgTypeActionStatuses = "actionStatuses"
+	MsgTypeCancelAction   = "cancelAction"
+	MsgTypeInvokeAction   = "invokeAction"
+	//MsgTypeLogin                  = "login"
+	//MsgTypeLogout                 = "logout"
 	MsgTypeObserveAllProperties   = "observeAllProperties"
 	MsgTypeObserveProperty        = "observeProperty"
 	MsgTypePing                   = "ping"
@@ -51,12 +51,12 @@ const (
 // MsgTypeToOp converts websocket message types to a WoT operation
 var MsgTypeToOp = map[string]string{
 
-	MsgTypeActionStatus:           "actionstatus",
-	MsgTypeActionStatuses:         "actionstatuses",
-	MsgTypeCancelAction:           wot.OpCancelAction,
-	MsgTypeInvokeAction:           wot.OpInvokeAction,
-	MsgTypeLogin:                  wot.HTOpLogin,
-	MsgTypeLogout:                 wot.HTOpLogout,
+	MsgTypeActionStatus:   "actionstatus",
+	MsgTypeActionStatuses: "actionstatuses",
+	MsgTypeCancelAction:   wot.OpCancelAction,
+	MsgTypeInvokeAction:   wot.OpInvokeAction,
+	//MsgTypeLogin:                  wot.HTOpLogin,
+	//MsgTypeLogout:                 wot.HTOpLogout,
 	MsgTypeObserveAllProperties:   wot.OpObserveAllProperties,
 	MsgTypeObserveProperty:        wot.OpObserveProperty,
 	MsgTypeError:                  "error",
@@ -85,12 +85,12 @@ var MsgTypeToOp = map[string]string{
 
 // req2MsgType converts a request operation to a WoT websocket message type
 var req2MsgType = map[string]string{
-	"actionstatus":             MsgTypeActionStatus,
-	"actionstatuses":           MsgTypeActionStatuses,
-	wot.OpCancelAction:         MsgTypeCancelAction,
-	wot.OpInvokeAction:         MsgTypeInvokeAction,
-	wot.HTOpLogin:              MsgTypeLogin,
-	wot.HTOpLogout:             MsgTypeLogout,
+	"actionstatus":     MsgTypeActionStatus,
+	"actionstatuses":   MsgTypeActionStatuses,
+	wot.OpCancelAction: MsgTypeCancelAction,
+	wot.OpInvokeAction: MsgTypeInvokeAction,
+	//wot.HTOpLogin:              MsgTypeLogin,
+	//wot.HTOpLogout:             MsgTypeLogout,
 	wot.OpObserveAllProperties: MsgTypeObserveAllProperties,
 	wot.OpObserveProperty:      MsgTypeObserveProperty,
 	//"error":                       MsgTypeError,
@@ -424,7 +424,11 @@ func (svc *WotWssMessageConverter) EncodeRequest(
 			CorrelationID: req.CorrelationID,
 			Timestamp:     timestamp,
 		}
+	default:
+		err = fmt.Errorf("unknown operation for WoT WSS: %s", req.Operation)
+		slog.Error(err.Error())
 	}
+
 	return msg, err
 }
 
@@ -448,6 +452,11 @@ func (svc *WotWssMessageConverter) EncodeResponse(
 		}
 	}
 	return resp, nil
+}
+
+// GetProtocolType returns the hiveot WSS protocol type identifier
+func (svc *WotWssMessageConverter) GetProtocolType() string {
+	return transports.ProtocolTypeWotWSS
 }
 
 func (svc *WotWssMessageConverter) Marshal(in interface{}) (string, error) {

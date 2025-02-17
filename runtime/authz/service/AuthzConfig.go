@@ -62,8 +62,8 @@ type RolePermission struct {
 
 // re-usable auth permissions to refresh token and logout
 var authPermissions = []string{
-	wot.HTOpLogout,
-	wot.HTOpRefresh,
+	//wot.HTOpLogout,
+	//wot.HTOpRefresh,
 }
 
 // re-usable permissions to observe and read and observe properties, events, actions, TDs

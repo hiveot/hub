@@ -3,7 +3,6 @@ package httpsseclient
 import (
 	"bytes"
 	"context"
-	"crypto/x509"
 	"errors"
 	"fmt"
 	"github.com/hiveot/hub/transports"
@@ -30,35 +29,35 @@ const maxSSEMessageSize = 1024 * 1024 * 10
 //
 // This invokes onConnect when the connection is lost. The caller must handle the
 // connection established when the first ping is received after successful connection.
-func ConnectSSE(
-	clientID string, cid string,
-	sseURL string, bearerToken string,
-	caCert *x509.Certificate,
+func ConnectSSE(cinfo transports.ConnectionInfo,
+	bearerToken string,
 	httcl *http.Client,
 	onConnect func(bool, error),
 	onMessage func(event sse.Event),
-	timeout time.Duration,
 ) (cancelFn func(), err error) {
 
 	// use context to disconnect the client on Close
 	sseCtx, sseCancelFn := context.WithCancel(context.Background())
 	bodyReader := bytes.NewReader([]byte{})
-	req, err := http.NewRequestWithContext(sseCtx, http.MethodGet, sseURL, bodyReader)
+	parts, _ := url.Parse(cinfo.ConnectURL) // the sse: schema isn't recognized. Use https
+	parts.Scheme = "https"
+	connectURL := parts.String()
+	req, err := http.NewRequestWithContext(sseCtx, http.MethodGet, connectURL, bodyReader)
 	if err != nil {
 		sseCancelFn()
 		return nil, err
 	}
-	req.Header.Add(httpserver.ConnectionIDHeader, cid)
+	req.Header.Add(httpserver.ConnectionIDHeader, cinfo.ConnectionID)
 	req.Header.Add("Authorization", "bearer "+bearerToken)
-	parts, _ := url.Parse(sseURL)
-	origin := fmt.Sprintf("%s://%s", parts.Scheme, parts.Host)
+	origin := fmt.Sprintf("https://%s", parts.Host)
 	req.Header.Add("Origin", origin)
 
 	sseClient := &sse.Client{
 		//HTTPClient: httpClient,
 		HTTPClient: httcl,
 		OnRetry: func(err error, backoff time.Duration) {
-			slog.Warn("SSE Connection retry", "err", err, "clientID", clientID,
+			slog.Warn("SSE Connection retry",
+				"err", err, "clientID", cinfo.ClientID,
 				"backoff", backoff)
 			// TODO: how to be notified if the connection is restored?
 			//  workaround: in handleSSEEvent, update the connection status
@@ -76,7 +75,7 @@ func ConnectSSE(
 	remover := conn.SubscribeToAll(onMessage)
 
 	// Wait for max 3 seconds to detect a connection
-	waitConnectCtx, waitConnectCancelFn := context.WithTimeout(context.Background(), timeout)
+	waitConnectCtx, waitConnectCancelFn := context.WithTimeout(context.Background(), cinfo.Timeout)
 	conn.SubscribeEvent(hiveotsseserver.SSEPingEvent, func(event sse.Event) {
 		// WORKAROUND since go-sse has no callback for a successful (re)connect, simulate one here.
 		// As soon as a connection is established the server could send a 'ping' event.
@@ -96,7 +95,7 @@ func ConnectSSE(
 		if connError, ok := err.(*sse.ConnectionError); ok {
 			// since sse retries, this is likely an authentication error
 			slog.Error("SSE connection failed (server shutdown or connection interrupted)",
-				"clientID", clientID,
+				"clientID", cinfo.ClientID,
 				"err", err.Error())
 			sseConnErr.Store(connError)
 			//err = fmt.Errorf("connect Failed: %w", connError.Err) //connError.Err
@@ -136,16 +135,13 @@ func (cc *HiveotSseClient) ConnectSSE(token string) (err error) {
 		return fmt.Errorf("connectSSE: Missing SSE path")
 	}
 	// establish the SSE connection for the return channel
-	sseURL := fmt.Sprintf("https://%s%s", cc.hostPort, cc.ssePath)
-	cc.sseCancelFn, err = ConnectSSE(
-		cc.GetClientID(),
-		cc.GetConnectionID(),
-		sseURL, token, cc.caCert,
+	//sseURL := fmt.Sprintf("https://%s%s", cc.hostPort, cc.ssePath)
+
+	cc.sseCancelFn, err = ConnectSSE(cc.cinfo, token,
 		// use the same http client for both http requests and sse connection
 		cc.GetTlsClient(),
 		cc.handleSSEConnect,
-		cc.handleSseEvent,
-		cc.timeout)
+		cc.handleSseEvent)
 
 	return err
 }
@@ -160,8 +156,8 @@ func (cc *HiveotSseClient) handleSSEConnect(connected bool, err error) {
 		errMsg = err.Error()
 	}
 	slog.Info("handleSSEConnect",
-		slog.String("clientID", cc.GetClientID()),
-		slog.String("connectionID", cc.GetConnectionID()),
+		slog.String("clientID", cc.cinfo.ClientID),
+		slog.String("connectionID", cc.cinfo.ConnectionID),
 		slog.Bool("connected", connected),
 		slog.String("err", errMsg))
 

@@ -107,7 +107,8 @@ func (srv *HiveotSseServer) CloseAll() {
 // Intended to close cm after a logout.
 func (srv *HiveotSseServer) CloseAllClientConnections(clientID string) {
 	srv.cm.ForEachConnection(func(c transports.IServerConnection) {
-		if c.GetClientID() == clientID {
+		cinfo := c.GetConnectionInfo()
+		if cinfo.ClientID == clientID {
 			c.Disconnect()
 		}
 	})
@@ -115,7 +116,7 @@ func (srv *HiveotSseServer) CloseAllClientConnections(clientID string) {
 
 // GetConnectURL returns SSE connection URL of the server
 // This uses the custom 'ssesc' schema which is non-wot compatible.
-func (srv *HiveotSseServer) GetConnectURL(_ string) string {
+func (srv *HiveotSseServer) GetConnectURL() string {
 	httpURL := srv.httpTransport.GetConnectURL()
 	parts, err := url.Parse(httpURL)
 	if err != nil {
@@ -123,6 +124,9 @@ func (srv *HiveotSseServer) GetConnectURL(_ string) string {
 	}
 	ssePath := fmt.Sprintf("%s://%s%s", HiveotSSESchema, parts.Host, srv.ssePath)
 	return ssePath
+}
+func (srv *HiveotSseServer) GetProtocolType() string {
+	return transports.ProtocolTypeHiveotSSE
 }
 
 // GetConnectionByConnectionID returns the connection with the given connection ID

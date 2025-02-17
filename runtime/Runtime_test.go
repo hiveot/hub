@@ -9,6 +9,7 @@ import (
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/transports/clients/authenticator"
 	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
@@ -49,13 +50,14 @@ func TestLoginAsAgent(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 
 	r := startRuntime()
-	agent, token := ts.AddConnectAgent(agentID)
-	_ = token
-	t2, err := agent.RefreshToken(token)
+	agent, cc, token := ts.AddConnectAgent(agentID)
+	authCl := authenticator.NewAuthClientFromConnection(cc, token)
+	t2, err := authCl.RefreshToken(token)
 	require.NoError(t, err)
 	assert.NotEmpty(t, t2)
+
 	// use the refresh token
-	t3, err := agent.RefreshToken(t2)
+	t3, err := authCl.RefreshToken(t2)
 	_ = t3
 	require.NoError(t, err)
 
@@ -68,15 +70,17 @@ func TestLoginAsConsumer(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 
 	r := startRuntime()
-	consumer, token := ts.AddConnectConsumer(clientID, authz.ClientRoleManager)
-	_ = token
-	t2, err := consumer.RefreshToken(token)
+	consumer, cc, token := ts.AddConnectConsumer(clientID, authz.ClientRoleManager)
+	authCl := authenticator.NewAuthClientFromConnection(cc, token)
+	t2, err := authCl.RefreshToken(token)
+
 	require.NoError(t, err)
 	assert.NotEmpty(t, t2)
+
 	// use the refresh token
-	t3, err := consumer.RefreshToken(t2)
-	_ = t3
+	t3, err := authCl.RefreshToken(t2)
 	require.NoError(t, err)
+	require.NotEmpty(t, t3)
 
 	consumer.Disconnect()
 	r.Stop()
@@ -98,9 +102,9 @@ func TestMultiConnectSingleClient(t *testing.T) {
 
 	// 1: setup: start a runtime and connect N clients
 	r := startRuntime()
-	ag1, _ := ts.AddConnectAgent(agentID)
+	ag1, _, _ := ts.AddConnectAgent(agentID)
 	td1 := ts.AddTD(agentID, nil)
-	cl1, token1 := ts.AddConnectConsumer(clientID1, authz.ClientRoleOperator)
+	cl1, _, token1 := ts.AddConnectConsumer(clientID1, authz.ClientRoleOperator)
 
 	onConnection := func(connected bool, err error, c transports.IConnection) {
 		if connected {
@@ -183,8 +187,8 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	defer r.Stop()
 	logging.SetLogging("warning", "")
 	//slog.SetLogLoggerLevel(slog.LevelWarn)
-	ag1, _ := ts.AddConnectAgent(agentID)
-	cl1, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
+	ag1, _, _ := ts.AddConnectAgent(agentID)
+	cl1, _, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
 
 	// step 1: agent publishes a TD
 	td1 := ts.CreateTestTD(0)
@@ -238,7 +242,7 @@ func TestServiceReconnect(t *testing.T) {
 	// give server time to start up before connecting
 	time.Sleep(time.Millisecond * 10)
 
-	ag1, _ := ts.AddConnectAgent(agentID)
+	ag1, _, _ := ts.AddConnectAgent(agentID)
 	defer ag1.Disconnect()
 
 	// step 1: ensure the thing TD exists
@@ -282,7 +286,7 @@ func TestServiceReconnect(t *testing.T) {
 	hasAgent = ts.Runtime.TransportsMgr.GetConnectionByClientID(ag1.GetClientID())
 	assert.NotNil(t, hasAgent)
 
-	cl2, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
+	cl2, _, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
 	defer cl2.Disconnect()
 	// FIXME: wait for an actual reconnect
 	time.Sleep(time.Second * 1)
@@ -307,7 +311,7 @@ func TestAccess(t *testing.T) {
 	r := startRuntime()
 	defer r.Stop()
 
-	hc, token := ts.AddConnectConsumer(clientID, authz.ClientRoleViewer)
+	hc, _, token := ts.AddConnectConsumer(clientID, authz.ClientRoleViewer)
 	defer hc.Disconnect()
 	_ = token
 

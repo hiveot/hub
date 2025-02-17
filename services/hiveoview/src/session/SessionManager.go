@@ -11,6 +11,7 @@ import (
 	"github.com/hiveot/hub/transports/servers/httpserver"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 )
@@ -30,6 +31,9 @@ type WebSessionManager struct {
 
 	// Hub address
 	hubURL string
+	// Client protocolType to use
+	protocolType string
+
 	// Hub CA certificate
 	caCert *x509.Certificate
 	// this service's agent for publishing events
@@ -43,7 +47,7 @@ type WebSessionManager struct {
 
 // add a new session with the given hub connection and send a session count event
 func (sm *WebSessionManager) _addSession(
-	r *http.Request, cid string, hc transports.IClientConnection) (
+	r *http.Request, cid string, cc transports.IClientConnection) (
 	cs *WebClientSession, err error) {
 
 	// if the browser does not provide a CID until after the first connection,
@@ -52,10 +56,10 @@ func (sm *WebSessionManager) _addSession(
 	//
 	// FIXME: the first connection (without cid) doesn't shutdown until it gains
 	// a sse connection and loses it again.
-	clientID := hc.GetClientID()
+	cinfo := cc.GetConnectionInfo()
 
 	sm.mux.Lock()
-	clcid := clientID + "-" + cid
+	clcid := cinfo.ClientID + "-" + cid
 	existingSession := sm.sessions[clcid]
 	if existingSession != nil {
 		// Caution: Attempt to add a new connection while one exists with the cid.
@@ -65,7 +69,7 @@ func (sm *WebSessionManager) _addSession(
 		cs = existingSession
 		//exhccid := existingSession.cid //GetConnectionID()
 		slog.Warn("session with clcid already exists. replace its connection.",
-			slog.String("clientID", clientID),
+			slog.String("clientID", cinfo.ClientID),
 			slog.String("clcid", cs.clcid),
 		)
 
@@ -73,10 +77,10 @@ func (sm *WebSessionManager) _addSession(
 		// session (plus its waiting for a lock).
 		// If the connection has been replaced then it won't match so ignore the
 		// callback if the connection differs.
-		co := consumer.NewConsumer(hc, sm.timeout)
+		co := consumer.NewConsumer(cc, sm.timeout)
 		existingSession.ReplaceConsumer(co)
 	} else {
-		co := consumer.NewConsumer(hc, sm.timeout)
+		co := consumer.NewConsumer(cc, sm.timeout)
 		cs = NewWebClientSession(cid, co, r.RemoteAddr, sm.noState, sm.onClose)
 	}
 	sm.sessions[cs.clcid] = cs
@@ -87,10 +91,10 @@ func (sm *WebSessionManager) _addSession(
 	//maxAge := time.Hour * 24 * 14
 	//err = SetSessionCookie(w, clientID, newToken, maxAge, sm.signingKey)
 	slog.Info("_addSession",
-		slog.String("clientID", clientID),
+		slog.String("clientID", cinfo.ClientID),
 		slog.String("clcid", cs.clcid),
 		slog.String("remoteAdddr", r.RemoteAddr),
-		slog.String("hc.cid", hc.GetConnectionID()),
+		slog.String("cc.cid", cinfo.ConnectionID),
 		slog.Int("nr sessions", len(sm.sessions)),
 	)
 	_ = sm.ag.PubEvent(src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions)
@@ -184,14 +188,18 @@ func (sm *WebSessionManager) HandleConnectWithPassword(
 	w http.ResponseWriter, r *http.Request,
 	loginID string, password string, cid string) (newToken string, err error) {
 
+	// Authentication uses its own client that knows the auth protocol
+	parts, _ := url.Parse(sm.hubURL)
+	authCl := authenticator.NewAuthClient(parts.Host, sm.caCert, cid, sm.timeout)
+
 	// attempt to login
-	newToken, err = authenticator.AuthenticateWithPassword(
-		sm.hubURL, httpserver.HttpPostLoginPath, loginID, password, sm.caCert, cid)
+	newToken, err = authCl.LoginWithPassword(loginID, password)
+	
 	if err != nil {
 		return "", err
 	}
 	// FIXME: use the session's directory cache to get the form
-	cc, err := clients.ConnectWithToken(loginID, newToken, sm.caCert, sm.hubURL, sm.timeout)
+	cc, err := clients.ConnectWithToken(loginID, newToken, sm.caCert, sm.protocolType, sm.hubURL, sm.timeout)
 	if err == nil {
 		if cid != "" {
 			_, err = sm._addSession(r, cid, cc)
@@ -230,7 +238,8 @@ func (sm *WebSessionManager) ConnectWithToken(
 		"clientID", loginID, "cid", cid, "remoteAddr", r.RemoteAddr,
 		"nr websessions", len(sm.sessions))
 	//var newToken string
-	cc, err := clients.ConnectWithToken(loginID, authToken, sm.caCert, sm.hubURL, sm.timeout)
+	cc, err := clients.ConnectWithToken(
+		loginID, authToken, sm.caCert, sm.protocolType, sm.hubURL, sm.timeout)
 	if err == nil {
 		cs, err = sm._addSession(r, cid, cc)
 		// Update the session cookie with the new auth token (default 14 days)
@@ -307,20 +316,26 @@ func (sm *WebSessionManager) GetSessionFromCookie(r *http.Request) (
 //	hc is the agent service connection for reporting notifications and handling config
 //	noState do not try to persist state with the state service (for testing)
 //	timeout of hub connections
-func NewWebSessionManager(hubURL string,
+func NewWebSessionManager(
 	signingKey ed25519.PrivateKey, caCert *x509.Certificate,
 	ag *consumer.Agent, noState bool,
 	timeout time.Duration) *WebSessionManager {
+
+	cc := ag.GetConnection()
+	cinfo := cc.GetConnectionInfo()
+	hubURL := cinfo.ConnectURL
+	protocolType := cinfo.ProtocolType
 	sm := &WebSessionManager{
-		sessions:   make(map[string]*WebClientSession),
-		mux:        sync.RWMutex{},
-		signingKey: signingKey,
-		pubKey:     signingKey.Public().(ed25519.PublicKey),
-		hubURL:     hubURL,
-		caCert:     caCert,
-		ag:         ag,
-		noState:    noState,
-		timeout:    timeout,
+		sessions:     make(map[string]*WebClientSession),
+		mux:          sync.RWMutex{},
+		signingKey:   signingKey,
+		pubKey:       signingKey.Public().(ed25519.PublicKey),
+		protocolType: protocolType,
+		hubURL:       hubURL,
+		caCert:       caCert,
+		ag:           ag,
+		noState:      noState,
+		timeout:      timeout,
 	}
 	return sm
 }

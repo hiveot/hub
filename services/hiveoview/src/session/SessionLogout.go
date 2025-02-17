@@ -14,7 +14,7 @@ func SessionLogout(w http.ResponseWriter, r *http.Request) {
 	}
 	if sess != nil {
 		// logout will disconnect from the hub and remove the session.
-		_ = sess.GetConsumer().Logout()
+		sess.Logout()
 	}
 	RemoveSessionCookie(w, r)
 
