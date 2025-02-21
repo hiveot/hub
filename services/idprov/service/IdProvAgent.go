@@ -2,8 +2,8 @@ package service
 
 import (
 	"github.com/hiveot/hub/lib/hubagent"
+	"github.com/hiveot/hub/messaging/consumer"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
-	"github.com/hiveot/hub/transports/consumer"
 )
 
 // StartIdProvAgent registers the idprov messaging agent for the idprov service.

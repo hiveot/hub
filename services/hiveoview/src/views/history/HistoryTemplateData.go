@@ -3,10 +3,10 @@ package history
 import (
 	"encoding/json"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/runtime/consumedthing"
 	"github.com/hiveot/hub/services/hiveoview/src"
-	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	"time"
@@ -25,7 +25,7 @@ type HistoryTemplateData struct {
 	Timestamp      time.Time
 	TimestampStr   string
 	DurationSec    int
-	Values         []*transports.ThingValue
+	Values         []*messaging.ThingValue
 	ItemsRemaining bool // for paging, if supported
 	Stepped        bool // stepped graph
 

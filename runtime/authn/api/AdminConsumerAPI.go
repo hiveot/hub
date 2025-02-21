@@ -5,7 +5,7 @@
 package authn
 
 import (
-	"github.com/hiveot/hub/transports/consumer"
+	"github.com/hiveot/hub/messaging/consumer"
 )
 
 // AdminAddAgent client method - Add Agent.

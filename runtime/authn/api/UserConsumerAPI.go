@@ -5,7 +5,7 @@
 package authn
 
 import (
-	"github.com/hiveot/hub/transports/consumer"
+	"github.com/hiveot/hub/messaging/consumer"
 )
 
 // UserGetProfile client method - Get Client Profile.

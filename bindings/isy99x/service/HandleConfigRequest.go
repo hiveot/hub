@@ -3,14 +3,14 @@ package service
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/messaging"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
-	"github.com/hiveot/hub/transports"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 )
 
 // handleConfigRequest for handling device configuration changes
-func (svc *IsyBinding) handleConfigRequest(req *transports.RequestMessage) (resp *transports.ResponseMessage) {
+func (svc *IsyBinding) handleConfigRequest(req *messaging.RequestMessage) (resp *messaging.ResponseMessage) {
 
 	slog.Info("handleConfigRequest",
 		slog.String("thingID", req.ThingID),

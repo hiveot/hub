@@ -2,9 +2,9 @@ package historyclient
 
 import "C"
 import (
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/consumer"
 	"github.com/hiveot/hub/services/history/historyapi"
-	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/consumer"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	"time"
@@ -22,7 +22,7 @@ type HistoryCursorClient struct {
 
 // First positions the cursor at the first key in the ordered list
 // This returns an error if the cursor has expired or is not found.
-func (cl *HistoryCursorClient) First() (thingValue *transports.ThingValue, valid bool, err error) {
+func (cl *HistoryCursorClient) First() (thingValue *messaging.ThingValue, valid bool, err error) {
 	req := historyapi.CursorArgs{
 		CursorKey: cl.cursorKey,
 	}
@@ -35,7 +35,7 @@ func (cl *HistoryCursorClient) First() (thingValue *transports.ThingValue, valid
 // Last positions the cursor at the last key in the ordered list
 // This returns an error if the cursor has expired or is not found.
 func (cl *HistoryCursorClient) Last() (
-	thingValue *transports.ThingValue, valid bool, err error) {
+	thingValue *messaging.ThingValue, valid bool, err error) {
 
 	req := historyapi.CursorArgs{
 		CursorKey: cl.cursorKey,
@@ -48,7 +48,7 @@ func (cl *HistoryCursorClient) Last() (
 // Next moves the cursor to the next key from the current cursor
 // This returns an error if the cursor has expired or is not found.
 func (cl *HistoryCursorClient) Next() (
-	thingValue *transports.ThingValue, valid bool, err error) {
+	thingValue *messaging.ThingValue, valid bool, err error) {
 
 	req := historyapi.CursorArgs{
 		CursorKey: cl.cursorKey,
@@ -61,7 +61,7 @@ func (cl *HistoryCursorClient) Next() (
 // NextN moves the cursor to the next N steps from the current cursor
 // This returns an error if the cursor has expired or is not found.
 func (cl *HistoryCursorClient) NextN(
-	limit int, until string) (batch []*transports.ThingValue, itemsRemaining bool, err error) {
+	limit int, until string) (batch []*messaging.ThingValue, itemsRemaining bool, err error) {
 
 	req := historyapi.CursorNArgs{
 		CursorKey: cl.cursorKey,
@@ -76,7 +76,7 @@ func (cl *HistoryCursorClient) NextN(
 // Prev moves the cursor to the previous key from the current cursor
 // This returns an error if the cursor has expired or is not found.
 func (cl *HistoryCursorClient) Prev() (
-	thingValue *transports.ThingValue, valid bool, err error) {
+	thingValue *messaging.ThingValue, valid bool, err error) {
 
 	req := historyapi.CursorArgs{
 		CursorKey: cl.cursorKey,
@@ -89,7 +89,7 @@ func (cl *HistoryCursorClient) Prev() (
 // PrevN moves the cursor to the previous N steps from the current cursor
 // This returns an error if the cursor has expired or is not found.
 func (cl *HistoryCursorClient) PrevN(
-	limit int, until string) (batch []*transports.ThingValue, itemsRemaining bool, err error) {
+	limit int, until string) (batch []*messaging.ThingValue, itemsRemaining bool, err error) {
 
 	req := historyapi.CursorNArgs{
 		CursorKey: cl.cursorKey,
@@ -115,7 +115,7 @@ func (cl *HistoryCursorClient) Release() {
 // timeStamp in ISO8106 format
 // This returns an error if the cursor has expired or is not found.
 func (cl *HistoryCursorClient) Seek(timeStamp time.Time) (
-	thingValue *transports.ThingValue, valid bool, err error) {
+	thingValue *messaging.ThingValue, valid bool, err error) {
 	timeStampStr := timeStamp.Format(wot.RFC3339Milli)
 	req := historyapi.CursorSeekArgs{
 		CursorKey: cl.cursorKey,

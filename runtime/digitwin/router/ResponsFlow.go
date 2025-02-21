@@ -3,9 +3,9 @@ package router
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/tputils"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
-	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
@@ -20,7 +20,7 @@ import (
 // 2: Updates the status fields of the current digital twin action record to completed.
 // 3: Forwards the update to the sender of the request.
 // 4: Remove the active request from the cache.
-func (svc *DigitwinRouter) HandleActionResponse(resp *transports.ResponseMessage) (err error) {
+func (svc *DigitwinRouter) HandleActionResponse(resp *messaging.ResponseMessage) (err error) {
 
 	// Action response
 	svc.requestLogger.Info("<- RESP",
@@ -87,7 +87,7 @@ func (svc *DigitwinRouter) HandleActionResponse(resp *transports.ResponseMessage
 	}
 
 	// 4: Update the active action cache and remove the action when completed or failed
-	if resp.Status == transports.StatusCompleted || resp.Status == transports.StatusFailed {
+	if resp.Status == messaging.StatusCompleted || resp.Status == messaging.StatusFailed {
 		svc.mux.Lock()
 		defer svc.mux.Unlock()
 		delete(svc.activeCache, as.CorrelationID)
@@ -97,7 +97,7 @@ func (svc *DigitwinRouter) HandleActionResponse(resp *transports.ResponseMessage
 
 // HandleSubscriptionNotification handles receiving a subscription update (event, property)
 // This updates the digital twin property or event value
-func (svc *DigitwinRouter) HandleSubscriptionNotification(resp *transports.ResponseMessage) (err error) {
+func (svc *DigitwinRouter) HandleSubscriptionNotification(resp *messaging.ResponseMessage) (err error) {
 	// Update the digital twin with this event or property value
 	if resp.Operation == wot.OpSubscribeEvent {
 		tv := digitwin.ThingValue{
@@ -105,7 +105,7 @@ func (svc *DigitwinRouter) HandleSubscriptionNotification(resp *transports.Respo
 			Output:         resp.Output,
 			ThingID:        resp.ThingID,
 			Updated:        resp.Updated,
-			AffordanceType: transports.AffordanceTypeEvent,
+			AffordanceType: messaging.AffordanceTypeEvent,
 		}
 		err = svc.dtwStore.UpdateEventValue(tv)
 		if err == nil {
@@ -118,7 +118,7 @@ func (svc *DigitwinRouter) HandleSubscriptionNotification(resp *transports.Respo
 			Output:         resp.Output,
 			ThingID:        resp.ThingID,
 			Updated:        resp.Updated,
-			AffordanceType: transports.AffordanceTypeProperty,
+			AffordanceType: messaging.AffordanceTypeProperty,
 		}
 		changed, _ := svc.dtwStore.UpdatePropertyValue(tv)
 		// unchanged values are still updated in the store but not published
@@ -169,7 +169,7 @@ func (svc *DigitwinRouter) HandleSubscriptionNotification(resp *transports.Respo
 // that requested the action on the digital twin.
 //
 // If the message is no longer in the active cache then it is ignored.
-func (svc *DigitwinRouter) HandleResponse(resp *transports.ResponseMessage) error {
+func (svc *DigitwinRouter) HandleResponse(resp *messaging.ResponseMessage) error {
 	var err error
 
 	// Convert the agent ThingID to that of the digital twin

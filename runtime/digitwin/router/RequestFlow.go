@@ -4,11 +4,11 @@ package router
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/runtime/api"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
-	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
@@ -36,7 +36,7 @@ type ActiveRequestRecord struct {
 // This returns a response if available. replyTo is used to store the sender's
 // reply-to address for handling responses to pending requests.
 func (svc *DigitwinRouter) HandleRequest(
-	req *transports.RequestMessage, c transports.IConnection) (resp *transports.ResponseMessage) {
+	req *messaging.RequestMessage, c messaging.IConnection) (resp *messaging.ResponseMessage) {
 
 	if req.Created == "" {
 		req.Created = time.Now().Format(wot.RFC3339Milli)
@@ -131,7 +131,7 @@ func (svc *DigitwinRouter) HandleRequest(
 // SSE, WS, MQTT bindings must use a correlation-id to match request-response messages.
 // this is not well-defined in the WoT specs and up to the protocol binding implementation.
 func (svc *DigitwinRouter) HandleInvokeAction(
-	req *transports.RequestMessage, c transports.IConnection) (resp *transports.ResponseMessage) {
+	req *messaging.RequestMessage, c messaging.IConnection) (resp *messaging.ResponseMessage) {
 
 	// Forward the action to the built-in services
 	agentID, thingID := td.SplitDigiTwinThingID(req.ThingID)
@@ -156,7 +156,7 @@ func (svc *DigitwinRouter) HandleInvokeAction(
 
 // ForwardActionToRemoteAgent forwards the action to external agents
 func (svc *DigitwinRouter) ForwardActionToRemoteAgent(
-	req *transports.RequestMessage, c2 transports.IConnection) (resp *transports.ResponseMessage) {
+	req *messaging.RequestMessage, c2 messaging.IConnection) (resp *messaging.ResponseMessage) {
 	agentID, thingID := td.SplitDigiTwinThingID(req.ThingID)
 
 	// Store the action progress to be able to respond to queryAction. Only
@@ -226,14 +226,14 @@ func (svc *DigitwinRouter) ForwardActionToRemoteAgent(
 	} else {
 		// return a pending response
 		resp = req.CreateResponse(nil, nil)
-		resp.Status = transports.StatusPending
+		resp.Status = messaging.StatusPending
 	}
 	return resp
 }
 
 // HandleQueryAction returns the action status
 func (svc *DigitwinRouter) HandleQueryAction(
-	req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
+	req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
 	av, err := svc.dtwService.ValuesSvc.QueryAction(req.SenderID,
 		digitwin.ThingValuesQueryActionArgs{ThingID: req.ThingID, Name: req.Name})
 	return req.CreateResponse(av, err)
@@ -241,7 +241,7 @@ func (svc *DigitwinRouter) HandleQueryAction(
 
 // HandleReadEvent consumer requests a digital twin thing's event value
 func (svc *DigitwinRouter) HandleReadEvent(
-	req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
+	req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
 
 	output, err := svc.dtwService.ValuesSvc.ReadEvent(req.SenderID,
 		digitwin.ThingValuesReadEventArgs{ThingID: req.ThingID, Name: req.Name})
@@ -250,7 +250,7 @@ func (svc *DigitwinRouter) HandleReadEvent(
 
 // HandleReadAllEvents consumer requests all digital twin thing event values
 func (svc *DigitwinRouter) HandleReadAllEvents(
-	req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
+	req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
 
 	output, err := svc.dtwService.ValuesSvc.ReadAllEvents(req.SenderID, req.ThingID)
 	return req.CreateResponse(output, err)
@@ -258,7 +258,7 @@ func (svc *DigitwinRouter) HandleReadAllEvents(
 
 // HandleReadProperty consumer requests a digital twin thing's property value
 func (svc *DigitwinRouter) HandleReadProperty(
-	req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
+	req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
 
 	output, err := svc.dtwService.ValuesSvc.ReadProperty(req.SenderID,
 		digitwin.ThingValuesReadPropertyArgs{ThingID: req.ThingID, Name: req.Name})
@@ -267,7 +267,7 @@ func (svc *DigitwinRouter) HandleReadProperty(
 
 // HandleReadAllProperties consumer requests reading all digital twin's property values
 func (svc *DigitwinRouter) HandleReadAllProperties(
-	req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
+	req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
 
 	output, err := svc.dtwService.ValuesSvc.ReadAllProperties(req.SenderID, req.ThingID)
 	return req.CreateResponse(output, err)
@@ -276,7 +276,7 @@ func (svc *DigitwinRouter) HandleReadAllProperties(
 // HandleReadTD consumer reads a TD
 // This converts the operation in an action for the directory service.
 func (svc *DigitwinRouter) HandleReadTD(
-	req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
+	req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
 
 	// the thingID in the request becomes the argument for the directory service, if any
 	req2 := *req
@@ -290,7 +290,7 @@ func (svc *DigitwinRouter) HandleReadTD(
 // HandleReadAllTDs consumer reads all TDs
 // This converts the operation in an action for the directory service.
 func (svc *DigitwinRouter) HandleReadAllTDs(
-	req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
+	req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
 
 	req2 := *req
 	req2.ThingID = digitwin.ThingDirectoryDThingID
@@ -302,7 +302,7 @@ func (svc *DigitwinRouter) HandleReadAllTDs(
 // HandleUpdateTD agent updates a TD
 // This converts the operation in an action for the directory service.
 func (svc *DigitwinRouter) HandleUpdateTD(
-	req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
+	req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
 
 	// the thingID in the request becomes the argument for the directory service, if any
 	//rework the request
@@ -322,7 +322,7 @@ func (svc *DigitwinRouter) HandleUpdateTD(
 //
 // if name is empty then newValue contains a map of properties
 func (svc *DigitwinRouter) HandleWriteProperty(
-	req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
+	req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
 
 	resp := svc.ForwardActionToRemoteAgent(req, c)
 	return resp

@@ -1,0 +1,135 @@
+package wotwssserver_old
+
+import (
+	"fmt"
+	"github.com/gorilla/websocket"
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/wot"
+	"log/slog"
+	"time"
+)
+
+// _send sends the websocket message to the connected client
+func (c *WssServerConnection) _send(wssMsg interface{}) (err error) {
+
+	if c.isClosed.Load() {
+		err = fmt.Errorf(
+			"_send: connection with client '%s' is now closed", c.clientID)
+		slog.Warn(err.Error())
+	} else {
+		msgJSON := c.Marshal(wssMsg)
+		// websockets do not allow concurrent write
+		c.mux.Lock()
+		defer c.mux.Unlock()
+		err = c.wssConn.WriteMessage(websocket.TextMessage, msgJSON)
+		if err != nil {
+			err = fmt.Errorf("_send write error: %s", err)
+		}
+	}
+	return err
+}
+
+// SendNotification send an event or property update to subscribers
+func (c *WssServerConnection) SendNotification(notif transports.NotificationMessage) {
+
+	wssMsg, err := OpToMessage(notif.Operation, notif.ThingID, notif.Name,
+		nil, notif.Data, "", "")
+
+	if err != nil {
+		slog.Error("SendNotification: Unknown operation. Ignored.", "op", notif.Operation)
+		return
+	}
+
+	switch notif.Operation {
+	case wot.HTOpUpdateTD:
+		// update the TD if the client is subscribed to its events
+		if c.subscriptions.IsSubscribed(notif.ThingID, "") {
+			_ = c._send(wssMsg)
+		}
+	case wot.HTOpEvent:
+		if c.subscriptions.IsSubscribed(notif.ThingID, notif.Name) {
+			_ = c._send(wssMsg)
+		}
+	case wot.HTOpUpdateProperty, wot.HTOpUpdateMultipleProperties:
+		if c.observations.IsSubscribed(notif.ThingID, notif.Name) {
+			_ = c._send(wssMsg)
+		}
+	default:
+		slog.Error("SendNotification: Unknown notification operation",
+			"op", notif.Operation,
+			"thingID", notif.ThingID,
+			"to", c.clientID)
+	}
+}
+
+//
+//// SendError sends an error response to the client.
+//func (c *WssServerConnection) SendError(
+//	thingID, name string, errResponse string, correlationID string) {
+//
+//	if correlationID == "" {
+//		slog.Error("SendError without correlationID", "clientID", c.clientID)
+//	} else {
+//		slog.Warn("SendError", "clientID", c.clientID,
+//			"errResponse", errResponse, "correlationID", correlationID)
+//	}
+//	msg := ErrorMessage{
+//		ThingID:     thingID,
+//		MessageType: MsgTypeError,
+//		Title:       name + " error",
+//		CorrelationID:   correlationID,
+//		Detail:      errResponse,
+//		//Timestamp:   time.Now().Format(wot.RFC3339Milli),
+//	}
+//	_ = c._send(msg)
+//}
+
+// SendRequest sends the request to the client (agent).
+// Intended to be used on clients that are agents for Things.
+// If this returns an error then no request was sent.
+func (c *WssServerConnection) SendRequest(req transports.RequestMessage) error {
+	wssMsg, err := OpToMessage(req.Operation, req.ThingID, req.Name, nil,
+		req.Input, req.CorrelationID, req.SenderID)
+	if err != nil {
+		return err
+	}
+	return c._send(wssMsg)
+}
+
+// SendResponse sends a response to the client.
+// If the operation is invokeaction then an wss actionstatus message will be sent,
+// otherwise the response payload will be sent.
+// If the status is RequestFailed then output is an error, otherwise the output value
+// If this returns an error then no request will was sent.
+func (c *WssServerConnection) SendResponse(resp transports.ResponseMessage) (err error) {
+
+	slog.Info("SendResponse",
+		slog.String("clientID", c.clientID),
+		slog.String("correlationID", resp.CorrelationID),
+		slog.String("operation", resp.Operation))
+
+	if resp.Error != "" {
+		msg := ErrorMessage{
+			ThingID:       resp.ThingID,
+			MessageType:   MsgTypeError,
+			Title:         resp.Error,
+			CorrelationID: resp.CorrelationID,
+			Detail:        fmt.Sprintf("%v", resp.Output),
+			//Timestamp:   time.Now().Format(wot.RFC3339Milli),
+		}
+		_ = c._send(msg)
+	} else {
+		// for now turn all response types into an action status message
+		// FIXME: return the result of property, event, action queries
+		msg := ActionStatusMessage{
+			ThingID:       resp.ThingID,
+			MessageType:   MsgTypeActionStatus,
+			Name:          resp.Name,
+			CorrelationID: resp.CorrelationID,
+			Output:        resp.Output,
+			Timestamp:     time.Now().Format(wot.RFC3339Milli),
+		}
+		err = c._send(msg)
+	}
+	return err
+}

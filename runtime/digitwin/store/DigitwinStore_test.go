@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
 	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/hub/messaging"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/runtime/digitwin/store"
-	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	"github.com/stretchr/testify/assert"
@@ -76,7 +76,7 @@ func addValues(svc *store.DigitwinStore,
 			Output:         value,
 			Name:           name,
 			ThingID:        dThingID,
-			AffordanceType: transports.AffordanceTypeProperty,
+			AffordanceType: messaging.AffordanceTypeProperty,
 		}
 		_ = svc.UpdateEventValue(tv)
 	}
@@ -187,7 +187,7 @@ func TestUpdateProps(t *testing.T) {
 		Output:         prop1Value,
 		Name:           prop1Name,
 		ThingID:        dThingID1,
-		AffordanceType: transports.AffordanceTypeProperty,
+		AffordanceType: messaging.AffordanceTypeProperty,
 	}
 	changed, err := svc.UpdatePropertyValue(tv)
 	require.NoError(t, err)
@@ -211,7 +211,7 @@ func TestAddPropsFail(t *testing.T) {
 		Output:         "val1",
 		Name:           "prop1",
 		ThingID:        dThingID,
-		AffordanceType: transports.AffordanceTypeProperty,
+		AffordanceType: messaging.AffordanceTypeProperty,
 	}
 	changed, err := svc.UpdatePropertyValue(tv)
 

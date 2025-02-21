@@ -5,15 +5,15 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
-	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/wot"
 	"log/slog"
 	"time"
 )
 
 // HandleRequest handles action or property write requests
-func (svc *OWServerBinding) HandleRequest(req *transports.RequestMessage,
-	_ transports.IConnection) (resp *transports.ResponseMessage) {
+func (svc *OWServerBinding) HandleRequest(req *messaging.RequestMessage,
+	_ messaging.IConnection) (resp *messaging.ResponseMessage) {
 
 	slog.Info("HandleRequest",
 		slog.String("op", req.Operation),
@@ -34,7 +34,7 @@ func (svc *OWServerBinding) HandleRequest(req *transports.RequestMessage,
 }
 
 // HandleActionRequest handles requests to activate inputs
-func (svc *OWServerBinding) HandleActionRequest(req *transports.RequestMessage) (resp *transports.ResponseMessage) {
+func (svc *OWServerBinding) HandleActionRequest(req *messaging.RequestMessage) (resp *messaging.ResponseMessage) {
 	var attr eds.OneWireAttr
 
 	// TODO: lookup the req Title used by the EDS
@@ -87,7 +87,7 @@ func (svc *OWServerBinding) HandleActionRequest(req *transports.RequestMessage) 
 }
 
 // HandleConfigRequest handles requests to configure the service or devices
-func (svc *OWServerBinding) HandleConfigRequest(req *transports.RequestMessage) (stat *transports.ResponseMessage) {
+func (svc *OWServerBinding) HandleConfigRequest(req *messaging.RequestMessage) (stat *messaging.ResponseMessage) {
 	var err error
 	valueStr := req.ToString(0)
 	slog.Info("HandleConfigRequest",

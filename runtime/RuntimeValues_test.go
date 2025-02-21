@@ -3,9 +3,9 @@ package runtime_test
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/messaging"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
-	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
@@ -38,14 +38,14 @@ func TestQueryActions(t *testing.T) {
 	td1 := ts.CreateTestTD(0)
 	var dThing1ID = td.MakeDigiTwinThingID(agentID, td1.ID)
 
-	ag1.SetRequestHandler(func(msg *transports.RequestMessage,
-		c transports.IConnection) *transports.ResponseMessage {
+	ag1.SetRequestHandler(func(msg *messaging.RequestMessage,
+		c messaging.IConnection) *messaging.ResponseMessage {
 
 		slog.Info("request: "+msg.Operation, "correlationID", msg.CorrelationID)
 		return msg.CreateResponse(data, nil)
 	})
 
-	co1.SetResponseHandler(func(msg *transports.ResponseMessage) error {
+	co1.SetResponseHandler(func(msg *messaging.ResponseMessage) error {
 		slog.Info("notification: " + msg.Operation)
 		// signal notification received
 		updateChan1 <- true
@@ -189,7 +189,7 @@ func TestSubscribeValues(t *testing.T) {
 	// 1. consumer subscribes to events/properties
 	err := cl1.Subscribe("", "")
 	require.NoError(t, err)
-	cl1.SetResponseHandler(func(msg *transports.ResponseMessage) error {
+	cl1.SetResponseHandler(func(msg *messaging.ResponseMessage) error {
 		msgCount.Add(1)
 		return nil
 	})
@@ -239,8 +239,8 @@ func TestWriteProperties(t *testing.T) {
 	err := digitwin.ThingDirectoryUpdateTD(&ag1.Consumer, td1JSON)
 
 	// agents listen for property write requests
-	ag1.SetRequestHandler(func(msg *transports.RequestMessage,
-		c transports.IConnection) *transports.ResponseMessage {
+	ag1.SetRequestHandler(func(msg *messaging.RequestMessage,
+		c messaging.IConnection) *messaging.ResponseMessage {
 
 		if msg.Operation == vocab.OpWriteProperty && msg.Name == key1 {
 			msgCount.Add(1)
@@ -252,7 +252,7 @@ func TestWriteProperties(t *testing.T) {
 	err = co1.ObserveProperty("", "")
 	require.NoError(t, err)
 
-	co1.SetResponseHandler(func(msg *transports.ResponseMessage) error {
+	co1.SetResponseHandler(func(msg *messaging.ResponseMessage) error {
 		// expect an action status message that is the result of invokeaction
 		if msg.Name == key1 {
 			msgCount.Add(1)

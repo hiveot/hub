@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubagent"
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/consumer"
 	"github.com/hiveot/hub/services/history/historyapi"
-	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/consumer"
 	"github.com/hiveot/hub/wot"
 )
 
@@ -42,7 +42,7 @@ func StartHistoryAgent(svc *HistoryService, ag *consumer.Agent) {
 	mah := hubagent.NewAgentHandler(historyapi.ManageHistoryServiceID, manageHistoryMethods)
 
 	// receive subscribed updates for events and properties
-	ag.Consumer.SetResponseHandler(func(resp *transports.ResponseMessage) error {
+	ag.Consumer.SetResponseHandler(func(resp *messaging.ResponseMessage) error {
 		if resp.Operation == wot.OpSubscribeEvent {
 			return svc.addHistory.AddMessage(resp)
 		} else if resp.Operation == wot.OpObserveProperty {
@@ -53,7 +53,7 @@ func StartHistoryAgent(svc *HistoryService, ag *consumer.Agent) {
 	})
 
 	// handle service requests
-	ag.SetRequestHandler(func(req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
+	ag.SetRequestHandler(func(req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
 		if req.Operation == vocab.OpInvokeAction {
 			if req.ThingID == historyapi.ReadHistoryServiceID {
 				return rah.HandleRequest(req, c)

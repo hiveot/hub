@@ -3,10 +3,10 @@ package pubsubcli
 import (
 	"fmt"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/consumer"
+	"github.com/hiveot/hub/messaging/tputils"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
-	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/consumer"
-	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 	"time"
@@ -60,7 +60,7 @@ func HandleSubTD(hc *consumer.Consumer) error {
 	if err != nil {
 		return err
 	}
-	hc.SetResponseHandler(func(msg *transports.ResponseMessage) error {
+	hc.SetResponseHandler(func(msg *messaging.ResponseMessage) error {
 		// only look for TD events, ignore directed events
 		if msg.Name != digitwin.ThingDirectoryEventThingUpdated {
 			return nil
@@ -93,7 +93,7 @@ func HandleSubEvents(hc *consumer.Consumer, thingID string, name string) error {
 	fmt.Printf("---------------  --------------- -----------------------------  -----------------------------  ---------\n")
 
 	err := hc.Subscribe(thingID, name)
-	hc.SetResponseHandler(func(msg *transports.ResponseMessage) error {
+	hc.SetResponseHandler(func(msg *messaging.ResponseMessage) error {
 		createdTime, _ := dateparse.ParseAny(msg.Updated)
 		timeStr := createdTime.Format("15:04:05.000")
 

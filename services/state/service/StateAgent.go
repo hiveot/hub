@@ -3,11 +3,11 @@ package service
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/consumer"
+	"github.com/hiveot/hub/messaging/tputils"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/services/state/stateapi"
-	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/consumer"
-	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
@@ -102,7 +102,7 @@ func (agent StateAgent) CreateTD() *td.TD {
 }
 
 // HandleRequest dispatches requests to the service capabilities
-func (agent *StateAgent) HandleRequest(req *transports.RequestMessage, _ transports.IConnection) *transports.ResponseMessage {
+func (agent *StateAgent) HandleRequest(req *messaging.RequestMessage, _ messaging.IConnection) *messaging.ResponseMessage {
 	if req.Operation == wot.OpInvokeAction && req.ThingID == stateapi.StorageServiceID {
 		switch req.Name {
 		case stateapi.DeleteMethod:
@@ -120,12 +120,12 @@ func (agent *StateAgent) HandleRequest(req *transports.RequestMessage, _ transpo
 	err := fmt.Errorf("unknown action '%s' for service '%s'", req.Name, req.ThingID)
 	return req.CreateResponse(nil, err)
 }
-func (agent *StateAgent) Delete(req *transports.RequestMessage) *transports.ResponseMessage {
+func (agent *StateAgent) Delete(req *messaging.RequestMessage) *messaging.ResponseMessage {
 	key := tputils.DecodeAsString(req.Input, 0)
 	err := agent.svc.Delete(req.SenderID, key)
 	return req.CreateResponse(nil, err)
 }
-func (agent *StateAgent) Get(req *transports.RequestMessage) *transports.ResponseMessage {
+func (agent *StateAgent) Get(req *messaging.RequestMessage) *messaging.ResponseMessage {
 	var err error
 	output := stateapi.GetResp{}
 	key := tputils.DecodeAsString(req.Input, 0)
@@ -133,7 +133,7 @@ func (agent *StateAgent) Get(req *transports.RequestMessage) *transports.Respons
 	output.Value, output.Found, err = agent.svc.Get(req.SenderID, key)
 	return req.CreateResponse(output, err)
 }
-func (agent *StateAgent) GetMultiple(req *transports.RequestMessage) *transports.ResponseMessage {
+func (agent *StateAgent) GetMultiple(req *messaging.RequestMessage) *messaging.ResponseMessage {
 	input := stateapi.GetMultipleArgs{}
 	output := stateapi.GetMultipleResp{}
 	err := tputils.DecodeAsObject(req.Input, &input)
@@ -142,7 +142,7 @@ func (agent *StateAgent) GetMultiple(req *transports.RequestMessage) *transports
 	}
 	return req.CreateResponse(output, err)
 }
-func (agent *StateAgent) Set(req *transports.RequestMessage) *transports.ResponseMessage {
+func (agent *StateAgent) Set(req *messaging.RequestMessage) *messaging.ResponseMessage {
 	input := stateapi.SetArgs{}
 	err := tputils.DecodeAsObject(req.Input, &input)
 	if err == nil {
@@ -150,7 +150,7 @@ func (agent *StateAgent) Set(req *transports.RequestMessage) *transports.Respons
 	}
 	return req.CreateResponse(nil, err)
 }
-func (agent *StateAgent) SetMultiple(req *transports.RequestMessage) *transports.ResponseMessage {
+func (agent *StateAgent) SetMultiple(req *messaging.RequestMessage) *messaging.ResponseMessage {
 	input := stateapi.SetMultipleArgs{}
 	err := tputils.DecodeAsObject(req.Input, &input)
 	if err == nil {

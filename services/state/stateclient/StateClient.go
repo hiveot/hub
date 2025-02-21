@@ -2,8 +2,8 @@ package stateclient
 
 import (
 	"encoding/json"
+	"github.com/hiveot/hub/messaging/consumer"
 	"github.com/hiveot/hub/services/state/stateapi"
-	"github.com/hiveot/hub/transports/consumer"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 )

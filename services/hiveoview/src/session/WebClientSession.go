@@ -3,11 +3,11 @@ package session
 import (
 	"bytes"
 	"fmt"
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/consumer"
+	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/runtime/consumedthing"
 	"github.com/hiveot/hub/services/state/stateclient"
-	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/consumer"
-	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot"
 	"log/slog"
 	"net/http"
@@ -283,7 +283,7 @@ func (sess *WebClientSession) NewSseChan() chan SSEEvent {
 }
 
 // onHubConnectionChange is invoked on hub client disconnect/reconnect
-func (sess *WebClientSession) onHubConnectionChange(connected bool, err error, c transports.IConnection) {
+func (sess *WebClientSession) onHubConnectionChange(connected bool, err error, c messaging.IConnection) {
 	lastErrText := ""
 
 	slog.Debug("onHubConnectionChange",
@@ -307,7 +307,7 @@ func (sess *WebClientSession) onHubConnectionChange(connected bool, err error, c
 // onResponse notifies SSE clients of incoming notifications from the Hub
 // This is intended for notifying the client UI of the update to props or events.
 // The consumed thing itself is already updated.
-func (sess *WebClientSession) onResponse(resp *transports.ResponseMessage) error {
+func (sess *WebClientSession) onResponse(resp *messaging.ResponseMessage) error {
 
 	//slog.Debug("received notification",
 	//	slog.String("operation", resp.Operation),

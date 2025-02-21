@@ -1,14 +1,14 @@
 package service
 
 import (
+	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/runtime/authn/authenticator"
 	"github.com/hiveot/hub/runtime/authn/authnstore"
 	"github.com/hiveot/hub/runtime/authn/config"
-	"github.com/hiveot/hub/transports"
 )
 
 type AuthnService struct {
-	SessionAuth transports.IAuthenticator
+	SessionAuth messaging.IAuthenticator
 	AuthnStore  authnstore.IAuthnStore
 	AdminSvc    *AuthnAdminService
 	UserSvc     *AuthnUserService
@@ -38,7 +38,7 @@ func (svc *AuthnService) Stop() {
 func NewAuthnService(
 	cfg *config.AuthnConfig,
 	authnStore authnstore.IAuthnStore,
-	sessionAuth transports.IAuthenticator) *AuthnService {
+	sessionAuth messaging.IAuthenticator) *AuthnService {
 
 	svc := &AuthnService{
 		AuthnStore:  authnStore,

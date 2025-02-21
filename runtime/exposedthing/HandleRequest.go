@@ -1,7 +1,7 @@
 package exposedthing
 
 import (
-	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/wot/td"
 )
 
@@ -48,7 +48,7 @@ type IService interface {
 
 type ThingAction struct {
 	Name    string
-	Handler func(message *transports.RequestMessage) *transports.ResponseMessage
+	Handler func(message *messaging.RequestMessage) *messaging.ResponseMessage
 	Input   *td.DataSchema // reuse common schemas
 	Output  *td.DataSchema
 }

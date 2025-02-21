@@ -3,11 +3,11 @@ package service
 import (
 	"fmt"
 	"github.com/fsnotify/fsnotify"
+	"github.com/hiveot/hub/messaging/clients"
+	"github.com/hiveot/hub/messaging/consumer"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/hiveot/hub/services/launcher/config"
 	"github.com/hiveot/hub/services/launcher/launcherapi"
-	"github.com/hiveot/hub/transports/clients"
-	"github.com/hiveot/hub/transports/consumer"
 	"log/slog"
 	"os"
 	"os/exec"

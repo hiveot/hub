@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/connections"
 	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/runtime/digitwin/store"
-	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/connections"
 	"github.com/hiveot/hub/wot/td"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -36,7 +36,7 @@ func startService(clean bool) (
 		_ = os.RemoveAll(testDirFolder)
 		cm.CloseAll()
 	}
-	notifHandler := func(notif *transports.ResponseMessage) error {
+	notifHandler := func(notif *messaging.ResponseMessage) error {
 		slog.Info("Received notification", "op", notif.Operation)
 		return nil
 	}

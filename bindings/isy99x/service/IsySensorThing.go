@@ -2,7 +2,7 @@ package service
 
 import (
 	"errors"
-	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/wot/td"
 )
 
@@ -17,7 +17,7 @@ func (it *IsySensorThing) GetPropValues(onlyChanges bool) map[string]any {
 	return propValues
 }
 
-func (it *IsySensorThing) HandleConfigRequest(req *transports.RequestMessage) *transports.ResponseMessage {
+func (it *IsySensorThing) HandleConfigRequest(req *messaging.RequestMessage) *messaging.ResponseMessage {
 	// TODO: sensor configuration
 	return req.CreateResponse(nil, errors.New("unknown config: "+req.Name))
 }

@@ -1,7 +1,7 @@
 package router
 
 import (
-	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/messaging"
 )
 
 // IDigitwinRouter is the interface for routing the action,event and property messages
@@ -11,7 +11,7 @@ type IDigitwinRouter interface {
 	// HandleRequest with the message to handle.
 	// If a result is immediately available it is returned, otherwise it is sent
 	// separately to the connection with the ID of replyTo
-	HandleRequest(msg *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage
+	HandleRequest(msg *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage
 
-	HandleResponse(resp *transports.ResponseMessage) error
+	HandleResponse(resp *messaging.ResponseMessage) error
 }

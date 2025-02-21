@@ -12,9 +12,9 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/clients"
-	"github.com/hiveot/hub/transports/consumer"
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/clients"
+	"github.com/hiveot/hub/messaging/consumer"
 	"github.com/urfave/cli/v2"
 	"log/slog"
 	"os"
@@ -37,7 +37,7 @@ func main() {
 	var homeDir string
 	var certsDir string
 	var serverURL string
-	var protocol = transports.ProtocolTypeHiveotWSS
+	var protocol = messaging.ProtocolTypeHiveotWSS
 	var authToken string
 
 	// environment defaults
@@ -100,7 +100,7 @@ func main() {
 			},
 		},
 		Before: func(c *cli.Context) (err error) {
-			var cc transports.IClientConnection
+			var cc messaging.IClientConnection
 			// reload env in case home changes
 			env = plugin.GetAppEnvironment(homeDir, false)
 			certsDir = env.CertsDir

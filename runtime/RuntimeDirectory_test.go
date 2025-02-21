@@ -3,11 +3,11 @@ package runtime_test
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/tputils/tlsclient"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
-	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/tputils/tlsclient"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
@@ -153,7 +153,7 @@ func TestTDEvent(t *testing.T) {
 	defer cl1.Disconnect()
 
 	// wait to directory TD updated events
-	respHandler := func(msg *transports.ResponseMessage) error {
+	respHandler := func(msg *messaging.ResponseMessage) error {
 		if msg.Operation == vocab.OpSubscribeEvent &&
 			msg.ThingID == digitwin.ThingDirectoryDThingID &&
 			msg.Name == digitwin.ThingDirectoryEventThingUpdated {

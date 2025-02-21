@@ -2,9 +2,9 @@ package service
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/messaging"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	authz "github.com/hiveot/hub/runtime/authz/api"
-	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 )
@@ -15,13 +15,13 @@ import (
 // The main entry point is the HandleMessage function.
 type AuthzAgent struct {
 	svc          *AuthzService
-	adminHandler transports.RequestHandler
-	userHandler  transports.RequestHandler
+	adminHandler messaging.RequestHandler
+	userHandler  messaging.RequestHandler
 }
 
 // HandleAction authz service action handler
 func (agent *AuthzAgent) HandleAction(
-	req *transports.RequestMessage, c transports.IConnection) (resp *transports.ResponseMessage) {
+	req *messaging.RequestMessage, c messaging.IConnection) (resp *messaging.ResponseMessage) {
 
 	// if the message has an authn agent prefix then remove it.
 	// This can happen if invoked directly through an embedded client

@@ -2,8 +2,8 @@ package service
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/messaging/servers/hiveotsseserver"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
-	"github.com/hiveot/hub/transports/servers/hiveotsseserver"
 	"log/slog"
 	"net/http"
 )

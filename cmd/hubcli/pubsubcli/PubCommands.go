@@ -2,7 +2,7 @@ package pubsubcli
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/transports/consumer"
+	"github.com/hiveot/hub/messaging/consumer"
 	"github.com/urfave/cli/v2"
 )
 

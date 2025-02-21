@@ -3,8 +3,8 @@ package store
 import (
 	"fmt"
 	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hub/messaging"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
-	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
@@ -358,7 +358,7 @@ func (svc *DigitwinStore) UpdateTD(
 // The output is just a transformation of the input.
 //
 // This returns true if the request is stored or false if the request is safe.
-func (svc *DigitwinStore) NewActionStart(req *transports.RequestMessage) (stored bool, err error) {
+func (svc *DigitwinStore) NewActionStart(req *messaging.RequestMessage) (stored bool, err error) {
 	svc.cacheMux.Lock()
 	defer svc.cacheMux.Unlock()
 
@@ -402,7 +402,7 @@ func (svc *DigitwinStore) NewActionStart(req *transports.RequestMessage) (stored
 	actionStatus.Name = req.Name
 	actionStatus.SenderID = req.SenderID
 	actionStatus.Input = req.Input
-	actionStatus.Status = transports.StatusPending
+	actionStatus.Status = messaging.StatusPending
 	actionStatus.Requested = req.Created
 	actionStatus.Id = req.CorrelationID
 	dtw.ActionStatuses[req.Name] = actionStatus
@@ -415,7 +415,7 @@ func (svc *DigitwinStore) NewActionStart(req *transports.RequestMessage) (stored
 // progress response.
 //
 // resp is a progress response with a ThingID of the digital twin
-func (svc *DigitwinStore) UpdateActionStatus(agentID string, resp *transports.ResponseMessage) (
+func (svc *DigitwinStore) UpdateActionStatus(agentID string, resp *messaging.ResponseMessage) (
 	actionValue digitwin.ActionStatus, err error) {
 
 	svc.cacheMux.Lock()
@@ -437,7 +437,7 @@ func (svc *DigitwinStore) UpdateActionStatus(agentID string, resp *transports.Re
 		}
 		actionValue.Status = resp.Status
 		actionValue.Updated = time.Now().Format(wot.RFC3339Milli)
-		if resp.Status == transports.StatusCompleted {
+		if resp.Status == messaging.StatusCompleted {
 			actionValue.Output = resp.Output
 			actionValue.Updated = resp.Updated
 		} else if resp.Error != "" {
@@ -467,7 +467,7 @@ func (svc *DigitwinStore) UpdateEventValue(ev digitwin.ThingValue) error {
 	svc.cacheMux.Lock()
 	defer svc.cacheMux.Unlock()
 
-	ev.AffordanceType = transports.AffordanceTypeEvent
+	ev.AffordanceType = messaging.AffordanceTypeEvent
 	dtw, found := svc.dtwCache[ev.ThingID]
 	if !found {
 		err := fmt.Errorf("dThing with ID '%s' not found", ev.ThingID)
@@ -491,7 +491,7 @@ func (svc *DigitwinStore) UpdatePropertyValue(newValue digitwin.ThingValue) (
 	svc.cacheMux.Lock()
 	defer svc.cacheMux.Unlock()
 
-	newValue.AffordanceType = transports.AffordanceTypeProperty
+	newValue.AffordanceType = messaging.AffordanceTypeProperty
 	dtw, found := svc.dtwCache[newValue.ThingID]
 	if !found {
 		err := fmt.Errorf("dThing with ID '%s' not found", newValue.ThingID)

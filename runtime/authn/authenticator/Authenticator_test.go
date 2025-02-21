@@ -3,9 +3,9 @@ package authenticator_test
 import (
 	"crypto/ed25519"
 	"github.com/hiveot/hub/lib/keys"
+	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/runtime/authn/authenticator"
 	"github.com/hiveot/hub/runtime/authn/authnstore"
-	"github.com/hiveot/hub/transports"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -13,7 +13,7 @@ import (
 
 var authnStore authnstore.IAuthnStore
 
-func NewAuthenticator() transports.IAuthenticator {
+func NewAuthenticator() messaging.IAuthenticator {
 	//signingKey := keys.NewEcdsaKey()
 	//svc := authenticator.NewJWTAuthenticator(authnStore, signingKey)
 	signingKey := keys.NewEd25519Key().PrivateKey().(ed25519.PrivateKey)

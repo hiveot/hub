@@ -7,12 +7,12 @@ import (
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/bucketstore"
 	"github.com/hiveot/hub/lib/testenv"
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/tputils"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/hiveot/hub/services/history/historyapi"
 	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/hiveot/hub/services/history/service"
-	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
@@ -88,10 +88,10 @@ func startHistoryService(clean bool) (
 // generate a random batch of property and event values for testing
 // timespanSec is the range of timestamps up until now
 func makeValueBatch(agentID string, nrValues, nrThings, timespanSec int) (
-	batch []transports.ThingValue, highest map[string]transports.ThingValue) {
+	batch []messaging.ThingValue, highest map[string]messaging.ThingValue) {
 
-	highest = make(map[string]transports.ThingValue)
-	valueBatch := make([]transports.ThingValue, 0, nrValues)
+	highest = make(map[string]messaging.ThingValue)
+	valueBatch := make([]messaging.ThingValue, 0, nrValues)
 	for j := 0; j < nrValues; j++ {
 		randomID := rand.Intn(nrThings)
 		randomName := rand.Intn(10)
@@ -103,12 +103,12 @@ func makeValueBatch(agentID string, nrValues, nrThings, timespanSec int) (
 		dThingID := td.MakeDigiTwinThingID(agentID, thingID)
 
 		randomMsgType := rand.Intn(2)
-		affType := transports.AffordanceTypeEvent
+		affType := messaging.AffordanceTypeEvent
 		if randomMsgType == 1 {
-			affType = transports.AffordanceTypeProperty
+			affType = messaging.AffordanceTypeProperty
 		}
 
-		tv := transports.ThingValue{
+		tv := messaging.ThingValue{
 			ID:             fmt.Sprintf("%d", randomID),
 			Name:           names[randomName],
 			Output:         fmt.Sprintf("%2.3f", randomValue),
@@ -131,7 +131,7 @@ func makeValueBatch(agentID string, nrValues, nrThings, timespanSec int) (
 
 // add some history to the store. This bypasses the check for thingID to exist.
 func addBulkHistory(svc *service.HistoryService, agentID string, count int, nrThings int,
-	timespanSec int) (highest map[string]transports.ThingValue) {
+	timespanSec int) (highest map[string]messaging.ThingValue) {
 
 	var batchSize = 1000
 	if batchSize > count {
@@ -193,7 +193,7 @@ func TestAddGetEvent(t *testing.T) {
 	// add thing1 temperature from 5 minutes ago
 	addHist := svc.GetAddHistory()
 	dThing1ID := td.MakeDigiTwinThingID(agent1ID, thing1ID)
-	ev1_1 := &transports.ResponseMessage{
+	ev1_1 := &messaging.ResponseMessage{
 		Operation: wot.OpSubscribeEvent,
 		SenderID:  agent1ID, ThingID: dThing1ID, Name: evTemperature,
 		Output: "12.5", Updated: fivemago.Format(wot.RFC3339Milli),
@@ -201,7 +201,7 @@ func TestAddGetEvent(t *testing.T) {
 	err := addHist.AddMessage(ev1_1)
 	assert.NoError(t, err)
 	// add thing1 humidity from 55 minutes ago
-	ev1_2 := &transports.ResponseMessage{
+	ev1_2 := &messaging.ResponseMessage{
 		Operation: vocab.OpSubscribeEvent,
 		SenderID:  agent1ID, ThingID: dThing1ID, Name: evHumidity,
 		Output: "70", Updated: fiftyfivemago.Format(wot.RFC3339Milli),
@@ -211,7 +211,7 @@ func TestAddGetEvent(t *testing.T) {
 
 	// add thing2 humidity from 5 minutes ago
 	dThing2ID := td.MakeDigiTwinThingID(agent1ID, thing2ID)
-	ev2_1 := &transports.ResponseMessage{
+	ev2_1 := &messaging.ResponseMessage{
 		Operation: vocab.OpSubscribeEvent,
 		SenderID:  agent1ID, ThingID: dThing2ID, Name: evHumidity,
 		Output: "50", Updated: fivemago.Format(wot.RFC3339Milli),
@@ -220,7 +220,7 @@ func TestAddGetEvent(t *testing.T) {
 	assert.NoError(t, err)
 
 	// add thing2 temperature from 55 minutes ago
-	ev2_2 := &transports.ResponseMessage{
+	ev2_2 := &messaging.ResponseMessage{
 		Operation: vocab.OpSubscribeEvent,
 		SenderID:  agent1ID, ThingID: dThing2ID, Name: evTemperature,
 		Output: "17.5", Updated: fiftyfivemago.Format(wot.RFC3339Milli),
@@ -288,21 +288,21 @@ func TestAddProperties(t *testing.T) {
 	defer closeFn()
 
 	dThing1ID := td.MakeDigiTwinThingID(agent1, thing1ID)
-	action1 := &transports.ResponseMessage{
+	action1 := &messaging.ResponseMessage{
 		SenderID:  agent1,
 		ThingID:   dThing1ID,
 		Name:      vocab.ActionSwitchOnOff,
 		Output:    "on",
 		Operation: vocab.OpInvokeAction,
 	}
-	event1 := &transports.ResponseMessage{
+	event1 := &messaging.ResponseMessage{
 		SenderID:  agent1,
 		ThingID:   dThing1ID,
 		Name:      vocab.PropEnvTemperature,
 		Output:    temp1,
 		Operation: vocab.OpSubscribeEvent,
 	}
-	badEvent1 := &transports.ResponseMessage{
+	badEvent1 := &messaging.ResponseMessage{
 		SenderID:  agent1,
 		ThingID:   dThing1ID,
 		Name:      "", // missing name
@@ -315,14 +315,14 @@ func TestAddProperties(t *testing.T) {
 	//	Name:      "name",
 	//	Operation: vocab.OpSubscribeEvent,
 	//}
-	badEvent3 := &transports.ResponseMessage{
+	badEvent3 := &messaging.ResponseMessage{
 		SenderID:  agent1,
 		ThingID:   dThing1ID,
 		Name:      "baddate",
 		Updated:   "-1",
 		Operation: vocab.OpSubscribeEvent,
 	}
-	badEvent4 := &transports.ResponseMessage{
+	badEvent4 := &messaging.ResponseMessage{
 		SenderID: agent1,
 		ThingID:  "", // missing ID
 		Name:     "temperature",
@@ -331,7 +331,7 @@ func TestAddProperties(t *testing.T) {
 	propsList[vocab.PropDeviceBattery] = battTemp
 	propsList[vocab.PropEnvCpuload] = 30
 	propsList[vocab.PropSwitchOnOff] = "off"
-	props1 := &transports.ResponseMessage{
+	props1 := &messaging.ResponseMessage{
 		SenderID:  agent1,
 		ThingID:   dThing1ID,
 		Name:      "", // property list
@@ -368,7 +368,7 @@ func TestAddProperties(t *testing.T) {
 	assert.NotEmpty(t, msg)
 	hasProps := false
 	for valid && err == nil {
-		if msg.AffordanceType == transports.AffordanceTypeProperty {
+		if msg.AffordanceType == messaging.AffordanceTypeProperty {
 			hasProps = true
 			require.NotEmpty(t, msg.Name)
 			require.NotEmpty(t, msg.Output)

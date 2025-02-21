@@ -3,12 +3,12 @@ package thingdetails
 import (
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/runtime/consumedthing"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"github.com/hiveot/hub/services/hiveoview/src/views/history"
-	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot/td"
 	"golang.org/x/exp/maps"
 	"log/slog"

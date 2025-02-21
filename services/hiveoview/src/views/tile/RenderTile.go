@@ -2,13 +2,13 @@ package tile
 
 import (
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/runtime/consumedthing"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"github.com/hiveot/hub/services/hiveoview/src/views/history"
-	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot/td"
 	"net/http"
 	"time"
@@ -59,7 +59,7 @@ func (d RenderTileTemplateData) GetOutputValue(thingID string, name string) (iou
 		// Thing not found. return a dummy interaction output with a non-schema
 		tdi := td.NewTD(thingID, "unknown", vocab.ThingDevice)
 		dummy := consumedthing.NewInteractionOutput(
-			tdi, transports.AffordanceTypeProperty, name, nil, "")
+			tdi, messaging.AffordanceTypeProperty, name, nil, "")
 		dummy.Value = consumedthing.NewDataSchemaValue("n/a")
 		return dummy
 	}

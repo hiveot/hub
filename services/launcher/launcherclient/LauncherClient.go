@@ -2,8 +2,8 @@ package launcherclient
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/messaging/consumer"
 	"github.com/hiveot/hub/services/launcher/launcherapi"
-	"github.com/hiveot/hub/transports/consumer"
 	"github.com/hiveot/hub/wot/td"
 )
 

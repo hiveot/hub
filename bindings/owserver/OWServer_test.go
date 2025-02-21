@@ -4,10 +4,10 @@ import (
 	"github.com/hiveot/hub/bindings/owserver/config"
 	"github.com/hiveot/hub/bindings/owserver/service"
 	"github.com/hiveot/hub/lib/testenv"
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/tputils"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
-	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"os"
@@ -98,7 +98,7 @@ func TestPoll(t *testing.T) {
 	err := cl1.ObserveProperty("", "")
 	err = cl1.Subscribe("", "")
 	require.NoError(t, err)
-	cl1.SetResponseHandler(func(msg *transports.ResponseMessage) error {
+	cl1.SetResponseHandler(func(msg *messaging.ResponseMessage) error {
 		slog.Info("received message", "MessageType", msg.Operation, "id", msg.Name)
 		var value interface{}
 		err2 := tputils.DecodeAsObject(msg.Output, &value)

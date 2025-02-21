@@ -3,11 +3,11 @@ package authz_test
 import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/hub/messaging"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	"github.com/hiveot/hub/runtime/authn/authnstore"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/hiveot/hub/runtime/authz/service"
-	"github.com/hiveot/hub/transports"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"os"
@@ -98,7 +98,7 @@ func TestHasPermission(t *testing.T) {
 	err = svc.SetClientRole(operatorID, authz.AdminSetClientRoleArgs{operatorID, client1Role})
 	assert.NoError(t, err)
 	// consumers have permission to publish actions and write-property requests
-	msg := transports.NewRequestMessage(vocab.OpInvokeAction, thingID, key, nil, correlationID)
+	msg := messaging.NewRequestMessage(vocab.OpInvokeAction, thingID, key, nil, correlationID)
 	msg.SenderID = operatorID
 	hasPerm := svc.HasPermission(msg.SenderID, msg.Operation, msg.ThingID)
 	assert.True(t, hasPerm)

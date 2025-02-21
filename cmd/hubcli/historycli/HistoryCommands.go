@@ -2,9 +2,9 @@ package historycli
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/messaging/consumer"
+	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/services/history/historyclient"
-	"github.com/hiveot/hub/transports/consumer"
-	"github.com/hiveot/hub/transports/tputils"
 	"github.com/urfave/cli/v2"
 )
 

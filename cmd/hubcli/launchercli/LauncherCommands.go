@@ -3,8 +3,8 @@ package launchercli
 import (
 	"fmt"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/messaging/consumer"
 	"github.com/hiveot/hub/services/launcher/launcherclient"
-	"github.com/hiveot/hub/transports/consumer"
 	"github.com/urfave/cli/v2"
 )
 

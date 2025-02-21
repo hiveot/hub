@@ -1,7 +1,7 @@
 package consumedthing
 
 import (
-	"github.com/hiveot/hub/transports/tputils"
+	"github.com/hiveot/hub/messaging/tputils"
 	"log/slog"
 )
 

@@ -1,9 +1,9 @@
 package router
 
 import (
+	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/runtime/digitwin/store"
-	"github.com/hiveot/hub/transports"
 	"log/slog"
 	"sync"
 )
@@ -27,10 +27,10 @@ type DigitwinRouter struct {
 	dtwStore *store.DigitwinStore
 
 	// internal services are directly invoked
-	digitwinAction transports.RequestHandler
+	digitwinAction messaging.RequestHandler
 	dtwService     *service.DigitwinService
-	authnAction    transports.RequestHandler
-	authzAction    transports.RequestHandler
+	authnAction    messaging.RequestHandler
+	authzAction    messaging.RequestHandler
 	hasPermission  PermissionHandler
 
 	// in-memory cache of active actions lookup by correlationID
@@ -38,7 +38,7 @@ type DigitwinRouter struct {
 	// cache map usage mux
 	mux sync.Mutex
 	// connection manager for forwarding messages to agents or consumers
-	transportServer transports.ITransportServer
+	transportServer messaging.ITransportServer
 
 	// logging of requests and response
 	requestLogger *slog.Logger
@@ -65,12 +65,12 @@ func (r *DigitwinRouter) SetRequestLogger(logger *slog.Logger) {
 //	tb is the transport binding for forwarding service requests
 func NewDigitwinRouter(
 	dtwService *service.DigitwinService,
-	digitwinAction transports.RequestHandler,
-	authnAgent transports.RequestHandler,
-	authzAgent transports.RequestHandler,
+	digitwinAction messaging.RequestHandler,
+	authnAgent messaging.RequestHandler,
+	authzAgent messaging.RequestHandler,
 	permissionHandler PermissionHandler,
 	//cm *connections.ConnectionManager,
-	transportServer transports.ITransportServer,
+	transportServer messaging.ITransportServer,
 ) *DigitwinRouter {
 	ar := &DigitwinRouter{
 		dtwStore: dtwService.DtwStore,

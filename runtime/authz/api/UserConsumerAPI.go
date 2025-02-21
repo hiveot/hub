@@ -5,7 +5,7 @@
 package authz
 
 import (
-	"github.com/hiveot/hub/transports/consumer"
+	"github.com/hiveot/hub/messaging/consumer"
 )
 
 // UserSetPermissions client method - Set Permissions.

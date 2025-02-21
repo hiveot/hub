@@ -3,8 +3,8 @@ package directorycli
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/hiveot/hub/transports/clients/discovery"
-	"github.com/hiveot/hub/transports/tputils/tlsclient"
+	"github.com/hiveot/hub/messaging/clients/discovery"
+	"github.com/hiveot/hub/messaging/tputils/tlsclient"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/urfave/cli/v2"
 	"time"
@@ -71,7 +71,7 @@ func HandleDiscover(readtd bool, authToken string) error {
 				fmt.Println(string(tdPretty))
 				fmt.Printf("--- TD END: %v\n", tdObj["id"])
 			} else {
-				fmt.Println("Unable to read the directory TD from 'https://%s%s' (%d): %s",
+				fmt.Printf("Unable to read the directory TD from 'https://%s%s' (%d): %s\n",
 					hostPort, entry.TD, code, err.Error())
 			}
 		}

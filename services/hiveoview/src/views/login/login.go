@@ -2,9 +2,9 @@ package login
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/messaging/servers/httpserver"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/views"
-	"github.com/hiveot/hub/transports/servers/httpserver"
 	"github.com/teris-io/shortid"
 	"log/slog"
 	"net/http"

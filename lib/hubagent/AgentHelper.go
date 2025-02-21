@@ -2,7 +2,7 @@ package hubagent
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/messaging"
 )
 
 // AgentHandler is a helper that maps messages to a Thing (service) invocation
@@ -24,14 +24,14 @@ type AgentHandler struct {
 }
 
 func (agent *AgentHandler) InvokeMethod(
-	method interface{}, msg *transports.RequestMessage) (output any, err error) {
+	method interface{}, msg *messaging.RequestMessage) (output any, err error) {
 
 	respData, err := HandleRequestMessage(msg.SenderID, method, msg.Input)
 	return respData, err
 }
 
 func (agent *AgentHandler) HandleRequest(
-	req *transports.RequestMessage, _ transports.IConnection) *transports.ResponseMessage {
+	req *messaging.RequestMessage, _ messaging.IConnection) *messaging.ResponseMessage {
 
 	if req.ThingID == agent.thingID {
 		method, found := agent.methods[req.Name]

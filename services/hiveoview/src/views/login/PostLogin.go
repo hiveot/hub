@@ -3,9 +3,9 @@ package login
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/hiveot/hub/messaging/servers/httpserver"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
-	"github.com/hiveot/hub/transports/servers/httpserver"
 	jsoniter "github.com/json-iterator/go"
 	"io"
 	"log/slog"

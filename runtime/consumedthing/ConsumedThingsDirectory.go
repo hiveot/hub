@@ -1,9 +1,9 @@
 package consumedthing
 
 import (
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/consumer"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
-	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/consumer"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
@@ -88,7 +88,7 @@ func (cts *ConsumedThingsDirectory) GetTD(thingID string) *td.TD {
 // OnResponse updates the consumed things from subscriptions
 // To be invoked by the owner of the consumer when an async notification has
 // been received.
-func (cts *ConsumedThingsDirectory) OnResponse(msg *transports.ResponseMessage) error {
+func (cts *ConsumedThingsDirectory) OnResponse(msg *messaging.ResponseMessage) error {
 
 	slog.Debug("ConsumedThingsDirectory.OnResponse",
 		slog.String("senderID", msg.SenderID),

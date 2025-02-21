@@ -1,9 +1,9 @@
 package service
 
 import (
+	"github.com/hiveot/hub/messaging"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/runtime/digitwin/store"
-	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
@@ -17,7 +17,7 @@ type DirectoryService struct {
 	dtwStore *store.DigitwinStore
 
 	// notifications on directory changes
-	notifHandler    transports.ResponseHandler
+	notifHandler    messaging.ResponseHandler
 	addFormsHandler func(*td.TD) error
 }
 
@@ -94,7 +94,7 @@ func (svc *DirectoryService) RemoveTD(senderID string, dThingID string) error {
 	if err == nil && svc.notifHandler != nil {
 		// Publish an event notifying subscribers that the Thing was removed from the directory
 		// Those subscribing to directory event will be notified
-		notif := transports.NewResponseMessage(wot.OpSubscribeEvent,
+		notif := messaging.NewResponseMessage(wot.OpSubscribeEvent,
 			digitwin.ThingDirectoryDThingID, digitwin.ThingDirectoryEventThingRemoved,
 			dThingID, nil, "")
 		go svc.notifHandler(notif)
@@ -123,7 +123,7 @@ func (svc *DirectoryService) UpdateTD(agentID string, tdJson string) error {
 		dtdJSON, _ := jsoniter.MarshalToString(digitalTwinTD)
 		// todo: only send notification on changes
 		// publish an event that the directory TD has updated with a new TD
-		notif := transports.NewResponseMessage(wot.OpSubscribeEvent,
+		notif := messaging.NewResponseMessage(wot.OpSubscribeEvent,
 			digitwin.ThingDirectoryDThingID, digitwin.ThingDirectoryEventThingUpdated,
 			dtdJSON, nil, "")
 		go svc.notifHandler(notif)
@@ -137,7 +137,7 @@ func (svc *DirectoryService) UpdateTD(agentID string, tdJson string) error {
 // Currently being revised to be compatible.
 // The transport binding can be supplied directly or set later by the parent service
 func NewDigitwinDirectoryService(
-	dtwStore *store.DigitwinStore, notifHandler transports.ResponseHandler) *DirectoryService {
+	dtwStore *store.DigitwinStore, notifHandler messaging.ResponseHandler) *DirectoryService {
 
 	dirSvc := &DirectoryService{
 		dtwStore:     dtwStore,

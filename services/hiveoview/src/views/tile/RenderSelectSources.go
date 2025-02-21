@@ -1,13 +1,13 @@
 package tile
 
 import (
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/runtime/consumedthing"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"github.com/hiveot/hub/services/hiveoview/src/views/directory"
-	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/tputils"
 	"net/http"
 )
 
@@ -92,7 +92,7 @@ func RenderSelectSources(w http.ResponseWriter, r *http.Request) {
 			//eventValues, _ := digitwin.ThingValuesReadAllEvents(sess.GetConsumer(), thingID)
 			//allValues := append(propValues, eventValues...)
 			data.IOValues[thingID] = consumedthing.NewInteractionOutputFromValueList(
-				td, transports.AffordanceTypeEvent, allValues)
+				td, messaging.AffordanceTypeEvent, allValues)
 		}
 	}
 	buff, err := app.RenderAppOrFragment(r, RenderSelectSourceTemplateFile, data)

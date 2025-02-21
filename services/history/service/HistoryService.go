@@ -2,9 +2,9 @@ package service
 
 import (
 	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hub/messaging/consumer"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/hiveot/hub/services/history/historyapi"
-	"github.com/hiveot/hub/transports/consumer"
 	"log/slog"
 )
 

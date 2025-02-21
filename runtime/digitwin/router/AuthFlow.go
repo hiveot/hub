@@ -2,13 +2,13 @@
 package router
 
 import (
+	"github.com/hiveot/hub/messaging"
 	authn "github.com/hiveot/hub/runtime/authn/api"
-	"github.com/hiveot/hub/transports"
 )
 
 // HandleLogin passes the request as an action to the authn service
 func (svc *DigitwinRouter) HandleLogin(
-	req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
+	req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
 
 	// Data {login,password}
 	req.ThingID = authn.UserDThingID
@@ -19,7 +19,7 @@ func (svc *DigitwinRouter) HandleLogin(
 
 // HandleLoginRefresh passes the request as an action to the authn service
 func (svc *DigitwinRouter) HandleLoginRefresh(
-	req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
+	req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
 
 	// Data {oldToken}
 	req.ThingID = authn.UserDThingID
@@ -32,7 +32,7 @@ func (svc *DigitwinRouter) HandleLoginRefresh(
 // HandleLogout converts the logout operation into an authn service action
 // and closes all connections from the sender.
 func (svc *DigitwinRouter) HandleLogout(
-	req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
+	req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
 
 	req.ThingID = authn.UserDThingID
 	req.Name = authn.UserLogoutMethod

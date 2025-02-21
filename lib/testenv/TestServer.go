@@ -5,12 +5,12 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/plugin"
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/clients"
+	"github.com/hiveot/hub/messaging/consumer"
 	"github.com/hiveot/hub/runtime"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	authz "github.com/hiveot/hub/runtime/authz/api"
-	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/clients"
-	"github.com/hiveot/hub/transports/consumer"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
@@ -74,7 +74,7 @@ type TestServer struct {
 // consumer and a new session token.
 // In case of error this panics.
 func (test *TestServer) AddConnectConsumer(
-	clientID string, clientRole authz.ClientRole) (consumer *consumer.Consumer, cc transports.IClientConnection, token string) {
+	clientID string, clientRole authz.ClientRole) (consumer *consumer.Consumer, cc messaging.IClientConnection, token string) {
 
 	password := clientID
 	err := test.Runtime.AuthnSvc.AdminSvc.AddConsumer(clientID,
@@ -105,7 +105,7 @@ func (test *TestServer) AddConnectConsumer(
 // AddConnectAgent creates a new agent test client.
 // Agents use non-session tokens and survive a server restart.
 // This returns the agent's connection token.
-func (test *TestServer) AddConnectAgent(agentID string) (agent *consumer.Agent, cc transports.IClientConnection, token string) {
+func (test *TestServer) AddConnectAgent(agentID string) (agent *consumer.Agent, cc messaging.IClientConnection, token string) {
 
 	token, err := test.Runtime.AuthnSvc.AdminSvc.AddAgent(agentID,
 		authn.AdminAddAgentArgs{ClientID: agentID, DisplayName: "agent name"})
@@ -234,7 +234,7 @@ func (test *TestServer) CreateTestTD(i int) (tdi *td.TD) {
 // GetAgentConnection returns a hub connection for an agent and protocol.
 // This sets 'getForm' to the handler provided by the protocol server. For testing only.
 func (test *TestServer) GetAgentConnection(agentID string, protocolType string) (
-	transports.IClientConnection, *consumer.Agent) {
+	messaging.IClientConnection, *consumer.Agent) {
 
 	s := test.Runtime.TransportsMgr.GetServer(protocolType)
 	connectURL := s.GetConnectURL()
@@ -247,7 +247,7 @@ func (test *TestServer) GetAgentConnection(agentID string, protocolType string) 
 // GetConsumerConnection returns a hub connection for a consumer and protocol.
 // This sets 'getForm' to the handler provided by the protocol server. For testing only.
 func (test *TestServer) GetConsumerConnection(
-	clientID string, protocolType string) (transports.IClientConnection, *consumer.Consumer) {
+	clientID string, protocolType string) (messaging.IClientConnection, *consumer.Consumer) {
 	//
 	//getForm := func(op string, thingID string, name string) *td.Form {
 	//	return test.Runtime.GetForm(op, protocolName)
@@ -334,11 +334,11 @@ func NewTestServer() *TestServer {
 		Config:  runtime.NewRuntimeConfig(),
 		// change these for running all tests with different protocols
 		//AgentProtocol: transports.ProtocolTypeHiveotWSS,
-		AgentProtocol: transports.ProtocolTypeHiveotSSE,
+		AgentProtocol: messaging.ProtocolTypeHiveotSSE,
 		//ServiceProtocol: transports.ProtocolTypeHiveotWSS,
-		ServiceProtocol: transports.ProtocolTypeHiveotSSE,
+		ServiceProtocol: messaging.ProtocolTypeHiveotSSE,
 		//ConsumerProtocol: transports.ProtocolTypeHiveotWSS,
-		ConsumerProtocol: transports.ProtocolTypeHiveotSSE,
+		ConsumerProtocol: messaging.ProtocolTypeHiveotSSE,
 		ConnectTimeout:   time.Second * 120, // testing extra long
 	}
 

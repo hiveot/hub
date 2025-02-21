@@ -3,12 +3,12 @@ package session
 import (
 	"crypto/ed25519"
 	"crypto/x509"
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/clients"
+	"github.com/hiveot/hub/messaging/clients/authenticator"
+	"github.com/hiveot/hub/messaging/consumer"
+	"github.com/hiveot/hub/messaging/servers/httpserver"
 	"github.com/hiveot/hub/services/hiveoview/src"
-	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/clients"
-	"github.com/hiveot/hub/transports/clients/authenticator"
-	"github.com/hiveot/hub/transports/consumer"
-	"github.com/hiveot/hub/transports/servers/httpserver"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -47,7 +47,7 @@ type WebSessionManager struct {
 
 // add a new session with the given hub connection and send a session count event
 func (sm *WebSessionManager) _addSession(
-	r *http.Request, cid string, cc transports.IClientConnection) (
+	r *http.Request, cid string, cc messaging.IClientConnection) (
 	cs *WebClientSession, err error) {
 
 	// if the browser does not provide a CID until after the first connection,

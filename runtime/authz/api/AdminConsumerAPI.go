@@ -5,7 +5,7 @@
 package authz
 
 import (
-	"github.com/hiveot/hub/transports/consumer"
+	"github.com/hiveot/hub/messaging/consumer"
 )
 
 // AdminGetClientRole client method - Get Client Role.

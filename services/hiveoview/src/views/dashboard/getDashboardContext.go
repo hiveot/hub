@@ -3,8 +3,8 @@ package dashboard
 import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
+	"github.com/hiveot/hub/messaging/tputils"
 	session2 "github.com/hiveot/hub/services/hiveoview/src/session"
-	"github.com/hiveot/hub/transports/tputils"
 	"net/http"
 )
 

@@ -1,9 +1,9 @@
 package service
 
 import (
+	"github.com/hiveot/hub/messaging/tputils"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/runtime/digitwin/store"
-	"github.com/hiveot/hub/transports/tputils"
 )
 
 // ValuesService provides access to digital thing values by consumers

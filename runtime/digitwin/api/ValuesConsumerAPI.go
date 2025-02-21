@@ -5,7 +5,7 @@
 package digitwin
 
 import (
-	"github.com/hiveot/hub/transports/consumer"
+	"github.com/hiveot/hub/messaging/consumer"
 )
 
 // ThingValuesQueryAction client method - Action status.

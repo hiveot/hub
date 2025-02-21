@@ -1,11 +1,11 @@
 package dashboard
 
 import (
+	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"github.com/hiveot/hub/services/hiveoview/src/views/tile"
-	"github.com/hiveot/hub/transports/tputils"
 	"log/slog"
 	"net/http"
 )

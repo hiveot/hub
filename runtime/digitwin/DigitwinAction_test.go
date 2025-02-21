@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/tputils"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/runtime/digitwin/service"
-	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	"github.com/stretchr/testify/assert"
@@ -38,7 +38,7 @@ func TestActionFlow(t *testing.T) {
 	require.NoError(t, err)
 
 	// update the action
-	req := transports.NewRequestMessage(
+	req := messaging.NewRequestMessage(
 		wot.OpInvokeAction, dThingID, actionName, actionValue, correlationID)
 	stored, err := dtwStore.NewActionStart(req)
 	require.NoError(t, err)
@@ -54,7 +54,7 @@ func TestActionFlow(t *testing.T) {
 	require.Equal(t, correlationID, as.Id)
 
 	// complete the action
-	resp := transports.NewResponseMessage(
+	resp := messaging.NewResponseMessage(
 		wot.OpInvokeAction, dThingID, actionName, actionValue, nil, correlationID)
 	as, err = dtwStore.UpdateActionStatus(agentID, resp)
 	require.NoError(t, err)
@@ -68,7 +68,7 @@ func TestActionFlow(t *testing.T) {
 	require.NoError(t, err)
 	outputInt := tputils.DecodeAsInt(as.Output)
 	require.Equal(t, actionValue, outputInt)
-	require.Equal(t, transports.StatusCompleted, as.Status)
+	require.Equal(t, messaging.StatusCompleted, as.Status)
 
 	// read all actions
 	//actList, err := svc.ValuesSvc.QueryAllActions(consumerID, dThingID)
@@ -128,7 +128,7 @@ func TestInvokeActionErrors(t *testing.T) {
 	require.NoError(t, err)
 
 	// invoke the action with the wrong thing
-	req := transports.NewRequestMessage(
+	req := messaging.NewRequestMessage(
 		wot.OpInvokeAction, "badThingID", actionName, actionValue, correlationID)
 	stored, err := dtwStore.NewActionStart(req)
 
@@ -137,7 +137,7 @@ func TestInvokeActionErrors(t *testing.T) {
 	assert.False(t, stored)
 
 	// invoke the action with the wrong name
-	req = transports.NewRequestMessage(
+	req = messaging.NewRequestMessage(
 		wot.OpInvokeAction, dThingID, "badName", actionValue, correlationID)
 	stored, err = dtwStore.NewActionStart(req)
 	// same as above
@@ -145,9 +145,9 @@ func TestInvokeActionErrors(t *testing.T) {
 	assert.False(t, stored)
 
 	// complete the action on wrong thing
-	resp := transports.NewResponseMessage(
+	resp := messaging.NewResponseMessage(
 		wot.OpInvokeAction, "badThingID", actionName, actionValue, nil, correlationID)
-	resp.Status = transports.StatusPending
+	resp.Status = messaging.StatusPending
 	_, err = dtwStore.UpdateActionStatus(agentID, resp)
 	assert.Error(t, err)
 
@@ -188,7 +188,7 @@ func TestDigitwinAgentAction(t *testing.T) {
 
 	// next, invoke the action to read the thing from the directory.
 	ag := service.NewDigitwinAgent(svc)
-	req := transports.NewRequestMessage(vocab.OpInvokeAction,
+	req := messaging.NewRequestMessage(vocab.OpInvokeAction,
 		digitwin.ThingDirectoryDThingID, digitwin.ThingDirectoryReadTDMethod, dThingID, consumerID)
 	req.CorrelationID = correlationID
 	resp := ag.HandleRequest(req, nil)
@@ -197,21 +197,21 @@ func TestDigitwinAgentAction(t *testing.T) {
 	require.NotEmpty(t, resp.Output)
 
 	// a non-existing TD should fail
-	req = transports.NewRequestMessage(vocab.OpInvokeAction,
+	req = messaging.NewRequestMessage(vocab.OpInvokeAction,
 		digitwin.ThingDirectoryDThingID, digitwin.ThingDirectoryReadTDMethod, "badid", consumerID)
 	req.CorrelationID = correlationID
 	resp = ag.HandleRequest(req, nil)
 	require.NotEmpty(t, resp.Error)
 
 	// a non-existing method name should fail
-	req = transports.NewRequestMessage(vocab.OpInvokeAction,
+	req = messaging.NewRequestMessage(vocab.OpInvokeAction,
 		digitwin.ThingDirectoryDThingID, "badMethod", dThingID, consumerID)
 	req.CorrelationID = correlationID
 	resp = ag.HandleRequest(req, nil)
 	require.NotEmpty(t, resp.Error)
 
 	// a non-existing serviceID should fail
-	req = transports.NewRequestMessage(vocab.OpInvokeAction,
+	req = messaging.NewRequestMessage(vocab.OpInvokeAction,
 		"badservicename", digitwin.ThingDirectoryReadTDMethod, dThingID, consumerID)
 	req.CorrelationID = correlationID
 	resp = ag.HandleRequest(req, nil)

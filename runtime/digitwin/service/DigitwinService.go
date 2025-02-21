@@ -3,8 +3,8 @@ package service
 import (
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
+	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/runtime/digitwin/store"
-	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"os"
@@ -59,7 +59,7 @@ func (svc *DigitwinService) Stop() {
 //
 // storesDir is the directory where to create the digitwin storage
 // notifHandler is the handler to send responses to subscribes
-func StartDigitwinService(storesDir string, notifHandler transports.ResponseHandler) (
+func StartDigitwinService(storesDir string, notifHandler messaging.ResponseHandler) (
 	svc *DigitwinService, digitwinStore *store.DigitwinStore, err error) {
 
 	sPath := path.Join(storesDir, "digitwin")

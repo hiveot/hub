@@ -5,12 +5,12 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/clients/authenticator"
+	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/runtime"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	authz "github.com/hiveot/hub/runtime/authz/api"
-	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/clients/authenticator"
-	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	"github.com/stretchr/testify/assert"
@@ -94,7 +94,7 @@ func TestMultiConnectSingleClient(t *testing.T) {
 	const agentID = "agent1"
 	const testConnections = int32(100)
 	const eventName = "event1"
-	var clients = make([]transports.IClientConnection, 0)
+	var clients = make([]messaging.IClientConnection, 0)
 	var connectCount atomic.Int32
 	var disConnectCount atomic.Int32
 	var messageCount atomic.Int32
@@ -106,7 +106,7 @@ func TestMultiConnectSingleClient(t *testing.T) {
 	td1 := ts.AddTD(agentID, nil)
 	cl1, _, token1 := ts.AddConnectConsumer(clientID1, authz.ClientRoleOperator)
 
-	onConnection := func(connected bool, err error, c transports.IConnection) {
+	onConnection := func(connected bool, err error, c messaging.IConnection) {
 		if connected {
 			connectCount.Add(1)
 		} else {
@@ -117,7 +117,7 @@ func TestMultiConnectSingleClient(t *testing.T) {
 	//	messageCount.Add(1)
 	//	return req.CreateResponse()
 	//}
-	onResponse := func(msg *transports.ResponseMessage) error {
+	onResponse := func(msg *messaging.ResponseMessage) error {
 		messageCount.Add(1)
 		return nil
 	}
@@ -181,7 +181,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	const actionID = "action-1" // match the test TD action
 	var actionPayload = "payload1"
 	var expectedReply = actionPayload + ".reply"
-	var rxMsg transports.RequestMessage
+	var rxMsg messaging.RequestMessage
 
 	r := startRuntime()
 	defer r.Stop()
@@ -200,7 +200,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	defer cl1.Disconnect()
 
 	// Agent receives action request which we'll handle here
-	agentRequestHandler := func(req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
+	agentRequestHandler := func(req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
 		rxMsg = *req
 		reply := tputils.DecodeAsString(req.Input, 0) + ".reply"
 		// TODO WSS doesn't support the senderID in the message. How important is this?
@@ -232,7 +232,7 @@ func TestServiceReconnect(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	const agentID = "agent1"
 	const userID = "user1"
-	var rxMsg atomic.Pointer[transports.RequestMessage]
+	var rxMsg atomic.Pointer[messaging.RequestMessage]
 	var actionPayload = "payload1"
 	var expectedReply = actionPayload + ".reply"
 
@@ -255,8 +255,8 @@ func TestServiceReconnect(t *testing.T) {
 	require.NotNil(t, hasAgent)
 
 	// Agent receives action request which we'll handle here
-	ag1.SetRequestHandler(func(msg *transports.RequestMessage,
-		c transports.IConnection) *transports.ResponseMessage {
+	ag1.SetRequestHandler(func(msg *messaging.RequestMessage,
+		c messaging.IConnection) *messaging.ResponseMessage {
 
 		var req string
 		rxMsg.Store(msg)

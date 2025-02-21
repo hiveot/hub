@@ -2,8 +2,8 @@ package service
 
 import (
 	"github.com/hiveot/hub/lib/hubagent"
+	"github.com/hiveot/hub/messaging/consumer"
 	"github.com/hiveot/hub/services/launcher/launcherapi"
-	"github.com/hiveot/hub/transports/consumer"
 )
 
 // StartLauncherAgent returns a new instance of the agent for the launcher service.

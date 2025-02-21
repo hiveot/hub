@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/clients/httpsseclient"
+	"github.com/hiveot/hub/messaging/servers/httpserver"
+	"github.com/hiveot/hub/messaging/tputils/tlsclient"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/service"
-	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/clients/httpsseclient"
-	"github.com/hiveot/hub/transports/servers/httpserver"
-	"github.com/hiveot/hub/transports/tputils/tlsclient"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
@@ -69,11 +69,11 @@ func getHiveoviewForm(op, thingID, name string) *td.Form {
 // The TestLogin test must succeed before using this.
 // This returns a client. Call Close() when done.
 func WebLogin(sseURL string, clientID string,
-	onConnection func(bool, error, transports.IConnection),
-	onRequest transports.RequestHandler,
-	onResponse transports.ResponseHandler,
+	onConnection func(bool, error, messaging.IConnection),
+	onRequest messaging.RequestHandler,
+	onResponse messaging.ResponseHandler,
 ) (
-	cl transports.IConnection, err error) {
+	cl messaging.IConnection, err error) {
 
 	//sseCl := clients.NewHubClient(sseURL, clientID, ts.Certs.CaCert)
 	// websocket client
@@ -215,7 +215,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	const agentID = "agent1"
 	const testConnections = 1
 	const eventName = "event1"
-	var webClients = make([]transports.IConnection, 0)
+	var webClients = make([]messaging.IConnection, 0)
 	var connectCount atomic.Int32
 	var disConnectCount atomic.Int32
 	var messageCount atomic.Int32
@@ -249,7 +249,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 
 	_ = token1
 	//handler for web connection notifications
-	onConnection := func(connected bool, err error, _ transports.IConnection) {
+	onConnection := func(connected bool, err error, _ messaging.IConnection) {
 		if connected {
 			connectCount.Add(1)
 		} else {
@@ -257,7 +257,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 		}
 	}
 	// handler hiveoview SSE notifications
-	onResponse := func(msg *transports.ResponseMessage) error {
+	onResponse := func(msg *messaging.ResponseMessage) error {
 		// the UI expects this format for triggering htmx
 		expectedType := fmt.Sprintf("dtw:%s:%s/%s", agentID, td1.ID, eventName)
 		if msg.Operation == expectedType {

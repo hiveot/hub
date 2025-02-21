@@ -9,9 +9,9 @@ import (
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/consumer"
 	"github.com/hiveot/hub/runtime/exposedthing"
-	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/consumer"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"sync"
@@ -68,7 +68,7 @@ func (svc *IsyBinding) onIsyEvent(thingID string, evName string, value any) {
 
 // HandleWriteBindingProperty configures the binding.
 func (svc *IsyBinding) HandleWriteBindingProperty(
-	req *transports.RequestMessage) *transports.ResponseMessage {
+	req *messaging.RequestMessage) *messaging.ResponseMessage {
 
 	err := fmt.Errorf("unknown configuration request '%s' from '%s'", req.Name, req.SenderID)
 	// connection settings to connect to the gateway

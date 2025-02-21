@@ -5,7 +5,7 @@
 package digitwin
 
 import (
-	"github.com/hiveot/hub/transports/consumer"
+	"github.com/hiveot/hub/messaging/consumer"
 )
 
 // ThingDirectoryReadAllTDs client method - Read all TDs.

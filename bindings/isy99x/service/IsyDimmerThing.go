@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 )
@@ -48,14 +48,14 @@ func (it *IsyDimmerThing) MakeTD() *td.TD {
 	return tdi
 }
 
-func (it *IsyDimmerThing) HandleConfigRequest(req *transports.RequestMessage) *transports.ResponseMessage {
+func (it *IsyDimmerThing) HandleConfigRequest(req *messaging.RequestMessage) *messaging.ResponseMessage {
 	return req.CreateResponse(nil, errors.New("unknown config: "+req.Name))
 }
 
 // HandleActionRequest handles request to execute an action on this device
 // actionID string as defined in the action affordance
 // newValue is not used as these actions do not carry a parameter
-func (it *IsyDimmerThing) HandleActionRequest(req *transports.RequestMessage) *transports.ResponseMessage {
+func (it *IsyDimmerThing) HandleActionRequest(req *messaging.RequestMessage) *messaging.ResponseMessage {
 	var restPath = ""
 	var newValue = ""
 	// FIXME: req keys are node attributes keys, not vocab @types (or are they?)

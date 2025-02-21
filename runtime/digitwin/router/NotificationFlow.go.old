@@ -4,8 +4,8 @@ package router
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/digitwin"
-	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/tputils"
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"

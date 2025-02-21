@@ -3,10 +3,10 @@ package idprovcli
 import (
 	"fmt"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/messaging/consumer"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
 	"github.com/hiveot/hub/services/idprov/idprovclient"
-	"github.com/hiveot/hub/transports/consumer"
 	"github.com/urfave/cli/v2"
 )
 

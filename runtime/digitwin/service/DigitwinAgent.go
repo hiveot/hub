@@ -2,21 +2,21 @@ package service
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/messaging"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
-	"github.com/hiveot/hub/transports"
 	"log/slog"
 )
 
 type DigitwinAgent struct {
 	svc           *DigitwinService
-	dirHandler    transports.RequestHandler
-	valuesHandler transports.RequestHandler
+	dirHandler    messaging.RequestHandler
+	valuesHandler messaging.RequestHandler
 }
 
 // HandleRequest handles digitwin services requests
 // Including reading events, properties, actions from the digital twin.
 func (agent *DigitwinAgent) HandleRequest(
-	req *transports.RequestMessage, c transports.IConnection) (resp *transports.ResponseMessage) {
+	req *messaging.RequestMessage, c messaging.IConnection) (resp *messaging.ResponseMessage) {
 
 	if req.ThingID == digitwin.ThingDirectoryDThingID {
 		resp = agent.dirHandler(req, c)

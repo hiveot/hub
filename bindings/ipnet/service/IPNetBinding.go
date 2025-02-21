@@ -5,8 +5,8 @@ import (
 	"github.com/hiveot/hub/bindings/ipnet/config"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
-	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/consumer"
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/consumer"
 	"log/slog"
 	"time"
 )
@@ -22,8 +22,8 @@ type IPNetBinding struct {
 }
 
 // ActionHandler handle action requests
-func (svc *IPNetBinding) ActionHandler(req *transports.RequestMessage,
-	_ transports.IConnection) (resp *transports.ResponseMessage) {
+func (svc *IPNetBinding) ActionHandler(req *messaging.RequestMessage,
+	_ messaging.IConnection) (resp *messaging.ResponseMessage) {
 
 	resp = req.CreateResponse(nil, fmt.Errorf("unknown action '%s'", req.Name))
 	slog.Warn(resp.Error)

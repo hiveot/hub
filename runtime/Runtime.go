@@ -3,6 +3,8 @@ package runtime
 import (
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/servers"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	"github.com/hiveot/hub/runtime/authn/service"
 	authz "github.com/hiveot/hub/runtime/authz/api"
@@ -10,8 +12,6 @@ import (
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/runtime/digitwin/router"
 	service4 "github.com/hiveot/hub/runtime/digitwin/service"
-	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/servers"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
@@ -197,7 +197,7 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 
 // SendNotification sends an event or property response message to subscribers.
 // This simply forwards the notification to the transport manager.
-func (r *Runtime) SendNotification(notif *transports.ResponseMessage) error {
+func (r *Runtime) SendNotification(notif *messaging.ResponseMessage) error {
 	r.TransportsMgr.SendNotification(notif)
 	return nil
 }

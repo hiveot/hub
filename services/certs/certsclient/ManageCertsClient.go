@@ -1,8 +1,8 @@
 package certsclient
 
 import (
+	"github.com/hiveot/hub/messaging/consumer"
 	"github.com/hiveot/hub/services/certs/certsapi"
-	"github.com/hiveot/hub/transports/consumer"
 	"github.com/hiveot/hub/wot/td"
 )
 

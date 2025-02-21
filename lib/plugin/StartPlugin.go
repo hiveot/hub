@@ -1,8 +1,8 @@
 package plugin
 
 import (
-	"github.com/hiveot/hub/transports/clients"
-	"github.com/hiveot/hub/transports/consumer"
+	"github.com/hiveot/hub/messaging/clients"
+	"github.com/hiveot/hub/messaging/consumer"
 	"log/slog"
 	"os"
 )

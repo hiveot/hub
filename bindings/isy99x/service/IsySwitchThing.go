@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
-	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/tputils"
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 )
@@ -29,7 +29,7 @@ func (it *IsySwitchThing) GetPropValues(onlyChanges bool) map[string]any {
 // HandleActionRequest handles request to execute an action on this device
 // actionID string as defined in the action affordance
 // newValue is not used as these actions do not carry a parameter
-func (it *IsySwitchThing) HandleActionRequest(req *transports.RequestMessage) *transports.ResponseMessage {
+func (it *IsySwitchThing) HandleActionRequest(req *messaging.RequestMessage) *messaging.ResponseMessage {
 	var restPath = ""
 	var newValue = ""
 	// FIXME: req keys are the raw keys, not @type

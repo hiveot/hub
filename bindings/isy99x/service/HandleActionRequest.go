@@ -3,13 +3,13 @@ package service
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/transports"
+	"github.com/hiveot/hub/messaging"
 	"log/slog"
 )
 
 // HandleRequest passes the action request to the associated Thing.
-func (svc *IsyBinding) handleRequest(req *transports.RequestMessage,
-	_ transports.IConnection) (resp *transports.ResponseMessage) {
+func (svc *IsyBinding) handleRequest(req *messaging.RequestMessage,
+	_ messaging.IConnection) (resp *messaging.ResponseMessage) {
 
 	if req.Operation == vocab.OpWriteProperty {
 		return svc.handleConfigRequest(req)

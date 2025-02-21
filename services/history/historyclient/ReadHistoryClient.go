@@ -1,9 +1,9 @@
 package historyclient
 
 import (
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/consumer"
 	"github.com/hiveot/hub/services/history/historyapi"
-	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/consumer"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	"time"
@@ -47,7 +47,7 @@ func (cl *ReadHistoryClient) GetCursor(thingID string, filterOnName string) (
 // to continue reading the next page.
 func (cl *ReadHistoryClient) ReadHistory(thingID string, filterOnName string,
 	timestamp time.Time, duration time.Duration, limit int) (
-	batch []*transports.ThingValue, itemsRemaining bool, err error) {
+	batch []*messaging.ThingValue, itemsRemaining bool, err error) {
 
 	args := historyapi.ReadHistoryArgs{
 		ThingID:      thingID,

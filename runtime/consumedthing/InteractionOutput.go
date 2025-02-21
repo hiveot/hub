@@ -3,9 +3,9 @@ package consumedthing
 import (
 	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/tputils"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
-	"github.com/hiveot/hub/transports"
-	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot/td"
 	"time"
 )
@@ -182,7 +182,7 @@ func NewInteractionOutputFromValue(tdi *td.TD, affType string, tv digitwin.Thing
 //	tm contains the received ThingMessage data
 //	tdi is the associated thing description
 func NewInteractionOutputFromResponse(
-	tdi *td.TD, affType string, resp *transports.ResponseMessage) *InteractionOutput {
+	tdi *td.TD, affType string, resp *messaging.ResponseMessage) *InteractionOutput {
 
 	iout := NewInteractionOutput(tdi, affType, resp.Name, resp.Output, resp.Updated)
 	iout.SenderID = resp.SenderID
@@ -198,9 +198,9 @@ func NewInteractionOutputFromResponse(
 //	tm contains the received ThingMessage data
 //	tdi is the associated thing description
 func NewInteractionOutputFromActionStatus(
-	tdi *td.TD, as transports.ActionStatus) *InteractionOutput {
+	tdi *td.TD, as messaging.ActionStatus) *InteractionOutput {
 
-	iout := NewInteractionOutput(tdi, transports.AffordanceTypeAction, as.Name, as.Output, as.Updated)
+	iout := NewInteractionOutput(tdi, messaging.AffordanceTypeAction, as.Name, as.Output, as.Updated)
 	iout.SenderID = as.SenderID
 	return iout
 }
@@ -219,21 +219,21 @@ func NewInteractionOutput(tdi *td.TD, affType string, name string, raw any, upda
 	var title string
 
 	switch affType {
-	case transports.AffordanceTypeAction:
+	case messaging.AffordanceTypeAction:
 		aff := tdi.Actions[name]
 		if aff == nil {
 			break
 		}
 		title = aff.Title
 		schema = aff.Output
-	case transports.AffordanceTypeEvent:
+	case messaging.AffordanceTypeEvent:
 		aff := tdi.Events[name]
 		if aff == nil {
 			break
 		}
 		title = aff.Title
 		schema = aff.Data
-	case transports.AffordanceTypeProperty:
+	case messaging.AffordanceTypeProperty:
 		aff := tdi.Properties[name]
 		if aff == nil {
 			break
