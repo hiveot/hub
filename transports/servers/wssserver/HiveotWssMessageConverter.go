@@ -11,37 +11,43 @@ import (
 type HiveotMessageConverter struct {
 }
 
-// DecodeMessage converts a native protocol received message to a hiveot
-// request or response message.
+// DecodeRequest converts a native protocol received message to a hiveot request message.
 // Raw is the json serialized encoded message
-func (svc *HiveotMessageConverter) DecodeMessage(
-	raw []byte) (*transports.RequestMessage, *transports.ResponseMessage, error) {
-
-	// FIXME: worst case this is triple unmarshalling
+func (svc *HiveotMessageConverter) DecodeRequest(raw []byte) *transports.RequestMessage {
 
 	var req transports.RequestMessage
 	err := jsoniter.Unmarshal(raw, &req)
 	//err := tputils.DecodeAsObject(msg, &req)
-	if err != nil {
-		return nil, nil, err
+	if err != nil || req.MessageType != transports.MessageTypeRequest {
+		return nil
 	}
-	if req.MessageType == transports.MessageTypeRequest {
-		return &req, nil, err
-	} else {
-		var resp transports.ResponseMessage
-		err := jsoniter.Unmarshal(raw, &resp)
-		//err = tputils.DecodeAsObject(msg, &resp)
-		return nil, &resp, err
+	return &req
+}
+
+// DecodeResponse converts a native protocol received message to a hiveot response message.
+// Raw is the json serialized encoded message
+func (svc *HiveotMessageConverter) DecodeResponse(
+	raw []byte) *transports.ResponseMessage {
+
+	var resp transports.ResponseMessage
+	err := jsoniter.Unmarshal(raw, &resp)
+	if err != nil || resp.MessageType != transports.MessageTypeResponse {
+		return nil
 	}
+	return &resp
 }
 
 // EncodeRequest converts a hiveot RequestMessage to protocol equivalent message
 func (svc *HiveotMessageConverter) EncodeRequest(req *transports.RequestMessage) (any, error) {
+	// ensure this field is present as it is needed for decoding
+	req.MessageType = transports.MessageTypeRequest
 	return req, nil
 }
 
 // EncodeResponse converts a hiveot ResponseMessage to protocol equivalent message
 func (svc *HiveotMessageConverter) EncodeResponse(resp *transports.ResponseMessage) (any, error) {
+	// ensure this field is present as it is needed for decoding
+	resp.MessageType = transports.MessageTypeResponse
 	return resp, nil
 }
 

@@ -5,8 +5,6 @@ import (
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/clients"
 	"github.com/hiveot/hub/wot"
-	"github.com/hiveot/hub/wot/td"
-	jsoniter "github.com/json-iterator/go"
 	"sync/atomic"
 	"time"
 )
@@ -44,11 +42,13 @@ func (ag *Agent) onRequest(
 // PubEvent helper for agents to send an event to subscribers.
 // This sends a subscription response message with status running.
 //
-// The underlying transport protocol binding handles the subscription mechanism.
+// The underlying transport protocol binding handles the subscription mechanism
+// as the agent itself doesn't track subscriptions.
 func (ag *Agent) PubEvent(thingID string, name string, value any) error {
 	// This is a response to subscription request.
 	// for now assume this is a hub connection and the hub wants all events
-	resp := transports.NewNotificationResponse(wot.OpSubscribeEvent, thingID, name, value, nil)
+	resp := transports.NewResponseMessage(
+		wot.OpSubscribeEvent, thingID, name, value, nil, "")
 
 	return ag.cc.SendResponse(resp)
 }
@@ -59,7 +59,8 @@ func (ag *Agent) PubEvent(thingID string, name string, value any) error {
 func (ag *Agent) PubProperty(thingID string, name string, value any) error {
 	// This is a response to an observation request.
 	// send the property update as a response to the observe request
-	resp := transports.NewNotificationResponse(wot.OpObserveProperty, thingID, name, value, nil)
+	resp := transports.NewResponseMessage(
+		wot.OpObserveProperty, thingID, name, value, nil, "")
 	return ag.cc.SendResponse(resp)
 }
 
@@ -70,7 +71,8 @@ func (ag *Agent) PubProperties(thingID string, propMap map[string]any) error {
 
 	// Implicit rule: if no name is provided the data is a map
 	// the transport adds the correlationID of the subscription.
-	resp := transports.NewNotificationResponse(wot.OpObserveAllProperties, thingID, "", propMap, nil)
+	resp := transports.NewResponseMessage(
+		wot.OpObserveAllProperties, thingID, "", propMap, nil, "")
 
 	return ag.cc.SendResponse(resp)
 }
@@ -86,17 +88,21 @@ func (ag *Agent) PubProperties(thingID string, propMap map[string]any) error {
 // https://www.w3.org/TR/wot-discovery/#exploration-td-type-thingdirectory
 // > PUT /things/{id}   payload TD JSON; returns 201
 // > GET /things/{id}
-func (ag *Agent) PubTD(td *td.TD) error {
-	// TD is sent as JSON
-	tdJson, _ := jsoniter.MarshalToString(td)
-
-	// send a request to the hub to update the TD. The protocol binding will convert
-	// this to the appropriate messaging.
-	// * HTTP-Basic bindings uses PUT TD /things/{id}
-	// * HiveOT WSS binding passes it as-is
-	//
-	return ag.Rpc(wot.HTOpUpdateTD, td.ID, "", tdJson, nil)
-}
+//func (ag *Agent) PubTD(td *td.TD) error {
+//	// TD is sent as JSON
+//	tdJson, _ := jsoniter.MarshalToString(td)
+//
+//	// send a request to the directory to update the TD. The protocol binding will convert
+//	// this requires a directory client
+//	// option 1: from discovery using HTTP  put /things/{id}
+//	// option 2: from protocol binding?
+//
+//	// this to the appropriate messaging.
+//	// * HTTP-Basic bindings uses PUT TD /things/{id}
+//	// * HiveOT WSS binding passes it as-is
+//	//
+//	return ag.Rpc(wot.HTOpUpdateTD, td.ID, "", tdJson, nil)
+//}
 
 // SetRequestHandler set the application handler for incoming requests
 func (ag *Agent) SetRequestHandler(cb transports.RequestHandler) {

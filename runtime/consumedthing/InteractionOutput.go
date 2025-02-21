@@ -3,6 +3,7 @@ package consumedthing
 import (
 	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/api/go/vocab"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot/td"
@@ -151,7 +152,7 @@ func (iout *InteractionOutput) UnitSymbol() string {
 	return unit.Symbol
 }
 
-func NewInteractionOutputFromValueList(tdi *td.TD, affType string, values []transports.ThingValue) InteractionOutputMap {
+func NewInteractionOutputFromValueList(tdi *td.TD, affType string, values []digitwin.ThingValue) InteractionOutputMap {
 	ioMap := make(map[string]*InteractionOutput)
 	for _, tv := range values {
 		iout := NewInteractionOutput(tdi, affType, tv.Name, tv.Output, tv.Updated)
@@ -161,7 +162,7 @@ func NewInteractionOutputFromValueList(tdi *td.TD, affType string, values []tran
 	return ioMap
 }
 
-func NewInteractionOutputFromValue(tdi *td.TD, affType string, tv transports.ThingValue) *InteractionOutput {
+func NewInteractionOutputFromValue(tdi *td.TD, affType string, tv digitwin.ThingValue) *InteractionOutput {
 	iout := NewInteractionOutput(tdi, affType, tv.Name, tv.Output, tv.Updated)
 	return iout
 }

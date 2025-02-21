@@ -1,7 +1,6 @@
 package runtime_test
 
 import (
-	"errors"
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	authn "github.com/hiveot/hub/runtime/authn/api"
@@ -28,7 +27,6 @@ func TestAddRemoveTD(t *testing.T) {
 	const agentID = "agent1"
 	const userID = "user1"
 	const agThing1ID = "thing1"
-	var dtThing1ID = td.MakeDigiTwinThingID(agentID, agThing1ID)
 
 	r := startRuntime()
 	defer r.Stop()
@@ -36,50 +34,33 @@ func TestAddRemoveTD(t *testing.T) {
 	// Create the agent and its TDs to query
 	td1 := td.NewTD(agThing1ID, "Title", vocab.ThingSensorMulti)
 	td1JSON, _ := jsoniter.MarshalToString(td1)
-	tdList := []string{string(td1JSON)}
 	ag1, _, _ := ts.AddConnectAgent(agentID)
-	ag1.SetRequestHandler(func(req *transports.RequestMessage, _ transports.IConnection) *transports.ResponseMessage {
-		if req.Operation == wot.HTOpReadTD {
-			req.CreateResponse(td1JSON, nil)
-		} else if req.Operation == wot.HTOpReadAllTDs {
-			req.CreateResponse(tdList, nil)
-		}
-		return req.CreateResponse(nil, errors.New("UnexpectedRequest"))
-	})
-	defer ag1.Disconnect()
 
 	// Create the consumer
 	co1, _, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
-	//co1.SetResponseHandler(func(msg *transports.ResponseMessage) error {
-	//	return nil
-	//})
 	defer co1.Disconnect()
-	//err := co1.Subscribe("", "")
-	//require.NoError(t, err)
 
 	// Add the TD
-	// the hub will intercept this operation and update the digitwin directory
-	err := ag1.PubTD(td1) // sends request HTOpUpdateTD
+	err := digitwin.ThingDirectoryUpdateTD(&ag1.Consumer, td1JSON)
 	assert.NoError(t, err)
 
 	// Get returns a serialized TD object
 	// use the helper directory client rpc method
-	td3Json, err := co1.ReadTD(dtThing1ID)
+	var dtThing1ID = td.MakeDigiTwinThingID(agentID, agThing1ID)
+	td3JSON, err := digitwin.ThingDirectoryReadTD(&ag1.Consumer, dtThing1ID)
 	require.NoError(t, err)
 	var td3 td.TD
-	err = jsoniter.UnmarshalFromString(td3Json, &td3)
+	err = jsoniter.UnmarshalFromString(td3JSON, &td3)
 	require.NoError(t, err)
 	assert.Equal(t, dtThing1ID, td3.ID)
 
-	//stat = co1.SendRequest(nil, directory.ThingID, directory.RemoveTDMethod, &args, nil)
 	// RemoveTD from the directory
 	err = co1.Rpc(wot.OpInvokeAction, digitwin.ThingDirectoryDThingID,
 		digitwin.ThingDirectoryRemoveTDMethod, dtThing1ID, nil)
 	require.NoError(t, err)
 
 	// after removal of the TD, getTD should return an error
-	//var tdJSON4 string
-	td4Json, err := co1.ReadTD(dtThing1ID)
+	td4Json, err := digitwin.ThingDirectoryReadTD(co1, dtThing1ID)
 	require.Error(t, err)
 	require.Empty(t, td4Json)
 }

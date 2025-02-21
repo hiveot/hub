@@ -80,12 +80,13 @@ func ServeTDDiscovery(
 	address := parts.Hostname()
 
 	subType := "_directory._sub"
+	// add WoT discovery parameters
 	params := map[string]string{
 		"td":     tdPath,
 		"scheme": scheme,
 		"type":   "Directory",
 	}
-	// add the connection endpoints to the discovery record
+	// add connection endpoints as parameters
 	for ep, url := range endpoints {
 		params[ep] = url
 	}

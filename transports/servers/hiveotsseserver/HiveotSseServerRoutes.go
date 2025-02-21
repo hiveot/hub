@@ -119,6 +119,7 @@ func (srv *HiveotSseServer) HandleRequestMessage(w http.ResponseWriter, r *http.
 // The message body is unmarshalled and included as the response.
 func (srv *HiveotSseServer) HandleResponseMessage(w http.ResponseWriter, r *http.Request) {
 	resp := transports.ResponseMessage{}
+	resp.MessageType = transports.MessageTypeResponse
 
 	// 1. Decode the request message
 	rp, err := httpserver.GetRequestParams(r, &resp)

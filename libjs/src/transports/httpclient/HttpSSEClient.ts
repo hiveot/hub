@@ -10,7 +10,6 @@ import {
     OpSubscribeAllEvents,
     OpUnsubscribeAllEvents,
     OpUnsubscribeEvent,
-    HTOpUpdateTD,
     OpObserveAllProperties,
     OpObserveProperty,
 } from "@hivelib/api/vocab/vocab.js";
@@ -35,7 +34,9 @@ const RequestFailed = "failed"
 //
 // FIXME: THESE WILL BE REMOVED WHEN SWITCHING TO FORMS
 
-
+// TODO: use directory service
+const ThingDirectoryDThingID = "dtw:digitwin:ThingDirectory"
+const ThingDirectoryUpdateTDMethod = "updateTD"
 
 // HTTP protoocol constants
 // StatusHeader contains the result of the request, eg Pending, Completed or Failed
@@ -409,7 +410,8 @@ export class HttpSSEClient implements IAgentConnection {
     // This is the ID under which the TD document is published that describes
     // the thing. It can be the ID of the sensor, actuator or service.
     //
-    // This sends a response message with the SubscribeEvent operation.
+    // This sends a response message with the SubscribeEvent operation with status
+    // completed.
     //
     //	@param thingID: of the Thing whose event is published
     //	@param eventName: is one of the predefined events as described in the Thing TD
@@ -451,12 +453,24 @@ export class HttpSSEClient implements IAgentConnection {
     pubTD(td: TD) {
         hclog.info("pubTD. thingID:", td.id)
         let tdJSON = JSON.stringify(td, null, ' ');
-        let msg = new RequestMessage({
-            operation:HTOpUpdateTD,
-            thingID: td.id,
-            input: tdJSON,
-        })
-        return this.sendRequest(msg)
+
+        // Invoke action to update the directory service
+        // TODO: convert to use the discovered directory
+        this.invokeAction(ThingDirectoryDThingID, ThingDirectoryUpdateTDMethod,td)
+            .then((resp: ResponseMessage) => {
+                // complete the request if the result is returned, otherwise wait for
+                // the callback from _correlData
+                console.info("TD published: "+td.id)
+            })
+            .catch((e) => {
+                console.error("pubTD failed", e);
+            })
+        // let msg = new RequestMessage({
+        //     operation:HTOpUpdateTD,
+        //     thingID: td.id,
+        //     input: tdJSON,
+        // })
+        // return this.sendRequest(msg)
     }
 
     // obtain a new token

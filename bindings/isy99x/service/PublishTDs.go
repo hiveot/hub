@@ -3,6 +3,8 @@ package service
 import (
 	"errors"
 	"fmt"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
+	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 )
 
@@ -11,8 +13,10 @@ import (
 func (svc *IsyBinding) PublishTDs() (err error) {
 	slog.Info("PublishTDs Gateway and Nodes")
 
-	td := svc.MakeBindingTD()
-	err = svc.ag.PubTD(td)
+	tdi := svc.MakeBindingTD()
+	tdJSON, _ := jsoniter.MarshalToString(tdi)
+	err = digitwin.ThingDirectoryUpdateTD(&svc.ag.Consumer, tdJSON)
+	//err = svc.ag.PubTD(tdi)
 	if err != nil {
 		err = fmt.Errorf("failed publishing binding TD: %w", err)
 		slog.Error(err.Error())
@@ -34,11 +38,13 @@ func (svc *IsyBinding) PublishTDs() (err error) {
 		}
 		//things := svc.IsyGW.ReadThings()
 		for _, thing := range svc.IsyGW.GetIsyThings() {
-			td = thing.MakeTD()
-			err = svc.ag.PubTD(td)
+			tdi = thing.MakeTD()
+			tdJSON, _ = jsoniter.MarshalToString(tdi)
+			err = digitwin.ThingDirectoryUpdateTD(&svc.ag.Consumer, tdJSON)
+			//err = svc.ag.PubTD(td)
 			if err != nil {
 				slog.Error("failed publishing Thing TD",
-					"thingID", td.ID, "err", err.Error())
+					"thingID", tdi.ID, "err", err.Error())
 			}
 		}
 	}

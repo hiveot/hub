@@ -301,13 +301,14 @@ func (ct *ConsumedThing) QueryAction(name string) transports.ActionStatus {
 }
 
 // ReadEvent refreshes the last event value by reading it from the hub
+// TODO: subscribing to events should send the last one
 func (ct *ConsumedThing) ReadEvent(name string) *InteractionOutput {
 
-	resp, err := ct.co.ReadEvent(ct.ThingID, name)
+	tv, err := digitwin.ThingValuesReadEvent(ct.co, name, ct.ThingID)
 	if err != nil {
 		return nil
 	}
-	iout := NewInteractionOutput(ct.tdi, transports.AffordanceTypeEvent, name, resp.Output, resp.Updated)
+	iout := NewInteractionOutput(ct.tdi, transports.AffordanceTypeEvent, name, tv.Output, tv.Updated)
 	//iout.setSchemaFromTD(ct.tdi)
 	ct.mux.Lock()
 	ct.eventValues[name] = iout
@@ -358,7 +359,7 @@ func (ct *ConsumedThing) ReadProperty(name string) *InteractionOutput {
 func (ct *ConsumedThing) Refresh() error {
 	var iout *InteractionOutput
 	// refresh events
-	valueMap, err := ct.co.ReadAllEvents(ct.ThingID)
+	valueMap, err := digitwin.ThingValuesReadAllEvents(ct.co, ct.ThingID)
 	if err != nil {
 		return err
 	}
@@ -372,7 +373,8 @@ func (ct *ConsumedThing) Refresh() error {
 		ct.propValues[name] = iout
 	}
 	// refresh properties
-	valueMap, err = ct.co.ReadAllProperties(ct.ThingID)
+	valueMap, err = digitwin.ThingValuesReadAllProperties(ct.co, ct.ThingID)
+	//valueMap, err = ct.co.ReadAllProperties(ct.ThingID)
 	if err != nil {
 		return err
 	}

@@ -13,7 +13,7 @@ import (
 	"log/slog"
 )
 
-func DirectoryListCommand(hc **consumer.Consumer) *cli.Command {
+func DirectoryListCommand(co **consumer.Consumer) *cli.Command {
 	var verbose = false
 	return &cli.Command{
 		Name:      "ld",
@@ -31,12 +31,12 @@ func DirectoryListCommand(hc **consumer.Consumer) *cli.Command {
 		Action: func(cCtx *cli.Context) error {
 			var err = fmt.Errorf("expected 0 or 1 parameters")
 			if cCtx.NArg() == 0 {
-				err = HandleListDirectory(*hc)
+				err = HandleListDirectory(*co)
 			} else if cCtx.NArg() == 1 {
 				if !verbose {
-					err = HandleListThing(*hc, cCtx.Args().First())
+					err = HandleListThing(*co, cCtx.Args().First())
 				} else {
-					err = HandleListThingVerbose(*hc, cCtx.Args().First())
+					err = HandleListThingVerbose(*co, cCtx.Args().First())
 				}
 			}
 			return err
@@ -45,9 +45,9 @@ func DirectoryListCommand(hc **consumer.Consumer) *cli.Command {
 }
 
 // HandleListDirectory lists the directory content
-func HandleListDirectory(hc *consumer.Consumer) (err error) {
+func HandleListDirectory(co *consumer.Consumer) (err error) {
 	// todo: iterate with offset and limit
-	tdListJson, err := digitwin.ThingDirectoryReadAllTDs(hc, 300, 0)
+	tdListJson, err := digitwin.ThingDirectoryReadAllTDs(co, 300, 0)
 	tdList, err2 := td.UnmarshalTDList(tdListJson)
 
 	if err != nil || err2 != nil {
@@ -78,14 +78,14 @@ func HandleListDirectory(hc *consumer.Consumer) (err error) {
 }
 
 // HandleListThing lists details of a Thing in the directory
-func HandleListThing(hc *consumer.Consumer, thingID string) error {
+func HandleListThing(co *consumer.Consumer, thingID string) error {
 
-	tdDocJson, err := digitwin.ThingDirectoryReadTD(hc, thingID)
+	tdDocJson, err := digitwin.ThingDirectoryReadTD(co, thingID)
 	tdDoc, err2 := td.UnmarshalTD(tdDocJson)
 	if err != nil || err2 != nil {
 		return err
 	}
-	propValueMap, err := digitwin.ThingValuesReadAllProperties(hc, thingID)
+	propValueMap, err := digitwin.ThingValuesReadAllProperties(co, thingID)
 
 	if err != nil {
 		slog.Error("Unable to read directory:", "err", err)
@@ -127,7 +127,7 @@ func HandleListThing(hc *consumer.Consumer, thingID string) error {
 	fmt.Println(utils.COYellow + "\nEvents:")
 	fmt.Println(" ID                                  EventType                 Title                                    DataType   Value           Description")
 	fmt.Println(" ----------------------------------  ------------------------  ---------------------------------------  ---------  --------------  -----------" + utils.COReset)
-	eventValueMap, err := digitwin.ThingValuesReadAllEvents(hc, thingID)
+	eventValueMap, err := digitwin.ThingValuesReadAllEvents(co, thingID)
 	keys = utils.OrderedMapKeys(tdDoc.Events)
 	for _, key := range keys {
 		ev := tdDoc.Events[key]
@@ -147,7 +147,7 @@ func HandleListThing(hc *consumer.Consumer, thingID string) error {
 	fmt.Println(utils.CORed + "\nActions:")
 	fmt.Println(" ID                             ActionType                Title                                    Arg(s)     Value           Description")
 	fmt.Println(" -----------------------------  ------------------------  ---------------------------------------  ---------  --------------  -----------" + utils.COReset)
-	actionValueMap, err := digitwin.ThingValuesReadAllProperties(hc, thingID)
+	actionValueMap, err := digitwin.ThingValuesReadAllProperties(co, thingID)
 	keys = utils.OrderedMapKeys(tdDoc.Actions)
 	for _, key := range keys {
 		action := tdDoc.Actions[key]
@@ -166,8 +166,8 @@ func HandleListThing(hc *consumer.Consumer, thingID string) error {
 }
 
 // HandleListThingVerbose lists a Thing full TD
-func HandleListThingVerbose(hc *consumer.Consumer, thingID string) error {
-	tdJSON, err := digitwin.ThingDirectoryReadTD(hc, thingID)
+func HandleListThingVerbose(co *consumer.Consumer, thingID string) error {
+	tdJSON, err := digitwin.ThingDirectoryReadTD(co, thingID)
 
 	if err != nil {
 		return err

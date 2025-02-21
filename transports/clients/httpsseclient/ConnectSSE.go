@@ -220,6 +220,7 @@ func (cc *HiveotSseClient) handleSseEvent(event sse.Event) {
 		}()
 	} else if event.Type == transports.MessageTypeResponse {
 		resp := transports.ResponseMessage{}
+		resp.MessageType = transports.MessageTypeResponse
 		_ = jsoniter.UnmarshalFromString(event.Data, &resp)
 		// don't block the receiver flow
 		//slog.Info("handle response: ",
@@ -244,6 +245,7 @@ func (cc *HiveotSseClient) handleSseEvent(event sse.Event) {
 		// everything else is in a different format. Attempt to deliver for
 		// compatibility with other protocols (such has hiveoview test client)
 		resp := transports.ResponseMessage{}
+		resp.MessageType = transports.MessageTypeResponse
 		resp.Output = event.Data
 		resp.Operation = event.Type
 		// don't block the receiver flow

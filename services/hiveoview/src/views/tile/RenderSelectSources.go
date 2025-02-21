@@ -2,6 +2,7 @@ package tile
 
 import (
 	"github.com/hiveot/hub/runtime/consumedthing"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"github.com/hiveot/hub/services/hiveoview/src/views/directory"
@@ -77,11 +78,11 @@ func RenderSelectSources(w http.ResponseWriter, r *http.Request) {
 	}
 	data.AgentThings = directory.GroupByAgent(tds)
 	for thingID, td := range tds {
-		propMap, _ := sess.GetConsumer().ReadAllProperties(thingID)
-		evMap, _ := sess.GetConsumer().ReadAllEvents(thingID)
+		propMap, _ := digitwin.ThingValuesReadAllProperties(sess.GetConsumer(), thingID)
+		evMap, _ := digitwin.ThingValuesReadAllEvents(sess.GetConsumer(), thingID)
 		//propValues, err := digitwin.ThingValuesReadAllProperties(sess.GetConsumer(), thingID)
 		if propMap != nil && evMap != nil {
-			allValues := make([]transports.ThingValue, 0, len(propMap)+len(evMap))
+			allValues := make([]digitwin.ThingValue, 0, len(propMap)+len(evMap))
 			for _, v := range propMap {
 				allValues = append(allValues, v)
 			}

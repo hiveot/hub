@@ -259,6 +259,7 @@ func (cl *MqttClientConnection) handlePahoMessage(m *paho.Publish) {
 		// responses have topic starting with the inbox prefix
 		if strings.HasPrefix(m.Topic, INBOX_PREFIX) && correlationID != "" {
 			resp := transports.ResponseMessage{}
+			resp.MessageType = transports.MessageTypeResponse
 			// mqtt payload are straight hiveot messages (for now)
 			err := jsoniter.Unmarshal(m.Payload, &resp)
 			if err != nil {
@@ -286,6 +287,7 @@ func (cl *MqttClientConnection) handlePahoMessage(m *paho.Publish) {
 
 		// this is a notification message with an event, property, TD update
 		notif := transports.ResponseMessage{}
+		resp.MessageType = transports.MessageTypeResponse
 		err := jsoniter.Unmarshal(m.Payload, &notif)
 		if err != nil {
 			slog.Warn("handlePahoMessage. Notification unmarshal failed",

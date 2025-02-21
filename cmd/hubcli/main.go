@@ -38,6 +38,7 @@ func main() {
 	var certsDir string
 	var serverURL string
 	var protocol = transports.ProtocolTypeHiveotWSS
+	var authToken string
 
 	// environment defaults
 	env := plugin.GetAppEnvironment("", false)
@@ -109,6 +110,10 @@ func main() {
 			if nowrap {
 				fmt.Printf(utils.WrapOff)
 			}
+
+			// most commands need auth
+			authToken, _ = clients.LoadToken(loginID, certsDir)
+
 			// TODO: cleanup: don't connect for these commands
 			cmd := c.Args().First()
 			if cmd == "" || cmd == "disco" || cmd == "cca" || cmd == "vca" {
@@ -117,10 +122,9 @@ func main() {
 
 			caCert, _ := clients.LoadCA(certsDir)
 			if password != "" {
-				cc, _, err = clients.ConnectWithPassword(loginID, password, caCert, "", "", "", 0)
+				cc, authToken, err = clients.ConnectWithPassword(loginID, password, caCert, "", "", "", 0)
 			} else {
-				token, _ := clients.LoadToken(loginID, certsDir)
-				cc, err = clients.ConnectWithToken(loginID, token, caCert, "", "", 0)
+				cc, err = clients.ConnectWithToken(loginID, authToken, caCert, "", "", 0)
 			}
 
 			if err != nil {
@@ -147,7 +151,7 @@ func main() {
 			launchercli.LauncherStopCommand(&hc),
 
 			directorycli.DirectoryListCommand(&hc),
-			directorycli.DiscoListCommand(),
+			directorycli.DiscoListCommand(&authToken),
 
 			//historycli.HistoryLatestCommand(&hc),
 			historycli.HistoryListCommand(&hc),

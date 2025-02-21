@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/runtime/exposedthing"
 	"github.com/hiveot/hub/transports/consumer"
 	"github.com/hiveot/hub/wot/td"
+	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -366,7 +368,9 @@ func (igw *IsyGatewayThing) MakeTD() *td.TD {
 // PubTD read and publishes the gateway's TD
 func (svc *IsyGatewayThing) PubTD(ag *consumer.Agent) (err error) {
 	tdi := svc.MakeTD()
-	err = ag.PubTD(tdi)
+	tdJSON, _ := jsoniter.MarshalToString(tdi)
+	err = digitwin.ThingDirectoryUpdateTD(&ag.Consumer, tdJSON)
+	//err = ag.PubTD(tdi)
 	if err != nil {
 		err = fmt.Errorf("failed publishing ISY gateway TD: %w", err)
 		slog.Error(err.Error())

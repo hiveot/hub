@@ -68,8 +68,8 @@ var authPermissions = []string{
 
 // re-usable permissions to observe and read and observe properties, events, actions, TDs
 var readPermissions = []string{
-	wot.HTOpReadEvent, wot.HTOpReadAllEvents,
-	wot.HTOpReadTD, wot.HTOpReadAllTDs,
+	//wot.HTOpReadEvent, wot.HTOpReadAllEvents,
+	//wot.HTOpReadTD, wot.HTOpReadAllTDs,
 	wot.OpObserveProperty, wot.OpObserveAllProperties,
 	//wot.OpQueryAction, wot.OpQueryAllActions,  // why query actions if you cant invoke?
 	wot.OpReadProperty, wot.OpReadAllProperties,
@@ -82,7 +82,7 @@ var readPermissions = []string{
 var agentPermissions = RolePermission{
 	Operations: append(authPermissions,
 		wot.OpInvokeAction,
-		wot.HTOpUpdateTD,
+		//wot.HTOpUpdateTD,
 	),
 }
 
@@ -92,7 +92,7 @@ var servicePermissions = RolePermission{
 		append(authPermissions, readPermissions...),
 		wot.OpQueryAction, wot.OpQueryAllActions,
 		wot.OpInvokeAction, wot.OpWriteProperty,
-		wot.HTOpUpdateTD,
+		//wot.HTOpUpdateTD,
 	),
 }
 

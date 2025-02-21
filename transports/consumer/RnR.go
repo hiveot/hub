@@ -66,11 +66,11 @@ func (rnr *RnRChan) HandleResponse(msg *transports.ResponseMessage) bool {
 	rChan, isRPC := rnr.correlData[msg.CorrelationID]
 	defer rnr.mux.Unlock()
 	if isRPC {
-		//slog.Info("HandleResponse: writing response to channel. ",
-		//	slog.String("correlationID", msg.CorrelationID),
-		//	slog.String("operation", msg.Operation),
-		//	slog.String("status", msg.Status),
-		//)
+		slog.Info("HandleResponse: writing response to channel. ",
+			slog.String("correlationID", msg.CorrelationID),
+			slog.String("operation", msg.Operation),
+			slog.String("status", msg.Status),
+		)
 		ctx, cancelFn := context.WithTimeout(context.Background(), rnr.writeTimeout)
 		select {
 		case rChan <- msg:
@@ -81,6 +81,9 @@ func (rnr *RnRChan) HandleResponse(msg *transports.ResponseMessage) bool {
 			isRPC = false
 		}
 		cancelFn()
+	} else {
+		slog.Info("HandleResponse: not an RPC",
+			slog.String("correlationID", msg.CorrelationID))
 	}
 	return isRPC
 }

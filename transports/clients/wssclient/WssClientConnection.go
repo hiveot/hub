@@ -139,10 +139,26 @@ func (c *WssClient) GetConnectionInfo() transports.ConnectionInfo {
 // it to the application handler.
 func (cl *WssClient) HandleWssMessage(raw []byte) {
 
-	req, resp, err := cl.messageConverter.DecodeMessage(raw)
-	if err != nil {
-		slog.Warn("HandleWssMessage: failed decoding message:", "err", err.Error())
-	} else if req != nil {
+	// both non-agents and agents receive responses
+	resp := cl.messageConverter.DecodeResponse(raw)
+	if resp != nil {
+		hPtr := cl.appResponseHandlerPtr.Load()
+		if hPtr == nil {
+			slog.Error("HandleWssMessage: no response handler set",
+				"clientID", cl.cinfo.ClientID,
+				"operation", resp.Operation,
+			)
+			return
+		}
+		// pass the response to the registered handler
+		_ = (*hPtr)(resp)
+	} else {
+		// only agents receive requests
+		req := cl.messageConverter.DecodeRequest(raw)
+		if req == nil {
+			slog.Warn("HandleWssMessage: Message is not a request or response")
+			return
+		}
 		hPtr := cl.appRequestHandlerPtr.Load()
 		if hPtr == nil {
 			slog.Error("HandleWssMessage: no request handler set",
@@ -154,16 +170,6 @@ func (cl *WssClient) HandleWssMessage(raw []byte) {
 		// return the response to the caller
 		resp = (*hPtr)(req, cl)
 		_ = cl.SendResponse(resp)
-	} else if resp != nil {
-		hPtr := cl.appResponseHandlerPtr.Load()
-		if hPtr == nil {
-			slog.Error("HandleWssMessage: no response handler set",
-				"clientID", cl.cinfo.ClientID,
-				"operation", resp.Operation,
-			)
-			return
-		}
-		_ = (*hPtr)(resp)
 	}
 }
 
@@ -200,11 +206,11 @@ func (cl *WssClient) Reconnect() {
 func (cl *WssClient) SendRequest(req *transports.RequestMessage) error {
 
 	slog.Info("SendRequest",
-		slog.String("operation", req.Operation),
 		slog.String("clientID", cl.cinfo.ClientID),
+		slog.String("correlationID", req.CorrelationID),
+		slog.String("operation", req.Operation),
 		slog.String("thingID", req.ThingID),
 		slog.String("name", req.Name),
-		slog.String("correlationID", req.CorrelationID),
 	)
 
 	// convert the operation into a protocol message

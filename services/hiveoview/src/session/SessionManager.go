@@ -194,7 +194,7 @@ func (sm *WebSessionManager) HandleConnectWithPassword(
 
 	// attempt to login
 	newToken, err = authCl.LoginWithPassword(loginID, password)
-	
+
 	if err != nil {
 		return "", err
 	}

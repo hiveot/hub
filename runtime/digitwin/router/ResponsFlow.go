@@ -146,14 +146,12 @@ func (svc *DigitwinRouter) HandleSubscriptionNotification(resp *transports.Respo
 				}
 			}
 		}
-	} else if resp.Operation == wot.HTOpUpdateTD {
-		tdJSON := resp.ToString(0)
-		err := svc.dtwService.DirSvc.UpdateTD(resp.SenderID, tdJSON)
-		if err != nil {
-			slog.Warn(err.Error())
-		}
-		// Don't forward the notification.
-		//Only digitwin TDs should be published. These have updated forms.
+		//} else if resp.Operation == wot.HTOpUpdateTD {
+		//	tdJSON := resp.ToString(0)
+		//	err := svc.dtwService.DirSvc.UpdateTD(resp.SenderID, tdJSON)
+		//	if err != nil {
+		//		slog.Warn(err.Error())
+		//	}
 	} else {
 		err := fmt.Errorf("Unknown notification '%s'", resp.Operation)
 		slog.Warn(err.Error())
@@ -186,8 +184,7 @@ func (svc *DigitwinRouter) HandleResponse(resp *transports.ResponseMessage) erro
 	if resp.Operation == wot.OpObserveProperty ||
 		resp.Operation == wot.OpObserveAllProperties ||
 		resp.Operation == wot.OpSubscribeEvent ||
-		resp.Operation == wot.OpSubscribeAllEvents ||
-		resp.Operation == wot.HTOpUpdateTD {
+		resp.Operation == wot.OpSubscribeAllEvents {
 
 		err = svc.HandleSubscriptionNotification(resp)
 		return err

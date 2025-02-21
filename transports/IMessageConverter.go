@@ -8,9 +8,14 @@ package transports
 //
 // Intended for use by consumers and agents on the client and server side.
 type IMessageConverter interface {
-	// DecodeMessage converts a protocol message to a hiveot request or response message
+	// DecodeRequest converts a protocol message to a hiveot request message
 	// provide the serialized data to avoid multiple unmarshalls
-	DecodeMessage(raw []byte) (*RequestMessage, *ResponseMessage, error)
+	// This returns nil if this isn't a request.
+	DecodeRequest(raw []byte) *RequestMessage
+
+	// DecodeResponse converts a protocol message to a hiveot response message.
+	// This returns nil if this isn't a response
+	DecodeResponse(raw []byte) *ResponseMessage
 
 	// EncodeRequest converts a hiveot RequestMessage to a native protocol message
 	// return an error if the message cannot be converted.

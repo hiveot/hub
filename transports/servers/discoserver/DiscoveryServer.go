@@ -2,7 +2,6 @@ package discoserver
 
 import (
 	"github.com/grandcat/zeroconf"
-	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/servers/httpserver"
 	"log/slog"
 	"net/http"
@@ -20,7 +19,7 @@ type DiscoveryServer struct {
 	tdPath string
 
 	// The directory TD document in JSON for serving on the path publish in exploration.
-	dirTD string
+	dirTDJSON string
 	// service discovery using mDNS
 	dnssdServer *zeroconf.Server
 	// the http server that servers the exploration endpoint
@@ -35,7 +34,7 @@ type DiscoveryServer struct {
 // HandleGetDirTD returns the requested the TD Directory
 // This provides a WoT discovery exploration mechanism
 func (svc *DiscoveryServer) HandleGetDirTD(w http.ResponseWriter, r *http.Request) {
-	svc.httpTransport.WriteReply(w, svc.dirTD, transports.StatusCompleted, nil)
+	_, _ = w.Write([]byte(svc.dirTDJSON))
 }
 
 func (svc *DiscoveryServer) Stop() {
@@ -47,7 +46,7 @@ func (svc *DiscoveryServer) Stop() {
 // ServeDirectoryTD registers the handler for serving the Directory TD
 func (svc *DiscoveryServer) ServeDirectoryTD(tdPath string, tdJSON string) {
 
-	svc.dirTD = tdJSON
+	svc.dirTDJSON = tdJSON
 	svc.httpTransport.AddOps(nil, []string{}, http.MethodGet,
 		tdPath, svc.HandleGetDirTD)
 
@@ -70,19 +69,19 @@ func (svc *DiscoveryServer) ServeDirectoryTD(tdPath string, tdJSON string) {
 //	httpServer is the server to use for serving the TD
 //	endpoints with hiveot protocol connection endpoints
 func StartDiscoveryServer(instanceName string, serviceName string,
-	dirTD string, tdPath string, httpTransport *httpserver.HttpTransportServer,
+	dirTDJSON string, tdPath string, httpTransport *httpserver.HttpTransportServer,
 	endpoints map[string]string) (
 	*DiscoveryServer, error) {
 
 	svc := &DiscoveryServer{
-		dirTD:         dirTD,
+		dirTDJSON:     dirTDJSON,
 		tdPath:        tdPath,
 		dnssdServer:   nil,
 		httpTransport: httpTransport,
 	}
 
 	// serve the Directory TD exploration endpoint
-	svc.ServeDirectoryTD(tdPath, dirTD)
+	svc.ServeDirectoryTD(tdPath, dirTDJSON)
 
 	// serve the introduction mechanism
 	tddURL, _ := url.JoinPath(httpTransport.GetConnectURL(), tdPath)

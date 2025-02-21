@@ -56,7 +56,8 @@ func TestObservePropertyByConsumer(t *testing.T) {
 	time.Sleep(time.Millisecond) // time to take effect
 
 	// 3. Server sends a property update to consumers
-	notif1 := transports.NewNotificationResponse(wot.OpObserveProperty, thingID, propertyKey1, propValue1, nil)
+	notif1 := transports.NewResponseMessage(
+		wot.OpObserveProperty, thingID, propertyKey1, propValue1, nil, "")
 	notif1.SenderID = agentID
 	srv.SendNotification(notif1)
 
@@ -71,10 +72,12 @@ func TestObservePropertyByConsumer(t *testing.T) {
 	time.Sleep(time.Millisecond * 10) // time to take effect
 
 	// 6. Server sends a property update to consumers
-	notif2 := transports.NewNotificationResponse(wot.OpObserveProperty, thingID, propertyKey1, propValue2, nil)
+	notif2 := transports.NewResponseMessage(
+		wot.OpObserveProperty, thingID, propertyKey1, propValue2, nil, "")
 	notif2.SenderID = agentID
 	srv.SendNotification(notif2)
-	notif3 := transports.NewNotificationResponse(wot.OpObserveProperty, thingID, propertyKey2, propValue2, nil)
+	notif3 := transports.NewResponseMessage(
+		wot.OpObserveProperty, thingID, propertyKey2, propValue2, nil, "")
 	notif3.SenderID = agentID
 	srv.SendNotification(notif3)
 
@@ -86,7 +89,8 @@ func TestObservePropertyByConsumer(t *testing.T) {
 	// 8. client 2 unobserves
 	err = cl2.UnobserveProperty("", "")
 	time.Sleep(time.Millisecond * 10)
-	notif4 := transports.NewNotificationResponse(wot.OpObserveProperty, thingID, propertyKey2, propValue1, nil)
+	notif4 := transports.NewResponseMessage(
+		wot.OpObserveProperty, thingID, propertyKey2, propValue1, nil, "")
 	notif4.SenderID = agentID
 	srv.SendNotification(notif4)
 	// no change is expected
@@ -94,9 +98,7 @@ func TestObservePropertyByConsumer(t *testing.T) {
 
 }
 
-// Agent sends property updates to server
-// This is used if the Thing agent is connected as a client, and does not
-// run a server itself.
+// Agent publishes property updates to subscribers
 func TestPublishPropertyByAgent(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	var evVal atomic.Value
@@ -119,7 +121,7 @@ func TestPublishPropertyByAgent(t *testing.T) {
 	agConn1, ag1, _ := NewAgent(testAgentID1)
 	defer agConn1.Disconnect()
 
-	// 3. agent publishes a property update
+	// 3. agent publishes a property update to subscribers
 	err := ag1.PubProperty(thingID, propKey1, propValue1)
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond) // time to take effect

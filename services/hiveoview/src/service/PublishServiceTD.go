@@ -2,8 +2,10 @@ package service
 
 import (
 	"github.com/hiveot/hub/api/go/vocab"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/wot/td"
+	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 )
 
@@ -31,8 +33,9 @@ func (svc *HiveovService) CreateHiveoviewTD() *td.TD {
 func (svc *HiveovService) PublishServiceTD() error {
 
 	myTD := svc.CreateHiveoviewTD()
-	//err := svc.ag.PubTD(myTD.ID, string(tdJSON))
-	err := svc.ag.PubTD(myTD)
+	tdJSON, _ := jsoniter.MarshalToString(myTD)
+	err := digitwin.ThingDirectoryUpdateTD(&svc.ag.Consumer, tdJSON)
+	//err := svc.ag.PubTD(myTD)
 
 	if err != nil {
 		slog.Error("failed to publish the hiveoview service TD", "err", err.Error())

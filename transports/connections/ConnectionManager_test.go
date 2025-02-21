@@ -173,12 +173,16 @@ func TestPublishEventProp(t *testing.T) {
 	require.NoError(t, err)
 
 	// publish
-	notif1 := transports.NewNotificationResponse(wot.OpSubscribeEvent, dThingID, evName, nil, nil)
+	notif1 := transports.NewResponseMessage(
+		wot.OpSubscribeEvent, dThingID, evName, nil, nil, "")
 	notif1.SenderID = agent1ID
-	cm.SendNotification(notif1)
-	notif2 := transports.NewNotificationResponse(wot.OpObserveProperty, dThingID, propName, nil, nil)
+	err = cm.SendNotification(notif1)
+	assert.NoError(t, err)
+	notif2 := transports.NewResponseMessage(
+		wot.OpObserveProperty, dThingID, propName, nil, nil, "")
 	notif2.SenderID = agent1ID
-	cm.SendNotification(notif2)
+	err = cm.SendNotification(notif2)
+	assert.NoError(t, err)
 
 	time.Sleep(time.Millisecond * 10)
 	// should receive 1 event and 1 property message

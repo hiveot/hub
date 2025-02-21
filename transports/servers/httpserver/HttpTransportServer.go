@@ -302,6 +302,8 @@ func (svc *HttpTransportServer) WriteReply(
 	}
 	if data != nil {
 		payloadJSON, _ = jsoniter.MarshalToString(data)
+		tmp, _ := jsoniter.Marshal(data)
+		payloadJSON = string(tmp)
 	}
 	if status == transports.StatusFailed {
 		var payload string

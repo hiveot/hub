@@ -94,9 +94,9 @@ func (svc *DirectoryService) RemoveTD(senderID string, dThingID string) error {
 	if err == nil && svc.notifHandler != nil {
 		// Publish an event notifying subscribers that the Thing was removed from the directory
 		// Those subscribing to directory event will be notified
-		notif := transports.NewNotificationResponse(wot.OpSubscribeEvent,
+		notif := transports.NewResponseMessage(wot.OpSubscribeEvent,
 			digitwin.ThingDirectoryDThingID, digitwin.ThingDirectoryEventThingRemoved,
-			dThingID, nil)
+			dThingID, nil, "")
 		go svc.notifHandler(notif)
 	}
 	return err
@@ -123,9 +123,9 @@ func (svc *DirectoryService) UpdateTD(agentID string, tdJson string) error {
 		dtdJSON, _ := jsoniter.MarshalToString(digitalTwinTD)
 		// todo: only send notification on changes
 		// publish an event that the directory TD has updated with a new TD
-		notif := transports.NewNotificationResponse(wot.OpSubscribeEvent,
+		notif := transports.NewResponseMessage(wot.OpSubscribeEvent,
 			digitwin.ThingDirectoryDThingID, digitwin.ThingDirectoryEventThingUpdated,
-			dtdJSON, nil)
+			dtdJSON, nil, "")
 		go svc.notifHandler(notif)
 	}
 	return err

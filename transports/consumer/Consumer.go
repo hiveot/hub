@@ -137,11 +137,12 @@ func (co *Consumer) onResponse(resp *transports.ResponseMessage) error {
 		}
 		// at least one of the handlers should be registered
 		slog.Error("Response received but no handler registered",
+			"correlationID", resp.CorrelationID,
 			"operation", resp.Operation,
 			"clientID", co.GetClientID(),
 			"thingID", resp.ThingID,
 			"name", resp.Name,
-			"correlationID", resp.CorrelationID)
+		)
 		err := fmt.Errorf("Response received but no handler registered")
 		return err
 	}
@@ -200,19 +201,17 @@ func (co *Consumer) QueryAllActions(thingID string) (
 	return values, err
 }
 
-// ReadAllEvents sends a request to read all Thing event values.
-// This is not a WoT operation (but maybe it should be)
+// ReadAllEvents sends a request to read all Thing event values from the hub.
+//
 // This returns a map of eventName and the last received event message.
 //
-// This depends on the underlying protocol binding to construct appropriate
-// ResponseMessages and include information such as Updated. All hiveot protocols
-// include full information. WoT bindings might be too limited.
-func (co *Consumer) ReadAllEvents(thingID string) (
-	values map[string]transports.ThingValue, err error) {
-
-	err = co.Rpc(wot.HTOpReadAllEvents, thingID, "", nil, &values)
-	return values, err
-}
+// TODO: maybe better to send the last events on subscription...
+//func (co *Consumer) ReadAllEvents(thingID string) (
+//	values map[string]transports.ThingValue, err error) {
+//
+//	err = co.Rpc(wot.HTOpReadAllEvents, thingID, "", nil, &values)
+//	return values, err
+//}
 
 // ReadAllProperties sends a request to read all Thing property values.
 //
@@ -229,26 +228,23 @@ func (co *Consumer) ReadAllProperties(thingID string) (
 // ReadAllTDs sends a request to read all TDs from an agent
 // This returns an array of TDs in JSON format
 // This is not a WoT operation (but maybe it should be)
-func (co *Consumer) ReadAllTDs() (tdJSONs []string, err error) {
-	err = co.Rpc(wot.HTOpReadAllTDs, "", "", nil, &tdJSONs)
-	return tdJSONs, err
-}
+//func (co *Consumer) ReadAllTDs() (tdJSONs []string, err error) {
+//	err = co.Rpc(wot.HTOpReadAllTDs, "", "", nil, &tdJSONs)
+//	return tdJSONs, err
+//}
 
 // ReadEvent sends a request to read a Thing event value.
 //
 // This returns a ResponseMessage containing the value as described in the TD
 // event affordance schema.
 //
-// This depends on the underlying protocol binding to construct appropriate
-// ResponseMessages and include information such as Updated. All hiveot protocols
-// include full information. WoT bindings might be too limited.
-// This is not a WoT operation (but maybe it should be)
-func (co *Consumer) ReadEvent(thingID, name string) (
-	value transports.ThingValue, err error) {
-
-	err = co.Rpc(wot.HTOpReadEvent, thingID, name, nil, &value)
-	return value, err
-}
+// TODO: maybe better to send the last events on subscription...
+//func (co *Consumer) ReadEvent(thingID, name string) (
+//	value transports.ThingValue, err error) {
+//
+//	err = co.Rpc(wot.HTOpReadEvent, thingID, name, nil, &value)
+//	return value, err
+//}
 
 // ReadProperty sends a request to read a Thing property value.
 //
@@ -265,10 +261,10 @@ func (co *Consumer) ReadProperty(thingID, name string) (
 // ReadTD sends a request to read the latest Thing TD
 // This returns the TD in JSON format.
 // This is not a WoT operation (but maybe it should be)
-func (co *Consumer) ReadTD(thingID string) (tdJSON string, err error) {
-	err = co.Rpc(wot.HTOpReadTD, thingID, "", nil, &tdJSON)
-	return tdJSON, err
-}
+//func (co *Consumer) ReadTD(thingID string) (tdJSON string, err error) {
+//	err = co.Rpc(wot.HTOpReadTD, thingID, "", nil, &tdJSON)
+//	return tdJSON, err
+//}
 
 // RefreshToken refreshes the authentication token
 // The resulting token can be used with 'SetBearerToken'

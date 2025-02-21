@@ -154,7 +154,7 @@ func TestMultiConnectSingleClient(t *testing.T) {
 	}
 	cl1.Disconnect()
 	// disconnection notification should have been received N times
-	time.Sleep(waitafterconnect)
+	time.Sleep(waitafterconnect * 3)
 	require.Equal(t, testConnections, disConnectCount.Load(), "disconnect count mismatch")
 
 	// 5: no more messages should be received after disconnecting

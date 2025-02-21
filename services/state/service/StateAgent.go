@@ -3,12 +3,14 @@ package service
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/services/state/stateapi"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/transports/consumer"
 	"github.com/hiveot/hub/transports/tputils"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
+	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 )
 
@@ -180,7 +182,8 @@ func StartStateAgent(svc *StateService, ag *consumer.Agent) *StateAgent {
 
 		// publish the service TD
 		tdi := stateAgent.CreateTD()
-		err := ag.PubTD(tdi)
+		tdiJSON, _ := jsoniter.MarshalToString(tdi)
+		err := digitwin.ThingDirectoryUpdateTD(&ag.Consumer, tdiJSON)
 		if err != nil {
 			slog.Error("Failed publishing the TD", "err", err.Error())
 		}

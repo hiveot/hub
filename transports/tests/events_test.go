@@ -2,7 +2,6 @@ package tests
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot"
@@ -77,7 +76,8 @@ func TestSubscribeAll(t *testing.T) {
 
 	// 3. Server sends event to consumers
 	time.Sleep(time.Millisecond * 10)
-	notif1 := transports.NewNotificationResponse(wot.OpSubscribeEvent, thingID, eventKey, testMsg1, nil)
+	notif1 := transports.NewResponseMessage(
+		wot.OpSubscribeEvent, thingID, eventKey, testMsg1, nil, "")
 	notif1.SenderID = agentID
 	srv.SendNotification(notif1)
 
@@ -98,7 +98,8 @@ func TestSubscribeAll(t *testing.T) {
 	agentRxEvent.Store(false)
 
 	// 5. Server sends another event to consumers
-	notif2 := transports.NewNotificationResponse(wot.OpSubscribeEvent, thingID, eventKey, testMsg2, nil)
+	notif2 := transports.NewResponseMessage(
+		wot.OpSubscribeEvent, thingID, eventKey, testMsg2, nil, "")
 	notif2.SenderID = agentID
 	srv.SendNotification(notif2)
 	time.Sleep(time.Millisecond)
@@ -112,6 +113,7 @@ func TestSubscribeAll(t *testing.T) {
 // Agent sends events to server
 // This is used if the Thing agent is connected as a client, and does not
 // run a server itself.
+// FIXME: server should subscribe to agent as a consumer
 func TestPublishEventsByAgent(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	var evVal atomic.Value
@@ -144,77 +146,77 @@ func TestPublishEventsByAgent(t *testing.T) {
 	assert.Equal(t, testMsg, rxMsg2)
 }
 
+//// Consumer reads events from agent
+//func TestReadEvent(t *testing.T) {
+//	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+//	var thingID = "thing1"
+//	var eventKey = "event11"
+//	var eventValue = "value11"
+//	var timestamp = "eventtime"
+//
+//	// 1. start the agent transport with the request handler
+//	// in this case the consumer connects to the agent (unlike when using a hub)
+//	agentReqHandler := func(req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
+//		if req.Operation == wot.HTOpReadEvent && req.ThingID == thingID && req.Name == eventKey {
+//			evVal := transports.ThingValue{
+//				ID:      "ud1",
+//				Name:    req.Name,
+//				Output:  eventValue,
+//				ThingID: thingID,
+//				Updated: timestamp,
+//			}
+//			resp := req.CreateResponse(evVal, nil)
+//			resp.Updated = timestamp
+//			return resp
+//		}
+//		return req.CreateResponse(nil, errors.New("unexpected request"))
+//	}
+//	srv, cancelFn := StartTransportServer(agentReqHandler, nil)
+//	_ = srv
+//	defer cancelFn()
+//
+//	// 2. connect as a consumer
+//	cc1, consumer1, _ := NewConsumer(testClientID1, srv.GetForm)
+//	defer cc1.Disconnect()
+//
+//	rxVal, err := consumer1.ReadEvent(thingID, eventKey)
+//	require.NoError(t, err)
+//	assert.Equal(t, eventValue, rxVal.Output)
+//	assert.Equal(t, timestamp, rxVal.Updated)
+//}
+
 // Consumer reads events from agent
-func TestReadEvent(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
-	var thingID = "thing1"
-	var eventKey = "event11"
-	var eventValue = "value11"
-	var timestamp = "eventtime"
-
-	// 1. start the agent transport with the request handler
-	// in this case the consumer connects to the agent (unlike when using a hub)
-	agentReqHandler := func(req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
-		if req.Operation == wot.HTOpReadEvent && req.ThingID == thingID && req.Name == eventKey {
-			evVal := transports.ThingValue{
-				ID:      "ud1",
-				Name:    req.Name,
-				Output:  eventValue,
-				ThingID: thingID,
-				Updated: timestamp,
-			}
-			resp := req.CreateResponse(evVal, nil)
-			resp.Updated = timestamp
-			return resp
-		}
-		return req.CreateResponse(nil, errors.New("unexpected request"))
-	}
-	srv, cancelFn := StartTransportServer(agentReqHandler, nil)
-	_ = srv
-	defer cancelFn()
-
-	// 2. connect as a consumer
-	cc1, consumer1, _ := NewConsumer(testClientID1, srv.GetForm)
-	defer cc1.Disconnect()
-
-	rxVal, err := consumer1.ReadEvent(thingID, eventKey)
-	require.NoError(t, err)
-	assert.Equal(t, eventValue, rxVal.Output)
-	assert.Equal(t, timestamp, rxVal.Updated)
-}
-
-// Consumer reads events from agent
-func TestReadAllEvents(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
-	var thingID = "thing1"
-	var event1Name = "event1"
-	var event2Name = "event2"
-	var event1Value = "value1"
-	var event2Value = "value2"
-
-	// 1. start the agent transport with the request handler
-	// in this case the consumer connects to the agent (unlike when using a hub)
-	agentReqHandler := func(req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
-		if req.Operation == wot.HTOpReadAllEvents {
-			output := make(map[string]*transports.ResponseMessage)
-			output[event1Name] = transports.NewResponseMessage(wot.OpSubscribeEvent, thingID, event1Name, event1Value, nil, "")
-			output[event2Name] = transports.NewResponseMessage(wot.OpSubscribeEvent, thingID, event2Name, event2Value, nil, "")
-			resp := req.CreateResponse(output, nil)
-			return resp
-		}
-		return req.CreateResponse(nil, errors.New("unexpected request"))
-	}
-	srv, cancelFn := StartTransportServer(agentReqHandler, nil)
-	_ = srv
-	defer cancelFn()
-
-	// 2. connect as a consumer
-	cc1, consumer1, _ := NewConsumer(testClientID1, srv.GetForm)
-	defer cc1.Disconnect()
-
-	evMap, err := consumer1.ReadAllEvents(thingID)
-	require.NoError(t, err)
-	require.Equal(t, 2, len(evMap))
-	require.Equal(t, event1Value, evMap[event1Name].Output)
-	require.Equal(t, event2Value, evMap[event2Name].Output)
-}
+//func TestReadAllEvents(t *testing.T) {
+//	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+//	var thingID = "thing1"
+//	var event1Name = "event1"
+//	var event2Name = "event2"
+//	var event1Value = "value1"
+//	var event2Value = "value2"
+//
+//	// 1. start the agent transport with the request handler
+//	// in this case the consumer connects to the agent (unlike when using a hub)
+//	agentReqHandler := func(req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
+//		if req.Operation == wot.HTOpReadAllEvents {
+//			output := make(map[string]*transports.ResponseMessage)
+//			output[event1Name] = transports.NewResponseMessage(wot.OpSubscribeEvent, thingID, event1Name, event1Value, nil, "")
+//			output[event2Name] = transports.NewResponseMessage(wot.OpSubscribeEvent, thingID, event2Name, event2Value, nil, "")
+//			resp := req.CreateResponse(output, nil)
+//			return resp
+//		}
+//		return req.CreateResponse(nil, errors.New("unexpected request"))
+//	}
+//	srv, cancelFn := StartTransportServer(agentReqHandler, nil)
+//	_ = srv
+//	defer cancelFn()
+//
+//	// 2. connect as a consumer
+//	cc1, consumer1, _ := NewConsumer(testClientID1, srv.GetForm)
+//	defer cc1.Disconnect()
+//
+//	evMap, err := consumer1.ReadAllEvents(thingID)
+//	require.NoError(t, err)
+//	require.Equal(t, 2, len(evMap))
+//	require.Equal(t, event1Value, evMap[event1Name].Output)
+//	require.Equal(t, event2Value, evMap[event2Name].Output)
+//}

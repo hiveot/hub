@@ -114,10 +114,14 @@ func (c *WssServerConnection) onConnection(connected bool, err error) {
 // - (Un)ObserveProperty and (Un)ObserveAllProperties
 // - (Un)SubscribeEvent and (Un)SubscribeAllEvents
 func (c *WssServerConnection) onMessage(raw []byte) {
+	var err error
 	c.mux.Lock()
 	c.lastActivity = time.Now()
 	c.mux.Unlock()
-	req, resp, err := c.messageConverter.DecodeMessage(raw)
+	var resp *transports.ResponseMessage
+
+	// both non-agents and agents send requests
+	req := c.messageConverter.DecodeRequest(raw)
 	if req != nil {
 		// sender is identified by the server, not the client
 		// note that this field is still useful for services that need to know the sender
@@ -147,8 +151,10 @@ func (c *WssServerConnection) onMessage(raw []byte) {
 				resp = (*rhPtr)(req, c)
 			}
 		}
-		_ = c.SendResponse(resp)
-	} else if resp != nil {
+		err = c.SendResponse(resp)
+	} else {
+		// only agents send responses
+		resp = c.messageConverter.DecodeResponse(raw)
 		resp.SenderID = c.cinfo.ClientID
 		rhPtr := c.responseHandlerPtr.Load()
 		if rhPtr != nil {
@@ -156,7 +162,7 @@ func (c *WssServerConnection) onMessage(raw []byte) {
 		}
 	}
 	if err != nil {
-		slog.Warn("Error receiving websocket message", "err", err.Error())
+		slog.Warn("Error handling websocket message", "err", err.Error())
 	}
 }
 
@@ -210,10 +216,17 @@ func (c *WssServerConnection) SendRequest(req *transports.RequestMessage) error 
 // If this returns an error then no response was sent.
 func (c *WssServerConnection) SendResponse(resp *transports.ResponseMessage) (err error) {
 
-	slog.Info("SendResponse",
+	// FIXME: response from zwavejs ping is not received properly by hiveoview
+	// Feb 20 08:17:23.2900 WRN WssClientConnection.go:159 HandleWssMessage: Message is not a request or response
+	// server hiveot-wss type (MessageType) field is empty
+
+	slog.Info("SendResponse (server->client)",
 		slog.String("clientID", c.cinfo.ClientID),
 		slog.String("correlationID", resp.CorrelationID),
 		slog.String("operation", resp.Operation),
+		slog.String("name", resp.Name),
+		slog.String("status", resp.Status),
+		slog.String("type", resp.MessageType),
 		slog.String("senderID", resp.SenderID),
 	)
 

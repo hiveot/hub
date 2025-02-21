@@ -67,31 +67,31 @@ func (svc *DigitwinRouter) HandleRequest(
 		resp = svc.HandleWriteProperty(req, c)
 
 	// authentication requests are handled immediately and return a response
-	case vocab.HTOpLogin:
-		resp = svc.HandleLogin(req, c)
-	case vocab.HTOpLogout:
-		resp = svc.HandleLogout(req, c)
-	case vocab.HTOpRefresh:
-		resp = svc.HandleLoginRefresh(req, c)
-
-		// digital twin requests are handled immediately and return a response
-		// FIXME: why not pass the request to the digitwin service agent?
+	//case vocab.HTOpLogin:
+	//	resp = svc.HandleLogin(req, c)
+	//case vocab.HTOpLogout:
+	//	resp = svc.HandleLogout(req, c)
+	//case vocab.HTOpRefresh:
+	//	resp = svc.HandleLoginRefresh(req, c)
+	//
+	//	// digital twin requests are handled immediately and return a response
+	//	// FIXME: why not pass the request to the digitwin service agent?
 	case vocab.OpQueryAction, vocab.OpQueryAllActions:
 		resp = svc.HandleQueryAction(req, c)
-	case vocab.HTOpReadEvent:
-		resp = svc.HandleReadEvent(req, c)
-	case vocab.HTOpReadAllEvents:
-		resp = svc.HandleReadAllEvents(req, c)
+	//case vocab.HTOpReadEvent:
+	//	resp = svc.HandleReadEvent(req, c)
+	//case vocab.HTOpReadAllEvents:
+	//	resp = svc.HandleReadAllEvents(req, c)
 	case vocab.OpReadProperty:
 		resp = svc.HandleReadProperty(req, c)
 	case vocab.OpReadAllProperties:
 		resp = svc.HandleReadAllProperties(req, c)
-	case vocab.HTOpReadTD:
-		resp = svc.HandleReadTD(req, c)
-	case vocab.HTOpReadAllTDs:
-		resp = svc.HandleReadAllTDs(req, c)
-	case vocab.HTOpUpdateTD:
-		resp = svc.HandleUpdateTD(req, c)
+	//case vocab.HTOpReadTD:
+	//	resp = svc.HandleReadTD(req, c)
+	//case vocab.HTOpReadAllTDs:
+	//	resp = svc.HandleReadAllTDs(req, c)
+	//case vocab.HTOpUpdateTD:
+	//	resp = svc.HandleUpdateTD(req, c)
 
 	default:
 		err := fmt.Errorf("unknown request operation '%s' from client '%s'",

@@ -8,6 +8,7 @@ import (
 	"github.com/hiveot/hub/transports"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"log/slog"
@@ -53,7 +54,9 @@ func TestQueryActions(t *testing.T) {
 	err := co1.Subscribe("", "")
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond)
-	err = ag1.PubTD(td1)
+	//err = ag1.PubTD(td1)
+	td1JSON, _ := jsoniter.MarshalToString(td1)
+	err = digitwin.ThingDirectoryUpdateTD(&ag1.Consumer, td1JSON)
 
 	// step 2: consumer publish an action to the agent it should return as
 	// a notification.
@@ -66,13 +69,12 @@ func TestQueryActions(t *testing.T) {
 
 	// get the latest action values from the thing
 	// use the API generated from the digitwin TD document using tdd2api
-	//valueList, err := digitwin.ValuesQueryAllActions(co1, dThing1ID)
-	//require.NoError(t, err)
-	//valueMap := api.ActionListToMap(valueList)
+	valueMap, err := digitwin.ThingValuesQueryAllActions(co1, dThing1ID)
+	require.NoError(t, err)
 
 	// value must match that of the action in step 1 and match its correlationID
-	//actVal := valueMap[actionID]
-	//assert.Equal(t, data, actVal.Input)
+	actVal := valueMap[actionID]
+	assert.Equal(t, data, actVal.Input)
 }
 
 // Get events from the outbox using the experimental http REST api
@@ -96,8 +98,9 @@ func TestReadEvents(t *testing.T) {
 	// step 1: agent publishes a TD first: dtw:agent1:thing-1
 	// is requested. hiveot uses it to determine if a response is required.
 	td1 := ts.CreateTestTD(0)
-	var dThing1ID = td.MakeDigiTwinThingID(agentID, td1.ID)
-	err := ag1.PubTD(td1)
+	//err := ag1.PubTD(td1)
+	td1JSON, _ := jsoniter.MarshalToString(td1)
+	err := digitwin.ThingDirectoryUpdateTD(&ag1.Consumer, td1JSON)
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond * 10)
 
@@ -107,8 +110,8 @@ func TestReadEvents(t *testing.T) {
 	time.Sleep(time.Millisecond * 1)
 
 	// step 3: read all events
-	dtwValues := make(map[string]digitwin.ThingValue, 0)
-	err = co1.Rpc(wot.HTOpReadAllEvents, dThing1ID, "", nil, &dtwValues)
+	var dThing1ID = td.MakeDigiTwinThingID(agentID, td1.ID)
+	dtwValues, err := digitwin.ThingValuesReadAllEvents(co1, dThing1ID)
 	require.NoError(t, err)
 	require.NotZero(t, len(dtwValues))
 	require.Equal(t, data, dtwValues[key1].Output)
@@ -142,8 +145,8 @@ func TestHttpsGetProps(t *testing.T) {
 
 	// step 1: agent publishes a TD first: dtw:agent1:thing-1
 	td1 := ts.CreateTestTD(0)
-	var dThingID = td.MakeDigiTwinThingID(agentID, td1.ID)
-	err := ag1.PubTD(td1)
+	td1JSON, _ := jsoniter.MarshalToString(td1)
+	err := digitwin.ThingDirectoryUpdateTD(&ag1.Consumer, td1JSON)
 	time.Sleep(time.Millisecond * 10)
 	require.NoError(t, err)
 
@@ -155,7 +158,9 @@ func TestHttpsGetProps(t *testing.T) {
 	require.NoError(t, err)
 	//
 	time.Sleep(time.Millisecond)
-	valueMap, err := digitwin.ThingValuesReadAllProperties(cl2, dThingID)
+	var dThingID = td.MakeDigiTwinThingID(agentID, td1.ID)
+	valueMap, err := cl2.ReadAllProperties(dThingID)
+	//valueMap, err := digitwin.ThingValuesReadAllProperties(cl2, dThingID)
 	require.NoError(t, err)
 	require.Equal(t, 2, len(valueMap))
 
@@ -193,7 +198,9 @@ func TestSubscribeValues(t *testing.T) {
 	td1 := ts.CreateTestTD(0)
 
 	// 3: agent publishes notification
-	err = ag1.PubTD(td1)
+	//err = ag1.PubTD(td1)
+	td1JSON, _ := jsoniter.MarshalToString(td1)
+	err = digitwin.ThingDirectoryUpdateTD(&ag1.Consumer, td1JSON)
 
 	time.Sleep(time.Millisecond * 100)
 
@@ -227,7 +234,9 @@ func TestWriteProperties(t *testing.T) {
 
 	// step 1: agent publishes a TD first: dtw:agent1:thing-1
 	td1 := ts.CreateTestTD(0)
-	err := ag1.PubTD(td1)
+	//err := ag1.PubTD(td1)
+	td1JSON, _ := jsoniter.MarshalToString(td1)
+	err := digitwin.ThingDirectoryUpdateTD(&ag1.Consumer, td1JSON)
 
 	// agents listen for property write requests
 	ag1.SetRequestHandler(func(msg *transports.RequestMessage,

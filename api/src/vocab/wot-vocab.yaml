@@ -96,11 +96,11 @@ WoTVocab:
 
     # consumer operations not in the TD spec
     # TODO: look for a standard approach in the auth spec
-    HTOpLogin: "login"
-    HTOpLogout: "logout"
-    HTOpRefresh: "refresh"
-    HTOpReadEvent: "readevent"  # not standard
-    HTOpReadAllEvents: "readallevents" # not standard
-    HTOpReadTD: "readtd"
-    HTOpReadAllTDs: "readalltds"
-    HTOpUpdateTD: "updatetd"   # by agent
+#    HTOpLogin: "login"
+#    HTOpLogout: "logout"
+#    HTOpRefresh: "refresh"
+#    HTOpReadEvent: "readevent"  # not standard
+#    HTOpReadAllEvents: "readallevents" # not standard
+#    HTOpReadTD: "readtd"
+#    HTOpReadAllTDs: "readalltds"
+#    HTOpUpdateTD: "updatetd"   # by agent

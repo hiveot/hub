@@ -6,9 +6,11 @@ import (
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/services/state/stateclient"
 	"github.com/hiveot/hub/transports/consumer"
 	"github.com/hiveot/hub/wot/td"
+	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"sync"
 	"time"
@@ -142,7 +144,9 @@ func (svc *OWServerBinding) Start(ag *consumer.Agent) (err error) {
 	// publish this binding's TD document
 	tdi := svc.CreateBindingTD()
 	svc.things[tdi.ID] = tdi
-	err = svc.ag.PubTD(tdi)
+	tdJSON, _ := jsoniter.MarshalToString(tdi)
+	err = digitwin.ThingDirectoryUpdateTD(&svc.ag.Consumer, tdJSON)
+	//err = svc.ag.PubTD(tdi)
 	if err != nil {
 		slog.Error("failed publishing service TD. Continuing...",
 			slog.String("err", err.Error()))

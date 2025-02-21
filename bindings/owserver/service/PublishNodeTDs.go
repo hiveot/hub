@@ -3,7 +3,9 @@ package service
 import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/wot/td"
+	jsoniter "github.com/json-iterator/go"
 )
 
 // CreateTDFromNode converts the 1-wire node into a TD that describes the node.
@@ -125,9 +127,11 @@ func (svc *OWServerBinding) PollNodes() ([]*eds.OneWireNode, error) {
 // PublishNodeTD converts a node to TD documents and publishes it to the Hub.
 // This returns an error if the publications fail
 func (svc *OWServerBinding) PublishNodeTD(node *eds.OneWireNode) (err error) {
-	td := svc.CreateTDFromNode(node)
-	svc.things[td.ID] = td
-	err = svc.ag.PubTD(td)
+	tdi := svc.CreateTDFromNode(node)
+	svc.things[tdi.ID] = tdi
+	tdJSON, _ := jsoniter.MarshalToString(tdi)
+	err = digitwin.ThingDirectoryUpdateTD(&svc.ag.Consumer, tdJSON)
+	//err = svc.ag.PubTD(td)
 	return err
 }
 

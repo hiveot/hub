@@ -38,6 +38,7 @@ export class RequestMessage extends Object {
     public constructor(init?:Partial<RequestMessage>) {
         super();
         this.messageID = nanoid()
+        this.messageType = MessageTypeRequest
         this.operation = ""
         Object.assign(this, init)
     }
@@ -53,7 +54,7 @@ export class RequestMessage extends Object {
 
     // MessageType identifies this message payload as a request
     // Intended to identify this message envelope.
-    messageType: string = MessageTypeRequest
+    messageType: string
 
     // Message operation. Eg: WotOpInvokeAction, WotOpPublishEvent, ...
     // This is required.
@@ -112,6 +113,7 @@ export class ResponseMessage extends Object {
         super()
         this.operation = op
         this.thingID = thingID
+        this.messageType = MessageTypeResponse
         this.name = name
         this.output = output
         this.error = err
@@ -121,7 +123,7 @@ export class ResponseMessage extends Object {
     }
     // MessageType identifies this message payload as a request
     // Intended to identify this message envelope.
-    public messageType: string = MessageTypeResponse
+    public messageType: string
 
     // Operation of the request this is the response to.
     // This is required.
