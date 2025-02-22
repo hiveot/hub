@@ -1,6 +1,6 @@
 module github.com/hiveot/hub
 
-go 1.22.7
+go 1.23
 
 require (
 	aidanwoods.dev/go-paseto v1.5.2

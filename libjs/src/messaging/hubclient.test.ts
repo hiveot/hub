@@ -1,8 +1,8 @@
 import process from "node:process";
 import * as tslog from 'tslog';
-import {ConnectToHub} from "@hivelib/transports/ConnectToHub";
+import {ConnectToHub} from "@hivelib/messaging/ConnectToHub";
 import { OpInvokeAction} from "@hivelib/api/vocab/vocab.js";
-import {RequestMessage, ResponseMessage, StatusCompleted, StatusPending} from "@hivelib/transports/Messages";
+import {RequestMessage, ResponseMessage, StatusCompleted, StatusPending} from "@hivelib/messaging/Messages";
 
 const log = new tslog.Logger({name: "HCTest"})
 

@@ -1,6 +1,6 @@
-import {IAgentConnection} from "@hivelib/transports/IAgentConnection";
-import {locateHub} from "@hivelib/transports/locateHub";
-import {HttpSSEClient} from "@hivelib/transports/httpclient/HttpSSEClient";
+import {IAgentConnection} from "@hivelib/messaging/IAgentConnection";
+import {locateHub} from "@hivelib/messaging/locateHub";
+import {HttpSSEClient} from "@hivelib/messaging/httpclient/HttpSSEClient";
 
 
 

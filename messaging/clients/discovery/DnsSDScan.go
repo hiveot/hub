@@ -14,7 +14,7 @@ import (
 // The zeroconf library does not support browsing of all services, but a workaround is
 // to search the service types with "_services._dns-sd._udp" then query each of the service types.
 //
-//	instanceName optional filter on a particual implementation
+//	instanceName optional filter on a particular implementation, for example 'hiveot' or 'test'
 //	serviceType to look for in format "_name._tcp", or "" to discover all service types (not all services)
 //	waitTime with duration to wait while collecting results. 0 means exit on the first result.
 //	firstResult return immediately

@@ -1,7 +1,7 @@
 // ZWaveJSBinding.ts holds the entry point to the zwave binding along with its configuration
 import {SetValueStatus, TranslatedValueID, ValueMetadataNumeric, ZWaveNode} from "zwave-js";
 import {getEnumFromMemberName, getVidValue,  ZWAPI} from "@zwavejs/ZWAPI";
-import {StatusCompleted, StatusFailed, StatusRunning} from "@hivelib/transports/Messages";
+import {StatusCompleted, StatusFailed, StatusRunning} from "@hivelib/messaging/Messages";
 import {getlogger} from "@zwavejs/getLogger";
 
 const log = getlogger()

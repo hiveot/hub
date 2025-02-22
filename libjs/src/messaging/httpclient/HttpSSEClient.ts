@@ -14,13 +14,13 @@ import {
     OpObserveProperty,
 } from "@hivelib/api/vocab/vocab.js";
 import * as http2 from "node:http2";
-import {connectSSE} from "@hivelib/transports/httpclient/connectSSE";
+import {connectSSE} from "@hivelib/messaging/httpclient/connectSSE";
 import {
     RequestHandler,
     ResponseHandler, ConnectionStatus
-} from "@hivelib/transports/IConsumerConnection";
+} from "@hivelib/messaging/IConsumerConnection";
 import {nanoid} from "nanoid";
-import {RequestMessage, ResponseMessage} from "@hivelib/transports/Messages";
+import {RequestMessage, ResponseMessage} from "@hivelib/messaging/Messages";
 
 // FIXME: import from vocab is not working
 const RequestCompleted = "completed"
@@ -38,17 +38,6 @@ const RequestFailed = "failed"
 const ThingDirectoryDThingID = "dtw:digitwin:ThingDirectory"
 const ThingDirectoryUpdateTDMethod = "updateTD"
 
-// HTTP protoocol constants
-// StatusHeader contains the result of the request, eg Pending, Completed or Failed
-// const StatusHeader = "status"
-// // CorrelationIDHeader for transports that support headers can include a message-ID
-// const CorrelationIDHeader = "correlation-id"
-// // ConnectionIDHeader identifies the client's connection in case of multiple
-// // connections from the same client.
-// const ConnectionIDHeader = "cid"
-// // DataSchemaHeader to indicate which  'additionalresults' dataschema being returned.
-// const DataSchemaHeader = "dataschema"
-
 
 // HTTP Paths for auth.
 // THIS WILL BE REMOVED AFTER THE PROTOCOL BINDING PUBLISHES THESE IN THE TDD.
@@ -57,16 +46,10 @@ const HttpPostLoginPath   = "/authn/login"
 const HttpPostLogoutPath  = "/authn/logout"
 const HttpPostRefreshPath = "/authn/refresh"
 const HttpGetDigitwinPath = "/digitwin/{operation}/{thingID}/{name}"
-//
-// // paths for HTTP subprotocols
-// const DefaultWSSPath   = "/wss"
-// const DefaultSSEPath   = "/sse"
-// const DefaultSSESCPath = "/ssesc"
 
 // Generic form href that maps to all operations for the http client, using URI variables
 // Generic HiveOT HTTP urls when Forms are not available. The payload is a
 // corresponding standardized message.
-// const HiveOTPostNotificationHRef = "/hiveot/notification"
 const HiveOTPostRequestHRef      = "/hiveot/request"
 const HiveOTPostResponseHRef     = "/hiveot/response"
 

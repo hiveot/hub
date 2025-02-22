@@ -173,7 +173,7 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 		if err == nil {
 			protocolsCfg := r.cfg.ProtocolsConfig
 			err = r.TransportsMgr.StartDiscovery(
-				protocolsCfg.DirectoryTDPath, dirTDJson,
+				r.cfg.ProtocolsConfig.InstanceName, protocolsCfg.DirectoryTDPath, dirTDJson,
 			)
 		}
 	}

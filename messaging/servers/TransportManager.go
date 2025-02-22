@@ -195,11 +195,13 @@ func (svc *TransportManager) SetResponseHandler(h messaging.ResponseHandler) {
 // StartDiscovery starts the introduction and exploration discovery of the directory
 // TD document.
 //
+//	instanceName alternate service instance, "" is hiveot. Intended for testing.
+//
 // This serves two discovery mechanisms.
 // 1. The WoT discovery through the directory TD and Thing forms
 // 2. The HiveOT discovery through the use of connection URLs and Request/Response
 // message envelopes without the need for forms.
-func (svc *TransportManager) StartDiscovery(tdPath string, dirTD string) (err error) {
+func (svc *TransportManager) StartDiscovery(instanceName string, tdPath string, dirTD string) (err error) {
 	if svc.discoServer != nil {
 		err = fmt.Errorf("StartDiscovery: already running")
 		slog.Error(err.Error())
@@ -210,7 +212,7 @@ func (svc *TransportManager) StartDiscovery(tdPath string, dirTD string) (err er
 
 	// start directory introduction and exploration discovery server
 	svc.discoServer, err = discoserver.StartDiscoveryServer(
-		"", "", dirTD, tdPath,
+		instanceName, "", dirTD, tdPath,
 		svc.httpsTransport, endpoints)
 	return err
 }

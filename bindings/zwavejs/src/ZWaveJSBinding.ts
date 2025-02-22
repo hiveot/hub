@@ -12,8 +12,8 @@ import {BindingConfig} from "./BindingConfig";
 import {handleRequest} from "@zwavejs/handleRequest";
 import {ValueID} from "@zwave-js/core";
 import {getVidAffordance} from "@zwavejs/getVidAffordance";
-import {IAgentConnection} from "@hivelib/transports/IAgentConnection";
-import {RequestMessage, ResponseMessage} from "@hivelib/transports/Messages";
+import {IAgentConnection} from "@hivelib/messaging/IAgentConnection";
+import {RequestMessage, ResponseMessage} from "@hivelib/messaging/Messages";
 import {getlogger} from "@zwavejs/getLogger";
 
 const log = getlogger()

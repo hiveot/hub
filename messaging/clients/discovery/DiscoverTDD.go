@@ -62,7 +62,7 @@ func DiscoverTDD(instanceName string, serviceName string,
 	return drList
 }
 
-// DiscoverWithDnsSD searches for services with the
+// DiscoverWithDnsSD searches for services with the given instance or service name.
 //
 //	[_{instanceName}.]_{serviceName}._tcp service type
 //

@@ -7,8 +7,9 @@ import (
 )
 
 const (
-	DefaultMqttTcpPort = 8883
-	DefaultMqttWssPort = 8884
+	DefaultMqttTcpPort        = 8883
+	DefaultMqttWssPort        = 8884
+	DefaultInstanceNameHiveot = "hiveot"
 )
 
 type ProtocolsConfig struct {
@@ -28,6 +29,8 @@ type ProtocolsConfig struct {
 	// Enable mDNS discovery. Default is true.
 	// The DiscoveryTDPath must be resolved by the http server
 	EnableDiscovery bool `yaml:"enableDiscovery"`
+	// The service discovery instance. The default is 'hiveot'
+	InstanceName string `yaml:"instanceName"`
 
 	// DirectoryTDPath contains the HTTP path to read the digitwin directory TD
 	// Defaults to "/.well-known/wot" as per spec
@@ -72,6 +75,7 @@ func NewProtocolsConfig() ProtocolsConfig {
 		EnableHiveotWSS:  true,
 		EnableWotWSS:     true,
 		EnableDiscovery:  true,
+		InstanceName:     DefaultInstanceNameHiveot,
 		HttpHost:         hostName,
 		HttpsPort:        httpserver.DefaultHttpsPort,
 		MqttHost:         hostName,

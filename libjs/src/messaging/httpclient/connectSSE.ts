@@ -2,15 +2,15 @@ import * as tslog from 'tslog';
 import {
     ConnectionHandler,
     ConnectionStatus,
-    NotificationHandler, RequestHandler, ResponseHandler
-} from "@hivelib/transports/IConsumerConnection";
+     RequestHandler, ResponseHandler
+} from "@hivelib/messaging/IConsumerConnection";
 
 import EventSource from 'eventsource'
 import {
     RequestMessage,
     ResponseMessage,
     MessageTypeResponse, MessageTypeRequest
-} from "@hivelib/transports/Messages";
+} from "@hivelib/messaging/Messages";
 
 const log = new tslog.Logger({prettyLogTimeZone:"local"})
 

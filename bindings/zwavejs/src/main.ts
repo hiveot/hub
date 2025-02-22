@@ -2,10 +2,8 @@
 import {env, exit} from "process";
 import {ZwaveJSBinding} from "./ZWaveJSBinding";
 import path from "path";
-import {locateHub} from "@hivelib/transports/locateHub";
-import fs from "fs";
 import {BindingConfig} from "./BindingConfig";
-import {ConnectToHub} from "@hivelib/transports/ConnectToHub";
+import {ConnectToHub} from "@hivelib/messaging/ConnectToHub";
 import {getlogger} from "@zwavejs/getLogger";
 
 const log = getlogger()

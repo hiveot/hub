@@ -1,7 +1,6 @@
 
 import { Bonjour } from 'bonjour-service';
 import * as tslog from 'tslog';
-import {ProtocolTypeHiveotSSE, ProtocolTypeHiveotWSS} from "@hivelib/transports/IConsumerConnection";
 
 const HIVEOT_HUB_SERVICENAME = "hiveot";
 const WOT_SERVICENAME = "wot";

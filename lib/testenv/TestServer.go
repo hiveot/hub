@@ -341,7 +341,8 @@ func NewTestServer() *TestServer {
 		ConsumerProtocol: messaging.ProtocolTypeHiveotSSE,
 		ConnectTimeout:   time.Second * 120, // testing extra long
 	}
-
+	// the test server uses the test instance to differentiate from hiveot
+	srv.Config.ProtocolsConfig.InstanceName = "test"
 	return &srv
 }
 

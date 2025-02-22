@@ -1,4 +1,4 @@
-import { RequestMessage, ResponseMessage} from "@hivelib/transports/Messages";
+import { RequestMessage, ResponseMessage} from "@hivelib/messaging/Messages";
 
 
 export enum ConnectionStatus {

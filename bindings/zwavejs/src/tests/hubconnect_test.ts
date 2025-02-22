@@ -2,8 +2,8 @@
 
 import process from "node:process";
 import {connect} from 'node:http2';
-import {HttpSSEClient} from "@hivelib/transports/httpclient/HttpSSEClient.js";
-import {ConnectToHub} from "@hivelib/transports/ConnectToHub";
+import {HttpSSEClient} from "@hivelib/messaging/httpclient/HttpSSEClient.js";
+import {ConnectToHub} from "@hivelib/messaging/ConnectToHub";
 import ky from 'ky';
 import {getlogger} from "@zwavejs/getLogger";
 
@@ -11,7 +11,7 @@ process.on("uncaughtException", (err: Error) => {
     log.error("uncaughtException", err)
 })
 
-// test server setup
+// test setup using a running server
 const testURL = "https://localhost:8444"
 const testClient = "test"
 const testPass = "test22"

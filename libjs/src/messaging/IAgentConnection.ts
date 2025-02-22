@@ -1,6 +1,6 @@
 import {TD} from "@hivelib/wot/TD";
-import {IConsumerConnection, RequestHandler} from "@hivelib/transports/IConsumerConnection";
-import {ResponseMessage} from "@hivelib/transports/Messages";
+import {IConsumerConnection, RequestHandler} from "@hivelib/messaging/IConsumerConnection";
+import {ResponseMessage} from "@hivelib/messaging/Messages";
 
 
 // IAgentClient defines the interface for use by  hub agents.
