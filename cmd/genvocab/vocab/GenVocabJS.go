@@ -13,18 +13,24 @@ import (
 const jsFile = "./api/js/vocab/vocab.js"
 
 // GenVocabJS generates the vocabulary constants in javascript.
-func GenVocabJS(sourceDir string) error {
-	classes, constants, err := LoadVocab(sourceDir)
-	if err == nil {
-		lines := ExportToJavascript(classes, constants)
-		data := strings.Join(lines, "\n")
-		println("Writing: " + jsFile)
-		err = os.MkdirAll(path.Dir(jsFile), 0755)
-		err = os.WriteFile(jsFile, []byte(data), 0664)
-	}
+func GenVocabJS(
+	classes map[string]VocabClassMap,
+	constants map[string]VocabConstantsMap,
+	modTime time.Time) error {
+
+	err := os.MkdirAll(path.Dir(jsFile), 0755)
 	if err != nil {
-		fmt.Println("ERROR: " + err.Error())
+		return err
 	}
+	outfileStat, err := os.Stat(jsFile)
+	if err == nil && outfileStat.ModTime().After(modTime) {
+		fmt.Printf("GenVocabJS: Destination '%s' is already up to date, not updating\n", jsFile)
+		return nil
+	}
+	lines := ExportToJavascript(classes, constants)
+	data := strings.Join(lines, "\n")
+	println("Writing: " + jsFile)
+	err = os.WriteFile(jsFile, []byte(data), 0664)
 	return err
 }
 

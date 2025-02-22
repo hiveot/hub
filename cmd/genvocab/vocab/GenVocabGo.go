@@ -13,18 +13,24 @@ import (
 const golangVocabFile = "./api/go/vocab/vocab.go"
 
 // GenVocabGo generates the vocabulary constants in golang.
-func GenVocabGo(sourceDir string) error {
-	classes, constants, err := LoadVocab(sourceDir)
-	if err == nil {
-		lines := ExportToGolang(classes, constants)
-		data := strings.Join(lines, "\n")
-		println("Writing: " + golangVocabFile)
-		err = os.MkdirAll(path.Dir(golangVocabFile), 0755)
-		err = os.WriteFile(golangVocabFile, []byte(data), 0664)
-	}
+func GenVocabGo(classes map[string]VocabClassMap,
+	constants map[string]VocabConstantsMap,
+	modTime time.Time) error {
+
+	err := os.MkdirAll(path.Dir(golangVocabFile), 0755)
 	if err != nil {
-		fmt.Println("ERROR: " + err.Error())
+		return err
 	}
+	outfileStat, err := os.Stat(golangVocabFile)
+	if err == nil && outfileStat.ModTime().After(modTime) {
+		fmt.Printf("GenVocabGo: Destination '%s' is already up to date, not updating\n", golangVocabFile)
+		return nil
+	}
+	lines := ExportToGolang(classes, constants)
+	data := strings.Join(lines, "\n")
+	println("Writing: " + golangVocabFile)
+	err = os.WriteFile(golangVocabFile, []byte(data), 0664)
+
 	return err
 }
 

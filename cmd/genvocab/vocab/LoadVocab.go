@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 )
 
 const ActionClassFile = "ht-action-classes.yaml"
@@ -38,20 +39,30 @@ type VocabConstantsMap struct {
 	Vocab       map[string]string `yaml:"vocab"`
 }
 
-// LoadVocab loads the thing, property and action vocabulary classes
-func LoadVocab(dir string) (map[string]VocabClassMap, map[string]VocabConstantsMap, error) {
+// LoadVocab loads the thing, property and action vocabulary classes and determines
+// the last modified time. (don't overwite unchanged files otherwise git pull is having a fit)
+func LoadVocab(dir string) (
+	map[string]VocabClassMap, map[string]VocabConstantsMap, time.Time, error) {
+	var modTime time.Time
+
 	vocabClasses := make(map[string]VocabClassMap)
 	vocabConstants := make(map[string]VocabConstantsMap)
 
 	files, err := os.ReadDir(dir)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, modTime, err
 	}
 	for _, entry := range files {
 		vocabFile := path.Join(dir, entry.Name())
 
 		data, err := os.ReadFile(vocabFile)
 		if err == nil {
+			// track the latest modification time of any of the sources
+			infileStat, _ := os.Stat(vocabFile)
+			if infileStat.ModTime().After(modTime) {
+				modTime = infileStat.ModTime()
+			}
+
 			if strings.HasSuffix(entry.Name(), "classes.yaml") {
 				fmt.Println("Reading vocab classes from " + vocabFile)
 				err = yaml.Unmarshal(data, &vocabClasses)
@@ -65,5 +76,5 @@ func LoadVocab(dir string) (map[string]VocabClassMap, map[string]VocabConstantsM
 			slog.Error("Error reading " + vocabFile + ": " + err.Error())
 		}
 	}
-	return vocabClasses, vocabConstants, err
+	return vocabClasses, vocabConstants, modTime, err
 }

@@ -224,7 +224,7 @@ func GenerateSource(gentype string, agentID string, sourceFile string, outDir st
 		outfilePath = filepath.Join(outDir, outFileName+TypesAPISuffix)
 		outfileStat, _ := os.Stat(outfilePath)
 		if !force && outfileStat != nil && outfileStat.ModTime().After(sourceStat.ModTime()) {
-			fmt.Printf("GenerateSource: Destination %s is newer. Not updated.\n", outfilePath)
+			fmt.Printf("GenerateSource: Destination %s is already up to date. Not updated.\n", outfilePath)
 			return nil
 		} else {
 			err = gentypes.GenTypes(l, agentID, tdi)

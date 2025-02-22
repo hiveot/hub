@@ -13,18 +13,24 @@ import (
 const pyFile = "./api/py/vocab/vocab.py"
 
 // GenVocabPy generates the vocabulary constants in python.
-func GenVocabPy(sourceDir string) error {
-	classes, constants, err := LoadVocab(sourceDir)
-	if err == nil {
-		lines := ExportToPython(classes, constants)
-		data := strings.Join(lines, "\n")
-		println("Writing: " + pyFile)
-		err = os.MkdirAll(path.Dir(pyFile), 0755)
-		err = os.WriteFile(pyFile, []byte(data), 0664)
-	}
+func GenVocabPy(
+	classes map[string]VocabClassMap,
+	constants map[string]VocabConstantsMap,
+	modTime time.Time) error {
+
+	err := os.MkdirAll(path.Dir(pyFile), 0755)
 	if err != nil {
-		fmt.Println("ERROR: " + err.Error())
+		return err
 	}
+	outfileStat, err := os.Stat(pyFile)
+	if err == nil && outfileStat.ModTime().After(modTime) {
+		fmt.Printf("GenVocabPY: Destination '%s' is already up to date, not updating\n", pyFile)
+		return nil
+	}
+	lines := ExportToPython(classes, constants)
+	data := strings.Join(lines, "\n")
+	println("Writing: " + pyFile)
+	err = os.WriteFile(pyFile, []byte(data), 0664)
 	return err
 }
 
