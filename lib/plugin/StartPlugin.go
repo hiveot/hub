@@ -1,8 +1,8 @@
 package plugin
 
 import (
+	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/clients"
-	"github.com/hiveot/hub/messaging/consumer"
 	"log/slog"
 	"os"
 )
@@ -15,7 +15,7 @@ type PluginConfig struct {
 type IPlugin interface {
 	// Start the plugin with the given environment settings and hub connection
 	//	ag is the agent with the capability for publishing and subscribing
-	Start(ag *consumer.Agent) error
+	Start(ag *messaging.Agent) error
 	Stop()
 }
 
@@ -42,7 +42,7 @@ func StartPlugin(plugin IPlugin, clientID string, certsDir string) {
 		os.Exit(1)
 	}
 	// start the service with the agent.
-	ag := consumer.NewAgent(cc, nil, nil, nil, 0)
+	ag := messaging.NewAgent(cc, nil, nil, nil, 0)
 	err = plugin.Start(ag)
 	if err != nil {
 		slog.Error("failed starting service", "err", err.Error())

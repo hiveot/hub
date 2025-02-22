@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/consumer"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/hiveot/hub/wot"
@@ -28,7 +27,7 @@ type InteractionListener func(*InteractionOutput)
 // This keeps a copy of the Thing's property and event values and updates on changes.
 type ConsumedThing struct {
 	// The consumer instance this uses for invoking actions
-	co *consumer.Consumer
+	co *messaging.Consumer
 
 	// ID of this Thing for use by consumers
 	ThingID string
@@ -433,7 +432,7 @@ func (ct *ConsumedThing) WriteProperty(name string, ii InteractionInput) (err er
 
 // NewConsumedThing creates a new instance of a Thing
 // Call Stop() when done
-func NewConsumedThing(tdi *td.TD, co *consumer.Consumer) *ConsumedThing {
+func NewConsumedThing(tdi *td.TD, co *messaging.Consumer) *ConsumedThing {
 	c := ConsumedThing{
 		ThingID:       tdi.ID,
 		tdi:           tdi,

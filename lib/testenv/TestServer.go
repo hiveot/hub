@@ -7,7 +7,6 @@ import (
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/clients"
-	"github.com/hiveot/hub/messaging/consumer"
 	"github.com/hiveot/hub/runtime"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	authz "github.com/hiveot/hub/runtime/authz/api"
@@ -74,7 +73,7 @@ type TestServer struct {
 // consumer and a new session token.
 // In case of error this panics.
 func (test *TestServer) AddConnectConsumer(
-	clientID string, clientRole authz.ClientRole) (consumer *consumer.Consumer, cc messaging.IClientConnection, token string) {
+	clientID string, clientRole authz.ClientRole) (consumer *messaging.Consumer, cc messaging.IClientConnection, token string) {
 
 	password := clientID
 	err := test.Runtime.AuthnSvc.AdminSvc.AddConsumer(clientID,
@@ -105,7 +104,7 @@ func (test *TestServer) AddConnectConsumer(
 // AddConnectAgent creates a new agent test client.
 // Agents use non-session tokens and survive a server restart.
 // This returns the agent's connection token.
-func (test *TestServer) AddConnectAgent(agentID string) (agent *consumer.Agent, cc messaging.IClientConnection, token string) {
+func (test *TestServer) AddConnectAgent(agentID string) (agent *messaging.Agent, cc messaging.IClientConnection, token string) {
 
 	token, err := test.Runtime.AuthnSvc.AdminSvc.AddAgent(agentID,
 		authn.AdminAddAgentArgs{ClientID: agentID, DisplayName: "agent name"})
@@ -136,7 +135,7 @@ func (test *TestServer) AddConnectAgent(agentID string) (agent *consumer.Agent, 
 // This sets the getForm handler of the client to the protocol server. (for testing)
 //
 // clientType can be one of ClientTypeAgent or ClientTypeService
-func (test *TestServer) AddConnectService(serviceID string) (ag *consumer.Agent, token string) {
+func (test *TestServer) AddConnectService(serviceID string) (ag *messaging.Agent, token string) {
 
 	// 1: register the service
 	token, err := test.Runtime.AuthnSvc.AdminSvc.AddService(serviceID,
@@ -156,7 +155,7 @@ func (test *TestServer) AddConnectService(serviceID string) (ag *consumer.Agent,
 	cc, err := clients.NewHiveotClient(serviceID, test.Certs.CaCert, connectURL, test.ConnectTimeout)
 	if err == nil {
 		err = cc.ConnectWithToken(token)
-		ag = consumer.NewAgent(cc, nil, nil, nil, 0)
+		ag = messaging.NewAgent(cc, nil, nil, nil, 0)
 	}
 	if err != nil {
 		panic("AddConnectService: Failed connecting using token. serviceID=" + serviceID)
@@ -234,20 +233,20 @@ func (test *TestServer) CreateTestTD(i int) (tdi *td.TD) {
 // GetAgentConnection returns a hub connection for an agent and protocol.
 // This sets 'getForm' to the handler provided by the protocol server. For testing only.
 func (test *TestServer) GetAgentConnection(agentID string, protocolType string) (
-	messaging.IClientConnection, *consumer.Agent) {
+	messaging.IClientConnection, *messaging.Agent) {
 
 	s := test.Runtime.TransportsMgr.GetServer(protocolType)
 	connectURL := s.GetConnectURL()
 
 	cc, _ := clients.NewHiveotClient(agentID, test.Certs.CaCert, connectURL, test.ConnectTimeout)
-	ag := consumer.NewAgent(cc, nil, nil, nil, test.ConnectTimeout)
+	ag := messaging.NewAgent(cc, nil, nil, nil, test.ConnectTimeout)
 	return cc, ag
 }
 
 // GetConsumerConnection returns a hub connection for a consumer and protocol.
 // This sets 'getForm' to the handler provided by the protocol server. For testing only.
 func (test *TestServer) GetConsumerConnection(
-	clientID string, protocolType string) (messaging.IClientConnection, *consumer.Consumer) {
+	clientID string, protocolType string) (messaging.IClientConnection, *messaging.Consumer) {
 	//
 	//getForm := func(op string, thingID string, name string) *td.Form {
 	//	return test.Runtime.GetForm(op, protocolName)
@@ -257,7 +256,7 @@ func (test *TestServer) GetConsumerConnection(
 	connectURL := s.GetConnectURL()
 	// FIXME: need an option for Wot protocol
 	cc, _ := clients.NewHiveotClient(clientID, test.Certs.CaCert, connectURL, test.ConnectTimeout)
-	co := consumer.NewConsumer(cc, test.ConnectTimeout)
+	co := messaging.NewConsumer(cc, test.ConnectTimeout)
 	return cc, co
 }
 

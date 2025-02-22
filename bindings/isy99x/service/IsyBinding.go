@@ -10,7 +10,6 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/consumer"
 	"github.com/hiveot/hub/runtime/exposedthing"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
@@ -26,7 +25,7 @@ type IsyBinding struct {
 
 	// Configuration of this protocol binding
 	config *config.Isy99xConfig
-	ag     *consumer.Agent
+	ag     *messaging.Agent
 
 	thingID      string           // ID of the binding Thing
 	isyAPI       *isy.IsyAPI      // methods for communicating met ISY gateway device
@@ -145,7 +144,7 @@ func (svc *IsyBinding) MakeBindingTD() *td.TD {
 // If no connection can be made the heartbeat will retry periodically until stopped.
 //
 // This publishes a TD for this binding, starts a background polling heartbeat.
-func (svc *IsyBinding) Start(ag *consumer.Agent) (err error) {
+func (svc *IsyBinding) Start(ag *messaging.Agent) (err error) {
 	slog.Info("Starting Isy99x binding")
 	svc.ag = ag
 	svc.thingID = ag.GetClientID()

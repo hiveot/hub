@@ -3,8 +3,8 @@ package service
 import (
 	"fmt"
 	"github.com/fsnotify/fsnotify"
+	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/clients"
-	"github.com/hiveot/hub/messaging/consumer"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/hiveot/hub/services/launcher/config"
 	"github.com/hiveot/hub/services/launcher/launcherapi"
@@ -40,7 +40,7 @@ type LauncherService struct {
 	cmds []*exec.Cmd
 
 	// agent messaging client
-	ag *consumer.Agent
+	ag *messaging.Agent
 
 	// mutex to keep things safe
 	mux sync.Mutex
@@ -209,7 +209,7 @@ func (svc *LauncherService) Start() error {
 			svc.clientID, svc.certsDir, svc.protocolType, svc.serverURL, 0)
 		_ = token
 		if err == nil {
-			svc.ag = consumer.NewAgent(cc, nil, nil, nil, 0)
+			svc.ag = messaging.NewAgent(cc, nil, nil, nil, 0)
 		} else {
 			err = fmt.Errorf("failed starting launcher service: %w", err)
 			return err

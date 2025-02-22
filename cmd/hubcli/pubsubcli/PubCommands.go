@@ -2,11 +2,11 @@ package pubsubcli
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/messaging/consumer"
+	"github.com/hiveot/hub/messaging"
 	"github.com/urfave/cli/v2"
 )
 
-func PubActionCommand(hc **consumer.Consumer) *cli.Command {
+func PubActionCommand(hc **messaging.Consumer) *cli.Command {
 	return &cli.Command{
 		Name:      "pub",
 		Usage:     "Publish action for Thing",
@@ -29,7 +29,7 @@ func PubActionCommand(hc **consumer.Consumer) *cli.Command {
 	}
 }
 
-func HandlePubActions(hc *consumer.Consumer,
+func HandlePubActions(hc *messaging.Consumer,
 	dThingID string, action string, args string) error {
 
 	var reply interface{}

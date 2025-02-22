@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/messaging/consumer"
+	"github.com/hiveot/hub/messaging"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	"golang.org/x/exp/rand"
@@ -19,7 +19,7 @@ import (
 )
 
 // AuthAddUserCommand adds a user
-func AuthAddUserCommand(hc **consumer.Consumer) *cli.Command {
+func AuthAddUserCommand(hc **messaging.Consumer) *cli.Command {
 	displayName := ""
 	role := ""
 	rolesTxt := fmt.Sprintf("%s, %s, %s, %s",
@@ -60,7 +60,7 @@ func AuthAddUserCommand(hc **consumer.Consumer) *cli.Command {
 }
 
 // AuthAddServiceCommand adds a service with key and auth token
-func AuthAddServiceCommand(hc **consumer.Consumer, certsDir *string) *cli.Command {
+func AuthAddServiceCommand(hc **messaging.Consumer, certsDir *string) *cli.Command {
 	displayName := ""
 
 	return &cli.Command{
@@ -89,7 +89,7 @@ func AuthAddServiceCommand(hc **consumer.Consumer, certsDir *string) *cli.Comman
 }
 
 // AuthListClientsCommand lists user profiles
-func AuthListClientsCommand(hc **consumer.Consumer) *cli.Command {
+func AuthListClientsCommand(hc **messaging.Consumer) *cli.Command {
 	return &cli.Command{
 		Name:     "lu",
 		Usage:    "List users",
@@ -106,7 +106,7 @@ func AuthListClientsCommand(hc **consumer.Consumer) *cli.Command {
 }
 
 // AuthRemoveClientCommand removes a user
-func AuthRemoveClientCommand(hc **consumer.Consumer) *cli.Command {
+func AuthRemoveClientCommand(hc **messaging.Consumer) *cli.Command {
 	return &cli.Command{
 		Name:      "rmu",
 		Usage:     "Remove a user. (careful, no confirmation)",
@@ -125,7 +125,7 @@ func AuthRemoveClientCommand(hc **consumer.Consumer) *cli.Command {
 }
 
 // AuthSetPasswordCommand sets a client's password
-func AuthSetPasswordCommand(hc **consumer.Consumer) *cli.Command {
+func AuthSetPasswordCommand(hc **messaging.Consumer) *cli.Command {
 	return &cli.Command{
 		Name:      "setpass",
 		Usage:     "Set password. (careful, no confirmation)",
@@ -146,7 +146,7 @@ func AuthSetPasswordCommand(hc **consumer.Consumer) *cli.Command {
 }
 
 // AuthRoleCommand changes a user's role
-func AuthRoleCommand(hc **consumer.Consumer) *cli.Command {
+func AuthRoleCommand(hc **messaging.Consumer) *cli.Command {
 	return &cli.Command{
 		Name:      "setrole",
 		Usage:     "Set a new role",
@@ -167,7 +167,7 @@ func AuthRoleCommand(hc **consumer.Consumer) *cli.Command {
 
 // HandleAddUser adds a user and displays a temporary password
 func HandleAddUser(
-	hc *consumer.Consumer, loginID string, displayName string, role string) (err error) {
+	hc *messaging.Consumer, loginID string, displayName string, role string) (err error) {
 
 	newPassword := GeneratePassword(9, true)
 
@@ -192,7 +192,7 @@ func HandleAddUser(
 //	displayName is optional
 //	certsDir with directory to store keys/token
 func HandleAddService(
-	hc *consumer.Consumer, serviceID string, displayName string, certsDir string) (err error) {
+	hc *messaging.Consumer, serviceID string, displayName string, certsDir string) (err error) {
 	var kp keys.IHiveKey
 	//TODO: use standardized extensions from launcher
 	keyFile := serviceID + ".key"
@@ -242,7 +242,7 @@ func HandleAddService(
 }
 
 // HandleListClients shows a list of user profiles
-func HandleListClients(hc *consumer.Consumer) (err error) {
+func HandleListClients(hc *messaging.Consumer) (err error) {
 
 	profileList, err := authn.AdminGetProfiles(hc)
 
@@ -277,7 +277,7 @@ func HandleListClients(hc *consumer.Consumer) (err error) {
 }
 
 // HandleRemoveClient removes a user
-func HandleRemoveClient(hc *consumer.Consumer, clientID string) (err error) {
+func HandleRemoveClient(hc *messaging.Consumer, clientID string) (err error) {
 	err = authn.AdminRemoveClient(hc, clientID)
 
 	if err != nil {
@@ -293,7 +293,7 @@ func HandleRemoveClient(hc *consumer.Consumer, clientID string) (err error) {
 //
 //	loginID is the ID or email of the user
 //	newPassword can be empty to auto-generate a password
-func HandleSetPassword(hc *consumer.Consumer, loginID string, newPassword string) error {
+func HandleSetPassword(hc *messaging.Consumer, loginID string, newPassword string) error {
 	if newPassword == "" {
 		newPassword = GeneratePassword(9, true)
 	}
@@ -311,7 +311,7 @@ func HandleSetPassword(hc *consumer.Consumer, loginID string, newPassword string
 //
 //	loginID is the ID or email of the user
 //	newPassword can be empty to auto-generate a password
-func HandleSetRole(hc *consumer.Consumer, loginID string, newRole string) error {
+func HandleSetRole(hc *messaging.Consumer, loginID string, newRole string) error {
 	err := authz.AdminSetClientRole(hc, loginID, authz.ClientRole(newRole))
 
 	if err != nil {

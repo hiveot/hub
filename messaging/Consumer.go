@@ -1,9 +1,8 @@
-package consumer
+package messaging
 
 import (
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/wot"
 	"github.com/teris-io/shortid"
@@ -19,13 +18,13 @@ const DefaultRpcTimeout = time.Second * 60 // 60 for testing; 3 seconds
 // This provides a golang API to consumer operations.
 type Consumer struct {
 	// application callback for reporting connection status change
-	appConnectHandlerPtr atomic.Pointer[messaging.ConnectionHandler]
+	appConnectHandlerPtr atomic.Pointer[ConnectionHandler]
 
 	// application callback that handles asynchronous responses
-	appResponseHandlerPtr atomic.Pointer[messaging.ResponseHandler]
+	appResponseHandlerPtr atomic.Pointer[ResponseHandler]
 
 	// The underlying transport connection for delivering and receiving requests and responses
-	cc messaging.IConnection
+	cc IConnection
 
 	mux sync.RWMutex
 
@@ -55,7 +54,7 @@ func (co *Consumer) GetClientID() string {
 }
 
 // GetConnection returns the underlying connection of this consumer
-func (co *Consumer) GetConnection() messaging.IConnection {
+func (co *Consumer) GetConnection() IConnection {
 	return co.cc
 }
 
@@ -64,7 +63,7 @@ func (co *Consumer) GetConnection() messaging.IConnection {
 func (co *Consumer) InvokeAction(
 	dThingID, name string, input any, output any) error {
 
-	req := messaging.NewRequestMessage(
+	req := NewRequestMessage(
 		wot.OpInvokeAction, dThingID, name, input, "")
 	resp, err := co.SendRequest(req, true)
 
@@ -101,14 +100,14 @@ func (co *Consumer) ObserveProperty(thingID string, name string) error {
 	if name == "" {
 		op = wot.OpObserveAllProperties
 	}
-	req := messaging.NewRequestMessage(op, thingID, name, nil, "")
+	req := NewRequestMessage(op, thingID, name, nil, "")
 	resp, err := co.SendRequest(req, true)
 	_ = resp
 	return err
 }
 
 // connection status handler
-func (co *Consumer) onConnect(connected bool, err error, c messaging.IConnection) {
+func (co *Consumer) onConnect(connected bool, err error, c IConnection) {
 	hPtr := co.appConnectHandlerPtr.Load()
 	if hPtr != nil {
 		(*hPtr)(connected, err, c)
@@ -118,7 +117,7 @@ func (co *Consumer) onConnect(connected bool, err error, c messaging.IConnection
 // onResponse passes a response to the RnR response channel and falls back to pass
 // it to the registered application response handler. If neither is available
 // then turn the response in a notification and pass it to the notification handler.
-func (co *Consumer) onResponse(resp *messaging.ResponseMessage) error {
+func (co *Consumer) onResponse(resp *ResponseMessage) error {
 
 	handled := co.rnrChan.HandleResponse(resp)
 	if handled {
@@ -128,7 +127,7 @@ func (co *Consumer) onResponse(resp *messaging.ResponseMessage) error {
 	// handle the response as an async response with no wait handler registered
 	hPtr := co.appResponseHandlerPtr.Load()
 	if hPtr == nil {
-		if resp.Status == messaging.StatusPending {
+		if resp.Status == StatusPending {
 			// NOTE: if no response is expected then this could be an out-of-order response
 			// instead of receiving 'pending' 'completed', the completed response is
 			// received first.
@@ -154,7 +153,7 @@ func (co *Consumer) onResponse(resp *messaging.ResponseMessage) error {
 // This uses the underlying transport native method of ping-pong.
 func (co *Consumer) Ping() error {
 	correlationID := shortid.MustGenerate()
-	req := messaging.NewRequestMessage(wot.HTOpPing, "", "", nil, correlationID)
+	req := NewRequestMessage(wot.HTOpPing, "", "", nil, correlationID)
 	resp, err := co.SendRequest(req, true)
 	if err != nil {
 		return err
@@ -175,7 +174,7 @@ func (co *Consumer) Ping() error {
 // protocol specific messages.
 // The hiveot protocol passes this as-is as the output.
 func (co *Consumer) QueryAction(thingID, name string) (
-	value messaging.ActionStatus, err error) {
+	value ActionStatus, err error) {
 
 	err = co.Rpc(wot.OpQueryAction, thingID, name, nil, &value)
 	return value, err
@@ -195,7 +194,7 @@ func (co *Consumer) QueryAction(thingID, name string) (
 // ActionStatus message. All hiveot protocols include full information.
 // WoT bindings might not include update timestamp and such.
 func (co *Consumer) QueryAllActions(thingID string) (
-	values map[string]messaging.ActionStatus, err error) {
+	values map[string]ActionStatus, err error) {
 
 	err = co.Rpc(wot.OpQueryAllActions, thingID, "", nil, &values)
 	return values, err
@@ -219,7 +218,7 @@ func (co *Consumer) QueryAllActions(thingID string) (
 // ResponseMessages and include information such as Updated. All hiveot protocols
 // include full information. WoT bindings might be too limited.
 func (co *Consumer) ReadAllProperties(thingID string) (
-	values map[string]messaging.ThingValue, err error) {
+	values map[string]ThingValue, err error) {
 
 	err = co.Rpc(wot.OpReadAllProperties, thingID, "", nil, &values)
 	return values, err
@@ -252,7 +251,7 @@ func (co *Consumer) ReadAllProperties(thingID string) (
 // ResponseMessages and include information such as Updated. All hiveot protocols
 // include full information. WoT bindings might be too limited.
 func (co *Consumer) ReadProperty(thingID, name string) (
-	value messaging.ThingValue, err error) {
+	value ThingValue, err error) {
 
 	err = co.Rpc(wot.OpReadProperty, thingID, name, nil, &value)
 	return value, err
@@ -289,10 +288,10 @@ func (co *Consumer) ReadProperty(thingID, name string) (
 // This returns an error if the request fails or if the response contains an error
 func (co *Consumer) Rpc(operation, thingID, name string, input any, output any) error {
 	correlationID := shortid.MustGenerate()
-	req := messaging.NewRequestMessage(operation, thingID, name, input, correlationID)
+	req := NewRequestMessage(operation, thingID, name, input, correlationID)
 	resp, err := co.SendRequest(req, true)
 	if err == nil {
-		if resp.Status == messaging.StatusFailed {
+		if resp.Status == StatusFailed {
 			detail := fmt.Sprintf("%v", resp.Output)
 			errTxt := resp.Error
 			if detail != "" {
@@ -311,8 +310,8 @@ func (co *Consumer) Rpc(operation, thingID, name string, input any, output any) 
 // be generated to wait for completion.
 // If waitForCompletion is false then the response will go to the response handler
 // If the request has no correlation ID, one will be generated.
-func (co *Consumer) SendRequest(req *messaging.RequestMessage, waitForCompletion bool) (
-	resp *messaging.ResponseMessage, err error) {
+func (co *Consumer) SendRequest(req *RequestMessage, waitForCompletion bool) (
+	resp *ResponseMessage, err error) {
 
 	t0 := time.Now()
 	slog.Info("SendRequest",
@@ -325,7 +324,7 @@ func (co *Consumer) SendRequest(req *messaging.RequestMessage, waitForCompletion
 	if !waitForCompletion {
 		err = co.cc.SendRequest(req)
 		resp = req.CreateResponse(nil, err)
-		resp.Status = messaging.StatusPending
+		resp.Status = StatusPending
 		return resp, err
 	}
 
@@ -372,7 +371,7 @@ func (co *Consumer) SendRequest(req *messaging.RequestMessage, waitForCompletion
 // SetConnectHandler sets the notification handler of changes to this consumer connection
 // Intended to notify the client that a reconnect or relogin is needed.
 // Only a single handler is supported. This replaces the previously set callback.
-func (co *Consumer) SetConnectHandler(cb messaging.ConnectionHandler) {
+func (co *Consumer) SetConnectHandler(cb ConnectionHandler) {
 	if cb == nil {
 		co.appConnectHandlerPtr.Store(nil)
 	} else {
@@ -382,7 +381,7 @@ func (co *Consumer) SetConnectHandler(cb messaging.ConnectionHandler) {
 
 // SetResponseHandler set the handler that receives asynchronous responses
 // Those are response to requests that are not waited for using the baseRnR handler.
-func (co *Consumer) SetResponseHandler(cb messaging.ResponseHandler) {
+func (co *Consumer) SetResponseHandler(cb ResponseHandler) {
 	if cb == nil {
 		co.appResponseHandlerPtr.Store(nil)
 	} else {
@@ -397,7 +396,7 @@ func (co *Consumer) Subscribe(thingID string, name string) error {
 	if name == "" {
 		op = wot.OpSubscribeAllEvents
 	}
-	req := messaging.NewRequestMessage(op, thingID, name, nil, "")
+	req := NewRequestMessage(op, thingID, name, nil, "")
 	resp, err := co.SendRequest(req, true)
 	_ = resp
 	return err
@@ -409,7 +408,7 @@ func (co *Consumer) UnobserveProperty(thingID string, name string) error {
 	if name == "" {
 		op = wot.OpUnobserveAllProperties
 	}
-	req := messaging.NewRequestMessage(op, thingID, name, nil, "")
+	req := NewRequestMessage(op, thingID, name, nil, "")
 	resp, err := co.SendRequest(req, true)
 	_ = resp
 	return err
@@ -421,7 +420,7 @@ func (co *Consumer) Unsubscribe(thingID string, name string) error {
 	if name == "" {
 		op = wot.OpUnsubscribeAllEvents
 	}
-	req := messaging.NewRequestMessage(op, thingID, name, nil, "")
+	req := NewRequestMessage(op, thingID, name, nil, "")
 	resp, err := co.SendRequest(req, true)
 	_ = resp
 	return err
@@ -434,8 +433,8 @@ func (co *Consumer) Unsubscribe(thingID string, name string) error {
 // (no error) is returned.
 // If anything goes wrong, an error is returned
 func (co *Consumer) WaitForCompletion(
-	rChan chan *messaging.ResponseMessage, operation, correlationID string, ignoreDisconnect bool) (
-	resp *messaging.ResponseMessage, err error) {
+	rChan chan *ResponseMessage, operation, correlationID string, ignoreDisconnect bool) (
+	resp *ResponseMessage, err error) {
 
 	waitCount := 0
 	var completed bool
@@ -469,8 +468,8 @@ func (co *Consumer) WaitForCompletion(
 		hasResponse, resp = co.rnrChan.WaitForResponse(rChan, time.Second)
 		if hasResponse {
 			// ignore pending or other transient responses
-			completed = resp.Status == messaging.StatusCompleted ||
-				resp.Status == messaging.StatusFailed
+			completed = resp.Status == StatusCompleted ||
+				resp.Status == StatusFailed
 		}
 		waitCount++
 	}
@@ -498,7 +497,7 @@ func (co *Consumer) WaitForCompletion(
 // WriteProperty is a helper to send a write property request
 func (co *Consumer) WriteProperty(thingID string, name string, input any, wait bool) error {
 	correlationID := shortid.MustGenerate()
-	req := messaging.NewRequestMessage(wot.OpWriteProperty, thingID, name, input, correlationID)
+	req := NewRequestMessage(wot.OpWriteProperty, thingID, name, input, correlationID)
 	resp, err := co.SendRequest(req, wait)
 	_ = resp
 	return err
@@ -516,7 +515,7 @@ func (co *Consumer) WriteProperty(thingID string, name string, input any, wait b
 //
 //	cc the client connection to use for sending requests and receiving responses.
 //	timeout of the rpc connections or 0 for default (3 sec)
-func NewConsumer(cc messaging.IConnection, rpcTimeout time.Duration) *Consumer {
+func NewConsumer(cc IConnection, rpcTimeout time.Duration) *Consumer {
 	if rpcTimeout == 0 {
 		rpcTimeout = DefaultRpcTimeout
 	}

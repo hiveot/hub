@@ -27,10 +27,10 @@ func GenServiceAgent(l *utils.SL, agentID, serviceID string, td1 *td.TD) {
 	l.Add("// that implements the corresponding interface method.")
 	l.Add("// ")
 	l.Add("// This returns the marshalled response data or an error.")
-	l.Add("func NewHandle%sRequest(svc %s)(func(msg *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage) {",
+	l.Add("func NewHandle%sRequest(svc %s)(func(msg *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage) {",
 		serviceID, interfaceName)
 	l.Indent++
-	l.Add("return func(msg *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {")
+	l.Add("return func(msg *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {")
 
 	l.Indent++
 

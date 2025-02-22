@@ -3,12 +3,12 @@ package launchercli
 import (
 	"fmt"
 	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/messaging/consumer"
+	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/services/launcher/launcherclient"
 	"github.com/urfave/cli/v2"
 )
 
-func LauncherListCommand(hc **consumer.Consumer) *cli.Command {
+func LauncherListCommand(hc **messaging.Consumer) *cli.Command {
 
 	return &cli.Command{
 		Name: "ls",
@@ -26,7 +26,7 @@ func LauncherListCommand(hc **consumer.Consumer) *cli.Command {
 	}
 }
 
-func LauncherStartCommand(hc **consumer.Consumer) *cli.Command {
+func LauncherStartCommand(hc **messaging.Consumer) *cli.Command {
 
 	return &cli.Command{
 		Name: "start",
@@ -45,7 +45,7 @@ func LauncherStartCommand(hc **consumer.Consumer) *cli.Command {
 	}
 }
 
-func LauncherStopCommand(hc **consumer.Consumer) *cli.Command {
+func LauncherStopCommand(hc **messaging.Consumer) *cli.Command {
 
 	return &cli.Command{
 		Name: "stop",
@@ -64,7 +64,7 @@ func LauncherStopCommand(hc **consumer.Consumer) *cli.Command {
 }
 
 // HandleListServices prints a list of available services
-func HandleListServices(hc *consumer.Consumer) error {
+func HandleListServices(hc *messaging.Consumer) error {
 
 	if hc == nil {
 		return fmt.Errorf("no Hub connection")
@@ -111,7 +111,7 @@ func HandleListServices(hc *consumer.Consumer) error {
 }
 
 // HandleStartService starts a service
-func HandleStartService(serviceName string, hc *consumer.Consumer) error {
+func HandleStartService(serviceName string, hc *messaging.Consumer) error {
 	var err error
 	if hc == nil {
 		return fmt.Errorf("no Hub connection")
@@ -141,7 +141,7 @@ func HandleStartService(serviceName string, hc *consumer.Consumer) error {
 }
 
 // HandleStopService stops a service
-func HandleStopService(serviceName string, hc *consumer.Consumer) error {
+func HandleStopService(serviceName string, hc *messaging.Consumer) error {
 	var err error
 
 	if hc == nil {

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/testenv"
+	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/clients"
-	"github.com/hiveot/hub/messaging/consumer"
 	"github.com/hiveot/hub/messaging/tputils/tlsclient"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	authz "github.com/hiveot/hub/runtime/authz/api"
@@ -29,7 +29,7 @@ var testPort = 23001
 var ts *testenv.TestServer
 
 // Create a new store, delete if it already exists
-func newIdProvService() (svc *service.IdProvService, co1 *consumer.Consumer, stopFn func()) {
+func newIdProvService() (svc *service.IdProvService, co1 *messaging.Consumer, stopFn func()) {
 
 	ts = testenv.StartTestServer(true)
 	agentConn, token1 := ts.AddConnectService(idprovapi.AgentID)
@@ -127,7 +127,7 @@ func TestAutomaticProvisioning(t *testing.T) {
 	require.NoError(t, err)
 	//err = agConn.ConnectWithToken(token1)
 	//require.NoError(t, err)
-	ag1 := consumer.NewAgent(cc, nil, nil, nil, 0)
+	ag1 := messaging.NewAgent(cc, nil, nil, nil, 0)
 	//ag1.SetRetryConnect(false)
 	ag1.Disconnect()
 }

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
-	"github.com/hiveot/hub/messaging/consumer"
+	"github.com/hiveot/hub/messaging"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/runtime/exposedthing"
 	"github.com/hiveot/hub/wot/td"
@@ -366,7 +366,7 @@ func (igw *IsyGatewayThing) MakeTD() *td.TD {
 //}
 
 // PubTD read and publishes the gateway's TD
-func (svc *IsyGatewayThing) PubTD(ag *consumer.Agent) (err error) {
+func (svc *IsyGatewayThing) PubTD(ag *messaging.Agent) (err error) {
 	tdi := svc.MakeTD()
 	tdJSON, _ := jsoniter.MarshalToString(tdi)
 	err = digitwin.ThingDirectoryUpdateTD(&ag.Consumer, tdJSON)

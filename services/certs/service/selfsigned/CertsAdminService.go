@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/keys"
-	"github.com/hiveot/hub/messaging/consumer"
+	"github.com/hiveot/hub/messaging"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/hiveot/hub/services/certs/certsapi"
 	"log/slog"
@@ -197,7 +197,7 @@ func (svc *SelfSignedCertsService) CreateUserCert(
 // Start the service and listen for requests
 //
 //	hc is the connection to the hub with a service role. For testing it can be nil.
-func (svc *SelfSignedCertsService) Start(ag *consumer.Agent) (err error) {
+func (svc *SelfSignedCertsService) Start(ag *messaging.Agent) (err error) {
 	slog.Info("Starting certs service", "serviceID", ag.GetClientID())
 
 	// permissions for using this service are for admin only

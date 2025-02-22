@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/consumer"
 	"github.com/hiveot/hub/messaging/tputils"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/services/state/stateapi"
@@ -16,7 +15,7 @@ import (
 
 // StateAgent agent for the state storage services
 type StateAgent struct {
-	ag  *consumer.Agent
+	ag  *messaging.Agent
 	svc *StateService
 }
 
@@ -174,7 +173,7 @@ func NewStateAgent(svc *StateService) *StateAgent {
 //
 //	svc is the state service whose capabilities to expose
 //	hc is the messaging client used to register a message handler
-func StartStateAgent(svc *StateService, ag *consumer.Agent) *StateAgent {
+func StartStateAgent(svc *StateService, ag *messaging.Agent) *StateAgent {
 
 	stateAgent := StateAgent{ag: ag, svc: svc}
 	if ag != nil {

@@ -1,8 +1,7 @@
-package consumer
+package messaging
 
 import (
 	"context"
-	"github.com/hiveot/hub/messaging"
 	"log/slog"
 	"sync"
 	"time"
@@ -21,7 +20,7 @@ type RnRChan struct {
 	mux sync.RWMutex
 
 	// map of correlationID to delivery status update channel
-	correlData map[string]chan *messaging.ResponseMessage
+	correlData map[string]chan *ResponseMessage
 
 	//timeout write to a response channel
 	writeTimeout time.Duration
@@ -47,7 +46,7 @@ func (rnr *RnRChan) CloseAll() {
 	for _, rChan := range rnr.correlData {
 		close(rChan)
 	}
-	rnr.correlData = make(map[string]chan *messaging.ResponseMessage)
+	rnr.correlData = make(map[string]chan *ResponseMessage)
 
 }
 
@@ -57,7 +56,7 @@ func (rnr *RnRChan) CloseAll() {
 // It is up to the handler of this response to close the channel when done.
 //
 // If a timeout passes while writing is block the write is released.
-func (rnr *RnRChan) HandleResponse(msg *messaging.ResponseMessage) bool {
+func (rnr *RnRChan) HandleResponse(msg *ResponseMessage) bool {
 	// Note: avoid a race between closing the channel and writing multiple responses.
 	// This would happen if a 'pending' response arrives after a 'completed' response,
 	// and 'wait-for-response' closes the channel while the second result is written.
@@ -99,11 +98,11 @@ func (rnr *RnRChan) Len() int {
 //
 // This returns a reply channel on which the data is received. Use
 // WaitForResponse(rChan)
-func (rnr *RnRChan) Open(correlationID string) chan *messaging.ResponseMessage {
+func (rnr *RnRChan) Open(correlationID string) chan *ResponseMessage {
 	//slog.Info("opening channel. ", "correlationID", correlationID)
 	// this needs to be able to buffer 1 response in case completed and pending
 	// are received out of order.
-	rChan := make(chan *messaging.ResponseMessage, 1)
+	rChan := make(chan *ResponseMessage, 1)
 	rnr.mux.Lock()
 	rnr.correlData[correlationID] = rChan
 	rnr.mux.Unlock()
@@ -118,8 +117,8 @@ func (rnr *RnRChan) Open(correlationID string) chan *messaging.ResponseMessage {
 //
 // If the channel was closed this returns hasResponse with no reply
 func (rnr *RnRChan) WaitForResponse(
-	replyChan chan *messaging.ResponseMessage, timeout time.Duration) (
-	hasResponse bool, resp *messaging.ResponseMessage) {
+	replyChan chan *ResponseMessage, timeout time.Duration) (
+	hasResponse bool, resp *ResponseMessage) {
 
 	ctx, cancelFunc := context.WithTimeout(context.Background(), timeout)
 	defer cancelFunc()
@@ -136,7 +135,7 @@ func (rnr *RnRChan) WaitForResponse(
 
 func NewRnRChan() *RnRChan {
 	r := &RnRChan{
-		correlData:   make(map[string]chan *messaging.ResponseMessage),
+		correlData:   make(map[string]chan *ResponseMessage),
 		writeTimeout: time.Second * 300, // default 3
 	}
 	return r

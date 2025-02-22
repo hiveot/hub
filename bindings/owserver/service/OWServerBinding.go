@@ -6,7 +6,7 @@ import (
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
-	"github.com/hiveot/hub/messaging/consumer"
+	"github.com/hiveot/hub/messaging"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/services/state/stateclient"
 	"github.com/hiveot/hub/wot/td"
@@ -37,7 +37,7 @@ type OWServerBinding struct {
 	edsAPI *eds.EdsAPI
 
 	// hub client to publish TDs and values and receive actions
-	ag *consumer.Agent
+	ag *messaging.Agent
 
 	// The discovered and publishable things, containing instructions on
 	// if and how properties and events are published
@@ -121,7 +121,7 @@ func (svc *OWServerBinding) SaveState() error {
 // This publishes a TD for this binding, starts a background heartbeat.
 //
 //	ag is the agent connection for receiving requests and sending responses.
-func (svc *OWServerBinding) Start(ag *consumer.Agent) (err error) {
+func (svc *OWServerBinding) Start(ag *messaging.Agent) (err error) {
 	slog.Info("Starting OWServer binding")
 	if svc.config.LogLevel != "" {
 		logging.SetLogging(svc.config.LogLevel, "")

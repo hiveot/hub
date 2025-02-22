@@ -41,7 +41,7 @@ func genImports(l *utils.SL, agentID string, serviceID string) {
 
 	l.Add("")
 	//l.Add("import \"errors\"")
-	l.Add("import \"github.com/hiveot/hub/messaging/messaging\"")
+	l.Add("import \"github.com/hiveot/hub/messaging\"")
 	//l.Add("import \"github.com/hiveot/hub/messaging/tputils\"")
 	//l.Add("import \"github.com/hiveot/hub/messaging\"")
 	l.Add("")

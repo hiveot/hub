@@ -9,7 +9,6 @@ import (
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/clients"
 	authenticator2 "github.com/hiveot/hub/messaging/clients/authenticator"
-	"github.com/hiveot/hub/messaging/consumer"
 	"github.com/hiveot/hub/messaging/servers/hiveotsseserver"
 	"github.com/hiveot/hub/messaging/servers/httpserver"
 	"github.com/hiveot/hub/messaging/servers/wssserver"
@@ -86,10 +85,10 @@ func NewTestClient(clientID string) (messaging.IClientConnection, string) {
 //
 // This uses the clientID as password
 // This panics if a client cannot be created
-func NewAgent(clientID string) (messaging.IClientConnection, *consumer.Agent, string) {
+func NewAgent(clientID string) (messaging.IClientConnection, *messaging.Agent, string) {
 	cc, token := NewTestClient(clientID)
 
-	agent := consumer.NewAgent(cc, nil, nil, nil, testTimeout)
+	agent := messaging.NewAgent(cc, nil, nil, nil, testTimeout)
 	return cc, agent, token
 }
 
@@ -99,10 +98,10 @@ func NewAgent(clientID string) (messaging.IClientConnection, *consumer.Agent, st
 // This uses the clientID as password
 // This panics if a client cannot be created
 func NewConsumer(clientID string, getForm messaging.GetFormHandler) (
-	messaging.IClientConnection, *consumer.Consumer, string) {
+	messaging.IClientConnection, *messaging.Consumer, string) {
 
 	cc, token := NewTestClient(clientID)
-	co := consumer.NewConsumer(cc, testTimeout)
+	co := messaging.NewConsumer(cc, testTimeout)
 	return cc, co, token
 }
 

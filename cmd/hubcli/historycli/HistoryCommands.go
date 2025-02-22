@@ -2,7 +2,7 @@ package historycli
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/messaging/consumer"
+	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/urfave/cli/v2"
@@ -24,7 +24,7 @@ import (
 //	}
 //}
 
-func HistoryListCommand(hc **consumer.Consumer) *cli.Command {
+func HistoryListCommand(hc **messaging.Consumer) *cli.Command {
 	limit := 100
 	return &cli.Command{
 		Name:      "hev",
@@ -109,7 +109,7 @@ func HistoryListCommand(hc **consumer.Consumer) *cli.Command {
 //}
 
 // HandleListEvents lists the history content
-func HandleListEvents(hc *consumer.Consumer, dThingID string, name string, limit int) error {
+func HandleListEvents(hc *messaging.Consumer, dThingID string, name string, limit int) error {
 	// FIXME: hc has a bootstrap algo to read the needed TD
 	//histTD := hc.GetTD(historyapi.ReadHistoryServiceID)
 	//f := histTD.GetForm(wot.OpInvokeAction)

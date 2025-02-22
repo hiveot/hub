@@ -1,7 +1,7 @@
 package historyclient
 
 import (
-	"github.com/hiveot/hub/messaging/consumer"
+	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/services/history/historyapi"
 	"github.com/hiveot/hub/wot/td"
 )
@@ -11,7 +11,7 @@ type ManageHistoryClient struct {
 	// service providing the history management capability
 	dThingID string
 	//co       transports.IClientConnection
-	co *consumer.Consumer
+	co *messaging.Consumer
 }
 
 // GetRetentionRule returns the retention configuration of an event by name
@@ -47,7 +47,7 @@ func (cl *ManageHistoryClient) SetRetentionRules(rules historyapi.RetentionRuleS
 }
 
 // NewManageHistoryClient creates a new instance of the manage history client for use by authorized clients
-func NewManageHistoryClient(co *consumer.Consumer) *ManageHistoryClient {
+func NewManageHistoryClient(co *messaging.Consumer) *ManageHistoryClient {
 	agentID := historyapi.AgentID
 	mngCl := &ManageHistoryClient{
 		dThingID: td.MakeDigiTwinThingID(agentID, historyapi.ManageHistoryServiceID),

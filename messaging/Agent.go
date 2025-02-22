@@ -1,9 +1,7 @@
-package consumer
+package messaging
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/clients"
 	"github.com/hiveot/hub/wot"
 	"sync/atomic"
 	"time"
@@ -19,14 +17,14 @@ type Agent struct {
 
 	// the application's request handler set with SetRequestHandler
 	// intended for sub-protocols that can receive requests. (agents)
-	appRequestHandlerPtr atomic.Pointer[messaging.RequestHandler]
+	appRequestHandlerPtr atomic.Pointer[RequestHandler]
 }
 
 // OnRequest passes a request to the application request handler and returns the response.
 // Handler must be set by agent subclasses during init.
 // This logs an error if no agent handler is set.
 func (ag *Agent) onRequest(
-	req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
+	req *RequestMessage, c IConnection) *ResponseMessage {
 
 	// handle requests if any
 	hPtr := ag.appRequestHandlerPtr.Load()
@@ -47,7 +45,7 @@ func (ag *Agent) onRequest(
 func (ag *Agent) PubEvent(thingID string, name string, value any) error {
 	// This is a response to subscription request.
 	// for now assume this is a hub connection and the hub wants all events
-	resp := messaging.NewResponseMessage(
+	resp := NewResponseMessage(
 		wot.OpSubscribeEvent, thingID, name, value, nil, "")
 
 	return ag.cc.SendResponse(resp)
@@ -59,7 +57,7 @@ func (ag *Agent) PubEvent(thingID string, name string, value any) error {
 func (ag *Agent) PubProperty(thingID string, name string, value any) error {
 	// This is a response to an observation request.
 	// send the property update as a response to the observe request
-	resp := messaging.NewResponseMessage(
+	resp := NewResponseMessage(
 		wot.OpObserveProperty, thingID, name, value, nil, "")
 	return ag.cc.SendResponse(resp)
 }
@@ -71,7 +69,7 @@ func (ag *Agent) PubProperties(thingID string, propMap map[string]any) error {
 
 	// Implicit rule: if no name is provided the data is a map
 	// the transport adds the correlationID of the subscription.
-	resp := messaging.NewResponseMessage(
+	resp := NewResponseMessage(
 		wot.OpObserveAllProperties, thingID, "", propMap, nil, "")
 
 	return ag.cc.SendResponse(resp)
@@ -105,7 +103,7 @@ func (ag *Agent) PubProperties(thingID string, propMap map[string]any) error {
 //}
 
 // SetRequestHandler set the application handler for incoming requests
-func (ag *Agent) SetRequestHandler(cb messaging.RequestHandler) {
+func (ag *Agent) SetRequestHandler(cb RequestHandler) {
 	if cb == nil {
 		ag.appRequestHandlerPtr.Store(nil)
 	} else {
@@ -120,14 +118,14 @@ func (ag *Agent) SetRequestHandler(cb messaging.RequestHandler) {
 //
 // This is a wrapper around the ClientConnection that provides WoT response messages
 // publishing properties and events to subscribers and publishing a TD.
-func NewAgent(cc messaging.IConnection,
-	reqHandler messaging.RequestHandler,
-	respHandler messaging.ResponseHandler,
-	connHandler messaging.ConnectionHandler,
+func NewAgent(cc IConnection,
+	reqHandler RequestHandler,
+	respHandler ResponseHandler,
+	connHandler ConnectionHandler,
 	timeout time.Duration) *Agent {
 
 	if timeout == 0 {
-		timeout = clients.DefaultTimeout
+		timeout = DefaultRpcTimeout
 	}
 
 	//consumer := NewConsumer(cc, respHandler, connHandler, timeout)

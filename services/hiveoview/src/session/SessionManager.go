@@ -6,7 +6,6 @@ import (
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/clients"
 	"github.com/hiveot/hub/messaging/clients/authenticator"
-	"github.com/hiveot/hub/messaging/consumer"
 	"github.com/hiveot/hub/messaging/servers/httpserver"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"log/slog"
@@ -37,7 +36,7 @@ type WebSessionManager struct {
 	// Hub CA certificate
 	caCert *x509.Certificate
 	// this service's agent for publishing events
-	ag *consumer.Agent
+	ag *messaging.Agent
 	// disable persistence from state service (for testing)
 	noState bool
 
@@ -77,10 +76,10 @@ func (sm *WebSessionManager) _addSession(
 		// session (plus its waiting for a lock).
 		// If the connection has been replaced then it won't match so ignore the
 		// callback if the connection differs.
-		co := consumer.NewConsumer(cc, sm.timeout)
+		co := messaging.NewConsumer(cc, sm.timeout)
 		existingSession.ReplaceConsumer(co)
 	} else {
-		co := consumer.NewConsumer(cc, sm.timeout)
+		co := messaging.NewConsumer(cc, sm.timeout)
 		cs = NewWebClientSession(cid, co, r.RemoteAddr, sm.noState, sm.onClose)
 	}
 	sm.sessions[cs.clcid] = cs
@@ -318,7 +317,7 @@ func (sm *WebSessionManager) GetSessionFromCookie(r *http.Request) (
 //	timeout of hub connections
 func NewWebSessionManager(
 	signingKey ed25519.PrivateKey, caCert *x509.Certificate,
-	ag *consumer.Agent, noState bool,
+	ag *messaging.Agent, noState bool,
 	timeout time.Duration) *WebSessionManager {
 
 	cc := ag.GetConnection()

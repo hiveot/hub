@@ -14,7 +14,6 @@ import (
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/clients"
-	"github.com/hiveot/hub/messaging/consumer"
 	"github.com/urfave/cli/v2"
 	"log/slog"
 	"os"
@@ -30,7 +29,7 @@ var nowrap bool
 // commandline:  hubcli command options
 
 func main() {
-	var hc *consumer.Consumer
+	var hc *messaging.Consumer
 	var verbose bool
 	var loginID = "admin"
 	var password = ""
@@ -131,7 +130,7 @@ func main() {
 				slog.Error("Unable to connect to the server", "err", err)
 				return fmt.Errorf("Unable to connect to the hub")
 			}
-			hc = consumer.NewConsumer(cc, 0)
+			hc = messaging.NewConsumer(cc, 0)
 			return nil
 		},
 		// commands arguments are passed by reference so they are updated in the Before section
