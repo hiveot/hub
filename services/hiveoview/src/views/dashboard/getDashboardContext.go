@@ -50,6 +50,8 @@ func getDashboardContext(r *http.Request, createDashboard bool) (
 	if !found {
 		if createDashboard {
 			cdc.dashboard = session2.NewDashboard(cdc.dashboardID, "New Dashboard")
+			// make it available for rendering tiles
+			cdc.clientModel.UpdateDashboard(&cdc.dashboard)
 		} else {
 			err = fmt.Errorf("Dashboard with ID '%s' not found", cdc.dashboardID)
 			return sess, cdc, err
