@@ -8,6 +8,7 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/runtime"
+	"github.com/hiveot/hub/services/hiveoview/config"
 	"github.com/hiveot/hub/services/hiveoview/src/service"
 	"log/slog"
 	"os"
@@ -47,12 +48,16 @@ func main() {
 	env.LogLevel = "info"
 	logging.SetLogging(env.LogLevel, "")
 
-	storeDir := path.Join(env.StoresDir, "hiveoview")
-	err := os.MkdirAll(storeDir, 0700)
-	if err != nil {
-		slog.Error("Unable to create session store", "err", err.Error())
-		panic(err.Error())
-	}
+	// this config will be replaced with hiveoview Thing config
+	cfg := config.NewHiveoviewConfig(serverPort)
+	_ = env.LoadConfig(&cfg)
+
+	//storeDir := path.Join(env.StoresDir, "hiveoview")
+	//err := os.MkdirAll(storeDir, 0700)
+	//if err != nil {
+	//	slog.Error("Unable to create session store", "err", err.Error())
+	//	panic(err.Error())
+	//}
 	// serve the hiveoview web pages
 	keyData, err := os.ReadFile(env.KeyFile)
 	if err == nil {
@@ -79,7 +84,7 @@ func main() {
 	// However these requests should handle multiple async updates instead.
 	// for example zwavejs refresh device info can take up to 20sec
 	svc := service.NewHiveovService(
-		serverPort, false, signingKey, rootPath, serverCert, env.CaCert,
+		cfg.ServerPort, false, signingKey, rootPath, serverCert, env.CaCert,
 		false, time.Second*20)
 
 	// StartPlugin will connect to the hub and wait for a signal to end.
