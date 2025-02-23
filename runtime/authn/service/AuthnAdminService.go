@@ -54,15 +54,13 @@ func (svc *AuthnAdminService) AddConsumer(senderID string, args authn.AdminAddCo
 			DisplayName: args.DisplayName,
 			//TokenValiditySec: svc.cfg.ConsumerTokenValiditySec,
 		}
+		err = svc.authnStore.Add(args.ClientID, prof)
+		if args.Password != "" {
+			err = svc.authnStore.SetPassword(args.ClientID, args.Password)
+		}
 	} else {
-		prof.DisplayName = args.DisplayName
-		prof.ClientType = authn.ClientTypeConsumer
-		prof.DisplayName = args.DisplayName
+		err = fmt.Errorf("Client '%s' already exists", args.ClientID)
 		//prof.TokenValiditySec = svc.cfg.ConsumerTokenValiditySec
-	}
-	err = svc.authnStore.Add(args.ClientID, prof)
-	if args.Password != "" {
-		err = svc.authnStore.SetPassword(args.ClientID, args.Password)
 	}
 	return err
 }

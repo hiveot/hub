@@ -65,6 +65,7 @@ type IAuthnStore interface {
 	SetPassword(clientID string, password string) error
 
 	// SetRole sets the default role of a client
+	// This returns an error if newRole isn't a known role
 	SetRole(clientID string, newRole string) error
 
 	// UpdateProfile updates client profile

@@ -21,14 +21,16 @@ import (
 // AuthAddUserCommand adds a user
 func AuthAddUserCommand(hc **messaging.Consumer) *cli.Command {
 	displayName := ""
-	role := ""
-	rolesTxt := fmt.Sprintf("%s, %s, %s, %s",
-		authz.ClientRoleViewer, authz.ClientRoleOperator, authz.ClientRoleManager, authz.ClientRoleAdmin)
+	var role string = string(authz.ClientRoleViewer)
+	rolesTxt := fmt.Sprintf("[%s, %s, %s, %s]",
+		authz.ClientRoleViewer, authz.ClientRoleOperator,
+		authz.ClientRoleManager, authz.ClientRoleAdmin,
+	)
 
 	return &cli.Command{
 		Name:      "addu",
 		Usage:     "Add a user with role and generate a temporary password",
-		ArgsUsage: "<userID> <role>",
+		ArgsUsage: "<userID>",
 		Category:  "auth",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
@@ -45,12 +47,9 @@ func AuthAddUserCommand(hc **messaging.Consumer) *cli.Command {
 			},
 		},
 		Action: func(cCtx *cli.Context) error {
-			if cCtx.NArg() < 1 {
-				err := fmt.Errorf("expected 1 or 2 arguments")
+			if cCtx.NArg() != 1 {
+				err := fmt.Errorf("expected 1 argument")
 				return err
-			}
-			if cCtx.NArg() == 2 {
-				role = cCtx.Args().Get(1)
 			}
 			loginID := cCtx.Args().Get(0)
 			err := HandleAddUser(*hc, loginID, displayName, role)
@@ -303,21 +302,6 @@ func HandleSetPassword(hc *messaging.Consumer, loginID string, newPassword strin
 		fmt.Println("Error: " + err.Error())
 	} else {
 		fmt.Println("User " + loginID + " password has been updated")
-	}
-	return err
-}
-
-// HandleSetRole sets a new role
-//
-//	loginID is the ID or email of the user
-//	newPassword can be empty to auto-generate a password
-func HandleSetRole(hc *messaging.Consumer, loginID string, newRole string) error {
-	err := authz.AdminSetClientRole(hc, loginID, authz.ClientRole(newRole))
-
-	if err != nil {
-		fmt.Println("Error: " + err.Error())
-	} else {
-		fmt.Println("User " + loginID + " role has been updated to " + newRole)
 	}
 	return err
 }

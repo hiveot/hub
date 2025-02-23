@@ -1,5 +1,6 @@
-import {IAgentConnection} from "@hivelib/hubclient/IAgentConnection";
-import {ActionStatus} from "@hivelib/hubclient/ActionStatus";
+import {IAgentConnection} from "@hivelib/messaging/IAgentConnection";
+import {ResponseMessage} from "@hivelib/messaging/Messages";
+import {OpInvokeAction} from "@hivelib/api/vocab/vocab";
 
 // duplicated from stateapi.go
 const AgentID = "state"      // the state binding agentID
@@ -27,7 +28,7 @@ export class StateClient {
         let args = {
             key: key
         }
-        return await this.hc.rpc(this.serviceID, DeleteMethod, args)
+        return await this.hc.rpc(OpInvokeAction, this.serviceID, DeleteMethod, args)
     }
 
     // Get the value of a key
@@ -42,7 +43,7 @@ export class StateClient {
         }
         let resp:RespType
         try {
-            resp = await this.hc.rpc(this.serviceID, GetMethod, args)
+            resp = await this.hc.rpc(OpInvokeAction,this.serviceID, GetMethod, args)
         } catch(e) {
             console.error("state.Get error",e)
             throw("state.Get error"+e)
@@ -58,18 +59,18 @@ export class StateClient {
         type RespType = {
             kv: { [index: string]: string }
         }
-        let resp: RespType = await this.hc.rpc(this.serviceID, GetMultipleMethod, args)
+        let resp: RespType = await this.hc.rpc(OpInvokeAction,this.serviceID, GetMultipleMethod, args)
 
         return resp.kv
     }
 
     // Set the value of a key
-    async Set(key: string, data: string):Promise<ActionStatus> {
+    async Set(key: string, data: string):Promise<ResponseMessage> {
         let args = {
             key: key,
             value: data
         }
-        let stat = await this.hc.rpc(this.serviceID, SetMethod, args)
+        let stat = await this.hc.rpc(OpInvokeAction,this.serviceID, SetMethod, args)
         return stat
     }
 
@@ -78,7 +79,7 @@ export class StateClient {
         let args = {
             kv: kv
         }
-        return await this.hc.rpc(this.serviceID, SetMultipleMethod, args)
+        return await this.hc.rpc(OpInvokeAction,this.serviceID, SetMultipleMethod, args)
     }
 }
 

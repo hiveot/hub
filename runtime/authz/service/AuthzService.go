@@ -6,6 +6,7 @@ import (
 	"github.com/hiveot/hub/runtime/authn/authnstore"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	"log/slog"
+	"slices"
 )
 
 // AuthzService is the authorization service for authorizing access to devices
@@ -73,6 +74,14 @@ func (svc *AuthzService) GetRolePermissions(senderID string, role authz.ClientRo
 // SetClientRole sets the role of a client in the authz store
 func (svc *AuthzService) SetClientRole(senderID string, args authz.AdminSetClientRoleArgs) error {
 	// okay, we lied, it uses the authn store
+	validRoles := []authz.ClientRole{
+		authz.ClientRoleViewer, authz.ClientRoleOperator,
+		authz.ClientRoleManager, authz.ClientRoleAdmin,
+		authz.ClientRoleAgent, authz.ClientRoleService,
+	}
+	if !slices.Contains(validRoles, args.Role) {
+		return fmt.Errorf("SetRole: Invalid role '%s'", args.Role)
+	}
 	return svc.authnStore.SetRole(args.ClientID, string(args.Role))
 }
 

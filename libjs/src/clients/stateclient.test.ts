@@ -1,5 +1,5 @@
-import { HttpSSEClient } from "@hivelib/hubclient/httpclient/HttpSSEClient"
-import { IAgentConnection } from "@hivelib/hubclient/IAgentConnection"
+import { HttpSSEClient } from "@hivelib/messaging/httpclient/HttpSSEClient"
+import { IAgentConnection } from "@hivelib/messaging/IAgentConnection"
 import { StateClient } from "./stateclient"
 
 let hc: IAgentConnection

@@ -143,6 +143,7 @@ func main() {
 			authcli.AuthAddServiceCommand(&hc, &env.CertsDir),
 			authcli.AuthListClientsCommand(&hc),
 			authcli.AuthRemoveClientCommand(&hc),
+			authcli.AuthSetRoleCommand(&hc),
 			authcli.AuthSetPasswordCommand(&hc),
 
 			launchercli.LauncherListCommand(&hc),

@@ -5,7 +5,9 @@ This binding connects to a ZWave USB-Stick controller, and publishes events to t
 ## Status
 
 This binding is functional but only offers basic functionality. 
-Breaking changes are to be expected, especially in the way property/event/action keys are constructed. 
+Breaking changes are to be expected, especially in the way property/event/action keys are constructed.
+Installation requires node-v18.
+
 
 TODO:
 1. Reconnect to Hub if the runtime restarts (javascript HttpSseClient bug)
@@ -41,6 +43,13 @@ Where propertyKey is omitted if not applicable. The endpoint is always provided 
 
 
 ## Building with esbuild
+
+Install npm version 9 and yarn  (FIXME local install instead of global)
+> sudo apt install -g npm@9
+> sudo apt install -g yarn
+
+install packages with 'yarn':
+> yarn
 
 This first step is just for testing the build process using esbuild. If this already fails then no use using pkg or the 'postject' node20+ injector. Note: one reason to take this step is to allow packages with es modules (axios) to work. pkg seems to not build correctly with code generated with tsc && tsc-alias.
 

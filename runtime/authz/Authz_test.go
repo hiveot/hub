@@ -69,7 +69,7 @@ func TestSetRole(t *testing.T) {
 		Role:     client1Role,
 	})
 	//err = authz2.AdminSetClientRole(hc, client1ID, client1Role)
-	//require.NoError(t, err)
+	require.NoError(t, err)
 
 	// get the role
 	role, err := svc.GetClientRole(client1ID, client1ID)

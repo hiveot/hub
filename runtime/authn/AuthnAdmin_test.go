@@ -28,10 +28,10 @@ func TestAddRemoveClientsSuccess(t *testing.T) {
 	err := svc.AdminSvc.AddConsumer(serviceID,
 		authn.AdminAddConsumerArgs{"user1", "user 1", "pass1"})
 	assert.NoError(t, err)
-	// duplicate should update
+	// duplicate should fail
 	err = svc.AdminSvc.AddConsumer(serviceID,
 		authn.AdminAddConsumerArgs{"user1", "user 1 updated", "pass1"})
-	assert.NoError(t, err)
+	assert.Error(t, err)
 
 	err = svc.AdminSvc.AddConsumer(serviceID,
 		authn.AdminAddConsumerArgs{"user2", "user 2", "pass2"})

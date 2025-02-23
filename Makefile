@@ -42,6 +42,7 @@ state: .FORCE
 
 hiveoview: .FORCE ## build the SSR web viewer binding
 	go build -o $(PLUGINS_FOLDER)/$@  services/$@/cmd/main.go
+	cp services/$@/config/*.yaml $(DIST_FOLDER)/config
 
 
 # --- protocol bindings

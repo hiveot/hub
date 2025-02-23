@@ -2,6 +2,8 @@
 # the challenge here is how to include the paths to the external resources.
 # Nothing seems to work other than using the zwave-js esbuild script.
 
+yarn
+
 #npx esbuild src/main.ts --bundle  --platform=node --target=node20 --preserve-symlinks --sourcemap \
 #  --outfile=build/zwavejs-esbuild.js \
 #  --external:@zwave-js/config/package.json   \
