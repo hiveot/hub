@@ -29,7 +29,7 @@ type ITransportServer interface {
 	//	{name} the name of the property, event or action affordance
 	GetForm(op string, thingID string, name string) *td.Form
 
-	// GetConnectURL returns the URL to connect to this server .
+	// GetConnectURL returns the full URL to connect to this server .
 	GetConnectURL() string
 
 	// GetProtocolType returns the server provided protocol type and scheme, where

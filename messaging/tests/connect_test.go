@@ -127,9 +127,9 @@ func StartTransportServer(
 	if respHandler == nil {
 		respHandler = DummyResponseHandler
 	}
-
+	// test cert uses localhost
 	httpTransportServer, err := httpserver.StartHttpTransportServer(
-		"localhost", testServerHttpPort, serverCert, caCert, authenticator)
+		certBundle.ServerAddr, testServerHttpPort, serverCert, caCert, authenticator)
 
 	switch defaultProtocol {
 	case messaging.ProtocolTypeWotHTTPBasic:

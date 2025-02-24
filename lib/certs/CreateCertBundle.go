@@ -17,6 +17,7 @@ type TestCertBundle struct {
 	CaKey  keys.IHiveKey
 
 	// server certificate
+	ServerAddr string
 	ServerKey  keys.IHiveKey
 	ServerCert *tls.Certificate
 
@@ -29,7 +30,9 @@ type TestCertBundle struct {
 // The server cert is valid for the 127.0.0.1, localhost and os.hostname.
 func CreateTestCertBundle() TestCertBundle {
 	var err error
-	certBundle := TestCertBundle{}
+	certBundle := TestCertBundle{
+		ServerAddr: ServerAddress,
+	}
 	// Setup CA and server TLS certificates
 	certBundle.CaCert, certBundle.CaKey, err = CreateCA("testing", 1)
 	if err != nil {

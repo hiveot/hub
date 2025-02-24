@@ -6,7 +6,6 @@ package buckets
 // Available embedded bucket store implementations with low memory overhead
 const (
 	BackendKVBTree = "kvbtree" // fastest and best for small to medium amounts of data (dependent on available memory)
-	BackendBBolt   = "bbolt"   // slow on writes but otherwise a good choice
 	BackendPebble  = "pebble"  // a good middle ground between performance and memory
 )
 
@@ -16,7 +15,7 @@ type BucketStoreInfo struct {
 	// -1 if not available.
 	DataSize int64
 
-	// Engine describes the storage engine of the store, eg kvbtree, bbolt, pebble
+	// Engine describes the storage engine of the store, eg kvbtree, pebble
 	Engine string
 
 	// The store or bucket identifier, eg thingID, appID

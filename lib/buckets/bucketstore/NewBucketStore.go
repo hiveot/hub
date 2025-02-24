@@ -3,7 +3,6 @@ package bucketstore
 import (
 	"fmt"
 	"github.com/hiveot/hub/lib/buckets"
-	"github.com/hiveot/hub/lib/buckets/bolts"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
 	"github.com/hiveot/hub/lib/buckets/pebble"
 	"path"
@@ -22,10 +21,6 @@ func NewBucketStore(directory, name string, backend string) (store buckets.IBuck
 		// kvbtree stores data into a single file
 		storePath := path.Join(directory, name+".kvbtree")
 		store = kvbtree.NewKVStore(storePath)
-	} else if backend == buckets.BackendBBolt {
-		// bbolt stores data into a single file
-		storePath := path.Join(directory, name+".boltdb")
-		store = bolts.NewBoltStore(storePath)
 	} else if backend == buckets.BackendPebble {
 		// Pebbles stores data into a directory
 		storePath := path.Join(directory, name+".pebble")

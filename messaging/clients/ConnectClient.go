@@ -259,7 +259,9 @@ func NewHiveotClient(
 	} else if strings.HasPrefix(connectURL, "mqtts") {
 		//	bc = mqttclient.NewMqttAgentClient(
 		//		fullURL, clientID, nil, caCert, timeout)
-		panic("mqtt client is not yet supported")
+		err = fmt.Errorf("mqtt client is not yet supported for '%s'", connectURL)
+	} else {
+		err = fmt.Errorf("Server URL '%s' is invalid", connectURL)
 	}
 	return cc, err
 }

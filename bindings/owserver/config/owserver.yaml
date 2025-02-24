@@ -3,9 +3,10 @@
 # logging level debug, info, warn (default), error.
 logLevel: info
 
-# serverUrl optional messaging server address to connect to.
-# Default "" for auto discovery.
-#serverUrl: ""
+# hubUrl optional HiveOT hub address to connect to.
+# Default "" for auto discovery. For example to connect with websockets.
+# Tip: "hubcli disco" will show a list of discovered hub servers and its endpoints
+#hubUrl: "wss://192.168.1.99/wot/wss"
 
 # owServerURL with URL of the EDS OWServer-V2 gateway.
 # Default "" is auto-discover using DNS-SD
@@ -15,10 +16,6 @@ logLevel: info
 # Optional loginName and password to the EDS OWServer using Basic Auth.
 #owServerLogin: admin
 #owServerPassword: password
-
-# TDInterval optional override interval of republishing the full TD, in seconds.
-# Default is 12 hours
-#tdInterval: 43200
 
 # PollInterval optional override interval of polling Thing values, in seconds.
 # Default is 60 seconds

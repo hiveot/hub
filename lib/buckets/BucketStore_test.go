@@ -23,9 +23,7 @@ var testBucketID = "default"
 
 //var testBackendType = buckets.BackendKVBTree
 
-var testBackendType = buckets.BackendBBolt
-
-// var testBackendType = buckets.BackendPebble
+var testBackendType = buckets.BackendPebble
 var testBackendDirectory = "/tmp/test-bucketstore"
 
 const (
@@ -164,7 +162,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestAllBackends(t *testing.T) {
-	backends := []string{buckets.BackendBBolt, buckets.BackendPebble, buckets.BackendKVBTree}
+	backends := []string{buckets.BackendPebble, buckets.BackendKVBTree}
 	for _, backend := range backends {
 		testBackendType = backend
 		// Generic directory store testcases
@@ -360,6 +358,8 @@ func TestSeek(t *testing.T) {
 
 	// set cursor 'base' records forward
 	cursor, err := bucket.Cursor()
+	require.NoError(t, err)
+
 	k1, v1, valid := cursor.First()
 	assert.True(t, valid)
 	for i := 0; i < base; i++ {
@@ -374,7 +374,7 @@ func TestSeek(t *testing.T) {
 	k2, v2, valid2 := cursor.Seek(k1)
 	assert.True(t, valid2)
 	assert.Equal(t, k1, k2)
-	assert.Equal(t, string(v1), string(v2))
+	assert.Equal(t, string(v1), string(v2), "using backend: "+testBackendType)
 
 	// test that keys increment
 	for i := 0; i < seekCount; i++ {
@@ -423,6 +423,7 @@ func TestPrevNextN(t *testing.T) {
 
 	// test NextN
 	cursor, err := bucket.Cursor()
+	require.NoError(t, err)
 	// FIXME: this sometimes returns a buffer filled with FF's. Can't reproduce.
 	k1, v1, valid := cursor.First()
 	assert.True(t, valid)
@@ -439,7 +440,7 @@ func TestPrevNextN(t *testing.T) {
 	k2, v2, valid2 := cursor.Prev()
 	assert.True(t, valid2)
 	assert.Equal(t, k1, k2)
-	assert.Equal(t, v1, v2)
+	assert.Equal(t, v1, v2, "cursor.First() failed with backend:"+testBackendType)
 
 	cursor.Release()
 }

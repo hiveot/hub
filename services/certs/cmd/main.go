@@ -44,5 +44,5 @@ func main() {
 
 	svc := selfsigned.NewSelfSignedCertsService(caCert, caKey)
 
-	plugin.StartPlugin(svc, env.ClientID, env.CertsDir)
+	plugin.StartPlugin(svc, env.ClientID, env.CertsDir, env.ServerURL)
 }

@@ -1,0 +1,324 @@
+{
+	"@context": [
+		"https://www.w3.org/2022/wot/td/v1.1",
+		{
+			"hiveot": "https://www.hiveot.net/vocab/v0.1"
+		}
+	],
+	"@type": "Service",
+	"id": "state",
+	"title": "DigiTwin State Service",
+	"description": "Service for managing the Digital Twin state including the last known event and action values",
+	"version": {
+		"instance": "0.1.0"
+	},
+	"created": "2024-10-04T17:00:00.000Z",
+	"modified": "2025-02-23T17:00:00.000Z",
+	"support": "https://www.github.com/hiveot/hub",
+	"base": "https://localhost/",
+	"security": [
+		"bearer"
+	],
+	"securityDefinitions": {
+		"bearer": {
+			"description": "HTTP protocol authentication",
+			"name": "authentication",
+			"alg": "ed25519",
+			"format": "paseto",
+			"scheme": "bearer",
+			"in": "header"
+		}
+	},
+	"deny": ["none"],
+	"schemaDefinitions": {
+
+		"ActionStatus": {
+			"title": "Action Status",
+			"description": "Status of the an action",
+			"type": "object",
+			"properties": {
+				"agentID": {
+					"title": "Agent ID",
+					"description": "The agent handling the action",
+					"type": "string"
+				},
+				"error": {
+					"title": "Error",
+					"description": "Action error info when failed",
+					"type": "string"
+				},
+				"id": {
+					"title": "Action ID",
+					"description": "Unique identifier of the action",
+					"type": "string"
+				},
+				"input": {
+					"title": "Action input",
+					"description": "Action input value",
+					"type": "any"
+				},
+				"name": {
+					"title": "Action name",
+					"description": "name of the action or property",
+					"type": "string"
+				},
+				"output": {
+					"title": "Action output",
+					"description": "",
+					"type": "any"
+				},
+				"senderID": {
+					"title": "Sender client ID",
+					"description": "ID of the client requesting the action",
+					"type": "string"
+				},
+				"status": {
+					"title": "Action status",
+					"description": "Status of the action's progress",
+					"type": "string",
+					"enum": ["pending", "running", "completed", "failed"]
+				},
+				"thingID": {
+					"title": "Action Thing",
+					"description": "Digital twin ThingID the action applies to",
+					"type": "string"
+				},
+				"requested": {
+					"title": "Requested Time",
+					"description": "Time the action request was received",
+					"type": "string"
+				},
+				"updated": {
+					"title": "Updated Time",
+					"description": "Time the action status was last updated",
+					"type": "string"
+				}
+			}
+		},
+		"ThingValue": {
+			"title": "Thing Value",
+			"description": "Property or event value",
+			"type": "object",
+			"comment": "This has the same fields as a transports ThingValue",
+			"properties": {
+				"id": {
+					"title": "Value identifier",
+					"description": "Unique identification of this reported value",
+					"type": "string"
+				},
+				"name": {
+					"title": "Name",
+					"description":"Name of the property holding the value",
+					"type": "string"
+				},
+				"output": {
+					"title": "Payload",
+					"description": "Data in format as described by the thing's property affordance",
+					"type": "any"
+				},
+				"thingID": {
+					"title": "Thing ID",
+					"description": "Digital twin Thing ID",
+					"type": "string"
+				},
+				"updated": {
+					"title": "Updated time",
+					"description": "Time the value was last updated",
+					"type": "string"
+				},
+				"affordanceType": {
+					"title": "Type of value",
+					"description": "Value of an 'property', 'event', or 'action'",
+					"type": "string"
+				}
+			}
+		}
+	},
+	"events": {
+	},
+	"actions": {
+		"queryAction": {
+			"@type": "hiveot:function",
+			"title": "Action status",
+			"description": "Read the current action status of a Thing",
+			"safe": true,
+			"idempotent": true,
+			"input": {
+				"type": "object",
+				"required": [
+					"thingID",
+					"name"
+				],
+				"properties": {
+					"thingID": {
+						"title": "Thing ID",
+						"description": "ID of the Thing to query",
+						"type": "string"
+					},
+					"name": {
+						"title": "Action Name",
+						"description": "The action name to query",
+						"type": "string"
+					}
+				}
+			},
+			"output": {
+				"title": "Action value",
+				"description": "The latest action value",
+				"comment": "defined in schemadefinitions",
+				"type": "object",
+				"schema": "ActionStatus"
+			}
+		},
+
+		"queryAllActions": {
+			"@type": "hiveot:function",
+			"title": "Action statuses",
+			"description": "Read all action statuses of a Thing",
+			"safe": true,
+			"idempotent": true,
+			"input": {
+				"type": "string",
+				"title": "Thing ID",
+				"description": "ID of the Thing to query"
+			},
+			"output": {
+				"title": "Action value",
+				"description": "Map of action statuses",
+				"comment": "defined in schemadefinitions",
+				"type": "object",
+				"properties": {
+					"": {
+						"type": "object",
+						"title": "Action Status",
+						"schema": "ActionStatus"
+					}
+				}
+			}
+		},
+
+		"readAllEvents": {
+			"@type": "hiveot:function",
+			"title": "Read all event values",
+			"description": "Read the latest known event values of a Thing",
+			"safe": true,
+			"idempotent": true,
+			"input": {
+				"title": "Thing ID",
+				"description": "ID of the Thing to read",
+				"type": "string"
+			},
+			"output": {
+				"title": "Event values",
+				"description": "Map with the most recent event ThingValue objects",
+				"type": "object",
+				"properties": {
+					"": {
+						"title": "Event Value",
+						"type": "object",
+						"schema": "ThingValue",
+						"comment": "defined in schemadefinitions"
+					}
+				}
+			},
+			"forms": [{"href": "/{operation}"}]
+		},
+
+		"readAllProperties": {
+			"@type": "hiveot:function",
+			"title": "Read all properties",
+			"description": "Read the latest known property values",
+			"safe": true,
+			"idempotent": true,
+			"input": {
+				"title": "Thing ID",
+				"description": "Digital twin ID of the Thing to read",
+				"type": "string"
+			},
+			"output": {
+				"title": "Property values",
+				"description": "Map of property name:ThingValue objects",
+				"type": "object",
+				"properties": {
+					"": {
+						"title": "Property Value",
+						"type": "object",
+						"schema": "ThingValue",
+						"comment": "defined in schemadefinitions"
+					}
+				}
+			},
+			"forms": [{"href": "/{operation}"}]
+		},
+
+		"readEvent": {
+			"@type": "hiveot:function",
+			"title": "Read event value",
+			"description": "Read the latest event value of a Thing",
+			"safe": true,
+			"idempotent": true,
+			"input": {
+				"type": "object",
+				"required": [
+					"thingID",
+					"name"
+				],
+				"properties": {
+					"thingID": {
+						"title": "Thing ID",
+						"description": "ID of the Thing to read",
+						"type": "string"
+					},
+					"name": {
+						"title": "Event name",
+						"description": "Name of the event to read the latest values",
+						"type": "string"
+					}
+				}
+			},
+			"output": {
+				"title": "Event value",
+				"description": "Most recent event value",
+				"comment": "defined in schemadefinitions",
+				"type": "object",
+				"schema": "ThingValue"
+			},
+			"forms": [{"href": "/{operation}"}]
+		},
+
+		"readProperty": {
+			"@type": "hiveot:function",
+			"title": "Read property value",
+			"description": "Read the latest property value",
+			"safe": true,
+			"idempotent": true,
+			"input": {
+				"type": "object",
+				"required": [
+					"thingID",
+					"name"
+				],
+				"properties": {
+					"thingID": {
+						"title": "Thing ID",
+						"description": "ID of the Thing to read",
+						"type": "string"
+					},
+					"name": {
+						"title": "Property name",
+						"description": "The property name whose value to read",
+						"type": "string"
+					}
+				}
+			},
+			"output": {
+				"title": "Property value",
+				"description": "Most recent property value",
+				"comment": "defined in schemadefinitions",
+				"type": "object",
+				"schema": "ThingValue"
+			},
+			"forms": [{"href": "/{operation}"}]
+		}
+	}
+}

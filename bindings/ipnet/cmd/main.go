@@ -13,5 +13,5 @@ func main() {
 	_ = env.LoadConfig(&cfg)
 	svc := service.NewIpNetBinding(cfg)
 
-	plugin.StartPlugin(svc, env.ClientID, env.CertsDir)
+	plugin.StartPlugin(svc, env.ClientID, env.CertsDir, env.ServerURL)
 }

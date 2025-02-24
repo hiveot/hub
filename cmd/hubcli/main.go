@@ -121,9 +121,9 @@ func main() {
 
 			caCert, _ := clients.LoadCA(certsDir)
 			if password != "" {
-				cc, authToken, err = clients.ConnectWithPassword(loginID, password, caCert, "", "", "", 0)
+				cc, authToken, err = clients.ConnectWithPassword(loginID, password, caCert, "", serverURL, "", 0)
 			} else {
-				cc, err = clients.ConnectWithToken(loginID, authToken, caCert, "", "", 0)
+				cc, err = clients.ConnectWithToken(loginID, authToken, caCert, "", serverURL, 0)
 			}
 
 			if err != nil {

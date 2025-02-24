@@ -17,7 +17,6 @@ import (
 )
 
 const bindingValuePollIntervalID = "valuePollInterval"
-const bindingTDIntervalID = "tdPollInterval"
 const bindingValuePublishIntervalID = "valueRepublishInterval"
 const bindingOWServerAddressID = "owServerAddress"
 const bindingMake = "make"
@@ -60,14 +59,14 @@ type OWServerBinding struct {
 	mux sync.RWMutex
 }
 
-// CreateBindingTD generates a TD document for this binding. Its thingID is the same as its agentID
+// CreateBindingTD generates a TD document for this service. Its thingID is the same as its agentID
 func (svc *OWServerBinding) CreateBindingTD() *td.TD {
 	// This binding exposes the TD of itself.
 	// Currently its configuration comes from file.
 	td := td.NewTD(svc.agentID, "OWServer binding", vocab.ThingService)
 	td.Description = "Driver for the OWServer V2 Gateway 1-wire interface"
 
-	prop := td.AddProperty(bindingMake, "Developed By", "", vocab.WoTDataTypeString).
+	prop := td.AddProperty(bindingMake, "Developer", "", vocab.WoTDataTypeString).
 		SetAtType(vocab.PropDeviceMake)
 
 	// these are configured through the configuration file.
@@ -75,11 +74,9 @@ func (svc *OWServerBinding) CreateBindingTD() *td.TD {
 		SetAtType(vocab.PropDevicePollinterval)
 	prop.Unit = vocab.UnitSecond
 
-	prop = td.AddProperty(bindingValuePublishIntervalID, "Value republish Interval", "", vocab.WoTDataTypeInteger)
-	prop.Unit = vocab.UnitSecond
-
-	prop = td.AddProperty(bindingTDIntervalID, "TD Publication Interval", "", vocab.WoTDataTypeInteger).
-		SetAtType(vocab.PropDevicePollinterval)
+	prop = td.AddProperty(bindingValuePublishIntervalID, "Value Republish Interval",
+		"Interval the values are published even if they haven't changed.",
+		vocab.WoTDataTypeInteger)
 	prop.Unit = vocab.UnitSecond
 
 	prop = td.AddProperty(bindingOWServerAddressID, "IP Address", "OWServer gateway IP address",
@@ -91,7 +88,6 @@ func (svc *OWServerBinding) CreateBindingTD() *td.TD {
 func (svc *OWServerBinding) GetBindingPropValues() map[string]any {
 	pv := make(map[string]any)
 	pv[bindingValuePollIntervalID] = svc.config.PollInterval
-	pv[bindingTDIntervalID] = svc.config.TDInterval
 	pv[bindingValuePublishIntervalID] = svc.config.RepublishInterval
 	pv[bindingOWServerAddressID] = svc.config.OWServerURL
 	pv[bindingMake] = "HiveOT"

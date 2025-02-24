@@ -1,7 +1,6 @@
 package authn_test
 
 import (
-	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/runtime/authn/config"
 	"github.com/hiveot/hub/runtime/authn/service"
@@ -12,7 +11,6 @@ import (
 	"time"
 )
 
-var certBundle = certs.CreateTestCertBundle()
 var testDir = path.Join(os.TempDir(), "test-authn")
 var authnConfig config.AuthnConfig
 var defaultHash = config.PWHASH_ARGON2id

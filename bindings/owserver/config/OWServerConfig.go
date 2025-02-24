@@ -1,13 +1,31 @@
 package config
 
 // OWServerConfig contains the plugin configuration
+// FIXME: use these as TD configuration properties?
+// FIXME: load them from the digital twin on reconnect?
+// FIXME: hub (re)connection reinitializes the service configuration
+//
+// how independent from the hub should this be?
+//
+//	use as wot device? it would need to offer a directory and auth
+//
+// where to store TDs?  - need a directory
+// where to store auth creds - need an auth store
+// where to store config/state - need a state store
+//
+//	why not load config from digitwin on reconnect
+//	+support offline updates?
+//	-cant function without network
+//		services dont function anyways
+//	+ a reconnect is a restart (helps recovery)
+//	do services hold history? - nothing stopping them from doing so
 type OWServerConfig struct {
 	// Optional loglevel for use, default is warning
 	LogLevel string `yaml:"logLevel,omitempty"`
 
-	// ServerURL optional hub address to connect to.
+	// HubURL optional hub address to connect to.
 	// Default "" for auto discovery.
-	ServerURL string `yaml:"serverUrl,omitempty"`
+	HubURL string `yaml:"hubUrl,omitempty"`
 
 	// Keyfile with the client's public/private key
 	// Generated on first startup if not found.
@@ -47,7 +65,5 @@ func NewConfig() *OWServerConfig {
 	cfg.PollInterval = 60
 	// republish same-value after 60 minutes
 	cfg.RepublishInterval = 60 * 60
-	//cfg.AuthTokenFile = "owserver.token"
-	//cfg.KeyFile = "owserver.key"
 	return &cfg
 }

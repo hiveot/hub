@@ -41,8 +41,8 @@ func DiscoListCommand(authToken *string) *cli.Command {
 // HandleDiscover prints a list of discovered Things and Directories
 func HandleDiscover(readtd bool, authToken string) error {
 
-	wotRecords := discovery.DiscoverTDD("", "wot", time.Second, true)
-	hiveotRecords := discovery.DiscoverTDD("", "hiveot", time.Second, true)
+	wotRecords := discovery.DiscoverTDD("", "wot", time.Second, false)
+	hiveotRecords := discovery.DiscoverTDD("", "hiveot", time.Second, false)
 	allRecords := append(hiveotRecords, wotRecords...)
 
 	// create a client for reading TD's

@@ -59,7 +59,8 @@ func (svc *AuthnAdminService) AddConsumer(senderID string, args authn.AdminAddCo
 			err = svc.authnStore.SetPassword(args.ClientID, args.Password)
 		}
 	} else {
-		err = fmt.Errorf("Client '%s' already exists", args.ClientID)
+		// client already exists
+		//err = fmt.Errorf("Client '%s' already exists", args.ClientID)
 		//prof.TokenValiditySec = svc.cfg.ConsumerTokenValiditySec
 	}
 	return err

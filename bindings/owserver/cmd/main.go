@@ -12,5 +12,5 @@ func main() {
 	cfg := config.NewConfig()
 	_ = env.LoadConfig(&cfg)
 	binding := service.NewOWServerBinding(cfg)
-	plugin.StartPlugin(binding, env.ClientID, env.CertsDir)
+	plugin.StartPlugin(binding, env.ClientID, env.CertsDir, env.ServerURL)
 }

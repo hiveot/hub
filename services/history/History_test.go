@@ -31,7 +31,8 @@ import (
 const thingIDPrefix = "things-"
 
 // recommended store for history is Pebble
-const historyStoreBackend = buckets.BackendPebble
+// const historyStoreBackend = buckets.BackendPebble
+const historyStoreBackend = buckets.BackendKVBTree
 
 const testClientID = "operator1"
 

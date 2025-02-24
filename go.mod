@@ -1,6 +1,6 @@
 module github.com/hiveot/hub
 
-go 1.23
+go 1.24
 
 require (
 	aidanwoods.dev/go-paseto v1.5.2
@@ -27,7 +27,6 @@ require (
 	github.com/tidwall/btree v1.7.0
 	github.com/tmaxmax/go-sse v0.9.0-pre.2
 	github.com/urfave/cli/v2 v2.27.4
-	go.etcd.io/bbolt v1.3.11
 	golang.org/x/crypto v0.33.0
 	golang.org/x/exp v0.0.0-20240909161429-701f63a606c0
 	golang.org/x/net v0.35.0

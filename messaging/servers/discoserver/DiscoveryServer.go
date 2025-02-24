@@ -67,7 +67,7 @@ func (svc *DiscoveryServer) ServeDirectoryTD(tdPath string, tdJSON string) {
 //	dirTD is the directory TD in json (required)
 //	tdPath is the path on which to server the directory TD (Default is /.well-known/wot)
 //	httpServer is the server to use for serving the TD
-//	endpoints with hiveot protocol connection endpoints
+//	endpoints with hiveot protocol connection scheme:URL endpoints
 func StartDiscoveryServer(instanceName string, serviceName string,
 	dirTDJSON string, tdPath string, httpTransport *httpserver.HttpTransportServer,
 	endpoints map[string]string) (
@@ -89,7 +89,7 @@ func StartDiscoveryServer(instanceName string, serviceName string,
 		instanceName, serviceName, tddURL, endpoints)
 	if err != nil {
 		slog.Error("Failed starting introduction server for DNS-SD",
-			"ServerURL", tddURL,
+			"HubURL", tddURL,
 			"tdPath", tdPath,
 			"err", err.Error())
 	}

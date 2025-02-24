@@ -44,7 +44,7 @@ Pebble's data size is pretty much limited to the available disk space. Got 1TB, 
 
 This store is best suited for large amounts of data. For example, the time series data of the history store.
 
-### bolts
+### bolts - removed as overkill
 
 The boltDB (bbolt implementation) backend is a solid transactional embedded database. 
 

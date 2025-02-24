@@ -11,10 +11,13 @@ This viewer has reached alpha status with Phase 1-3 completed. The information b
 ### Phase 3: Basic Dashboard [done]
 
 ### Phase 4: Request/Response Handling Improvements [in progress]
+* critical fixes: 
+  * edit tile add value - doesnt show all TDs
 * Re-usable DataSchema component/template with text,number,bool,enum,on-off [in progress]
 * Switch to use ConsumedThing for properties, events and actions [in progress]
 * Track action progress using async response messages (ActionStatus) [in progress]
-*. Indication of pending property writes (owserver updates can take 10 seconds)
+* Indication of pending property writes (owserver updates can take 10 seconds)
+* Store dashboard layout locally instead of using the state service [todo]
 
 ### Phase 5: Enhancements [in progress]
 * only show edit button if the user has permissions to edit

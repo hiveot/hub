@@ -24,5 +24,5 @@ func main() {
 
 	// The agentID is fixed as stateapi.StateAgentID so the client API knows who to call.
 	env.ClientID = stateapi.AgentID
-	plugin.StartPlugin(svc, env.ClientID, env.CertsDir)
+	plugin.StartPlugin(svc, env.ClientID, env.CertsDir, env.ServerURL)
 }

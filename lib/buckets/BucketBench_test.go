@@ -15,8 +15,8 @@ import (
 //
 //	Database:                kvbtree (us)      pebble (us)               bbolt (us)
 //	--- with 1K records existing in the DB ---
-//	Set 1                       0.3              1.9                       4900
-//	Set Multiple 1              0.5              2.2                       5000
+//	Set 1                       0.3              2.1                       4900
+//	Set Multiple 1              0.5              2.5                       5000
 //	Get 1                       0.3              0.7                          1.1
 //	Get Multiple 1              0.9              1.9                          1.5
 //	Seek 1                      0.9              3.2                          1.6

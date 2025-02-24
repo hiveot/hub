@@ -44,5 +44,5 @@ func main() {
 
 	// start the service using the connection and hub server certificate
 	svc := service.NewIdProvService(DefaultIDProvPort, serverCert, env.CaCert)
-	plugin.StartPlugin(svc, env.ClientID, env.CertsDir)
+	plugin.StartPlugin(svc, env.ClientID, env.CertsDir, env.ServerURL)
 }

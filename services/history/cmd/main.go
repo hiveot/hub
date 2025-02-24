@@ -33,5 +33,5 @@ func main() {
 		panic(err.Error())
 	}
 	svc := service.NewHistoryService(store)
-	plugin.StartPlugin(svc, env.ClientID, env.CertsDir)
+	plugin.StartPlugin(svc, env.ClientID, env.CertsDir, env.ServerURL)
 }

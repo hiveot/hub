@@ -7,6 +7,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/tputils/net"
 	"github.com/hiveot/hub/messaging/tputils/tlsserver"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
@@ -50,8 +51,8 @@ type HttpTransportServer struct {
 	// TLS server and router
 	httpServer *tlsserver.TLSServer
 	// host and https port the server listens on
-	hostName string
-	port     int
+	connectAddr string
+	port        int
 
 	router *chi.Mux
 	// The routes that require authentication. These can be added to
@@ -167,13 +168,14 @@ func (svc *HttpTransportServer) setupRouting(router chi.Router) http.Handler {
 
 // GetConnectURL returns connection url of the http server
 func (svc *HttpTransportServer) GetConnectURL() string {
-	baseURL := fmt.Sprintf("https://%s:%d", svc.hostName, svc.port)
+
+	baseURL := fmt.Sprintf("https://%s:%d", svc.connectAddr, svc.port)
 	return baseURL
 }
 
 // GetAuthURL returns the url of the http basic authentication service
 func (svc *HttpTransportServer) GetAuthURL() string {
-	authURL := fmt.Sprintf("https://%s:%d%s", svc.hostName, svc.port, HttpPostLoginPath)
+	authURL := fmt.Sprintf("https://%s:%d%s", svc.connectAddr, svc.port, HttpPostLoginPath)
 	return authURL
 }
 
@@ -340,7 +342,7 @@ func (svc *HttpTransportServer) WriteReply(
 //
 // Call stop to end the transport server.
 //
-//	host, port with the server listening address (or "") and port
+//	host and port with the server listening address (or "") and port
 //	serverCert: the TLS certificate of this server
 //	caCert: the CA public certificate that signed the server cert
 //	authenticator: plugin to authenticate requests
@@ -350,13 +352,35 @@ func StartHttpTransportServer(host string, port int,
 	authenticator messaging.IAuthenticator,
 ) (*HttpTransportServer, error) {
 
+	// if host is empty then listen on all interfaces
 	httpServer, httpRouter := tlsserver.NewTLSServer(
 		host, port, serverCert, caCert)
+
+	// if no listening address is provided then use the address in the server cert
+	// or fall back to the outbound address for discovery.
+	// The test server must provide a host to avoid a problem with connecting as
+	// the test cert might not use outboundIP.
+	connectAddr := host
+	//if connectAddr == "" {
+	//	b := pem.Block{Type: "CERTIFICATE", Bytes: serverCert.Certificate[0]}
+	//	x509Cert, err := x509.ParseCertificate(b.Bytes)
+	//	if err == nil {
+	//		if len(x509Cert.IPAddresses) > 0 {
+	//			connectAddr = x509Cert.IPAddresses[0].String()
+	//		} else if len(x509Cert.DNSNames) > 0 {
+	//			connectAddr = x509Cert.DNSNames[0]
+	//		}
+	//	}
+	//}
+	if connectAddr == "" {
+		connectIP := net.GetOutboundIP("")
+		connectAddr = connectIP.String()
+	}
 
 	//wssURL := fmt.Sprintf("wss://%s:%d", config.Host, config.Port)
 	svc := HttpTransportServer{
 		authenticator: authenticator,
-		hostName:      host,
+		connectAddr:   connectAddr,
 		port:          port,
 		httpServer:    httpServer,
 		router:        httpRouter,

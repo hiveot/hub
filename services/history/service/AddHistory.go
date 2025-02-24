@@ -61,13 +61,13 @@ func (svc *AddHistory) encodeValue(senderID string, tv *messaging.ThingValue) (s
 
 // AddValue adds a Thing value from a sender to the action history
 func (svc *AddHistory) AddValue(senderID string, tv messaging.ThingValue) error {
-	slog.Info("AddValue",
-		slog.String("senderID", senderID),
-		slog.String("ID", tv.ID),
-		slog.String("thingID", tv.ThingID),
-		slog.String("name", tv.Name),
-		slog.String("affordance", tv.AffordanceType),
-	)
+	//slog.Info("AddValue",
+	//	slog.String("senderID", senderID),
+	//	slog.String("ID", tv.ID),
+	//	slog.String("thingID", tv.ThingID),
+	//	slog.String("name", tv.Name),
+	//	slog.String("affordance", tv.AffordanceType),
+	//)
 	retain, err := svc.validateValue(senderID, &tv)
 	if err != nil {
 		slog.Info("AddValue value error", "err", err.Error())

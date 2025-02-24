@@ -86,7 +86,11 @@ func ServeTDDiscovery(
 		return nil, err
 	}
 	scheme := parts.Scheme
-	address := parts.Hostname()
+	// FIXME: DNS might not work for the local network. Use an IP instead.
+	// Does this support IPv6?
+	outIP := net2.GetOutboundIP("")
+	address := outIP.String()
+	//address := parts.Hostname()
 
 	subType := "_directory._sub"
 	// add WoT discovery parameters
@@ -99,6 +103,10 @@ func ServeTDDiscovery(
 	for ep, url := range endpoints {
 		params[ep] = url
 	}
+	slog.Info("Serving discovery for address",
+		slog.String("address", address),
+		slog.Int("port", portNr),
+	)
 	discoServer, err := ServeDnsSD(
 		instanceName, serviceName, subType,
 		address, portNr, params)

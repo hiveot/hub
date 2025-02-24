@@ -4,155 +4,101 @@
 
 The runtime is in alpha. It is functional but breaking changes can be expected.
 
-Todo phase 1 - refactor digital twin design  
+Detailed progress status below: 
 
-3. How to implement the safe-action (stateless) flow and track progress?
-   Safe actions are stateless and return output based on the provided input.
-   Multiple safe actions can be in progress concurrently.
-   They are marked in the action affordance with the 'safe' flag?
-   * 'safe' actions are not stored in the digitwin history?
-   * The digitwin runtime forwards requests immediately to the Exposed Thing, and returns the output in the same request. Eg, rpc style.
-   * Actions progress is not tracked. They are done on return.
-   * A rate limit can be applied by middleware.
-   
-4. How to implement the unsafe-action flow and track progress.
-   Unsafe actions affect the Thing state. 
-   Requests must be applied sequentially.
-   1. A consumer sends an action request to digitwin
-   2. Digitwin checks if there is already an ongoing action with this name
-      3. If an action is pending (not yet delivered) it is replaced
-      4. If an action is delivered - the request is rejected with reason
-      5. If an no action is pending, it is stored and forwarded. The response is returned to the consumer.
-         6. if agent is not reachable, status is pending. 
-         7. if agent is reachable it processes the request the response is returned and returned.
-            8. agent returns 'applied', 'completed', 'rejected'
-      9. Digitwin updates the corresponding property
-      10. Optionally agent updates the corresponding property
+### refactor hiveot messaging - complete
 
-5. When to use events vs properties? (option 2 - consumer centric)
-   * Properties are used to report persistent state (eg: there is always a state).
-     * Configurations are writable properties. They are manager focused.
-     * Immutable information are read-only properties. They are informational.
-   * Things that don't have internal state are always events. There is no state to present as property. 
-     * Motion detection trigger is an event but not a property.
-     * A doorbell trigger is an event but not a property.
-   * Consumer interaction are events. 
-     * Alarms are always events.
-     * Sensor updates are events as they are consumer focused. They can also be properties if they represent internal state. In this case they have the same name. 
-     * An actuator state change is an event as it is consumer focused. It can have a property to show the current actuator state.
-     * events are recorded in the history store
-   * Operators can do everything they need to do with events and actions 
-     * The last event value is available in digitwin
-   * The difference is intended purpose. Technically you can do everything with properties but that isn't the point.
-   * Most events have corresponding properties. These should have the same name.
-   * Properties don't replace event history. If it isnt state it isn't a property. 
-   * The decision is up to the Thing agent
-
-6. When to use actions vs properties?
-   If it is a consumer control related to the purpose of the thing, then it is an action.  
-     * Triggering an actuator is an action (lights, blinds, etc)
-     * Setting configuration is done with writable properties
-   * Properties can be used to indicate the progress of the action
-   * If it is not idempotent (same changes, different outcome) it is an action.
-   * Light/dimmer switch is a consumer action so an action.
-   
-7. How is action state stored in properties by digitwin?
-   The state affected by actions are available through properties.
-   A: Managed by the digitwin runtime. 
-      * action properties are objects containing:
-      * current value, progress, timestamp, pending request input, error
-      * progress follows a state machine: ready - pending - applied - rejected
-      * If an exposed thing defines properties with action names they are replaced.
-      pro: consistent presentation and behavior for consumers
-      con: depends on agent to update the state machine. open to failure
-   B: Managed by the exposed thing
-      pro: more accurate representation?
-      con: repeat implementation with different behavior and attributes
-
-8a. How to track the action progress?
-   stages: pending, delivered, completed, aborted, failed
-   * digitwin starts with pending, upgrades to delivered when request is passed to agent; agent sends progress update message completed, failed, or in-progress.
-   * use 'correlationID' to link progress update messages with the action
-   * this requires a ActionStatus message type - non standard?
-     * protocol binding detail?
-8b. How to track property write progress?
-   * not at the moment. consumer watches for property updates
-      pro: no need for correlationID 
-      con: exposed thing must define a property for every (unsafe) action
-
-9. How to integrate agents with the Hub
-   Agents publish TD/Event/Property/Action requests to the Hub digitwin 'agent' service. 
-    * these are defined as 'agent operations'
-      * op:AgentUpdateProperty
-      * op:AgentPublishEvent
-      * op:AgentUpdateTD
-    * service actions are only authorized for agents
-        + compatible with WoT
-        + permissions can be controlled separately 
-        + no magic (hidden) endpoints needed
-        + define agent operations in digitwin agent service forms
-        - agents need to know this API. How?
-          * concept of agents is not specified in WoT
-          * hiveot defines digitwin agent operations 
-          * supported in ExposedThing implementation 
-
-  * how do agents receive invokeaction and writeproperty requests?
-    * A: The hub agent service provides a subscribe-request operation?
-      * included in agent service forms
-      * protocol binding implements the mechanism
-        agent invokes operation and receives actions and property write requests
-      + matches the update operations workflow
-      + compatible with WoT TD
-      + agents already need to know the agent service TD for publishing stuff
+* hiveot messaging can be used separate from digital twin runtime [complete]
+* protocols use the request/response messaging API [complete]
+  * WoT http-basic [complete]
+  * WoT websocket [spec in developement]
+  * HiveOT websocket [complete]
+  * HiveOT SSE [complete]
+* client and server for supported protocols [complete]
+* consumers and agents independent of the connection direction [complete]
+* discovery of directory (with hiveot extensions) [complete]
  
-10. add sse as per spec
+### digital twin Thing directory [partial]
+* CRUD directory [complete]
+* compatible with WoT discovery and directory API [in progress]
+
+### digital twin state management [partial]
+* Store Thing and service configuration and state [complete]
+* Services can persist their configuration in their digital twin [in progress]
+
+### authentication [partial]
+* token based authentication [complete]
+* digest authentication [todo]
+* oauth2 authentication [todo]
+
+### authorization [partial]
+* role based authorization [complete]
+* service authorization [partial]
+  * digitwin configuration integration [todo]
+
+### routing between consumers and digital twin [complete]
+
+* invoking actions [complete]
+* read properties [complete]
+* query actions [complete]
+* subscribe events [partial]
+    subscription [complete]
+    retrieve recent events [todo]
+* observing properties [complete]
+
+### routing between digital twin and agents [partial]
+
+* invoking actions [complete]
+* read properties [complete]
+* query actions [complete]
+* subscribe events [partial]
+    subscription [complete]
+    retrieve recent events [todo]
+* observing properties [complete]
+* invoking actions
+    * agent request flow [partial]
+    * agent response flow [partial]
 
 
-Todo phase 2 - bindings for consumed things
-1. Add forms to TD for supported protocols [in progress]
-2. rework IHubClient to:
-   * use Forms and operations
-   * connect, pub form, and sub form operations
-   * support both consumed things and exposed things
-3. Rework TD to handle polymorphism. Store TD in nested map and using decorator functions for accessing it.
-4. re-implement SSE sub-protocol as per spec.
-        * support observerproperty(ies)
-        * support subscribeevent(s)
-        * update consumed thing
-5. Rework runtime http binding to use ssesc as a custom sub-protocol
-   * add to TDs
-   * config option to enable/disable
-   * change to use headers for subscription
-6. Add single-use sse sub-protocol - one sse connection per operation
-    * add to TDs
-    * config option to enable/disable
-   *  use headers for subscriptions
+## phase 3 - refactor service plugins 
 
-Todo phase 2 - support exposed things
-1. Add a handcrafted digitwin TD for use by exposed things to connect, authn, publish events, and subscribe to actions and property writes.
-    * define operations
-    * publish the digitwin handcrafted TDs just like any other TD
-    * make it discoverable (see below)
-2. Add discovery of hub TD
-   * disco points to hub TD url
-   * exposed things download hub TD and use it to publish events, td and sub actions.
-2. Bindings (zwave, isy, 1-wire,...)
-    * use properties to represent action status
+Service plugins:
+- are extensions to the Hub and integral part of the runtime.
+- run in their own process.
+- can be started and stopped independently
+- are managed through the launcher (also a plugin)
+- store their configuration on their digital twin
+  - publish changed configurations - digitwin stores it
+  - read from digital twin ? how? different Thing IDs
+- publish a TD
+- include optional authorization 
 
-Todo phase 3 - additional protocols
-1. add websocket sub-protocol (see strawman proposal)
-2. add mqtt transport protocol
-3. add uds transport protocol for local plugins
-4. discovery should be changed to match the WoT specifications
+* hiveoview [partial]
+  * internal store for client state (remove state service)
+  * publish a TD [partial]
+  * manage configuration via digital twin [todo]
 
+* certs
+  * support for 3rd party certificate management
+  * publish a TD [todo]
+  * manage configuration via digital twin [todo]
 
-Todo phase 4 - improvements
-1. Support dynamic TD's that only:
-   * only include writable properties that the client is allowed to write based on their role.
-   * include only actions that client is allowed to use based on their role.
-2. Testing:
-   * Improve test coverage
-   * Add performance testing comparing transports
+* provisioning
+  * redetermine what to do here
+
+* launcher [complete]
+    * publish a TD [partial]
+    * manage configuration via digital twin [todo]
+      * launching on startup
+    * events for service start/stop/status [todo]
+
+* history [partial]
+  * store events [complete]
+  * store property changes [complete]
+  * store action history [todo]
+    * store only stateful (unsafe) actions [todo] 
+  * manage configuration via digital twin [todo]
+
 
 ## Summary
 
@@ -261,3 +207,68 @@ The runtime includes essential built-in services to support the digital twin:
    a. The directory service stores TD documents
    b. The outbox service stores and forwards Thing events received from agents
    c. The inbox service stores and forwards Thing actions sent by consumers
+
+
+---
+
+## Q & A
+
+1. When to use events vs properties? (option 2 - consumer centric)
+    * Properties are used to report persisted internal device state.
+        * Configurations are writable properties.
+        * Immutable information are read-only properties.
+        * Sensor status are read-only properties
+        * Actuator status are read-only properties (control with actions)
+    * Non-permanent or external state changes are reported with events
+        * motion detection
+        * doorbell button (and other push buttons)
+        * actuator state changes are reported with events
+        * sensor state changes are reported with events (the state is external)
+    * Consumer notifications are events.
+        * Alarms are always events.
+        * Sensor updates are events as they are consumer focused. They can also be properties if they represent internal state. In this case they have the same name.
+        * An actuator state change is an event as it is consumer focused. It also has a property that reflects the current actuator state.
+        * events are recorded in the history store
+    * Many events have corresponding properties. These should have the same name.
+    * Events and writable properties have a history.
+    * The final decision is up to the Thing agent.
+
+2. When to use actions vs properties?
+    * Consumer facing controls are always actions.
+        * Differentiates from properties which are not consumer centric.
+        * Actuators are always actions (lights, blinds, etc)
+    * Stateless device operations are always actions
+    * Action progress is reported with response messages and running status
+    * If it is not idempotent (same changes, different outcome) it is an action.
+    * Light/dimmer switch is a consumer action so an action.
+    * Do not control a switch through a property.
+    * If it requires multiple input parameters then it is an action.
+
+3. How is action state stored in properties by digitwin?
+   The state affected by actions are available through properties.
+    * Option 1: as a single object property with nested properties for each value. Property name is the action name (just a convention)
+    * Option 2: as individual properties. The action output is an object containing each affected property. (also just a convention)
+
+4. How to track the action progress?
+    * An action returns one or more response messages or action status messages. This is protocol dependent.
+    * Response contains the progress status of the action using the http-basic specified states: pending, running, completed, failed
+    * 'correlationID' is used to link the action with the response
+
+5. How to track property write progress?
+    * Property write operations return a response just like actions.
+    * This is protocol dependent. Not all WoT protocols specify this.
+    * In protocols that don't support acknowledgement, hiveot assumes completion on return.
+    * Property values are not changed until observeproperty subscription sends an update.
+
+6. How to integrate agents with the Hub
+    * Agents connect to the hub, just like consumers
+    * Agents serve requests and return responses. This is protocol dependent.
+    * The Hub reconstructs a ResponseMessage contain the operation and correlationID and output. This is protocol dependent.
+
+7. How do agents receive invokeaction and writeproperty requests?
+    * The hub sends the request to the agent as if it is a consumer. The method is protocol dependent.
+    * The agent returns an asynchronous ResponseMessage containing the correlationID and operation. This is protocol dependent.
+    * The hub reconstructs the ResponseMessage when using non-hive message envelopes.
+ 
+
+

@@ -88,5 +88,5 @@ func main() {
 		false, time.Second*20)
 
 	// StartPlugin will connect to the hub and wait for a signal to end.
-	plugin.StartPlugin(svc, env.ClientID, env.CertsDir)
+	plugin.StartPlugin(svc, env.ClientID, env.CertsDir, env.ServerURL)
 }

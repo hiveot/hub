@@ -3,7 +3,6 @@ package servers
 import (
 	"github.com/hiveot/hub/messaging/servers/discoserver"
 	"github.com/hiveot/hub/messaging/servers/httpserver"
-	"os"
 )
 
 const (
@@ -66,7 +65,8 @@ type ProtocolsConfig struct {
 // NewProtocolsConfig creates the default configuration of communication protocols
 // This enables https and mdns
 func NewProtocolsConfig() ProtocolsConfig {
-	hostName, _ := os.Hostname()
+	//hostName, _ := os.Hostname()
+	hostName := "" // listen on all interfaces
 
 	cfg := ProtocolsConfig{
 		DirectoryTDPath:  discoserver.DefaultHttpGetDirectoryTDPath,
