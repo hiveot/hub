@@ -78,6 +78,7 @@ func (svc *AuthzService) SetClientRole(senderID string, args authz.AdminSetClien
 		authz.ClientRoleViewer, authz.ClientRoleOperator,
 		authz.ClientRoleManager, authz.ClientRoleAdmin,
 		authz.ClientRoleAgent, authz.ClientRoleService,
+		authz.ClientRoleNone,
 	}
 	if !slices.Contains(validRoles, args.Role) {
 		return fmt.Errorf("SetRole: Invalid role '%s'", args.Role)

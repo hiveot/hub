@@ -24,7 +24,7 @@ func GenSchemaDefinitions(l *utils.SL, td1 *td.TD) error {
 
 		err := GenDataSchema(l, schemaTypeName, &dataSchema)
 		if err != nil {
-			l.Add("// Aborted due to error: " + err.Error())
+			l.Add("// Aborted due to error: %s", err.Error())
 			l.Add("")
 			return err
 		}

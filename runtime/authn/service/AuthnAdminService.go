@@ -36,10 +36,10 @@ type AuthnAdminService struct {
 func (svc *AuthnAdminService) AddConsumer(senderID string, args authn.AdminAddConsumerArgs) (err error) {
 	//clientID string, displayName string, password string) (err error) {
 
-	slog.Info("AddUser", slog.String("clientID", args.ClientID))
+	slog.Info("AddConsumer", slog.String("clientID", args.ClientID))
 
 	if args.ClientID == "" {
-		err = fmt.Errorf("AddClient: SenderID is missing")
+		err = fmt.Errorf("AddConsumer: SenderID is missing")
 		return err
 	}
 	if args.DisplayName == "" {
@@ -59,9 +59,12 @@ func (svc *AuthnAdminService) AddConsumer(senderID string, args authn.AdminAddCo
 			err = svc.authnStore.SetPassword(args.ClientID, args.Password)
 		}
 	} else {
-		// client already exists
+		// client already exists, update password
 		//err = fmt.Errorf("Client '%s' already exists", args.ClientID)
 		//prof.TokenValiditySec = svc.cfg.ConsumerTokenValiditySec
+		if args.Password != "" {
+			err = svc.authnStore.SetPassword(args.ClientID, args.Password)
+		}
 	}
 	return err
 }
@@ -74,7 +77,7 @@ func (svc *AuthnAdminService) AddAgent(senderID string,
 
 	var prof authn.ClientProfile
 	if args.ClientID == "" {
-		return token, fmt.Errorf("missing clientID")
+		return token, fmt.Errorf("AddAgent: missing clientID")
 	}
 	slog.Info("AddAgent", slog.String("agentID", args.ClientID))
 	// agents typically create their own key pair

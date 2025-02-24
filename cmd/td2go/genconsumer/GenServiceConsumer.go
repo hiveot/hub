@@ -136,7 +136,7 @@ func GenActionMethod(l *utils.SL, serviceTitle string, key string, action *td.Ac
 	l.Indent++
 
 	// if the input has multiple arguments then add the Args struct
-	l.Add(argStructLine)
+	l.Add("%s", argStructLine) // go-1.24 warns about non-constant format string
 
 	l.Add("err = hc.Rpc(\"%s\", %s, %sMethod, %s, %s)",
 		wot.OpInvokeAction, serviceDigitwinID, methodName, invokeArgs, invokeResp)

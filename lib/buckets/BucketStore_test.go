@@ -21,9 +21,9 @@ import (
 
 var testBucketID = "default"
 
-//var testBackendType = buckets.BackendKVBTree
+var testBackendType = buckets.BackendKVBTree
 
-var testBackendType = buckets.BackendPebble
+// var testBackendType = buckets.BackendPebble
 var testBackendDirectory = "/tmp/test-bucketstore"
 
 const (

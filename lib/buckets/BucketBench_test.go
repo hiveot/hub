@@ -13,42 +13,39 @@ import (
 // $ go test -bench=Benchmark_bucket -benchtime=3s -run=^#    (skip unit tests)
 // cpu: Intel(R) Core(TM) i5-4570S CPU @ 2.90GHz
 //
-//	Database:                kvbtree (us)      pebble (us)               bbolt (us)
+//	Database:                kvbtree-1.7 (us)      pebble-1.1 (us)
 //	--- with 1K records existing in the DB ---
-//	Set 1                       0.3              2.1                       4900
+//	Set 1                       0.4              2.2                       4900
 //	Set Multiple 1              0.5              2.5                       5000
 //	Get 1                       0.3              0.7                          1.1
-//	Get Multiple 1              0.9              1.9                          1.5
-//	Seek 1                      0.9              3.2                          1.6
-//	Next 1                      1.1            452 (163-450)                  1.7
-//	Set 1000x                 170             2250 (2100-2300)          5200000  (5 sec!)
-//	Set Multiple 1000         280             2100                        10000
-//	Get 1000x                 140              710 ( 710-1000)             1180
-//	Get Multiple 1000         260             1200 (1200-1400)              740
-//	Seek 1000x                140             1540 (1540-2500)              280
-//	Next 1000x                140              420 ( 420-1310)              190
+//	Get Multiple 1              0.8              1.8                          1.5
+//	Seek 1                      0.4             16                            1.6
+//	Next 1                      0.6             17 (163-450)                  1.7
+//	Set 1000x                 280             2900 (2100-2300)          5200000  (5 sec!)
+//	Set Multiple 1000         290             2100                        10000
+//	Get 1000x                 140             1000 ( 710-1000)             1180
+//	Get Multiple 1000         270             1400 (1200-1400)              740
+//	Seek 1000x                150             7000 (1540-2500)              280
+//	Next 1000x                140             1900 ( 420-1310)              190
 //
 //	--- with 100K existing records in DB ---
-//	Set 1                       0.4              2.0                      11000
-//	Set Multiple 1              0.6              2.2                      11700
+//	Set 1                       0.5              2.3                      11000
+//	Set Multiple 1              0.6              2.6                      11700
 //	Get 1                       0.3              0.7                          1.2
-//	Get Multiple 1              1.0              1.9                          1.4
-//	Seek 1                      1.0              2.7                          1.7
-//	Next 1                      1.1           1190 (3.5-1300?)                1.7
-//	Set 1000x                 230             2700 (2700-2900)         12000000   (12sec!???)
-//	Set Multiple 1000         360             2600                        14300
-//	Get 1000x                 180              760 ( 690-1600)             1238
-//	Get Multiple 1000         300             1310                          800
-//	Seek 1000x                180             2600 (1800-2600)              340
-//	Next 1000x                140              640 ( 370-1400)              210
+//	Get Multiple 1              0.9              1.8                          1.4
+//	Seek 1                      0.5             12                            1.7
+//	Next 1                      0.7             14 (3.5-1300?)                1.7
+//	Set 1000x                 350             2900 (2700-2900)         12000000   (12sec!???)
+//	Set Multiple 1000         330             2800                        14300
+//	Get 1000x                 180              740 ( 690-1600)             1238
+//	Get Multiple 1000         320             1200                          800
+//	Seek 1000x                190            11000 (1800-2600)              340
+//	Next 1000x                140              990 ( 370-1400)              210
 //
 // Observations:
 //   - kvbtree, an in-memory btree, is the overall winner, although this is far from a complete picture
 //   - pebble has great real-life performance and scales much further than kvbtree
 //     the next1 oddball might be due to locking delays because of the testcase as next 1000x is faster.
-//   - bbolt does well on reading and iterating but is slow on write, especially with large datasets.
-//     Maybe this is caused by a problem in the bucket store implementation though.
-//   - an RPC call is around 100 usec on this machine, so except for bbolt this is much slower than single store operations
 //   - setmultiple is slightly slower (due to building test keys) but it will much(!) faster than making N rpc calls
 //
 // table with data size to run the benchmark with
