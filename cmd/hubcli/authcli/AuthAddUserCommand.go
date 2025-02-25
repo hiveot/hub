@@ -128,7 +128,7 @@ func AuthSetPasswordCommand(hc **messaging.Consumer) *cli.Command {
 	return &cli.Command{
 		Name:      "setpass",
 		Usage:     "Set password. (careful, no confirmation)",
-		ArgsUsage: "<loginID> <newpass>",
+		ArgsUsage: "<login> <password>",
 		Category:  "auth",
 		Action: func(cCtx *cli.Context) error {
 			newPassword := ""
@@ -149,7 +149,7 @@ func AuthRoleCommand(hc **messaging.Consumer) *cli.Command {
 	return &cli.Command{
 		Name:      "setrole",
 		Usage:     "Set a new role",
-		ArgsUsage: "<loginID> <newrole>",
+		ArgsUsage: "<clientID> <newrole>",
 		Category:  "auth",
 		Action: func(cCtx *cli.Context) error {
 			if cCtx.NArg() != 2 {

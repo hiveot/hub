@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/servers/httpserver"
 	"github.com/teris-io/shortid"
 	"log/slog"
+	"net/url"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -292,6 +294,13 @@ func NewHiveotWssClient(
 	wssURL string, clientID string, caCert *x509.Certificate,
 	converter messaging.IMessageConverter,
 	timeout time.Duration) *WssClient {
+
+	// ensure the URL has port as 443 is not valid for this
+	parts, _ := url.Parse(wssURL)
+	if parts.Port() == "" {
+		parts.Host = fmt.Sprintf("%s:%d", parts.Hostname(), httpserver.DefaultHttpsPort)
+		wssURL = parts.String()
+	}
 
 	cinfo := messaging.ConnectionInfo{
 		CaCert:       caCert,

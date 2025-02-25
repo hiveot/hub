@@ -53,7 +53,7 @@ func ConnectWithPassword(
 		var records []*discovery.DiscoveryResult
 
 		records, err = discovery.DiscoverWithDnsSD(
-			"", discoserver.DefaultServiceName, DefaultTimeout, true)
+			discoserver.DefaultServiceName, DefaultTimeout, true)
 		if err == nil && len(records) > 0 {
 			rec0 := records[0]
 			// attempt hiveot websocket
@@ -165,7 +165,11 @@ func GetProtocolFromURL(fullURL string) string {
 	if err != nil {
 		return ""
 	}
-	if parts.Scheme == "https" {
+
+	if parts.Scheme == "" {
+		// without a schema pick the basic
+		protocolType = messaging.ProtocolTypeWotHTTPBasic
+	} else if parts.Scheme == "https" {
 		protocolType = messaging.ProtocolTypeWotHTTPBasic
 	} else if parts.Scheme == wssserver.WssSchema {
 		// websocket protocol can use either WoT or hiveot message envelopes
@@ -179,8 +183,8 @@ func GetProtocolFromURL(fullURL string) string {
 	} else if strings.HasPrefix(fullURL, "mqtts") {
 		protocolType = messaging.ProtocolTypeWotMQTTWSS
 	} else {
-		// fall back to use Websockets
-		protocolType = messaging.ProtocolTypeWotWSS
+		// fall back to use https basic
+		protocolType = messaging.ProtocolTypeWotHTTPBasic
 	}
 	return protocolType
 }
@@ -234,8 +238,7 @@ func NewHiveotClient(
 	if connectURL == "" {
 		// use the first hiveot instance to connect to
 		discoList, err := discovery.DiscoverWithDnsSD(
-			discoserver.DefaultInstanceName, discoserver.DefaultServiceName,
-			timeout, true)
+			discoserver.DefaultServiceName, timeout, true)
 		if err != nil || len(discoList) == 0 {
 			return nil, fmt.Errorf("hub not found")
 		}
@@ -247,21 +250,25 @@ func NewHiveotClient(
 	if timeout <= 0 {
 		timeout = DefaultTimeout
 	}
+	parts, err := url.Parse(connectURL)
+	if err != nil {
+		return nil, err
+	}
 
 	// Create the client for the protocol
-	if strings.HasPrefix(connectURL, "wss") {
+	if parts.Scheme == "wss" {
 		msgConverter := &wssserver.HiveotMessageConverter{}
 		cc = wssclient.NewHiveotWssClient(connectURL, clientID, caCert,
 			msgConverter, timeout)
-	} else if strings.HasPrefix(connectURL, "sse") {
+	} else if parts.Scheme == "sse" {
 		cc = httpsseclient.NewHiveotSseClient(
 			connectURL, clientID, nil, caCert, nil, timeout)
-	} else if strings.HasPrefix(connectURL, "mqtts") {
+	} else if parts.Scheme == "mqtts" {
 		//	bc = mqttclient.NewMqttAgentClient(
 		//		fullURL, clientID, nil, caCert, timeout)
-		err = fmt.Errorf("mqtt client is not yet supported for '%s'", connectURL)
+		err = fmt.Errorf("NewWotClient: mqtt client is not yet supported for '%s'", connectURL)
 	} else {
-		err = fmt.Errorf("Server URL '%s' is invalid", connectURL)
+		err = fmt.Errorf("NewWotClient: Server URL '%s' does not have a valid schema (https://, wss:// ...", connectURL)
 	}
 	return cc, err
 }
@@ -311,8 +318,7 @@ func NewWotClient(
 
 		// use the first hiveot instance to connect to
 		discoList, err := discovery.DiscoverWithDnsSD(
-			discoserver.DefaultInstanceName, discoserver.DefaultServiceName,
-			timeout, true)
+			discoserver.DefaultServiceName, timeout, true)
 		if err != nil || len(discoList) == 0 {
 			return nil, fmt.Errorf("hub not found")
 		}
@@ -330,9 +336,11 @@ func NewWotClient(
 		cc = wssclient.NewHiveotWssClient(connectURL, clientID, caCert,
 			msgConverter, timeout)
 	} else if strings.HasPrefix(connectURL, "mqtts") {
-		//	//	bc = mqttclient.NewMqttAgentClient(
-		//	//		fullURL, clientID, nil, caCert, timeout)
-		panic("mqtt client is not yet supported")
+		//	bc = mqttclient.NewMqttAgentClient(
+		//		fullURL, clientID, nil, caCert, timeout)
+		err = fmt.Errorf("NewWotClient: mqtt client is not yet supported for '%s'", connectURL)
+	} else {
+		err = fmt.Errorf("NewWotClient: Server URL '%s' does not have a valid schema (https://, wss:// ...", connectURL)
 	}
 	return cc, err
 }

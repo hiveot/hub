@@ -197,6 +197,8 @@ func (svc *HttpTransportServer) GetForm(op, thingID, name string) *td.Form {
 }
 
 // HandleLogin handles a login request, posted by a consumer.
+//
+// Body contains {"login":name, "password":pass} format
 // This is the only unprotected route supported.
 // This uses the configured session authenticator.
 func (svc *HttpTransportServer) HandleLogin(w http.ResponseWriter, r *http.Request) {
@@ -218,7 +220,7 @@ func (svc *HttpTransportServer) HandleLogin(w http.ResponseWriter, r *http.Reque
 	}
 	if err != nil {
 		slog.Warn("HandleLogin failed:", "err", err.Error())
-		svc.WriteError(w, err, http.StatusBadRequest)
+		svc.WriteError(w, err, http.StatusUnauthorized)
 		return
 	}
 	// TODO: set client session cookie for browser clients

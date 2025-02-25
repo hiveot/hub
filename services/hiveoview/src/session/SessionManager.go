@@ -234,7 +234,7 @@ func (sm *WebSessionManager) ConnectWithToken(
 	cs *WebClientSession, err error) {
 
 	slog.Info("SetBearerToken",
-		"clientID", loginID, "cid", cid, "remoteAddr", r.RemoteAddr,
+		"loginID", loginID, "cid", cid, "remoteAddr", r.RemoteAddr,
 		"nr websessions", len(sm.sessions))
 	//var newToken string
 	cc, err := clients.ConnectWithToken(

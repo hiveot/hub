@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/hiveot/hub/messaging/clients/discovery"
+	"github.com/hiveot/hub/messaging/servers/discoserver"
 	"github.com/hiveot/hub/messaging/tputils/tlsclient"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/urfave/cli/v2"
@@ -41,9 +42,10 @@ func DiscoListCommand(authToken *string) *cli.Command {
 // HandleDiscover prints a list of discovered Things and Directories
 func HandleDiscover(readtd bool, authToken string) error {
 
-	wotRecords := discovery.DiscoverTDD("", "wot", time.Second, false)
-	hiveotRecords := discovery.DiscoverTDD("", "hiveot", time.Second, false)
-	allRecords := append(hiveotRecords, wotRecords...)
+	allRecords := discovery.DiscoverTDD(
+		discoserver.DefaultServiceName, time.Second*2, false)
+	//hiveotRecords := discovery.DiscoverTDD("", "hiveot", time.Second*2, false)
+	//allRecords := append(hiveotRecords, wotRecords...)
 
 	// create a client for reading TD's
 	fmt.Println("Address                     Port  Instance       Type      Scheme   TD path")

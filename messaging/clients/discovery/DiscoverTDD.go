@@ -39,12 +39,10 @@ type DiscoveryResult struct {
 // This supports an optional filter on the instance. Intended to filter for a
 // specific type of directory, for example a "hiveot" hub directory.
 //
-//	instanceName is the optional filter for a particular instance such as hiveot or "" for any.
 //	serviceName of the service to discover. Default is "wot"
 //	waitTime is the duration to wait for the results
 //	firstResult returns immediately with the first result instead of waiting the full waitTime
-func DiscoverTDD(instanceName string, serviceName string,
-	waitTime time.Duration, firstResult bool) []*DiscoveryResult {
+func DiscoverTDD(serviceName string, waitTime time.Duration, firstResult bool) []*DiscoveryResult {
 
 	drList := make([]*DiscoveryResult, 0)
 
@@ -53,7 +51,7 @@ func DiscoverTDD(instanceName string, serviceName string,
 	}
 
 	// query well-known thing TD or TDD
-	drList2, err := DiscoverWithDnsSD(instanceName, serviceName, waitTime, firstResult)
+	drList2, err := DiscoverWithDnsSD(serviceName, waitTime, firstResult)
 	if err == nil && len(drList2) > 0 {
 		drList = append(drList, drList2...)
 	}
@@ -67,8 +65,8 @@ func DiscoverTDD(instanceName string, serviceName string,
 //	[_{instanceName}.]_{serviceName}._tcp service type
 //
 // instanceName is optional to search for a particular implementation such as hiveot
-func DiscoverWithDnsSD(instanceName string, serviceName string,
-	waitTime time.Duration, firstResult bool) ([]*DiscoveryResult, error) {
+func DiscoverWithDnsSD(
+	serviceName string, waitTime time.Duration, firstResult bool) ([]*DiscoveryResult, error) {
 
 	drList := make([]*DiscoveryResult, 0)
 
@@ -76,7 +74,7 @@ func DiscoverWithDnsSD(instanceName string, serviceName string,
 	if waitTime == 0 {
 		waitTime = time.Second * 3
 	}
-	records, err := DnsSDScan(instanceName, serviceType, waitTime, firstResult)
+	records, err := DnsSDScan(serviceType, waitTime, firstResult)
 	if err != nil {
 		return drList, err
 	}

@@ -12,7 +12,7 @@ type IAuthenticator interface {
 		clientID string, sessionID string, err error)
 
 	// Login with a password and obtain a new session token
-	Login(clientID string, password string) (token string, err error)
+	Login(login string, password string) (token string, err error)
 
 	// Logout removes the session
 	Logout(clientID string)

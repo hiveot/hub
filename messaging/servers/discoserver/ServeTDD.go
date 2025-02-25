@@ -17,7 +17,6 @@ import (
 // Parameter names in the discovery record
 // const AuthParam = "auth"       // authentication server
 // const ConnectParam = "connect" // hub connection server
-const DefaultInstanceName = "hiveot"
 const DefaultServiceName = "wot"
 
 // hiveot endpoint identifiers
@@ -50,7 +49,7 @@ const DefaultHttpGetDirectoryTDPath = "/.well-known/wot"
 // determining the relative path wrt the base endpoint.
 // this means
 //
-//	instanceName is the name of the service provider. "hiveot" for the hub.
+//	instanceName is the name of the server instance. "hiveot" for the hub.
 //	serviceName is the discover name. Default is 'wot'. This can be changed for testing.
 //	tddURL is the URL the directory TD is served at.
 //	connectURL is the default connection URL for talking to Things. Empty if not supported.
@@ -71,7 +70,7 @@ func ServeTDDiscovery(
 
 	// setup the introduction mechanism
 	if instanceName == "" {
-		instanceName = DefaultInstanceName
+		instanceName, _ = os.Hostname()
 	}
 	if serviceName == "" {
 		serviceName = DefaultServiceName

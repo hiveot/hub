@@ -22,7 +22,7 @@ const testServicePort = 9999
 
 func TestDNSSDScan(t *testing.T) {
 
-	records, err := discovery.DnsSDScan("", "", time.Second*2, false)
+	records, err := discovery.DnsSDScan("", time.Second*2, false)
 	fmt.Printf("Found %d records in scan", len(records))
 
 	assert.NoError(t, err)
@@ -42,7 +42,7 @@ func TestDiscover(t *testing.T) {
 	assert.NotNil(t, discoServer)
 
 	// Test if it is discovered
-	records := discovery.DiscoverTDD(testServiceID, testServiceName, time.Second, false)
+	records := discovery.DiscoverTDD(testServiceName, time.Second, false)
 	require.NotEmpty(t, records)
 	rec0 := records[0]
 	assert.Equal(t, testServiceID, rec0.Instance)
@@ -65,7 +65,7 @@ func TestDiscoViaDomainName(t *testing.T) {
 	assert.NotNil(t, discoServer)
 
 	// Test if it is discovered
-	records := discovery.DiscoverTDD("", testServiceName, time.Second, true)
+	records := discovery.DiscoverTDD(testServiceName, time.Second, true)
 	require.NoError(t, err)
 	require.True(t, len(records) > 0)
 	rec0 := records[0]
@@ -113,7 +113,7 @@ func TestDiscoverNotFound(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Test if it is discovered
-	records := discovery.DiscoverTDD("", testServiceName, time.Second, true)
+	records := discovery.DiscoverTDD(testServiceName, time.Second, true)
 	_ = records
 	assert.Equal(t, 0, len(records))
 

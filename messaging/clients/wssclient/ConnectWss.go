@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"errors"
+	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/servers/httpserver"
@@ -92,7 +92,8 @@ func ConnectWSS(
 	if err != nil {
 		// provide a bit more accurate error in case of unauthorized
 		if r != nil && r.StatusCode == http.StatusUnauthorized {
-			err = errors.New("Unauthorized")
+			err = fmt.Errorf("Connection as '%s' to '%s' is unauthorized",
+				cinfo.ClientID, cinfo.ConnectURL)
 		}
 		wssCancelFn()
 		return nil, nil, err

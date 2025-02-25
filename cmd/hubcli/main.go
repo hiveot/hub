@@ -111,7 +111,7 @@ func main() {
 			}
 
 			// most commands need auth
-			authToken, _ = clients.LoadToken(loginID, certsDir)
+			authToken, err = clients.LoadToken(loginID, certsDir)
 
 			// TODO: cleanup: don't connect for these commands
 			cmd := c.Args().First()
@@ -119,6 +119,9 @@ func main() {
 				return nil
 			}
 
+			if err != nil && password == "" {
+				return fmt.Errorf("Missing authentication token: %w", err)
+			}
 			caCert, _ := clients.LoadCA(certsDir)
 			if password != "" {
 				cc, authToken, err = clients.ConnectWithPassword(loginID, password, caCert, "", serverURL, "", 0)

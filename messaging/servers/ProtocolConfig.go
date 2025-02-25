@@ -3,12 +3,12 @@ package servers
 import (
 	"github.com/hiveot/hub/messaging/servers/discoserver"
 	"github.com/hiveot/hub/messaging/servers/httpserver"
+	"os"
 )
 
 const (
-	DefaultMqttTcpPort        = 8883
-	DefaultMqttWssPort        = 8884
-	DefaultInstanceNameHiveot = "hiveot"
+	DefaultMqttTcpPort = 8883
+	DefaultMqttWssPort = 8884
 )
 
 type ProtocolsConfig struct {
@@ -28,7 +28,7 @@ type ProtocolsConfig struct {
 	// Enable mDNS discovery. Default is true.
 	// The DiscoveryTDPath must be resolved by the http server
 	EnableDiscovery bool `yaml:"enableDiscovery"`
-	// The service discovery instance. The default is 'hiveot'
+	// The service discovery instance. The default is the hostname
 	InstanceName string `yaml:"instanceName"`
 
 	// DirectoryTDPath contains the HTTP path to read the digitwin directory TD
@@ -65,8 +65,7 @@ type ProtocolsConfig struct {
 // NewProtocolsConfig creates the default configuration of communication protocols
 // This enables https and mdns
 func NewProtocolsConfig() ProtocolsConfig {
-	//hostName, _ := os.Hostname()
-	hostName := "" // listen on all interfaces
+	hostName, _ := os.Hostname()
 
 	cfg := ProtocolsConfig{
 		DirectoryTDPath:  discoserver.DefaultHttpGetDirectoryTDPath,
@@ -75,8 +74,8 @@ func NewProtocolsConfig() ProtocolsConfig {
 		EnableHiveotWSS:  true,
 		EnableWotWSS:     true,
 		EnableDiscovery:  true,
-		InstanceName:     DefaultInstanceNameHiveot,
-		HttpHost:         hostName,
+		InstanceName:     hostName,
+		HttpHost:         "",
 		HttpsPort:        httpserver.DefaultHttpsPort,
 		MqttHost:         hostName,
 		MqttTcpPort:      DefaultMqttTcpPort,
