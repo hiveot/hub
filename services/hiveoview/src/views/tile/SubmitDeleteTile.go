@@ -30,7 +30,6 @@ func SubmitDeleteTile(w http.ResponseWriter, r *http.Request) {
 	)
 	delete(ctc.dashboard.Tiles, ctc.tileID)
 	ctc.clientModel.UpdateDashboard(&ctc.dashboard)
-	err = sess.SaveState()
 
 	// Notify the UI that the tile has been removed.
 	eventName := strings.ReplaceAll(src.DashboardUpdatedEvent, "{dashboardID}", ctc.dashboardID)

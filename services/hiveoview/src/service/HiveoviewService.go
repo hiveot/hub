@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/go-chi/chi/v5"
+	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hub/lib/buckets/kvbtree"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/tputils/tlsserver"
 	authz "github.com/hiveot/hub/runtime/authz/api"
@@ -21,10 +23,12 @@ import (
 	"time"
 )
 
-// HiveovService operates the html web server.
+const HiveoviewStoreName = "hiveoview.kvbtree"
+
+// HiveoviewService operates the html web server.
 // It utilizes gin, htmx and TempL for serving html.
 // credits go to: https://github.com/marco-souza/gx/blob/main/cmd/server/server.go
-type HiveovService struct {
+type HiveoviewService struct {
 	//serverAddr   string // listening address
 	port         int  // listening port
 	dev          bool // development configuration
@@ -52,19 +56,22 @@ type HiveovService struct {
 
 	// run in debug mode, extra logging and reload templates render
 	debug bool
-	// don't use the state store for persistence
-	noState bool
+
 	// timeout of hub client connections
 	timeout time.Duration
+
+	// backend storage of UI configuration for clients by clientID
+	storeDir    string
+	configStore buckets.IBucketStore
 }
 
-//func (svc *HiveovService) GetServerURL() string {
+//func (svc *HiveoviewService) GetServerURL() string {
 //	return fmt.Sprintf("https://%s:%d%s", svc.serverAddr, svc.port, WebSsePath)
 //}
 
 // GetSM returns the web session manager
 // Intended for testing.
-func (svc *HiveovService) GetSM() *session.WebSessionManager {
+func (svc *HiveoviewService) GetSM() *session.WebSessionManager {
 	return svc.sm
 }
 
@@ -73,12 +80,19 @@ func (svc *HiveovService) GetSM() *session.WebSessionManager {
 // This is invoked by the plugin library.
 //
 //	ag is the service agent connection to the hub for publishing notifications
-func (svc *HiveovService) Start(ag *messaging.Agent) error {
-	slog.Info("Starting HiveovService", "clientID", ag.GetClientID())
+func (svc *HiveoviewService) Start(ag *messaging.Agent) error {
+	slog.Info("Starting HiveoviewService", "clientID", ag.GetClientID())
 	svc.ag = ag
 
+	storePath := path.Join(svc.storeDir, HiveoviewStoreName)
+	svc.configStore = kvbtree.NewKVStore(storePath)
+	err := svc.configStore.Open()
+	if err != nil {
+		return err
+	}
+
 	// publish a TD for the service and set allowable roles in this case only a management capability is published
-	err := authz.UserSetPermissions(&ag.Consumer, authz.ThingPermissions{
+	err = authz.UserSetPermissions(&ag.Consumer, authz.ThingPermissions{
 		AgentID: ag.GetClientID(),
 		ThingID: src.HiveoviewServiceID,
 		Allow:   []authz.ClientRole{authz.ClientRoleAdmin, authz.ClientRoleService, authz.ClientRoleManager},
@@ -90,7 +104,7 @@ func (svc *HiveovService) Start(ag *messaging.Agent) error {
 	// Setup the handling of incoming web sessions
 	// re-use the runtime connection manager
 	svc.sm = session.NewWebSessionManager(
-		svc.signingKey, svc.caCert, ag, svc.noState, svc.timeout)
+		svc.signingKey, svc.caCert, ag, svc.configStore, svc.timeout)
 
 	// parse the templates
 	svc.tm.ParseAllTemplates()
@@ -136,14 +150,15 @@ func (svc *HiveovService) Start(ag *messaging.Agent) error {
 	return nil
 }
 
-func (svc *HiveovService) Stop() {
-	slog.Info("Stopping HiveovService")
+func (svc *HiveoviewService) Stop() {
+	slog.Info("Stopping HiveoviewService")
 	// TODO: send event the service has stopped
 	svc.ag.Disconnect()
 	svc.sm.CloseAllWebSessions()
 	if svc.tlsServer != nil {
 		svc.tlsServer.Stop()
 	}
+	_ = svc.configStore.Close()
 	//svc.router.Stop()
 
 	//if err != nil {
@@ -164,13 +179,14 @@ func (svc *HiveovService) Stop() {
 //	rootPath containing the templates in the given folder or "" to use the embedded templates
 //	serverCert server TLS certificate
 //	caCert server CA certificate
-//	noState flag to not use the state service for persistance. Intended for testing.
 //	timeout of client hub connections
+//	storeDir path to directory holding client session and dashboard data
 func NewHiveovService(serverPort int, debug bool,
 	signingKey ed25519.PrivateKey, rootPath string,
 	serverCert *tls.Certificate, caCert *x509.Certificate,
-	noState bool, timeout time.Duration,
-) *HiveovService {
+	timeout time.Duration,
+	storeDir string,
+) *HiveoviewService {
 	templatePath := rootPath
 	if rootPath != "" {
 		templatePath = path.Join(rootPath, "views")
@@ -179,7 +195,7 @@ func NewHiveovService(serverPort int, debug bool,
 		_, signingKey, _ = ed25519.GenerateKey(rand.Reader)
 	}
 	tm := views.InitTemplateManager(templatePath)
-	svc := HiveovService{
+	svc := HiveoviewService{
 		port:         serverPort,
 		shouldUpdate: true,
 		debug:        debug,
@@ -188,7 +204,7 @@ func NewHiveovService(serverPort int, debug bool,
 		tm:           tm,
 		serverCert:   serverCert,
 		caCert:       caCert,
-		noState:      noState,
+		storeDir:     storeDir,
 		timeout:      timeout,
 	}
 	return &svc

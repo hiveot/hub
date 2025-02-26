@@ -64,8 +64,6 @@ func SubmitEditTile(w http.ResponseWriter, r *http.Request) {
 	// add the new tile to the dashboard
 	cdc.dashboard.Tiles[tile.ID] = tile
 	cdc.clientModel.UpdateDashboard(&cdc.dashboard)
-	// save the new dashboard and tile
-	err = sess.SaveState()
 
 	if found {
 		// Notify the UI that the tile has changed. The eventName was provided

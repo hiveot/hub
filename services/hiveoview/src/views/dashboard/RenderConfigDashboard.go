@@ -22,7 +22,7 @@ func RenderConfigDashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	data := ConfigDashboardTemplateData{
-		Dashboard:             cdc.dashboard,
+		Dashboard:             cdc.CurrentDashboard(),
 		SubmitConfigDashboard: getDashboardPath(src.PostDashboardConfigPath, cdc),
 	}
 	buff, err := app.RenderAppOrFragment(r, ConfigDashboardTemplateFile, data)

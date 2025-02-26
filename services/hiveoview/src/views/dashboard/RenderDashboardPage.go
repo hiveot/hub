@@ -48,7 +48,7 @@ func RenderDashboardPage(w http.ResponseWriter, r *http.Request) {
 		slog.String("remoteAddr", r.RemoteAddr),
 	)
 	data := DashboardPageTemplateData{}
-	data.Dashboard = cdc.dashboard
+	data.Dashboard = cdc.CurrentDashboard()
 
 	// dashboard paths
 	data.RenderConfirmDeleteDashboardPath = getDashboardPath(src.RenderDashboardConfirmDeletePath, cdc)

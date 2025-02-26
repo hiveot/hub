@@ -51,6 +51,8 @@ func main() {
 	// this config will be replaced with hiveoview Thing config
 	cfg := config.NewHiveoviewConfig(serverPort)
 	_ = env.LoadConfig(&cfg)
+	// each app instance has its own storage directory
+	storageDir := path.Join(env.StoresDir, env.ClientID)
 
 	//storeDir := path.Join(env.StoresDir, "hiveoview")
 	//err := os.MkdirAll(storeDir, 0700)
@@ -85,7 +87,7 @@ func main() {
 	// for example zwavejs refresh device info can take up to 20sec
 	svc := service.NewHiveovService(
 		cfg.ServerPort, false, signingKey, rootPath, serverCert, env.CaCert,
-		false, time.Second*20)
+		time.Second*20, storageDir)
 
 	// StartPlugin will connect to the hub and wait for a signal to end.
 	plugin.StartPlugin(svc, env.ClientID, env.CertsDir, env.ServerURL)

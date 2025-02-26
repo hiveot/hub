@@ -22,9 +22,10 @@ func RenderConfirmDeleteDashboard(w http.ResponseWriter, r *http.Request) {
 		sess.WriteError(w, err, http.StatusBadRequest)
 		return
 	}
+
 	// setup the rendering data
 	data := ConfirmDeleteDashboardTemplateData{
-		Dashboard:                 cdc.dashboard,
+		Dashboard:                 cdc.CurrentDashboard(),
 		SubmitDeleteDashboardPath: getDashboardPath(src.DeleteDashboardPath, cdc),
 	}
 	buff, err := app.RenderAppOrFragment(r, RenderConfirmDeleteDashboardTemplate, data)

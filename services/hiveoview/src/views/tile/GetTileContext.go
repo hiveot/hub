@@ -10,7 +10,7 @@ import (
 
 type ClientTileContext struct {
 	clientID    string
-	clientModel *session.ClientDataModel
+	clientModel *session.SessionData
 	dashboardID string
 	dashboard   session.DashboardModel
 	tileID      string

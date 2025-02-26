@@ -23,7 +23,7 @@ const WebSsePath = "/websse"
 
 // CreateRoutes sets-up the chain of routes used by the service and return the router
 // rootPath points to the filesystem containing /static and template files
-func (svc *HiveovService) CreateRoutes(router *chi.Mux, rootPath string) http.Handler {
+func (svc *HiveoviewService) CreateRoutes(router *chi.Mux, rootPath string) http.Handler {
 	var staticFileServer http.Handler
 
 	if rootPath == "" {

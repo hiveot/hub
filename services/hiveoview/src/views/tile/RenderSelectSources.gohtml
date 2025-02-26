@@ -20,43 +20,14 @@
 							<!--=== for TD in .Things ===-->
 						<ul>
             {{range .Things}}
-            {{if .Events}}
 	            {{$thing := .}}
 	            <li>
 							<details id="thingDetails">
 								<summary>
 									<span>{{.Title}}</span>
-									<span> ({{len .Events}} events)</span>
+									<span> ({{len .Events}} events, {{len .Actions}} actions, {{len .Properties}} properties)</span>
 								</summary>
 
-								<!--=== for PropertyAffordance in .TD ===-->
-								<ul class="h-grid-table select-thing-events" striped border>
-                    {{/* Header*/}}
-										<li>
-											<div>Property Name</div>
-											<div>Value</div>
-											<div class="h-show-md">Updated</div>
-										</li>
-                    {{range $k,$aff := .Properties}}
-                    {{- /*gotype: github.com/hiveot/hub/wot/tdd.PropertyAffordance*/ -}}
-										<li>
-											<div>
-                        {{/*Get the html of the source to add to the list of sources*/}}
-												<a href="#"
-											     hx-swap="beforeend scroll:bottom"
-											     hx-trigger="click"
-											     hx-target="#edit-tile-sources"
-											     hx-get="/tile/{{$thing.ID}}/{{$k}}/sourceRow"
-											     onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
-												>
-														{{.Title}}
-												</a>
-											</div>
-											<div>{{$data.GetValue $thing.ID $k}}</div>
-											<div>{{$data.GetUpdated $thing.ID $k}}</div>
-										</li>
-                    {{end}}
-	            </ul>
 
 								<!--=== for EventAffordance in .TD ===-->
 								<ul class="h-grid-table select-thing-events" striped border>
@@ -116,10 +87,37 @@
                     {{end}}
 								</ul>
 
+								<!--=== for PropertyAffordance in .TD ===-->
+								<ul class="h-grid-table select-thing-events" striped border>
+                    {{/* Header*/}}
+									<li>
+										<div>Property Name</div>
+										<div>Value</div>
+										<div class="h-show-md">Updated</div>
+									</li>
+                    {{range $k,$aff := .Properties}}
+                        {{- /*gotype: github.com/hiveot/hub/wot/tdd.PropertyAffordance*/ -}}
+												<li>
+													<div>
+                              {{/*Get the html of the source to add to the list of sources*/}}
+														<a href="#"
+														   hx-swap="beforeend scroll:bottom"
+														   hx-trigger="click"
+														   hx-target="#edit-tile-sources"
+														   hx-get="/tile/{{$thing.ID}}/{{$k}}/sourceRow"
+														   onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
+														>
+                                {{.Title}}
+														</a>
+													</div>
+													<div>{{$data.GetValue $thing.ID $k}}</div>
+													<div>{{$data.GetUpdated $thing.ID $k}}</div>
+												</li>
+                    {{end}}
+								</ul>
 							</details>
 	            </li>
-            {{/* end if .Events*/}}
-						{{end}}
+
             {{/* end range .Things*/}}
 						{{end}}
 						</ul>

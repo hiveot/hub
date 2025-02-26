@@ -3,6 +3,7 @@ package session
 import (
 	"crypto/ed25519"
 	"crypto/x509"
+	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/clients"
 	"github.com/hiveot/hub/messaging/clients/authenticator"
@@ -37,8 +38,9 @@ type WebSessionManager struct {
 	caCert *x509.Certificate
 	// this service's agent for publishing events
 	ag *messaging.Agent
-	// disable persistence from state service (for testing)
-	noState bool
+
+	// persistence of dashboard configuration
+	configStore buckets.IBucketStore
 
 	// timeout for hub connections
 	timeout time.Duration
@@ -80,7 +82,10 @@ func (sm *WebSessionManager) _addSession(
 		existingSession.ReplaceConsumer(co)
 	} else {
 		co := messaging.NewConsumer(cc, sm.timeout)
-		cs = NewWebClientSession(cid, co, r.RemoteAddr, sm.noState, sm.onClose)
+		clientID := co.GetClientID()
+		clientBucket := sm.configStore.GetBucket(clientID)
+
+		cs = NewWebClientSession(cid, co, r.RemoteAddr, clientBucket, sm.onClose)
 	}
 	sm.sessions[cs.clcid] = cs
 	nrSessions := len(sm.sessions)
@@ -112,11 +117,16 @@ func (sm *WebSessionManager) _removeSession(cs *WebClientSession) {
 	}
 
 	sm.mux.Lock()
-	_, hasSession := sm.sessions[cs.clcid]
+	sess, hasSession := sm.sessions[cs.clcid]
 	if !hasSession {
 		slog.Error("_removeSession unknown client connection ID",
 			"clientID", cs.GetClientID(),
 			"clcid", cs.clcid)
+	}
+	// close the storage bucket that was created for this session
+	err := sess.clientData.dataBucket.Close()
+	if err != nil {
+		slog.Error("_removeSession: Error closing storage bucket: ", "err", err.Error())
 	}
 
 	delete(sm.sessions, cs.clcid)
@@ -313,11 +323,11 @@ func (sm *WebSessionManager) GetSessionFromCookie(r *http.Request) (
 //	signingKey for use with session cookies
 //	caCert of the hub
 //	hc is the agent service connection for reporting notifications and handling config
-//	noState do not try to persist state with the state service (for testing)
+//	configStore data store for client configuration
 //	timeout of hub connections
 func NewWebSessionManager(
 	signingKey ed25519.PrivateKey, caCert *x509.Certificate,
-	ag *messaging.Agent, noState bool,
+	ag *messaging.Agent, configStore buckets.IBucketStore,
 	timeout time.Duration) *WebSessionManager {
 
 	cc := ag.GetConnection()
@@ -333,7 +343,7 @@ func NewWebSessionManager(
 		hubURL:       hubURL,
 		caCert:       caCert,
 		ag:           ag,
-		noState:      noState,
+		configStore:  configStore,
 		timeout:      timeout,
 	}
 	return sm

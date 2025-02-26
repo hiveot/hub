@@ -10,7 +10,7 @@ import (
 )
 
 // CreateHiveoviewTD creates a new Thing TD document describing the service capability
-func (svc *HiveovService) CreateHiveoviewTD() *td.TD {
+func (svc *HiveoviewService) CreateHiveoviewTD() *td.TD {
 	title := "Web Server"
 	deviceType := vocab.ThingService
 	tdi := td.NewTD(src.HiveoviewServiceID, title, deviceType)
@@ -30,7 +30,7 @@ func (svc *HiveovService) CreateHiveoviewTD() *td.TD {
 }
 
 // PublishServiceTD create and publish the TD of the hiveoview service
-func (svc *HiveovService) PublishServiceTD() error {
+func (svc *HiveoviewService) PublishServiceTD() error {
 
 	myTD := svc.CreateHiveoviewTD()
 	tdJSON, _ := jsoniter.MarshalToString(myTD)
@@ -44,7 +44,7 @@ func (svc *HiveovService) PublishServiceTD() error {
 }
 
 // PublishServiceProps publishes the service properties
-func (svc *HiveovService) PublishServiceProps() error {
+func (svc *HiveoviewService) PublishServiceProps() error {
 	err := svc.ag.PubProperty(src.HiveoviewServiceID, vocab.PropNetPort, svc.port)
 	if err != nil {
 		slog.Error("failed to publish the hiveoview service properties", "err", err.Error())

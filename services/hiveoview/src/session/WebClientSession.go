@@ -3,10 +3,10 @@ package session
 import (
 	"bytes"
 	"fmt"
+	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/runtime/consumedthing"
-	"github.com/hiveot/hub/services/state/stateclient"
 	"github.com/hiveot/hub/wot"
 	"log/slog"
 	"net/http"
@@ -19,6 +19,7 @@ type NotifyType string
 
 // the key under which client session data is stored
 const HiveOViewDataKey = "hiveoview"
+const dashboardsStorageKey = "dashboards"
 
 const (
 	NotifyInfo    NotifyType = "info"
@@ -49,7 +50,7 @@ type WebClientSession struct {
 	clientID string
 
 	// Client session data, loaded from the state service
-	clientData *ClientDataModel
+	clientData *SessionData
 	// the error is used to retry loading if the client state is requested
 	clientStateError error
 
@@ -108,16 +109,7 @@ func (sess *WebClientSession) GetCID() string {
 }
 
 // GetClientData returns the hiveoview data model of this client
-func (sess *WebClientSession) GetClientData() *ClientDataModel {
-	// if loading previously failed then recover
-	sess.mux.RLock()
-	clientStateError := sess.clientStateError
-	sess.mux.RUnlock()
-	if clientStateError != nil {
-		err := sess.LoadState()
-		_ = err
-	}
-	// return something
+func (sess *WebClientSession) GetClientData() *SessionData {
 	return sess.clientData
 }
 
@@ -232,28 +224,6 @@ func (sess *WebClientSession) IsConnected() bool {
 	return sess.co.IsConnected()
 }
 
-// LoadState loads the client session state containing dashboard and other model data,
-// and clear 'clientModelChanged' status
-func (sess *WebClientSession) LoadState() error {
-	// load the stored view state from the state service
-	stateCl := stateclient.NewStateClient(sess.co)
-	clientData := NewClientDataModel()
-	found, err := stateCl.Get(HiveOViewDataKey, &clientData)
-	_ = found
-
-	// then lock and load
-	sess.mux.Lock()
-	defer sess.mux.Unlock()
-	if err != nil {
-		sess.clientStateError = err
-		slog.Error("LoadState failed", "err", err.Error())
-		return err
-	} else {
-		sess.clientData = clientData
-	}
-	return nil
-}
-
 func (sess *WebClientSession) Logout() {
 	// FIXME
 	panic("TODO")
@@ -349,28 +319,6 @@ func (sess *WebClientSession) ReplaceConsumer(newCo *messaging.Consumer) {
 	sess.co = newCo
 	newCo.SetConnectHandler(sess.onHubConnectionChange)
 	newCo.SetResponseHandler(sess.onResponse)
-}
-
-// SaveState stores the current client session model using the state service,
-// if 'clientModelChanged' is set.
-//
-// This returns an error if the state service is not reachable.
-func (sess *WebClientSession) SaveState() error {
-	if !sess.clientData.Changed() {
-		return nil
-	}
-	sess.mux.RLock()
-	clientState := sess.clientData
-	sess.mux.RUnlock()
-
-	stateCl := stateclient.NewStateClient(sess.GetConsumer())
-	err := stateCl.Set(HiveOViewDataKey, &clientState)
-	if err != nil {
-		//sess.lastError = err
-		return err
-	}
-	sess.clientData.SetChanged(false)
-	return err
 }
 
 // SendNotify sends a 'notify' event for showing in a toast popup.
@@ -471,9 +419,11 @@ func (sess *WebClientSession) WritePage(w http.ResponseWriter, buff *bytes.Buffe
 //	cid is the web client provided connectionID used to associate http request with SSE clients
 //	co is the consumer connected to the Hub
 //	remoteAddr is the web client remote address
+//	configBucket to store dashboards. This will be closed when this session is removed.
 //	onClose is the callback to invoke when this session is closed.
 func NewWebClientSession(
-	cid string, co *messaging.Consumer, remoteAddr string, noState bool,
+	cid string, co *messaging.Consumer, remoteAddr string,
+	configBucket buckets.IBucket,
 	onClosed func(*WebClientSession)) *WebClientSession {
 	var err error
 
@@ -491,7 +441,7 @@ func NewWebClientSession(
 		clientID:     co.GetClientID(),
 		remoteAddr:   remoteAddr,
 		lastActivity: time.Now(),
-		clientData:   NewClientDataModel(),
+		clientData:   NewClientDataModel(configBucket),
 		//viewModel:    NewClientViewModel(hc),
 		co:       co,
 		coDir:    coDir,
@@ -503,16 +453,6 @@ func NewWebClientSession(
 	co.SetResponseHandler(webSess.onResponse)
 
 	webSess.isActive.Store(co.IsConnected())
-
-	// restore the session state
-	if !noState {
-		err = webSess.LoadState()
-		if err != nil {
-			slog.Error("unable to load client state from state service",
-				"clientID", webSess.GetClientID(), "err", err.Error())
-			webSess.SendNotify(NotifyWarning, "", "Unable to restore session: "+err.Error())
-		}
-	}
 
 	// TODO: selectively subscribe instead of everything, but, based on what?
 	err = co.Subscribe("", "")

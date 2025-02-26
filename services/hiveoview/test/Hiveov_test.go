@@ -147,8 +147,9 @@ func TestMain(m *testing.M) {
 func TestStartStop(t *testing.T) {
 	t.Log("--- TestStartStop ---")
 
+	storeDir := testFolder
 	svc := service.NewHiveovService(servicePort, true, nil, "",
-		ts.Certs.ServerCert, ts.Certs.CaCert, noState, timeout)
+		ts.Certs.ServerCert, ts.Certs.CaCert, timeout, storeDir)
 	hc1, _ := ts.AddConnectService(serviceID)
 
 	err := svc.Start(hc1)
@@ -160,11 +161,12 @@ func TestStartStop(t *testing.T) {
 // test login from a client using password
 func TestLogin(t *testing.T) {
 	const clientID1 = "user1"
+	storeDir := testFolder
 
 	// 1: setup: start a runtime and service; this generates an error that
 	//    the state service isnt found. ignore it.
 	svc := service.NewHiveovService(servicePort, true, nil,
-		"", ts.Certs.ServerCert, ts.Certs.CaCert, noState, timeout)
+		"", ts.Certs.ServerCert, ts.Certs.CaCert, timeout, storeDir)
 	avcAg, _ := ts.AddConnectService(serviceID)
 	require.NotNil(t, avcAg)
 	defer avcAg.Disconnect()
@@ -221,11 +223,13 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	var messageCount atomic.Int32
 	const waitamoment = time.Millisecond * 10
 
+	storeDir := testFolder
+
 	logging.SetLogging("info", "")
 	// 1: setup: start a runtime and service; this generates an error that
 	//    the state service isnt found. ignore it.
 	svc := service.NewHiveovService(servicePort, true, nil,
-		"", ts.Certs.ServerCert, ts.Certs.CaCert, noState, timeout)
+		"", ts.Certs.ServerCert, ts.Certs.CaCert, timeout, storeDir)
 	avcAg, _ := ts.AddConnectService(serviceID)
 	err := svc.Start(avcAg)
 

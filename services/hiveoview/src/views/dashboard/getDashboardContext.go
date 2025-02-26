@@ -4,15 +4,22 @@ import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/messaging/tputils"
-	session2 "github.com/hiveot/hub/services/hiveoview/src/session"
+	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"net/http"
 )
 
 type ClientDashboardContext struct {
 	clientID    string
-	clientModel *session2.ClientDataModel
+	clientModel *session.SessionData
 	dashboardID string
-	dashboard   session2.DashboardModel
+}
+
+// CurrentDashboard returns the dashboard that is currently selected in the context
+// This returns an empty dashboard if none is selected.
+// Use clientModel.GetDashboard to get a specific dashboard and know if it is found.
+func (cdc *ClientDashboardContext) CurrentDashboard() session.DashboardModel {
+	d, _ := cdc.clientModel.GetDashboard(cdc.dashboardID)
+	return d
 }
 
 // URL parameters used
@@ -27,11 +34,10 @@ const URLParamDashboardID = "dashboardID"
 //
 //	createDashboard creates a new dashboard if it isn't found (not saved)
 func getDashboardContext(r *http.Request, createDashboard bool) (
-	*session2.WebClientSession, ClientDashboardContext, error) {
+	*session.WebClientSession, ClientDashboardContext, error) {
 
-	var found bool
 	cdc := ClientDashboardContext{}
-	_, sess, err := session2.GetSessionFromContext(r)
+	_, sess, err := session.GetSessionFromContext(r)
 	if err != nil {
 		return sess, cdc, err
 	}
@@ -46,12 +52,12 @@ func getDashboardContext(r *http.Request, createDashboard bool) (
 			cdc.dashboardID = "default"
 		}
 	}
-	cdc.dashboard, found = cdc.clientModel.GetDashboard(cdc.dashboardID)
+	dashboard, found := cdc.clientModel.GetDashboard(cdc.dashboardID)
 	if !found {
 		if createDashboard {
-			cdc.dashboard = session2.NewDashboard(cdc.dashboardID, "New Dashboard")
+			dashboard = session.NewDashboard(cdc.dashboardID, "New Dashboard")
 			// make it available for rendering tiles
-			cdc.clientModel.UpdateDashboard(&cdc.dashboard)
+			cdc.clientModel.UpdateDashboard(&dashboard)
 		} else {
 			err = fmt.Errorf("Dashboard with ID '%s' not found", cdc.dashboardID)
 			return sess, cdc, err

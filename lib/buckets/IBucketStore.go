@@ -37,9 +37,9 @@ type BucketStoreInfo struct {
 //
 // TODO: add refcount for multiple consumers of the store so it can be closed when done.
 type IBucketStore interface {
-	// GetBucket returns a bucket to use.
+	// GetBucket opens and returns a bucket to use.
 	// This creates the bucket if it doesn't exist.
-	// Use bucket.Remove() to close the bucket and release its resources.
+	// Use bucket.Close() to close the bucket and release its resources.
 	GetBucket(bucketID string) (bucket IBucket)
 
 	// Close the store and release its resources

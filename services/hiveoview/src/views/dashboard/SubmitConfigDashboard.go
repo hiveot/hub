@@ -19,9 +19,9 @@ func SubmitConfigDashboard(w http.ResponseWriter, r *http.Request) {
 	slog.Info("SubmitConfigDashboard", "SenderID", cdc.clientID,
 		"dashboardID", cdc.dashboardID)
 
-	cdc.dashboard.Title = newTitle
-	cdc.clientModel.UpdateDashboard(&cdc.dashboard)
-	_ = sess.SaveState()
+	dashboard := cdc.CurrentDashboard()
+	dashboard.Title = newTitle
+	cdc.clientModel.UpdateDashboard(&dashboard)
 
 	// refresh the dashboard
 	w.WriteHeader(http.StatusOK)

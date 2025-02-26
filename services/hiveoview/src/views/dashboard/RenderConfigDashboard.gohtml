@@ -9,12 +9,16 @@
 		</header>
 
 		<main>
-		<form tabindex="0" id="config-dashboard-form">
+		<form tabindex="0" id="config-dashboard-form"
+		      hx-post="{{.SubmitConfigDashboard}}"
+		      hx-swap="none"
+		      hx-on::after-request="onSubmitCompleted(event, this)"
+		>
 			<fieldset>
 				<label for="dashboard-title-id">Dashboard Name</label>
 				<input autofocus tabindex="0" id="dashboard-title-id" name="title" value="{{.Dashboard.Title}}"/>
-
 			</fieldset>
+
 		</form>
 		</main>
 
@@ -38,9 +42,14 @@
 
 
 <script>
+
     // Ugly to have to do this!
     function onSubmitCompleted(ev, btn) {
+
+        // ev.preventDefault();
         ev.stopImmediatePropagation()
+		    console.log("onSubmitCompleted")
+		    // ev.details holds the submit response
         let details = ev.detail
         if (details.successful) {
             let closeEv = new Event('close-modal',{bubbles:true})
