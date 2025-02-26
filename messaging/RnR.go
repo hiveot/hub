@@ -81,8 +81,9 @@ func (rnr *RnRChan) HandleResponse(msg *ResponseMessage) bool {
 		}
 		cancelFn()
 	} else {
-		slog.Info("HandleResponse: not an RPC",
-			slog.String("correlationID", msg.CorrelationID))
+		slog.Info("HandleResponse: not an RPC call (subscription).",
+			slog.String("correlationID", msg.CorrelationID),
+			slog.String("operation", msg.Operation))
 	}
 	return isRPC
 }

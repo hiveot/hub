@@ -41,7 +41,7 @@
                         {{- /*gotype: github.com/hiveot/hub/wot/tdd.EventAffordance*/ -}}
 												<li>
 													<div>
-                              {{/*Get the html of the source to add to the list of sources*/}}
+                              {{/* hx-get the html of the source and inject (hx-target) it in the edit tile dialog*/}}
 														<a href="#"
 														   hx-swap="beforeend scroll:bottom"
 														   hx-trigger="click"
@@ -69,7 +69,7 @@
                     {{range $k,$v := .Actions}}
                         {{- /*gotype: github.com/hiveot/hub/wot/tdd.EventAffordance*/ -}}
 												<li>
-                            {{/*Get the html of the source to add to the list of sources*/}}
+                            {{/* hx-get the html of the source and inject (hx-target) it in the edit tile dialog*/}}
 													<div>
 														<a href="#"
 														   hx-swap="beforeend scroll:bottom"
@@ -99,7 +99,7 @@
                         {{- /*gotype: github.com/hiveot/hub/wot/tdd.PropertyAffordance*/ -}}
 												<li>
 													<div>
-                              {{/*Get the html of the source to add to the list of sources*/}}
+                              {{/* hx-get the html of the source and inject (hx-target) it in the edit tile dialog*/}}
 														<a href="#"
 														   hx-swap="beforeend scroll:bottom"
 														   hx-trigger="click"

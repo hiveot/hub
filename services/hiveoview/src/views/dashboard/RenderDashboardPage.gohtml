@@ -57,9 +57,10 @@
                 // handle: ".drag-target",
                 cancel: ".no-drag"
             },
+            margin:"5px",       // gap between widgets
             nomove:true,
             float: false,       // cells move to the top (false)
-            cellHeight: 30,     // fix the row height to avoid scaling content
+            cellHeight: 30,     // fixed row height to avoid scaling content
             staticGrid:false,   // allow resize in edit mode
             minRow: 3,
             columnOpts: {
@@ -97,6 +98,7 @@
 
 
     // Return the screen size name "sm, md, lg, xl"
+    // used to store a separate layout per size
     function getLayoutSize() {
         let size = "xl"
         let w = window.innerWidth;
@@ -104,7 +106,7 @@
             size = "sm"
         } else if (w < 1024) {
             size = "md"
-        } else if (w < 1280) {
+        } else if (w < 1560) {
             size = "lg"
         }
         return size
@@ -114,26 +116,30 @@
     function loadGridLayout(grid,layouts) {
 
         {{if .Dashboard.GridLayouts}}
-        // TODO: reload the layout from the (state) server to avoid two devices with
+        // TODO: reload the layout from the server to avoid two devices with
         //  different size overwriting each other.
         //  Alteratively, save only the current size in post.
         let size = getLayoutSize()
 
         if (layouts) {
             let layoutJSON = layouts[size]
-            let layout = JSON.parse(layoutJSON)
-            if (layout) {
-                grid.load(layout, false)
+            if (!layoutJSON) {
+                console.log("No layout for size "+size+". Keeping current layout")
+            } else {
+                let layout = JSON.parse(layoutJSON)
+                if (layout) {
+                    grid.load(layout, false)
+                }
             }
         }
-        console.log("loadLayout size=", size)
+        // console.log("loadLayout size=", size)
         {{end}}
     }
 
     // return the current layout as used by the grid.
     function getLayout() {
         let size = getLayoutSize()
-        console.info("getLayout: size=",size)
+        // console.info("getLayout: size=",size)
 
         let dashData = grid.save(saveContent=false)
         if (dashData) {
@@ -154,8 +160,10 @@
         overflow: auto;
         display: flex;
         flex-direction: column;
-        padding-left: var(--pico-spacing);
-        padding-right: var(--pico-spacing);
+        padding-left: 0;
+        padding-right:0;
+        /*padding-left: var(--pico-spacing);*/
+        /*padding-right: var(--pico-spacing);*/
         /*background-color: var(--pico-background-color);*/
     }
     .grid-stack-item {

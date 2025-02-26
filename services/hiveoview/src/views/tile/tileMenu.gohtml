@@ -10,11 +10,11 @@
         hx-swap="innerHTML"
         hx-target="#modalLevel1">
 
-        <li><button class="link"
-             hx-get="{{.RenderEditTilePath}}">
+        {{/* NOTE: this used to need a button to receive clicks when covering another tile*/}}
+        <li hx-get="{{.RenderEditTilePath}}">
             <iconify-icon icon='mdi:edit'></iconify-icon>
             Edit Tile
-            </button></li>
+            </li>
         <li disabled>
             <iconify-icon icon='mdi:content-copy'></iconify-icon>
             Copy Tile
@@ -26,13 +26,9 @@
 
         <li class="h-horizontal-divider"></li>
 
-        {{/* FIXME: only button receives clicks when covering another tile*/}}
-        {{/* this needs a lot of css to look like a link*/}}
-        <li><button class="link"
-            hx-get="{{.RenderConfirmDeleteTilePath}}">
+        <li hx-get="{{.RenderConfirmDeleteTilePath}}">
             <iconify-icon icon='mdi:delete'></iconify-icon>
             Delete Tile
-            </button>
         </li>
     </ul>
 </h-dropdown>

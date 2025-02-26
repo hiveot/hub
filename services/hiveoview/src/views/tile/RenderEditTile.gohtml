@@ -39,6 +39,7 @@
 							</button>
 						</label>
 
+						{{/* RenderSelectSources uses this ID to add sources in this list */}}
 						<ul id="edit-tile-sources"
 						    class="h-grid-table tile-sources-table" striped border>
               {{/* Header*/}}
@@ -102,20 +103,7 @@
 
 <script>
 		// tileSources holds the sources currently being edited
-		let tileSources = {{.Tile.Sources}}
-
-
-				// listen for events to add a source
-				// @param ev event carrying thingID and property/event name
-				document.addEventListener("editTileAddSource", (ev)=>{
-
-				})
-
-		// add a table row
-		function addRow() {
-        let table = rowEl.parentNode;
-        table.removeChild(rowEl);
-    }
+		var tileSources = {{.Tile.Sources}}
 
 
     // delete the table row
