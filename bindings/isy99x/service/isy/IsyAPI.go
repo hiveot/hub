@@ -10,6 +10,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"strings"
@@ -165,6 +166,13 @@ func (isyAPI *IsyAPI) ReadNodes() (*IsyNodes, error) {
 	return &isyNodes, err
 }
 
+func (isyAPI *IsyAPI) ReadNodeInfo(id string) (IsyNodeInfo, error) {
+	var nodeInfo IsyNodeInfo
+
+	err := isyAPI.SendRequest("GET", "/rest/nodes/"+id, "", &nodeInfo)
+	return nodeInfo, err
+}
+
 // Rename sets a new friendly name of the ISY device
 func (isyAPI *IsyAPI) Rename(nodeID string, newName string) error {
 	// Post a SOAP message as no REST api exists for this
@@ -203,7 +211,8 @@ func (isyAPI *IsyAPI) SendRequest(method string, restPath string, body string, r
 	}
 
 	// not a file, continue with http request
-	isyURL := "http://" + isyAPI.address + restPath
+	//isyURL := "http://" + isyAPI.address + restPath
+	isyURL, _ := url.JoinPath("http://", isyAPI.address, restPath)
 	var reqBody io.Reader
 	if body != "" {
 		reqBody = bytes.NewReader([]byte(body))

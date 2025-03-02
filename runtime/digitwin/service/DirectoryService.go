@@ -1,6 +1,7 @@
 package service
 
 import (
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/messaging"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/runtime/digitwin/store"
@@ -22,6 +23,11 @@ type DirectoryService struct {
 }
 
 // MakeDigitalTwinTD returns the digital twin from an agent provided TD
+// This modifies the TD as follows:
+//  1. Change the ThingID to the digitwin thing ID:  dtw:{agentID}:{thingID}
+//  2. Change the forms to digitwin forms;
+//  3. Set the securitydefinitions to digitwin (work in progress)
+//  4. Add a writable 'title' property if it doesn't exist
 func (svc *DirectoryService) MakeDigitalTwinTD(
 	agentID string, tdJSON string) (thingTD *td.TD, dtwTD *td.TD, err error) {
 
@@ -39,6 +45,14 @@ func (svc *DirectoryService) MakeDigitalTwinTD(
 	dtwTD.Forms = make([]td.Form, 0)
 	dtwTD.Security = ""
 	dtwTD.SecurityDefinitions = make(map[string]td.SecurityScheme)
+
+	// add a writable title property
+	_, hasTitle := dtwTD.Properties[wot.WoTTitle]
+	if !hasTitle {
+		prop := dtwTD.AddProperty(wot.WoTTitle, "Title", "", wot.DataTypeString)
+		prop.SetAtType(vocab.PropDeviceTitle)
+		prop.ReadOnly = false
+	}
 	for _, aff := range dtwTD.Properties {
 		aff.Forms = make([]td.Form, 0)
 	}

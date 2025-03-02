@@ -41,7 +41,6 @@ func (svc *IsyBinding) PublishTDs() (err error) {
 			tdi = thing.MakeTD()
 			tdJSON, _ = jsoniter.MarshalToString(tdi)
 			err = digitwin.ThingDirectoryUpdateTD(&svc.ag.Consumer, tdJSON)
-			//err = svc.ag.PubTD(td)
 			if err != nil {
 				slog.Error("failed publishing Thing TD",
 					"thingID", tdi.ID, "err", err.Error())

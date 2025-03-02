@@ -90,6 +90,6 @@ func TestWriteDataFail(t *testing.T) {
 	address := "file://" + owserverSimulation
 	edsAPI := eds.NewEdsAPI(address, "", "")
 
-	err := edsAPI.WriteData("badRomID", "temp", "")
+	err := edsAPI.WriteNode("badRomID", "temp", "")
 	assert.Error(t, err)
 }

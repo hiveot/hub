@@ -38,7 +38,7 @@ func UnmarshalTDList(tdListJSON []string) (tdList []*TD, err error) {
 func ConvertToNative(strVal string, dataSchema *DataSchema) (val any, err error) {
 	if strVal == "" {
 		// nil value boolean input are always treated as false.
-		if dataSchema.Type == wot.WoTDataTypeBool {
+		if dataSchema.Type == wot.DataTypeBool {
 			return false, nil
 		}
 		return nil, nil
@@ -47,7 +47,7 @@ func ConvertToNative(strVal string, dataSchema *DataSchema) (val any, err error)
 		return nil, errors.New("Nil DataSchema")
 	}
 	switch dataSchema.Type {
-	case wot.WoTDataTypeBool:
+	case wot.DataTypeBool:
 		// ParseBool is too restrictive
 		lowerVal := strings.ToLower(strVal)
 		val = false
@@ -55,22 +55,22 @@ func ConvertToNative(strVal string, dataSchema *DataSchema) (val any, err error)
 			val = true
 		}
 		break
-	case wot.WoTDataTypeArray:
+	case wot.DataTypeArray:
 		err = jsoniter.UnmarshalFromString(strVal, &val)
 		break
-	case wot.WoTDataTypeDateTime:
+	case wot.DataTypeDateTime:
 		val, err = dateparse.ParseAny(strVal)
 		break
-	case wot.WoTDataTypeInteger:
+	case wot.DataTypeInteger:
 		val, err = strconv.ParseInt(strVal, 10, 64)
 		break
-	case wot.WoTDataTypeNumber:
+	case wot.DataTypeNumber:
 		val, err = strconv.ParseFloat(strVal, 64)
 		break
-	case wot.WoTDataTypeUnsignedInt:
+	case wot.DataTypeUnsignedInt:
 		val, err = strconv.ParseUint(strVal, 10, 64)
 		break
-	case wot.WoTDataTypeObject:
+	case wot.DataTypeObject:
 		err = jsoniter.UnmarshalFromString(strVal, &val)
 		break
 	default:

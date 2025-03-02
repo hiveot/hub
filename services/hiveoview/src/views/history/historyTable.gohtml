@@ -6,6 +6,7 @@
 
 		{{/* Table Header*/}}
 		<li id="hist-table-title"
+{{/*		    FIXME: this is also triggered for properties*/}}
         {{if eq .CompareToday 0}}
 	        hx-trigger="sse:{{.ThingID}}/{{.Name}}"
      	    hx-get="{{.RenderHistoryLatestRow}}?unit={{.UnitSymbol}}"

@@ -2,6 +2,7 @@
 package eds
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 	"sync"
@@ -60,9 +61,27 @@ func (edsAPI *EdsAPI) PollNodes() (nodeList []*OneWireNode, err error) {
 	return nodeList, nil
 }
 
-// WriteData writes a value to a variable
+// ReadNodeValue reads the value of a single node
+func (edsAPI *EdsAPI) ReadNodeValue(romID string, variable string) (value string, err error) {
+	nodes, err := edsAPI.PollNodes()
+	for _, node := range nodes {
+		if node.ROMId == romID {
+			attr, found := node.Attr[variable]
+			if !found {
+				err = fmt.Errorf("variable '%s' not found in node '%s'", variable, romID)
+			} else {
+				value = attr.Value
+			}
+			return value, err
+		}
+	}
+	err = fmt.Errorf("Node '%s' not found", romID)
+	return "", err
+}
+
+// WriteNode writes a value to a node's variable
 // this posts a request to devices.html?rom={romID}&variable={variable}&value={value}
-func (edsAPI *EdsAPI) WriteData(romID string, variable string, value string) error {
+func (edsAPI *EdsAPI) WriteNode(romID string, variable string, value string) error {
 	// TODO: auto config if this is http or https
 	writeURL := edsAPI.address + "/devices.htm" +
 		"?rom=" + romID + "&variable=" + variable + "&value=" + value

@@ -220,7 +220,7 @@ func (c *WssServerConnection) SendResponse(resp *messaging.ResponseMessage) (err
 	// Feb 20 08:17:23.2900 WRN WssClientConnection.go:159 HandleWssMessage: Message is not a request or response
 	// server hiveot-wss type (MessageType) field is empty
 
-	slog.Info("SendResponse (server->client)",
+	slog.Debug("SendResponse (server->client)",
 		slog.String("clientID", c.cinfo.ClientID),
 		slog.String("correlationID", resp.CorrelationID),
 		slog.String("operation", resp.Operation),

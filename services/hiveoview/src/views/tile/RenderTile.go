@@ -1,15 +1,12 @@
 package tile
 
 import (
-	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/lib/consumedthing"
 	"github.com/hiveot/hub/messaging/tputils"
-	"github.com/hiveot/hub/runtime/consumedthing"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"github.com/hiveot/hub/services/hiveoview/src/views/history"
-	"github.com/hiveot/hub/wot/td"
 	"net/http"
 	"time"
 )
@@ -57,30 +54,30 @@ func (d RenderTileTemplateData) GetOutputValue(thingID string, name string) (iou
 	ct, _ := d.cts.Consume(thingID)
 	if ct == nil {
 		// Thing not found. return a dummy interaction output with a non-schema
-		tdi := td.NewTD(thingID, "unknown", vocab.ThingDevice)
-		dummy := consumedthing.NewInteractionOutput(
-			tdi, messaging.AffordanceTypeProperty, name, nil, "")
+		dummy := consumedthing.InteractionOutput{}
+		dummy.ThingID = thingID
+		dummy.Name = name
 		dummy.Value = consumedthing.NewDataSchemaValue("n/a")
-		return dummy
+		return &dummy
 	}
-	tdi := ct.GetTD()
+
 	// assume this is an event
 	iout = ct.GetEventOutput(name)
 	if iout == nil {
 		// if not an event get its property. properties might not update immediately
 		// so events are preferred.
-		iout = ct.GetPropOutput(name)
+		iout = ct.GetPropertyOutput(name)
 	}
 	// not an event or property, last try is an action output
 	if iout == nil {
-		aff := tdi.GetAction(name)
+		aff := ct.GetActionAff(name)
 		if aff != nil {
 			as := ct.QueryAction(name)
 			iout = ct.GetActionOutput(as)
 		}
 	}
 	if iout == nil {
-		iout = consumedthing.NewInteractionOutput(tdi, "", name,
+		iout = consumedthing.NewInteractionOutput(ct, "", name,
 			"no output value", "")
 	}
 	return iout

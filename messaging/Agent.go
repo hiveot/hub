@@ -3,6 +3,7 @@ package messaging
 import (
 	"fmt"
 	"github.com/hiveot/hub/wot"
+	"log/slog"
 	"sync/atomic"
 	"time"
 )
@@ -59,6 +60,11 @@ func (ag *Agent) PubProperty(thingID string, name string, value any) error {
 	// send the property update as a response to the observe request
 	resp := NewResponseMessage(
 		wot.OpObserveProperty, thingID, name, value, nil, "")
+	slog.Info("PubProperty (async)",
+		"thingID", thingID,
+		"name", resp.Name,
+		"value", resp.ToString(50),
+	)
 	return ag.cc.SendResponse(resp)
 }
 
@@ -66,11 +72,16 @@ func (ag *Agent) PubProperty(thingID string, name string, value any) error {
 //
 // The underlying transport protocol binding handles the subscription mechanism.
 func (ag *Agent) PubProperties(thingID string, propMap map[string]any) error {
-
 	// Implicit rule: if no name is provided the data is a map
 	// the transport adds the correlationID of the subscription.
 	resp := NewResponseMessage(
 		wot.OpObserveAllProperties, thingID, "", propMap, nil, "")
+
+	slog.Info("PubProperties (async)",
+		"thingID", thingID,
+		"nrProps", len(propMap),
+		"value", resp.ToString(50),
+	)
 
 	return ag.cc.SendResponse(resp)
 }
@@ -101,6 +112,11 @@ func (ag *Agent) PubProperties(thingID string, propMap map[string]any) error {
 //	//
 //	return ag.Rpc(wot.HTOpUpdateTD, td.ID, "", tdJson, nil)
 //}
+
+// SendResponse sends a response for a previous request
+func (ag *Agent) SendResponse(resp *ResponseMessage) error {
+	return ag.cc.SendResponse(resp)
+}
 
 // SetRequestHandler set the application handler for incoming requests
 func (ag *Agent) SetRequestHandler(cb RequestHandler) {

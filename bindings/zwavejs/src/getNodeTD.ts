@@ -272,7 +272,7 @@ export function getNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | unde
         property: "name"
     }
     let titleKey = getPropName(nameVid)
-    let prop = td.AddProperty(titleKey,"Device name",
+    let prop = td.AddProperty(titleKey, "Device name",
         "Custom device name/title",  WoTDataTypeString, vocab.PropDeviceTitle);
     prop.readOnly = false
 

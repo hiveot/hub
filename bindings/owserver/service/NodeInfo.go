@@ -74,6 +74,7 @@ type AttrConversion struct {
 	DataType string
 	// the amount of change that should trigger an event
 	ChangeNotify float64
+	Description  string
 	Enum         []td.DataSchema
 	// ignore the attribute
 	Ignore bool
@@ -120,7 +121,8 @@ var AttrConfig = map[string]AttrConversion{
 	// "BarometricPressureHg": vocab.PropNameAtmosphericPressure, // unit Hg
 	"Channel": {
 		IsProp: true, Ignore: false,
-		Title: "Channel", DataType: vocab.WoTDataTypeInteger, ChangeNotify: 1,
+		Title:    "Channel",
+		DataType: vocab.WoTDataTypeInteger, ChangeNotify: 1,
 	},
 	"ClearAlarms": {
 		IsActuator: true, Ignore: true,
@@ -152,7 +154,7 @@ var AttrConfig = map[string]AttrConversion{
 		Title:  "Device date/time", DataType: vocab.WoTDataTypeDateTime,
 		ChangeNotify: -1, // do not report changes to time
 	},
-	// gateway has 'DeviceName', nodes 'Name'
+	// gateway has 'DeviceName', nodes use 'Name'
 	"DeviceName": {
 		IsProp:    true,
 		Title:     "Device Name",
@@ -178,9 +180,10 @@ var AttrConfig = map[string]AttrConversion{
 		Unit: vocab.UnitCelcius, //tbd
 	},
 	"Family": {
-		IsProp:   true,
-		Title:    "Family number as read from 1-wire device",
-		DataType: vocab.WoTDataTypeString,
+		IsProp:      true,
+		Title:       "Family",
+		Description: "Family number as read from 1-wire device",
+		DataType:    vocab.WoTDataTypeString,
 	},
 	"Health": {
 		IsProp:   true,
@@ -221,13 +224,14 @@ var AttrConfig = map[string]AttrConversion{
 	},
 	"LED": {
 		IsProp:   true,
-		Title:    "LED",
+		Title:    "LED State",
 		DataType: vocab.WoTDataTypeBool, ChangeNotify: 1, // On/Off
 	},
 	"LEDFunction": {
-		IsProp:   true,
-		Title:    "LED function control",
-		DataType: vocab.WoTDataTypeInteger, ChangeNotify: 1,
+		IsProp:      true,
+		Title:       "LED function",
+		Description: "LED on/off behavior on alarm or manual command",
+		DataType:    vocab.WoTDataTypeInteger, ChangeNotify: 1,
 		Enum: []td.DataSchema{
 			{Const: "0", Title: "On with alarms, off with no alarms"},
 			{Const: "1", Title: "On with alarms, Off with clear alarms command"},
@@ -237,7 +241,7 @@ var AttrConfig = map[string]AttrConversion{
 	},
 	"LEDState": {
 		IsActuator: true, IsProp: true,
-		Title:    "LED Control",
+		Title:    "LED switch",
 		DataType: vocab.WoTDataTypeBool, ChangeNotify: 1,
 	},
 	"Light": {
@@ -292,16 +296,25 @@ var AttrConfig = map[string]AttrConversion{
 		Title:    "Raw Data",
 		DataType: vocab.WoTDataTypeString,
 	},
-	"Relay": {
-		IsActuator: true, IsProp: true,
-		Title:    "Relay control",
-		DataType: vocab.WoTDataTypeBool, VocabType: vocab.ActionSwitchOnOff,
+	"Relay": { // relay is read-only status, RelayState is input control
+		IsProp:      true,
+		Title:       "Relay status",
+		Description: "Current alarm status of the relay",
+		// the internal data type is integer 0=off, 1=on
+		// how to present as a switch?
+		DataType: vocab.WoTDataTypeInteger, ChangeNotify: 1,
+		VocabType: vocab.PropAlarmStatus,
+		Enum: []td.DataSchema{
+			{Const: "0", Title: "Off"},
+			{Const: "1", Title: "On"},
+		},
 	},
 	"RelayFunction": {
-		IsProp:    true,
-		VocabType: vocab.PropStatusOnOff,
-		Title:     "Relay function control",
-		DataType:  vocab.WoTDataTypeInteger, ChangeNotify: 1,
+		IsProp:      true,
+		VocabType:   vocab.PropStatusOnOff,
+		Title:       "Relay function",
+		Description: "Relay on/off behavior on alarm or manual command",
+		DataType:    vocab.WoTDataTypeInteger, ChangeNotify: 1,
 		Enum: []td.DataSchema{
 			{Const: "0", Title: "On with alarms, off with no alarms"},
 			{Const: "1", Title: "On with alarms, Off with clear alarms command"},
@@ -310,9 +323,15 @@ var AttrConfig = map[string]AttrConversion{
 		},
 	},
 	"RelayState": {
-		IsProp:   true,
-		Title:    "Relay State",
-		DataType: vocab.WoTDataTypeBool, VocabType: vocab.ActionSwitchOnOff, ChangeNotify: 1,
+		IsProp: true, IsActuator: true,
+		Title:       "Relay control",
+		Description: "On/off relay control",
+		DataType:    vocab.WoTDataTypeInteger, ChangeNotify: 1,
+		VocabType: vocab.ActionSwitchOnOff,
+		Enum: []td.DataSchema{
+			{Const: "0", Title: "Off"},
+			{Const: "1", Title: "On"},
+		},
 	},
 	"ROMId": {
 		IsProp:   true,

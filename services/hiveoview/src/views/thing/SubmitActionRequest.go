@@ -3,6 +3,7 @@ package thing
 import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
+	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
@@ -36,8 +37,7 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 		sess.WriteError(w, err, http.StatusInternalServerError)
 		return
 	}
-	tdi := ct.GetTD()
-	actionAff := ct.GetTD().GetAction(actionName)
+	actionAff := ct.GetActionAff(actionName)
 	if actionAff.Input != nil {
 		newValue, err = td.ConvertToNative(valueStr, actionAff.Input)
 	}
@@ -55,6 +55,12 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 		if resp != nil {
 			// stringify the reply for presenting in the notification
 			reply = fmt.Sprintf("%v", resp)
+
+			// Receiving a response means it isn't received by the async response handler,
+			// so we need to let the UI know ourselves.
+			thingAddr := fmt.Sprintf("%s/%s", thingID, actionName)
+			propVal := tputils.DecodeAsString(reply, 0)
+			sess.SendSSE(thingAddr, propVal)
 		}
 	}
 	if err != nil {
@@ -72,7 +78,8 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 			actionTitle = actionAff.Title
 		}
 
-		err = fmt.Errorf("action '%s' of Thing '%s' failed: %w", actionTitle, tdi.Title, err)
+		err = fmt.Errorf("action '%s' of Thing '%s' failed: %w",
+			actionTitle, ct.Title, err)
 		sess.WriteError(w, err, http.StatusBadRequest)
 		return
 	} else {
@@ -87,6 +94,7 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 	if actionAff.Output != nil {
 		unit = actionAff.Output.Unit
 	}
+
 	notificationText := fmt.Sprintf("Action %s: %v %s", actionTitle, reply, unit)
 	sess.SendNotify(session.NotifySuccess, "", notificationText)
 

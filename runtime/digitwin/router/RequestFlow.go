@@ -324,6 +324,9 @@ func (svc *DigitwinRouter) HandleUpdateTD(
 func (svc *DigitwinRouter) HandleWriteProperty(
 	req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
 
-	resp := svc.ForwardActionToRemoteAgent(req, c)
-	return resp
+	// TODO: should the digital twin handle property writes?
+	// which digital twin specific properties?
+	//   * device title
+
+	return svc.ForwardActionToRemoteAgent(req, c)
 }

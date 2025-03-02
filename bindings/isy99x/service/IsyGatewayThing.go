@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
+	"github.com/hiveot/hub/lib/exposedthing"
 	"github.com/hiveot/hub/messaging"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
-	"github.com/hiveot/hub/runtime/exposedthing"
+	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
@@ -407,7 +408,7 @@ func (igw *IsyGatewayThing) ReadGatewayValues() (err error) {
 	pv.SetValue(vocab.PropDeviceSoftwareVersion, igw.Configuration.AppVersion)
 	pv.SetValue(vocab.PropNetMAC, igw.Configuration.Root.ID)
 	pv.SetValue(vocab.PropDeviceDescription, igw.Configuration.Product.Description)
-	pv.SetValue(vocab.PropDeviceTitle, igw.Configuration.Root.Name) // custom name
+	pv.SetValue(wot.WoTTitle, igw.Configuration.Root.Name) // custom name
 	pv.SetValue(vocab.PropNetIP4, igw.Network.Interface.IP)
 	pv.SetValue(vocab.PropNetPort, igw.Network.WebServer.HttpPort)
 

@@ -25,6 +25,7 @@ import (
 // TODO: switch for testing with real owserver
 
 var tempFolder string
+var storePath string
 var owsConfig config.OWServerConfig
 var owsSimulationFile string // simulation file
 var ts *testenv.TestServer
@@ -41,6 +42,7 @@ func TestMain(m *testing.M) {
 	// setup environment
 	var err error
 	tempFolder = path.Join(os.TempDir(), "test-owserver")
+	storePath = path.Join(tempFolder, "owserver-state")
 	cwd, _ := os.Getwd()
 	homeFolder := path.Join(cwd, "./docs")
 	owsSimulationFile = "file://" + path.Join(homeFolder, "owserver-simulation.xml")
@@ -69,7 +71,7 @@ func TestMain(m *testing.M) {
 func TestStartStop(t *testing.T) {
 	t.Log("--- TestStartStop (without state service) ---")
 
-	svc := service.NewOWServerBinding(&owsConfig)
+	svc := service.NewOWServerBinding(storePath, &owsConfig)
 
 	ag, _, _ := ts.AddConnectAgent(agentID)
 	//connected := ag.IsConnected()
@@ -92,7 +94,7 @@ func TestPoll(t *testing.T) {
 	defer ag1.Disconnect()
 	cl1, _, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
 	defer cl1.Disconnect()
-	svc := service.NewOWServerBinding(&owsConfig)
+	svc := service.NewOWServerBinding(storePath, &owsConfig)
 
 	// Count the number of received TD events
 	err := cl1.ObserveProperty("", "")
@@ -136,7 +138,7 @@ func TestPollInvalidEDSAddress(t *testing.T) {
 
 	badConfig := owsConfig // copy
 	badConfig.OWServerURL = "http://invalidAddress/"
-	svc := service.NewOWServerBinding(&badConfig)
+	svc := service.NewOWServerBinding(storePath, &badConfig)
 
 	err := svc.Start(hc)
 	assert.NoError(t, err)
@@ -159,7 +161,7 @@ func TestAction(t *testing.T) {
 	ag1, _, _ := ts.AddConnectAgent(agentID)
 	defer ag1.Disconnect()
 
-	svc := service.NewOWServerBinding(&owsConfig)
+	svc := service.NewOWServerBinding(storePath, &owsConfig)
 	err := svc.Start(ag1)
 	require.NoError(t, err)
 	defer svc.Stop()
@@ -189,7 +191,7 @@ func TestConfig(t *testing.T) {
 	ag1, _, _ := ts.AddConnectAgent(agentID)
 	defer ag1.Disconnect()
 
-	svc := service.NewOWServerBinding(&owsConfig)
+	svc := service.NewOWServerBinding(storePath, &owsConfig)
 	err := svc.Start(ag1)
 	require.NoError(t, err)
 	defer svc.Stop()

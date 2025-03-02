@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hub/lib/consumedthing"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/tputils"
-	"github.com/hiveot/hub/runtime/consumedthing"
 	"github.com/hiveot/hub/wot"
 	"log/slog"
 	"net/http"
@@ -58,7 +58,7 @@ type WebClientSession struct {
 	co *messaging.Consumer
 
 	// Holder of consumed things for this session
-	coDir *consumedthing.ConsumedThingsDirectory
+	ctDir *consumedthing.ConsumedThingsDirectory
 
 	// flag, this session is active and can be used to send messages to
 	// the hub. If sseChan is set then the return channel is active too.
@@ -90,7 +90,7 @@ type WebClientSession struct {
 // Consume is short for consumedThingSession.Consume()
 func (sess *WebClientSession) Consume(
 	thingID string) (ct *consumedthing.ConsumedThing, err error) {
-	return sess.coDir.Consume(thingID)
+	return sess.ctDir.Consume(thingID)
 }
 
 // GetClientID returns the ID of this session's client
@@ -125,7 +125,7 @@ func (sess *WebClientSession) GetLastError() error {
 
 // GetConsumedThingsDirectory returns the directory of consumed things of this client
 func (sess *WebClientSession) GetConsumedThingsDirectory() *consumedthing.ConsumedThingsDirectory {
-	return sess.coDir
+	return sess.ctDir
 }
 
 // GetViewModel returns the hiveoview view model of this client
@@ -276,6 +276,14 @@ func (sess *WebClientSession) onHubConnectionChange(connected bool, err error, c
 // onResponse notifies SSE clients of incoming notifications from the Hub
 // This is intended for notifying the client UI of the update to props or events.
 // The consumed thing itself is already updated.
+// FIMXE: that no longer works. The consumed thing isn't updated
+//
+//	 FIX-1: how is the consumed thing supposed to be updated?
+//				A: consumer->consumed thing -> webclientsession
+//				B: consumer->webclientsession -> consumed thing
+//	   ? it should be the one that subscribes
+//	 FIX-2: consumed things should be shared between sessions of the same client
+//				so that additional browser tabs doesn't require a reload.
 func (sess *WebClientSession) onResponse(resp *messaging.ResponseMessage) error {
 
 	//slog.Debug("received notification",
@@ -286,6 +294,9 @@ func (sess *WebClientSession) onResponse(resp *messaging.ResponseMessage) error 
 	//		slog.String("senderID", resp.SenderID),
 	//		slog.String("receiver cid", sess.cid),
 	//	)
+	// update the directory
+	_ = sess.ctDir.OnResponse(resp)
+
 	if resp.Operation == wot.OpObserveProperty {
 		// Publish a sse event for each property
 		// The UI that displays this event can use this as a trigger to load the
@@ -444,7 +455,7 @@ func NewWebClientSession(
 		clientData:   NewClientDataModel(configBucket),
 		//viewModel:    NewClientViewModel(hc),
 		co:       co,
-		coDir:    coDir,
+		ctDir:    coDir,
 		onClosed: onClosed,
 	}
 	co.SetConnectHandler(webSess.onHubConnectionChange)

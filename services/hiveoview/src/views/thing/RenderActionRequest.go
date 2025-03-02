@@ -4,8 +4,8 @@ import (
 	"errors"
 	"github.com/araddon/dateparse"
 	"github.com/go-chi/chi/v5"
+	"github.com/hiveot/hub/lib/consumedthing"
 	"github.com/hiveot/hub/messaging/tputils"
-	"github.com/hiveot/hub/runtime/consumedthing"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
@@ -86,13 +86,13 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		sess.WriteError(w, err, http.StatusBadRequest)
 	}
-	actionAff := ct.GetTD().GetAction(name)
+	tdi := ct.TD()
+	actionAff := ct.GetActionAff(name)
 	//_, actionAff, err := getActionAff(sess.GetConsumer(), thingID, name)
 	if actionAff == nil {
 		sess.WriteError(w, errors.New("No such action: "+name), http.StatusBadRequest)
 		return
 	}
-	tdi := ct.GetTD()
 	data := ActionRequestTemplateData{
 		ThingID: thingID,
 		Name:    name,

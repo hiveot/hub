@@ -110,10 +110,6 @@ export class NodeValues {
 
         // add value ID values
 
-        // name and location now use the CC, which appears if previously set
-        // FIXME: deviceTitle prop should not be a key but a type
-        // this.setIf(vocab.PropDeviceTitle, node.name) - not used?
-
         let vids = node.getDefinedValueIDs()
         for (let vid of vids) {
             let vidValue = getVidValue(node, vid)

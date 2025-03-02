@@ -33,20 +33,20 @@ const (
 
 // WoT data types
 const (
-	WoTDataType            = "type"
-	WoTDataTypeAnyURI      = "anyURI"
-	WoTDataTypeArray       = "array"
-	WoTDataTypeBool        = "boolean"
-	WoTDataTypeDateTime    = "dateTime"
-	WoTDataTypeInteger     = "integer"
-	WoTDataTypeNone        = ""
-	WoTDataTypeNumber      = "number"
-	WoTDataTypeObject      = "object"
-	WoTDataTypeString      = "string"
-	WoTDataTypeUnsignedInt = "unsignedInt"
+	WoTDataType         = "type"
+	DataTypeAnyURI      = "anyURI"
+	DataTypeArray       = "array"
+	DataTypeBool        = "boolean"
+	DataTypeDateTime    = "dateTime"
+	DataTypeInteger     = "integer"
+	DataTypeNone        = ""
+	DataTypeNumber      = "number"
+	DataTypeObject      = "object"
+	DataTypeString      = "string"
+	DataTypeUnsignedInt = "unsignedInt"
 )
 
-// TD-1.1 terminology
+// TD-1.1 affordance and data schema vocabulary
 const (
 	WoTDescription          = "description"
 	WoTDescriptions         = "descriptions"

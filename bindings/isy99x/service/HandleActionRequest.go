@@ -32,7 +32,9 @@ func (svc *IsyBinding) handleRequest(req *messaging.RequestMessage,
 		slog.Warn(resp.Error)
 		return
 	}
-	resp = isyThing.HandleActionRequest(req)
+	// FIXME-1: how to determine the output of an action with ISY?
+	// FIXME-2: how to determine an action has completed?
+	resp = isyThing.HandleActionRequest(svc.ag, req)
 
 	// publish any changes that are the result of the action
 	go func() {

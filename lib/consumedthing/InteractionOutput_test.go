@@ -16,7 +16,7 @@ const key1ID = "key1"
 
 func MakeTD() *td.TD {
 	tdi := td.NewTD("thingID", "test Thing", "devicetype")
-	tdi.AddProperty(key1ID, "property 1", "test property", wot.WoTDataTypeString)
+	tdi.AddProperty(key1ID, "property 1", "test property", wot.DataTypeString)
 	return tdi
 }
 
@@ -77,7 +77,7 @@ func TestString(t *testing.T) {
 }
 
 func TestObject(t *testing.T) {
-	//schema := tdd.DataSchema{Type: vocab.WoTDataTypeObject}
+	//schema := tdd.DataSchema{Type: vocab.DataTypeObject}
 	type User struct {
 		Name        string
 		Age         int

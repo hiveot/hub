@@ -3,8 +3,8 @@ package thingdetails
 import (
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/lib/consumedthing"
 	"github.com/hiveot/hub/messaging/tputils"
-	"github.com/hiveot/hub/runtime/consumedthing"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
@@ -25,7 +25,7 @@ type ThingDetailsTemplateData struct {
 	ThingID    string
 	MakeModel  string
 	DeviceType string
-	TD         *td.TD
+
 	// split the properties in attributes and config for presentation
 	AttrNames   []string
 	ConfigNames []string
@@ -82,10 +82,13 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 
 	// Read the TD being displayed and its latest values
 	_, sess, err := session.GetSessionFromContext(r)
-	cts := sess.GetConsumedThingsDirectory()
-	if err == nil {
-		ct, err = cts.Consume(thingID)
+	if err != nil {
+		slog.Error("Missing session", "thingID", thingID, "err", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
+	cts := sess.GetConsumedThingsDirectory()
+	ct, err = cts.Consume(thingID)
 	if err != nil {
 		slog.Error("Failed loading Thing info",
 			"thingID", thingID, "err", err.Error())
@@ -96,8 +99,8 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 	thingData.CT = ct
 
 	// split properties into attributes and configuration and update the names list
-	tdi := thingData.CT.GetTD()
-	thingData.TD = tdi
+	tdi := thingData.CT.TD()
+
 	for k, prop := range tdi.Properties {
 		if prop.ReadOnly {
 			thingData.AttrNames = append(thingData.AttrNames, k)
@@ -146,14 +149,14 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 	// TODO: this is a bit of a pain to do. Is this a common problem?
 	makeID, _ := tdi.GetPropertyOfVocabType(vocab.PropDeviceMake)
 	if makeID != "" {
-		makeValue := ct.GetPropOutput(makeID)
+		makeValue := ct.GetPropertyOutput(makeID)
 		if makeValue.Value.Text() != "" {
 			thingData.MakeModel = makeValue.Value.Text() + ", "
 		}
 	}
 	modelID, _ := tdi.GetPropertyOfVocabType(vocab.PropDeviceModel)
 	if modelID != "" {
-		modelValue := ct.GetPropOutput(modelID)
+		modelValue := ct.GetPropertyOutput(modelID)
 		if modelValue != nil && modelValue.Value.Text() != "" {
 			thingData.MakeModel = thingData.MakeModel + modelValue.Value.Text()
 		}

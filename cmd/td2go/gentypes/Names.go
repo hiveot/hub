@@ -20,9 +20,9 @@ import (
 // return the schema value as the type.
 func GoTypeFromSchema(ds *td.DataSchema) string {
 	switch ds.Type {
-	case wot.WoTDataTypeAnyURI:
+	case wot.DataTypeAnyURI:
 		return "string"
-	case wot.WoTDataTypeArray:
+	case wot.DataTypeArray:
 		// the actual type is in a dataschema under 'items'
 		if ds.ArrayItems != nil {
 			arrayType := GoTypeFromSchema(ds.ArrayItems)
@@ -31,19 +31,19 @@ func GoTypeFromSchema(ds *td.DataSchema) string {
 			// unknown type
 			return "[]interface{}"
 		}
-	case wot.WoTDataTypeDateTime:
+	case wot.DataTypeDateTime:
 		return "string"
-	case wot.WoTDataTypeBool:
+	case wot.DataTypeBool:
 		return "bool"
-	case wot.WoTDataTypeInteger:
+	case wot.DataTypeInteger:
 		return "int"
-	case wot.WoTDataTypeNumber:
+	case wot.DataTypeNumber:
 		return "float64"
-	case wot.WoTDataTypeString:
+	case wot.DataTypeString:
 		return "string"
-	case wot.WoTDataTypeUnsignedInt:
+	case wot.DataTypeUnsignedInt:
 		return "uint64"
-	case wot.WoTDataTypeObject:
+	case wot.DataTypeObject:
 		if ds.Schema != "" {
 			// Only local references are supported
 			return ToTitle(ds.Schema)

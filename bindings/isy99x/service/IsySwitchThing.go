@@ -8,6 +8,8 @@ import (
 	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
+	"log/slog"
+	"time"
 )
 
 // IsySwitchThing is a general-purpose on/off switch
@@ -29,23 +31,21 @@ func (it *IsySwitchThing) GetPropValues(onlyChanges bool) map[string]any {
 // HandleActionRequest handles request to execute an action on this device
 // actionID string as defined in the action affordance
 // newValue is not used as these actions do not carry a parameter
-func (it *IsySwitchThing) HandleActionRequest(req *messaging.RequestMessage) *messaging.ResponseMessage {
+func (it *IsySwitchThing) HandleActionRequest(
+	ag *messaging.Agent, req *messaging.RequestMessage) *messaging.ResponseMessage {
 	var restPath = ""
 	var newValue = ""
+	var input bool
+	var output bool
+
 	// FIXME: req keys are the raw keys, not @type
 	// supported actions: on, off
 	if req.Name == "ST" {
-		newValueBool := tputils.DecodeAsBool(req.Input)
+		input = tputils.DecodeAsBool(req.Input)
 		newValue = "DOF"
-		if newValueBool {
+		if input {
 			newValue = "DON"
 		}
-		//} else if req.Name == vocab.ActionSwitchToggle {
-		//	newValue = "DOF"
-		//	oldValue, found := it.propValues.GetOutputValue(req.Name)
-		//	if !found || oldValue == "DOF" {
-		//		newValue = "DON"
-		//	}
 	} else {
 		// unknown req
 		newValue = ""
@@ -53,13 +53,57 @@ func (it *IsySwitchThing) HandleActionRequest(req *messaging.RequestMessage) *me
 		return req.CreateResponse(nil, err)
 	}
 
+	// Post a new value
 	restPath = fmt.Sprintf("/rest/nodes/%s/cmd/%s", it.nodeID, newValue)
 	err := it.isyAPI.SendRequest("GET", restPath, "", nil)
-	if err == nil {
-		// TODO: handle event from gateway using websockets. For now just assume this worked.
-		//err = it.HandleValueUpdate(req.Name, "", newValue)
+
+	// read the result. As this takes a while, retry every second for 5 seconds
+	if err != nil {
+		return req.CreateResponse(nil, err)
 	}
-	return req.CreateResponse(nil, err)
+	// return a 'running' status while reading back the result
+	resp := req.CreateResponse(nil, nil)
+	resp.Status = messaging.StatusRunning
+
+	// in the background poll for status update until completed
+	go func() {
+		hasUpdated := false
+		for i := 0; i < 5; i++ {
+			// TODO: handle event from gateway using websockets. For now just assume this worked.
+			//err = it.HandleValueUpdate(req.Name, "", newValue)
+			nodeInfo, err := it.isyAPI.ReadNodeInfo(it.nodeID)
+			if err == nil {
+				// TODO: repeat a few times in the background and send a response
+				// last response is completed
+				time.Sleep(time.Millisecond) // wait for processing request
+				slog.Info("Switch action",
+					slog.Bool("input", input),
+					slog.String("output", nodeInfo.Properties.Property.Value),
+				)
+				// on/off returns 0 when off
+				output = (nodeInfo.Properties.Property.Value != "0")
+				if output == input {
+					// confirmed property change
+					_ = it.HandleValueUpdate(req.Name,
+						nodeInfo.Properties.Property.UOM,
+						nodeInfo.Properties.Property.Value)
+					hasUpdated = true
+					break
+				}
+			}
+			time.Sleep(time.Second)
+		}
+		if !hasUpdated {
+			// no update, consider this failed
+			err = fmt.Errorf("No response from device")
+			resp = req.CreateResponse(output, err)
+		} else {
+			// completed
+			resp = req.CreateResponse(output, nil)
+		}
+		_ = ag.GetConnection().SendResponse(resp)
+	}()
+	return resp
 }
 
 // HandleValueUpdate receives a new value for the given property
@@ -91,15 +135,20 @@ func (it *IsySwitchThing) MakeTD() *td.TD {
 	// value of switch property ID "ST" is "0" or "255"
 	// TODO: support for switch events
 	//td.AddEvent("ST", "On/Off", "",
-	//	&tdd.DataSchema{Type: vocab.WoTDataTypeBool}).
+	//	&tdd.DataSchema{Type: vocab.DataTypeBool}).
 	//	SetAtType(vocab.ActionSwitchOnOff)
 
-	tdi.AddAction("ST", "Switch on/off", "",
+	action := tdi.AddAction("ST", "Switch on/off", "",
 		&td.DataSchema{
 			AtType: vocab.ActionSwitchOnOff,
-			Type:   wot.WoTDataTypeBool,
+			Type:   wot.DataTypeBool,
 			Enum:   []interface{}{"on", "off"},
-		}).SetAtType(vocab.ActionSwitchOnOff)
+		})
+	// output data same as input
+	action.Output = action.Input
+
+	// add a corresponding property for the switch state
+	tdi.AddProperty("ST", "Switch on/off", "On/Off switch", wot.DataTypeBool)
 
 	//td.AddSwitchAction(vocab.ActionSwitchOff, "Switch off")
 	//td.AddSwitchAction(vocab.ActionSwitchToggle, "Toggle switch")

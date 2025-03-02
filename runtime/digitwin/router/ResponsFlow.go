@@ -142,7 +142,13 @@ func (svc *DigitwinRouter) HandleSubscriptionNotification(resp *messaging.Respon
 				// unchanged values are still updated in the store but not published
 				// should this be configurable?
 				if changed {
-					svc.transportServer.SendNotification(resp)
+					// notify the consumer with individual updates instead of a map
+					// this seems more correct than sending a map.
+					notif := *resp
+					notif.Operation = wot.OpObserveProperty
+					notif.Name = k
+					notif.Output = v
+					svc.transportServer.SendNotification(&notif)
 				}
 			}
 		}

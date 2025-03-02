@@ -21,7 +21,7 @@ runtime: .FORCE
 	mkdir -p $(BIN_FOLDER)
 	go build -o $(BIN_FOLDER)/$@ runtime/cmd/main.go
 
-services: launcher state idprov certs history hiveoview
+services: launcher idprov certs history hiveoview
 
 launcher: .FORCE
 	go build -o $(BIN_FOLDER)/$@ services/$@/cmd/main.go
@@ -35,9 +35,6 @@ history: .FORCE
 	go build -o $(PLUGINS_FOLDER)/$@ services/$@/cmd/main.go
 
 idprov: .FORCE
-	go build -o $(PLUGINS_FOLDER)/$@ services/$@/cmd/main.go
-
-state: .FORCE
 	go build -o $(PLUGINS_FOLDER)/$@ services/$@/cmd/main.go
 
 hiveoview: .FORCE ## build the SSR web viewer binding

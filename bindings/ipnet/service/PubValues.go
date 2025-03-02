@@ -2,6 +2,7 @@ package service
 
 import (
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/wot"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -9,7 +10,7 @@ func (svc *IPNetBinding) MakeDeviceProps(deviceInfo *IPDeviceInfo) map[string]st
 	pv := make(map[string]string)
 	portListJSON, _ := jsoniter.Marshal(deviceInfo.Ports)
 	// TODO: Use the saved device name
-	pv[vocab.PropDeviceTitle] = deviceInfo.GetDefaultName()
+	pv[wot.WoTTitle] = deviceInfo.GetDefaultName()
 	pv[vocab.PropNetHostname] = deviceInfo.Hostname
 	pv[vocab.PropNetPort] = string(portListJSON)
 	pv[vocab.PropNetIP4] = deviceInfo.IP4

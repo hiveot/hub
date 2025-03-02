@@ -5,13 +5,11 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/messaging"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
-	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"sync"
-	"time"
 )
 
 // InteractionListener is the handler that receives updates to interaction
@@ -31,8 +29,12 @@ type ConsumedThing struct {
 
 	// ID of this Thing for use by consumers
 	ThingID string
+	// The Thing title or property 'title'
+	Title string
+	// The Thing description or property 'description'
+	Description string
 
-	// associated thing description instance
+	// tdi is the immutable associated TD
 	tdi *td.TD
 	// observer of property value changes by property name
 	observers map[string]InteractionListener
@@ -67,6 +69,13 @@ type ConsumedThing struct {
 //	return iout
 //}
 
+// GetActionAff returns the action affordance or nil if not found
+func (ct *ConsumedThing) GetActionAff(name string) *td.ActionAffordance {
+	aff, found := ct.tdi.Actions[name]
+	_ = found
+	return aff
+}
+
 // GetActionInput returns the action input value of the given action, if available
 func (ct *ConsumedThing) GetActionInput(as messaging.ActionStatus) *InteractionInput {
 	iin := NewInteractionInput(ct.tdi, as.Name, as.Input)
@@ -78,7 +87,21 @@ func (ct *ConsumedThing) GetActionInput(as messaging.ActionStatus) *InteractionI
 //
 // This returns nil if name is not a known action
 func (ct *ConsumedThing) GetActionOutput(as messaging.ActionStatus) (iout *InteractionOutput) {
-	iout = NewInteractionOutput(ct.GetTD(), messaging.AffordanceTypeAction, as.Name, as.Output, as.Updated)
+
+	iout = NewInteractionOutput(ct, messaging.AffordanceTypeAction, as.Name, as.Output, as.Updated)
+
+	// graceful fallback.
+	// If no output schema use property or event with the same name
+	if iout.Schema.Type == "" {
+		fallbackOutput := ct.GetPropertyOutput(as.Name)
+		if fallbackOutput == nil {
+			fallbackOutput = ct.GetEventOutput(as.Name)
+		}
+		if fallbackOutput != nil {
+			iout.Schema = fallbackOutput.Schema
+			iout.Value = fallbackOutput.Value
+		}
+	}
 	return iout
 }
 
@@ -112,6 +135,19 @@ func (ct *ConsumedThing) GetAtTypeTitle() string {
 	return atTypeVocab.Title
 }
 
+// GetConsumer returns the consumer instance this ConsumedT hing uses to communicate with
+// the server.
+func (ct *ConsumedThing) GetConsumer() (co *messaging.Consumer) {
+	return ct.co
+}
+
+// GetEventAff returns the event affordance or nil if not found
+func (ct *ConsumedThing) GetEventAff(name string) *td.EventAffordance {
+	aff, found := ct.tdi.Events[name]
+	_ = found
+	return aff
+}
+
 // GetEventOutput returns the interaction output of the latest value of an event
 // See also GetValue that always return an iout (for rendering purpose)
 //
@@ -123,8 +159,15 @@ func (ct *ConsumedThing) GetEventOutput(name string) (iout *InteractionOutput) {
 	return iout
 }
 
-// GetPropInput returns the property input value for writing
-func (ct *ConsumedThing) GetPropInput(name string) *InteractionInput {
+// GetPropertyAff returns the property affordance or nil if not found
+func (ct *ConsumedThing) GetPropertyAff(name string) *td.PropertyAffordance {
+	aff, found := ct.tdi.Properties[name]
+	_ = found
+	return aff
+}
+
+// GetPropertyInput returns the property input value for writing
+func (ct *ConsumedThing) GetPropertyInput(name string) *InteractionInput {
 	ct.mux.RLock()
 	iout, _ := ct.propValues[name]
 	ct.mux.RUnlock()
@@ -135,34 +178,18 @@ func (ct *ConsumedThing) GetPropInput(name string) *InteractionInput {
 	return iin
 }
 
-// GetPropOutput returns the interaction output of the latest property value.
+// GetPropertyOutput returns the interaction output of the latest property value.
 // See also GetValue that always return an iout (for rendering purpose)
 //
-// This returns nil if not found
-func (ct *ConsumedThing) GetPropOutput(name string) (iout *InteractionOutput) {
+// # This returns nil if not found
+//
+// FIXME: this returns an old cached value.
+// Instead it should show an updated iout
+func (ct *ConsumedThing) GetPropertyOutput(name string) (iout *InteractionOutput) {
 	ct.mux.RLock()
 	iout, _ = ct.propValues[name]
 	ct.mux.RUnlock()
 	return iout
-}
-
-// GetTD return the TD document that is represented here.
-func (ct *ConsumedThing) GetTD() *td.TD {
-	return ct.tdi
-}
-
-// GetTitle return the TD document title
-// If a title property is available return its value instead of the TD title.
-// This lets a Thing update its TD title without re-issuing a new TD.
-func (ct *ConsumedThing) GetTitle() string {
-	title := ct.tdi.Title
-	ct.mux.RLock()
-	iout, found := ct.propValues[vocab.PropDeviceTitle]
-	ct.mux.RUnlock()
-	if found {
-		title = iout.Value.Text()
-	}
-	return title
 }
 
 // GetValue returns the interaction output of the latest event or property value.
@@ -172,6 +199,9 @@ func (ct *ConsumedThing) GetTitle() string {
 // This returns an empty InteractionOutput if not found
 func (ct *ConsumedThing) GetValue(name string) *InteractionOutput {
 	ct.mux.RLock()
+	// FIXME: this picks up event errors as well when it reads
+	//name should be matched against the TD, not values?
+	// or sho
 	iout, found := ct.eventValues[name]
 	if !found {
 		iout, found = ct.propValues[name]
@@ -191,16 +221,22 @@ func (ct *ConsumedThing) GetValue(name string) *InteractionOutput {
 	return iout
 }
 
+// GetAllActionOutputs returns all Thing action status values and returns them in a
+// map of InteractionOutputs.
+func (ct *ConsumedThing) GetAllActionOutputs() map[string]*InteractionOutput {
+	return ct.actionOutputs
+}
+
+// GetAllEvents returns all Thing event  values and returns them in a
+// map of InteractionOutputs.
+func (ct *ConsumedThing) GetAllEvents() map[string]*InteractionOutput {
+	return ct.eventValues
+}
+
 // GetAllProperties returns all Thing property values and returns them in a
 // map of InteractionOutputs.
 func (ct *ConsumedThing) GetAllProperties() map[string]*InteractionOutput {
 	return ct.propValues
-}
-
-// GetAllActions returns all Thing action status values and returns them in a
-// map of InteractionOutputs.
-func (ct *ConsumedThing) GetAllActions() map[string]*InteractionOutput {
-	return ct.actionOutputs
 }
 
 // InvokeAction requests an action on the Thing
@@ -215,7 +251,7 @@ func (ct *ConsumedThing) InvokeAction(name string, iin InteractionInput) (*Inter
 		return nil, err
 	}
 	// update the
-	iout := NewInteractionOutput(ct.tdi, messaging.AffordanceTypeAction, name, resp.Output, resp.Updated)
+	iout := NewInteractionOutput(ct, messaging.AffordanceTypeAction, name, resp.Output, resp.Updated)
 	ct.mux.Lock()
 	ct.actionOutputs[name] = iout
 	ct.mux.Unlock()
@@ -258,16 +294,23 @@ func (ct *ConsumedThing) OnResponse(msg *messaging.ResponseMessage) {
 		ct.mux.Unlock()
 	} else if msg.Operation == wot.OpObserveProperty {
 		// update value
-		iout := NewInteractionOutputFromResponse(ct.tdi, messaging.AffordanceTypeProperty, msg)
+		iout := NewInteractionOutputFromResponse(ct, messaging.AffordanceTypeProperty, msg)
 		ct.mux.Lock()
 		ct.propValues[msg.Name] = iout
+		// the consumed thing title and description are updated with corresponding properties
+		if msg.Name == wot.WoTTitle {
+			ct.Title = iout.Value.Text()
+		} else if msg.Name == wot.WoTDescription {
+			ct.Description = iout.Value.Text()
+		}
 		ct.mux.Unlock()
+
 		subscr, _ := ct.subscribers[msg.Name]
 		if subscr != nil {
 			subscr(iout)
 		}
 	} else if msg.Operation == wot.OpSubscribeEvent {
-		iout := NewInteractionOutputFromResponse(ct.tdi, messaging.AffordanceTypeEvent, msg)
+		iout := NewInteractionOutputFromResponse(ct, messaging.AffordanceTypeEvent, msg)
 		// this is a regular value event
 		ct.mux.Lock()
 		ct.eventValues[msg.Name] = iout
@@ -277,7 +320,7 @@ func (ct *ConsumedThing) OnResponse(msg *messaging.ResponseMessage) {
 			subscr(iout)
 		}
 	} else if msg.Operation == wot.OpInvokeAction {
-		iout := NewInteractionOutputFromResponse(ct.tdi, messaging.AffordanceTypeAction, msg)
+		iout := NewInteractionOutputFromResponse(ct, messaging.AffordanceTypeAction, msg)
 		// this is a regular action progress event
 		ct.mux.Lock()
 		ct.actionOutputs[msg.Name] = iout
@@ -307,7 +350,7 @@ func (ct *ConsumedThing) ReadEvent(name string) *InteractionOutput {
 	if err != nil {
 		return nil
 	}
-	iout := NewInteractionOutput(ct.tdi, messaging.AffordanceTypeEvent, name, tv.Output, tv.Updated)
+	iout := NewInteractionOutput(ct, messaging.AffordanceTypeEvent, name, tv.Output, tv.Updated)
 	//iout.setSchemaFromTD(ct.tdi)
 	ct.mux.Lock()
 	ct.eventValues[name] = iout
@@ -322,21 +365,21 @@ func (ct *ConsumedThing) ReadEvent(name string) *InteractionOutput {
 // If the number of values exceed the maximum then this returns itemsRemaining
 // as true. An additional call can be made using the last returned timestamp to
 // get the remaining values.
-func (ct *ConsumedThing) ReadHistory(
-	name string, timestamp time.Time, duration time.Duration) (
-	values []*messaging.ThingValue, itemsRemaining bool, err error) {
-
-	// FIXME: ReadHistory is not (yet) part of the WoT specification. Ege mentioned it would
-	// be added soon so this will change to follow the WoT specification.
-	// Until then this is tied to the Hub's history service.
-
-	hist := historyclient.NewReadHistoryClient(ct.co)
-	// todo: is there a need to read in batches? not for a single day.
-	values, itemsRemaining, err = hist.ReadHistory(
-		ct.tdi.ID, name, timestamp, duration, 500)
-
-	return values, itemsRemaining, err
-}
+//func (ct *ConsumedThing) ReadHistory(
+//	name string, timestamp time.Time, duration time.Duration) (
+//	values []*messaging.ThingValue, itemsRemaining bool, err error) {
+//
+//	// FIXME: ReadHistory is not (yet) part of the WoT specification. Ege mentioned it would
+//	// be added soon so this will change to follow the WoT specification.
+//	// Until then this is tied to the Hub's history service.
+//
+//	hist := historyclient.NewReadHistoryClient(ct.co)
+//	// todo: is there a need to read in batches? not for a single day.
+//	values, itemsRemaining, err = hist.ReadHistory(
+//		ct.tdi.ID, name, timestamp, duration, 500)
+//
+//	return values, itemsRemaining, err
+//}
 
 // ReadProperty reads the Thing property value from the Thing and updates its cache.
 // Call GetPropertyValue to get the cached value.
@@ -346,7 +389,7 @@ func (ct *ConsumedThing) ReadProperty(name string) *InteractionOutput {
 	if err != nil {
 		return nil
 	}
-	iout := NewInteractionOutput(ct.tdi, messaging.AffordanceTypeProperty, name, resp.Output, resp.Updated)
+	iout := NewInteractionOutput(ct, messaging.AffordanceTypeProperty, name, resp.Output, resp.Updated)
 	ct.mux.Lock()
 	ct.propValues[name] = iout
 	ct.mux.Unlock()
@@ -355,6 +398,8 @@ func (ct *ConsumedThing) ReadProperty(name string) *InteractionOutput {
 
 // Refresh reloads all property and event values from the Hub and updates the
 // cache.
+// This also updates the Thing title and description if they have corresponding
+// properties.
 func (ct *ConsumedThing) Refresh() error {
 	var iout *InteractionOutput
 	// refresh events
@@ -365,9 +410,9 @@ func (ct *ConsumedThing) Refresh() error {
 	for name, _ := range ct.tdi.Events {
 		tv, found := valueMap[name]
 		if found {
-			iout = NewInteractionOutputFromValue(ct.tdi, messaging.AffordanceTypeEvent, tv)
+			iout = NewInteractionOutputFromValue(ct, messaging.AffordanceTypeEvent, tv)
 		} else {
-			iout = NewInteractionOutput(ct.tdi, messaging.AffordanceTypeEvent, name, nil, "")
+			iout = NewInteractionOutput(ct, messaging.AffordanceTypeEvent, name, nil, "")
 		}
 		ct.propValues[name] = iout
 	}
@@ -380,13 +425,20 @@ func (ct *ConsumedThing) Refresh() error {
 	for name, _ := range ct.tdi.Properties {
 		tv, found := valueMap[name]
 		if found {
-			iout = NewInteractionOutputFromValue(ct.tdi, messaging.AffordanceTypeProperty, tv)
+			iout = NewInteractionOutputFromValue(ct, messaging.AffordanceTypeProperty, tv)
+			// the consumed thing title and description can be modified with corresponding properties
+			if name == wot.WoTTitle {
+				ct.Title = iout.Value.Text()
+			} else if name == wot.WoTDescription {
+				ct.Description = iout.Value.Text()
+			}
 		} else {
 			iout = NewInteractionOutput(
-				ct.tdi, messaging.AffordanceTypeProperty, name, nil, "")
+				ct, messaging.AffordanceTypeProperty, name, nil, "")
 		}
 		ct.propValues[name] = iout
 	}
+
 	// refresh action status
 	actionStatusMap, err := ct.co.QueryAllActions(ct.ThingID)
 	if err != nil {
@@ -396,7 +448,7 @@ func (ct *ConsumedThing) Refresh() error {
 		// if the TD doesn't have this property then ignore it
 		actionAff := ct.tdi.GetAction(name)
 		if actionAff != nil {
-			iout := NewInteractionOutputFromActionStatus(ct.tdi, as)
+			iout := NewInteractionOutputFromActionStatus(ct, as)
 			ct.actionOutputs[name] = iout
 		}
 	}
@@ -411,6 +463,11 @@ func (ct *ConsumedThing) SubscribeEvent(name string, listener InteractionListene
 	}
 	ct.subscribers[name] = listener
 	return nil
+}
+
+// TD return the TD document that is represented here.
+func (ct *ConsumedThing) TD() *td.TD {
+	return ct.tdi
 }
 
 // WriteProperty requests a change to a property value.
@@ -433,8 +490,11 @@ func (ct *ConsumedThing) WriteProperty(name string, ii InteractionInput) (err er
 // NewConsumedThing creates a new instance of a Thing
 // Call Stop() when done
 func NewConsumedThing(tdi *td.TD, co *messaging.Consumer) *ConsumedThing {
-	c := ConsumedThing{
-		ThingID:       tdi.ID,
+	ct := ConsumedThing{
+		ThingID: tdi.ID,
+		// title and description are updated with corresponding properties if they exist
+		Title:         tdi.Title,
+		Description:   tdi.Description,
 		tdi:           tdi,
 		co:            co,
 		observers:     make(map[string]InteractionListener),
@@ -443,5 +503,5 @@ func NewConsumedThing(tdi *td.TD, co *messaging.Consumer) *ConsumedThing {
 		eventValues:   make(map[string]*InteractionOutput),
 		propValues:    make(map[string]*InteractionOutput),
 	}
-	return &c
+	return &ct
 }

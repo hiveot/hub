@@ -95,6 +95,9 @@ func (co *Consumer) IsConnected() bool {
 //}
 
 // ObserveProperty sends a request to observe one or all properties
+//
+//	thingID is empty for all things
+//	name is empty for all properties of the selected things
 func (co *Consumer) ObserveProperty(thingID string, name string) error {
 	op := wot.OpObserveProperty
 	if name == "" {
@@ -146,6 +149,13 @@ func (co *Consumer) onResponse(resp *ResponseMessage) error {
 		return err
 	}
 	// pass the response to the registered handler
+	slog.Info("onResponse (async)",
+		"operation", resp.Operation,
+		"clientID", co.GetClientID(),
+		"thingID", resp.ThingID,
+		"name", resp.Name,
+		"value", resp.ToString(50),
+	)
 	return (*hPtr)(resp)
 }
 
@@ -314,11 +324,12 @@ func (co *Consumer) SendRequest(req *RequestMessage, waitForCompletion bool) (
 	resp *ResponseMessage, err error) {
 
 	t0 := time.Now()
-	slog.Info("SendRequest",
+	slog.Info("SendRequest ->",
 		slog.String("op", req.Operation),
 		slog.String("dThingID", req.ThingID),
 		slog.String("name", req.Name),
 		slog.String("correlationID", req.CorrelationID),
+		slog.String("input", req.ToString(30)),
 	)
 	// if not waiting then return asap with a pending response
 	if !waitForCompletion {
@@ -337,7 +348,7 @@ func (co *Consumer) SendRequest(req *RequestMessage, waitForCompletion bool) (
 	err = co.cc.SendRequest(req)
 
 	if err != nil {
-		slog.Warn("SendRequest: error in sending request",
+		slog.Warn("SendRequest ->: error in sending request",
 			"dThingID", req.ThingID,
 			"name", req.Name,
 			"correlationID", req.CorrelationID,
@@ -354,16 +365,19 @@ func (co *Consumer) SendRequest(req *RequestMessage, waitForCompletion bool) (
 	t1 := time.Now()
 	duration := t1.Sub(t0)
 	if err != nil {
-		slog.Info("SendRequest: failed",
+		slog.Info("SendRequest: <- failed",
 			slog.String("op", req.Operation),
 			slog.Int64("duration msec", duration.Milliseconds()),
 			slog.String("correlationID", req.CorrelationID),
 			slog.String("error", err.Error()))
 	} else {
-		slog.Debug("SendRequest: success",
+		slog.Info("SendRequest: <- Result",
 			slog.String("op", req.Operation),
 			slog.Float64("duration msec", float64(duration.Microseconds())/1000),
-			slog.String("correlationID", req.CorrelationID))
+			slog.String("correlationID", req.CorrelationID),
+			slog.String("status", resp.Status),
+			slog.String("output", resp.ToString(30)),
+		)
 	}
 	return resp, err
 }

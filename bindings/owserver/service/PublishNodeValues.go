@@ -2,6 +2,7 @@ package service
 
 import (
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"math"
@@ -59,9 +60,9 @@ func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode, force bo
 		}
 
 		// inject the writable device title, if set. Default is model name.
-		deviceTitle := svc.customTitles[thingID]
-		if deviceTitle != "" && force {
-			propMap[vocab.PropDeviceTitle] = deviceTitle
+		deviceTitleByte, _ := svc.customTitles.Get(thingID)
+		if deviceTitleByte != nil && force {
+			propMap[wot.WoTTitle] = string(deviceTitleByte)
 		}
 		// first and unknown values are always changed
 		for attrID, attr := range node.Attr {

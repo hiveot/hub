@@ -13,7 +13,6 @@ import (
 const ReadDirLimit = 1000
 
 // ConsumedThingsDirectory manages a directory of consumed Things.
-// Each consumed Thing holds a cache of a TD with latest property and event values.
 //
 // The cache must be updated by an external consumer that receives update events.
 type ConsumedThingsDirectory struct {
@@ -84,9 +83,10 @@ func (cts *ConsumedThingsDirectory) GetTD(thingID string) *td.TD {
 	return tdi
 }
 
-// OnResponse updates the consumed things from subscriptions
+// OnResponse updates the consumed things from subscriptions.
 // To be invoked by the owner of the consumer when an async notification has
 // been received.
+// Any updates from things not in the directory are ignored.
 func (cts *ConsumedThingsDirectory) OnResponse(msg *messaging.ResponseMessage) error {
 
 	slog.Debug("ConsumedThingsDirectory.OnResponse",

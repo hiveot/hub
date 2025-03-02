@@ -3,6 +3,7 @@ package service
 import (
 	"github.com/hiveot/hub/api/go/vocab"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
+	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
@@ -30,7 +31,7 @@ func (svc *IPNetBinding) MakeDeviceTD(deviceInfo *IPDeviceInfo) *td.TD {
 	tdi := td.NewTD(thingID, deviceName, vocab.ThingNet)
 
 	// these are configured through the configuration file.
-	prop := tdi.AddPropertyAsString(vocab.PropDeviceTitle, "Device name", "").
+	prop := tdi.AddPropertyAsString(wot.WoTTitle, "Device name", "").
 		SetAtType(vocab.PropDeviceTitle)
 	prop.ReadOnly = true // TODO: allow edit and save the new device name
 	prop = tdi.AddProperty(vocab.PropNetPort, "Ports", "", vocab.WoTDataTypeArray).

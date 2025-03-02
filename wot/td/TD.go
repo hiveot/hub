@@ -146,7 +146,7 @@ func (tdoc *TD) AddAction(name string, title string, description string,
 //func (tdoc *TD) AddDimmerAction(name string) *ActionAffordance {
 //	act := tdoc.AddAction(name, "", "",
 //		&DataSchema{
-//			Type: wot.WoTDataTypeInteger,
+//			Type: wot.DataTypeInteger,
 //		})
 //	act.SetAtType(vocab.ActionDimmer)
 //	return act
@@ -160,7 +160,7 @@ func (tdoc *TD) AddAction(name string, title string, description string,
 //	aff := tdoc.AddEvent(eventID, "", "",
 //		&DataSchema{
 //			AtType: vocab.PropSwitchDimmer,
-//			Type:   wot.WoTDataTypeInteger,
+//			Type:   wot.DataTypeInteger,
 //		})
 //	aff.SetAtType(vocab.PropSwitchDimmer)
 //	return aff
@@ -208,7 +208,7 @@ func (tdoc *TD) AddForms(forms []Form) {
 //		If omitted, the eventType is used.
 //	propType describes the type of property in HiveOT vocabulary if available, or "" if this is a non-standard property.
 //	title is the short display title of the property.
-//	dataType is the type of data the property holds, WoTDataTypeNumber, ..Object, ..Array, ..String, ..Integer, ..Boolean or null
+//	dataType is the type of data the property holds, DataTypeNumber, ..Object, ..Array, ..String, ..Integer, ..Boolean or null
 func (tdoc *TD) AddProperty(propName string, title string, description string, dataType string) *PropertyAffordance {
 	prop := &PropertyAffordance{
 		DataSchema: DataSchema{
@@ -229,7 +229,7 @@ func (tdoc *TD) AddProperty(propName string, title string, description string, d
 func (tdoc *TD) AddPropertyAsString(
 	propName string, title string, description string) *PropertyAffordance {
 
-	return tdoc.AddProperty(propName, title, description, wot.WoTDataTypeString)
+	return tdoc.AddProperty(propName, title, description, wot.DataTypeString)
 }
 
 // AddPropertyAsBool is short for adding a read-only boolean property
@@ -238,7 +238,7 @@ func (tdoc *TD) AddPropertyAsString(
 func (tdoc *TD) AddPropertyAsBool(
 	propName string, title string, description string) *PropertyAffordance {
 
-	return tdoc.AddProperty(propName, title, description, wot.WoTDataTypeBool)
+	return tdoc.AddProperty(propName, title, description, wot.DataTypeBool)
 }
 
 // AddPropertyAsInt is short for adding a read-only integer property
@@ -247,7 +247,7 @@ func (tdoc *TD) AddPropertyAsBool(
 func (tdoc *TD) AddPropertyAsInt(
 	propName string, title string, description string) *PropertyAffordance {
 
-	return tdoc.AddProperty(propName, title, description, wot.WoTDataTypeInteger)
+	return tdoc.AddProperty(propName, title, description, wot.DataTypeInteger)
 }
 
 // AddSwitchAction is short for adding an action to control an on/off switch
@@ -255,7 +255,7 @@ func (tdoc *TD) AddPropertyAsInt(
 //	act := tdoc.AddAction(actionName, title, description,
 //		&DataSchema{
 //			AtType: vocab.ActionSwitchOnOff,
-//			Type:   wot.WoTDataTypeBool,
+//			Type:   wot.DataTypeBool,
 //			Enum:   []interface{}{"on", "off"},
 //		}).SetAtType(vocab.ActionSwitchOnOff)
 //	return act
@@ -266,7 +266,7 @@ func (tdoc *TD) AddPropertyAsInt(
 //	aff := tdoc.AddEvent(eventName, title, description,
 //		&DataSchema{
 //			AtType: vocab.PropSwitchOnOff,
-//			Type:   wot.WoTDataTypeBool,
+//			Type:   wot.DataTypeBool,
 //			Enum:   []interface{}{"on", "off"},
 //		})
 //	aff.SetAtType(vocab.PropSwitchOnOff)
@@ -278,7 +278,7 @@ func (tdoc *TD) AddPropertyAsInt(
 //	aff := tdoc.AddEvent(eventName, title, description,
 //		&DataSchema{
 //			AtType: vocab.PropEnv,
-//			Type:   wot.WoTDataTypeNumber,
+//			Type:   wot.DataTypeNumber,
 //		})
 //	aff.SetAtType(vocab.PropEnv)
 //	return aff
@@ -507,6 +507,9 @@ func (tdoc *TD) UpdateAction(name string, affordance *ActionAffordance) *ActionA
 	name = strings.ReplaceAll(name, " ", "_")
 	//tdoc.updateMutex.Lock()
 	//defer tdoc.updateMutex.Unlock()
+	if tdoc.Actions == nil {
+		tdoc.Actions = make(map[string]*ActionAffordance)
+	}
 	tdoc.Actions[name] = affordance
 	return affordance
 }
@@ -520,6 +523,9 @@ func (tdoc *TD) UpdateEvent(name string, affordance *EventAffordance) *EventAffo
 	name = strings.ReplaceAll(name, " ", "_")
 	//tdoc.updateMutex.Lock()
 	//defer tdoc.updateMutex.Unlock()
+	if tdoc.Events == nil {
+		tdoc.Events = make(map[string]*EventAffordance)
+	}
 	tdoc.Events[name] = affordance
 	return affordance
 }
@@ -533,6 +539,9 @@ func (tdoc *TD) UpdateProperty(name string, affordance *PropertyAffordance) *Pro
 	name = strings.ReplaceAll(name, " ", "_")
 	//tdoc.updateMutex.Lock()
 	//defer tdoc.updateMutex.Unlock()
+	if tdoc.Properties == nil {
+		tdoc.Properties = make(map[string]*PropertyAffordance)
+	}
 	tdoc.Properties[name] = affordance
 	return affordance
 }
@@ -552,8 +561,8 @@ func (tdoc *TD) UpdateTitleDescription(title string, description string) {
 //
 // Conventions:
 // 1. thingID is a URI, starting with the "urn:" prefix as per WoT standard.
-// 2. If title is editable then the user should add a property with ID vocab.PropDeviceTitle and update the TD if it is set.
-// 3. If description is editable then the user should add a property with ID vocab.PropDeviceDescription and
+// 2. If title is editable then the agent should add a property with name wot.WoTTitle and update the TD if it is set.
+// 3. If description is editable then the agent should add a property with ID wot.WoTDescription and
 // update the TD description if it is set.
 // 4. the deviceType comes from the vocabulary and has ID vocab.DeviceType<Xyz>
 //

@@ -65,7 +65,7 @@ func (rnr *RnRChan) HandleResponse(msg *ResponseMessage) bool {
 	rChan, isRPC := rnr.correlData[msg.CorrelationID]
 	defer rnr.mux.Unlock()
 	if isRPC {
-		slog.Info("HandleResponse: writing response to channel. ",
+		slog.Debug("HandleResponse: writing response to RPC go channel. ",
 			slog.String("correlationID", msg.CorrelationID),
 			slog.String("operation", msg.Operation),
 			slog.String("status", msg.Status),
@@ -75,15 +75,15 @@ func (rnr *RnRChan) HandleResponse(msg *ResponseMessage) bool {
 		case rChan <- msg:
 		case <-ctx.Done():
 			// this should never happen
-			slog.Error("Response channel is full. Is no-one listening?")
+			slog.Error("Response RPC go channel is full. Is no-one listening?")
 			// recover
 			isRPC = false
 		}
 		cancelFn()
 	} else {
-		slog.Info("HandleResponse: not an RPC call (subscription).",
-			slog.String("correlationID", msg.CorrelationID),
-			slog.String("operation", msg.Operation))
+		//slog.Info("HandleResponse: not an RPC call (subscription).",
+		//	slog.String("correlationID", msg.CorrelationID),
+		//	slog.String("operation", msg.Operation))
 	}
 	return isRPC
 }

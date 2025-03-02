@@ -2,9 +2,9 @@ package service
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/messaging"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
+	"github.com/hiveot/hub/wot"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 )
@@ -45,7 +45,7 @@ func (svc *IsyBinding) handleConfigRequest(req *messaging.RequestMessage) (resp 
 		_ = svc.ag.PubProperties(isyThing.GetID(), values)
 
 		// re-submit the TD if the title changes
-		if req.Name == vocab.PropDeviceTitle {
+		if req.Name == wot.WoTTitle {
 			tdi := isyThing.MakeTD()
 			tdJSON, _ := jsoniter.MarshalToString(tdi)
 			_ = digitwin.ThingDirectoryUpdateTD(&svc.ag.Consumer, tdJSON)

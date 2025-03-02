@@ -169,7 +169,7 @@ func TestForms(t *testing.T) {
 	thingID := "urn:thing1"
 	tdoc := td.NewTD(thingID, "test TD", vocab.ThingSensor)
 	actAff := tdoc.AddAction(action1Name, "action", "Test Action", nil)
-	tdoc.AddProperty(prop1Name, "prop", "Test Prop", wot.WoTDataTypeInteger)
+	tdoc.AddProperty(prop1Name, "prop", "Test Prop", wot.DataTypeInteger)
 	tdoc.AddEvent(event1Name, "event", "Test Event", nil)
 
 	actForm := td.NewForm(wot.OpInvokeAction, "https://localhost/action")

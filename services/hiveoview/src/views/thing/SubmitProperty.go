@@ -3,7 +3,7 @@ package thing
 import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
-	"github.com/hiveot/hub/runtime/consumedthing"
+	"github.com/hiveot/hub/lib/consumedthing"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
@@ -29,7 +29,7 @@ func SubmitProperty(w http.ResponseWriter, r *http.Request) {
 	_, sess, err := session.GetSessionFromContext(r)
 	if err == nil {
 		ct, err = sess.Consume(thingID)
-		propAff = ct.GetTD().GetProperty(propName)
+		propAff = ct.GetPropertyAff(propName)
 		if propAff == nil {
 			err = fmt.Errorf("no such property '%s'", propName)
 		}

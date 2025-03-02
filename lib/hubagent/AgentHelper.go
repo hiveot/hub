@@ -5,6 +5,13 @@ import (
 	"github.com/hiveot/hub/messaging"
 )
 
+// Deprecated: This is a reflection based request handler that invokes a service
+// native API with the request parameters. Intended to eliminate boilerplate code.
+// While clever it is hard to debug and trace and reflection isnt super fast.
+// Replaced with the td2go generator that generates easy to read boilerplate code.
+// Services are expected to define a TD and generate their API from the TD.
+// This file is kept for a while to not lose the reflection magic.
+
 // AgentHandler is a helper that maps messages to a Thing (service) invocation
 //
 // On receiving a message for a Thing:

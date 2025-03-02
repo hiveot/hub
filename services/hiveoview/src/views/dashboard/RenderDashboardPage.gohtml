@@ -33,6 +33,7 @@
             {{range $k,$v := .Dashboard.Tiles }}
             <div class="grid-stack-item "gs-id="{{$k}}"
                  gs-min-h="4"
+                 gs-min-w="2"
                  gs-size-to-content="false">
                 <div class="grid-stack-item-content" style="overflow:unset">
                     {{template "RenderTile.gohtml" $.GetTileTemplateData $k}}
@@ -53,6 +54,16 @@
         // debugger;
         options = { // put in gridstack options here
             animate:true,
+            cellHeight: 30,     // fixed row height to avoid scaling content
+            column:24,          // support 24 columns (needs the CSS at bottom)
+            columnOpts: {
+             // layout: "none", // we reload the previously saved layout for the size
+             // layout: "moveResize",
+             //  breakpointForWindow:true,  // not sure what this does window vs grid size?
+             // using breakpoints changes with the layout after resizing such it doesn't restore to old placement
+                // breakpoints: [{w: 300, c: 3}, {w: 600, c: 6}, {w: 800, c: 8}, {w:1200, c:12}, {w:4096, c:24}]
+                // breakpoints: [{w: 1024, c: 12},  {w:4096, c:24}]
+            },
             draggable: {
                 // handle: ".drag-target",
                 cancel: ".no-drag"
@@ -60,19 +71,12 @@
             margin:"5px",       // gap between widgets
             nomove:true,
             float: false,       // cells move to the top (false)
-            cellHeight: 30,     // fixed row height to avoid scaling content
-            staticGrid:false,   // allow resize in edit mode
-            minRow: 3,
-            columnOpts: {
-                // layout: "none", // we reload the previously saved layout for the size
-                // layout: "moveResize",
-                //  breakpointForWindow:true,  // not sure what this does window vs grid size?
-                // breakpoints: [{w: 300, c: 1}, {w: 600, c: 4}, {w: 800, c: 8}, {w:1200, c:12}]
-            },
             // custom storage to detect resize
             lastSize: "",
-            // local store with latest layouts without loading back from the
             layouts:  {{.Dashboard.GridLayouts}},
+            minRow: 3,
+            // local store with latest layouts without loading back from the
+            staticGrid:false,   // allow resize in edit mode
         };
         grid = GridStack.init(options)//.load(serializedData);
 
@@ -193,7 +197,9 @@
         margin:0;
         /*z-index:1;*/
     }
-    /* remove section header bunch of padding/margin offsets*/
+    /* remove section header bunch of padding/margin offsets
+     * this is used by RenderTile.gohtml
+     */
     .tile-header {
         display: flex;
         flex-direction: row;
@@ -222,6 +228,150 @@
     }
     .tile-content tr:last-child td:last-child {
         border-bottom-right-radius: var(--pico-card-border-radius);
+    }
+
+
+    /* support for 24 columns instead of 12 */
+    .gs-24 > .grid-stack-item {
+        width: 4.167%;
+    }
+    .gs-24 > .grid-stack-item[gs-x="1"] {
+        left: 4.167%;
+    }
+    .gs-24 > .grid-stack-item[gs-w="2"] {
+        width: 8.333%;
+    }
+    .gs-24 > .grid-stack-item[gs-x="2"] {
+        left: 8.333%;
+    }
+    .gs-24 > .grid-stack-item[gs-w="3"] {
+        width: 12.5%;
+    }
+    .gs-24 > .grid-stack-item[gs-x="3"] {
+        left: 12.5%;
+    }
+    .gs-24 > .grid-stack-item[gs-w="4"] {
+        width: 16.667%;
+    }
+    .gs-24 > .grid-stack-item[gs-x="4"] {
+        left: 16.667%;
+    }
+    .gs-24 > .grid-stack-item[gs-w="5"] {
+        width: 20.833%;
+    }
+    .gs-24 > .grid-stack-item[gs-x="5"] {
+        left: 20.833%;
+    }
+    .gs-24 > .grid-stack-item[gs-w="6"] {
+        width: 25%;
+    }
+    .gs-24 > .grid-stack-item[gs-x="6"] {
+        left: 25%;
+    }
+    .gs-24 > .grid-stack-item[gs-w="7"] {
+        width: 29.167%;
+    }
+    .gs-24 > .grid-stack-item[gs-x="7"] {
+        left: 29.167%;
+    }
+    .gs-24 > .grid-stack-item[gs-w="8"] {
+        width: 33.333%;
+    }
+    .gs-24 > .grid-stack-item[gs-x="8"] {
+        left: 33.333%;
+    }
+    .gs-24 > .grid-stack-item[gs-w="9"] {
+        width: 37.5%;
+    }
+    .gs-24 > .grid-stack-item[gs-x="9"] {
+        left: 37.5%;
+    }
+    .gs-24 > .grid-stack-item[gs-w="10"] {
+        width: 41.667%;
+    }
+    .gs-24 > .grid-stack-item[gs-x="10"] {
+        left: 41.667%;
+    }
+    .gs-24 > .grid-stack-item[gs-w="11"] {
+        width: 45.833%;
+    }
+    .gs-24 > .grid-stack-item[gs-x="11"] {
+        left: 45.833%;
+    }
+    .gs-24 > .grid-stack-item[gs-w="12"] {
+        width: 50%;
+    }
+    .gs-24 > .grid-stack-item[gs-x="12"] {
+        left: 50%;
+    }
+    .gs-24 > .grid-stack-item[gs-w="13"] {
+        width: 54.167%;
+    }
+    .gs-24 > .grid-stack-item[gs-x="13"] {
+        left: 54.167%;
+    }
+    .gs-24 > .grid-stack-item[gs-w="14"] {
+        width: 58.333%;
+    }
+    .gs-24 > .grid-stack-item[gs-x="14"] {
+        left: 58.333%;
+    }
+    .gs-24 > .grid-stack-item[gs-w="15"] {
+        width: 62.5%;
+    }
+    .gs-24 > .grid-stack-item[gs-x="15"] {
+        left: 62.5%;
+    }
+    .gs-24 > .grid-stack-item[gs-w="16"] {
+        width: 66.667%;
+    }
+    .gs-24 > .grid-stack-item[gs-x="16"] {
+        left: 66.667%;
+    }
+    .gs-24 > .grid-stack-item[gs-w="17"] {
+        width: 70.833%;
+    }
+    .gs-24 > .grid-stack-item[gs-x="17"] {
+        left: 70.833%;
+    }
+    .gs-24 > .grid-stack-item[gs-w="18"] {
+        width: 75%;
+    }
+    .gs-24 > .grid-stack-item[gs-x="18"] {
+        left: 75%;
+    }
+    .gs-24 > .grid-stack-item[gs-w="19"] {
+        width: 79.167%;
+    }
+    .gs-24 > .grid-stack-item[gs-x="19"] {
+        left: 79.167%;
+    }
+    .gs-24 > .grid-stack-item[gs-w="20"] {
+        width: 83.333%;
+    }
+    .gs-24 > .grid-stack-item[gs-x="20"] {
+        left: 83.333%;
+    }
+    .gs-24 > .grid-stack-item[gs-w="21"] {
+        width: 87.5%;
+    }
+    .gs-24 > .grid-stack-item[gs-x="21"] {
+        left: 87.5%;
+    }
+    .gs-24 > .grid-stack-item[gs-w="22"] {
+        width: 91.667%;
+    }
+    .gs-24 > .grid-stack-item[gs-x="22"] {
+        left: 91.667%;
+    }
+    .gs-24 > .grid-stack-item[gs-w="23"] {
+        width: 95.833%;
+    }
+    .gs-24 > .grid-stack-item[gs-x="23"] {
+        left: 95.833%;
+    }
+    .gs-24 > .grid-stack-item[gs-w="24"] {
+        width: 100%;
     }
 </style>
 

@@ -3,7 +3,6 @@ package service
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/wot"
@@ -11,7 +10,10 @@ import (
 	"time"
 )
 
+const MaxUpdateWaitTime = 5
+
 // HandleRequest handles action or property write requests
+// For 1-wire, configuration and actions are the same thing
 func (svc *OWServerBinding) HandleRequest(req *messaging.RequestMessage,
 	_ messaging.IConnection) (resp *messaging.ResponseMessage) {
 
@@ -22,24 +24,27 @@ func (svc *OWServerBinding) HandleRequest(req *messaging.RequestMessage,
 		slog.String("payload", req.ToString(20)),
 	)
 
-	if req.Operation == wot.OpWriteProperty {
-		return svc.HandleConfigRequest(req)
-	} else if req.Operation == wot.OpInvokeAction {
-		return svc.HandleActionRequest(req)
-	}
-	err := fmt.Errorf("Unknown operation '%s'", req.Operation)
-	resp = req.CreateResponse(nil, err)
-	slog.Warn("HandleRequest failed", "err", resp.Error)
-	return resp
-}
-
-// HandleActionRequest handles requests to activate inputs
-func (svc *OWServerBinding) HandleActionRequest(req *messaging.RequestMessage) (resp *messaging.ResponseMessage) {
 	var attr eds.OneWireAttr
+	var err error
 
-	// TODO: lookup the req Title used by the EDS
-	edsName := req.Name
+	valueStr := req.ToString(0)
 
+	// custom config. Configure the device title and save it in the state service.
+	// TODO setting title will move to the digital twin
+	if req.Name == wot.WoTTitle {
+		err = svc.customTitles.Set(req.ThingID, []byte(valueStr))
+		if err != nil {
+			slog.Error("HandleConfigRequest: Unable to save title", "err", err.Error())
+		}
+		if err == nil {
+			// publish changed values after returning
+			go svc.ag.PubProperty(req.ThingID, wot.WoTTitle, valueStr)
+		}
+		// completed
+		return req.CreateResponse(valueStr, err)
+	}
+
+	// This is a node update
 	node, found := svc.nodes[req.ThingID]
 	if !found {
 		// delivery failed as the thingID doesn't exist
@@ -50,91 +55,48 @@ func (svc *OWServerBinding) HandleActionRequest(req *messaging.RequestMessage) (
 	attr, found = node.Attr[req.Name]
 	if !found {
 		// delivery completed with error
-		err := fmt.Errorf("node '%s' found but it doesn't have an req '%s'",
+		err := fmt.Errorf("node '%s' found but it doesn't have an attribute '%s'",
 			req.ThingID, req.Name)
 		resp = req.CreateResponse(nil, err)
 		return resp
 	} else if !attr.Writable {
 		// delivery completed with error
-		err := fmt.Errorf("node '%s' req '%s' is a read-only attribute",
+		err := fmt.Errorf("node '%s' attribute '%s' is read-only",
 			req.ThingID, req.Name)
 		resp = req.CreateResponse(nil, err)
 		return resp
 	}
 
-	// Determine the value.
 	// FIXME: when building the TD, Booleans are defined as enum integers
-	actionValue := req.ToString(0)
-	var err error
 
 	// the thingID is the device identifier, eg the ROMId
-	err = svc.edsAPI.WriteData(req.ThingID, edsName, string(actionValue))
+	edsName := req.Name
+	err = svc.edsAPI.WriteNode(req.ThingID, edsName, valueStr)
 
-	// read the result
-	time.Sleep(time.Second)
-	_ = svc.RefreshPropertyValues(false)
+	if err == nil {
+		var newValue string
 
-	// Writing the EDS is slow, retry in case it was missed
-	time.Sleep(time.Second * 1)
-	_ = svc.RefreshPropertyValues(false)
-
-	if err != nil {
-		err = fmt.Errorf("req '%s' failed: %w", req.Name, err)
-	}
-
-	resp = req.CreateResponse(nil, err)
-	return resp
-}
-
-// HandleConfigRequest handles requests to configure the service or devices
-func (svc *OWServerBinding) HandleConfigRequest(req *messaging.RequestMessage) (stat *messaging.ResponseMessage) {
-	var err error
-	valueStr := req.ToString(0)
-	slog.Info("HandleConfigRequest",
-		slog.String("thingID", req.ThingID),
-		slog.String("property", req.Name),
-		slog.String("payload", req.ToString(20)))
-
-	// the thingID is the ROMId of the device to configure
-	// the Name is the attributeID of the property to configure
-	node, found := svc.nodes[req.ThingID]
-	if !found {
-		// unable to delivery to Thing
-		err := fmt.Errorf("HandleConfigRequest: Thing '%s' not found", req.ThingID)
-		slog.Warn(err.Error())
-		return req.CreateResponse(nil, err)
-	}
-
-	// custom config. Configure the device title and save it in the state service.
-	if req.Name == vocab.PropDeviceTitle {
-		svc.customTitles[req.ThingID] = valueStr
-		go svc.SaveState()
-		// publish changed values after returning
-		go svc.ag.PubProperty(req.ThingID, vocab.PropDeviceTitle, valueStr)
-		return req.CreateResponse(valueStr, nil)
-	} else {
-		attr, found := node.Attr[req.Name]
-		if !found {
-			err = fmt.Errorf("HandleConfigRequest: '%s not a property of Thing '%s' found",
-				req.Name, req.ThingID)
-			slog.Warn(err.Error())
-		} else if !attr.Writable {
-			err := fmt.Errorf(
-				"HandleConfigRequest: property '%s' of Thing '%s' is not writable",
-				req.Name, req.ThingID)
-			slog.Warn(err.Error())
-		} else {
-			err = svc.edsAPI.WriteData(req.ThingID, req.Name, valueStr)
-			// there is no output in the response as this can take some time
-		}
-		// publish changed value after returning
+		// in the background poll the result a few times until the requested
+		// status is reached or until timeout.
 		go func() {
-			// owserver is slow to update
-			// FIXME: track config updates
-			time.Sleep(time.Second * 1)
+			hasUpdated := false
+			for i := 0; i < MaxUpdateWaitTime; i++ {
+				newValue, err = svc.edsAPI.ReadNodeValue(req.ThingID, req.Name)
+				if err == nil && valueStr == newValue {
+					hasUpdated = true
+					break
+				}
+				time.Sleep(time.Second * 1)
+			}
+			if !hasUpdated {
+				err = fmt.Errorf("Node didn't update property within %d seconds", MaxUpdateWaitTime)
+			}
+			// complete or fail the request
+			resp = req.CreateResponse(newValue, err)
+			_ = svc.ag.SendResponse(resp)
+			// finally do a full refresh that sends notifications to subscribers
 			_ = svc.RefreshPropertyValues(false)
 		}()
 	}
-
-	return req.CreateResponse(nil, err)
+	return req.CreateRunningResponse(err)
 }

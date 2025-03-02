@@ -1,13 +1,11 @@
 package tile
 
 import (
-	"errors"
 	"fmt"
 	"github.com/go-chi/chi/v5"
+	"github.com/hiveot/hub/lib/consumedthing"
 	"github.com/hiveot/hub/messaging/tputils"
-	"github.com/hiveot/hub/runtime/consumedthing"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
-	"github.com/hiveot/hub/wot/td"
 	"net/http"
 )
 
@@ -56,40 +54,24 @@ func RenderTileSourceRow(w http.ResponseWriter, r *http.Request) {
 	var sourceRef = thingID + "/" + name
 
 	cts := sess.GetConsumedThingsDirectory()
-	tdi := cts.GetTD(thingID)
-	if tdi == nil {
-		// use an empty TD otherwise it won't be possible to delete the bad entry
-		tdi = &td.TD{ID: thingID, Title: "Unknown Thing"}
-		//sess.WriteError(w, errors.New("Unknown Thing id="+thingID), 0)
-		//return
-	}
 	// get the latest event values of this source
 	var iout *consumedthing.InteractionOutput
-	consumedThing, err := cts.Consume(thingID)
-	if consumedThing != nil {
-		iout = consumedThing.GetValue(name)
+	ct, err := cts.Consume(thingID)
+	if ct != nil {
+		iout = ct.GetValue(name)
 	}
-	if iout == nil {
-		iout = &consumedthing.InteractionOutput{
-			ThingID: thingID,
-			Name:    name,
-			Title:   "Unknown affordance",
-			Schema:  td.DataSchema{},
-			Value:   consumedthing.DataSchemaValue{},
-			Err:     errors.New("unknown affordance"),
-		}
-		//sess.WriteError(w, errors.New("Unknown affordance: "+name), 0)
-		//return
+	if err == nil && iout == nil {
+		err = fmt.Errorf("RenderTileSourceRow: No such affordance!?: %s", name)
 	}
 	if err != nil {
-		sess.WriteError(w, err, 0)
+		sess.WriteError(w, err, http.StatusInternalServerError)
 		return
 	}
 
 	// if no value was ever received then use n/a
 	latestValue := iout.Value.Text() + " " + iout.UnitSymbol()
 	latestUpdated := tputils.DecodeAsDatetime(iout.Updated)
-	title := tdi.Title + " " + iout.Title
+	title := ct.Title + " " + iout.Title
 
 	// the input hidden hold the real source value
 	// this must match the list in RenderEditTile.gohtml

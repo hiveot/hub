@@ -17,9 +17,9 @@ This viewer has reached alpha status with Phase 1-3 completed. The information b
 * Switch to use ConsumedThing for properties, events and actions [in progress]
 * Track action progress using async response messages (ActionStatus) [in progress]
 * Indication of pending property writes (owserver updates can take 10 seconds)
-* Store dashboard layout locally instead of using the state service [todo]
+* Store dashboard layout locally instead of using the state service [complete]
 
-### Phase 5: Enhancements [in progress]
+### Phase 5: Enhancements [todo]
 * only show edit button if the user has permissions to edit
   * depends on the authz change to define roles in the TD
 * briefly fade in/out a highlight of a changed value (css transition?)

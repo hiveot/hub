@@ -83,6 +83,17 @@ func (req *RequestMessage) CreateResponse(output any, err error) (resp *Response
 	return resp
 }
 
+// CreateRunningResponse is a helper to easily create a 'running' status response from a request.
+// If err is set then the status is set to failed instead.
+func (req *RequestMessage) CreateRunningResponse(err error) (resp *ResponseMessage) {
+	resp = NewResponseMessage(
+		req.Operation, req.ThingID, req.Name, nil, err, req.CorrelationID)
+	if err == nil {
+		resp.Status = StatusRunning
+	}
+	return resp
+}
+
 // ToString is a helper to easily convert the request input to a string
 // maxlen is the maximum string length or 0 for unlimited
 func (req *RequestMessage) ToString(maxlen int) string {

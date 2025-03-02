@@ -132,3 +132,6 @@ Section "5.3.4.2.2 Response-related Terms Usage" describes a response name-value
 * Workaround 2: parse the expected output and on failure parse using the schemas from additionalResponses. There is no way of telling which one to use until one fails. 'Try it until it works' is not a specification.
 * Workaround 3: include a 'dataschema' metadata field in the transport that identifies the dataschema of the output.  
 
+22. What to use to present a device title?
+Use case: a device title is not always a good human identifier. Therefore it should be editable. The TD title is not editable and contains a read-only technical name. How to edit the title?
+* Workaround: The digital twin includes a title property in all TDs that is configurable. The UI uses this property as the device title. If no such property exists (non-hiveot device) then fall back to the TD title. If the device has a title property already then it is used instead.

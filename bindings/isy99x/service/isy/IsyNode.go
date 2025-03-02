@@ -70,6 +70,13 @@ type IsyNode struct {
 	Property IsyProp `xml:"property"`
 }
 
+type IsyNodeInfo struct {
+	Node       IsyNode `xml:"node"`
+	Properties struct {
+		Property IsyProp `xml:"property"`
+	} `xml:"properties"`
+}
+
 // IsyStatus with status as returned by the controller. Example:
 // <nodes>
 //

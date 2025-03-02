@@ -1,13 +1,12 @@
 package tile
 
 import (
-	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/lib/consumedthing"
 	"github.com/hiveot/hub/messaging/tputils"
-	"github.com/hiveot/hub/runtime/consumedthing"
-	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"github.com/hiveot/hub/services/hiveoview/src/views/directory"
+	"log/slog"
 	"net/http"
 )
 
@@ -77,23 +76,33 @@ func RenderSelectSources(w http.ResponseWriter, r *http.Request) {
 		IOValues: make(map[string]consumedthing.InteractionOutputMap),
 	}
 	data.AgentThings = directory.GroupByAgent(tds)
-	for thingID, td := range tds {
-		propMap, _ := digitwin.ThingValuesReadAllProperties(sess.GetConsumer(), thingID)
-		evMap, _ := digitwin.ThingValuesReadAllEvents(sess.GetConsumer(), thingID)
-		//propValues, err := digitwin.ThingValuesReadAllProperties(sess.GetConsumer(), thingID)
-		if propMap != nil && evMap != nil {
-			allValues := make([]digitwin.ThingValue, 0, len(propMap)+len(evMap))
-			for _, v := range propMap {
-				allValues = append(allValues, v)
-			}
-			for _, v := range evMap {
-				allValues = append(allValues, v)
-			}
-			//eventValues, _ := digitwin.ThingValuesReadAllEvents(sess.GetConsumer(), thingID)
-			//allValues := append(propValues, eventValues...)
-			data.IOValues[thingID] = consumedthing.NewInteractionOutputFromValueList(
-				td, messaging.AffordanceTypeEvent, allValues)
+	for thingID, _ := range tds {
+		// read the thing values if it hasn't already
+		ct, err := cts.Consume(thingID)
+		if err != nil {
+			slog.Error("RenderSelectSources: Unable to consume thing '%s'", thingID)
+			continue
 		}
+		//propMap, _ := digitwin.ThingValuesReadAllProperties(sess.GetConsumer(), thingID)
+		//evMap, _ := digitwin.ThingValuesReadAllEvents(sess.GetConsumer(), thingID)
+		//propValues, err := digitwin.ThingValuesReadAllProperties(sess.GetConsumer(), thingID)
+		actionMap := ct.GetAllActionOutputs()
+		propMap := ct.GetAllProperties()
+		evMap := ct.GetAllEvents()
+		// FIXME: this merges properties, events and actions
+		// actions will be replaced by properties
+		// properties will be replaced by events
+		allValues := make(map[string]*consumedthing.InteractionOutput)
+		for k, v := range actionMap {
+			allValues[k] = v
+		}
+		for k, v := range propMap {
+			allValues[k] = v
+		}
+		for k, v := range evMap {
+			allValues[k] = v
+		}
+		data.IOValues[thingID] = allValues
 	}
 	buff, err := app.RenderAppOrFragment(r, RenderSelectSourceTemplateFile, data)
 

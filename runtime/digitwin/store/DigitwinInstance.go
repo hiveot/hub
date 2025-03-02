@@ -16,16 +16,16 @@ type DigitalTwinInstance struct {
 	AgentID string `json:"agentID" `
 	ID      string `json:"id" `
 
-	// ThingTD as exposed by the agent
-	ThingTD *td.TD `json:"agTD"`
-	// DtwTD as exposed by the hub
-	DtwTD *td.TD `json:"dtwTD" `
+	// AgentTD as exposed by the agent
+	AgentTD *td.TD `json:"agTD"`
+	// DigitwinTD as exposed by the hub
+	DigitwinTD *td.TD `json:"dtwTD" `
 
-	// Latest properties as received from the exposed Thing
+	// PropValues with latest digital twin properties
 	PropValues map[string]digitwin.ThingValue `json:"pv"`
-	// Latest events as received from the exposed Thing
+	// EventValues with latest digital twin events
 	EventValues map[string]digitwin.ThingValue `json:"ev"`
-	// Latest 'unsafe' actions as requested with their status
+	// ActionStatuses with latest 'unsafe' digital twin action status
 	ActionStatuses map[string]digitwin.ActionStatus `json:"av"`
 
 	// TBD: queue actions in the inbox of this device for timed delivery

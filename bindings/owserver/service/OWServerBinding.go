@@ -4,11 +4,12 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/owserver/config"
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
+	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hub/lib/buckets/kvbtree"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/messaging"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
-	"github.com/hiveot/hub/services/state/stateclient"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
@@ -46,8 +47,10 @@ type OWServerBinding struct {
 	// map of [node/device ID] [attribute Title] value
 	values map[string]map[string]NodeValueStamp
 
+	// persistent store with device titles
+	store buckets.IBucketStore
 	// the user edited node names
-	customTitles map[string]string
+	customTitles buckets.IBucket
 
 	// nodes by thingID. Used in handling action requests
 	nodes map[string]*eds.OneWireNode
@@ -63,25 +66,25 @@ type OWServerBinding struct {
 func (svc *OWServerBinding) CreateBindingTD() *td.TD {
 	// This binding exposes the TD of itself.
 	// Currently its configuration comes from file.
-	td := td.NewTD(svc.agentID, "OWServer binding", vocab.ThingService)
-	td.Description = "Driver for the OWServer V2 Gateway 1-wire interface"
+	tdi := td.NewTD(svc.agentID, "OWServer binding", vocab.ThingService)
+	tdi.Description = "Driver for the OWServer V2 Gateway 1-wire interface"
 
-	prop := td.AddProperty(bindingMake, "Developer", "", vocab.WoTDataTypeString).
+	prop := tdi.AddProperty(bindingMake, "Developer", "", vocab.WoTDataTypeString).
 		SetAtType(vocab.PropDeviceMake)
 
 	// these are configured through the configuration file.
-	prop = td.AddProperty(bindingValuePollIntervalID, "Poll Interval", "Value polling", vocab.WoTDataTypeInteger).
+	prop = tdi.AddProperty(bindingValuePollIntervalID, "Poll Interval", "Value polling", vocab.WoTDataTypeInteger).
 		SetAtType(vocab.PropDevicePollinterval)
 	prop.Unit = vocab.UnitSecond
 
-	prop = td.AddProperty(bindingValuePublishIntervalID, "Value Republish Interval",
+	prop = tdi.AddProperty(bindingValuePublishIntervalID, "Value Republish Interval",
 		"Interval the values are published even if they haven't changed.",
 		vocab.WoTDataTypeInteger)
 	prop.Unit = vocab.UnitSecond
 
-	prop = td.AddProperty(bindingOWServerAddressID, "IP Address", "OWServer gateway IP address",
+	prop = tdi.AddProperty(bindingOWServerAddressID, "IP Address", "OWServer gateway IP address",
 		vocab.WoTDataTypeString).SetAtType(vocab.PropNetAddress)
-	return td
+	return tdi
 }
 
 // GetBindingPropValues generates a properties map for attribute and config properties of this binding
@@ -92,25 +95,6 @@ func (svc *OWServerBinding) GetBindingPropValues() map[string]any {
 	pv[bindingOWServerAddressID] = svc.config.OWServerURL
 	pv[bindingMake] = "HiveOT"
 	return pv
-}
-
-// LoadState loads the custom node names (owserver doesn't support saving node names)
-// and clear 'clientModelChanged' status
-func (svc *OWServerBinding) LoadState() error {
-	stateCl := stateclient.NewStateClient(&svc.ag.Consumer)
-	// load user edited node names
-	found, err := stateCl.Get(customTitlesKey, &svc.customTitles)
-	if !found {
-		svc.customTitles = make(map[string]string)
-	}
-	return err
-}
-
-// SaveState stores the custom node names
-func (svc *OWServerBinding) SaveState() error {
-	stateCl := stateclient.NewStateClient(&svc.ag.Consumer)
-	err := stateCl.Set(customTitlesKey, &svc.customTitles)
-	return err
 }
 
 // Start the OWServer protocol binding
@@ -131,11 +115,12 @@ func (svc *OWServerBinding) Start(ag *messaging.Agent) (err error) {
 	// subscribe to action and configuration requests
 	svc.ag.SetRequestHandler(svc.HandleRequest)
 
-	// load custom settings
-	err = svc.LoadState()
+	// open the store
+	err = svc.store.Open()
 	if err != nil {
-		slog.Error("Start: Unable to load the state including custom titles")
+		slog.Error("Start: Unable to open the state store with custom titles")
 	}
+	svc.customTitles = svc.store.GetBucket(customTitlesKey)
 
 	// publish this binding's TD document
 	tdi := svc.CreateBindingTD()
@@ -210,21 +195,25 @@ func (svc *OWServerBinding) Stop() {
 	if svc.stopFn != nil {
 		svc.stopFn()
 	}
+	_ = svc.customTitles.Close()
+	_ = svc.store.Close()
 	slog.Info("OWServer binding stopped")
 }
 
 // NewOWServerBinding creates a new OWServer Protocol Binding service
 //
 //	config holds the configuration of the service
-func NewOWServerBinding(config *config.OWServerConfig) *OWServerBinding {
+func NewOWServerBinding(storePath string, config *config.OWServerConfig) *OWServerBinding {
+
+	store := kvbtree.NewKVStore(storePath)
 
 	// these are from hub configuration
 	svc := &OWServerBinding{
-		config:       config,
-		values:       make(map[string]map[string]NodeValueStamp),
-		nodes:        make(map[string]*eds.OneWireNode),
-		things:       make(map[string]*td.TD),
-		customTitles: make(map[string]string),
+		config: config,
+		store:  store,
+		values: make(map[string]map[string]NodeValueStamp),
+		nodes:  make(map[string]*eds.OneWireNode),
+		things: make(map[string]*td.TD),
 	}
 	return svc
 }

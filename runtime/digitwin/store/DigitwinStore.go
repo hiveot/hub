@@ -46,7 +46,12 @@ func (svc *DigitwinStore) Close() {
 	}
 }
 
-//
+// GetDigitwinInfo returns the digital twin info containing both the digitwin and agent TD
+// This returns nil if no such digital twin exists
+func (store *DigitwinStore) GetDigitwinInfo(dThingID string) *DigitalTwinInstance {
+	dti := store.dtwCache[dThingID]
+	return dti
+}
 
 // LoadCacheFromStore saves the current changes and reloads the cache from
 // store into memory.
@@ -95,7 +100,7 @@ func (svc *DigitwinStore) QueryAction(
 	}
 	if svc.strict {
 		// affordance must exist
-		aff, found := dtw.DtwTD.Actions[name]
+		aff, found := dtw.DigitwinTD.Actions[name]
 		_ = aff
 		if !found {
 			return v, fmt.Errorf("QueryAction: Action '%s' not found in digital twin '%s'", name, dThingID)
@@ -179,7 +184,7 @@ func (svc *DigitwinStore) ReadEvent(
 	}
 	if svc.strict {
 		// affordance must exist
-		aff, found := dtw.DtwTD.Events[name]
+		aff, found := dtw.DigitwinTD.Events[name]
 		_ = aff
 		if !found {
 			return v, fmt.Errorf("ReadEvent: Event '%s' not found in digital twin '%s'", name, dThingID)
@@ -205,7 +210,7 @@ func (svc *DigitwinStore) ReadProperty(
 	}
 	if svc.strict {
 		// affordance must exist
-		aff, found := dtw.DtwTD.Properties[name]
+		aff, found := dtw.DigitwinTD.Properties[name]
 		_ = aff
 		if !found {
 			return v, fmt.Errorf("ReadProperty: Property '%s' not found in digital twin '%s'", name, dThingID)
@@ -226,7 +231,7 @@ func (svc *DigitwinStore) ReadDThing(dThingID string) (dtd *td.TD, err error) {
 		err = fmt.Errorf("dThing with ID '%s' not found", dThingID)
 		return dtd, err
 	}
-	return dtw.DtwTD, err
+	return dtw.DigitwinTD, err
 }
 
 // ReadTDs returns a list of digital twin TDs
@@ -252,7 +257,7 @@ func (svc *DigitwinStore) ReadTDs(offset int, limit int) (resp []*td.TD, err err
 	// add the documents
 	for _, k := range tdKeys {
 		dtw := svc.dtwCache[k]
-		resp = append(resp, dtw.DtwTD)
+		resp = append(resp, dtw.DigitwinTD)
 	}
 	return resp, nil
 }
@@ -345,8 +350,8 @@ func (svc *DigitwinStore) UpdateTD(
 		svc.dtwCache[dThingID] = dtw
 		svc.thingKeys = append(svc.thingKeys, dThingID)
 	}
-	dtw.ThingTD = thingTD
-	dtw.DtwTD = digitwinTD
+	dtw.AgentTD = thingTD
+	dtw.DigitwinTD = digitwinTD
 	svc.changedThings[dThingID] = true
 }
 
@@ -375,7 +380,7 @@ func (svc *DigitwinStore) NewActionStart(req *messaging.RequestMessage) (stored 
 		return false, nil
 	}
 	// action affordance should exist
-	aff, found := dtw.DtwTD.Actions[req.Name]
+	aff, found := dtw.DigitwinTD.Actions[req.Name]
 	_ = aff
 	if !found {
 		// FIXME:The request might not be an action but could also be a Thing level operation
@@ -400,6 +405,7 @@ func (svc *DigitwinStore) NewActionStart(req *messaging.RequestMessage) (stored 
 		actionStatus = digitwin.ActionStatus{}
 	}
 	actionStatus.Name = req.Name
+	actionStatus.ThingID = req.ThingID
 	actionStatus.SenderID = req.SenderID
 	actionStatus.Input = req.Input
 	actionStatus.Status = messaging.StatusPending
@@ -427,7 +433,7 @@ func (svc *DigitwinStore) UpdateActionStatus(agentID string, resp *messaging.Res
 		return actionValue, err
 	}
 	// action affordance or property affordance must exist
-	_, found = dtw.DtwTD.Actions[resp.Name]
+	_, found = dtw.DigitwinTD.Actions[resp.Name]
 	if found {
 		// this is a progress update; update only the status fields.
 		// action value should exist. recover if it doesn't
@@ -498,7 +504,7 @@ func (svc *DigitwinStore) UpdatePropertyValue(newValue digitwin.ThingValue) (
 		return false, err
 	}
 	if svc.strict {
-		aff := dtw.DtwTD.GetProperty(newValue.Name)
+		aff := dtw.DigitwinTD.GetProperty(newValue.Name)
 		if aff == nil {
 			return false,
 				fmt.Errorf("UpdatePropertyValue: unknown property '%s' for thing '%s'",

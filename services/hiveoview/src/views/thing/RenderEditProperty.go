@@ -3,8 +3,8 @@ package thing
 import (
 	"errors"
 	"github.com/go-chi/chi/v5"
+	"github.com/hiveot/hub/lib/consumedthing"
 	"github.com/hiveot/hub/messaging/tputils"
-	"github.com/hiveot/hub/runtime/consumedthing"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
@@ -54,11 +54,11 @@ func getConfigValue(
 	if err != nil {
 		return sv, err
 	}
-	iout := ct.GetPropOutput(name)
+	iout := ct.GetPropertyOutput(name)
 	if iout == nil {
 		return sv, errors.New("No such property: " + name)
 	}
-	iin := ct.GetPropInput(name)
+	iin := ct.GetPropertyInput(name)
 
 	// FIXME: Readproperty - handled by whom? is the digitwin service name relevant
 	// What does the wot specification for directory say?

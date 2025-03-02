@@ -24,7 +24,7 @@
 	<!--===Thing Summary header===-->
 
 		<summary id="detailsSummary" class="outline h-row" >
-				<h3 style="display:contents" >{{.CT.GetTitle}}</h3>
+				<h3 style="display:contents" >{{.CT.Title}}</h3>
 				<div class="h-grow"></div>
 				<!--=== button to delete this TD ===-->
 				<button title="Delete TD" slot="button" class="h-icon-button  outline"
@@ -41,12 +41,12 @@
 				<label for="manufacturer">Device Description:</label>
 				<input id="manufacturer" type="text" readonly
 				       style="margin: 0; text-overflow: ellipsis;"
-				       value="{{.MakeModel}} {{.TD.Description}}"/>
+				       value="{{.MakeModel}} {{.CT.Description}}"/>
 
 				<label for="updated">Updated:</label>
 				<input id="updated" type="text" readonly
 				       style="margin: 0; text-overflow: ellipsis;"
-               value="{{datetime .TD.Modified}}"/>
+               value="{{datetime .CT.TD.Modified}}"/>
 
 				<label for="thingID">Thing ID:</label>
 				<div style="display:flex">
@@ -91,7 +91,7 @@
 				<details id="detailsEvents" >
 						<summary class="outline">
 								<span style="font-size: medium"><strong>Events</strong></span>
-								<span> ({{len .TD.Events}})</span>
+								<span> ({{len .CT.TD.Events}})</span>
 						</summary>
 		        {{template "eventList.gohtml" .}}
 				</details>
@@ -102,7 +102,7 @@
 				<details id="detailsActions">
 						<summary class="outline">
 								<span style="font-size: medium"><strong>Actions</strong></span>
-								<span> ({{len .TD.Actions}})</span>
+								<span> ({{len .CT.TD.Actions}})</span>
 						</summary>
 						{{template "actionList.gohtml" .}}
 				</details>

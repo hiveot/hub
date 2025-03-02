@@ -152,18 +152,18 @@ func (iout *InteractionOutput) UnitSymbol() string {
 	return unit.Symbol
 }
 
-func NewInteractionOutputFromValueList(tdi *td.TD, affType string, values []digitwin.ThingValue) InteractionOutputMap {
+func NewInteractionOutputFromValueList(ct *ConsumedThing, affType string, values []digitwin.ThingValue) InteractionOutputMap {
 	ioMap := make(map[string]*InteractionOutput)
 	for _, tv := range values {
-		iout := NewInteractionOutput(tdi, affType, tv.Name, tv.Output, tv.Updated)
+		iout := NewInteractionOutput(ct, affType, tv.Name, tv.Output, tv.Updated)
 		ioMap[tv.Name] = iout
 
 	}
 	return ioMap
 }
 
-func NewInteractionOutputFromValue(tdi *td.TD, affType string, tv digitwin.ThingValue) *InteractionOutput {
-	iout := NewInteractionOutput(tdi, affType, tv.Name, tv.Output, tv.Updated)
+func NewInteractionOutputFromValue(ct *ConsumedThing, affType string, tv digitwin.ThingValue) *InteractionOutput {
+	iout := NewInteractionOutput(ct, affType, tv.Name, tv.Output, tv.Updated)
 	return iout
 }
 
@@ -182,9 +182,9 @@ func NewInteractionOutputFromValue(tdi *td.TD, affType string, tv digitwin.Thing
 //	tm contains the received ThingMessage data
 //	tdi is the associated thing description
 func NewInteractionOutputFromResponse(
-	tdi *td.TD, affType string, resp *messaging.ResponseMessage) *InteractionOutput {
+	ct *ConsumedThing, affType string, resp *messaging.ResponseMessage) *InteractionOutput {
 
-	iout := NewInteractionOutput(tdi, affType, resp.Name, resp.Output, resp.Updated)
+	iout := NewInteractionOutput(ct, affType, resp.Name, resp.Output, resp.Updated)
 	iout.SenderID = resp.SenderID
 	return iout
 }
@@ -198,9 +198,9 @@ func NewInteractionOutputFromResponse(
 //	tm contains the received ThingMessage data
 //	tdi is the associated thing description
 func NewInteractionOutputFromActionStatus(
-	tdi *td.TD, as messaging.ActionStatus) *InteractionOutput {
+	ct *ConsumedThing, as messaging.ActionStatus) *InteractionOutput {
 
-	iout := NewInteractionOutput(tdi, messaging.AffordanceTypeAction, as.Name, as.Output, as.Updated)
+	iout := NewInteractionOutput(ct, messaging.AffordanceTypeAction, as.Name, as.Output, as.Updated)
 	iout.SenderID = as.SenderID
 	return iout
 }
@@ -213,28 +213,30 @@ func NewInteractionOutputFromActionStatus(
 //	name is the interaction affordance name the output belongs to
 //	raw is the raw data
 //	updated is the timestamp the data is last updated
-func NewInteractionOutput(tdi *td.TD, affType string, name string, raw any, updated string) *InteractionOutput {
+func NewInteractionOutput(ct *ConsumedThing, affType string, name string, raw any, updated string) *InteractionOutput {
 
 	var schema *td.DataSchema
 	var title string
 
 	switch affType {
 	case messaging.AffordanceTypeAction:
-		aff := tdi.Actions[name]
+		aff := ct.GetActionAff(name)
+
 		if aff == nil {
+			// fall back to properties that contain the action output
 			break
 		}
 		title = aff.Title
 		schema = aff.Output
 	case messaging.AffordanceTypeEvent:
-		aff := tdi.Events[name]
+		aff := ct.GetEventAff(name)
 		if aff == nil {
 			break
 		}
 		title = aff.Title
 		schema = aff.Data
 	case messaging.AffordanceTypeProperty:
-		aff := tdi.Properties[name]
+		aff := ct.GetPropertyAff(name)
 		if aff == nil {
 			break
 		}
@@ -254,7 +256,7 @@ func NewInteractionOutput(tdi *td.TD, affType string, name string, raw any, upda
 	}
 	io := &InteractionOutput{
 		AffordanceType: affType,
-		ThingID:        tdi.ID,
+		ThingID:        ct.ThingID,
 		Name:           name,
 		Title:          title,
 		Updated:        updated,

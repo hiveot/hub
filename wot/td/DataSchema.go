@@ -58,7 +58,7 @@ type DataSchema struct {
 	// the value true implies writable but not readable. Intended for secrets such as passwords.
 	WriteOnly bool `json:"writeOnly,omitempty"`
 
-	// Type provides JSON based data type,  one of WoTDataTypeNumber, ...object, array, string, integer, boolean or null
+	// Type provides JSON based data type,  one of DataTypeNumber, ...object, array, string, integer, boolean or null
 	Type string `json:"type,omitempty"`
 
 	// Reference to an external data schema when type is object
@@ -157,10 +157,10 @@ func (ds *DataSchema) GetAtTypeString() string {
 // If type is an object or array this returns false
 // Intended for use in input forms
 func (ds *DataSchema) IsNative() bool {
-	return ds.Type == wot.WoTDataTypeAnyURI ||
-		ds.Type == wot.WoTDataTypeBool ||
-		ds.Type == wot.WoTDataTypeInteger ||
-		ds.Type == wot.WoTDataTypeUnsignedInt ||
-		ds.Type == wot.WoTDataTypeNumber ||
-		ds.Type == wot.WoTDataTypeString
+	return ds.Type == wot.DataTypeAnyURI ||
+		ds.Type == wot.DataTypeBool ||
+		ds.Type == wot.DataTypeInteger ||
+		ds.Type == wot.DataTypeUnsignedInt ||
+		ds.Type == wot.DataTypeNumber ||
+		ds.Type == wot.DataTypeString
 }

@@ -207,7 +207,7 @@ func (cl *WssClient) Reconnect() {
 // This transforms the request to the protocol message and sends it to the server.
 func (cl *WssClient) SendRequest(req *messaging.RequestMessage) error {
 
-	slog.Info("SendRequest",
+	slog.Debug("SendRequest",
 		slog.String("clientID", cl.cinfo.ClientID),
 		slog.String("correlationID", req.CorrelationID),
 		slog.String("operation", req.Operation),
@@ -230,7 +230,7 @@ func (cl *WssClient) SendRequest(req *messaging.RequestMessage) error {
 // Responses without correlationID are subscription notifications.
 func (cl *WssClient) SendResponse(resp *messaging.ResponseMessage) error {
 
-	slog.Info("SendResponse",
+	slog.Debug("SendResponse",
 		slog.String("operation", resp.Operation),
 		slog.String("clientID", cl.cinfo.ClientID),
 		slog.String("thingID", resp.ThingID),

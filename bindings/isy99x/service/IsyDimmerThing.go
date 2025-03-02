@@ -28,7 +28,7 @@ func (it *IsyDimmerThing) MakeTD() *td.TD {
 	//td.AddDimmerEvent(vocab.PropSwitchDimmer)
 
 	a := tdi.AddAction(vocab.ActionDimmerSet, "Set Dimmer", "",
-		&td.DataSchema{Type: wot.WoTDataTypeInteger},
+		&td.DataSchema{Type: wot.DataTypeInteger},
 	)
 	a.SetAtType(vocab.ActionDimmer)
 
@@ -55,7 +55,7 @@ func (it *IsyDimmerThing) HandleConfigRequest(req *messaging.RequestMessage) *me
 // HandleActionRequest handles request to execute an action on this device
 // actionID string as defined in the action affordance
 // newValue is not used as these actions do not carry a parameter
-func (it *IsyDimmerThing) HandleActionRequest(req *messaging.RequestMessage) *messaging.ResponseMessage {
+func (it *IsyDimmerThing) HandleActionRequest(ag *messaging.Agent, req *messaging.RequestMessage) *messaging.ResponseMessage {
 	var restPath = ""
 	var newValue = ""
 	// FIXME: req keys are node attributes keys, not vocab @types (or are they?)

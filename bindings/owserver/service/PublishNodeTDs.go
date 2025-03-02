@@ -4,6 +4,7 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
+	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 )
@@ -26,19 +27,18 @@ func (svc *OWServerBinding) CreateTDFromNode(node *eds.OneWireNode) (tdoc *td.TD
 		// unknown device
 		deviceType = vocab.ThingDevice
 	}
-	// support for setting Thing TD title to the custom name instead of node name
 	thingTitle := node.Name
-	customTitle := svc.customTitles[thingID]
-	if customTitle != "" {
-		thingTitle = customTitle
-	}
 	tdoc = td.NewTD(thingID, thingTitle, deviceType)
 	tdoc.UpdateTitleDescription(thingTitle, node.Description)
 
 	// Add a writable 'title' property so consumer can edit the device's title.
 	// Since owserver doesn't support naming a device, the title is stored in the state service.
-	prop := tdoc.AddProperty(vocab.PropDeviceTitle, "Title", "", vocab.WoTDataTypeString).
-		SetAtType(vocab.PropDeviceTitle)
+	// The UI should prefer a title property over the TD title.
+	// TODO: Add this property in the digital twin instead of each device
+	// how does the dtw know if to forward a title property write request?
+	//  look into the device's TD
+	prop := tdoc.AddProperty(wot.WoTTitle, "Title", "", vocab.WoTDataTypeString)
+	prop.SetAtType(vocab.PropDeviceTitle)
 	prop.ReadOnly = false
 
 	// Map node attribute to Thing properties and events
@@ -102,7 +102,7 @@ func (svc *OWServerBinding) CreateTDFromNode(node *eds.OneWireNode) (tdoc *td.TD
 			aff.SetAtType(attrInfo.VocabType)
 		}
 	}
-	return
+	return tdoc
 }
 
 //func (svc *OWServerBinding) MakeNodePropValues(node *eds.OneWireNode) map[string]string {
