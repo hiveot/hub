@@ -24,7 +24,7 @@
 
 	          {{/* Auto-update chart when looking at today*/}}
 	          {{if eq $hist.CompareToday 0}}
-							sse-swap="{{.ThingID}}/{{.Name}}"
+							sse-swap="{{.AffordanceType}}/{{.ThingID}}/{{.Name}}"
 							hx-target="this"
 							hx-swap="none"
 							hx-on::sse-before-message="updateChart(event, '{{.Title}}')"

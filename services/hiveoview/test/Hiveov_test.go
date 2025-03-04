@@ -263,7 +263,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	// handler hiveoview SSE notifications
 	onResponse := func(msg *messaging.ResponseMessage) error {
 		// the UI expects this format for triggering htmx
-		expectedType := fmt.Sprintf("dtw:%s:%s/%s", agentID, td1.ID, eventName)
+		expectedType := fmt.Sprintf("event/dtw:%s:%s/%s", agentID, td1.ID, eventName)
 		if msg.Operation == expectedType {
 			messageCount.Add(1)
 		}

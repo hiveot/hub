@@ -8,7 +8,7 @@
 		<li id="hist-table-title"
 {{/*		    FIXME: this is also triggered for properties*/}}
         {{if eq .CompareToday 0}}
-	        hx-trigger="sse:{{.ThingID}}/{{.Name}}"
+	        hx-trigger="sse:{{.AffordanceType}}/{{.ThingID}}/{{.Name}}"
      	    hx-get="{{.RenderHistoryLatestRow}}?unit={{.UnitSymbol}}"
 			    hx-target="this"
 			    hx-swap="afterend"

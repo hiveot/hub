@@ -202,25 +202,25 @@ var AttrConfig = map[string]AttrConversion{
 		IsEvent:   true,
 		Title:     "Humidity",
 		VocabType: vocab.PropEnvHumidity,
-		DataType:  vocab.WoTDataTypeNumber, Precision: 0, ChangeNotify: 5.0,
+		DataType:  vocab.WoTDataTypeNumber, Precision: 0, ChangeNotify: 3.0,
 		Unit: vocab.UnitPercent,
 	},
 	"Humidex": {
 		IsEvent:   true,
 		Title:     "Humidex",
 		VocabType: vocab.PropEnvHumidex,
-		DataType:  vocab.WoTDataTypeNumber, Precision: 0, ChangeNotify: 5.0,
+		DataType:  vocab.WoTDataTypeNumber, Precision: 0, ChangeNotify: 1.0,
 		Unit: vocab.UnitCelcius,
 	},
 	"HumidityHighAlarmState": {
 		IsProp: true, Ignore: true,
 		Title:    "Humidity High Alarm",
-		DataType: vocab.WoTDataTypeBool, ChangeNotify: 1,
+		DataType: vocab.WoTDataTypeBool,
 	},
 	"HumidityLowAlarmState": {
 		IsProp: true, Ignore: true,
 		Title:    "Humidity Low Alarm",
-		DataType: vocab.WoTDataTypeBool, ChangeNotify: 1,
+		DataType: vocab.WoTDataTypeBool,
 	},
 	"LED": {
 		IsProp:   true,
@@ -248,7 +248,7 @@ var AttrConfig = map[string]AttrConversion{
 		IsEvent:   true,
 		Title:     "Luminance",
 		VocabType: vocab.PropEnvLuminance,
-		DataType:  vocab.WoTDataTypeNumber, Precision: 0, ChangeNotify: 30.0,
+		DataType:  vocab.WoTDataTypeNumber, Precision: 0, ChangeNotify: 20.0,
 	},
 	"MACAddress": {
 		IsProp:    true,
@@ -343,18 +343,18 @@ var AttrConfig = map[string]AttrConversion{
 		Title:     "Temperature",
 		VocabType: vocab.PropEnvTemperature,
 		// prevent a lot of events if temperature is on the edge of two values
-		DataType: vocab.WoTDataTypeNumber, Precision: 1, ChangeNotify: 0.2,
+		DataType: vocab.WoTDataTypeNumber, Precision: 1, ChangeNotify: 0.1,
 		Unit: vocab.UnitCelcius,
 	},
 	"TemperatureHighAlarmState": {
 		IsProp: true, Ignore: true,
 		Title:    "Temperature High Alarm",
-		DataType: vocab.WoTDataTypeBool, ChangeNotify: 1,
+		DataType: vocab.WoTDataTypeBool,
 	},
 	"TemperatureLowAlarmState": {
 		IsProp: true, Ignore: true,
 		Title:    "Temperature Low Alarm",
-		DataType: vocab.WoTDataTypeBool, ChangeNotify: 1,
+		DataType: vocab.WoTDataTypeBool,
 	},
 	"UserByte1": {
 		IsProp:   true, //Ignore: true,

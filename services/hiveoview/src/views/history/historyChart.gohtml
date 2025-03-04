@@ -7,7 +7,7 @@
 
 		{{/* Auto-update chart when looking at today*/}}
     {{if eq .CompareToday 0}}
-	      sse-swap="{{.ThingID}}/{{.Name}}"
+	      sse-swap="{{.AffordanceType}}/{{.ThingID}}/{{.Name}}"
 	      hx-target="this"
 	      hx-swap="none"
         {{/*addValue uses the SSE event to add a value to the chart*/}}
