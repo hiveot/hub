@@ -4,6 +4,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/consumedthing"
+	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
@@ -39,11 +40,12 @@ type ThingDetailsTemplateData struct {
 	RenderRawTDPath           string
 }
 
-// GetHistory returns the previous 24 hour for the given name
-func (dt *ThingDetailsTemplateData) GetHistory(name string) *history.HistoryTemplateData {
+// GetEventHistory returns the previous 24 hour for the given event name
+func (dt *ThingDetailsTemplateData) GetEventHistory(name string) *history.HistoryTemplateData {
 	timestamp := time.Now()
 	duration := time.Hour * time.Duration(-24)
-	hsd, err := history.NewHistoryTemplateData(dt.CT, name, timestamp, duration)
+	hsd, err := history.NewHistoryTemplateData(dt.CT,
+		messaging.AffordanceTypeEvent, name, timestamp, duration)
 	_ = err
 	return hsd
 }

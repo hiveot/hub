@@ -225,7 +225,7 @@ var AttrConfig = map[string]AttrConversion{
 	"LED": {
 		IsProp:   true,
 		Title:    "LED State",
-		DataType: vocab.WoTDataTypeBool, ChangeNotify: 1, // On/Off
+		DataType: vocab.WoTDataTypeBool, // On/Off
 	},
 	"LEDFunction": {
 		IsProp:      true,
@@ -240,9 +240,9 @@ var AttrConfig = map[string]AttrConversion{
 		},
 	},
 	"LEDState": {
-		IsActuator: true, IsProp: true,
+		IsProp: true, Ignore: true,
 		Title:    "LED switch",
-		DataType: vocab.WoTDataTypeBool, ChangeNotify: 1,
+		DataType: vocab.WoTDataTypeBool,
 	},
 	"Light": {
 		IsEvent:   true,

@@ -48,6 +48,7 @@ const (
 
 // TD-1.1 affordance and data schema vocabulary
 const (
+	WoTActions              = "actions"
 	WoTDescription          = "description"
 	WoTDescriptions         = "descriptions"
 	WoTDigestSecurityScheme = "DigestSecurityScheme"
@@ -69,6 +70,7 @@ const (
 	WoTNoSecurityScheme     = "NoSecurityScheme"
 	WoTOAuth2SecurityScheme = "OAuth2SecurityScheme"
 	WoTOperation            = "op"
+	WoTProperties           = "properties"
 	WoTReadOnly             = "readOnly"
 	WoTRequired             = "required"
 	WoTSecurity             = "security"

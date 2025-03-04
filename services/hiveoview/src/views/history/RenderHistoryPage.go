@@ -15,11 +15,13 @@ const RenderHistoryTemplate = "RenderHistoryPage.gohtml"
 
 // RenderHistoryPage renders a table with historical event values
 // URL parameters:
+// @param affType event, property or action affordance to view
 // @param thingID to view
 // @param name of event whose value to show
 // @param timestamp the start or end time of the viewing period
 // @param duration number of seconds to view. default is -24 hours
 func RenderHistoryPage(w http.ResponseWriter, r *http.Request) {
+	affType := chi.URLParam(r, "affordanceType")
 	thingID := chi.URLParam(r, "thingID")
 	name := chi.URLParam(r, "name")
 	timestampStr := r.URL.Query().Get("time")
@@ -49,7 +51,7 @@ func RenderHistoryPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	duration := time.Second * time.Duration(durationSec)
-	data, err := NewHistoryTemplateData(ct, name, timestamp, duration)
+	data, err := NewHistoryTemplateData(ct, affType, name, timestamp, duration)
 
 	if err != nil {
 		sess.WriteError(w, err, 0)

@@ -76,17 +76,17 @@ func (ct *ConsumedThing) GetActionAff(name string) *td.ActionAffordance {
 	return aff
 }
 
-// GetActionInput returns the action input value of the given action, if available
-func (ct *ConsumedThing) GetActionInput(as messaging.ActionStatus) *InteractionInput {
+// GetActionInputFromStatus returns the action input value of the given action, if available
+func (ct *ConsumedThing) GetActionInputFromStatus(as messaging.ActionStatus) *InteractionInput {
 	iin := NewInteractionInput(ct.tdi, as.Name, as.Input)
 	return iin
 }
 
-// GetActionOutput returns the interaction output of the given action status
+// GetActionOutputFromStatus returns the interaction output of the given action status
 // See also GetValue that always return an iout (for rendering purpose)
 //
 // This returns nil if name is not a known action
-func (ct *ConsumedThing) GetActionOutput(as messaging.ActionStatus) (iout *InteractionOutput) {
+func (ct *ConsumedThing) GetActionOutputFromStatus(as messaging.ActionStatus) (iout *InteractionOutput) {
 
 	iout = NewInteractionOutput(ct, messaging.AffordanceTypeAction, as.Name, as.Output, as.Updated)
 
@@ -102,6 +102,17 @@ func (ct *ConsumedThing) GetActionOutput(as messaging.ActionStatus) (iout *Inter
 			iout.Value = fallbackOutput.Value
 		}
 	}
+	return iout
+}
+
+// GetActionOutput returns the interaction output of the given action affordance
+//
+// This returns nil if name is not a known action
+func (ct *ConsumedThing) GetActionOutput(name string) (iout *InteractionOutput) {
+
+	ct.mux.RLock()
+	iout, _ = ct.actionOutputs[name]
+	ct.mux.RUnlock()
 	return iout
 }
 
@@ -148,7 +159,7 @@ func (ct *ConsumedThing) GetEventAff(name string) *td.EventAffordance {
 	return aff
 }
 
-// GetEventOutput returns the interaction output of the latest value of an event
+// GetEventOutput returns the cached interaction output of the latest value of an event
 // See also GetValue that always return an iout (for rendering purpose)
 //
 // This returns nil if not found
@@ -159,14 +170,15 @@ func (ct *ConsumedThing) GetEventOutput(name string) (iout *InteractionOutput) {
 	return iout
 }
 
-// GetPropertyAff returns the property affordance or nil if not found
+// GetPropertyAff returns the cached property affordance or nil if not found
 func (ct *ConsumedThing) GetPropertyAff(name string) *td.PropertyAffordance {
 	aff, found := ct.tdi.Properties[name]
 	_ = found
 	return aff
 }
 
-// GetPropertyInput returns the property input value for writing
+// GetPropertyInput returns the interaction input for a property
+// This populates the input with the last known cached value.
 func (ct *ConsumedThing) GetPropertyInput(name string) *InteractionInput {
 	ct.mux.RLock()
 	iout, _ := ct.propValues[name]
@@ -196,26 +208,28 @@ func (ct *ConsumedThing) GetPropertyOutput(name string) (iout *InteractionOutput
 //
 // If name is an event it is returned first, otherwise it falls back to property.
 //
-// This returns an empty InteractionOutput if not found
-func (ct *ConsumedThing) GetValue(name string) *InteractionOutput {
-	ct.mux.RLock()
-	// FIXME: this picks up event errors as well when it reads
-	//name should be matched against the TD, not values?
-	// or sho
-	iout, found := ct.eventValues[name]
-	if !found {
-		iout, found = ct.propValues[name]
+// This returns an empty InteractionOutput if no value is found
+func (ct *ConsumedThing) GetValue(affType string, name string) (iout *InteractionOutput) {
+	var found bool
+
+	//should name be matched against the affordances TD instead of cached values?
+	if affType == "action" {
+		iout = ct.GetActionOutput(name)
+	} else if affType == "event" {
+		iout = ct.GetEventOutput(name)
+	} else {
+		// must be a property
+		iout = ct.GetPropertyOutput(name)
 	}
-	if !found {
-		iout, found = ct.actionOutputs[name]
-	}
-	ct.mux.RUnlock()
+
 	_ = found
 	if iout == nil {
-		// not a known prop or event value so create an empty io with a schema from the td
+		// not a known value so create an empty io
+		// TODO: should this lookup a schema?
 		iout = &InteractionOutput{
 			ThingID: ct.tdi.ID,
 			Name:    name,
+			Value:   DataSchemaValue{Raw: "ConsumedThing is missing data"},
 		}
 	}
 	return iout
@@ -334,7 +348,7 @@ func (ct *ConsumedThing) OnResponse(msg *messaging.ResponseMessage) {
 
 // QueryAction queries the action status record from the hub
 //
-// # The cached interaction output of this value can be obtained with GetActionOutput
+// # The cached interaction output of this value can be obtained with GetActionOutputFromStatus
 //
 // This returns an empty ActionStatus if not found
 func (ct *ConsumedThing) QueryAction(name string) messaging.ActionStatus {
@@ -357,29 +371,6 @@ func (ct *ConsumedThing) ReadEvent(name string) *InteractionOutput {
 	ct.mux.Unlock()
 	return iout
 }
-
-// ReadHistory returns the history of a property or event.
-//
-// This requires the history service.
-//
-// If the number of values exceed the maximum then this returns itemsRemaining
-// as true. An additional call can be made using the last returned timestamp to
-// get the remaining values.
-//func (ct *ConsumedThing) ReadHistory(
-//	name string, timestamp time.Time, duration time.Duration) (
-//	values []*messaging.ThingValue, itemsRemaining bool, err error) {
-//
-//	// FIXME: ReadHistory is not (yet) part of the WoT specification. Ege mentioned it would
-//	// be added soon so this will change to follow the WoT specification.
-//	// Until then this is tied to the Hub's history service.
-//
-//	hist := historyclient.NewReadHistoryClient(ct.co)
-//	// todo: is there a need to read in batches? not for a single day.
-//	values, itemsRemaining, err = hist.ReadHistory(
-//		ct.tdi.ID, name, timestamp, duration, 500)
-//
-//	return values, itemsRemaining, err
-//}
 
 // ReadProperty reads the Thing property value from the Thing and updates its cache.
 // Call GetPropertyValue to get the cached value.
@@ -414,7 +405,7 @@ func (ct *ConsumedThing) Refresh() error {
 		} else {
 			iout = NewInteractionOutput(ct, messaging.AffordanceTypeEvent, name, nil, "")
 		}
-		ct.propValues[name] = iout
+		ct.eventValues[name] = iout
 	}
 	// refresh properties
 	valueMap, err = digitwin.ThingValuesReadAllProperties(ct.co, ct.ThingID)

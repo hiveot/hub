@@ -15,8 +15,10 @@ const EditTileTemplate = "RenderEditTile.gohtml"
 type EditTileTemplateData struct {
 	Dashboard session.DashboardModel
 	Tile      session.DashboardTile
-	// Values of the tile sources by thingID/name
-	Values map[string]*consumedthing.InteractionOutput
+	// Values of the tile sources by sourceID (affType/thingID/name)
+	// FIXME: used consumed thing directory to get values?
+	ctDir *consumedthing.ConsumedThingsDirectory
+	//Values map[string]*consumedthing.InteractionOutput
 	// human labels for each tile type
 	TileTypeLabels map[string]string
 
@@ -34,20 +36,29 @@ func (data EditTileTemplateData) GetTypeLabel(typeID string) string {
 }
 
 // GetValue returns the value of a tile source
-func (data EditTileTemplateData) GetValue(thingID, name string) string {
-	iout, found := data.Values[thingID+"/"+name]
-	if !found {
-		return ""
+func (data EditTileTemplateData) GetValue(tileSource session.TileSource) string {
+	ct, err := data.ctDir.Consume(tileSource.ThingID)
+	if err != nil {
+		// should never happen, but just in case
+		return err.Error()
 	}
-	unitSymbol := iout.UnitSymbol()
-	return iout.Value.Text() + " " + unitSymbol
+	iout := ct.GetValue(tileSource.AffordanceType, tileSource.Name)
+	if iout != nil {
+		unitSymbol := iout.UnitSymbol()
+		return iout.Value.Text() + " " + unitSymbol
+	}
+	return ""
 }
-func (data EditTileTemplateData) GetUpdated(thingID, name string) string {
-	v, found := data.Values[thingID+"/"+name]
-	if !found {
+func (data EditTileTemplateData) GetUpdated(tileSource session.TileSource) string {
+	ct, err := data.ctDir.Consume(tileSource.ThingID)
+	if err != nil {
 		return ""
 	}
-	return tputils.DecodeAsDatetime(v.Updated)
+	iout := ct.GetValue(tileSource.AffordanceType, tileSource.Name)
+	if iout != nil {
+		tputils.DecodeAsDatetime(iout.Updated)
+	}
+	return ""
 }
 
 // RenderEditTile renders the Tile editor dialog
@@ -62,26 +73,14 @@ func RenderEditTile(w http.ResponseWriter, r *http.Request) {
 	if ctc.tileID == "" {
 		ctc.tileID = shortid.MustGenerate()
 	}
-	//vm := sess.GetViewModel()
-	cts := sess.GetConsumedThingsDirectory()
-	// include the current values of the selected sources
-	// the template uses "thingID/name" to obtain the value
-	values := make(map[string]*consumedthing.InteractionOutput)
-	for _, tileSource := range ctc.tile.Sources {
-		ct, err := cts.Consume(tileSource.ThingID)
-		if err == nil {
-			val := ct.GetValue(tileSource.Name)
-			values[tileSource.ThingID+"/"+tileSource.Name] = val
-		}
-	}
+	ctDir := sess.GetConsumedThingsDirectory()
 	data := EditTileTemplateData{
 		Dashboard:                   ctc.dashboard,
 		Tile:                        ctc.tile,
 		TileTypeLabels:              session.TileTypesLabels,
 		RenderSelectTileSourcesPath: getTilePath(src.RenderTileSelectSourcesPath, ctc),
 		SubmitEditTilePath:          getTilePath(src.PostTileEditPath, ctc),
-		Values:                      values,
-		//VM:                          vm,
+		ctDir:                       ctDir,
 	}
 	buff, err := app.RenderAppOrFragment(r, EditTileTemplate, data)
 	sess.WritePage(w, buff, err)

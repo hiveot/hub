@@ -1,7 +1,7 @@
 package config
 
 // DefaultPollIntervalSec for polling the gateway values
-const DefaultPollIntervalSec = 3 * 60
+const DefaultPollIntervalSec = 1 * 60
 
 // DefaultTDIntervalSec for republishing the node TDs
 const DefaultTDIntervalSec = 24 * 3600 * 3

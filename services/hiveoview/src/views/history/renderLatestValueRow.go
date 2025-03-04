@@ -28,10 +28,12 @@ const addRowTemplate = `
 //
 // This is a stopgap for now.
 //
-// @param thingID to view
-// @param key whose value to return
-// query param 'unit' with the unit to add to the row
+//	@param affType event, property, action
+//	@param thingID to view
+//	@param key whose value to return
+//	query param 'unit' with the unit to add to the row
 func RenderLatestValueRow(w http.ResponseWriter, r *http.Request) {
+	affType := chi.URLParam(r, "affordanceType")
 	thingID := chi.URLParam(r, "thingID")
 	name := chi.URLParam(r, "name")
 	unit := r.URL.Query().Get("unit")
@@ -45,21 +47,7 @@ func RenderLatestValueRow(w http.ResponseWriter, r *http.Request) {
 	}
 	ct, err := sess.Consume(thingID)
 	if err == nil {
-		iout := ct.GetEventOutput(name)
-		if iout == nil {
-			iout = ct.GetPropertyOutput(name)
-		}
-
-		// FIXME: what if this is a property, not an event.
-		// this will update the consumed thing value with an error
-		// which is then displayed in properties elsewhere.
-		//iout := ct.ReadEvent(name)
-		// FIXME, if name is not an event then a 'not ane event' error
-		// will be included in the values. These values are included in
-		// the 'show value' even if it is a property.
-		// SOLUTION: don't mix properties and events when displaying.
-		//How to know this is a prop or event?
-
+		iout := ct.GetValue(affType, name)
 		fragment = fmt.Sprintf(addRowTemplate,
 			tputils.DecodeAsDatetime(iout.Updated), iout.Value.Text(), unit)
 	} else {

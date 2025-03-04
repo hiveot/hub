@@ -33,6 +33,8 @@ var TileTypesLabels = map[string]string{
 // necessary to display the list of sources in the tile during edit
 // The corresponding TD affordance is provided through a lookup method.
 type TileSource struct {
+	// Affordance to present "property", "event" or "action"
+	AffordanceType string `json:"affordanceType"`
 	// ThingID source
 	ThingID string `json:"thingID"`
 	// Event/property name

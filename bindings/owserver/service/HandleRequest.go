@@ -67,10 +67,15 @@ func (svc *OWServerBinding) HandleRequest(req *messaging.RequestMessage,
 		return resp
 	}
 
-	// FIXME: when building the TD, Booleans are defined as enum integers
-
 	// the thingID is the device identifier, eg the ROMId
 	edsName := req.Name
+	//if valueStr is a boolean then convert it to a number as 1-wire doesn't have booleans
+	if valueStr == "true" {
+		valueStr = "1"
+	} else if valueStr == "false" {
+		valueStr = "0"
+	}
+
 	err = svc.edsAPI.WriteNode(req.ThingID, edsName, valueStr)
 
 	if err == nil {

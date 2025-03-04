@@ -9,7 +9,7 @@
 
 		{{/* A single source is displayed as large text*/}}
     {{$s := (index $.Tile.Sources 0)}}
-    {{$iout := $.GetOutputValue $s.ThingID $s.Name}}
+    {{$iout := $.GetOutputValue $s}}
 		<div class="h-col-centered h-grow"
 		     style="height:100%;font-size:1.5em; justify-content:center"
 		>
@@ -22,7 +22,7 @@
         {{end}}
 
 				{{/* show timestamp in small text at the bottom */}}
-				<span sse-swap="{{$s.ThingID}}/{{$s.Name}}/updated"
+				<span sse-swap="{{$s.AffordanceType}}/{{$s.ThingID}}/{{$s.Name}}/updated"
 				      hx-swap="innerHTML"
 				      hx-target="this"
 							style="position:absolute;right:10px;bottom:0;
@@ -42,7 +42,7 @@
 		        style="grid-template-columns:1fr max-content">
 			<tbody style="display:contents">
 			{{range .Tile.Sources}}
-				{{$iout := $.GetOutputValue .ThingID .Name}}
+				{{$iout := $.GetOutputValue .}}
 				<tr style="display:contents;">
 
 					{{/* Show the value title with a link to the details page*/}}

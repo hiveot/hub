@@ -14,7 +14,7 @@
 
     {{/*	Iterate the sorted read-only names */}}
     {{range $name := .AttrNames}}
-	    {{$v := $.CT.GetValue $name}}
+	    {{$v := $.CT.GetValue "property" $name}}
 			<li>
 				<div class="h-show-sm">{{/*icon*/}}</div>
 
@@ -25,7 +25,7 @@
 
 				{{/* Value */}}
 				<div>
-					<span sse-swap="{{$.ThingID}}/{{$name}}"
+					<span sse-swap="property/{{$.ThingID}}/{{$name}}"
 					      hx-swap="innerHTML"
 					      hx-target="this"
 					>
@@ -37,7 +37,7 @@
 				<div class="h-show-lg">{{$v.Schema.Description}}</div>
 
 				<div class="h-show-md" style="white-space:nowrap"
-				     sse-swap="{{$.ThingID}}/{{$name}}/updated"
+				     sse-swap="property/{{$.ThingID}}/{{$name}}/updated"
 				     hx-swap="innerHTML"
 				     hx-target="this"
 				     title="Updated: {{datetime $v.Updated}}">

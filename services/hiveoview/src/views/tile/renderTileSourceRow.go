@@ -38,9 +38,11 @@ import (
 //	con: how to send html to target with htmx without a server roundtrip?
 //
 // Intended to update the list of sources in edit the tile dialog
+// @param affType affordance type, "action", "event", "property"
 // @param thingID of the thing the event belongs to
 // @param key of the event affordance to add as source
 func RenderTileSourceRow(w http.ResponseWriter, r *http.Request) {
+	affType := chi.URLParam(r, "affordanceType")
 	thingID := chi.URLParam(r, "thingID")
 	name := chi.URLParam(r, "name")
 
@@ -51,17 +53,17 @@ func RenderTileSourceRow(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// obtain the TD and the event/action affordance to display
-	var sourceRef = thingID + "/" + name
+	var sourceID = fmt.Sprintf("%s/%s/%s", affType, thingID, name)
 
 	cts := sess.GetConsumedThingsDirectory()
 	// get the latest event values of this source
 	var iout *consumedthing.InteractionOutput
 	ct, err := cts.Consume(thingID)
 	if ct != nil {
-		iout = ct.GetValue(name)
+		iout = ct.GetValue(affType, name)
 	}
 	if err == nil && iout == nil {
-		err = fmt.Errorf("RenderTileSourceRow: No such affordance!?: %s", name)
+		err = fmt.Errorf("RenderTileSourceRow: No such affordance!?: %s", sourceID)
 	}
 	if err != nil {
 		sess.WriteError(w, err, http.StatusInternalServerError)
@@ -70,7 +72,7 @@ func RenderTileSourceRow(w http.ResponseWriter, r *http.Request) {
 
 	// if no value was ever received then use n/a
 	latestValue := iout.Value.Text() + " " + iout.UnitSymbol()
-	latestUpdated := tputils.DecodeAsDatetime(iout.Updated)
+	latestUpdated := tputils.DecodeAsDatetime(iout.Updated, "WT")
 	title := ct.Title + " " + iout.Title
 
 	// the input hidden hold the real source value
@@ -87,7 +89,7 @@ func RenderTileSourceRow(w http.ResponseWriter, r *http.Request) {
 		"  <div>%s</div>"+
 		"  <div>%s</div>"+
 		"</li>",
-		sourceRef, title, sourceRef, latestValue, latestUpdated)
+		sourceID, title, sourceID, latestValue, latestUpdated)
 
 	_, _ = w.Write([]byte(htmlToAdd))
 	return

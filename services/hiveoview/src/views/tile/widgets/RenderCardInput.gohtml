@@ -3,7 +3,7 @@
 
  -->
 
-{{- /*gotype:github.com/hiveot/hub/wot/consumedthing.InteractionOutput*/ -}}
+{{- /*gotype:github.com/hiveot/hub/lib/consumedthing.InteractionOutput*/ -}}
 
 {{if eq .Schema.Type "boolean"}}
     {{/*	=== Boolean Switch Input ===*/}}
@@ -11,7 +11,8 @@
 
 {{/*	    FIXME: somehow grid-stack catches this click and update the dashboard layout. Event when event propagation is stopped.*/}}
 		<input type="checkbox" role="switch" name="{{.Name}}"
-		      sse-swap="{{.ThingID}}/{{.Name}}"
+		       title="toggle"
+		      sse-swap="{{.AffordanceType}}/{{.ThingID}}/{{.Name}}"
 		      hx-on::sse-before-message="this.checked=event.detail.data == 'true'?true:false"
 		      hx-post="/action/{{.ThingID}}/{{.Name}}"
 		      hx-vals='{"switch":"doit"}'

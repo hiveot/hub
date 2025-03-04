@@ -15,12 +15,12 @@ import (
 
 // HistoryTemplateData holds the data for rendering a history table or graph
 type HistoryTemplateData struct {
-	//TD         *td.TD
-	ThingID    string
-	Title      string // allow override to data description
-	Name       string
-	DataSchema td.DataSchema // dataschema of event/property key
-	UnitSymbol string        // unit of this data
+	AffordanceType string
+	ThingID        string
+	Title          string // allow override to data description
+	Name           string
+	DataSchema     td.DataSchema // dataschema of event/property key
+	UnitSymbol     string        // unit of this data
 
 	// history information
 	Timestamp      time.Time
@@ -93,28 +93,28 @@ func (ht HistoryTemplateData) CompareToday() int {
 // NewHistoryTemplateData reads the value history for the given time range
 //
 //	ct is the consumed thing to read the data from
+//	affType affordance type
 //	name of the event or property in the TD
 //	timestamp of the end-time of the history range
 //	duration to read (negative for history)
 func NewHistoryTemplateData(ct *consumedthing.ConsumedThing,
-	name string, timestamp time.Time, duration time.Duration) (
+	affType, name string, timestamp time.Time, duration time.Duration) (
 	data *HistoryTemplateData, err error) {
 
 	hs := HistoryTemplateData{
-		//TD:           ct.TD(),
-		ThingID:      ct.ThingID,
-		Name:         name,
-		Title:        ct.Title,
-		Timestamp:    timestamp,
-		TimestampStr: timestamp.Format(wot.RFC3339Milli),
-		DurationSec:  int(duration.Seconds()),
-		//DataSchema:     nil,  // see below
+		AffordanceType: affType,
+		ThingID:        ct.ThingID,
+		Name:           name,
+		Title:          ct.Title,
+		Timestamp:      timestamp,
+		TimestampStr:   timestamp.Format(wot.RFC3339Milli),
+		DurationSec:    int(duration.Seconds()),
 		Stepped:        false,
 		Values:         nil,
 		ItemsRemaining: false,
 	}
 	// Get the current schema for the value to show
-	iout := ct.GetValue(name)
+	iout := ct.GetValue(affType, name)
 
 	hs.DataSchema = iout.Schema
 	hs.UnitSymbol = iout.UnitSymbol()
@@ -130,7 +130,7 @@ func NewHistoryTemplateData(ct *consumedthing.ConsumedThing,
 		ct.ThingID, name, timestamp, duration, 500)
 
 	// Add the URL paths for navigating around the history
-	pathParams := map[string]string{"thingID": ct.ThingID, "name": name}
+	pathParams := map[string]string{"affordanceType": affType, "thingID": ct.ThingID, "name": name}
 	prevDayTime := hs.PrevDay().Format(time.RFC3339)
 	nextDayTime := hs.NextDay().Format(time.RFC3339)
 	todayTime := time.Now().Format(time.RFC3339)

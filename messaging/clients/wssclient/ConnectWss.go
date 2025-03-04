@@ -15,7 +15,7 @@ import (
 	"sync/atomic"
 )
 
-// ConnectWSS establishes a websocket session with a server
+// ConnectWSS establishes a websocket session with the server
 func ConnectWSS(
 	cinfo messaging.ConnectionInfo,
 	bearerToken string,
@@ -31,7 +31,6 @@ func ConnectWSS(
 
 	// use context to disconnect the client
 	wssCtx, wssCancelFn := context.WithCancel(context.Background())
-	_ = wssCtx
 
 	// the CA certificate is set in NewTLSClient
 	caCertPool := x509.NewCertPool()
@@ -90,10 +89,11 @@ func ConnectWSS(
 
 	wssConn, r, err := dialer.Dial(cinfo.ConnectURL, wssHeader)
 	if err != nil {
-		// provide a bit more accurate error in case of unauthorized
+		// FIXME: when unauthorized, don't retry. A new token is needed. (session ended).
 		if r != nil && r.StatusCode == http.StatusUnauthorized {
-			err = fmt.Errorf("Connection as '%s' to '%s' is unauthorized",
-				cinfo.ClientID, cinfo.ConnectURL)
+			err = fmt.Errorf("Connection as '%s' to '%s' failed: %s",
+				cinfo.ClientID, cinfo.ConnectURL, err.Error())
+			slog.Warn(err.Error())
 		}
 		wssCancelFn()
 		return nil, nil, err

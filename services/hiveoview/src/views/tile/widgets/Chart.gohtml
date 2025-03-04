@@ -11,7 +11,7 @@
     {{range .Tile.Sources}}
 
     {{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/history.HistoryTemplateData*/ -}}
-    {{$hist := $.GetHistory .ThingID .Name}}
+    {{$hist := $.GetHistory .AffordanceType .ThingID .Name}}
 
     {{if $hist}}
 	    {{/* inject the json encoded array with data to show as {x:time,y:value} here */}}

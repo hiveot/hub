@@ -46,14 +46,14 @@
 														   hx-swap="beforeend scroll:bottom"
 														   hx-trigger="click"
 														   hx-target="#edit-tile-sources"
-														   hx-get="/tile/{{$thing.ID}}/{{$k}}/sourceRow"
+														   hx-get="/tile/event/{{$thing.ID}}/{{$k}}/sourceRow"
 														   onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
 														>
                                 {{.Title}}
 														</a>
 													</div>
-													<div>{{$data.GetValue $thing.ID $k}}</div>
-													<div>{{$data.GetUpdated $thing.ID $k}}</div>
+													<div>{{$data.GetEventValue $thing.ID $k}}</div>
+													<div>{{$data.GetEventUpdated  $thing.ID $k}}</div>
 												</li>
                     {{end}}
 								</ul>
@@ -75,14 +75,14 @@
 														   hx-swap="beforeend scroll:bottom"
 														   hx-trigger="click"
 														   hx-target="#edit-tile-sources"
-														   hx-get="/tile/{{$thing.ID}}/{{$k}}/sourceRow"
+														   hx-get="/tile/action/{{$thing.ID}}/{{$k}}/sourceRow"
 														   onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
 														>
                                 {{.Title}}
 														</a>
 													</div>
-													<div>{{$data.GetValue $thing.ID $k}}</div>
-													<div>{{$data.GetUpdated $thing.ID $k}}</div>
+													<div>{{$data.GetActionValue $thing.ID $k}}</div>
+													<div>{{$data.GetActionUpdated  $thing.ID $k}}</div>
 												</li>
                     {{end}}
 								</ul>
@@ -104,14 +104,14 @@
 														   hx-swap="beforeend scroll:bottom"
 														   hx-trigger="click"
 														   hx-target="#edit-tile-sources"
-														   hx-get="/tile/{{$thing.ID}}/{{$k}}/sourceRow"
+														   hx-get="/tile/property/{{$thing.ID}}/{{$k}}/sourceRow"
 														   onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
 														>
                                 {{.Title}}
 														</a>
 													</div>
-													<div>{{$data.GetValue $thing.ID $k}}</div>
-													<div>{{$data.GetUpdated $thing.ID $k}}</div>
+													<div>{{$data.GetPropertyValue $thing.ID $k}}</div>
+													<div>{{$data.GetPropertyUpdated $thing.ID $k}}</div>
 												</li>
                     {{end}}
 								</ul>

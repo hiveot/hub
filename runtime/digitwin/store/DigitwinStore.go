@@ -39,7 +39,7 @@ type DigitwinStore struct {
 // Close the digitwin store
 func (svc *DigitwinStore) Close() {
 	slog.Info("Closing DigitwinStore")
-	_ = svc.SaveChanges()
+	_ = svc.SaveChanges(false)
 	if svc.dtwBucket != nil {
 		_ = svc.dtwBucket.Close()
 		svc.dtwBucket = nil
@@ -56,7 +56,7 @@ func (store *DigitwinStore) GetDigitwinInfo(dThingID string) *DigitalTwinInstanc
 // LoadCacheFromStore saves the current changes and reloads the cache from
 // store into memory.
 func (store *DigitwinStore) LoadCacheFromStore() error {
-	_ = store.SaveChanges()
+	_ = store.SaveChanges(false)
 
 	store.cacheMux.Lock()
 	defer store.cacheMux.Unlock()
@@ -289,34 +289,47 @@ func (svc *DigitwinStore) RemoveDTW(dThingID string, senderID string) error {
 
 // SaveChanges persists digital twins that have been modified since the
 // last call to this function.
-func (svc *DigitwinStore) SaveChanges() error {
+//
+//	background save in the background
+func (svc *DigitwinStore) SaveChanges(background bool) error {
 	svc.cacheMux.Lock()
 	defer svc.cacheMux.Unlock()
 
+	// Serialize the changed things for persisting to the bucket store in the background
+	changedDtwJson := make(map[string][]byte)
 	for dThingID := range svc.changedThings {
+		var dtwSer []byte
 		dtw, found := svc.dtwCache[dThingID]
-		if !found {
-			slog.Error("SaveChanges. Digitwin to save not found. Skipped.",
-				"dThingID", dThingID)
-			continue
+		// if the thing is no longer there it has been deleted.
+		if found {
+			dtwSer, _ = jsoniter.Marshal(dtw)
 		}
-		// write the new digital twin
-		//dtwSer, err := json.Marshal(dtw)
-		dtwSer, err := jsoniter.Marshal(dtw)
-		//dtwSer, err := msgpack.Marshal(dtw)
+		changedDtwJson[dThingID] = dtwSer
+	}
 
-		if err != nil {
-			slog.Error("SaveChanges. Marshal failed. Skipped",
-				"dThingID", dThingID, "err", err)
-			continue
-		}
-		err = svc.dtwBucket.Set(dThingID, dtwSer)
-		if err != nil {
-			slog.Error("SaveChanges. Writing to bucket failed. Skipped",
-				"dThingID", dThingID, "err", err)
-			continue
+	// Don't block the digital twins. Update the store in the background.
+	saveit := func() {
+		for dThingID, dThingJSON := range changedDtwJson {
+			var err error
+			if dThingJSON != nil {
+				err = svc.dtwBucket.Set(dThingID, dThingJSON)
+			} else {
+				err = svc.dtwBucket.Delete(dThingID)
+			}
+			if err != nil {
+				slog.Error("SaveChanges. Writing to bucket failed. Skipped",
+					"dThingID", dThingID, "err", err)
+				continue
+			}
 		}
 	}
+	if background {
+		go saveit()
+	} else {
+		saveit()
+	}
+
+	// continue with a clean list of changed things
 	svc.changedThings = make(map[string]any)
 	return nil
 }

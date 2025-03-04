@@ -9,6 +9,11 @@ import (
 )
 
 // SubmitEditTile updated or creates a tile and adds it to the dashboard
+// This expects an input form with the following fields:
+//   - title
+//   - tileType
+//   - sources (an array of affType/thingID/name strings)
+//   - sourceTitles an array of corresponding titles of the sources
 func SubmitEditTile(w http.ResponseWriter, r *http.Request) {
 	sess, cdc, err := GetTileContext(r, false)
 	if err != nil {
@@ -41,7 +46,7 @@ func SubmitEditTile(w http.ResponseWriter, r *http.Request) {
 
 	// Convert the list of sources from the form to a TileSource object.
 	if sources != nil {
-		// each source consists of thingID/key
+		// each source consists of affType/thingID/name
 		i := 0
 		for _, s := range sources {
 			sourceTitle := "?"
@@ -49,11 +54,12 @@ func SubmitEditTile(w http.ResponseWriter, r *http.Request) {
 				sourceTitle = sourceTitles[i]
 			}
 			parts := strings.Split(s, "/")
-			if len(parts) >= 2 {
+			if len(parts) >= 3 {
 				tileSource := session.TileSource{
-					ThingID: parts[0],
-					Name:    parts[1],
-					Title:   sourceTitle,
+					AffordanceType: parts[0],
+					ThingID:        parts[1],
+					Name:           parts[2],
+					Title:          sourceTitle,
 				}
 				tile.Sources = append(tile.Sources, tileSource)
 			}

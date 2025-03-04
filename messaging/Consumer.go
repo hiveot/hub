@@ -324,7 +324,7 @@ func (co *Consumer) SendRequest(req *RequestMessage, waitForCompletion bool) (
 	resp *ResponseMessage, err error) {
 
 	t0 := time.Now()
-	slog.Info("SendRequest ->",
+	slog.Info("SendRequest: ->",
 		slog.String("op", req.Operation),
 		slog.String("dThingID", req.ThingID),
 		slog.String("name", req.Name),
@@ -371,7 +371,7 @@ func (co *Consumer) SendRequest(req *RequestMessage, waitForCompletion bool) (
 			slog.String("correlationID", req.CorrelationID),
 			slog.String("error", err.Error()))
 	} else {
-		slog.Info("SendRequest: <- Result",
+		slog.Info("SendRequest: <-",
 			slog.String("op", req.Operation),
 			slog.Float64("duration msec", float64(duration.Microseconds())/1000),
 			slog.String("correlationID", req.CorrelationID),

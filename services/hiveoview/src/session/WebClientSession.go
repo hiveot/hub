@@ -298,26 +298,29 @@ func (sess *WebClientSession) onResponse(resp *messaging.ResponseMessage) error 
 	_ = sess.ctDir.OnResponse(resp)
 
 	if resp.Operation == wot.OpObserveProperty {
-		// Publish a sse event for each property
-		// The UI that displays this event can use this as a trigger to load the
-		// property value:
-		//    hx-trigger="sse:{{.Thing.ThingID}}/{{k}}"
-		// notify the browser both of the property value and the timestamp
-		thingAddr := fmt.Sprintf("%s/%s", resp.ThingID, resp.Name)
+		// Notify the UI of the property value change:
+		//    hx-trigger="sse:{{.AffordanceType}}/{{.ThingID}}/{{.Name}}"
+		// TODO: can htmx work with the ResponseMessage or InteractionOutput object?
+		propID := fmt.Sprintf("%s/%s/%s",
+			messaging.AffordanceTypeProperty, resp.ThingID, resp.Name)
 		propVal := tputils.DecodeAsString(resp.Output, 0)
-		sess.SendSSE(thingAddr, propVal)
-		thingAddr = fmt.Sprintf("%s/%s/updated", resp.ThingID, resp.Name)
-		sess.SendSSE(thingAddr, tputils.DecodeAsDatetime(resp.Updated))
+		sess.SendSSE(propID, propVal)
+		// also notify of a change to updated timestamp
+		propID = fmt.Sprintf("%s/%s/%s/updated",
+			messaging.AffordanceTypeProperty, resp.ThingID, resp.Name)
+		sess.SendSSE(propID, tputils.DecodeAsDatetime(resp.Updated))
 	} else if resp.Operation == wot.OpSubscribeEvent {
 		// Publish sse event indicating the event affordance or value has changed.
 		// The UI that displays this event can use this as a trigger to reload the
 		// fragment that displays this event:
 		//    hx-trigger="sse:{{.Thing.ThingID}}/{{$k}}"
 		// where $k is the event ID
-		eventName := fmt.Sprintf("%s/%s", resp.ThingID, resp.Name)
-		sess.SendSSE(eventName, resp.ToString(0))
-		eventName = fmt.Sprintf("%s/%s/updated", resp.ThingID, resp.Name)
-		sess.SendSSE(eventName, tputils.DecodeAsDatetime(resp.Updated))
+		eventID := fmt.Sprintf("%s/%s/%s",
+			messaging.AffordanceTypeEvent, resp.ThingID, resp.Name)
+		sess.SendSSE(eventID, resp.ToString(0))
+		eventID = fmt.Sprintf("%s/%s/%s/updated",
+			messaging.AffordanceTypeEvent, resp.ThingID, resp.Name)
+		sess.SendSSE(eventID, tputils.DecodeAsDatetime(resp.Updated))
 	}
 	return nil
 }

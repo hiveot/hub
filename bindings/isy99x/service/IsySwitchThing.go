@@ -68,17 +68,16 @@ func (it *IsySwitchThing) HandleActionRequest(
 	// in the background poll for status update until completed
 	go func() {
 		hasUpdated := false
+		// TODO: clean this up. Use websocket instead of repeated polling.
 		for i := 0; i < 5; i++ {
-			// TODO: handle event from gateway using websockets. For now just assume this worked.
-			//err = it.HandleValueUpdate(req.Name, "", newValue)
 			nodeInfo, err := it.isyAPI.ReadNodeInfo(it.nodeID)
 			if err == nil {
 				// TODO: repeat a few times in the background and send a response
 				// last response is completed
 				time.Sleep(time.Millisecond) // wait for processing request
-				slog.Info("Switch action",
+				slog.Info("Switch action (waiting for change)",
 					slog.Bool("input", input),
-					slog.String("output", nodeInfo.Properties.Property.Value),
+					slog.String("current output", nodeInfo.Properties.Property.Value),
 				)
 				// on/off returns 0 when off
 				output = (nodeInfo.Properties.Property.Value != "0")
@@ -100,6 +99,8 @@ func (it *IsySwitchThing) HandleActionRequest(
 		} else {
 			// completed
 			resp = req.CreateResponse(output, nil)
+			// FIXME: send notification in the background for all subscribers.
+			//go it.PublishAllThingValues()
 		}
 		_ = ag.GetConnection().SendResponse(resp)
 	}()

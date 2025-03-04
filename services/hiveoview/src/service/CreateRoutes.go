@@ -114,7 +114,8 @@ func (svc *HiveoviewService) CreateRoutes(router *chi.Mux, rootPath string) http
 		r.Get(src.RenderTileConfirmDeletePath, tile.RenderConfirmDeleteTile)
 		r.Get(src.RenderTileEditPath, tile.RenderEditTile)
 		r.Get(src.RenderTileSelectSourcesPath, tile.RenderSelectSources)
-		r.Get("/tile/{thingID}/{name}/sourceRow", tile.RenderTileSourceRow)
+		// FIXME: work with tilesource objects? query with sourceID?
+		r.Get("/tile/{affordanceType}/{thingID}/{name}/sourceRow", tile.RenderTileSourceRow)
 		r.Post(src.PostTileEditPath, tile.SubmitEditTile)
 		r.Delete(src.PostTileDeletePath, tile.SubmitDeleteTile)
 

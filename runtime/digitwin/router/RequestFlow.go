@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/runtime/api"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	authz "github.com/hiveot/hub/runtime/authz/api"
@@ -155,6 +156,9 @@ func (svc *DigitwinRouter) HandleInvokeAction(
 }
 
 // ForwardActionToRemoteAgent forwards the action to external agents
+// This tracks the action in the digitwin store, locates the agent connection,
+// forwards the rquest to the agent and set the status to pending.
+// If the agent is not connected status is failed.
 func (svc *DigitwinRouter) ForwardActionToRemoteAgent(
 	req *messaging.RequestMessage, c2 messaging.IConnection) (resp *messaging.ResponseMessage) {
 	agentID, thingID := td.SplitDigiTwinThingID(req.ThingID)
@@ -324,9 +328,14 @@ func (svc *DigitwinRouter) HandleUpdateTD(
 func (svc *DigitwinRouter) HandleWriteProperty(
 	req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
 
-	// TODO: should the digital twin handle property writes?
-	// which digital twin specific properties?
-	//   * device title
-
+	// TODO: move this to a more appropriate spot
+	// if the TD title property is written then modify its title as well
+	if req.Name == wot.WoTTitle {
+		tdi := svc.dtwStore.GetDigitwinInfo(req.ThingID)
+		tdi.DigitwinTD.Title = tputils.DecodeAsString(req.Input, 0)
+	} else if req.Name == wot.WoTDescription {
+		tdi := svc.dtwStore.GetDigitwinInfo(req.ThingID)
+		tdi.DigitwinTD.Description = tputils.DecodeAsString(req.Input, 0)
+	}
 	return svc.ForwardActionToRemoteAgent(req, c)
 }

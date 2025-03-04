@@ -53,7 +53,7 @@
 	                <li>
 										{{/* The hidden input is used to submit list of sources with the form*/}}
 		                <input type="hidden" name="sources"
-		                       value="{{$v.ThingID}}/{{$v.Name}}"/>
+		                       value="{{$v.AffordanceType}}/{{$v.ThingID}}/{{$v.Name}}"/>
 		                <button type="button" class="h-row outline h-icon-button"
 		                        onclick="deleteRow(this.parentNode)"
 		                >
@@ -62,8 +62,8 @@
 				            <input name="sourceTitles" value="{{$v.Title}}"
 				                   style="margin:0"
 				                   title="Edit the label here. ThingID: {{$v.ThingID}}/{{$v.Name}}"/>
-		                <div class="h-row">{{$.GetValue $v.ThingID $v.Name}}</div>
-		                <div class="h-row">{{$.GetUpdated  $v.ThingID $v.Name}}</div>
+		                <div class="h-row">{{$.GetValue $v}}</div>
+		                <div class="h-row">{{$.GetUpdated $v}}</div>
 	                </li>
 							{{end}}
 						</ul>

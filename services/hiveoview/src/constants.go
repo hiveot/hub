@@ -58,9 +58,9 @@ const (
 	DeleteThingPath              = "/directory/{thingID}"
 
 	// history paths (duplicated in eventList.gohtml)
-	RenderHistoryPagePath           = "/value/{thingID}/{name}/history"
-	RenderHistoryTimePath           = "/value/{thingID}/{name}/history?time="
-	RenderHistoryLatestValueRowPath = "/value/{thingID}/{name}/latest"
+	RenderHistoryPagePath           = "/value/{affordanceType}/{thingID}/{name}/history"
+	RenderHistoryTimePath           = "/value/{affordanceType}/{thingID}/{name}/history?time="
+	RenderHistoryLatestValueRowPath = "/value/{affordanceType}/{thingID}/{name}/latest"
 
 	// other paths
 	RenderStatusPath           = "/status"

@@ -2,6 +2,7 @@ package tile
 
 import (
 	"github.com/hiveot/hub/lib/consumedthing"
+	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
@@ -31,17 +32,17 @@ type RenderTileTemplateData struct {
 	cts *consumedthing.ConsumedThingsDirectory
 }
 
-// GetHistory returns the 24 hour history for the given key.
+// GetHistory returns the 24 hour history for the given thing affordance.
 // This truncates the result if there are too many values in the range.
 // The max amount of values is the limit set in historyapi.DefaultLimit (1000)
-func (dt RenderTileTemplateData) GetHistory(thingID string, name string) *history.HistoryTemplateData {
+func (dt RenderTileTemplateData) GetHistory(affType string, thingID string, name string) *history.HistoryTemplateData {
 	timestamp := time.Now()
 	ct, err := dt.cts.Consume(thingID)
 	if err != nil {
 		return nil
 	}
 	duration, _ := time.ParseDuration("-24h")
-	hsd, err := history.NewHistoryTemplateData(ct, name, timestamp, duration)
+	hsd, err := history.NewHistoryTemplateData(ct, affType, name, timestamp, duration)
 	_ = err
 	return hsd
 }
@@ -49,35 +50,36 @@ func (dt RenderTileTemplateData) GetHistory(thingID string, name string) *histor
 // GetOutputValue return the latest event, property or action output value of a
 // tile source, or n/a if not found
 //
-// Tiles also support inputs (actions or property)
-func (d RenderTileTemplateData) GetOutputValue(thingID string, name string) (iout *consumedthing.InteractionOutput) {
-	ct, _ := d.cts.Consume(thingID)
+//	tileSource whose value to display
+//
+//	This returns the interaction output to display
+func (d RenderTileTemplateData) GetOutputValue(tileSource session.TileSource) (iout *consumedthing.InteractionOutput) {
+	ct, _ := d.cts.Consume(tileSource.ThingID)
 	if ct == nil {
 		// Thing not found. return a dummy interaction output with a non-schema
 		dummy := consumedthing.InteractionOutput{}
-		dummy.ThingID = thingID
-		dummy.Name = name
+		dummy.ThingID = tileSource.ThingID
+		dummy.Name = tileSource.Name
 		dummy.Value = consumedthing.NewDataSchemaValue("n/a")
 		return &dummy
 	}
 
-	// assume this is an event
-	iout = ct.GetEventOutput(name)
-	if iout == nil {
-		// if not an event get its property. properties might not update immediately
-		// so events are preferred.
-		iout = ct.GetPropertyOutput(name)
-	}
-	// not an event or property, last try is an action output
-	if iout == nil {
-		aff := ct.GetActionAff(name)
+	if tileSource.AffordanceType == messaging.AffordanceTypeAction {
+		aff := ct.GetActionAff(tileSource.Name)
 		if aff != nil {
-			as := ct.QueryAction(name)
-			iout = ct.GetActionOutput(as)
+			as := ct.QueryAction(tileSource.Name)
+			iout = ct.GetActionOutputFromStatus(as)
 		}
+	} else if tileSource.AffordanceType == messaging.AffordanceTypeEvent {
+		iout = ct.GetEventOutput(tileSource.Name)
+	} else {
+		// must be a property
+		iout = ct.GetPropertyOutput(tileSource.Name)
 	}
+
 	if iout == nil {
-		iout = consumedthing.NewInteractionOutput(ct, "", name,
+		iout = consumedthing.NewInteractionOutput(ct,
+			tileSource.AffordanceType, tileSource.Name,
 			"no output value", "")
 	}
 	return iout

@@ -117,7 +117,7 @@ type ThingValue struct {
 	Updated string `json:"updated,omitempty"`
 
 	// Type of value: AffordanceTypeProperty|Event|Action
-	AffordanceType string `json:"affType"`
+	AffordanceType string `json:"affordanceType"`
 }
 
 // ToString is a helper to easily read the response output as a string

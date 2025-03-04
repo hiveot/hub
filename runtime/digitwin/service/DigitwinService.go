@@ -15,9 +15,11 @@ import (
 // The DigitwinService stores digital twin things, property values and provide
 // the latest event and action values.
 type DigitwinService struct {
-	// underlying store for the digital twin objects
+	// persistent store for the digital twin objects
 	bucketStore buckets.IBucketStore
-	DtwStore    *store.DigitwinStore
+
+	// in-memory store with digital twin instances
+	DtwStore *store.DigitwinStore
 
 	// Directory service for reading and updating TDs
 	DirSvc *DirectoryService
@@ -65,6 +67,8 @@ func StartDigitwinService(storesDir string, notifHandler messaging.ResponseHandl
 	sPath := path.Join(storesDir, "digitwin")
 	err = os.MkdirAll(sPath, 0700)
 	storePath := path.Join(sPath, "digitwinStore")
+
+	// TODO: periodically write changes to the store. Not just at start/stop.
 
 	bucketStore := kvbtree.NewKVStore(storePath)
 	err = bucketStore.Open()

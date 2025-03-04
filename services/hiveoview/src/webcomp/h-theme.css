@@ -49,7 +49,7 @@
     --pico-card-border-color: var(--pico-table-border-color);
     --pico-card-border-radius: 8px;
     /*--pico-switch-color: red;*/
-    --pico-switch-checked-background-color: rgb(255, 0, 0);
+    --pico-switch-checked-background-color: rgba(252, 96, 96, 0.91);
 }
 
 /* Fix: element/icons within <a> are not vertically aligned */

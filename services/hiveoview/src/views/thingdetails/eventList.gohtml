@@ -14,7 +14,7 @@
 	</li>
 
 	{{range $name := .EventNames}}
-    {{$iout := $.CT.GetValue $name}}
+    {{$iout := $.CT.GetValue "event" $name}}
 
 		{{- /*auto reload row on event changes*/ -}}
 		<li>
@@ -36,7 +36,7 @@
 			<div class="h-show-lg">{{$iout.Schema.Description}}</div>
 
       {{/*	Updated*/}}
-			<div sse-swap="{{$.ThingID}}/{{$name}}/updated"
+			<div sse-swap="{{$iout.AffordanceType}}/{{$.ThingID}}/{{$name}}/updated"
 			     hx-target="this"
 			     hx-swap="innerHTML"
 					 class="h-show-md" style="white-space:nowrap"
@@ -45,7 +45,7 @@
 
 	    {{/*history chart */}}
 			<div class="h-show-lg" style="height:200px">
-				{{template "historyChart.gohtml" $.GetHistory $name }}
+				{{template "historyChart.gohtml" $.GetEventHistory $name }}
 			</div>
 		</li>
 	{{end}}
