@@ -35,7 +35,7 @@
     --pico-table-border-color: #bfcae1;
 
     --pico-card-border: 1px solid var(--pico-table-border-color);
-    --pico-card-border-color: green;
+    --pico-card-border-color: blue;
     --pico-card-border-radius: 8px;
     --pico-switch-checked-background-color: rgba(252, 96, 96, 0.91);
 }
@@ -49,7 +49,7 @@
     --pico-card-border-color: var(--pico-table-border-color);
     --pico-card-border-radius: 8px;
     /*--pico-switch-color: red;*/
-    --pico-switch-checked-background-color: rgba(252, 96, 96, 0.91);
+    --pico-switch-checked-background-color: rgba(147, 84, 84, 0.91);
 }
 
 /* Fix: element/icons within <a> are not vertically aligned */
@@ -99,15 +99,18 @@ button.link {
 }
 
 /* Change the input toggle switch with color and larger knob */
-     /* Change the switch color when checked*/
  input[type=checkbox][role=switch] {
      height: 0.8em;
      border-width:thin;
      margin-left:2px;  /*prevent knob overrun*/
  }
-/* Change the switch background color when checked*/
-input[type=checkbox][role=switch]:checked {
-    background-color: var(--pico-switch-checked-background-color););
+/* Set the switch background color when enabled*/
+input[type=checkbox][role=switch]:not([disabled]) {
+    background-color: var(--pico-switch-checked-background-color);
+}
+/* light up the color when checked*/
+input[type=checkbox][role=switch]:not([disabled]):checked {
+    background-color: red;
 }
 /*increase size of knob*/
 input[type=checkbox][role=switch]:before {
@@ -115,7 +118,7 @@ input[type=checkbox][role=switch]:before {
     top: -5px;
     left: -2px; 		    /*overlap the border with the slider*/
     position:relative;
-    background-color: var(--pico-switch-background-color););
+    background-color: var(--pico-switch-background-color);
     border:var(--pico-form-element-valid-border-color) solid 0.5px;
 }
 /*change the knob color when checked; a little darker red than the slider */

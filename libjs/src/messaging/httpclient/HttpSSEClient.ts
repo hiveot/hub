@@ -108,7 +108,7 @@ export class HttpSSEClient implements IAgentConnection {
         this._cid = nanoid() // connection id
 
         let url = new URL(fullURL)
-        this._baseURL = url.origin
+        this._baseURL = "https://"+url.host
         this._ssePath = url.pathname
     }
 
@@ -146,7 +146,7 @@ export class HttpSSEClient implements IAgentConnection {
             // this.disconnect()
         });
         this._http2Session.on('connect', (ev) => {
-            console.warn("connected to server, cid=",this._cid);
+            console.warn("connected to server, cid=",this._cid,"url",this._baseURL);
         });
         this._http2Session.on('error', (error) => {
             console.error("connection error: "+error);
@@ -439,7 +439,7 @@ export class HttpSSEClient implements IAgentConnection {
 
         // Invoke action to update the directory service
         // TODO: convert to use the discovered directory
-        this.invokeAction(ThingDirectoryDThingID, ThingDirectoryUpdateTDMethod,td)
+        this.invokeAction(ThingDirectoryDThingID, ThingDirectoryUpdateTDMethod,tdJSON)
             .then((resp: ResponseMessage) => {
                 // complete the request if the result is returned, otherwise wait for
                 // the callback from _correlData

@@ -2,9 +2,14 @@
 import { Bonjour } from 'bonjour-service';
 import * as tslog from 'tslog';
 
-const HIVEOT_HUB_SERVICENAME = "hiveot";
+// const HIVEOT_HUB_SERVICENAME = "hiveot";
 const WOT_SERVICENAME = "wot";
 const DefaultHiveotSsePath = "/hiveot/sse";
+
+// hiveot endpoint identifiers
+const AuthEndpoint = "login"
+const WSSEndpoint = "wss"
+const SSEEndpoint = "sse"
 
 
 const log = new  tslog.Logger({prettyLogTimeZone:"local"})
@@ -13,18 +18,16 @@ const log = new  tslog.Logger({prettyLogTimeZone:"local"})
 // This is based on the WoT discovery specification: https://w3c.github.io/wot-discovery/
 //
 // ... with a few additions:
-//  connectURL is the preferred connection endpoint for clients
-//  authURL is the auth server endpoint (http base)
-//  instance is the name of the service, eg hiveot for the hiveot directory service
-//  sseURL is the expected sse endpoint. Since sse is the only supported protocol in JS
-//  this is a fallback. Eventually the directory TD contains supported protocols.
-//
-// If found, it returns with the hub connection address:
-//    https://<addr>:<port>/<ssepath>
-//    wss://<addr>:<port>/<wsspath>
+//	instanceName is the name of the server instance. "hiveot" for the hub.
+//	serviceName is the discover name. Default is 'wot'. This can be changed for testing.
+//  serviceType is "Directory" or "Thing"
+//	tddURL is the URL the directory TD is served at.
+//	authURL http endpoint for login to obtain a token
+//  wssURL URL of the websocket connection endpoint
+//  sseURL URL of the sse connection endpoint
 export async function locateHub(): Promise<{
-    addr?:string, connectURL?: string, authURL?:string, hiveotSseURL?:string,
-    instance?:string, td?:string,type?:string,scheme?:string }> {
+    instanceName?:string, serviceType?:string,
+    tddURL?:string, authURL?:string, wssURL?: string, sseURL?: string,}> {
 
     return new Promise((resolve, reject) => {
 
@@ -35,29 +38,29 @@ export async function locateHub(): Promise<{
                 resolve({});
                 return
             }
-            // from nodejs, only websockets can be used for the capnp connection
+            // get the connection URLs from the TXT records
             let addr = service.addresses[0];
             let kv = service.txt;
-            let authURL = kv["auth"];       // URL of the auth service
-            let connectURL = kv["connect"]; // URL to connect the client to
+            let authURL = kv[AuthEndpoint];       // URL of the auth service
+            let wssURL = kv[WSSEndpoint]; // URL to connect the client to
+            let sseURL = kv[SSEEndpoint]; // URL to connect the client to
             let scheme = kv["scheme"];      // client protocol
-            let td = kv["td"];              // path to wget directory service TD
-            let type = kv["type"];          // service type, eg Directory
+            let tddURL = kv["td"];          // path to wget directory service TD
+            let serviceType = kv["type"];          // service type, eg Directory
 
             // construct the sse url
-            let sseURL = "https://"+addr+":"+service.port + DefaultHiveotSsePath
+            // let sseURL = "https://"+addr+":"+service.port + DefaultHiveotSsePath
 
 
             log.info("found service: ", addr);
             resolve({
-                instance:service.name,
-                addr:addr,
-                connectURL: connectURL,
+                instanceName:service.name,
+                serviceType:serviceType,
+                tddURL:tddURL,
                 authURL: authURL,
-                hiveotSseURL: sseURL,
-                scheme:scheme,
-                td:td,
-                type:type
+                sseURL: sseURL,
+                wssURL:wssURL,
+                // scheme:scheme,
             });
         });
     });

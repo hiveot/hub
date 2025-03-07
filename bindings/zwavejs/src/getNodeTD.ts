@@ -47,7 +47,7 @@ function addAction(td: TD, node: ZWaveNode, vid: TranslatedValueID, name: string
         action.input.readOnly = false
         // all actions have the same output schema as the input schema
         action.output = action.input
-        action.output.readOnly = true
+        action.output.readOnly = false
     }
     return action
 }
@@ -56,8 +56,13 @@ function addAction(td: TD, node: ZWaveNode, vid: TranslatedValueID, name: string
 function addProperty(td: TD, node: ZWaveNode, vid: TranslatedValueID, name: string, va: VidAffordance): PropertyAffordance {
 
     let prop = td.AddProperty(name, va?.atType, WoTDataTypeNone, "")
+    // if va is an action then this property is readonly
     // SetDataSchema also sets the title, data type and read-only
     SetDataSchema(prop, node, vid)
+    // action status is also sent as read-only property
+    if (va?.vidType === "action") {
+        prop.readOnly = true
+    }
     return prop
 }
 
@@ -79,13 +84,12 @@ function addEvent(td: TD, node: ZWaveNode, vid: TranslatedValueID, name: string,
     let ev = td.AddEvent(name, schema.title || name, schema.description, schema)
         .setVocabType(va.atType)
 
-        // SetDataSchema use the dataschema title, not the event data title
+    // SetDataSchema use the dataschema title, not the event data title
     if (ev.data) {
         ev.data.title = undefined
         ev.data.description = undefined
     }
     return ev
-
 }
 
 // parseNodeInfo converts a ZWave Node into a WoT TD document
@@ -302,6 +306,11 @@ export function getNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | unde
             case "action":
                 // actuators accept input actions
                 addAction(td, node, vid, tdPropName, va)
+                // if action output is stateful there is a read-only property for presenting
+                // the latest state. Some devices can also be manually controlled which will
+                // update the property but not the action status.
+                // let vidMeta = node.getValueMetadata(vid)
+                addProperty(td, node, vid, tdPropName, va)
                 break;
             case "event":
                 // sensors emit events

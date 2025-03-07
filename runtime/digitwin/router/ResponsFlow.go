@@ -95,9 +95,15 @@ func (svc *DigitwinRouter) HandleActionResponse(resp *messaging.ResponseMessage)
 	return nil
 }
 
-// HandleSubscriptionNotification handles receiving a subscription update (event, property)
+// HandleNotification handles receiving a subscription notification (event, property)
 // This updates the digital twin property or event value
-func (svc *DigitwinRouter) HandleSubscriptionNotification(resp *messaging.ResponseMessage) (err error) {
+func (svc *DigitwinRouter) HandleNotification(resp *messaging.ResponseMessage) (err error) {
+	svc.notifLogger.Info("<- NOTIF: HandleNotification",
+		slog.String("operation", resp.Operation),
+		slog.String("thingID", resp.ThingID),
+		slog.String("name", resp.Name),
+		slog.String("value", tputils.DecodeAsString(resp.Output, 30)),
+	)
 	// Update the digital twin with this event or property value
 	if resp.Operation == wot.OpSubscribeEvent {
 		tv := digitwin.ThingValue{
@@ -192,7 +198,7 @@ func (svc *DigitwinRouter) HandleResponse(resp *messaging.ResponseMessage) error
 		resp.Operation == wot.OpSubscribeEvent ||
 		resp.Operation == wot.OpSubscribeAllEvents {
 
-		err = svc.HandleSubscriptionNotification(resp)
+		err = svc.HandleNotification(resp)
 		return err
 	}
 	return svc.HandleActionResponse(resp)

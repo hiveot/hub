@@ -125,17 +125,27 @@ export class ZwaveJSBinding {
         let lastValue = valueMap?.values[propID]
         let va = getVidAffordance(node, vid, this.config.maxNrScenes)
         try {
+
+            // FIXME: 37-targetValue-0 is not received when the switch is manually changed.
+            //
             if (valueMap && (lastValue !== newValue || !this.config.publishOnlyChanges)) {
                 // TODO: round the value using a precision
                 // TODO: republish after some time even when unchanged
                 // Determine if value changed enough to publish
                 if (newValue != undefined) {
                     valueMap.values[propID] = newValue
-                    if (va?.vidType === "property" ) {
+                    if (va?.vidType === "property") {
+                        this.hc.pubProperty(deviceID, propID, newValue)
+                    } else if (va?.vidType === "action") {
+                        // action output state has a matching property
+                        // TODO: can actionstatus be sent as a notification?
+                        // FIXME: looks like 37-targetValue-0 isn't received when
+                        // the switch is toggled manually. to be investigated.
                         this.hc.pubProperty(deviceID, propID, newValue)
                     } else {
+                        // Anything else is an event
                         log.info("handleValueUpdate: publish event for deviceID=" + deviceID + ", propID=" + propID + "")
-                        this.hc.pubEvent(deviceID, propID, newValue)
+                        this.hc.pubProperty(deviceID, propID, newValue)
                     }
                 }
             } else {

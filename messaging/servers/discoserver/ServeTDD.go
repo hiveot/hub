@@ -52,8 +52,6 @@ const DefaultHttpGetDirectoryTDPath = "/.well-known/wot"
 //	instanceName is the name of the server instance. "hiveot" for the hub.
 //	serviceName is the discover name. Default is 'wot'. This can be changed for testing.
 //	tddURL is the URL the directory TD is served at.
-//	connectURL is the default connection URL for talking to Things. Empty if not supported.
-//	authURL is the default URL for password authentication. Empty if not supported.
 //	endpoints contains a map of {scheme:connection} URLs
 //
 // Returns the discovery service instance. Use Shutdown() when done.

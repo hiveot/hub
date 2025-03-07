@@ -23,11 +23,16 @@
 	{{if eq .Schema.Type "boolean"}}
     {{/*	=== Boolean Output ===*/}}
     {{/*    <h-switch name="value" off="Off" on="On" value="{{$iv}}"></h-switch>*/}}
+		{{/*	Actions updates are triggered by their property state event */}}
 		<input type="checkbox" role="switch" disabled
            style="margin-top:0"
-           sse-swap="{{.AffordanceType}}/{{.ThingID}}/{{.Name}}"
+		        {{if eq .AffordanceType "action"}}
+			        sse-swap="property/{{.ThingID}}/{{.Name}}"
+						{{else}}
+              sse-swap="{{.AffordanceType}}/{{.ThingID}}/{{.Name}}"
+		       {{end}}
            hx-swap="none"
-           hx-on::sse-before-message="this.checked=event.detail.data == 'true'?true:false"
+           hx-on::sse-before-message="this.checked=isChecked(event)"
            {{if .Value.Boolean}}checked{{end}}
 		/>
 	{{else}}
@@ -42,7 +47,15 @@
   {{end}}
 </a>
 
-
+<script>
+	function isChecked(ev) {
+        console.log("isChecked",ev)
+        if (ev.detail.data === true) {
+            return true
+        }
+        return false
+	}
+</script>
 
 
 <style>

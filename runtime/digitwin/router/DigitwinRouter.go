@@ -46,11 +46,14 @@ type DigitwinRouter struct {
 	notifLogger *slog.Logger
 }
 
+// SetNotifLogger replaces the default logger for notifications
 func (r *DigitwinRouter) SetNotifLogger(logger *slog.Logger) {
 	r.mux.Lock()
 	defer r.mux.Unlock()
 	r.notifLogger = logger
 }
+
+// SetRequestLogger replaces the default logger for requests
 func (r *DigitwinRouter) SetRequestLogger(logger *slog.Logger) {
 	r.mux.Lock()
 	defer r.mux.Unlock()
@@ -83,6 +86,7 @@ func NewDigitwinRouter(
 		dtwService:      dtwService,
 		activeCache:     make(map[string]ActiveRequestRecord),
 		requestLogger:   slog.Default(),
+		notifLogger:     slog.Default(),
 	}
 	return ar
 }
