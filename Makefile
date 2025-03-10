@@ -59,6 +59,7 @@ owserver: .FORCE ## Build the 1-wire owserver protocol binding
 	cp bindings/$@/config/*.yaml $(DIST_FOLDER)/config
 
 zwavejs: .FORCE ## Build the zwave-js protocol binding
+	cd libjs && npm i && cd ..
 	cd bindings/$@ && make dist
 	cp bindings/$@/dist/$@ $(PLUGINS_FOLDER)
 

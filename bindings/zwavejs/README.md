@@ -41,15 +41,34 @@ This binding uses the VID to construct a key for properties, events and actions:
 
 Where propertyKey is omitted if not applicable. The endpoint is always provided and set to 0 for the default default.
 
+## Prerequisites
+
+* npm 
+* Node v22.x  (or use nvm - node version manager)
+
+### Installing node v22 on raspberry pi 3
+
+As of Early 2025, the default image of Raspbian for pi3 (ARMv7, 64bit) comes with Debian GNU/Linux 12 (bookworm).
+This distribution comes with nodejs-v18.19 and npm 9.2.0.
+
+The easiest way to upgrade to node v22 is to use nvm (node version manager). The instructions can be found at: https://nodejs.org/en/download.
+```
+$ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+(close and re-open a terminal)
+$ nvm install 22
+$ nvm alias default 22
+```
+
+### Building on pi3
+
+Run 'npm i' in both the libjs and bindings/zwavejs directories, or run make zwavejs from the hiveot source.
+
+There currently are deprecation warnings about 'inflight@1.0.6' and 'glob@7.2.3'.
+Both are pulled in by an old version of jest which is only used for testing. You can safely ignore it as they are not used in runtime.
+
+
 
 ## Building with esbuild
-
-Install npm version 9 and yarn  (FIXME local install instead of global)
-> sudo apt install -g npm@9
-> sudo apt install -g yarn
-
-install packages with 'yarn':
-> yarn
 
 This first step is just for testing the build process using esbuild. If this already fails then no use using pkg or the 'postject' node20+ injector. Note: one reason to take this step is to allow packages with es modules (axios) to work. pkg seems to not build correctly with code generated with tsc && tsc-alias.
 

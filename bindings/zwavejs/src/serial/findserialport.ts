@@ -1,0 +1,22 @@
+
+// Determine which serial port is available
+import fs from "node:fs";
+import path from "node:path";
+
+// return the first serial port using /dev/serial/by-id.
+export default function findSerialPort(): string {
+    const serialDir = "/dev/serial/by-id/"
+    try {
+
+        const dir = fs.opendirSync(serialDir);
+        const first = dir.readSync()
+        if (first != null) {
+            return path.join(serialDir, first.name)
+        }
+    } catch (err) {
+        console.error(err);
+    }
+
+    // force an error
+    return "/dev/serialportnotfound"
+}
