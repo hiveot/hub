@@ -1,7 +1,8 @@
+import {Buffer} from "node:buffer";
 
 // ECDSA keys implementation using nodeJS
-import type { IHiveKey } from "./IHiveKey";
-import crypto from "crypto";
+import type { IHiveKey } from "./IHiveKey.ts";
+import crypto from "node:crypto";
 
 export class ECDSAKey implements IHiveKey {
     privKey: crypto.KeyObject | undefined
@@ -16,7 +17,7 @@ export class ECDSAKey implements IHiveKey {
         if (!this.privKey) {
             throw ("private key not created or imported")
         }
-        let privPEM = this.privKey.export({
+        const privPEM = this.privKey.export({
             format: "pem", // pem, der or jwk
             type: "pkcs8",  // or sec1
         })
@@ -28,7 +29,7 @@ export class ECDSAKey implements IHiveKey {
         if (!this.pubKey) {
             throw ("public key not created or imported")
         }
-        let pubPEM = this.pubKey.export({
+        const pubPEM = this.pubKey.export({
             format: "pem", // pem, der or jwk
             type: "spki",
         })
@@ -54,7 +55,7 @@ export class ECDSAKey implements IHiveKey {
 
     // initialize generates a new key set using its curve algorithm
     public initialize(): IHiveKey {
-        let kp = crypto.generateKeyPairSync("ec", {
+        const kp = crypto.generateKeyPairSync("ec", {
             namedCurve: "secp256k1"
         })
         this.privKey = kp.privateKey
@@ -68,7 +69,7 @@ export class ECDSAKey implements IHiveKey {
         if (!this.privKey) {
             throw ("private key not created or imported")
         }
-        let sigBuf = crypto.sign("sha256", message, this.privKey)
+        const sigBuf = crypto.sign("sha256", message, this.privKey)
         return sigBuf
     }
 
@@ -79,7 +80,7 @@ export class ECDSAKey implements IHiveKey {
         if (!this.pubKey) {
             throw ("public key not created or imported")
         }
-        let isValid = crypto.verify("sha256", message, this.pubKey, signature)
+        const isValid = crypto.verify("sha256", message, this.pubKey, signature)
         return isValid
     }
 }

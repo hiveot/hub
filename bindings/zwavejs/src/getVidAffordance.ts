@@ -1,6 +1,6 @@
 import type {ZWaveNode} from "zwave-js";
-import {CommandClasses, ValueID} from "@zwave-js/core";
-import * as vocab from "@hivelib/api/vocab/vocab.js";
+import {CommandClasses, type ValueID} from "@zwave-js/core";
+import * as vocab from "../hivelib/api/vocab/vocab.js";
 
 
 // ValueID to TD event,action or property affordance type
@@ -58,7 +58,7 @@ const overrideMap: Map<string, Partial<VidAffordance> | undefined> = new Map([
 function defaultVidAffordance(node: ZWaveNode, vid: ValueID, maxNrScenes: number):
        "action" | "event" |"property"| undefined {
 
-    let vidMeta = node.getValueMetadata(vid)
+    const vidMeta = node.getValueMetadata(vid)
 
     // 1. Binary Switch: targetValue is a config, not an action;
     // 1b. valueChangeOptions =["transitionDuration"]   is this the config parameter?
@@ -175,11 +175,11 @@ function defaultVidAffordance(node: ZWaveNode, vid: ValueID, maxNrScenes: number
 // The override map is currently hard coded but intended to be moved to a configuration file.
 //
 // Returns a VidAffordance object or undefined if the Vid is to be ignored.
-export function getVidAffordance(node: ZWaveNode, vid: ValueID, maxNrScenes: number): VidAffordance | undefined {
+export default function getVidAffordance(node: ZWaveNode, vid: ValueID, maxNrScenes: number): VidAffordance | undefined {
     // Determine default values for @type and affordance
-    let affordance = defaultVidAffordance(node, vid, maxNrScenes)
-    let atType = ""
-    let va: VidAffordance = {
+    const affordance = defaultVidAffordance(node, vid, maxNrScenes)
+    const atType = ""
+    const va: VidAffordance = {
         atType: atType,
         vidType: affordance
     }
@@ -190,7 +190,7 @@ export function getVidAffordance(node: ZWaveNode, vid: ValueID, maxNrScenes: num
         mapKey += "-" + String(vid.propertyKey)
     }
     if (overrideMap.has(mapKey)) {
-        let override = overrideMap.get(mapKey)
+        const override = overrideMap.get(mapKey)
         if (!override) {
             return undefined
         }

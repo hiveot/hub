@@ -1,10 +1,11 @@
+import {Buffer} from "node:buffer";
 
 // test1: generate, export and import an ECDSA key pair
 
-import { Ed25519Key } from "./Ed25519Key";
+import { Ed25519Key } from "./Ed25519Key.ts";
 // import {Ed25519Key} from "./Ed25519Key.js";
 // import { natsKey } from "./natsKey";
-import { IHiveKey } from './IHiveKey';
+import { type IHiveKey } from './IHiveKey.ts';
 
 
 function newKey(): IHiveKey {
@@ -16,20 +17,20 @@ function newKey(): IHiveKey {
 async function test1() {
     const message = "hello world"
 
-    let keys1 = newKey()
+    const keys1 = newKey()
     // let keys1 = new EcdsaKeys()
     keys1.initialize()
 
-    let privPEM = keys1.exportPrivate()
-    let pubPEM = keys1.exportPublic()
+    const privPEM = keys1.exportPrivate()
+    const pubPEM = keys1.exportPublic()
 
-    let keys2 = newKey()
+    const keys2 = newKey()
     keys2.importPrivate(privPEM)
     keys2.importPublic(pubPEM)
 
-    let msgBuf = Buffer.from(message)
-    let signature = keys1.sign(msgBuf)
-    let verified = keys2.verify(signature, msgBuf)
+    const msgBuf = Buffer.from(message)
+    const signature = keys1.sign(msgBuf)
+    const verified = keys2.verify(signature, msgBuf)
     if (!verified) {
         throw ("test failed")
     }

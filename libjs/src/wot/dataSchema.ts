@@ -1,8 +1,7 @@
 // Definition of the DataSchema used in TD affordances
 
 import {WoTDataTypeNone} from "../api/vocab/vocab.js"
-
-export class DataSchema extends Object {
+export default class DataSchema extends Object {
     public constructor(init?: Partial<DataSchema>) {
         super();
         Object.assign(this, init)
@@ -64,7 +63,7 @@ export class DataSchema extends Object {
     private enumTable: Object | undefined = undefined
 
     // Change the property into a writable configuration
-    SetAsConfiguration(): DataSchema {
+    public SetAsConfiguration(): DataSchema {
         this.readOnly = false
         return this
     }
@@ -75,7 +74,7 @@ export class DataSchema extends Object {
     //
     // @param enumeration is a map from enum values to names and vice-versa
     // @param initialValue is converted to name and stored in the schema as initialValue (for testing/debugging) 
-    SetAsEnum(enumeration: Object): DataSchema {
+    public SetAsEnum(enumeration: Object): DataSchema {
         // FIXME: use oneOf object - match golang
         this.enumTable = enumeration
         let keys = Object.values(enumeration)
@@ -88,7 +87,7 @@ export class DataSchema extends Object {
     }
 
     // Set the description and return this
-    SetDescription(description: string): DataSchema {
+    public  SetDescription(description: string): DataSchema {
         this.description = description
         return this
     }

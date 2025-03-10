@@ -1,4 +1,3 @@
-
 import { Bonjour } from 'bonjour-service';
 import * as tslog from 'tslog';
 
@@ -25,7 +24,7 @@ const log = new  tslog.Logger({prettyLogTimeZone:"local"})
 //	authURL http endpoint for login to obtain a token
 //  wssURL URL of the websocket connection endpoint
 //  sseURL URL of the sse connection endpoint
-export async function locateHub(): Promise<{
+export default async function locateHub(): Promise<{
     instanceName?:string, serviceType?:string,
     tddURL?:string, authURL?:string, wssURL?: string, sseURL?: string,}> {
 
@@ -39,14 +38,14 @@ export async function locateHub(): Promise<{
                 return
             }
             // get the connection URLs from the TXT records
-            let addr = service.addresses[0];
-            let kv = service.txt;
-            let authURL = kv[AuthEndpoint];       // URL of the auth service
-            let wssURL = kv[WSSEndpoint]; // URL to connect the client to
-            let sseURL = kv[SSEEndpoint]; // URL to connect the client to
-            let scheme = kv["scheme"];      // client protocol
-            let tddURL = kv["td"];          // path to wget directory service TD
-            let serviceType = kv["type"];          // service type, eg Directory
+            const addr = service.addresses[0];
+            const kv = service.txt;
+            const authURL = kv[AuthEndpoint];       // URL of the auth service
+            const wssURL = kv[WSSEndpoint]; // URL to connect the client to
+            const sseURL = kv[SSEEndpoint]; // URL to connect the client to
+            const scheme = kv["scheme"];      // client protocol
+            const tddURL = kv["td"];          // path to wget directory service TD
+            const serviceType = kv["type"];          // service type, eg Directory
 
             // construct the sse url
             // let sseURL = "https://"+addr+":"+service.port + DefaultHiveotSsePath

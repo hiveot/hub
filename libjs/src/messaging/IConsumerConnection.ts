@@ -1,5 +1,4 @@
-import { RequestMessage, ResponseMessage} from "@hivelib/messaging/Messages";
-
+import { RequestMessage, ResponseMessage} from "./Messages.ts";
 
 export enum ConnectionStatus {
     Connected = "connected",
@@ -26,7 +25,7 @@ export type RequestHandler = (msg: RequestMessage)=>ResponseMessage;
 export type ResponseHandler = (resp: ResponseMessage)=>void;
 
 // IConsumerConnection defines the interface of the consumer facing protocol binding.
-export interface IConsumerConnection {
+export default interface IConsumerConnection {
 
     // ConnectWithPassword connects to the hub using password authentication.
     // @param password is created when registering the user with the auth service.

@@ -1,8 +1,9 @@
 import process from "node:process";
 import * as tslog from 'tslog';
-import {ConnectToHub} from "@hivelib/messaging/ConnectToHub";
-import { OpInvokeAction} from "@hivelib/api/vocab/vocab.js";
-import {RequestMessage, ResponseMessage, StatusCompleted, StatusPending} from "@hivelib/messaging/Messages";
+
+import ConnectToHub from "./ConnectToHub.ts";
+import { OpInvokeAction} from "../api/vocab/vocab.js";
+import {RequestMessage, ResponseMessage, StatusCompleted, StatusPending} from "./Messages.ts";
 
 const log = new tslog.Logger({name: "HCTest"})
 
@@ -23,7 +24,7 @@ async function test1() {
     let token: string
 
     //running instance
-    let hc = await ConnectToHub(baseURL, testClientID, caCertPEM, true)
+    const hc = await ConnectToHub(baseURL, testClientID, caCertPEM, true)
     try {
         token = await hc.connectWithPassword(testPass)
         if (token == "") {
@@ -49,7 +50,7 @@ async function test2() {
     let token: string
 
     //running instance
-    let hc = await ConnectToHub(baseURL, testSvcID, caCertPEM, true)
+    const hc = await ConnectToHub(baseURL, testSvcID, caCertPEM, true)
     try {
         token = await hc.connectWithPassword(testSvcPass)
         await hc.pubEvent("thing1", "event1", "hello world")
@@ -70,13 +71,13 @@ async function test3() {
     // todo have agent publish TD of thing1 and listen for actions
 
     //running instance
-    let hc =await ConnectToHub(baseURL, testClientID, caCertPEM,true)
+    const hc =await ConnectToHub(baseURL, testClientID, caCertPEM,true)
     try {
         token = await hc.connectWithPassword(testPass)
 
         hc.setRequestHandler((req: RequestMessage):ResponseMessage => {
             log.info("Received message: type="+req.operation+"; key=" + req.name)
-            let resp = req.createResponse("")
+            const resp = req.createResponse("")
             return resp
         })
         token = await hc.refreshToken()
@@ -90,7 +91,7 @@ async function test3() {
         await hc.subscribe("", "")
 
         // publish an action request
-        let stat = await hc.invokeAction(thingID, "action1", "1")
+        const stat = await hc.invokeAction(thingID, "action1", "1")
         if (stat.error != "") {
             throw ("pubAction failed: " + stat.error)
         }
@@ -102,7 +103,7 @@ async function test3() {
     }
     // rpc request
     try {
-        let reply = await hc.rpc( OpInvokeAction, "cap1", "method1", "data")
+        const reply = await hc.rpc( OpInvokeAction, "cap1", "method1", "data")
         if (reply != "rpc") {
             throw ("unexpected rpc reply")
         }
@@ -123,7 +124,7 @@ async function test4() {
     let actionDelivery: ResponseMessage | undefined
 
     // connect a service that sends events
-    let agc = await ConnectToHub(baseURL, testSvcID, caCertPEM, true)
+    const agc = await ConnectToHub(baseURL, testSvcID, caCertPEM, true)
     try {
         svcToken = await agc.connectWithPassword(testSvcPass)
     } catch (e) {
@@ -132,7 +133,7 @@ async function test4() {
     }
 
     // connect a client that listens for events
-    let clc = await ConnectToHub(baseURL, testClientID, caCertPEM, true)
+    const clc = await ConnectToHub(baseURL, testClientID, caCertPEM, true)
     try {
         clToken = await clc.connectWithPassword(testPass)
     } catch (err) {
@@ -146,7 +147,7 @@ async function test4() {
         // await hcCl.subscribe("","")
         clc.setRequestHandler((req: RequestMessage): ResponseMessage => {
             actionCount++
-            let resp = req.createResponse("success")
+            const resp = req.createResponse("success")
             return resp
         })
 
@@ -190,8 +191,8 @@ async function test4() {
             return resp
         })
 
-        let dtwThing1ID = "dtw:" + testSvcID + ":thing1"
-        let resp2 = await clc.invokeAction(dtwThing1ID, "action1",  "how are you")
+        const dtwThing1ID = "dtw:" + testSvcID + ":thing1"
+        const resp2 = await clc.invokeAction(dtwThing1ID, "action1",  "how are you")
         if (resp2.error) {
             log.error("failed publishing action: " + resp2.error)
         } else if (resp2.status != StatusPending) {

@@ -4,7 +4,7 @@
 import type {ZWaveNode} from "zwave-js";
 
 export function getDeviceType(node: ZWaveNode): string {
-    let deviceClassGeneric = node.deviceClass?.generic.label;
+    const deviceClassGeneric = node.deviceClass?.generic.label;
     let deviceType: string;
 
     deviceType = deviceClassGeneric ? deviceClassGeneric : node.name ? node.name : "n/a";

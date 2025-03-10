@@ -1,11 +1,12 @@
-import {TD} from "@hivelib/wot/TD";
-import {IConsumerConnection, RequestHandler} from "@hivelib/messaging/IConsumerConnection";
-import {ResponseMessage} from "@hivelib/messaging/Messages";
+import TD from "../wot/TD.ts";
+import type IConsumerConnection from "./IConsumerConnection.ts";
+import  {type RequestHandler} from "./IConsumerConnection.ts";
+import {ResponseMessage} from "./Messages.ts";
 
 
 // IAgentClient defines the interface for use by  hub agents.
 // The hub agent is unique to hiveot and not supported in the wot specification.
-export interface IAgentConnection extends IConsumerConnection {
+export default interface IAgentConnection extends IConsumerConnection {
 
     // PubEvent publishes an event style message without a response.
     // This is a convenience function that uses sendNotification.

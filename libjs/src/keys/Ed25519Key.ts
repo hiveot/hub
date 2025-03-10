@@ -1,7 +1,8 @@
+import crypto from "node:crypto";
+import {Buffer} from "node:buffer";
 
 // ED25519 keys implementation using nodeJS
-import type { IHiveKey } from "./IHiveKey";
-import crypto from "crypto";
+import type { IHiveKey } from "./IHiveKey.ts";
 
 export class Ed25519Key implements IHiveKey {
     privKey: crypto.KeyObject | undefined
@@ -15,7 +16,7 @@ export class Ed25519Key implements IHiveKey {
         if (!this.privKey) {
             throw ("private key not created or imported")
         }
-        let privPEM = this.privKey.export({
+        const privPEM = this.privKey.export({
             format: "pem", // pem, der or jwk
             type: "pkcs8",  // or sec1
         })
@@ -27,7 +28,7 @@ export class Ed25519Key implements IHiveKey {
         if (!this.pubKey) {
             throw ("public key not created or imported")
         }
-        let pubPEM = this.pubKey.export({
+        const pubPEM = this.pubKey.export({
             format: "pem", // pem, der or jwk
             type: "spki",
         })
@@ -53,7 +54,7 @@ export class Ed25519Key implements IHiveKey {
 
     // initialize generates a new key set using its curve algorithm
     public initialize(): IHiveKey {
-        let kp = crypto.generateKeyPairSync("ed25519")
+        const kp = crypto.generateKeyPairSync("ed25519")
         this.privKey = kp.privateKey
         this.pubKey = kp.publicKey
         return this
@@ -66,7 +67,7 @@ export class Ed25519Key implements IHiveKey {
             throw ("private key not created or imported")
         }
         // algorithm depends on key type. sha256 is not used in ed25519
-        let sigBuf = crypto.sign(null, message, this.privKey)
+        const sigBuf = crypto.sign(null, message, this.privKey)
         return sigBuf
     }
 
@@ -77,7 +78,7 @@ export class Ed25519Key implements IHiveKey {
         if (!this.pubKey) {
             throw ("public key not created or imported")
         }
-        let isValid = crypto.verify(null, message, this.pubKey, signature)
+        const isValid = crypto.verify(null, message, this.pubKey, signature)
         return isValid
     }
 }

@@ -1,8 +1,10 @@
-import {TD, TDForm} from '../../wot/TD.js';
-import {
-    IAgentConnection,
-} from "../IAgentConnection.js";
 import * as tslog from 'tslog';
+import * as http2 from "node:http2";
+import {nanoid} from "nanoid";
+import {Buffer} from "node:buffer";
+
+import TD, {TDForm} from '../../wot/TD.ts';
+import type IAgentConnection from "../IAgentConnection.ts";
 import {
     OpInvokeAction,
     OpWriteProperty,
@@ -12,15 +14,13 @@ import {
     OpUnsubscribeEvent,
     OpObserveAllProperties,
     OpObserveProperty,
-} from "@hivelib/api/vocab/vocab.js";
-import * as http2 from "node:http2";
-import {connectSSE} from "@hivelib/messaging/httpclient/connectSSE";
+} from "../../api/vocab/vocab.js";
+import {connectSSE} from "./connectSSE.ts";
 import {
-    RequestHandler,
-    ResponseHandler, ConnectionStatus
-} from "@hivelib/messaging/IConsumerConnection";
-import {nanoid} from "nanoid";
-import {RequestMessage, ResponseMessage} from "@hivelib/messaging/Messages";
+    type RequestHandler,
+    type ResponseHandler, ConnectionStatus
+} from "../IConsumerConnection.ts";
+import {RequestMessage, ResponseMessage} from "../Messages.ts";
 
 // FIXME: import from vocab is not working
 const RequestCompleted = "completed"
@@ -53,13 +53,11 @@ const HttpGetDigitwinPath = "/digitwin/{operation}/{thingID}/{name}"
 const HiveOTPostRequestHRef      = "/hiveot/request"
 const HiveOTPostResponseHRef     = "/hiveot/response"
 
-
-
-const hclog = new tslog.Logger({prettyLogTimeZone:"local"})
+const hcLog = new tslog.Logger({prettyLogTimeZone:"local"})
 
 // HttpSSEClient implements the javascript client for connecting to the hub
 // using HiveOT's HTTPS and SSE-SC protocol for the return channel.
-export class HttpSSEClient implements IAgentConnection {
+export default class HttpSSEClient implements IAgentConnection {
     _clientID: string;
     _baseURL: string;
     _caCertPem: string;
@@ -107,7 +105,7 @@ export class HttpSSEClient implements IAgentConnection {
         this._correlData = new Map();
         this._cid = nanoid() // connection id
 
-        let url = new URL(fullURL)
+        const url = new URL(fullURL)
         this._baseURL = "https://"+url.host
         this._ssePath = url.pathname
     }
@@ -127,9 +125,9 @@ export class HttpSSEClient implements IAgentConnection {
     async connect(): Promise<http2.ClientHttp2Session> {
 
         if (this._disableCertCheck) {
-            hclog.warn("Disabling server certificate check.")
+            hcLog.warn("Disabling server certificate check.")
         }
-        let opts: http2.SecureClientSessionOptions = {
+        const opts: http2.SecureClientSessionOptions = {
             timeout: 10000, // msec???
             "rejectUnauthorized": !this._disableCertCheck
         }
@@ -168,13 +166,13 @@ export class HttpSSEClient implements IAgentConnection {
         // establish an http/2 connection instance
         await this.connect()
         // invoke a login request
-        let loginArgs = {
+        const loginArgs = {
             "login": this._clientID,
             "password": password,
         }
-        let resp = await this.pubMessage("POST", HttpPostLoginPath,loginArgs,"")
+        const resp = await this.pubMessage("POST", HttpPostLoginPath,loginArgs,"")
 
-        let loginResp = JSON.parse(resp)
+        const loginResp = JSON.parse(resp)
         this.authToken = loginResp.token
         // with the new auth token a SSE return channel can be established
         this._sseClient = await connectSSE(
@@ -221,11 +219,11 @@ export class HttpSSEClient implements IAgentConnection {
     onConnection(status: ConnectionStatus) {
         this.connStatus = status
         if (this.connStatus === ConnectionStatus.Connected) {
-            hclog.info('HubClient connected to '+ this._baseURL+this._ssePath + ' as '+this._clientID);
+            hcLog.info('HubClient connected to '+ this._baseURL+this._ssePath + ' as '+this._clientID);
         } else if (this.connStatus == ConnectionStatus.Connecting) {
-            hclog.warn('HubClient attempt connecting');
+            hcLog.warn('HubClient attempt connecting');
         } else {
-            hclog.warn('HubClient disconnected');
+            hcLog.warn('HubClient disconnected');
             // todo: retry connecting
         }
     }
@@ -237,13 +235,13 @@ export class HttpSSEClient implements IAgentConnection {
             if (this.requestHandler) {
                 resp = this.requestHandler(req)
             } else {
-                let err = Error(`onRequest: received request but no handler registered: ${req.operation}`)
-                hclog.warn(err)
+                const err = Error(`onRequest: received request but no handler registered: ${req.operation}`)
+                hcLog.warn(err)
                 resp = req.createResponse(null, err)
             }
         } catch (e) {
-            let err = Error(`Error handling request sender=${req.senderID}, messageType=${req.operation}, thingID=${req.thingID}, name=${req.name}, error=${e}`)
-            hclog.warn(err)
+            const err = Error(`Error handling request sender=${req.senderID}, messageType=${req.operation}, thingID=${req.thingID}, name=${req.name}, error=${e}`)
+            hcLog.warn(err)
             resp = req.createResponse(null,err)
             resp.received = req.created
         }
@@ -296,21 +294,21 @@ export class HttpSSEClient implements IAgentConnection {
         // if the session is invalid, restart it
         if (!this._http2Session || this._http2Session.closed) {
             // this._http2Client.
-            hclog.error("pubMessage but connection is closed")
+            hcLog.error("pubMessage but connection is closed")
             await this.connect()
         }
 
         return  new Promise((resolve, reject) => {
             let replyData: string = ""
             let statusCode: number
-            let payload = JSON.stringify(data)
+            const payload = JSON.stringify(data)
 
             if (!this._http2Session || this._http2Session.closed) {
                 // getting here is weird. this._http2Session is undefined while
                 // the debugger shows a value.
                 reject(new Error("Unable to send. Connection was closed"))
             } else {
-                let h2req = this._http2Session.request({
+                const h2req = this._http2Session.request({
                     origin: this._baseURL,
                     authorization: "bearer " + this.authToken,
                     ':path': path,
@@ -327,7 +325,7 @@ export class HttpSSEClient implements IAgentConnection {
                     if (r[":status"]) {
                         statusCode = r[":status"]
                         if (statusCode >= 400) {
-                            hclog.warn(`pubMessage '${path}' returned status code '${statusCode}'`)
+                            hcLog.warn(`pubMessage '${path}' returned status code '${statusCode}'`)
                         }
                     }
                 })
@@ -337,7 +335,7 @@ export class HttpSSEClient implements IAgentConnection {
                 h2req.on('end', () => {
                     h2req.destroy()
                     if (statusCode >= 400) {
-                        hclog.warn(`pubMessage status code  ${statusCode}`)
+                        hcLog.warn(`pubMessage status code  ${statusCode}`)
                         reject(new Error("Error " + statusCode + ": " + replyData))
                     } else {
                         // hclog.info(`pubMessage to ${path}. Received reply. size=` + replyData.length)
@@ -366,8 +364,8 @@ export class HttpSSEClient implements IAgentConnection {
     // This returns the response message
     async invokeAction(thingID: string, name: string, input: any): Promise<ResponseMessage> {
 
-        hclog.info("pubAction. thingID:", thingID, ", name:", name)
-        let req = new RequestMessage({
+        hcLog.info("pubAction. thingID:", thingID, ", name:", name)
+        const req = new RequestMessage({
             operation:OpInvokeAction,
             thingID:thingID,
             name:name,
@@ -401,8 +399,8 @@ export class HttpSSEClient implements IAgentConnection {
     //	@param payload: is the serialized event value, or nil if the event has no value
     pubEvent(thingID: string, name: string, data: any) {
 
-        hclog.info("pubEvent. thingID:", thingID, ", name:", name)
-        let msg = new ResponseMessage(OpSubscribeEvent, thingID,name,data)
+        hcLog.info("pubEvent. thingID:", thingID, ", name:", name)
+        const msg = new ResponseMessage(OpSubscribeEvent, thingID,name,data)
         return this.sendResponse(msg)
 
         // let eventPath = PostAgentPublishEventPath.replace("{thingID}", thingID)
@@ -419,23 +417,23 @@ export class HttpSSEClient implements IAgentConnection {
     // Publish batch of property values to property observers
     pubMultipleProperties(thingID: string, propMap: { [key: string]: any }) {
 
-        hclog.info("pubMultipleProperties. thingID:", thingID)
-        let msg = new ResponseMessage(OpObserveAllProperties, thingID,"",propMap)
+        hcLog.info("pubMultipleProperties. thingID:", thingID)
+        const msg = new ResponseMessage(OpObserveAllProperties, thingID,"",propMap)
         return this.sendResponse(msg)
     }
 
     // Publish thing property value update to property observers
     pubProperty(thingID: string, name:string, value: any) {
-        hclog.info("pubProperty. thingID:", thingID)
-        let msg = new ResponseMessage(OpObserveProperty, thingID,name,value)
+        hcLog.info("pubProperty. thingID:", thingID)
+        const msg = new ResponseMessage(OpObserveProperty, thingID,name,value)
         return this.sendResponse(msg)
     }
 
     // PubTD publishes a req with a Thing TD document.
     // This serializes the TD into JSON as per WoT specification
     pubTD(td: TD) {
-        hclog.info("pubTD. thingID:", td.id)
-        let tdJSON = JSON.stringify(td, null, ' ');
+        hcLog.info("pubTD. thingID:", td.id)
+        const tdJSON = JSON.stringify(td, null, ' ');
 
         // Invoke action to update the directory service
         // TODO: convert to use the discovered directory
@@ -462,16 +460,16 @@ export class HttpSSEClient implements IAgentConnection {
         let refreshPath = HttpPostRefreshPath.replace("{thingID}", "authn")
         refreshPath = refreshPath.replace("{name}", "refreshMethod")
         // TODO use generated API
-        let args = {
+        const args = {
             clientID: this.clientID,
             oldToken: this.authToken,
         }
         try {
-            let resp = await this.pubMessage("POST",refreshPath, args,"");
+            const resp = await this.pubMessage("POST",refreshPath, args,"");
             this.authToken = JSON.parse(resp)
             return this.authToken
         } catch (e) {
-            hclog.error("refreshToken failed: ", e)
+            hcLog.error("refreshToken failed: ", e)
             throw e
         }
     }
@@ -488,10 +486,9 @@ export class HttpSSEClient implements IAgentConnection {
     // sendResponse [agent] sends a response status message to the hub.
     // @param resp: response to send
    async sendRequest(req: RequestMessage):Promise<ResponseMessage> {
-        return new Promise((resolve, reject): void => {
+        return new Promise((resolve, _reject): void => {
             // use forms for requests for interoperability
             let href: string | undefined
-            let input: any
             let f: TDForm | undefined
             if (this.getForm) {
                 f = this.getForm(req.operation)
@@ -503,8 +500,8 @@ export class HttpSSEClient implements IAgentConnection {
                 // using a form means following http-basic
                 this.pubMessage("POST", href, req.input, req.correlationID)
                     .then((reply: string) => {
-                        let output = JSON.parse(reply)
-                        let resp = new ResponseMessage(
+                        const output = JSON.parse(reply)
+                        const resp = new ResponseMessage(
                             req.operation, req.thingID, req.name, output, "", "")
                         resolve(resp)
                     })
@@ -516,7 +513,7 @@ export class HttpSSEClient implements IAgentConnection {
                         if (reply) {
                             resp = JSON.parse(reply)
                         } else {
-                            let err = new Error("Response without responseMessage envelope")
+                            const err = new Error("Response without responseMessage envelope")
                             resp = req.createResponse(undefined, err)
                         }
                         resolve(resp)
@@ -542,10 +539,10 @@ export class HttpSSEClient implements IAgentConnection {
         return new Promise((resolve, reject) => {
 
             // a correlationID is needed before the action is published in order to match it with the reply
-            let correlationID = "rpc-" + nanoid()
+            const correlationID = "rpc-" + nanoid()
 
             // handle timeout
-            let t1 = setTimeout(() => {
+            const t1 = setTimeout(() => {
                 this._correlData.delete(correlationID)
                 console.error("RPC",dThingID,methodName,"failed with timeout")
                 reject("timeout")
@@ -609,7 +606,7 @@ export class HttpSSEClient implements IAgentConnection {
         if (!name) {
             op = OpSubscribeAllEvents
         }
-        let req = new RequestMessage({
+        const req = new RequestMessage({
             operation:op, thingID:dThingID, name:name
         })
         this.sendRequest(req)
@@ -621,7 +618,7 @@ export class HttpSSEClient implements IAgentConnection {
         if (!name) {
             op = OpUnsubscribeAllEvents
         }
-        let req = new RequestMessage({
+        const req = new RequestMessage({
             operation:op, thingID:dThingID, name:name
         })
         this.sendRequest(req)
@@ -631,9 +628,9 @@ export class HttpSSEClient implements IAgentConnection {
     // writeProperty publishes a request for changing a Thing's property.
     // The configuration is a writable property as defined in the Thing's TD.
     writeProperty(thingID: string, name: string, propValue: any) {
-        hclog.info("writeProperty. thingID:", thingID, ", name:", name)
+        hcLog.info("writeProperty. thingID:", thingID, ", name:", name)
 
-        let req = new RequestMessage({
+        const req = new RequestMessage({
             operation: OpWriteProperty, thingID: thingID, name: name, input: propValue
         })
         return this.sendRequest(req)

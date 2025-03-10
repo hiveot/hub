@@ -4,4 +4,4 @@ import * as tslog from "tslog";
 
 const defaultLogger = new tslog.Logger({prettyLogTimeZone:"local"})
 
-export function getlogger() { return defaultLogger}
+export default function getLogger() { return defaultLogger}

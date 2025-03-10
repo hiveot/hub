@@ -1,22 +1,22 @@
 // ZWaveJSBinding.ts holds the entry point to the zwave binding along with its configuration
 import type {ZWaveNode} from "zwave-js";
-import {getNodeTD} from "./getNodeTD";
-import {NodeValues} from "./NodeValues";
-import {ZWAPI} from "./ZWAPI.js";
-import {parseController} from "./parseController";
-import {logVid} from "./logVid";
-import {getPropName} from "./getPropName";
-import * as vocab from "@hivelib/api/vocab/vocab.js";
-import fs from "fs";
-import {BindingConfig} from "./BindingConfig";
-import {handleRequest} from "@zwavejs/handleRequest";
-import {ValueID} from "@zwave-js/core";
-import {getVidAffordance} from "@zwavejs/getVidAffordance";
-import {IAgentConnection} from "@hivelib/messaging/IAgentConnection";
-import {RequestMessage, ResponseMessage} from "@hivelib/messaging/Messages";
-import {getlogger} from "@zwavejs/getLogger";
-
-const log = getlogger()
+import getNodeTD from "./getNodeTD.ts";
+import NodeValues from "./NodeValues.ts";
+import ZWAPI from "./ZWAPI.ts";
+import parseController from "./parseController.ts";
+import logVid from "./logVid.ts";
+import getPropName from "./getPropName.ts";
+import * as vocab from "../hivelib/api/vocab/vocab.js";
+import fs from "node:fs";
+import BindingConfig from "./BindingConfig.ts";
+import handleRequest from "./handleRequest.ts";
+import {type ValueID} from "@zwave-js/core";
+import getVidAffordance from "./getVidAffordance.ts";
+import type IAgentConnection from "../hivelib/messaging/IAgentConnection.ts";
+import {RequestMessage, ResponseMessage} from "../hivelib/messaging/Messages.ts";
+import getLogger from "./getLogger.ts";
+import process from "node:process";
+const log = getLogger()
 
 
 
@@ -64,7 +64,7 @@ export class ZwaveJSBinding {
     // Handle update of one of the node state flags
     // This emits a corresponding event
     handleNodeStateUpdate(node: ZWaveNode, newState: string) {
-        let thingID = this.zwapi.getDeviceID(node.id)
+        const thingID = this.zwapi.getDeviceID(node.id)
 
         // NOTE: the names of these values MUST match those in the TD property enum. See parseNode.
         switch (newState) {
@@ -91,7 +91,7 @@ export class ZwaveJSBinding {
         log.info("handleNodeUpdate:node:", node.id);
 
         // FIXME: only update the node if it has changed
-        let thingTD = getNodeTD(this.zwapi, node, this.vidCsvFD, this.config.maxNrScenes);
+        const thingTD = getNodeTD(this.zwapi, node, this.vidCsvFD, this.config.maxNrScenes);
 
         if (node.isControllerNode) {
             parseController(thingTD, this.zwapi.driver.controller)
@@ -100,8 +100,8 @@ export class ZwaveJSBinding {
         this.hc.pubTD(thingTD)
 
         // publish the thing property (attr, config) values
-        let newValues = new NodeValues(node);
-        let lastNodeValues = this.lastValues.get(thingTD.id)
+        const newValues = new NodeValues(node);
+        const lastNodeValues = this.lastValues.get(thingTD.id)
         let diffValues = newValues
         if (lastNodeValues) {
             // diffValues = lastNodeValues.diffValues(newValues)
@@ -109,6 +109,7 @@ export class ZwaveJSBinding {
         }
         this.hc.pubMultipleProperties(thingTD.id, diffValues.values)
         this.lastValues.set(thingTD.id, newValues);
+        console.info("handleNodeUpdate completed: "+node.id)
 
     }
 
@@ -118,12 +119,12 @@ export class ZwaveJSBinding {
     // @param vid: zwave value id
     // @param newValue: the updated value converted to a string
     handleValueUpdate(node: ZWaveNode, vid: ValueID, newValue: unknown) {
-        let deviceID = this.zwapi.getDeviceID(node.id)
-        let propID = getPropName(vid)
-        let valueMap = this.lastValues.get(deviceID);
+        const deviceID = this.zwapi.getDeviceID(node.id)
+        const propID = getPropName(vid)
+        const valueMap = this.lastValues.get(deviceID);
         // update the map of recent values
-        let lastValue = valueMap?.values[propID]
-        let va = getVidAffordance(node, vid, this.config.maxNrScenes)
+        const lastValue = valueMap?.values[propID]
+        const va = getVidAffordance(node, vid, this.config.maxNrScenes)
         try {
 
             // FIXME: 37-targetValue-0 is not received when the switch is manually changed.
@@ -186,7 +187,7 @@ export class ZwaveJSBinding {
             logVid(this.vidCsvFD)
         }
         this.hc.setRequestHandler( (msg:RequestMessage):ResponseMessage => {
-            let resp = handleRequest(msg,this.zwapi, this.hc)
+            const resp = handleRequest(msg,this.zwapi, this.hc)
             return resp
         })
 

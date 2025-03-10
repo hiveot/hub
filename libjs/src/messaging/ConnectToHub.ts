@@ -1,6 +1,6 @@
-import {IAgentConnection} from "@hivelib/messaging/IAgentConnection";
-import {locateHub} from "@hivelib/messaging/locateHub";
-import {HttpSSEClient} from "@hivelib/messaging/httpclient/HttpSSEClient";
+import type IAgentConnection from "./IAgentConnection.ts";
+import locateHub from "./locateHub.ts";
+import  HttpSSEClient from "./httpclient/HttpSSEClient.ts";
 
 
 
@@ -20,15 +20,16 @@ import {HttpSSEClient} from "@hivelib/messaging/httpclient/HttpSSEClient";
 //	clientID to connect as. Also used for the key and token file names
 //	certDir is the location of the CA cert and key/token files
 // This throws an error if a connection cannot be made
-export async function ConnectToHub(
+export default async function ConnectToHub(
     fullURL: string|undefined, clientID: string, caCertPem: string, disableCertCheck: boolean): Promise<IAgentConnection> {
 
     // 1. determine the actual address
     if (fullURL == "") {
         // return after first result
-        let {sseURL} = await locateHub()
+        // this uses bonjour.dns which isn't compatible with node-v.23
+        // const {sseURL} = await locateHub()
         // currently only supporting SSE on this client
-        fullURL = sseURL
+        // fullURL = sseURL
     }
     if (!clientID || !fullURL) {
         throw("Missing clientID or hub URL")
@@ -42,6 +43,6 @@ export async function ConnectToHub(
     // Discovery provides an IP, not a servername. Also on local networks there is no
     // local DNS or servername, just an IP. What to do?
     //  https://stackoverflow.com/questions/73526773/tls-servername-as-ip-is-not-permitted
-    let hc = new HttpSSEClient(fullURL, clientID, caCertPem, disableCertCheck)
+    const hc = new HttpSSEClient(fullURL, clientID, caCertPem, disableCertCheck)
     return hc
 }

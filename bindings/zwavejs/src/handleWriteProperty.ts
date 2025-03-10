@@ -1,19 +1,20 @@
 // ZWaveJSBinding.ts holds the entry point to the zwave binding along with its configuration
 import {ZWaveNode} from "zwave-js";
-import {getPropVid} from "./getPropName";
-import {IAgentConnection} from "@hivelib/messaging/IAgentConnection";
-import {getEnumFromMemberName, getVidValue,  ZWAPI} from "@zwavejs/ZWAPI";
-import {setValue} from "@zwavejs/setValue";
+
+import {getPropVid} from "./getPropName.ts";
+import type IAgentConnection from "../hivelib/messaging/IAgentConnection.ts";
+import ZWAPI, {getVidValue} from "./ZWAPI.ts";
+import setValue from "./setValue.ts";
 import {
     RequestMessage,
     ResponseMessage,
     StatusCompleted,
     StatusFailed,
     StatusRunning
-} from "@hivelib/messaging/Messages";
-import {getlogger} from "@zwavejs/getLogger";
+} from "../hivelib/messaging/Messages.ts";
+import getLogger from "./getLogger.ts";
 
-const log = getlogger()
+const log = getLogger()
 
 
 
@@ -25,8 +26,8 @@ export function handleWriteProperty(
     let status = StatusCompleted
     let err: Error | undefined
 
-    let propKey = req.name
-    let propValue = req.input
+    const propKey = req.name
+    const propValue = req.input
 
     log.info("handleWriteProperty: node '" + node.nodeId + "' setting prop '" + propKey + "' to value: " + propValue)
 
@@ -34,7 +35,7 @@ export function handleWriteProperty(
     //   https://zwave-js.github.io/node-zwave-js/#/api/node?id=name
     // This seems to be broken. Reading the location CC works but writing throws an error
     // only option for now is to set the node name/location locally.
-    let propVid = getPropVid(propKey)
+    const propVid = getPropVid(propKey)
     if (!propVid) {
         err = new Error("failed: unknown config: " + propKey)
         status = StatusFailed
@@ -54,9 +55,9 @@ export function handleWriteProperty(
         // async update
         setValue(node, propVid, propValue)
             .then(progress => {
-                let newValue = getVidValue(node, propVid)
+                const newValue = getVidValue(node, propVid)
 
-                let resp = req.createResponse(newValue)
+                const resp = req.createResponse(newValue)
                 resp.status=progress
                 // notify the sender of the update (with correlationID)
                 hc.sendResponse(resp)
@@ -74,7 +75,7 @@ export function handleWriteProperty(
     if (err) {
         log.error(err)
     }
-    let resp =  req.createResponse(null,err)
+    const resp =  req.createResponse(null,err)
     if (!err) {
         resp.status = status
     }

@@ -1,16 +1,13 @@
 import * as tslog from 'tslog';
-import {
-    ConnectionHandler,
-    ConnectionStatus,
-     RequestHandler, ResponseHandler
-} from "@hivelib/messaging/IConsumerConnection";
+import { type ConnectionHandler, ConnectionStatus, type RequestHandler, type ResponseHandler
+} from "../IConsumerConnection.ts";
 
-import EventSource from 'eventsource'
+import {EventSource} from 'eventsource'
 import {
     RequestMessage,
     ResponseMessage,
     MessageTypeResponse, MessageTypeRequest
-} from "@hivelib/messaging/Messages";
+} from "../Messages.ts";
 
 const log = new tslog.Logger({prettyLogTimeZone:"local"})
 
@@ -36,60 +33,61 @@ export async function  connectSSE(
 
     return new Promise((resolve, reject): void => {
 
-        var eventSourceInitDict = {
-            headers: {
-                authorization: 'bearer ' + authToken,
-                origin: baseURL,
-                "path": ssePath,
-                "content-Type": "application/json",
-                "cid": cid // this header must match the ConnectionIDHeader field name on the server
-            },
-            https: {
-                rejectUnauthorized: false
-            }
-        };
-        // let eventSourceInit = {
-        //     fetch: (input, init) =>
-        //         fetch(input, {
-        //             ...init,
-        //             headers: {
-        //                 ...init.headers,
-        //                 authorization: 'bearer ' + authToken,
-        //                 origin: baseURL,
-        //                 "path": ssePath,
-        //                 "content-Type": "application/json",
-        //                 "cid": cid // this header must match the ConnectionIDHeader field name on the server
-        //             },
-        //             https: {
-        //                 rejectUnauthorized: false
-        //             }
-        //         }),
-        // }
+        // var eventSourceInitDict = {
+        //     headers: {
+        //         authorization: 'bearer ' + authToken,
+        //         origin: baseURL,
+        //         "path": ssePath,
+        //         "content-Type": "application/json",
+        //         "cid": cid // this header must match the ConnectionIDHeader field name on the server
+        //     },
+        //     https: {
+        //         rejectUnauthorized: false
+        //     }
+        // };
+        const eventSourceInit = {
+            fetch: (input:any, init:any) =>
+                fetch(input, {
+                    ...init,
+                    headers: {
+                        ...init.headers,
+                        authorization: 'bearer ' + authToken,
+                        origin: baseURL,
+                        "path": ssePath,
+                        "content-Type": "application/json",
+                        "cid": cid // this header must match the ConnectionIDHeader field name on the server
+                    },
+                    https: {
+                        rejectUnauthorized: false
+                    }
+                }),
+        }
 
-        let sseURL = baseURL + ssePath
-        const source = new EventSource(sseURL, eventSourceInitDict)
+        const sseURL = baseURL + ssePath
+        // const source = new EventSource(sseURL, eventSourceInitDict)
+        const source = new EventSource(sseURL, eventSourceInit)
 
         source.onopen = (e: any) => {
-            let cstat = ConnectionStatus.Connected
+            const cstat = ConnectionStatus.Connected
             onConnection(cstat)
             resolve(source)
         }
-        source.addEventListener("ping",(e:any)=>{
-            log.info("received ping", e)
+        source.addEventListener("ping",(e:MessageEvent)=>{
+            log.info("received ping")
         })
-        source.addEventListener(MessageTypeRequest,(e:any)=>{
-            log.info("received request", e)
-            let fields = JSON.parse(e.data)
-            let req = new RequestMessage(fields)
+        source.addEventListener(MessageTypeRequest,(e:MessageEvent)=>{
+            log.info("received request")
+            const fields = JSON.parse(e.data)
+            const req = new RequestMessage(fields)
             onRequest(req)
         })
-        source.addEventListener(MessageTypeResponse,(e:any)=>{
-            log.info("received response", e)
-            let req: ResponseMessage = JSON.parse(e.data)
+        source.addEventListener(MessageTypeResponse,(e:MessageEvent)=>{
+            log.info("received response")
+            const req: ResponseMessage = JSON.parse(e.data)
             onResponse(req)
         })
-        source.addEventListener("close",(e:any)=>{
-            log.info("On close", e)
+        source.addEventListener("close",(e:MessageEvent)=>{
+            log.info("On close")
         })
         // source.addEventListener("error",(e:any)=>{
         //     hclog.error("On error", e.data)

@@ -1,6 +1,8 @@
-import * as os from 'os';
-import fs, { existsSync } from 'fs';
-import path from 'path';
+import fs, { existsSync } from 'node:fs';
+import path from 'node:path';
+import process from 'node:process';
+import {Buffer} from "node:buffer";
+
 import { Logger } from 'tslog'
 import yaml from 'yaml';
 import { program } from 'commander';
@@ -13,7 +15,7 @@ const DEFAULT_CA_CERT_FILE = "caCert.pem"
 // AppEnvironment holds the running environment naming conventions.
 // Intended for services and plugins.
 // This contains folder locations, CA certificate and application clientID
-export class NodeEnvironment extends Object {
+export default class NodeEnvironment extends Object {
     // Directories and files when running a nodejs application
     // Application binary folder, eg launcher, cli, ...
     binDir: string = ""
@@ -111,7 +113,7 @@ export class NodeEnvironment extends Object {
         // the system folder configuration. This might be changed in future if it turns
         // out not to be so smart at all.
         // Future: make this work on windows
-        let useSystem = homeDir.startsWith("/usr") || homeDir.startsWith("/opt")
+        const useSystem = homeDir.startsWith("/usr") || homeDir.startsWith("/opt")
         if (useSystem) {
             this.homeDir = path.join("/var", "lib", "hiveot")
             this.binDir = path.join("/opt", "hiveot")
@@ -140,7 +142,7 @@ export class NodeEnvironment extends Object {
         if (this.homeDir == "") {
             this.binDir = path.dirname(process.argv0)
             if (!path.isAbsolute(this.binDir)) {
-                let cwd = process.cwd()
+                const cwd = process.cwd()
                 this.binDir = path.join(cwd, this.binDir)
             }
             this.homeDir = path.join(this.binDir, "..")
@@ -174,7 +176,7 @@ export class NodeEnvironment extends Object {
                 // if a configfile is given then load it now as commandline overrides configfile
                 this.loadConfigFile(options.config)
             } else {
-                let configFile = path.join(this.homeDir, this.configDir, this.clientID + ".yaml")
+                const configFile = path.join(this.homeDir, this.configDir, this.clientID + ".yaml")
 
                 // try loading the config file
                 this.loadConfigFile(configFile)
@@ -185,14 +187,14 @@ export class NodeEnvironment extends Object {
             this.logsDir = (options.logs) ? options.logs : this.logsDir
             this.loglevel = (options.loglevel) ? options.loglevel : "warning"
         } else {
-            let configFile = path.join(this.configDir, this.clientID + ".yaml")
+            const configFile = path.join(this.configDir, this.clientID + ".yaml")
             // try loading the config file
             this.loadConfigFile(configFile)
         }
 
         // make paths absolute
         if (!path.isAbsolute(this.homeDir)) {
-            let cwd = process.cwd()
+            const cwd = process.cwd()
             this.homeDir = path.join(cwd, this.homeDir)
         }
         if (!path.isAbsolute(this.certsDir)) {
@@ -212,7 +214,7 @@ export class NodeEnvironment extends Object {
 
 
         // load the CA cert if found
-        let caCertFile = path.join(this.certsDir, DEFAULT_CA_CERT_FILE)
+        const caCertFile = path.join(this.certsDir, DEFAULT_CA_CERT_FILE)
         try {
             this.caCertPEM = fs.readFileSync(caCertFile).toString()
         } catch {
@@ -226,7 +228,7 @@ export class NodeEnvironment extends Object {
         // attempt to load the CA cert, client key, and auth token, if available in a file
         if (!this.caCertPEM) {
             try {
-                let caCertFile = path.join(this.certsDir, "caCert.pem")
+                const caCertFile = path.join(this.certsDir, "caCert.pem")
                 this.caCertPEM = fs.readFileSync(caCertFile).toString()
             } catch { }
         }
@@ -265,7 +267,7 @@ export class NodeEnvironment extends Object {
         }
 
         if (cfgData) {
-            let cfg: object = yaml.parse(cfgData.toString())
+            const cfg: object = yaml.parse(cfgData.toString())
             let target: Object = this
             // iterate the attributes and apply
             Object.assign(this, cfg)

@@ -1,25 +1,30 @@
+import fs from "node:fs";
+import path from "node:path";
+import { Buffer } from "node:buffer";
 import {
     Driver,
-    Endpoint,
-    InclusionResult,
+     InclusionStrategy,
     NodeStatus,
+    RemoveNodeReason,
+    ZWaveNode,
+} from "zwave-js";
+import type {
+    Endpoint, InclusionResult,
     PartialZWaveOptions,
     RebuildRoutesStatus,
-    RemoveNodeReason,
-    TranslatedValueID,
     ValueMetadataNumeric,
-    ZWaveNode,
     ZWaveNodeMetadataUpdatedArgs,
     ZWaveNodeValueAddedArgs,
     ZWaveNodeValueNotificationArgs,
     ZWaveNodeValueRemovedArgs,
     ZWaveNodeValueUpdatedArgs,
 } from "zwave-js";
-import fs from "fs";
-import {CommandClasses, ValueID} from '@zwave-js/core';
-import path from "path";
+import {CommandClasses, type ValueID} from '@zwave-js/core';
 
-import {getlogger} from "@zwavejs/getLogger";
+import getLogger from "./getLogger.ts";
+import type {Duplex} from "node:stream";
+import type {EventEmitter} from "node:events";
+import findSerialPort from "./serial/findserialport.ts";
 
 // Default keys for testing, if none are configured. Please set the keys in config/zwavejs.yaml
 const DefaultS2Authenticated = "00112233445566778899AABBCCDDEEFF"
@@ -45,13 +50,13 @@ export interface IZWaveConfig {
     cacheDir: string | undefined          // alternate storage directory
 }
 
-const log = getlogger()
+const log = getLogger()
 
 // ZWAPI is a wrapper around zwave-js for use by the HiveOT binding.
 // Its primary purpose is to hide the ZWave specific logic from the binding; offer a simple API to
 // obtain the data for publishing the node TDs and events; and accept actions for devices.
 // To do so it transforms ZWave vocabulary to HiveOT vocabulary.
-export class ZWAPI {
+export default class ZWAPI {
     // driver initializes on connect
     driver!: Driver;
 
@@ -66,7 +71,7 @@ export class ZWAPI {
 
     // callback to notify of a change in VID value
     // note that enum values have been converted automatically to their text representation
-    onValueUpdate: (node: ZWaveNode, v: TranslatedValueID, newValue: unknown) => void;
+    onValueUpdate: (node: ZWaveNode, v: ValueID, newValue: unknown) => void;
 
     // discovered nodes
     // nodes: Map<string, ZWaveNode>;
@@ -78,7 +83,7 @@ export class ZWAPI {
         // handler for node VID or Metadata updates
         onNodeUpdate: (node: ZWaveNode) => void,
         // handler for node property value updates
-        onValueUpdate: (node: ZWaveNode, v: TranslatedValueID, newValue: unknown) => void,
+        onValueUpdate: (node: ZWaveNode, v: ValueID, newValue: unknown) => void,
         // handler for node state updates
         onStateUpdate: (node: ZWaveNode, newState: string) => void,
         // handler for driver fatal errors
@@ -117,12 +122,12 @@ export class ZWAPI {
         log.info("connecting", "port", zwPort)
 
         // These keys should be generated with "< /dev/urandom tr -dc A-F0-9 | head -c32 ;echo"
-        let S2_Authenticated = zwConfig.S2_Authenticated || DefaultS2Authenticated
-        let S2_Unauthenticated = zwConfig.S2_Unauthenticated || DefaultS2Unauthenticated
-        let S2_AccessControl = zwConfig.S2_AccessControl || DefaultS2AccessControl
-        let S0_Legacy = zwConfig.S0_Legacy || DefaultS0Legacy
+        const S2_Authenticated = zwConfig.S2_Authenticated || DefaultS2Authenticated
+        const S2_Unauthenticated = zwConfig.S2_Unauthenticated || DefaultS2Unauthenticated
+        const S2_AccessControl = zwConfig.S2_AccessControl || DefaultS2AccessControl
+        const S0_Legacy = zwConfig.S0_Legacy || DefaultS0Legacy
 
-        let options: PartialZWaveOptions = {
+        const options: PartialZWaveOptions = {
             securityKeys: {
                 // These keys should be generated with "< /dev/urandom tr -dc A-F0-9 | head -c32 ;echo"
                 S2_Unauthenticated: Buffer.from(S2_Unauthenticated, "hex"),
@@ -153,10 +158,11 @@ export class ZWAPI {
         };
         log.info("ZWaveJS config option soft_reset on startup is " + (options.features?.softReset ? "enabled" : "disabled"))
 
-
         // retry starting the driver until disconnect is called
         // Start the driver. To await this method, put this line into an async method
         this.driver = new Driver(zwPort, options);
+
+        log.info("Starting zwave-js. Version="+this.driver.configVersion)
 
         // notify of driver errors
         this.driver.on("error", (e) => {
@@ -214,19 +220,19 @@ export class ZWAPI {
     // Create the unique device ID for publishing
     // @param nodeID as provided by the node
     getDeviceID(nodeID: number): string {
-        let deviceID: string = this.homeID + "." + nodeID.toString();
+        const deviceID: string = this.homeID + "." + nodeID.toString();
         return deviceID
     }
 
     // return the node for the given deviceID or undefined if the deviceID is not known
     // @param deviceID as provided by getDeviceID
     getNodeByDeviceID(deviceID: string): ZWaveNode | undefined {
-        let parts = deviceID.split(".")
+        const parts = deviceID.split(".")
         if (parts.length != 2) {
             return undefined
         }
-        let nodeID = Number(parts[1])
-        let node = this.driver.controller.nodes.get(nodeID)
+        const nodeID = Number(parts[1])
+        const node = this.driver.controller.nodes.get(nodeID)
         return node
     }
 
@@ -238,7 +244,7 @@ export class ZWAPI {
           are included in the network, but they might not be ready yet.
           The node interview will continue in the background.
           */
-        let ctl = this.driver.controller;
+        const ctl = this.driver.controller;
         // homeID is ready after the controller interview
         // this.homeID = ctl.homeId ? ctl.homeId.toString(16).toUpperCase() : "n/a";
 
@@ -272,9 +278,14 @@ export class ZWAPI {
         this.driver.controller.on("inclusion failed", () => {
             log.info("inclusion has failed");
         });
+        // for zwave-12
         this.driver.controller.on("inclusion started", (secure: boolean) => {
             log.info("inclusion has started. secure=%v", secure);
         });
+        // for zwave-13 and up
+        // this.driver.controller.on("inclusion started", (strategy: InclusionStrategy) => {
+        //     log.info("inclusion has started. strategy=%v", strategy);
+        // });
         this.driver.controller.on("inclusion stopped", () => {
             log.info("inclusion has stopped");
         });
@@ -294,8 +305,8 @@ export class ZWAPI {
     // return the homeID of the driver
     // This returns the homeID as hex string
     get homeID(): string {
-        let hid = this.driver.controller.homeId;
-        let homeIDStr = hid?.toString(16).toUpperCase() || "n/a"
+        const hid = this.driver.controller.homeId;
+        const homeIDStr = hid?.toString(16).toUpperCase() || "n/a"
         return homeIDStr
     }
 
@@ -335,7 +346,7 @@ export class ZWAPI {
             // FIXME: this is invoked even when metadata isn't updated. What to do?
             // this.onNodeUpdate(node)
             // let newValue = node.getValue(args)
-            let newValue = getVidValue(node,args)
+            const newValue = getVidValue(node,args)
             log.info(`Node ${node.id} value metadata updated`,
                 "property=", args.property,
                 "propertyKeyName=", args.propertyKeyName,
@@ -380,7 +391,7 @@ export class ZWAPI {
         node.on("value updated", (node: ZWaveNode, args: ZWaveNodeValueUpdatedArgs) => {
             // log.debug("Node ", node.id, " value updated: args=", args);
             // convert enums
-            let newVidValue = getVidValue(node,args)
+            const newVidValue = getVidValue(node,args)
             this.onValueUpdate(node, args, newVidValue)
             // this.onValueUpdate(node, args, args.newValue)
         });
@@ -430,31 +441,13 @@ export class ZWAPI {
 //     return value
 // }
 
-// Determine which serial port is available
-function findSerialPort(): string {
-    const serialDir = "/dev/serial/by-id/"
-    try {
-
-        const dir = fs.opendirSync(serialDir);
-        let first = dir.readSync()
-        if (first != null) {
-            return path.join(serialDir, first.name)
-        }
-    } catch (err) {
-        console.error(err);
-    }
-
-    // force an error
-    return "/dev/serialportnotfound"
-}
-
 
 // Revert the enum name to its number
 // This is the opposite of getEnumMemberName
 export function getEnumFromMemberName(enumeration: Record<number, string>, name: string): number | undefined {
-    for (let key in enumeration) {
-        let val = enumeration[key]
-        if (val.toLowerCase() == name.toLowerCase()) {
+    for (const key in enumeration) {
+        const val = enumeration[key]
+        if (val?.toLowerCase() == name.toLowerCase()) {
             return Number(key)
         }
     }
@@ -474,13 +467,13 @@ export function getEnumFromMemberName(enumeration: Record<number, string>, name:
 // Intended to transparently deal with enums.
 // See also SetValue which does the reverse
 export function getVidValue(node: ZWaveNode, vid:ValueID):any {
-    let vidMeta = node.getValueMetadata(vid)
+    const vidMeta = node.getValueMetadata(vid)
     let value = node.getValue(vid)
     if (vidMeta.type === "number") {
-        let vmn = vidMeta as ValueMetadataNumeric;
+        const vmn = vidMeta as ValueMetadataNumeric;
         // if this vid has enum values then convert the value to its numeric equivalent
         if (vmn.states) {
-            value = vmn.states[value]
+            value = vmn.states[value as number]
         }
     }
     return value

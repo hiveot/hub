@@ -1,7 +1,7 @@
 // Definition of the Thing's TD, Thing Description document
 // This consists of the TD itself with properties
 
-import {DataSchema} from "./dataSchema";
+import DataSchema from "./dataSchema.ts";
 
 const TD_CONTEXT = "https://www.w3.org/2022/wot/td/v1.1"
 const HT_CONTEXT = "https://www.hiveot.net/vocab/v0.1"
@@ -52,13 +52,13 @@ export class ActionAffordance extends InteractionAffordance {
     // }>()
 
     // Create an action affordance instance with a schema for its input, if any
-    constructor(dataSchema?: DataSchema) {
+    public constructor(dataSchema?: DataSchema) {
         super();
         this.input = dataSchema
     }
 
     // set the action's vocabulary @type field
-    setVocabType(atType: string): ActionAffordance {
+    public setVocabType(atType: string): ActionAffordance {
         this["@type"] = atType
         return this
     }
@@ -77,7 +77,7 @@ export class EventAffordance extends InteractionAffordance {
     }
 
     // set the event's vocabulary @type field
-    setVocabType(atType: string): EventAffordance {
+    public setVocabType(atType: string): EventAffordance {
         this["@type"] = atType
         return this
     }
@@ -98,7 +98,7 @@ export class PropertyAffordance extends DataSchema {
     public properties: Map<string, PropertyAffordance> | undefined = undefined
 
     // set the property's vocabulary @type field
-    setVocabType(atType: string): PropertyAffordance {
+    public setVocabType(atType: string): PropertyAffordance {
         this["@type"] = atType
         return this
     }
@@ -112,12 +112,12 @@ export class TDForm {
     public subprotocol : string|undefined
 
     // return the href in this form
-    getHRef() {return this.href}
+    public getHRef() {return this.href}
 }
 
 /** Thing description document
  */
-export class TD extends Object {
+export default class TD extends Object {
 
     /**
      * Create a new instance of Thing Description document
@@ -188,7 +188,7 @@ export class TD extends Object {
     // @param description optional detailed description of the action
     // @param input with optional dataschema of the action input data
     AddAction(id: string, title: string, description?: string, input?: DataSchema): ActionAffordance {
-        let action = new ActionAffordance()
+        const action = new ActionAffordance()
         action.id = id;
         action.title = title
         action.description = description
@@ -208,7 +208,7 @@ export class TD extends Object {
     // @param description optional detailed description of the action
     // @param dataSchema optional event data schema
     AddEvent(id: string,  title: string, description?: string, dataSchema?: DataSchema): EventAffordance {
-        let ev = new EventAffordance()
+        const ev = new EventAffordance()
         ev.id = id;
         ev.title = title ? title : id;
         ev.description = description
@@ -227,7 +227,7 @@ export class TD extends Object {
     // @param dataType is the type of data the property holds, DataTypeNumber, ..Object, ..Array, ..String, ..Integer, ..Boolean or null
     // @param vocabType is the vocabulary type of this property, if known
     AddProperty(name: string, title: string,  description:string,dataType: string, vocabType?:string): PropertyAffordance {
-        let prop = new PropertyAffordance()
+        const prop = new PropertyAffordance()
         prop.name = name;
         prop.type = dataType;
         prop.title = title ? title : name;
@@ -254,7 +254,7 @@ export class TD extends Object {
                   dataType: string, vocabType?:string): PropertyAffordance | undefined {
 
         if (initialValue != undefined) {
-            let prop =  this.AddProperty(name, title, description,dataType)
+            const prop =  this.AddProperty(name, title, description,dataType)
             if (vocabType){
                 prop.setVocabType(vocabType)
             }
@@ -266,9 +266,9 @@ export class TD extends Object {
 
     // Convert the actions map into an array for display
     public static GetThingActions = (td: TD): Array<ActionAffordance> => {
-        let res = new Array<ActionAffordance>()
+        const res = new Array<ActionAffordance>()
         if (!!td && !!td.actions) {
-            for (let [key, val] of Object.entries(td.actions)) {
+            for (const [_key, val] of Object.entries(td.actions)) {
                 res.push(val)
             }
         }
@@ -279,9 +279,9 @@ export class TD extends Object {
     // Convert readonly properties into an array for display
     // Returns table of {name, tdproperty}
     public static GetAttributeNames = (td: TD): string[] => {
-        let res = Array<string>()
+        const res = Array<string>()
         if (!!td && !!td.properties) {
-            for (let [key, val] of Object.entries(td.properties)) {
+            for (const [key, val] of Object.entries(td.properties)) {
                 if (val.readOnly) {
                     res.push(key)
                 }
@@ -293,9 +293,9 @@ export class TD extends Object {
 
     // Returns names of configuration properties
     public static GetConfigurationNames = (td: TD): string[] => {
-        let res = Array<string>()
+        const res = Array<string>()
         if (!!td && !!td.properties) {
-            for (let [key, val] of Object.entries(td.properties)) {
+            for (const [key, val] of Object.entries(td.properties)) {
                 if (!val.readOnly) {
                     res.push(key)
                 }
@@ -305,9 +305,9 @@ export class TD extends Object {
     }
 
     public static GetThingEvents = (td: TD): Array<EventAffordance> => {
-        let res = Array<EventAffordance>()
+        const res = Array<EventAffordance>()
         if (!!td && !!td.events) {
-            for (let [key, val] of Object.entries(td.events)) {
+            for (const [_key, val] of Object.entries(td.events)) {
                 res.push(val)
             }
         }
@@ -325,3 +325,4 @@ export class TD extends Object {
     }
 
 }
+

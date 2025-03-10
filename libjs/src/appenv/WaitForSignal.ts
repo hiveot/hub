@@ -1,4 +1,4 @@
-
+import process from "node:process";
 
 //--- Step 4: Wait for  SIGINT or SIGTERM signal to stop
 async function WaitForSignal() {

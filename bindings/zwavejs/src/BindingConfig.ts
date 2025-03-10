@@ -1,11 +1,11 @@
-import type { IZWaveConfig } from "./ZWAPI.js";
-import fs, { existsSync } from "fs";
-import path from "path";
-import { NodeEnvironment } from "@hivelib/appenv/NodeEnvironment.js";
+import fs, { existsSync } from "node:fs";
+import path from "node:path";
+import type { IZWaveConfig } from "./ZWAPI.ts";
+import  NodeEnvironment from "../hivelib/appenv/NodeEnvironment.ts";
 
 
 // This binding's service configuration  
-export class BindingConfig extends NodeEnvironment implements IZWaveConfig {
+export default class BindingConfig extends NodeEnvironment implements IZWaveConfig {
     // zwave network keys
     S2_Unauthenticated: string | undefined
     S2_Authenticated: string | undefined
@@ -32,8 +32,8 @@ export class BindingConfig extends NodeEnvironment implements IZWaveConfig {
 
     constructor(clientID: string) {
         super()
-        let homeDir = ""
-        let withFlags = true
+        const homeDir = ""
+        const withFlags = true
 
         this.initialize(clientID, homeDir, withFlags)
         // zwave storage cache directory uses the storage directory

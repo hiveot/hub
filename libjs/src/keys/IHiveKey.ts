@@ -1,3 +1,4 @@
+import {Buffer} from "node:buffer";
 
 // Interface of standardized key and signature functions.
 // Intended to standardize the maze of crypto methods,algorithms and so on.

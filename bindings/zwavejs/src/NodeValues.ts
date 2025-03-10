@@ -6,13 +6,14 @@ import {
     ZWavePlusRoleType,
 } from "zwave-js";
 import {InterviewStage, SecurityClass} from '@zwave-js/core';
-import * as vocab from "@hivelib/api/vocab/vocab.js";
-import {getPropName} from "./getPropName";
-import {getVidValue} from "@zwavejs/ZWAPI";
+
+import * as vocab from "../hivelib/api/vocab/vocab.js";
+import getPropName from "./getPropName.ts";
+import {getVidValue} from "./ZWAPI.ts";
 
 
 // NodeValues holds the latest values of a single node regardless if it is a prop, event or action
-export class NodeValues {
+export default class NodeValues {
     values: { [key: string]: any }
 
     // @param zwapi: driver to read node vid value
@@ -36,10 +37,10 @@ export class NodeValues {
     // compare the current value map with an old map and return a new value map with the differences 
     // This only returns values if they exist in the current map. (old values are irrelevant)
     diffValues(oldValues: NodeValues): NodeValues {
-        let diffMap = new NodeValues()
-        for (let key in Object(this.values)) {
-            let oldVal = oldValues.values[key]
-            let newVal = this.values[key]
+        const diffMap = new NodeValues()
+        for (const key in Object(this.values)) {
+            const oldVal = oldValues.values[key]
+            const newVal = this.values[key]
             if (newVal !== oldVal) {
                 diffMap.values[key] = newVal
             }
@@ -57,7 +58,7 @@ export class NodeValues {
         this.setIf(vocab.PropDeviceDescription, node.deviceConfig?.description);
 
         if (node.deviceClass) {
-            this.setIf("deviceClassBasic", node.deviceClass.basic.label);
+            // this.setIf("deviceClassBasic", node.deviceClass.basic.label);
             this.setIf("deviceClassGeneric", node.deviceClass.generic.label);
             this.setIf("deviceClassSpecific", node.deviceClass.specific.label);
             // this.setIf("supportedCCs", node.deviceClass.generic.supportedCCs);
@@ -66,8 +67,8 @@ export class NodeValues {
         this.setIf( vocab.PropDeviceFirmwareVersion, node.firmwareVersion||"n/a");
 
         if (node.getHighestSecurityClass()) {
-            let classID = node.getHighestSecurityClass() as number
-            let highestSecClass = `${getEnumMemberName(SecurityClass, classID)} (${classID})`
+            const classID = node.getHighestSecurityClass() as number
+            const highestSecClass = `${getEnumMemberName(SecurityClass, classID)} (${classID})`
             this.setIf("highestSecurityClass", highestSecClass);
         }
 
@@ -110,10 +111,10 @@ export class NodeValues {
 
         // add value ID values
 
-        let vids = node.getDefinedValueIDs()
-        for (let vid of vids) {
-            let vidValue = getVidValue(node, vid)
-            let propID = getPropName(vid)
+        const vids = node.getDefinedValueIDs()
+        for (const vid of vids) {
+            const vidValue = getVidValue(node, vid)
+            const propID = getPropName(vid)
             this.setIf(propID, vidValue)
         }
         // let nameVid = {

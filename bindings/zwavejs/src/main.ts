@@ -1,12 +1,13 @@
 #!/usr/bin/env node
-import {env, exit} from "process";
-import {ZwaveJSBinding} from "./ZWaveJSBinding";
-import path from "path";
-import {BindingConfig} from "./BindingConfig";
-import {ConnectToHub} from "@hivelib/messaging/ConnectToHub";
-import {getlogger} from "@zwavejs/getLogger";
+import {env, exit} from "node:process";
+import path from "node:path";
+import process from "node:process";
+import {ZwaveJSBinding} from "./ZWaveJSBinding.ts";
+import BindingConfig from "./BindingConfig.ts";
+import ConnectToHub from "../hivelib/messaging/ConnectToHub.ts";
+import getLogger from "./getLogger.ts";
 
-const log = getlogger()
+const log = getLogger()
 
 process.on("uncaughtException", (err) => {
     log.error("uncaught exception:", err)
@@ -20,9 +21,9 @@ console.log("Starting hiveot zwavejs binding...")
     // each client.
     // The launcher automatically creates a token file. To manually create one:
     // > hubcli addsvc zwavejs-1
-    let clientID = path.basename(process.argv0)
+    const clientID = path.basename(process.argv0)
 
-    let appConfig = new BindingConfig(clientID)
+    const appConfig = new BindingConfig(clientID)
 
     // REMOVE THE FOLLOWING LINE AFTER INITIAL DEVELOPMENT
     // My Z-stick doesn't handle soft reset
@@ -33,14 +34,14 @@ console.log("Starting hiveot zwavejs binding...")
     // Use the storage folder set in app config.
     log.info("storage dir", "path", appConfig.storesDir)
     if (appConfig.storesDir) {
-        let hasEnv = env.ZWAVEJS_EXTERNAL_CONFIG
+        const hasEnv = env.ZWAVEJS_EXTERNAL_CONFIG
         if (!hasEnv || hasEnv == "") {
             env.ZWAVEJS_EXTERNAL_CONFIG = path.join(appConfig.storesDir, "config")
         }
     }
 
     //--- Step 2: Connect to the Hub
-    let hc =await ConnectToHub(appConfig.hubURL, appConfig.loginID, appConfig.caCertPEM, false)
+    const hc =await ConnectToHub(appConfig.hubURL, appConfig.loginID, appConfig.caCertPEM, false)
     if (!hc) {
         throw("Unable to connect to the hub")
     }
@@ -67,7 +68,7 @@ console.log("Starting hiveot zwavejs binding...")
     }
 
     //--- Step 3: Start the binding and zwavejs driver
-    let binding = new ZwaveJSBinding(hc, appConfig);
+    const binding = new ZwaveJSBinding(hc, appConfig);
 
     await binding.start();
 
