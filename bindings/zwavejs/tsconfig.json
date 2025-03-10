@@ -16,29 +16,17 @@
     "incremental": true,
     // Avoid runtime imports that are unnecessary
     "lib": [
-      "es2022"
+      "esnext"
     ],
     "module": "ES2020",
     "moduleResolution": "node",
-    "noEmit": false,
+    "noEmit": true,
     "noEmitOnError": false,
     "noErrorTruncation": true,
     "noImplicitAny": true,
     "noImplicitThis": true,
     "outDir": "./build",
     // paths avoids the need for relative paths
-    // ./hivelib is a symlink to the shared dir ../hivelib/src
-    "paths": {
-      "@hivelib/*": [
-        "./hivelib/*"
-      ],
-      "@keys/*": [
-        "./hivelib/keys/*"
-      ],
-      "@zwavejs/*": [
-        "./src/*"
-      ]
-    },
     "preserveSymlinks": true,
     "pretty": true,
     "rootDir": ".",
@@ -47,10 +35,8 @@
     "skipLibCheck": true,
     "sourceMap": true,
     "strict": true,
-    "target": "es2020",
-    "types": [
-      "node"
-    ]
+    "target": "esnext",
+    "types": ["node"],
   },
   // tsc-alias doesn't work with references. using symlink to hivelib/src instead
   // "references": [

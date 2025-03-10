@@ -82,7 +82,7 @@ async function main() {
     // clean build folder
     await emptyDir(outputDir)
 
-    const outfile = `${outputDir}/index.js`
+    const outfile = `${outputDir}/index.cjs`
 
     const externals = [
         '@serialport/bindings-cpp/prebuilds',
@@ -167,10 +167,10 @@ async function main() {
     cleanPkgJson(pkgJson)
 
     pkgJson.scripts = {
-        start: 'node index.js',
+        start: 'node index.cjs',
     }
 
-    pkgJson.bin = 'index.js'
+    pkgJson.bin = 'index.cjs'
     pkgJson.pkg = {
         assets: ['dist/**', 'snippets/**', 'node_modules/**'],
     }

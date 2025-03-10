@@ -19,7 +19,7 @@ rm -rf dist/* build/*
 
 # use the esbuild from zwave-js-ui, which handles the assets paths,
 # and creates a patched package.json to run with pkg inside the build folder.
-node ./esbuild.js
+node ./esbuild.cjs
 
 cd build
 npx pkg package.json -t node20-linux-x64 --out-path ../dist

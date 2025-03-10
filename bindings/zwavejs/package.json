@@ -4,9 +4,9 @@
   "description": "HiveOT Zwave binding using zwavejs",
   "license": "MIT",
   "main": "src/main.ts",
-  "type": "commonjs",
+  "type": "module",
   "scripts": {
-    "build": "node esbuild.js",
+    "build": "node esbuild.cjs",
     "devnode": "ZWAVEJS_EXTERNAL_CONFIG=dist/cache node --preserve-symlinks build/index.js --clientID zwavejs --home ~/bin/hiveot",
     "devtsx": "ZWAVEJS_EXTERNAL_CONFIG=dist/cache tsx --preserve-symlinks src/main.ts --clientID zwavejs --home ~/bin/hiveot",
     "pkg": "./build.sh",
@@ -25,6 +25,9 @@
     "tsc-alias": "note on tsc-alias. It doesn't work with tsconfig references. alias paths in outdir are not replaced. Workaround, do not use reference but use a symlink to library."
   },
   "bin": "build/main.js",
+  "engines": {
+    "node": ">= 20.0"
+  },
   "pkg": {
     "scripts": [
       "node_modules/axios/dist/node/*"
@@ -38,21 +41,21 @@
   },
   "dependencies": {
     "@homebridge/ciao": "^1.3.1",
-    "bonjour-service": "^1.1.1",
-    "commander": "^11.1.0",
+    "bonjour-service": "^1.3.0",
+    "commander": "^13.1.0",
     "eventsource": "^3.0.5",
-    "nanoid": "^5.0.9",
+    "nanoid": "^5.1.3",
     "process": "^0.11.10",
     "serialport": "^12.0.0",
     "tslog": "^4.9.2",
     "undici": "^7.4.0",
-    "yaml": "^2.3.4",
+    "yaml": "^2.7.0",
     "zwave-js": "^12.3.1"
   },
   "devDependencies": {
     "@types/eventsource": "^1.1.15",
     "@types/md5": "^2.3.5",
-    "@types/ws": "^8.5.9",
+    "@types/ws": "^8.18.0",
     "@yao-pkg/pkg": "^5.11.2",
     "esbuild": "^0.20.0",
     "postject": "^1.0.0-alpha.6",
@@ -60,7 +63,7 @@
     "tsc": "^2.0.4",
     "tsc-alias": "^1.8.8",
     "tsx": "^4.5.0",
-    "typescript": "^5.2.2"
+    "typescript": "^5.8.2"
   },
   "readme": "readme - todo",
   "_id": "zwavejs-binding"
