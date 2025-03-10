@@ -1,6 +1,7 @@
 {
   // typescript should generate JS files that support nodejs type loading
   "compilerOptions": {
+    "allowImportingTsExtensions": true,
     "allowJs": true,
     "baseUrl": ".",
     "checkJs": false,

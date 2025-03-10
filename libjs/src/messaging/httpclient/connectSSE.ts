@@ -1,4 +1,6 @@
 import * as tslog from 'tslog';
+// undici seems to cause a warning: Cannot find module 'node:sqlite'
+import { Agent, fetch } from 'undici';
 import { type ConnectionHandler, ConnectionStatus, type RequestHandler, type ResponseHandler
 } from "../IConsumerConnection.ts";
 
@@ -26,6 +28,7 @@ export async function  connectSSE(
     baseURL:string,
     ssePath:string,
     authToken:string,
+    caCertPem:string,
     cid:string,
     onRequest: RequestHandler,
     onResponse: ResponseHandler,
@@ -45,6 +48,16 @@ export async function  connectSSE(
         //         rejectUnauthorized: false
         //     }
         // };
+        const agent = new Agent({
+            connect: {
+                ca: [caCertPem],
+                keepAlive: true,
+                allowH2: true,
+                rejectUnauthorized:true,
+        //         cert: readFileSync('/path/to/crt.pem', 'utf-8'),
+        //         key: readFileSync('/path/to/key.pem', 'utf-8')
+        }
+        })
         const eventSourceInit = {
             fetch: (input:any, init:any) =>
                 fetch(input, {
@@ -57,9 +70,10 @@ export async function  connectSSE(
                         "content-Type": "application/json",
                         "cid": cid // this header must match the ConnectionIDHeader field name on the server
                     },
-                    https: {
-                        rejectUnauthorized: false
-                    }
+                    // https: {
+                    //     rejectUnauthorized: true
+                    // },
+                    dispatcher: agent,
                 }),
         }
 

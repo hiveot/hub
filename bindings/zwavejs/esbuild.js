@@ -105,7 +105,7 @@ async function main() {
         plugins: [nativeNodeModulesPlugin],
         bundle: true,
         platform: 'node',
-        target: 'node20',
+        target: 'node22',
         sourcemap: process.argv.includes('--sourcemap'),
         outfile,
         // suppress direct-eval warning

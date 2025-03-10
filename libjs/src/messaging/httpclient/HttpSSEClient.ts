@@ -131,7 +131,7 @@ export default class HttpSSEClient implements IAgentConnection {
             timeout: 10000, // msec???
             "rejectUnauthorized": !this._disableCertCheck
         }
-        if (!!this._caCertPem) {
+        if (this._caCertPem) {
             opts.ca = this._caCertPem
         }
         // http connection
@@ -176,7 +176,7 @@ export default class HttpSSEClient implements IAgentConnection {
         this.authToken = loginResp.token
         // with the new auth token a SSE return channel can be established
         this._sseClient = await connectSSE(
-            this._baseURL, this._ssePath, this.authToken, this._cid,
+            this._baseURL, this._ssePath, this.authToken, this._caCertPem, this._cid,
             this.onRequest.bind(this),
             this.onResponse.bind(this),
             this.onConnection.bind(this))
@@ -190,7 +190,7 @@ export default class HttpSSEClient implements IAgentConnection {
         this.authToken = authToken
         await this.connect()
         this._sseClient = await connectSSE(
-            this._baseURL, this._ssePath, this.authToken, this._cid,
+            this._baseURL, this._ssePath, this.authToken, this._caCertPem, this._cid,
             this.onRequest.bind(this),
             this.onResponse.bind(this),
             this.onConnection.bind(this))

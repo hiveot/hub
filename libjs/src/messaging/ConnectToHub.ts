@@ -27,9 +27,9 @@ export default async function ConnectToHub(
     if (fullURL == "") {
         // return after first result
         // this uses bonjour.dns which isn't compatible with node-v.23
-        // const {sseURL} = await locateHub()
+        const {sseURL} = await locateHub()
         // currently only supporting SSE on this client
-        // fullURL = sseURL
+        fullURL = sseURL
     }
     if (!clientID || !fullURL) {
         throw("Missing clientID or hub URL")

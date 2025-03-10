@@ -3,6 +3,7 @@
   // typescript should generate JS files that support nodejs type loading
   // however, intellij doesn't seem to understand this.
   "compilerOptions": {
+    "allowImportingTsExtensions": true,
     "allowJs": true,
     "baseUrl": ".",
     "checkJs": false,
