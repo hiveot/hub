@@ -41,12 +41,38 @@ This binding uses the VID to construct a key for properties, events and actions:
 
 Where propertyKey is omitted if not applicable. The endpoint is always provided and set to 0 for the default default.
 
+
+# Build and install
+
+To build a zwavejs executable for x64 or armv7, just run 'make zwavejs' from the hiveot source code.
+
+This runs 'npm i' on both the ./libjs and the ./bindings/zwavejs directories followed by zwavejs/build.sh. If something goes wrong cd into these directories and run npm i to discover the problem. Once npm i runs fine, zwavejs can be rebuild using the bindings/zwavejs/build.sh script. The bundler will likely report a few warnings that can be ignored.
+
+The 'zwavejs' binary output can be found in the bindings/zwavejs/dist directory which in turn is copied into the dist/plugins directory.
+
+Notes:
+1. The whole build and bundling is quite fragile. Some package versions can break things. Especially 'pkg', 'serialport' and 'zwave-js' are a problem.
+   Don't upgrade these unless you know what you're doing.  
+   Package version known to work with node-v22:
+* serialport-12.0.0   (version 13 breaks bundling)
+* zwave-js-12.3.1     (version 14 hangs after receiving the first controller events)
+* @yao-pkg/pkg-5.11.2   (build missing files)
+* esbuild-0.20.0        (build missing files)
+
+2. This uses 'pkg' to build an executable binary containing nodejs. I had a hard time to get it all working and bundled. zwave-js-ui has been a great help.
+ pkg IS NO LONGER MAINTAINED: https://github.com/vercel/pkg only node18 is supported!
+ Looking into pkg-fetch.
+
+3. I'd love to use deno for running, dev and building an executable but it doesn't support serial port on linux. Node's serial port uses a node api that isn't supported on Deno.
+
+
 ## Prerequisites
 
 * npm 
 * Node v22.x  (or use nvm - node version manager)
+* make
 
-### Installing node v22 on raspberry pi 3
+### Installing node v22 on raspberry pi 3 (armv7, 64bit)
 
 As of Early 2025, the default image of Raspbian for pi3 (ARMv7, 64bit) comes with Debian GNU/Linux 12 (bookworm).
 This distribution comes with nodejs-v18.19 and npm 9.2.0.
@@ -59,14 +85,7 @@ $ nvm install 22
 $ nvm alias default 22
 ```
 
-### Building on pi3
-
-Run 'npm i' in both the libjs and bindings/zwavejs directories, or run make zwavejs from the hiveot source.
-
-There currently are deprecation warnings about 'inflight@1.0.6' and 'glob@7.2.3'.
-Both are pulled in by an old version of jest which is only used for testing. You can safely ignore it as they are not used in runtime.
-
-
+The build.sh script builds the output for the current architecture. Cross compiling is not supported.
 
 ## Building with esbuild
 

@@ -24,7 +24,7 @@
     "testtsx": "experiment testing using tsx to run typescript. While tsx works as promised it doesn't support debugging imported modules",
     "tsc-alias": "note on tsc-alias. It doesn't work with tsconfig references. alias paths in outdir are not replaced. Workaround, do not use reference but use a symlink to library."
   },
-  "bin": "build/main.js",
+  "bin": "build/index.cjs",
   "engines": {
     "node": ">= 20.0"
   },
