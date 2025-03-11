@@ -1,5 +1,5 @@
 {
-  "name": "hiveot-zwavejs",
+  "name": "zwavejs",
   "version": "0.4-alpha",
   "description": "HiveOT Zwave binding using zwavejs",
   "license": "MIT",
