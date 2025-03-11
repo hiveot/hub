@@ -1,9 +1,13 @@
-# Launcher configuration
+# HiveOT launcher default configuration
+# Uncomment out the 'runtime' and services in the autostart section as needed
+
 
 # Launcher authentication in the certs directory
+# Use id to run a secondary launcher instance on a different machine
+# It must have a valid token
+#id: launcher                    # default launcher ID
 #keyFile: launcher.key           # default is launcher.key
 #tokenFile: launcher.token       # default is launcher.token
-
 
 # log launcher to stdout/stderr at level info (default is warning)
 logLevel: info
@@ -13,7 +17,7 @@ logLevel: info
 
 # runtime binary to launch before the plugins. The runtime binary must reside in the bin directory.
 # comment out if a runtime is already running elsewhere.
-runtime: runtime
+# runtime: runtime
 
 # write plugin stdout and stderr to logfile at logs/{pluginname}.log (default is true)
 #logplugins: true
@@ -34,11 +38,9 @@ runtime: runtime
 
 # Plugins to start in order
 autostart:
-  # core services
-  - certs             # certificate management service
-  - state             # client state storage
-  - history           # storage of event history
-  - idprov            # IoT device provisioning service
+# core services
+# - history              # storage of event history
+#  - zwavejs: zwavejs-cb  # run this plugin as a variant
 
 # protocol bindings
 #  - hiveoview         # simple dashboard for viewing in the browser

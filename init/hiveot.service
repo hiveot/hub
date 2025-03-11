@@ -1,0 +1,26 @@
+# HiveOT Hub systemd service
+# Save this as /etc/systemd/system/hiveot.service
+# This script example runs the hiveot hub from the hiveot user's bin/hiveot directory
+
+[Unit]
+Description=HiveOT service to launch the hub and plugins
+After=network.target
+
+[Service]
+PIDFile=/run/hiveot.pid
+Nice=10
+
+# Run as a non-root user for added security
+User=hiveot
+Group=hiveot
+
+# Auto restart the service after 1 minute when it aborts
+# NOTE: change the home folder to the appropriate folder when running locally
+WorkingDirectory=/home/hiveot/bin/hiveot
+ExecStart=/home/hiveot/bin/hiveot/bin/launcher
+ExecReload=/bin/kill -s HUP $MAINPID
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

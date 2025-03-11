@@ -16,8 +16,9 @@ TODO before alpha:
 1. Test/fix security; token expiry, bad agents or consumers, rate-limiting, role authz
 
 Roadmap:
-1. Add websockets sub-protocol binding (in progress)
-1. Support for WoT discovery profile
+1. Add websockets sub-protocol binding [in progress]
+1. Support for WoT discovery profile [done]
+2. Deployment in distributed environment 
 1. Support client certificate authentication
 1. Support mqtt transport protocol
 2. Rework internal TD document format to improve WoT TD compatibility
@@ -56,106 +57,9 @@ Last but not least, the 'hive' can be expanded by connecting multiple hubs to ea
 
 ![Digital Twin Runtime Overview](docs/digitwin-overview.jpg)
 
-## Build From Source
+## Build and Install
 
-Building the Hub takes place in 2 parts: core and protocol bindings. 
-
-Prerequisites:
-
-1. An x86 or arm based Linux system. Ubuntu, Debian, Raspberrian
-2. Golang 1.22 or newer (with GOPATH set)
-3. GCC Make any 2020+ version
-5. nodejs v18+ (for building zwavejs binding)
-
-### Build Hub Core
-
-1. Download source code:
-
-```sh
-git clone git@github.com:hiveot/hub
-cd hub
-``` 
-
-2. Build the Hub core, Services and Protocol bindings
-
-The quickest way:
-> make all
-
-If something goes wrong, build parts separately in order of dependency:
-```sh
-make runtime
-make hubcli
-make services
-make bindings
-```
-
-After the build is successful, the distribution files can be found in the 'dist' folder that can be deployed to the installation directory.
-
-```md
-dist / bin - core application binaries (runtime, launcher and hubcli)
-dist / plugins - plugin binaries
-dist / certs - CA and server certificate; authentication keys and tokens
-dist / config - core and plugin configuration files
-dist / stores - plugin data storage directory
-```
-
-## Install To User (Easiest)
-
-Installing to user is great for running a test setup to develop new bindings or just see how things work. The hub is installed into the user's bin directory and runs under that user's permissions.
-
-For example, for a user named 'hub' the installation home is '/home/hub/bin/hiveot'.
-
-To install to user after a successful build, run
-> make install
-
-This copies the distribution files to ~/bin/hiveot. The method can also be used to upgrade an existing installation. Executables are always replaced but only new configuration files are installed. Existing configuration remains untouched to prevent wrecking your working setup.
-
-### Uninstall:
-
-To uninstall simply remove the ~/bin/hiveot folder.
-
-## Install To System (tenative)
-
-While it is a bit early to install hiveot as a system application, this is how it could work:
-
-For systemd installation to run as user 'hiveot'. When changing the user and folders make sure to edit the init/hiveot.service file accordingly. From the dist folder run:
-
-1. Create the folders and install the files
-
-```sh
-sudo mkdir -P /opt/hiveot/bin
-sudo mkdir -P /opt/hiveot/plugins
-sudo mkdir -P /etc/hiveot/conf.d/ 
-sudo mkdir -P /etc/hiveot/certs/ 
-sudo mkdir /var/log/hiveot/   
-sudo mkdir /var/lib/hiveot   
-sudo mkdir /run/hiveot/
-
-# Install HiveOT 
-# download and extract the binaries tarfile in a temp for and copy the files:
-tar -xf hiveot.tgz
-sudo cp config/* /etc/hiveot/conf.d
-sudo vi /etc/hiveot/hub.yaml    - and edit the config, log, plugin folders
-sudo cp -a bin/* /opt/hiveot
-sudo cp -a plugins/* /opt/hiveot
-```
-
-Add /opt/hiveot/bin to the path
-
-2. Setup the system user and permissions
-
-Create a user 'hiveot' and set permissions.
-
-```sh
-sudo adduser --system --no-create-home --home /opt/hiveot --shell /usr/sbin/nologin --group hiveot
-sudo chown -R hiveot:hiveot /etc/hiveot
-sudo chown -R hiveot:hiveot /var/log/hiveot
-sudo chown -R hiveot:hiveot /var/lib/hiveot
-```
-
-## Docker Installation
-
-This is considered for the future.
+See [docs/INSTALL.md](docs/INSTALL.md)
 
 ## Configuration
 
@@ -164,7 +68,7 @@ All Hub services will run out of the box with their default configuration. Some 
 Most important configs:
 * launcher.yaml  section 'autostart' lists the services to run at startup
 
-A typical service or protocol binding publishes its configuration options with its TD to allow centralized configuration by managers or administrators. This is up to each service to support.  
+A typical service or protocol binding publishes its configuration options with its TD to allow centralized configuration by administrators. This is up to each service to support.  
 
 ### CA certificate
 
@@ -198,26 +102,6 @@ This is shared with Things during provisioning and used by services to secure th
 
 Note that use of letsEncrypt is planned for the future which will automate this. This does require an internet connect to work though.
 
-
-### Systemd Configuration
-
-Automatic startup after boot is supported through a systemd service. This can be used when installed system-wide or as a user.
-
-```shell
-vi init/hiveot.service    #  (edit user, group, paths)
-sudo cp init/hivehub.service /etc/systemd/system
-sudo systemctl daemon-reload
-sudo systemctl enable hivehub
-sudo systemctl start hivehub
-```
-
-Once running, the running services can be viewed using the hub cli:
-> hubcli ls
-
-To stop or start a service:
-> hubcli stop {serviceName}
-
-> hubcli start {serviceName}
 
 # Contributing
 
