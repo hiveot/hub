@@ -51,13 +51,14 @@ This runs 'npm i' on both the ./libjs and the ./bindings/zwavejs directories fol
 The 'zwavejs' binary output can be found in the bindings/zwavejs/dist directory which in turn is copied into the dist/plugins directory.
 
 Notes:
-1. The whole build and bundling is quite fragile. Some package versions can break things. Especially 'pkg', 'serialport' and 'zwave-js' are a problem.
+1. The whole build and bundling is quite fragile. Some package versions can break things. Especially 'pkg', 'undici', 'serialport' and 'zwave-js' are a problem.
    Don't upgrade these unless you know what you're doing.  
    Package version known to work with node-v22:
 * serialport-12.0.0   (version 13 breaks bundling)
 * zwave-js-12.3.1     (version 14 hangs after receiving the first controller events)
 * @yao-pkg/pkg-5.11.2   (build missing files)
 * esbuild-0.20.0        (build missing files)
+* undici-6.21         (v7 causes node:sqlite bundle error )
 
 2. This uses 'pkg' to build an executable binary containing nodejs. I had a hard time to get it all working and bundled. zwave-js-ui has been a great help.
  pkg IS NO LONGER MAINTAINED: https://github.com/vercel/pkg only node18 is supported!

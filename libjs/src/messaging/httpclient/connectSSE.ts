@@ -1,6 +1,12 @@
 import * as tslog from 'tslog';
-// undici seems to cause a warning: Cannot find module 'node:sqlite'
-import { Agent, fetch } from 'undici';
+// undici-v7 causes a pkg bundle error: Cannot find module 'node:sqlite'
+// Only use undici-v6.21
+// this might be a pkg bundling error.
+import {Agent,fetch} from "undici";
+
+// https fetch doesn't acce ca certs as attempted. Workaround, specify
+//
+// import https from 'https'
 import { type ConnectionHandler, ConnectionStatus, type RequestHandler, type ResponseHandler
 } from "../IConsumerConnection.ts";
 
@@ -48,15 +54,22 @@ export async function  connectSSE(
         //         rejectUnauthorized: false
         //     }
         // };
-        const agent = new Agent({
+        // https agent
+        // const httpsAgent = new https.Agent({
+        //         ca: [caCertPem],
+        //         keepAlive: true,
+        //         rejectUnauthorized: false,
+        // })
+
+        const undiciAgent = new Agent({
             connect: {
                 ca: [caCertPem],
                 keepAlive: true,
-                allowH2: true,
-                rejectUnauthorized:true,
-        //         cert: readFileSync('/path/to/crt.pem', 'utf-8'),
-        //         key: readFileSync('/path/to/key.pem', 'utf-8')
-        }
+                // allowH2: true,
+                rejectUnauthorized: true,
+        //                 cert: readFileSync('/path/to/crt.pem', 'utf-8'),
+        //                 key: readFileSync('/path/to/key.pem', 'utf-8')
+            }
         })
         const eventSourceInit = {
             fetch: (input:any, init:any) =>
@@ -71,9 +84,11 @@ export async function  connectSSE(
                         "cid": cid // this header must match the ConnectionIDHeader field name on the server
                     },
                     // https: {
-                    //     rejectUnauthorized: true
+                    //     rejectUnauthorized: false
                     // },
-                    dispatcher: agent,
+                    dispatcher: undiciAgent,
+                    // agent:httpsAgent,
+
                 }),
         }
 

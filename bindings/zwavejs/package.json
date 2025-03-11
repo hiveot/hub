@@ -1,5 +1,5 @@
 {
-  "name": "zwavejs",
+  "name": "hiveot-zwavejs",
   "version": "0.4-alpha",
   "description": "HiveOT Zwave binding using zwavejs",
   "license": "MIT",
@@ -26,7 +26,7 @@
   },
   "bin": "build/index.cjs",
   "engines": {
-    "node": ">= 20.0"
+    "node": ">= 22.0"
   },
   "pkg": {
     "scripts": [
@@ -48,7 +48,7 @@
     "process": "^0.11.10",
     "serialport": "^12.0.0",
     "tslog": "^4.9.2",
-    "undici": "^7.4.0",
+    "undici": "6.21",
     "yaml": "^2.7.0",
     "zwave-js": "^12.3.1"
   },
@@ -56,7 +56,7 @@
     "@types/eventsource": "^1.1.15",
     "@types/md5": "^2.3.5",
     "@types/ws": "^8.18.0",
-    "@yao-pkg/pkg": "^5.11.2",
+    "@yao-pkg/pkg": "^6.3.2",
     "esbuild": "^0.20.0",
     "postject": "^1.0.0-alpha.6",
     "ts-node": "^10.9.2",

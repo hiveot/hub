@@ -35,7 +35,7 @@ npm run build
 
 #--- Step 3: bundle
 echo "## Bundling node$NODE_MAJOR-linux for arch: $ARCH"
-# this runs node esbuild.cjs
+
 node esbuild.cjs
 
 cd build
