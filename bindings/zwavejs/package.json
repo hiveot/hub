@@ -63,7 +63,7 @@
     "@types/md5": "^2.3.5",
     "@types/ws": "^8.18.0",
     "@yao-pkg/pkg": "^6.3.2",
-    "esbuild": "^0.20.0",
+    "esbuild": "^0.25.1",
     "postject": "^1.0.0-alpha.6",
     "ts-node": "^10.9.2",
     "tsc": "^2.0.4",
