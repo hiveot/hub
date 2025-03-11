@@ -29,14 +29,12 @@ echo "## Architecture: $ARCH"
 # and creates a patched package.json to run with pkg inside the build folder.
 echo "## Building application..."
 
-#node ./esbuild.cjs  has been replaced
-# this just runs tsc to compile typescript
-npm run build
+npm i
+node esbuild.cjs
 
 #--- Step 3: bundle
 echo "## Bundling node$NODE_MAJOR-linux for arch: $ARCH"
 
-node esbuild.cjs
 
 cd build
 if [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "arm64" ]; then
