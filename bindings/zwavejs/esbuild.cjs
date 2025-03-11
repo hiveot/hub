@@ -1,6 +1,7 @@
 /** build script from github.com/zwave-js/zwave-js-ui
  * this should handle the externals a bit better
- * The only modification is to set entryPoints to src/main.ts
+ * The only modification is to set entryPoints to src/main.ts and
+ * outfile to index.cjs.
  */
 const esbuild = require('esbuild')
 const {cp, stat, readFile, writeFile} = require('fs/promises')
@@ -172,7 +173,9 @@ async function main() {
 
     pkgJson.bin = 'index.cjs'
     pkgJson.pkg = {
-        assets: ['dist/**', 'snippets/**', 'node_modules/**'],
+        assets: ['dist/**',
+            'snippets/**',
+            'node_modules/**',],
     }
 
     await writeFile(

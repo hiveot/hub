@@ -16,7 +16,7 @@
     "version": "node --version"
   },
   "scriptComments": {
-    "build": "compile using tsc and tsc-alias",
+    "build": "build using esbuild",
     "pkg": "build a single packaged executable for distribution. See dist/ for output",
     "dev": "build using tsc and tsc-alias, and run the application with node. This works with debugger step-through. (Yah!). ",
     "devtsx": "experiment. running with tsx. Its all good, except debugging into modules has incorrect line numbers and is sometimes minified.",
@@ -28,14 +28,20 @@
   "engines": {
     "node": ">= 22.0"
   },
+  "targets": [
+    "node22-linux-x64",
+    "node22-armv7-x64"
+  ],
   "pkg": {
-    "scripts": [
-      "node_modules/axios/dist/node/*"
-    ],
+    "scripts": [],
     "compress": "GZip",
     "assets": [
-      "prebuilds/**/*",
-      "config/**/*"
+      "dist/**/*",
+      "snippets/**",
+      "node_modules/@serialport/**",
+      "node_modules/@zwave-js/serial/node_modules/@serialport/**",
+      "node_modules/zwave-js/node_modules/@serialport/**",
+      "node_modules/@zwave-js/config/config/devices/**"
     ],
     "outputPath": "dist"
   },
@@ -50,7 +56,7 @@
     "tslog": "^4.9.2",
     "undici": "6.21",
     "yaml": "^2.7.0",
-    "zwave-js": "^12.3.1"
+    "zwave-js": "12.13"
   },
   "devDependencies": {
     "@types/eventsource": "^1.1.15",

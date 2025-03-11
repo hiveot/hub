@@ -55,9 +55,9 @@ Notes:
    Don't upgrade these unless you know what you're doing.  
    Package version known to work with node-v22:
 * serialport-12.0.0   (version 13 breaks bundling)
-* zwave-js-12.3.1     (version 14 hangs after receiving the first controller events)
-* @yao-pkg/pkg-5.11.2   (build missing files)
-* esbuild-0.20.0        (build missing files)
+* zwave-js-12.13      (version 13+ hangs after receiving the first controller events)
+* @yao-pkg/pkg-5.11.2 (build missing files)
+* esbuild-0.20.0      (build missing files)
 * undici-6.21         (v7 causes node:sqlite bundle error )
 
 2. This uses 'pkg' to build an executable binary containing nodejs. I had a hard time to get it all working and bundled. zwave-js-ui has been a great help.
