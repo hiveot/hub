@@ -26,6 +26,8 @@ type WssClient struct {
 	// handler for requests send by clients
 	appConnectHandlerPtr atomic.Pointer[messaging.ConnectionHandler]
 
+	// handler for notifications sent by agents
+	appNotificationHandlerPtr atomic.Pointer[messaging.NotificationHandler]
 	// handler for requests send by clients
 	appRequestHandlerPtr atomic.Pointer[messaging.RequestHandler]
 	// handler for responses sent by agents
@@ -66,133 +68,154 @@ type WssClient struct {
 }
 
 // websocket connection status handler
-func (cl *WssClient) _onConnectionChanged(connected bool, err error) {
+func (cc *WssClient) _onConnectionChanged(connected bool, err error) {
 
-	hPtr := cl.appConnectHandlerPtr.Load()
+	hPtr := cc.appConnectHandlerPtr.Load()
 
-	cl.isConnected.Store(connected)
+	cc.isConnected.Store(connected)
 	if hPtr != nil {
-		(*hPtr)(connected, err, cl)
+		(*hPtr)(connected, err, cc)
 	}
 	// if retrying is enabled then try on disconnect
-	if !connected && cl.retryOnDisconnect.Load() {
-		cl.Reconnect()
+	if !connected && cc.retryOnDisconnect.Load() {
+		cc.Reconnect()
 	}
 }
 
 // _send publishes a message over websockets
-func (cl *WssClient) _send(wssMsg any) (err error) {
-	if !cl.isConnected.Load() {
+func (cc *WssClient) _send(wssMsg any) (err error) {
+	if !cc.isConnected.Load() {
 		// note, it might be trying to reconnect in the background
 		err := fmt.Errorf("_send: Not connected to the hub")
 		return err
 	}
 	// websockets do not allow concurrent writes
-	cl.mux.Lock()
-	err = cl.wssConn.WriteJSON(wssMsg)
-	cl.mux.Unlock()
+	cc.mux.Lock()
+	err = cc.wssConn.WriteJSON(wssMsg)
+	cc.mux.Unlock()
 	return err
 }
 
 // ConnectWithToken attempts to establish a websocket connection using a valid auth token
-func (cl *WssClient) ConnectWithToken(token string) error {
+// If a connection exists it is closed first.
+func (cc *WssClient) ConnectWithToken(token string) error {
 
 	// ensure disconnected (note that this resets retryOnDisconnect)
-	cl.Disconnect()
+	cc.Disconnect()
 
-	cl.authToken = token
-	wssCancelFn, wssConn, err := ConnectWSS(cl.cinfo, token,
-		cl._onConnectionChanged, cl.HandleWssMessage)
+	cc.authToken = token
+	wssCancelFn, wssConn, err := ConnectWSS(cc.cinfo, token,
+		cc._onConnectionChanged, cc.HandleWssMessage)
 
-	cl.mux.Lock()
-	cl.wssCancelFn = wssCancelFn
-	cl.wssConn = wssConn
-	cl.mux.Unlock()
+	cc.mux.Lock()
+	cc.wssCancelFn = wssCancelFn
+	cc.wssConn = wssConn
+	cc.mux.Unlock()
 
 	// even if connection failed right now, enable retry
-	cl.retryOnDisconnect.Store(true)
+	cc.retryOnDisconnect.Store(true)
 
 	return err
 }
 
 // Disconnect from the server
-func (cl *WssClient) Disconnect() {
+func (cc *WssClient) Disconnect() {
 	slog.Debug("Disconnect",
-		slog.String("clientID", cl.cinfo.ClientID),
+		slog.String("clientID", cc.cinfo.ClientID),
 	)
 	// dont try to reconnect
-	cl.retryOnDisconnect.Store(false)
+	cc.retryOnDisconnect.Store(false)
 
-	cl.mux.Lock()
-	defer cl.mux.Unlock()
-	if cl.wssCancelFn != nil {
-		cl.wssCancelFn()
-		cl.wssCancelFn = nil
+	cc.mux.Lock()
+	defer cc.mux.Unlock()
+	if cc.wssCancelFn != nil {
+		cc.wssCancelFn()
+		cc.wssCancelFn = nil
 	}
 }
 
 // GetConnectionInfo returns the client's connection details
-func (c *WssClient) GetConnectionInfo() messaging.ConnectionInfo {
-	return c.cinfo
+func (cc *WssClient) GetConnectionInfo() messaging.ConnectionInfo {
+	return cc.cinfo
 }
 
 // HandleWssMessage processes the websocket message received from the server.
 // This decodes the message into a request or response message and passes
 // it to the application handler.
-func (cl *WssClient) HandleWssMessage(raw []byte) {
+func (cc *WssClient) HandleWssMessage(raw []byte) {
+	var notif *messaging.NotificationMessage
+	var req *messaging.RequestMessage
+	var resp *messaging.ResponseMessage
 
 	// both non-agents and agents receive responses
-	resp := cl.messageConverter.DecodeResponse(raw)
-	if resp != nil {
-		hPtr := cl.appResponseHandlerPtr.Load()
+	notif = cc.messageConverter.DecodeNotification(raw)
+	if notif == nil {
+		resp = cc.messageConverter.DecodeResponse(raw)
+		if resp == nil {
+			req = cc.messageConverter.DecodeRequest(raw)
+		}
+	}
+	if notif != nil {
+		hPtr := cc.appNotificationHandlerPtr.Load()
+		if hPtr == nil {
+			slog.Error("HandleWssMessage: no notification handler set",
+				"clientID", cc.cinfo.ClientID,
+				"operation", notif.Operation,
+			)
+			return
+		}
+		// pass the response to the registered handler
+		(*hPtr)(notif)
+	} else if resp != nil {
+		hPtr := cc.appResponseHandlerPtr.Load()
 		if hPtr == nil {
 			slog.Error("HandleWssMessage: no response handler set",
-				"clientID", cl.cinfo.ClientID,
+				"clientID", cc.cinfo.ClientID,
 				"operation", resp.Operation,
 			)
 			return
 		}
 		// pass the response to the registered handler
 		_ = (*hPtr)(resp)
-	} else {
-		// only agents receive requests
-		req := cl.messageConverter.DecodeRequest(raw)
-		if req == nil {
-			slog.Warn("HandleWssMessage: Message is not a request or response")
-			return
-		}
-		hPtr := cl.appRequestHandlerPtr.Load()
+	} else if req != nil {
+		hPtr := cc.appRequestHandlerPtr.Load()
 		if hPtr == nil {
 			slog.Error("HandleWssMessage: no request handler set",
-				"clientID", cl.cinfo.ClientID,
+				"clientID", cc.cinfo.ClientID,
 				"operation", req.Operation,
 			)
 			return
 		}
 		// return the response to the caller
-		resp = (*hPtr)(req, cl)
-		_ = cl.SendResponse(resp)
+		resp = (*hPtr)(req, cc)
+		// responses are optional
+		if resp != nil {
+			_ = cc.SendResponse(resp)
+		}
+	} else {
+		slog.Warn("HandleWssMessage: Message is not a notification, request or response")
+		return
 	}
 }
 
 // IsConnected return whether the return channel is connection, eg can receive data
-func (cl *WssClient) IsConnected() bool {
-	return cl.isConnected.Load()
+func (cc *WssClient) IsConnected() bool {
+	return cc.isConnected.Load()
 }
 
 // Reconnect attempts to re-establish a dropped connection using the last token
-func (cl *WssClient) Reconnect() {
+func (cc *WssClient) Reconnect() {
 	var err error
-	for i := 0; cl.maxReconnectAttempts == 0 || i < cl.maxReconnectAttempts; i++ {
+	for i := 0; cc.maxReconnectAttempts == 0 || i < cc.maxReconnectAttempts; i++ {
 		slog.Warn("Reconnecting attempt",
-			slog.String("clientID", cl.cinfo.ClientID),
+			slog.String("clientID", cc.cinfo.ClientID),
 			slog.Int("i", i))
-		err = cl.ConnectWithToken(cl.authToken)
+		err = cc.ConnectWithToken(cc.authToken)
 		if err == nil {
 			break
 		}
 		// retry until max repeat is reached or disconnect is called
-		if !cl.retryOnDisconnect.Load() {
+		if !cc.retryOnDisconnect.Load() {
 			break
 		}
 		// the connection timeout doesn't seem to work for some reason
@@ -203,12 +226,42 @@ func (cl *WssClient) Reconnect() {
 	}
 }
 
+// SendNotification Agent posts a notification over websockets
+// This passes the notification as-is as a payload.
+//
+// This posts the JSON-encoded NotificationMessage on the well-known hiveot notification href.
+// In WoT Agents are typically a server, not a client, so this is intended for
+// agents that use connection-reversal.
+func (cc *WssClient) SendNotification(notif *messaging.NotificationMessage) error {
+
+	slog.Debug("SendNotification",
+		slog.String("clientID", cc.cinfo.ClientID),
+		slog.String("correlationID", notif.CorrelationID),
+		slog.String("operation", notif.Operation),
+		slog.String("thingID", notif.ThingID),
+		slog.String("name", notif.Name),
+	)
+	// convert the operation into a protocol message
+	wssMsg, err := cc.messageConverter.EncodeNotification(notif)
+	if err != nil {
+		slog.Error("SendNotification: unknown request", "op", notif.Operation)
+		return err
+	}
+	err = cc._send(wssMsg)
+	if err != nil {
+		slog.Warn("SendNotification failed",
+			"clientID", cc.cinfo.ClientID,
+			"err", err.Error())
+	}
+	return err
+}
+
 // SendRequest send a request message over websockets
 // This transforms the request to the protocol message and sends it to the server.
-func (cl *WssClient) SendRequest(req *messaging.RequestMessage) error {
+func (cc *WssClient) SendRequest(req *messaging.RequestMessage) error {
 
 	slog.Debug("SendRequest",
-		slog.String("clientID", cl.cinfo.ClientID),
+		slog.String("clientID", cc.cinfo.ClientID),
 		slog.String("correlationID", req.CorrelationID),
 		slog.String("operation", req.Operation),
 		slog.String("thingID", req.ThingID),
@@ -216,65 +269,74 @@ func (cl *WssClient) SendRequest(req *messaging.RequestMessage) error {
 	)
 
 	// convert the operation into a protocol message
-	wssMsg, err := cl.messageConverter.EncodeRequest(req)
+	wssMsg, err := cc.messageConverter.EncodeRequest(req)
 	if err != nil {
 		slog.Error("SendRequest: unknown request", "op", req.Operation)
 		return err
 	}
-	err = cl._send(wssMsg)
+	err = cc._send(wssMsg)
 	return err
 }
 
 // SendResponse send a response message over websockets
 // This transforms the response to the protocol message and sends it to the server.
 // Responses without correlationID are subscription notifications.
-func (cl *WssClient) SendResponse(resp *messaging.ResponseMessage) error {
+func (cc *WssClient) SendResponse(resp *messaging.ResponseMessage) error {
 
 	slog.Debug("SendResponse",
 		slog.String("operation", resp.Operation),
-		slog.String("clientID", cl.cinfo.ClientID),
+		slog.String("clientID", cc.cinfo.ClientID),
 		slog.String("thingID", resp.ThingID),
 		slog.String("name", resp.Name),
-		slog.String("status", resp.Status),
+		slog.String("error", resp.Error),
 		slog.String("correlationID", resp.CorrelationID),
 	)
 
 	// convert the operation into a protocol message
-	wssMsg, err := cl.messageConverter.EncodeResponse(resp)
+	wssMsg, err := cc.messageConverter.EncodeResponse(resp)
 	if err != nil {
 		slog.Error("SendResponse: cant convert response",
 			"op", resp.Operation,
 			"err", err)
 		return err
 	}
-	err = cl._send(wssMsg)
+	err = cc._send(wssMsg)
 	return err
 }
 
 // SetConnectHandler set the application handler for connection status updates
-func (cl *WssClient) SetConnectHandler(cb messaging.ConnectionHandler) {
+func (cc *WssClient) SetConnectHandler(cb messaging.ConnectionHandler) {
 	if cb == nil {
-		cl.appConnectHandlerPtr.Store(nil)
+		cc.appConnectHandlerPtr.Store(nil)
 	} else {
-		cl.appConnectHandlerPtr.Store(&cb)
+		cc.appConnectHandlerPtr.Store(&cb)
+	}
+}
+
+// SetNotificationHandler set the application handler for received notifications
+func (cc *WssClient) SetNotificationHandler(cb messaging.NotificationHandler) {
+	if cb == nil {
+		cc.appNotificationHandlerPtr.Store(nil)
+	} else {
+		cc.appNotificationHandlerPtr.Store(&cb)
 	}
 }
 
 // SetRequestHandler set the application handler for incoming requests
-func (cl *WssClient) SetRequestHandler(cb messaging.RequestHandler) {
+func (cc *WssClient) SetRequestHandler(cb messaging.RequestHandler) {
 	if cb == nil {
-		cl.appRequestHandlerPtr.Store(nil)
+		cc.appRequestHandlerPtr.Store(nil)
 	} else {
-		cl.appRequestHandlerPtr.Store(&cb)
+		cc.appRequestHandlerPtr.Store(&cb)
 	}
 }
 
 // SetResponseHandler set the application handler for received responses
-func (cl *WssClient) SetResponseHandler(cb messaging.ResponseHandler) {
+func (cc *WssClient) SetResponseHandler(cb messaging.ResponseHandler) {
 	if cb == nil {
-		cl.appResponseHandlerPtr.Store(nil)
+		cc.appResponseHandlerPtr.Store(nil)
 	} else {
-		cl.appResponseHandlerPtr.Store(&cb)
+		cc.appResponseHandlerPtr.Store(&cb)
 	}
 }
 

@@ -265,7 +265,8 @@ func (ct *ConsumedThing) InvokeAction(name string, iin InteractionInput) (*Inter
 		return nil, err
 	}
 	// update the
-	iout := NewInteractionOutput(ct, messaging.AffordanceTypeAction, name, resp.Output, resp.Updated)
+	iout := NewInteractionOutput(ct,
+		messaging.AffordanceTypeAction, name, resp.Output, resp.Timestamp)
 	ct.mux.Lock()
 	ct.actionOutputs[name] = iout
 	ct.mux.Unlock()
@@ -283,63 +284,64 @@ func (ct *ConsumedThing) ObserveProperty(name string, listener InteractionListen
 	return nil
 }
 
-// OnResponse handles receiving a Thing event.
-// To be called by the manager of this ConsumerThing, the one that receives
+// OnNotification handles receiving a Thing event or property update.
+// To be called by the manager of this ConsumedThing, the one that receives
 // all subscribed events from the hub client.
 // This updates the latest event value and invokes the registered event subscriber, if any.
 //
 //	msg is the notification message received.
-func (ct *ConsumedThing) OnResponse(msg *messaging.ResponseMessage) {
+func (ct *ConsumedThing) OnNotification(notif *messaging.NotificationMessage) {
 
-	if msg.Operation == wot.OpSubscribeEvent &&
-		msg.ThingID == digitwin.ThingDirectoryDThingID &&
-		msg.Name == digitwin.ThingDirectoryEventThingUpdated {
+	if notif.Operation == wot.OpSubscribeEvent &&
+		notif.ThingID == digitwin.ThingDirectoryDThingID &&
+		notif.Name == digitwin.ThingDirectoryEventThingUpdated {
 		// decode the TD
 		tdi := &td.TD{}
-		err := jsoniter.UnmarshalFromString(msg.ToString(0), &tdi)
+		err := jsoniter.UnmarshalFromString(notif.ToString(0), &tdi)
 		if err != nil {
 			slog.Error("invalid payload for TD event. Ignored",
-				"thingID", msg.ThingID)
+				"thingID", notif.ThingID)
 			return
 		}
 		// update consumed thing, if existing
 		ct.mux.Lock()
 		ct.tdi = tdi
 		ct.mux.Unlock()
-	} else if msg.Operation == wot.OpObserveProperty {
+	} else if notif.Operation == wot.OpObserveProperty {
 		// update value
-		iout := NewInteractionOutputFromResponse(ct, messaging.AffordanceTypeProperty, msg)
+		iout := NewInteractionOutputFromNotification(
+			ct, messaging.AffordanceTypeProperty, notif)
 		ct.mux.Lock()
-		ct.propValues[msg.Name] = iout
+		ct.propValues[notif.Name] = iout
 		// the consumed thing title and description are updated with corresponding properties
-		if msg.Name == wot.WoTTitle {
+		if notif.Name == wot.WoTTitle {
 			ct.Title = iout.Value.Text()
-		} else if msg.Name == wot.WoTDescription {
+		} else if notif.Name == wot.WoTDescription {
 			ct.Description = iout.Value.Text()
 		}
 		ct.mux.Unlock()
 
-		subscr, _ := ct.subscribers[msg.Name]
+		subscr, _ := ct.subscribers[notif.Name]
 		if subscr != nil {
 			subscr(iout)
 		}
-	} else if msg.Operation == wot.OpSubscribeEvent {
-		iout := NewInteractionOutputFromResponse(ct, messaging.AffordanceTypeEvent, msg)
+	} else if notif.Operation == wot.OpSubscribeEvent {
+		iout := NewInteractionOutputFromNotification(ct, messaging.AffordanceTypeEvent, notif)
 		// this is a regular value event
 		ct.mux.Lock()
-		ct.eventValues[msg.Name] = iout
+		ct.eventValues[notif.Name] = iout
 		ct.mux.Unlock()
-		subscr, _ := ct.subscribers[msg.Name]
+		subscr, _ := ct.subscribers[notif.Name]
 		if subscr != nil {
 			subscr(iout)
 		}
-	} else if msg.Operation == wot.OpInvokeAction {
-		iout := NewInteractionOutputFromResponse(ct, messaging.AffordanceTypeAction, msg)
+	} else if notif.Operation == wot.OpInvokeAction {
+		iout := NewInteractionOutputFromNotification(ct, messaging.AffordanceTypeAction, notif)
 		// this is a regular action progress event
 		ct.mux.Lock()
-		ct.actionOutputs[msg.Name] = iout
+		ct.actionOutputs[notif.Name] = iout
 		ct.mux.Unlock()
-		subscr, _ := ct.subscribers[msg.Name]
+		subscr, _ := ct.subscribers[notif.Name]
 		if subscr != nil {
 			subscr(iout)
 		}

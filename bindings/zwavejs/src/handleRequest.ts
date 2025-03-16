@@ -20,15 +20,15 @@ const log = getLogger()
 
 
 // handle controller actions as defined in the TD
-// Normally this returns the delivery status to the caller.
-// If delivery is in progress then use 'hc' to send further status updates.
+//
+// This sends responses asynchronously and just returns nil
 export default function  handleRequest(
-    req: RequestMessage, zwapi: ZWAPI, hc: IAgentConnection): ResponseMessage {
+    req: RequestMessage, zwapi: ZWAPI, hc: IAgentConnection): ResponseMessage|null {
 
     let err: Error | undefined
     let output: any = null
     let status = StatusCompleted
-    let resp: ResponseMessage
+    // let resp: ResponseMessage
 
     const actionLower = req.name.toLowerCase()
     let targetNode: ZWaveNode | undefined
@@ -93,11 +93,11 @@ export default function  handleRequest(
             // 3 runs; return rating
             node.checkLifelineHealth(3)
                 .then((ev) => {
-                    resp = req.createResponse(ev.rating)
+                    let resp = req.createResponse(ev.rating)
                     hc.sendResponse(resp)
                 })
                 .catch(err => {
-                    resp = req.createResponse(null, err)
+                    let resp = req.createResponse(null, err)
                     hc.sendResponse(resp)
                 });
         } break;
@@ -110,7 +110,7 @@ export default function  handleRequest(
             node.ping().then((_success: boolean) => {
                 const endTime = performance.now()
                 const msec = Math.round(endTime - startTime)
-                resp = req.createResponse(msec)
+                let resp = req.createResponse(msec)
                 log.info("ping '" + req.thingID + "': " + msec + " msec")
                 hc.sendResponse(resp)
             })
@@ -123,12 +123,12 @@ export default function  handleRequest(
                 node.refreshInfo({waitForWakeup: true})
                     .then((result) => {
                         log.info("refreshinfo. StartedResult:", result)
-                        resp = req.createResponse(null)
+                        let resp = req.createResponse(null)
                         hc.sendResponse(resp) // async
                     })
                     .catch(err => {
                         log.info("refreshinfo failed: ", err)
-                        resp = req.createResponse(null, err)
+                        let resp = req.createResponse(null, err)
                         hc.sendResponse(resp) // async
                     })
             } else {
@@ -141,12 +141,12 @@ export default function  handleRequest(
             status = StatusRunning
             // this can take 10-20 seconds
             node.refreshValues().then((_res) => {
-                resp = req.createResponse(null)
+                let resp = req.createResponse(null)
                 hc.sendResponse(resp) // async
                 log.info("refreshvalues completed")
             }).catch(err => {
                 log.info("refreshvalues failed: ", err)
-                resp = req.createResponse(null, err)
+                let resp = req.createResponse(null, err)
                 hc.sendResponse(resp) // async
             })
         } break;
@@ -159,17 +159,15 @@ export default function  handleRequest(
             // FIXME: convert actionValue to expected type
             const propVid = getPropVid(req.name)
             if (propVid) {
-                status = StatusRunning
                 setValue(node, propVid, actionValue)
                     .then(progress => {
                         const newValue = getVidValue(node, propVid)
-                        resp = req.createResponse(newValue)
-                        resp.status = progress
+                        let resp = req.createResponse(newValue)
                         hc.sendResponse(resp)
                         zwapi.onValueUpdate(node, propVid, newValue)
                     })
                     .catch(err => {
-                        resp = req.createResponse(null, err)
+                        let resp = req.createResponse(null, err)
                         hc.sendResponse(resp)
                     })
                 found = true
@@ -182,12 +180,11 @@ export default function  handleRequest(
         }
     }
 
-    resp = req.createResponse(output, err)
-    if (!err) {
-        resp.status = status
-    }
     if (err) {
         log.error(err)
+        let resp = req.createResponse(output, err)
+        hc.sendResponse(resp)
     }
-    return resp
+    // responses are sent async
+    return null
 }

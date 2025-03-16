@@ -138,6 +138,7 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 		r.AuthzAgent.HandleAction,
 		r.AuthzAgent.HasPermission,
 		r.TransportsMgr)
+	r.TransportsMgr.SetNotificationHandler(r.DigitwinRouter.HandleNotification)
 	r.TransportsMgr.SetRequestHandler(r.DigitwinRouter.HandleRequest)
 	r.TransportsMgr.SetResponseHandler(r.DigitwinRouter.HandleResponse)
 
@@ -198,9 +199,8 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 
 // SendNotification sends an event or property response message to subscribers.
 // This simply forwards the notification to the transport manager.
-func (r *Runtime) SendNotification(notif *messaging.ResponseMessage) error {
+func (r *Runtime) SendNotification(notif *messaging.NotificationMessage) {
 	r.TransportsMgr.SendNotification(notif)
-	return nil
 }
 
 func (r *Runtime) Stop() {

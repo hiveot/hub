@@ -18,7 +18,7 @@ type DirectoryService struct {
 	dtwStore *store.DigitwinStore
 
 	// notifications on directory changes
-	notifHandler    messaging.ResponseHandler
+	notifHandler    messaging.NotificationHandler
 	addFormsHandler func(*td.TD) error
 }
 
@@ -108,9 +108,9 @@ func (svc *DirectoryService) RemoveTD(senderID string, dThingID string) error {
 	if err == nil && svc.notifHandler != nil {
 		// Publish an event notifying subscribers that the Thing was removed from the directory
 		// Those subscribing to directory event will be notified
-		notif := messaging.NewResponseMessage(wot.OpSubscribeEvent,
+		notif := messaging.NewNotificationMessage(wot.OpSubscribeEvent,
 			digitwin.ThingDirectoryDThingID, digitwin.ThingDirectoryEventThingRemoved,
-			dThingID, nil, "")
+			dThingID)
 		go svc.notifHandler(notif)
 	}
 	return err
@@ -124,11 +124,11 @@ func (svc *DirectoryService) UpdateTD(agentID string, tdJson string) error {
 
 	// transform the agent provided TD into a digital twin's TD
 	thingTD, digitalTwinTD, err := svc.MakeDigitalTwinTD(agentID, tdJson)
-	slog.Info("UpdateDTD",
-		slog.String("agentID", agentID), slog.String("thingID", thingTD.ID))
 	if err != nil {
 		return err
 	}
+	slog.Info("UpdateDTD",
+		slog.String("agentID", agentID), slog.String("thingID", thingTD.ID))
 	// store both the original and digitwin TD documents
 	svc.dtwStore.UpdateTD(agentID, thingTD, digitalTwinTD)
 
@@ -137,9 +137,9 @@ func (svc *DirectoryService) UpdateTD(agentID string, tdJson string) error {
 		dtdJSON, _ := jsoniter.MarshalToString(digitalTwinTD)
 		// todo: only send notification on changes
 		// publish an event that the directory TD has updated with a new TD
-		notif := messaging.NewResponseMessage(wot.OpSubscribeEvent,
+		notif := messaging.NewNotificationMessage(wot.OpSubscribeEvent,
 			digitwin.ThingDirectoryDThingID, digitwin.ThingDirectoryEventThingUpdated,
-			dtdJSON, nil, "")
+			dtdJSON)
 		go svc.notifHandler(notif)
 	}
 	return err
@@ -151,7 +151,7 @@ func (svc *DirectoryService) UpdateTD(agentID string, tdJson string) error {
 // Currently being revised to be compatible.
 // The transport binding can be supplied directly or set later by the parent service
 func NewDigitwinDirectoryService(
-	dtwStore *store.DigitwinStore, notifHandler messaging.ResponseHandler) *DirectoryService {
+	dtwStore *store.DigitwinStore, notifHandler messaging.NotificationHandler) *DirectoryService {
 
 	dirSvc := &DirectoryService{
 		dtwStore:     dtwStore,

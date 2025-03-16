@@ -198,15 +198,24 @@ func (cc *HiveotSseClient) handleSseEvent(event sse.Event) {
 	}
 
 	// Use the hiveot message envelopes for request, response and notification
-	if event.Type == messaging.MessageTypeRequest {
+	if event.Type == messaging.MessageTypeNotification {
+		notif := messaging.NotificationMessage{}
+		notif.MessageType = messaging.MessageTypeNotification
+		_ = jsoniter.UnmarshalFromString(event.Data, &notif)
+		// don't block the receiver flow
+		go func() {
+			cc.mux.RLock()
+			h := cc.appNotificationHandler
+			cc.mux.RUnlock()
+			if h == nil {
+				slog.Error("appNotificationHandler is nil")
+			} else {
+				h(&notif)
+			}
+		}()
+	} else if event.Type == messaging.MessageTypeRequest {
 		req := messaging.RequestMessage{}
 		_ = jsoniter.UnmarshalFromString(event.Data, &req)
-		//slog.Info("handle request: ",
-		//	slog.String("op", req.Operation),
-		//	slog.String("thingID", req.ThingID),
-		//	slog.String("name", req.Name),
-		//	slog.String("created", req.Created),
-		//)
 		go func() {
 			cc.mux.RLock()
 			h := cc.appRequestHandler
@@ -223,14 +232,6 @@ func (cc *HiveotSseClient) handleSseEvent(event sse.Event) {
 		resp.MessageType = messaging.MessageTypeResponse
 		_ = jsoniter.UnmarshalFromString(event.Data, &resp)
 		// don't block the receiver flow
-		//slog.Info("handle response: ",
-		//	slog.String("op", resp.Operation),
-		//	slog.String("thingID", resp.ThingID),
-		//	slog.String("name", resp.Name),
-		//	slog.String("correlationID", resp.CorrelationID),
-		//	slog.String("created", resp.Updated),
-		//)
-		// don't block the receiver flow
 		go func() {
 			cc.mux.RLock()
 			h := cc.appResponseHandler
@@ -242,21 +243,22 @@ func (cc *HiveotSseClient) handleSseEvent(event sse.Event) {
 			}
 		}()
 	} else {
-		// everything else is in a different format. Attempt to deliver for
-		// compatibility with other protocols (such has hiveoview test client)
-		resp := messaging.ResponseMessage{}
-		resp.MessageType = messaging.MessageTypeResponse
-		resp.Output = event.Data
-		resp.Operation = event.Type
+		// all other events are intended for other use-cases such as the UI,
+		// and can have a formats of event/{dThingID}/{name}
+		// Attempt to deliver this for compatibility with other protocols (such has hiveoview test client)
+		notif := messaging.NotificationMessage{}
+		notif.MessageType = messaging.MessageTypeNotification
+		notif.Data = event.Data
+		notif.Operation = event.Type
 		// don't block the receiver flow
 		go func() {
 			cc.mux.RLock()
-			h := cc.appResponseHandler
+			h := cc.appNotificationHandler
 			cc.mux.RUnlock()
 			if h == nil {
-				slog.Error("appRequestHandler is nil")
+				slog.Error("appNotificationHandler is nil")
 			} else {
-				_ = h(&resp)
+				h(&notif)
 			}
 		}()
 	}

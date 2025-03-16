@@ -86,6 +86,69 @@ func (store *DigitwinStore) LoadCacheFromStore() error {
 	return nil
 }
 
+// NewActionStart updates the action with a new start and pending status.
+//
+// This stores the action request for use with query actions.
+//
+// Note 'safe' actions are not stored as they don't affect the state of a Thing.
+// The output is just a transformation of the input.
+//
+// This returns true if the request is stored or false if the request is safe.
+func (svc *DigitwinStore) NewActionStart(req *messaging.RequestMessage) (
+	actionStatus digitwin.ActionStatus, stored bool, err error) {
+	svc.cacheMux.Lock()
+	defer svc.cacheMux.Unlock()
+
+	// A digital twin must exist. They are created when a TD is received.
+	dtw, found := svc.dtwCache[req.ThingID]
+	if !found {
+		// for now just warn for unknown things, in case the TD is not yet known.
+		// This might become an error in the future once the use-cases that can
+		// trigger this are better understood.
+		err := fmt.Errorf(
+			"NewActionStart: Action requested on an unknown Thing with ID '%s'. "+
+				"Action is not recorded", req.ThingID)
+		slog.Warn(err.Error())
+		return actionStatus, false, nil
+	}
+	// action affordance should exist
+	aff, found := dtw.DigitwinTD.Actions[req.Name]
+	_ = aff
+	if !found {
+		// FIXME:The request might not be an action but could also be a Thing level operation
+		// Need to understand the use-cases this might occur before changing this
+		// into an error or info. Most operations should be handled by the digital twin,
+		// not by remote agents.
+		err := fmt.Errorf("NewActionStart: Action '%s' not found in "+
+			"digital twin '%s'. Action is not recorded", req.Name, req.ThingID)
+		slog.Warn(err.Error())
+		// this is currently only a warning
+		return actionStatus, false, nil
+	}
+	if aff.Safe {
+		// Safe actions do not affect the Thing state. The response is a function
+		// if the input parameters so no use storing these.
+		slog.Info("Not recording a safe action as it doesnt affect Thing state")
+		return actionStatus, false, nil
+	}
+	// this is an action that affects the Thing state (not safe). Record it.
+	actionStatus, found = dtw.ActionStatuses[req.Name]
+	if !found {
+		actionStatus = digitwin.ActionStatus{}
+	}
+	actionStatus.Name = req.Name
+	actionStatus.ThingID = req.ThingID
+	actionStatus.SenderID = req.SenderID
+	actionStatus.Input = req.Input
+	actionStatus.Status = messaging.StatusPending
+	actionStatus.Requested = req.Created
+	actionStatus.Id = req.CorrelationID
+	dtw.ActionStatuses[req.Name] = actionStatus
+	svc.changedThings[req.ThingID] = true
+
+	return actionStatus, true, nil
+}
+
 // QueryAction returns the current status of the action
 // This returns an empty value if no action value is available
 func (svc *DigitwinStore) QueryAction(
@@ -368,74 +431,14 @@ func (svc *DigitwinStore) UpdateTD(
 	svc.changedThings[dThingID] = true
 }
 
-// NewActionStart updates the action with a new start and pending status.
+// UpdateActionStatus (by agent) updates the action with a response.
 //
-// This stores the action request for use with query actions.
+// Note that a response means that the action is a completed.
 //
-// Note 'safe' actions are not stored as they don't affect the state of a Thing.
-// The output is just a transformation of the input.
-//
-// This returns true if the request is stored or false if the request is safe.
-func (svc *DigitwinStore) NewActionStart(req *messaging.RequestMessage) (stored bool, err error) {
-	svc.cacheMux.Lock()
-	defer svc.cacheMux.Unlock()
-
-	// A digital twin must exist. They are created when a TD is received.
-	dtw, found := svc.dtwCache[req.ThingID]
-	if !found {
-		// for now just warn for unknown things, in case the TD is not yet known.
-		// This might become an error in the future once the use-cases that can
-		// trigger this are better understood.
-		err := fmt.Errorf(
-			"NewActionStart: Action requested on an unknown Thing with ID '%s'. "+
-				"Action is not recorded", req.ThingID)
-		slog.Warn(err.Error())
-		return false, nil
-	}
-	// action affordance should exist
-	aff, found := dtw.DigitwinTD.Actions[req.Name]
-	_ = aff
-	if !found {
-		// FIXME:The request might not be an action but could also be a Thing level operation
-		// Need to understand the use-cases this might occur before changing this
-		// into an error or info. Most operations should be handled by the digital twin,
-		// not by remote agents.
-		err := fmt.Errorf("NewActionStart: Action '%s' not found in "+
-			"digital twin '%s'. Action is not recorded", req.Name, req.ThingID)
-		slog.Warn(err.Error())
-		// this is currently only a warning
-		return false, nil
-	}
-	if aff.Safe {
-		// Safe actions do not affect the Thing state. The response is a function
-		// if the input parameters so no use storing these.
-		slog.Info("Not recording a safe action as it doesnt affect Thing state")
-		return false, nil
-	}
-	// this is an action that affects the Thing state (not safe). Record it.
-	actionStatus, found := dtw.ActionStatuses[req.Name]
-	if !found {
-		actionStatus = digitwin.ActionStatus{}
-	}
-	actionStatus.Name = req.Name
-	actionStatus.ThingID = req.ThingID
-	actionStatus.SenderID = req.SenderID
-	actionStatus.Input = req.Input
-	actionStatus.Status = messaging.StatusPending
-	actionStatus.Requested = req.Created
-	actionStatus.Id = req.CorrelationID
-	dtw.ActionStatuses[req.Name] = actionStatus
-	svc.changedThings[req.ThingID] = true
-
-	return true, nil
-}
-
-// UpdateActionStatus (by agent) updates the progress of an action with a
-// progress response.
-//
-// resp is a progress response with a ThingID of the digital twin
-func (svc *DigitwinStore) UpdateActionStatus(agentID string, resp *messaging.ResponseMessage) (
-	actionValue digitwin.ActionStatus, err error) {
+// resp is a response with a ThingID of the digital twin
+func (svc *DigitwinStore) UpdateActionStatus(
+	agentID string, resp *messaging.ResponseMessage) (
+	actionStatus digitwin.ActionStatus, err error) {
 
 	svc.cacheMux.Lock()
 	defer svc.cacheMux.Unlock()
@@ -443,34 +446,35 @@ func (svc *DigitwinStore) UpdateActionStatus(agentID string, resp *messaging.Res
 	dtw, found := svc.dtwCache[resp.ThingID]
 	if !found {
 		err := fmt.Errorf("dThing with ID '%s' not found", resp.ThingID)
-		return actionValue, err
+		return actionStatus, err
 	}
 	// action affordance or property affordance must exist
 	_, found = dtw.DigitwinTD.Actions[resp.Name]
 	if found {
 		// this is a progress update; update only the status fields.
 		// action value should exist. recover if it doesn't
-		actionValue, found = dtw.ActionStatuses[resp.Name]
+		actionStatus, found = dtw.ActionStatuses[resp.Name]
 		if !found {
-			actionValue = digitwin.ActionStatus{}
+			actionStatus = digitwin.ActionStatus{}
 		}
-		actionValue.Status = resp.Status
-		actionValue.Updated = time.Now().Format(wot.RFC3339Milli)
-		if resp.Status == messaging.StatusCompleted {
-			actionValue.Output = resp.Output
-			actionValue.Updated = resp.Updated
-		} else if resp.Error != "" {
-			actionValue.Error = resp.Error
+		actionStatus.Updated = time.Now().Format(wot.RFC3339Milli)
+		if resp.Error != "" {
+			actionStatus.Error = resp.Error
+			actionStatus.Status = messaging.StatusFailed
+		} else {
+			actionStatus.Output = resp.Output
+			actionStatus.Updated = resp.Timestamp
+			actionStatus.Status = messaging.StatusCompleted
 		}
-		dtw.ActionStatuses[resp.Name] = actionValue
+		dtw.ActionStatuses[resp.Name] = actionStatus
 		svc.changedThings[resp.ThingID] = true
 
-		return actionValue, nil
+		return actionStatus, nil
 	} else {
 		// property write progress is ignored as the thing should simply update
 		//the property value after applying the write.
 	}
-	return actionValue, fmt.Errorf(
+	return actionStatus, fmt.Errorf(
 		"UpdateActionStatus: Action '%s' not found in digital twin '%s'",
 		resp.Name, resp.ThingID)
 

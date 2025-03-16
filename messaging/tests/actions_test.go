@@ -33,14 +33,13 @@ func TestInvokeActionFromConsumerToServer(t *testing.T) {
 	requestHandler := func(req *messaging.RequestMessage, replyTo messaging.IConnection) *messaging.ResponseMessage {
 		if req.Operation == wot.OpInvokeAction {
 			inputVal.Store(req.Input)
-			// Hmm, should this be pending with a separate async completed result?
 			return req.CreateResponse(req.Input, nil)
 		}
 		assert.Fail(t, "Not expecting this")
 		return req.CreateResponse(nil, errors.New("unexpected request"))
 	}
 	// 1. start the servers
-	srv, cancelFn := StartTransportServer(requestHandler, nil)
+	srv, cancelFn := StartTransportServer(nil, requestHandler, nil)
 	defer cancelFn()
 
 	// 2. connect a client
@@ -65,8 +64,9 @@ func TestInvokeActionFromConsumerToServer(t *testing.T) {
 	// testOutput can be updated as an immediate result or via the callback message handler
 	req := messaging.NewRequestMessage(wot.OpInvokeAction, thingID, actionName, testMsg1, shortid.MustGenerate())
 	resp, err := cl1.SendRequest(req, false)
+	// waitForCompletion is false so no response yet
 	require.NoError(t, err)
-	assert.Equal(t, resp.Status, messaging.StatusPending)
+	assert.Nil(t, resp)
 	<-ctx1.Done()
 
 	// whether receiving completed or delivered depends on the binding
@@ -122,7 +122,7 @@ func TestInvokeActionFromServerToAgent(t *testing.T) {
 		cancelFn1()
 		return nil
 	}
-	srv, cancelFn2 := StartTransportServer(nil, responseHandler)
+	srv, cancelFn2 := StartTransportServer(nil, nil, responseHandler)
 	_ = srv
 	defer cancelFn2()
 
@@ -143,10 +143,8 @@ func TestInvokeActionFromServerToAgent(t *testing.T) {
 			resp := req.CreateResponse(testMsg2, nil)
 			_ = replyTo.SendResponse(resp)
 		}()
-		// return a pending
-		resp := req.CreateResponse(testMsg2, nil)
-		resp.Status = messaging.StatusPending
-		return resp
+		// the response is sent asynchronously
+		return nil
 	})
 
 	// Send the action request from the server to the agent (the agent is connected as a client)
@@ -176,6 +174,7 @@ func TestQueryActions(t *testing.T) {
 	var testMsg1 = "hello world 1"
 	var thingID = "thing1"
 	var actionKey = "action1"
+	var actionID = "correlationID-123"
 
 	// 1. start the server. register a request handler for receiving a request
 	// from the agent after the server sends an invoke action.
@@ -185,37 +184,40 @@ func TestQueryActions(t *testing.T) {
 		assert.NotNil(t, replyTo)
 		assert.NotNil(t, req.CorrelationID)
 		if req.Operation == wot.OpQueryAction {
-			// reply a response carrying the queried action response
-			actStat := messaging.ResponseMessage{
-				ThingID:       req.ThingID,
-				Name:          req.Name,
-				CorrelationID: req.CorrelationID,
-				Status:        messaging.StatusCompleted,
-				Output:        testMsg1,
-				Received:      req.Created,
-				Updated:       time.Now().Format(wot.RFC3339Milli),
-			}
+			// reply a response carrying the queried action status
+			actStat := []messaging.ActionStatus{{
+				ThingID: req.ThingID,
+				Name:    req.Name,
+				ID:      actionID,
+				Output:  testMsg1,
+				Status:  messaging.StatusCompleted,
+			}}
+
 			return req.CreateResponse(actStat, nil)
 
 			//replyTo.SendResponse(msg.ThingID, msg.Name, output, msg.CorrelationID)
 		} else if req.Operation == wot.OpQueryAllActions {
-			actStat := make([]messaging.ResponseMessage, 2)
-			actStat[0].ThingID = thingID
-			actStat[0].Name = actionKey
-			actStat[0].Output = testMsg1
-			actStat[1].ThingID = thingID
-			actStat[1].Name = actionKey
-			actStat[1].CorrelationID = "correlationID-123"
-			actStat[1].Status = messaging.StatusCompleted
+			actStat := []messaging.ActionStatus{{
+				ThingID: req.ThingID,
+				Name:    actionKey,
+				ID:      actionID,
+				Output:  testMsg1,
+				Status:  messaging.StatusCompleted,
+			}, {
+				ThingID: req.ThingID,
+				Name:    actionKey,
+				ID:      actionID,
+				Output:  "other output",
+				Status:  messaging.StatusCompleted,
+			}}
 			resp := req.CreateResponse(actStat, nil)
 			return resp
-			//replyTo.SendResponse(msg.ThingID, msg.Name, actStat, msg.CorrelationID)
 		}
 		return req.CreateResponse(nil, errors.New("unexpected response "+req.Operation))
 	}
 
 	// 1. start the servers
-	srv, cancelFn := StartTransportServer(requestHandler, nil)
+	srv, cancelFn := StartTransportServer(nil, requestHandler, nil)
 	defer cancelFn()
 
 	// 2. connect as a consumer
@@ -223,11 +225,12 @@ func TestQueryActions(t *testing.T) {
 	defer cc1.Disconnect()
 
 	// 3. Query action status
-	var output messaging.ResponseMessage
+	var output []messaging.ResponseMessage
 	err := cl1.Rpc(wot.OpQueryAction, thingID, actionKey, nil, &output)
 	require.NoError(t, err)
-	require.Equal(t, thingID, output.ThingID)
-	require.Equal(t, actionKey, output.Name)
+	require.Equal(t, 1, len(output))
+	require.Equal(t, thingID, output[0].ThingID)
+	require.Equal(t, actionKey, output[0].Name)
 
 	// 4. Query all actions
 	var output2 []messaging.ResponseMessage

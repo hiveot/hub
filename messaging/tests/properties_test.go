@@ -21,7 +21,6 @@ func TestObservePropertyByConsumer(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	var rxVal1 atomic.Value
 	var rxVal2 atomic.Value
-	var agentID = "agent1"
 	var thingID = "thing1"
 	var propertyKey1 = "property1"
 	var propertyKey2 = "property2"
@@ -29,7 +28,7 @@ func TestObservePropertyByConsumer(t *testing.T) {
 	var propValue2 = "value2"
 
 	// 1. start the server
-	srv, cancelFn := StartTransportServer(nil, nil)
+	srv, cancelFn := StartTransportServer(nil, nil, nil)
 	defer cancelFn()
 
 	// 2. connect with two consumers
@@ -39,13 +38,11 @@ func TestObservePropertyByConsumer(t *testing.T) {
 	defer cc2.Disconnect()
 
 	// set the handler for property updates and subscribe
-	cl1.SetResponseHandler(func(ev *messaging.ResponseMessage) error {
-		rxVal1.Store(ev.Output)
-		return nil
+	cl1.SetNotificationHandler(func(ev *messaging.NotificationMessage) {
+		rxVal1.Store(ev.Data)
 	})
-	cl2.SetResponseHandler(func(ev *messaging.ResponseMessage) error {
-		rxVal2.Store(ev.Output)
-		return nil
+	cl2.SetNotificationHandler(func(ev *messaging.NotificationMessage) {
+		rxVal2.Store(ev.Data)
 	})
 
 	// Client1 subscribes to one, client 2 to all property updates
@@ -56,9 +53,8 @@ func TestObservePropertyByConsumer(t *testing.T) {
 	time.Sleep(time.Millisecond) // time to take effect
 
 	// 3. Server sends a property update to consumers
-	notif1 := messaging.NewResponseMessage(
-		wot.OpObserveProperty, thingID, propertyKey1, propValue1, nil, "")
-	notif1.SenderID = agentID
+	notif1 := messaging.NewNotificationMessage(
+		wot.OpObserveProperty, thingID, propertyKey1, propValue1)
 	srv.SendNotification(notif1)
 
 	// 4. both observers should have received it
@@ -72,13 +68,11 @@ func TestObservePropertyByConsumer(t *testing.T) {
 	time.Sleep(time.Millisecond * 10) // time to take effect
 
 	// 6. Server sends a property update to consumers
-	notif2 := messaging.NewResponseMessage(
-		wot.OpObserveProperty, thingID, propertyKey1, propValue2, nil, "")
-	notif2.SenderID = agentID
+	notif2 := messaging.NewNotificationMessage(
+		wot.OpObserveProperty, thingID, propertyKey1, propValue2)
 	srv.SendNotification(notif2)
-	notif3 := messaging.NewResponseMessage(
-		wot.OpObserveProperty, thingID, propertyKey2, propValue2, nil, "")
-	notif3.SenderID = agentID
+	notif3 := messaging.NewNotificationMessage(
+		wot.OpObserveProperty, thingID, propertyKey2, propValue2)
 	srv.SendNotification(notif3)
 
 	// 7. property should not have been received
@@ -89,9 +83,8 @@ func TestObservePropertyByConsumer(t *testing.T) {
 	// 8. client 2 unobserves
 	err = cl2.UnobserveProperty("", "")
 	time.Sleep(time.Millisecond * 10)
-	notif4 := messaging.NewResponseMessage(
-		wot.OpObserveProperty, thingID, propertyKey2, propValue1, nil, "")
-	notif4.SenderID = agentID
+	notif4 := messaging.NewNotificationMessage(
+		wot.OpObserveProperty, thingID, propertyKey2, propValue1)
 	srv.SendNotification(notif4)
 	// no change is expected
 	assert.Equal(t, propValue2, rxVal2.Load())
@@ -107,13 +100,12 @@ func TestPublishPropertyByAgent(t *testing.T) {
 	var propValue1 = "value1"
 
 	// handler of property updates on the server
-	notificationHandler := func(msg *messaging.ResponseMessage) error {
-		evVal.Store(msg.Output)
-		return nil
+	notificationHandler := func(msg *messaging.NotificationMessage) {
+		evVal.Store(msg.Data)
 	}
 
 	// 1. start the transport
-	srv, cancelFn := StartTransportServer(nil, notificationHandler)
+	srv, cancelFn := StartTransportServer(notificationHandler, nil, nil)
 	_ = srv
 	defer cancelFn()
 
@@ -152,12 +144,12 @@ func TestReadProperty(t *testing.T) {
 				Updated: timestamp,
 			}
 			resp := req.CreateResponse(tv, nil)
-			resp.Updated = timestamp
+			resp.Timestamp = timestamp
 			return resp
 		}
 		return req.CreateResponse(nil, errors.New("unexpected request"))
 	}
-	srv, cancelFn := StartTransportServer(agentReqHandler, nil)
+	srv, cancelFn := StartTransportServer(nil, agentReqHandler, nil)
 	_ = srv
 	defer cancelFn()
 
@@ -192,7 +184,7 @@ func TestReadAllProperties(t *testing.T) {
 		}
 		return req.CreateResponse(nil, errors.New("unexpected request"))
 	}
-	srv, cancelFn := StartTransportServer(agentReqHandler, nil)
+	srv, cancelFn := StartTransportServer(nil, agentReqHandler, nil)
 	_ = srv
 	defer cancelFn()
 

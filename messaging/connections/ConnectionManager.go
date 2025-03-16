@@ -160,17 +160,17 @@ func (cm *ConnectionManager) GetNrConnections() (int, int) {
 
 // SendNotification sends a response notification to subscribers
 // For each subscriber, the correlationID of the subscription is used.
-func (cm *ConnectionManager) SendNotification(resp *messaging.ResponseMessage) error {
+func (cm *ConnectionManager) SendNotification(notif *messaging.NotificationMessage) error {
 
 	slog.Debug("SendNotification (to subscribers/observers)",
-		slog.String("Operation", resp.Operation),
-		slog.String("dThingID", resp.ThingID),
-		slog.String("name", resp.Name),
-		slog.Any("output", resp.Output),
+		slog.String("Operation", notif.Operation),
+		slog.String("dThingID", notif.ThingID),
+		slog.String("name", notif.Name),
+		slog.Any("output", notif.Data),
 	)
 	// is determined by the server (like MQTT)
 	cm.ForEachConnection(func(c messaging.IServerConnection) {
-		c.SendNotification(*resp)
+		_ = c.SendNotification(notif)
 	})
 	return nil
 }

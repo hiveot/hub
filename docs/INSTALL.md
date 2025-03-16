@@ -87,6 +87,22 @@ make services
 make bindings
 ```
 
+## Fix for raspberry-pi kernel 6.6 hangup
+
+Raspberry pi boots fine but as soon as zwave-js opens the serial port it deadlocks the device.
+
+There is a discussion on this: https://github.com/zwave-js/zwave-js-ui/discussions/3880
+
+Workaround, downgrade the kernel to 6.1-77 
+> sudo rpi-update af3ab905d42
+
+Potential fix instead of kernel downgrade:
+Some people report that configuring the firmware in /boot/firmware/config.txt to say:
+> dtoverlay=dwc2,dr_mode=host
+
+would fix it, but this pi3 already had this line. Perhaps it needs to sit above the [cm5] section? 
+
+
 ## Install To User (Easiest)
 
 Installing to user is great for running a test setup to develop new bindings or just see how things work. The hub is installed into the user's bin directory and runs under that user's permissions.

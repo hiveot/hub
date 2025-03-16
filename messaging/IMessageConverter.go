@@ -8,6 +8,11 @@ package messaging
 //
 // Intended for use by consumers and agents on the client and server side.
 type IMessageConverter interface {
+	// DecodeNotification converts a protocol message to a hiveot notification message
+	// provide the serialized data to avoid multiple unmarshalls
+	// This returns nil if this isn't a notification.
+	DecodeNotification(raw []byte) *NotificationMessage
+
 	// DecodeRequest converts a protocol message to a hiveot request message
 	// provide the serialized data to avoid multiple unmarshalls
 	// This returns nil if this isn't a request.
@@ -16,6 +21,10 @@ type IMessageConverter interface {
 	// DecodeResponse converts a protocol message to a hiveot response message.
 	// This returns nil if this isn't a response
 	DecodeResponse(raw []byte) *ResponseMessage
+
+	// EncodeNotification converts a hiveot NotificationMessage to a native protocol message
+	// return an error if the message cannot be converted.
+	EncodeNotification(notif *NotificationMessage) (any, error)
 
 	// EncodeRequest converts a hiveot RequestMessage to a native protocol message
 	// return an error if the message cannot be converted.

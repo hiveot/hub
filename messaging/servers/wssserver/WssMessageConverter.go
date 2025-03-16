@@ -11,6 +11,19 @@ import (
 type HiveotMessageConverter struct {
 }
 
+// DecodeNotification converts a native protocol received message to a hiveot notification message.
+// Raw is the json serialized encoded message
+func (svc *HiveotMessageConverter) DecodeNotification(raw []byte) *messaging.NotificationMessage {
+
+	var notif messaging.NotificationMessage
+	err := jsoniter.Unmarshal(raw, &notif)
+	//err := tputils.DecodeAsObject(msg, &notif)
+	if err != nil || notif.MessageType != messaging.MessageTypeNotification {
+		return nil
+	}
+	return &notif
+}
+
 // DecodeRequest converts a native protocol received message to a hiveot request message.
 // Raw is the json serialized encoded message
 func (svc *HiveotMessageConverter) DecodeRequest(raw []byte) *messaging.RequestMessage {
@@ -37,6 +50,13 @@ func (svc *HiveotMessageConverter) DecodeResponse(
 	return &resp
 }
 
+// EncodeNotification converts a hiveot RequestMessage to protocol equivalent message
+func (svc *HiveotMessageConverter) EncodeNotification(req *messaging.NotificationMessage) (any, error) {
+	// ensure this field is present as it is needed for decoding
+	req.MessageType = messaging.MessageTypeNotification
+	return req, nil
+}
+
 // EncodeRequest converts a hiveot RequestMessage to protocol equivalent message
 func (svc *HiveotMessageConverter) EncodeRequest(req *messaging.RequestMessage) (any, error) {
 	// ensure this field is present as it is needed for decoding
@@ -53,5 +73,5 @@ func (svc *HiveotMessageConverter) EncodeResponse(resp *messaging.ResponseMessag
 
 // GetProtocolType returns the hiveot WSS protocol type identifier
 func (svc *HiveotMessageConverter) GetProtocolType() string {
-	return messaging.ProtocolTypeHiveotWSS
+	return messaging.ProtocolTypeWSS
 }

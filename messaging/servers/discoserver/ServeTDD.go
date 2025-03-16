@@ -97,8 +97,8 @@ func ServeTDDiscovery(
 		"type":   "Directory",
 	}
 	// add connection endpoints as parameters
-	for ep, url := range endpoints {
-		params[ep] = url
+	for ep, epURL := range endpoints {
+		params[ep] = epURL
 	}
 	slog.Info("Serving discovery for address",
 		slog.String("address", address),

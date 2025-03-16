@@ -201,7 +201,7 @@ func (svc *SelfSignedCertsService) Start(ag *messaging.Agent) (err error) {
 	slog.Info("Starting certs service", "serviceID", ag.GetClientID())
 
 	// permissions for using this service are for admin only
-	err = authz.UserSetPermissions(&ag.Consumer, authz.ThingPermissions{
+	err = authz.UserSetPermissions(ag.Consumer, authz.ThingPermissions{
 		AgentID: ag.GetClientID(),
 		ThingID: certsapi.CertsAdminThingID,
 		Allow:   []authz.ClientRole{authz.ClientRoleAdmin},

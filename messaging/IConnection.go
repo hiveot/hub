@@ -2,6 +2,7 @@ package messaging
 
 import (
 	"crypto/x509"
+	"fmt"
 	"time"
 )
 
@@ -11,18 +12,20 @@ const (
 	ProtocolTypeWotHTTPBasic = "wot-http-basic"
 	// WoT http SSE subprotocol return channel (not implemented)
 	//ProtocolTypeWotSSE = "wot-sse"
-	// WoT http websocket subprotocol based on strawman proposal
-	ProtocolTypeWotWSS = "wot-wss"
+
+	ProtocolTypeWSS = "wss"
+
 	// WoT MQTT protocol over WSS
 	ProtocolTypeWotMQTTWSS = "mqtt-wss"
 
 	// HiveOT http SSE subprotocol return channel with direct messaging
 	ProtocolTypeHiveotSSE = "hiveot-sse"
-	// HiveOT http WSS subprotocol with direct messaging
-	ProtocolTypeHiveotWSS = "hiveot-wss"
 	// Internal embedded direct call, for testing
 	ProtocolTypeHTEmbedded = "embedded" // for testing
 )
+
+// UnauthorizedError for dealing with authorization problems
+var UnauthorizedError = fmt.Errorf("Unauthorized")
 
 // ConnectionInfo provides details of a connection
 type ConnectionInfo struct {
@@ -53,6 +56,11 @@ type ConnectionInfo struct {
 //	err details why connection failed
 //	c is the connection instance being established or disconnected
 type ConnectionHandler func(connected bool, err error, c IConnection)
+
+// NotificationHandler handles a subscruption notification, send by an agent.
+//
+// retry sending the response at a later time.
+type NotificationHandler func(msg *NotificationMessage)
 
 // RequestHandler agent processes a request and returns a response.
 //
@@ -94,6 +102,10 @@ type IConnection interface {
 	// IsConnected returns the current connection status
 	IsConnected() bool
 
+	// SendNotification [agent] sends a notification to subscribers.
+	// This returns an error if the notification could not be delivered
+	SendNotification(notif *NotificationMessage) error
+
 	// SendRequest client sends a request to an agent.
 	// This returns an error if the request could not be delivered
 	SendRequest(req *RequestMessage) error
@@ -105,6 +117,10 @@ type IConnection interface {
 	// SetConnectHandler sets the callback for connection status changes
 	// This replaces any previously set handler.
 	SetConnectHandler(handler ConnectionHandler)
+
+	// SetNotificationHandler [client] sets the callback for receiving notifications.
+	// This replaces any previously set handler.
+	SetNotificationHandler(handler NotificationHandler)
 
 	// SetRequestHandler set the handler for receiving requests that return a response.
 	// This replaces any previously set handler.

@@ -155,7 +155,7 @@ func (test *TestServer) AddConnectService(serviceID string) (ag *messaging.Agent
 	cc, err := clients.NewHiveotClient(serviceID, test.Certs.CaCert, connectURL, test.ConnectTimeout)
 	if err == nil {
 		err = cc.ConnectWithToken(token)
-		ag = messaging.NewAgent(cc, nil, nil, nil, 0)
+		ag = messaging.NewAgent(cc, nil, nil, nil, nil, 0)
 	}
 	if err != nil {
 		panic("AddConnectService: Failed connecting using token. serviceID=" + serviceID)
@@ -239,14 +239,14 @@ func (test *TestServer) GetAgentConnection(agentID string, protocolType string) 
 	connectURL := s.GetConnectURL()
 
 	cc, _ := clients.NewHiveotClient(agentID, test.Certs.CaCert, connectURL, test.ConnectTimeout)
-	ag := messaging.NewAgent(cc, nil, nil, nil, test.ConnectTimeout)
+	ag := messaging.NewAgent(cc, nil, nil, nil, nil, test.ConnectTimeout)
 	return cc, ag
 }
 
 // GetConsumerConnection returns a hub connection for a consumer and protocol.
 // This sets 'getForm' to the handler provided by the protocol server. For testing only.
-func (test *TestServer) GetConsumerConnection(
-	clientID string, protocolType string) (messaging.IClientConnection, *messaging.Consumer) {
+func (test *TestServer) GetConsumerConnection(clientID string, protocolType string) (
+	messaging.IClientConnection, *messaging.Consumer) {
 	//
 	//getForm := func(op string, thingID string, name string) *td.Form {
 	//	return test.Runtime.GetForm(op, protocolName)
@@ -332,13 +332,13 @@ func NewTestServer() *TestServer {
 		Certs:   certs.CreateTestCertBundle(),
 		Config:  runtime.NewRuntimeConfig(),
 		// change these for running all tests with different protocols
-		//AgentProtocol: transports.ProtocolTypeHiveotWSS,
-		AgentProtocol: messaging.ProtocolTypeHiveotSSE,
-		//ServiceProtocol: transports.ProtocolTypeHiveotWSS,
-		ServiceProtocol: messaging.ProtocolTypeHiveotSSE,
-		//ConsumerProtocol: transports.ProtocolTypeHiveotWSS,
-		ConsumerProtocol: messaging.ProtocolTypeHiveotSSE,
-		ConnectTimeout:   time.Second * 120, // testing extra long
+		AgentProtocol: messaging.ProtocolTypeWSS,
+		//AgentProtocol: messaging.ProtocolTypeHiveotSSE,
+		ServiceProtocol: messaging.ProtocolTypeWSS,
+		//ServiceProtocol: messaging.ProtocolTypeHiveotSSE,
+		ConsumerProtocol: messaging.ProtocolTypeWSS,
+		//ConsumerProtocol: messaging.ProtocolTypeHiveotSSE,
+		ConnectTimeout: time.Second * 120, // testing extra long
 	}
 	// the test server uses the test instance to differentiate from hiveot
 	srv.Config.ProtocolsConfig.InstanceName = "test"

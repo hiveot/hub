@@ -17,10 +17,8 @@ type ProtocolsConfig struct {
 	EnableHiveotAuth bool `yaml:"enableHiveotAuth"`
 	// Enable the HiveOT HTTP/SSE (sse-sc) sub protocol binding. Default is true.
 	EnableHiveotSSE bool `yaml:"enableHiveotSSE"`
-	// Enable the HiveOT HTTP/WSS sub protocol binding. Default is true.
-	EnableHiveotWSS bool `yaml:"enableHiveotWSS"`
-	// Enable the WoT HTTP/Websocket sub-protocol binding. Default is true.
-	EnableWotWSS bool `yaml:"enableWotWSS"`
+	// Enable the HTTP/WSS sub protocol binding. Default is true.
+	EnableWSS bool `yaml:"enableWSS"`
 
 	// Enable the MQTT protocol binding, default is false.
 	//EnableMQTT bool `yaml:"enableMQTT"`
@@ -71,8 +69,7 @@ func NewProtocolsConfig() ProtocolsConfig {
 		DirectoryTDPath:  discoserver.DefaultHttpGetDirectoryTDPath,
 		EnableHiveotAuth: true,
 		EnableHiveotSSE:  true,
-		EnableHiveotWSS:  true,
-		EnableWotWSS:     true,
+		EnableWSS:        true,
 		EnableDiscovery:  true,
 		InstanceName:     hostName,
 		HttpHost:         "",

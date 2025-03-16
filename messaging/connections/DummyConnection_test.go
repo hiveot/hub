@@ -14,8 +14,9 @@ type DummyConnection struct {
 	observations  connections.Subscriptions
 	subscriptions connections.Subscriptions
 
-	SendRequestHandler  messaging.RequestHandler
-	SendResponseHandler messaging.ResponseHandler
+	SendNotificationHandler messaging.NotificationHandler
+	SendRequestHandler      messaging.RequestHandler
+	SendResponseHandler     messaging.ResponseHandler
 }
 
 func (c *DummyConnection) Disconnect() {}
@@ -30,8 +31,11 @@ func (c *DummyConnection) IsConnected() bool                           { return 
 //	return transports2.RequestCompleted, nil, nil
 //}
 
-func (c *DummyConnection) SendNotification(msg messaging.ResponseMessage) {
-	_ = c.SendResponse(&msg)
+func (c *DummyConnection) SendNotification(msg *messaging.NotificationMessage) error {
+	if c.SendNotificationHandler != nil {
+		c.SendNotificationHandler(msg)
+	}
+	return nil
 }
 
 func (c *DummyConnection) SendRequest(msg *messaging.RequestMessage) error {
@@ -43,12 +47,16 @@ func (c *DummyConnection) SendRequest(msg *messaging.RequestMessage) error {
 
 func (c *DummyConnection) SendResponse(resp *messaging.ResponseMessage) error {
 	if c.SendResponseHandler != nil {
-		c.SendResponseHandler(resp)
+		return c.SendResponseHandler(resp)
 	}
 	return nil
 }
 
 func (c *DummyConnection) SetConnectHandler(h messaging.ConnectionHandler) {
+}
+
+// SetNotificationHandler is ignored as this is an outgoing 1-way connection
+func (c *DummyConnection) SetNotificationHandler(h messaging.NotificationHandler) {
 }
 
 // SetRequestHandler is ignored as this is an outgoing 1-way connection

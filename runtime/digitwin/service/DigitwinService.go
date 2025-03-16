@@ -61,7 +61,7 @@ func (svc *DigitwinService) Stop() {
 //
 // storesDir is the directory where to create the digitwin storage
 // notifHandler is the handler to send responses to subscribes
-func StartDigitwinService(storesDir string, notifHandler messaging.ResponseHandler) (
+func StartDigitwinService(storesDir string, notifHandler messaging.NotificationHandler) (
 	svc *DigitwinService, digitwinStore *store.DigitwinStore, err error) {
 
 	sPath := path.Join(storesDir, "digitwin")

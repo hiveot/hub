@@ -26,7 +26,7 @@ var cm *connections.ConnectionManager
 // This doesn't use any transport.
 func startService(clean bool) (
 	svc *service.DigitwinService,
-	store *store.DigitwinStore,
+	dirStore *store.DigitwinStore,
 	stopFn func()) {
 
 	if cm == nil {
@@ -36,11 +36,10 @@ func startService(clean bool) (
 		_ = os.RemoveAll(testDirFolder)
 		cm.CloseAll()
 	}
-	notifHandler := func(notif *messaging.ResponseMessage) error {
+	notifHandler := func(notif *messaging.NotificationMessage) {
 		slog.Info("Received notification", "op", notif.Operation)
-		return nil
 	}
-	svc, store, err := service.StartDigitwinService(dirStorePath, notifHandler)
+	svc, dirStore, err := service.StartDigitwinService(dirStorePath, notifHandler)
 	if err != nil {
 		panic("unable to start the digitwin service")
 	}
@@ -49,7 +48,7 @@ func startService(clean bool) (
 	//msgHandler := digitwin.NewDirectoryHandler(svc)
 	//cl = embedded.NewEmbeddedClient(digitwin.DirectoryAgentID, msgHandler)
 
-	return svc, store, func() {
+	return svc, dirStore, func() {
 		svc.Stop()
 	}
 }
@@ -86,8 +85,8 @@ func TestStartStopService(t *testing.T) {
 	_ = hc
 	// add TDs
 	for _, thingID := range thingIDs {
-		td := createTDDoc(thingID, 1, 1, 1)
-		tddjson, _ := json.Marshal(td)
+		tdi := createTDDoc(thingID, 1, 1, 1)
+		tddjson, _ := json.Marshal(tdi)
 		err := svc.DirSvc.UpdateTD("test", string(tddjson))
 		require.NoError(t, err)
 	}

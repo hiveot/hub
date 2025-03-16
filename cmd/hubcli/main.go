@@ -36,7 +36,7 @@ func main() {
 	var homeDir string
 	var certsDir string
 	var serverURL string
-	var protocol = messaging.ProtocolTypeHiveotWSS
+	var protocol = messaging.ProtocolTypeWSS
 	var authToken string
 
 	// environment defaults

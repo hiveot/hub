@@ -3,6 +3,7 @@ package httpserver
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -225,7 +226,7 @@ func (svc *HttpTransportServer) HandleLogin(w http.ResponseWriter, r *http.Reque
 	}
 	// TODO: set client session cookie for browser clients
 	//svc.sessionManager.SetSessionCookie(cs.sessionID,token)
-	svc.WriteReply(w, reply, messaging.StatusCompleted, nil)
+	svc.WriteReply(w, true, reply, nil)
 }
 
 // HandleAuthRefresh refreshes the auth token using the session authenticator.
@@ -246,7 +247,7 @@ func (svc *HttpTransportServer) HandleAuthRefresh(w http.ResponseWriter, r *http
 		svc.WriteError(w, err, 0)
 		return
 	}
-	svc.WriteReply(w, newToken, messaging.StatusCompleted, nil)
+	svc.WriteReply(w, true, newToken, nil)
 }
 
 // HandleLogout ends the session and closes all client connections
@@ -257,13 +258,13 @@ func (svc *HttpTransportServer) HandleLogout(w http.ResponseWriter, r *http.Requ
 		slog.Info("HandleLogout", "clientID", rp.ClientID)
 		svc.authenticator.Logout(rp.ClientID)
 	}
-	svc.WriteReply(w, nil, messaging.StatusCompleted, err)
+	svc.WriteReply(w, true, nil, err)
 }
 
 // HandlePing with http handler returns a pong response
 func (svc *HttpTransportServer) HandlePing(w http.ResponseWriter, r *http.Request) {
 	// simply return a pong message
-	svc.WriteReply(w, "pong", messaging.StatusCompleted, nil)
+	svc.WriteReply(w, true, "pong", nil)
 }
 
 // Stop the https server
@@ -294,43 +295,31 @@ func (svc *HttpTransportServer) WriteError(w http.ResponseWriter, err error, cod
 // WriteReply is a convenience function that serializes the data and writes it as a response,
 // optionally reporting an error with code BadRequest.
 //
-// status is completed,failed,... set in the 'StatusHeader' reply header if provided.
-// only used by hiveot.
+// when handled, this returns a 200 status code if no error is returned.
+// handled is false means the request is in progress. This returns a 201.
+// if an err is returned this returns a 400 bad request or 403 unauthorized error code
+// the data can contain error details.
 func (svc *HttpTransportServer) WriteReply(
-	w http.ResponseWriter, data any, status string, err error) {
+	w http.ResponseWriter, handled bool, data any, err error) {
 	var payloadJSON string
 
-	if status != "" {
-		//replyHeader := w.Header()
-		//replyHeader.Set(StatusHeader, status)
-	}
 	if data != nil {
 		payloadJSON, _ = jsoniter.MarshalToString(data)
-		tmp, _ := jsoniter.Marshal(data)
-		payloadJSON = string(tmp)
 	}
-	if status == messaging.StatusFailed {
-		var payload string
-		if err != nil {
-			payload = err.Error()
+	if err != nil {
+		if errors.Is(err, messaging.UnauthorizedError) {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+		} else {
+			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
-		http.Error(w, payload, http.StatusBadRequest)
-
-	} else if status == messaging.StatusCompleted {
+	} else if handled {
 		if payloadJSON != "" {
 			_, _ = w.Write([]byte(payloadJSON))
 		}
-		w.WriteHeader(http.StatusOK)
-	} else if status == messaging.StatusRunning {
 		// Code 200: https://w3c.github.io/wot-profile/#example-17
 		w.WriteHeader(http.StatusOK)
-		if payloadJSON != "" {
-			_, _ = w.Write([]byte(payloadJSON))
-		} else {
-			slog.Error("Expected a ActionStatus or ResponseMessage payload. Got nothing")
-		}
 	} else {
-		// status is pending, possibly an ActionStatus payload
+		// not handled no error. response will be async
 		// Code 201: https://w3c.github.io/wot-profile/#sec-http-sse-profile
 		w.WriteHeader(201)
 		if payloadJSON != "" {

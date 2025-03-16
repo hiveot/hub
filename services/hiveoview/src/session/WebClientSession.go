@@ -273,56 +273,48 @@ func (sess *WebClientSession) onHubConnectionChange(connected bool, err error, c
 	}
 }
 
-// onResponse notifies SSE clients of incoming notifications from the Hub
+// onNotification notifies SSE clients of incoming notifications from the Hub
 // This is intended for notifying the client UI of the update to props or events.
 // The consumed thing itself is already updated.
-// FIMXE: that no longer works. The consumed thing isn't updated
-//
-//	 FIX-1: how is the consumed thing supposed to be updated?
-//				A: consumer->consumed thing -> webclientsession
-//				B: consumer->webclientsession -> consumed thing
-//	   ? it should be the one that subscribes
-//	 FIX-2: consumed things should be shared between sessions of the same client
-//				so that additional browser tabs doesn't require a reload.
-func (sess *WebClientSession) onResponse(resp *messaging.ResponseMessage) error {
+func (sess *WebClientSession) onNotification(notif *messaging.NotificationMessage) {
 
 	//slog.Debug("received notification",
-	//	slog.String("operation", resp.Operation),
-	//		slog.String("thingID", resp.ThingID),
-	//		slog.String("name", resp.Name),
-	//		//slog.Any("data", resp.Data),
-	//		slog.String("senderID", resp.SenderID),
+	//	slog.String("operation", notif.Operation),
+	//		slog.String("thingID", notif.ThingID),
+	//		slog.String("name", notif.Name),
+	//		//slog.Any("data", notif.Data),
+	//		slog.String("senderID", notif.SenderID),
 	//		slog.String("receiver cid", sess.cid),
 	//	)
 	// update the directory
-	_ = sess.ctDir.OnResponse(resp)
+	_ = sess.ctDir.OnNotification(notif)
 
-	if resp.Operation == wot.OpObserveProperty {
+	if notif.Operation == wot.OpObserveProperty {
 		// Notify the UI of the property value change:
 		//    hx-trigger="sse:{{.AffordanceType}}/{{.ThingID}}/{{.Name}}"
 		// TODO: can htmx work with the ResponseMessage or InteractionOutput object?
 		propID := fmt.Sprintf("%s/%s/%s",
-			messaging.AffordanceTypeProperty, resp.ThingID, resp.Name)
-		propVal := tputils.DecodeAsString(resp.Output, 0)
+			messaging.AffordanceTypeProperty, notif.ThingID, notif.Name)
+		propVal := tputils.DecodeAsString(notif.Data, 0)
 		sess.SendSSE(propID, propVal)
 		// also notify of a change to updated timestamp
 		propID = fmt.Sprintf("%s/%s/%s/updated",
-			messaging.AffordanceTypeProperty, resp.ThingID, resp.Name)
-		sess.SendSSE(propID, tputils.DecodeAsDatetime(resp.Updated))
-	} else if resp.Operation == wot.OpSubscribeEvent {
+			messaging.AffordanceTypeProperty, notif.ThingID, notif.Name)
+		sess.SendSSE(propID, tputils.DecodeAsDatetime(notif.Timestamp))
+	} else if notif.Operation == wot.OpSubscribeEvent {
 		// Publish sse event indicating the event affordance or value has changed.
 		// The UI that displays this event can use this as a trigger to reload the
 		// fragment that displays this event:
 		//    hx-trigger="sse:{{.Thing.ThingID}}/{{$k}}"
 		// where $k is the event ID
 		eventID := fmt.Sprintf("%s/%s/%s",
-			messaging.AffordanceTypeEvent, resp.ThingID, resp.Name)
-		sess.SendSSE(eventID, resp.ToString(0))
+			messaging.AffordanceTypeEvent, notif.ThingID, notif.Name)
+		sess.SendSSE(eventID, notif.ToString(0))
 		eventID = fmt.Sprintf("%s/%s/%s/updated",
-			messaging.AffordanceTypeEvent, resp.ThingID, resp.Name)
-		sess.SendSSE(eventID, tputils.DecodeAsDatetime(resp.Updated))
+			messaging.AffordanceTypeEvent, notif.ThingID, notif.Name)
+		sess.SendSSE(eventID, tputils.DecodeAsDatetime(notif.Timestamp))
 	}
-	return nil
+	return
 }
 
 // ReplaceConsumer replaces the hub consumer connection for this client session.
@@ -332,7 +324,7 @@ func (sess *WebClientSession) ReplaceConsumer(newCo *messaging.Consumer) {
 	oldCo.Disconnect()
 	sess.co = newCo
 	newCo.SetConnectHandler(sess.onHubConnectionChange)
-	newCo.SetResponseHandler(sess.onResponse)
+	newCo.SetNotificationHandler(sess.onNotification)
 }
 
 // SendNotify sends a 'notify' event for showing in a toast popup.
@@ -463,8 +455,8 @@ func NewWebClientSession(
 	}
 	co.SetConnectHandler(webSess.onHubConnectionChange)
 
-	// onResponse is called with async responses to requests
-	co.SetResponseHandler(webSess.onResponse)
+	// onNotification is called with async responses to requests
+	co.SetNotificationHandler(webSess.onNotification)
 
 	webSess.isActive.Store(co.IsConnected())
 

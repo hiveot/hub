@@ -83,15 +83,12 @@ func (req *RequestMessage) CreateResponse(output any, err error) (resp *Response
 	return resp
 }
 
-// CreateRunningResponse is a helper to easily create a 'running' status response from a request.
-// If err is set then the status is set to failed instead.
-func (req *RequestMessage) CreateRunningResponse(err error) (resp *ResponseMessage) {
-	resp = NewResponseMessage(
-		req.Operation, req.ThingID, req.Name, nil, err, req.CorrelationID)
-	if err == nil {
-		resp.Status = StatusRunning
-	}
-	return resp
+// CreateRunningNotification is a helper to easily create a 'running' status update while a request is running.
+func (req *RequestMessage) CreateRunningNotification() (notif *NotificationMessage) {
+	notif = NewNotificationMessage(
+		req.Operation, req.ThingID, req.Name, nil)
+	notif.CorrelationID = req.CorrelationID
+	return notif
 }
 
 // ToString is a helper to easily convert the request input to a string

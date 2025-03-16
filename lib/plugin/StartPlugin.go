@@ -48,7 +48,7 @@ func StartPlugin(plugin IPlugin, clientID string, certsDir string, hubURL string
 		os.Exit(1)
 	}
 	// start the service with the agent.
-	ag := messaging.NewAgent(cc, nil, nil, nil, 0)
+	ag := messaging.NewAgent(cc, nil, nil, nil, nil, 0)
 	err = plugin.Start(ag)
 	if err != nil {
 		slog.Error("failed starting service", "err", err.Error())

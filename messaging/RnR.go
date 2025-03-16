@@ -68,7 +68,7 @@ func (rnr *RnRChan) HandleResponse(msg *ResponseMessage) bool {
 		slog.Debug("HandleResponse: writing response to RPC go channel. ",
 			slog.String("correlationID", msg.CorrelationID),
 			slog.String("operation", msg.Operation),
-			slog.String("status", msg.Status),
+			slog.String("error", msg.Error),
 		)
 		ctx, cancelFn := context.WithTimeout(context.Background(), rnr.writeTimeout)
 		select {

@@ -92,7 +92,7 @@ func (svc *HiveoviewService) Start(ag *messaging.Agent) error {
 	}
 
 	// publish a TD for the service and set allowable roles in this case only a management capability is published
-	err = authz.UserSetPermissions(&ag.Consumer, authz.ThingPermissions{
+	err = authz.UserSetPermissions(ag.Consumer, authz.ThingPermissions{
 		AgentID: ag.GetClientID(),
 		ThingID: src.HiveoviewServiceID,
 		Allow:   []authz.ClientRole{authz.ClientRoleAdmin, authz.ClientRoleService, authz.ClientRoleManager},

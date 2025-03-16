@@ -4,8 +4,6 @@ package router
 import (
 	"fmt"
 	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/tputils"
-	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
@@ -28,7 +26,7 @@ func (svc *DigitwinRouter) HandleActionResponse(resp *messaging.ResponseMessage)
 		slog.String("operation", resp.Operation),
 		slog.String("dThingID", resp.ThingID),
 		slog.String("name", resp.Name),
-		slog.String("status", resp.Status),
+		slog.String("error", resp.Error),
 		slog.String("Output", resp.ToString(20)),
 		slog.String("senderID", resp.SenderID),
 	)
@@ -80,97 +78,16 @@ func (svc *DigitwinRouter) HandleActionResponse(resp *messaging.ResponseMessage)
 			slog.String("dThingID", resp.ThingID),
 			slog.String("name", resp.Name),
 			slog.String("senderID", resp.SenderID),
-			slog.String("status", resp.Status),
 			slog.String("err", err.Error()),
 		)
 		err = nil
 	}
 
-	// 4: Update the active action cache and remove the action when completed or failed
-	if resp.Status == messaging.StatusCompleted || resp.Status == messaging.StatusFailed {
-		svc.mux.Lock()
-		defer svc.mux.Unlock()
-		delete(svc.activeCache, as.CorrelationID)
-	}
-	return nil
-}
-
-// HandleNotification handles receiving a subscription notification (event, property)
-// This updates the digital twin property or event value
-func (svc *DigitwinRouter) HandleNotification(resp *messaging.ResponseMessage) (err error) {
-	svc.notifLogger.Info("<- NOTIF: HandleNotification",
-		slog.String("operation", resp.Operation),
-		slog.String("thingID", resp.ThingID),
-		slog.String("name", resp.Name),
-		slog.String("value", tputils.DecodeAsString(resp.Output, 30)),
-	)
-	// Update the digital twin with this event or property value
-	if resp.Operation == wot.OpSubscribeEvent {
-		tv := digitwin.ThingValue{
-			Name:           resp.Name,
-			Output:         resp.Output,
-			ThingID:        resp.ThingID,
-			Updated:        resp.Updated,
-			AffordanceType: messaging.AffordanceTypeEvent,
-		}
-		err = svc.dtwStore.UpdateEventValue(tv)
-		if err == nil {
-			// broadcast the event to subscribers of the digital twin
-			svc.transportServer.SendNotification(resp)
-		}
-	} else if resp.Operation == wot.OpObserveProperty {
-		tv := digitwin.ThingValue{
-			Name:           resp.Name,
-			Output:         resp.Output,
-			ThingID:        resp.ThingID,
-			Updated:        resp.Updated,
-			AffordanceType: messaging.AffordanceTypeProperty,
-		}
-		changed, _ := svc.dtwStore.UpdatePropertyValue(tv)
-		// unchanged values are still updated in the store but not published
-		// should this be configurable?
-		if changed {
-			svc.transportServer.SendNotification(resp)
-		}
-	} else if resp.Operation == wot.OpObserveAllProperties {
-		// output is a key-value map
-		var propMap map[string]any
-		err = tputils.DecodeAsObject(resp.Output, &propMap)
-		if err == nil {
-			for k, v := range propMap {
-				tv := digitwin.ThingValue{
-					Name:    k,
-					Output:  v,
-					ThingID: resp.ThingID,
-					Updated: resp.Updated,
-				}
-				changed, _ := svc.dtwStore.UpdatePropertyValue(tv)
-				// unchanged values are still updated in the store but not published
-				// should this be configurable?
-				if changed {
-					// notify the consumer with individual updates instead of a map
-					// this seems more correct than sending a map.
-					notif := *resp
-					notif.Operation = wot.OpObserveProperty
-					notif.Name = k
-					notif.Output = v
-					svc.transportServer.SendNotification(&notif)
-				}
-			}
-		}
-		//} else if resp.Operation == wot.HTOpUpdateTD {
-		//	tdJSON := resp.ToString(0)
-		//	err := svc.dtwService.DirSvc.UpdateTD(resp.SenderID, tdJSON)
-		//	if err != nil {
-		//		slog.Warn(err.Error())
-		//	}
-	} else {
-		err := fmt.Errorf("Unknown notification '%s'", resp.Operation)
-		slog.Warn(err.Error())
-		// Other notifications are not supported at this moment
-		//svc.cm.PublishNotification(notif)
-	}
-
+	// 4: Remove the action when the response is received
+	//  (notifications can provide intermediate status updates)
+	svc.mux.Lock()
+	defer svc.mux.Unlock()
+	delete(svc.activeCache, as.CorrelationID)
 	return err
 }
 
@@ -188,18 +105,12 @@ func (svc *DigitwinRouter) HandleResponse(resp *messaging.ResponseMessage) error
 	dThingID := td.MakeDigiTwinThingID(resp.SenderID, resp.ThingID)
 	resp.ThingID = dThingID
 	// ensure the updated time is set
-	if resp.Updated == "" {
-		resp.Updated = time.Now().Format(wot.RFC3339Milli)
+	if resp.Timestamp == "" {
+		resp.Timestamp = time.Now().Format(wot.RFC3339Milli)
 	}
 
-	// event/property notifications are forwarded to subscribers
-	if resp.Operation == wot.OpObserveProperty ||
-		resp.Operation == wot.OpObserveAllProperties ||
-		resp.Operation == wot.OpSubscribeEvent ||
-		resp.Operation == wot.OpSubscribeAllEvents {
-
-		err = svc.HandleNotification(resp)
-		return err
-	}
-	return svc.HandleActionResponse(resp)
+	// for now the only external response message is an action response
+	// (how about write property?)
+	err = svc.HandleActionResponse(resp)
+	return err
 }

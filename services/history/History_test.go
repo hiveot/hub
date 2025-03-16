@@ -194,37 +194,37 @@ func TestAddGetEvent(t *testing.T) {
 	// add thing1 temperature from 5 minutes ago
 	addHist := svc.GetAddHistory()
 	dThing1ID := td.MakeDigiTwinThingID(agent1ID, thing1ID)
-	ev1_1 := &messaging.ResponseMessage{
+	ev1_1 := &messaging.NotificationMessage{
 		Operation: wot.OpSubscribeEvent,
 		SenderID:  agent1ID, ThingID: dThing1ID, Name: evTemperature,
-		Output: "12.5", Updated: fivemago.Format(wot.RFC3339Milli),
+		Data: "12.5", Timestamp: fivemago.Format(wot.RFC3339Milli),
 	}
 	err := addHist.AddMessage(ev1_1)
 	assert.NoError(t, err)
 	// add thing1 humidity from 55 minutes ago
-	ev1_2 := &messaging.ResponseMessage{
+	ev1_2 := &messaging.NotificationMessage{
 		Operation: vocab.OpSubscribeEvent,
 		SenderID:  agent1ID, ThingID: dThing1ID, Name: evHumidity,
-		Output: "70", Updated: fiftyfivemago.Format(wot.RFC3339Milli),
+		Data: "70", Timestamp: fiftyfivemago.Format(wot.RFC3339Milli),
 	}
 	err = addHist.AddMessage(ev1_2)
 	assert.NoError(t, err)
 
 	// add thing2 humidity from 5 minutes ago
 	dThing2ID := td.MakeDigiTwinThingID(agent1ID, thing2ID)
-	ev2_1 := &messaging.ResponseMessage{
+	ev2_1 := &messaging.NotificationMessage{
 		Operation: vocab.OpSubscribeEvent,
 		SenderID:  agent1ID, ThingID: dThing2ID, Name: evHumidity,
-		Output: "50", Updated: fivemago.Format(wot.RFC3339Milli),
+		Data: "50", Timestamp: fivemago.Format(wot.RFC3339Milli),
 	}
 	err = addHist.AddMessage(ev2_1)
 	assert.NoError(t, err)
 
 	// add thing2 temperature from 55 minutes ago
-	ev2_2 := &messaging.ResponseMessage{
+	ev2_2 := &messaging.NotificationMessage{
 		Operation: vocab.OpSubscribeEvent,
 		SenderID:  agent1ID, ThingID: dThing2ID, Name: evTemperature,
-		Output: "17.5", Updated: fiftyfivemago.Format(wot.RFC3339Milli),
+		Data: "17.5", Timestamp: fiftyfivemago.Format(wot.RFC3339Milli),
 	}
 	err = addHist.AddMessage(ev2_2)
 	assert.NoError(t, err)
@@ -289,21 +289,21 @@ func TestAddProperties(t *testing.T) {
 	defer closeFn()
 
 	dThing1ID := td.MakeDigiTwinThingID(agent1, thing1ID)
-	action1 := &messaging.ResponseMessage{
+	action1 := &messaging.NotificationMessage{
 		SenderID:  agent1,
 		ThingID:   dThing1ID,
 		Name:      vocab.ActionSwitchOnOff,
-		Output:    "on",
+		Data:      "on",
 		Operation: vocab.OpInvokeAction,
 	}
-	event1 := &messaging.ResponseMessage{
+	event1 := &messaging.NotificationMessage{
 		SenderID:  agent1,
 		ThingID:   dThing1ID,
 		Name:      vocab.PropEnvTemperature,
-		Output:    temp1,
+		Data:      temp1,
 		Operation: vocab.OpSubscribeEvent,
 	}
-	badEvent1 := &messaging.ResponseMessage{
+	badEvent1 := &messaging.NotificationMessage{
 		SenderID:  agent1,
 		ThingID:   dThing1ID,
 		Name:      "", // missing name
@@ -316,14 +316,14 @@ func TestAddProperties(t *testing.T) {
 	//	Name:      "name",
 	//	Operation: vocab.OpSubscribeEvent,
 	//}
-	badEvent3 := &messaging.ResponseMessage{
+	badEvent3 := &messaging.NotificationMessage{
 		SenderID:  agent1,
 		ThingID:   dThing1ID,
 		Name:      "baddate",
-		Updated:   "-1",
+		Timestamp: "-1",
 		Operation: vocab.OpSubscribeEvent,
 	}
-	badEvent4 := &messaging.ResponseMessage{
+	badEvent4 := &messaging.NotificationMessage{
 		SenderID: agent1,
 		ThingID:  "", // missing ID
 		Name:     "temperature",
@@ -332,11 +332,11 @@ func TestAddProperties(t *testing.T) {
 	propsList[vocab.PropDeviceBattery] = battTemp
 	propsList[vocab.PropEnvCpuload] = 30
 	propsList[vocab.PropSwitchOnOff] = "off"
-	props1 := &messaging.ResponseMessage{
+	props1 := &messaging.NotificationMessage{
 		SenderID:  agent1,
 		ThingID:   dThing1ID,
 		Name:      "", // property list
-		Output:    propsList,
+		Data:      propsList,
 		Operation: wot.OpObserveAllProperties,
 	}
 

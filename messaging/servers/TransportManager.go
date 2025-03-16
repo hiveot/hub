@@ -36,6 +36,8 @@ type TransportManager struct {
 	// all transport protocol bindings by protocol ID
 	servers map[string]messaging.ITransportServer
 
+	// Registered handler for processing received notifications
+	notificationHandler messaging.NotificationHandler
 	// Registered handler for processing received requests
 	requestHandler messaging.RequestHandler
 	// Registered handler for processing received responses
@@ -126,18 +128,13 @@ func (svc *TransportManager) GetConnectionByConnectionID(clientID, cid string) m
 	return nil
 }
 
-// GetHiveotEndpoints return available hiveot endpoints
+// GetHiveotEndpoints return available endpoints
 func (svc *TransportManager) GetHiveotEndpoints() map[string]string {
 	endpoints := make(map[string]string)
 	for _, s := range svc.servers {
-		protocolType := s.GetProtocolType()
-		if protocolType == messaging.ProtocolTypeWotWSS {
-			// ignore wot protocols
-		} else {
-			connectURL := s.GetConnectURL()
-			parts, _ := url.Parse(connectURL)
-			endpoints[parts.Scheme] = connectURL
-		}
+		connectURL := s.GetConnectURL()
+		parts, _ := url.Parse(connectURL)
+		endpoints[parts.Scheme] = connectURL
 	}
 	return endpoints
 }
@@ -159,6 +156,13 @@ func (svc *TransportManager) GetServer(protocolType string) messaging.ITransport
 	return s
 }
 
+// Pass incoming notifications from any of the transport protocols to the registered handler
+func (svc *TransportManager) handleNotification(notif *messaging.NotificationMessage) {
+	if svc.notificationHandler != nil {
+		svc.notificationHandler(notif)
+	}
+}
+
 // Pass incoming requests from any of the transport protocols to the registered handler
 func (svc *TransportManager) handleRequest(
 	req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
@@ -177,13 +181,17 @@ func (svc *TransportManager) handleResponse(resp *messaging.ResponseMessage) err
 }
 
 // SendNotification broadcast an event or property change to subscribers clients
-func (svc *TransportManager) SendNotification(notification *messaging.ResponseMessage) {
+func (svc *TransportManager) SendNotification(notification *messaging.NotificationMessage) {
 	// pass it to protocol servers to use their way of sending messages to subscribers
 	// CloseAllClientConnections close all connections from the given client.
 	// Intended to close connections after a logout.
 	for _, srv := range svc.servers {
 		srv.SendNotification(notification)
 	}
+}
+
+func (svc *TransportManager) SetNotificationHandler(h messaging.NotificationHandler) {
+	svc.notificationHandler = h
 }
 func (svc *TransportManager) SetRequestHandler(h messaging.RequestHandler) {
 	svc.requestHandler = h
@@ -270,8 +278,7 @@ func StartTransportManager(cfg *ProtocolsConfig,
 	//svc.embeddedTransport = embedded.StartEmbeddedBinding()
 
 	// Http is needed for all subprotocols and for the auth endpoint
-	if cfg.EnableHiveotAuth || cfg.EnableHiveotWSS || cfg.EnableHiveotSSE ||
-		cfg.EnableWotWSS {
+	if cfg.EnableHiveotAuth || cfg.EnableWSS || cfg.EnableHiveotSSE {
 
 		svc.PreferredProtocolType = messaging.ProtocolTypeWotHTTPBasic
 
@@ -291,6 +298,7 @@ func StartTransportManager(cfg *ProtocolsConfig,
 				ssePath,
 				svc.httpsTransport,
 				nil,
+				svc.handleNotification,
 				svc.handleRequest,
 				svc.handleResponse)
 			svc.servers[messaging.ProtocolTypeHiveotSSE] = hiveotSseServer
@@ -298,43 +306,45 @@ func StartTransportManager(cfg *ProtocolsConfig,
 			svc.PreferredProtocolType = messaging.ProtocolTypeHiveotSSE
 		}
 
-		// 3. HiveOT WSS protocol
-		if cfg.EnableHiveotWSS {
+		// 3. WSS protocol
+		if cfg.EnableWSS {
 			converter := &wssserver.HiveotMessageConverter{}
-			wssPath := wssserver.DefaultHiveotWssPath
+			wssPath := wssserver.DefaultWssPath
 			hiveotWssServer, err := wssserver.StartWssServer(
-				wssPath, converter, messaging.ProtocolTypeHiveotWSS,
+				wssPath, converter, messaging.ProtocolTypeWSS,
 				svc.httpsTransport,
 				nil,
+				svc.handleNotification,
 				svc.handleRequest,
 				svc.handleResponse,
 			)
 			if err == nil {
-				svc.servers[messaging.ProtocolTypeHiveotWSS] = hiveotWssServer
+				svc.servers[messaging.ProtocolTypeWSS] = hiveotWssServer
 			}
 			// wss is better than http, sse or wot wss
-			svc.PreferredProtocolType = messaging.ProtocolTypeHiveotWSS
+			svc.PreferredProtocolType = messaging.ProtocolTypeWSS
 		}
 
-		// 4. WoT WSS Protocol
-		if cfg.EnableWotWSS {
-			// WoT WSS uses the same wss socket server as hiveot but with a
-			// different message converter.
-			converter := &wssserver.WotWssMessageConverter{}
-			wssPath := wssserver.DefaultWotWssPath
-			wotWssServer, err := wssserver.StartWssServer(
-				wssPath, converter, messaging.ProtocolTypeWotWSS,
-				svc.httpsTransport,
-				nil,
-				svc.handleRequest,
-				svc.handleResponse,
-			)
-			if err == nil {
-				svc.servers[messaging.ProtocolTypeWotWSS] = wotWssServer
-			}
-			// WoT wss is better than http or sse
-			svc.PreferredProtocolType = messaging.ProtocolTypeWotWSS
-		}
+		//// 4. WoT WSS Protocol
+		//if cfg.EnableWotWSS42 {
+		//	// WoT WSS uses the same wss socket server as hiveot but with a
+		//	// different message converter.
+		//	converter := &wssserver.WoTWss42MessageConverter{}
+		//	wssPath := wssserver.DefaultWotWss42Path
+		//	wotWssServer, err := wssserver.StartWssServer(
+		//		wssPath, converter, messaging.ProtocolTypeWotWSS,
+		//		svc.httpsTransport,
+		//		nil,
+		//		svc.handleNotification,
+		//		svc.handleRequest,
+		//		svc.handleResponse,
+		//	)
+		//	if err == nil {
+		//		svc.servers[messaging.ProtocolTypeWotWSS] = wotWssServer
+		//	}
+		//	// WoT wss is better than http or sse
+		//	svc.PreferredProtocolType = messaging.ProtocolTypeWotWSS
+		//}
 
 	}
 	//if cfg.EnableMQTT {

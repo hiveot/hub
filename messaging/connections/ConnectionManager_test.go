@@ -173,14 +173,12 @@ func TestPublishEventProp(t *testing.T) {
 	require.NoError(t, err)
 
 	// publish
-	notif1 := messaging.NewResponseMessage(
-		wot.OpSubscribeEvent, dThingID, evName, nil, nil, "")
-	notif1.SenderID = agent1ID
+	notif1 := messaging.NewNotificationMessage(
+		wot.OpSubscribeEvent, dThingID, evName, nil)
 	err = cm.SendNotification(notif1)
 	assert.NoError(t, err)
-	notif2 := messaging.NewResponseMessage(
-		wot.OpObserveProperty, dThingID, propName, nil, nil, "")
-	notif2.SenderID = agent1ID
+	notif2 := messaging.NewNotificationMessage(
+		wot.OpObserveProperty, dThingID, propName, nil)
 	err = cm.SendNotification(notif2)
 	assert.NoError(t, err)
 

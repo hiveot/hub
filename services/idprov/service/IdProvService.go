@@ -62,7 +62,7 @@ func (svc *IdProvService) Start(ag *messaging.Agent) (err error) {
 	}
 
 	// Set the required permissions for using this service
-	err = authz.UserSetPermissions(&ag.Consumer, authz.ThingPermissions{
+	err = authz.UserSetPermissions(ag.Consumer, authz.ThingPermissions{
 		AgentID: ag.GetClientID(),
 		ThingID: idprovapi.ManageServiceID,
 		Allow: []authz.ClientRole{

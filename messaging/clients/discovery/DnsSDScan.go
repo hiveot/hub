@@ -1,4 +1,4 @@
-// Package hubclient with client for DNS-SD service discovery
+// Package discovery with client for DNS-SD service discovery
 package discovery
 
 import (

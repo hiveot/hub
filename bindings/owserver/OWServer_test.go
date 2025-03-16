@@ -92,22 +92,21 @@ func TestPoll(t *testing.T) {
 	t.Log("--- TestPoll (without state service)  ---")
 	ag1, _, _ := ts.AddConnectAgent(agentID)
 	defer ag1.Disconnect()
-	cl1, _, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
-	defer cl1.Disconnect()
+	co1, _, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
+	defer co1.Disconnect()
 	svc := service.NewOWServerBinding(storePath, &owsConfig)
 
 	// Count the number of received TD events
-	err := cl1.ObserveProperty("", "")
-	err = cl1.Subscribe("", "")
+	err := co1.ObserveProperty("", "")
+	err = co1.Subscribe("", "")
 	require.NoError(t, err)
-	cl1.SetResponseHandler(func(msg *messaging.ResponseMessage) error {
-		slog.Info("received message", "MessageType", msg.Operation, "id", msg.Name)
+	co1.SetNotificationHandler(func(msg *messaging.NotificationMessage) {
+		slog.Info("received notification", "operation", msg.Operation, "id", msg.Name)
 		var value interface{}
-		err2 := tputils.DecodeAsObject(msg.Output, &value)
+		err2 := tputils.DecodeAsObject(msg.Data, &value)
 		assert.NoError(t, err2)
 
 		tdCount.Add(1)
-		return err2
 	})
 	assert.NoError(t, err)
 
@@ -116,7 +115,7 @@ func TestPoll(t *testing.T) {
 	require.NoError(t, err)
 
 	// give heartbeat a chance to run. stop will wait for it to complete
-	time.Sleep(time.Millisecond * 1)
+	time.Sleep(time.Millisecond * 10)
 	svc.Stop()
 
 	// the simulation file contains 3 things. The service is 1 Thing.
@@ -124,10 +123,10 @@ func TestPoll(t *testing.T) {
 
 	// get events from the digitwin
 	dThingID := td.MakeDigiTwinThingID(agentID, device1ID)
-	events, err := digitwin.ThingValuesReadAllEvents(cl1, dThingID)
+	events, err := digitwin.ThingValuesReadAllEvents(co1, dThingID)
 	require.NoError(t, err)
 	// this thing has 5 sensors
-	require.True(t, len(events) == 5)
+	require.Equal(t, 5, len(events))
 }
 
 func TestPollInvalidEDSAddress(t *testing.T) {

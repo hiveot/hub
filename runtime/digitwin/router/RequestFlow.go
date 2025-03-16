@@ -29,6 +29,102 @@ type ActiveRequestRecord struct {
 	ReplyTo       string    // Action reply address. Typically the sender's connection-id
 }
 
+// ForwardRequestToRemoteAgent forwards the request to an external agent.
+//
+// This tracks the action in the digitwin store, locates the agent connection,
+// forwards the request to the agent.
+//
+// This returns a response with an ActionStatus message, or with an error if
+// something went wrong.
+//
+// If the agent is not connected status is failed.
+func (svc *DigitwinRouter) ForwardRequestToRemoteAgent(
+	req *messaging.RequestMessage, c2 messaging.IConnection) (
+	resp *messaging.ResponseMessage) {
+
+	agentID, agThingID := td.SplitDigiTwinThingID(req.ThingID)
+
+	// Treat everything as actions
+	// Store the request progress to be able to respond to queryAction. Only
+	// unsafe (stateful) actions are stored.
+	// TODO: make sure non-action requests are not returned during query
+	actionStatus, stored, err := svc.dtwStore.NewActionStart(req)
+	_ = stored
+	if err != nil {
+		return req.CreateResponse(nil, err)
+	}
+
+	// Determine the agent to forward the request to.
+	// Agents only have a single connection instance so the agentID can be used.
+	agentConn := svc.transportServer.GetConnectionByClientID(agentID)
+
+	if agentConn == nil {
+		// The request cannot be delivered as the agent is not reachable
+		// For now return an error.
+		// TODO: determine the rules and use-cases for queuing a request
+		err = fmt.Errorf("ForwardRequestToRemoteAgent: Agent '%s' not reachable. Ignored", agentID)
+		return req.CreateResponse(nil, err)
+	}
+	replyTo := ""
+	if c2 != nil {
+		replyTo = c2.GetConnectionInfo().ConnectionID
+	}
+
+	// track the request progress so async responses can be returned to the client (replyTo)
+	requestRecord := ActiveRequestRecord{
+		AgentID:       agentID,
+		Name:          req.Name,
+		Operation:     req.Operation,
+		ReplyTo:       replyTo,
+		Updated:       time.Now(),
+		CorrelationID: req.CorrelationID,
+		Progress:      messaging.StatusPending,
+		SenderID:      req.SenderID,
+		ThingID:       agThingID,
+	}
+	svc.mux.Lock()
+	svc.activeCache[requestRecord.CorrelationID] = requestRecord
+	svc.mux.Unlock()
+
+	// forward the request to the agent using the ThingID of the agent, not the
+	// digital twin agThingID.
+	req2 := *req
+	req2.ThingID = agThingID // agent uses the local message ID
+	err = agentConn.SendRequest(&req2)
+
+	// if forwarding the request to the agent failed, then remove the tracking,
+	// update the action status, and return an error response
+	if err != nil {
+		slog.Warn("ForwardRequestToRemoteAgent - failed",
+			slog.String("dThingID", req.ThingID),
+			slog.String("actionName", req.Name),
+			slog.String("correlationID", req.CorrelationID),
+			slog.String("err", err.Error()))
+
+		// cleanup as the record is no longer needed
+		svc.mux.Lock()
+		delete(svc.activeCache, req.CorrelationID)
+		svc.mux.Unlock()
+
+		resp = req.CreateResponse(nil, err)
+		if stored {
+			_, _ = svc.dtwStore.UpdateActionStatus(agentID, resp)
+		}
+		return resp
+	}
+
+	// the request has been sent successfully
+	// actions return a notification with ActionStatus record with status pending.
+	// other requests simply don't return anything until an async response is received.
+	if stored {
+		notif := req.CreateRunningNotification()
+		notif.Data = actionStatus
+		svc.transportServer.SendNotification(notif)
+	}
+	// no immediate result so return nil
+	return nil
+}
+
 // HandleRequest routes requests from clients to agents.
 //
 // This handles all requests for the digital twin and forwards other request
@@ -100,14 +196,16 @@ func (svc *DigitwinRouter) HandleRequest(
 		slog.Warn(err.Error())
 		resp = req.CreateResponse(nil, err)
 	}
-	svc.requestLogger.Info("<- RESP",
-		slog.String("correlationID", resp.CorrelationID),
-		slog.String("operation", resp.Operation),
-		slog.String("dThingID", resp.ThingID),
-		slog.String("name", resp.Name),
-		slog.String("status", resp.Status),
-		slog.String("err", resp.Error),
-	)
+	// direct responses are optional
+	if resp != nil {
+		svc.requestLogger.Info("<- RESP",
+			slog.String("correlationID", resp.CorrelationID),
+			slog.String("operation", resp.Operation),
+			slog.String("dThingID", resp.ThingID),
+			slog.String("name", resp.Name),
+			slog.String("err", resp.Error),
+		)
+	}
 	return resp
 }
 
@@ -150,87 +248,7 @@ func (svc *DigitwinRouter) HandleInvokeAction(
 		resp = svc.digitwinAction(req, c)
 	default:
 		// Forward the action to external agents
-		resp = svc.ForwardActionToRemoteAgent(req, c)
-	}
-	return resp
-}
-
-// ForwardActionToRemoteAgent forwards the action to external agents
-// This tracks the action in the digitwin store, locates the agent connection,
-// forwards the rquest to the agent and set the status to pending.
-// If the agent is not connected status is failed.
-func (svc *DigitwinRouter) ForwardActionToRemoteAgent(
-	req *messaging.RequestMessage, c2 messaging.IConnection) (resp *messaging.ResponseMessage) {
-	agentID, thingID := td.SplitDigiTwinThingID(req.ThingID)
-
-	// Store the action progress to be able to respond to queryAction. Only
-	// unsafe (stateful) actions are stored.
-	stored, err := svc.dtwStore.NewActionStart(req)
-	_ = stored
-	if err != nil {
-		return req.CreateResponse(nil, err)
-	}
-
-	// Determine the agent to forward the request to.
-	// Agents only have a single connection instance so the agentID can be used.
-	agentConn := svc.transportServer.GetConnectionByClientID(agentID)
-
-	if agentConn == nil {
-		// The request cannot be delivered as the agent is not reachable
-		// For now return an error.
-		// TODO: determine the rules and use-cases for queuing a request
-		err = fmt.Errorf("ForwardActionToRemoteAgent: Agent '%s' not reachable. Ignored", agentID)
-		return req.CreateResponse(nil, err)
-	}
-	replyTo := ""
-	if c2 != nil {
-		replyTo = c2.GetConnectionInfo().ConnectionID
-	}
-
-	// track the action progress so async responses can be returned to the client (replyTo)
-	actionRecord := ActiveRequestRecord{
-		AgentID:       agentID,
-		Name:          req.Name,
-		Operation:     req.Operation,
-		ReplyTo:       replyTo,
-		CorrelationID: req.CorrelationID,
-		SenderID:      req.SenderID,
-		ThingID:       thingID,
-	}
-	svc.mux.Lock()
-	svc.activeCache[actionRecord.CorrelationID] = actionRecord
-	svc.mux.Unlock()
-
-	// forward the request to the agent using the ThingID of the agent, not the
-	// digital twin thingID.
-	// TODO: it would be cleaner to use the digital twin record to identify the
-	// agent instead of using Create/SplitDigitalTwinID everywhere.
-	req2 := req
-	req2.ThingID = thingID // agent uses the local message ID
-	err = agentConn.SendRequest(req2)
-
-	// if forwarding the request to the agent failed, then remove the tracking,
-	// update the action status, and return an error response
-	if err != nil {
-		slog.Warn("ForwardActionToRemoteAgent - failed",
-			slog.String("dThingID", req.ThingID),
-			slog.String("actionName", req.Name),
-			slog.String("correlationID", req.CorrelationID),
-			slog.String("err", err.Error()))
-
-		// cleanup as the record is no longer needed
-		svc.mux.Lock()
-		delete(svc.activeCache, req.CorrelationID)
-		svc.mux.Unlock()
-
-		resp = req.CreateResponse(nil, err)
-		if stored {
-			_, _ = svc.dtwStore.UpdateActionStatus(agentID, resp)
-		}
-	} else {
-		// return a pending response
-		resp = req.CreateResponse(nil, nil)
-		resp.Status = messaging.StatusPending
+		resp = svc.ForwardRequestToRemoteAgent(req, c)
 	}
 	return resp
 }
@@ -337,5 +355,5 @@ func (svc *DigitwinRouter) HandleWriteProperty(
 		tdi := svc.dtwStore.GetDigitwinInfo(req.ThingID)
 		tdi.DigitwinTD.Description = tputils.DecodeAsString(req.Input, 0)
 	}
-	return svc.ForwardActionToRemoteAgent(req, c)
+	return svc.ForwardRequestToRemoteAgent(req, c)
 }

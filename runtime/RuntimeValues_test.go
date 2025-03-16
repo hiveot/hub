@@ -45,18 +45,17 @@ func TestQueryActions(t *testing.T) {
 		return msg.CreateResponse(data, nil)
 	})
 
-	co1.SetResponseHandler(func(msg *messaging.ResponseMessage) error {
+	co1.SetNotificationHandler(func(msg *messaging.NotificationMessage) {
 		slog.Info("notification: " + msg.Operation)
 		// signal notification received
 		updateChan1 <- true
-		return nil
 	})
 	err := co1.Subscribe("", "")
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond)
 	//err = ag1.PubTD(td1)
 	td1JSON, _ := jsoniter.MarshalToString(td1)
-	err = digitwin.ThingDirectoryUpdateTD(&ag1.Consumer, td1JSON)
+	err = digitwin.ThingDirectoryUpdateTD(ag1.Consumer, td1JSON)
 
 	// step 2: consumer publish an action to the agent it should return as
 	// a notification.
@@ -100,7 +99,7 @@ func TestReadEvents(t *testing.T) {
 	td1 := ts.CreateTestTD(0)
 	//err := ag1.PubTD(td1)
 	td1JSON, _ := jsoniter.MarshalToString(td1)
-	err := digitwin.ThingDirectoryUpdateTD(&ag1.Consumer, td1JSON)
+	err := digitwin.ThingDirectoryUpdateTD(ag1.Consumer, td1JSON)
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond * 10)
 
@@ -146,7 +145,7 @@ func TestHttpsGetProps(t *testing.T) {
 	// step 1: agent publishes a TD first: dtw:agent1:thing-1
 	td1 := ts.CreateTestTD(0)
 	td1JSON, _ := jsoniter.MarshalToString(td1)
-	err := digitwin.ThingDirectoryUpdateTD(&ag1.Consumer, td1JSON)
+	err := digitwin.ThingDirectoryUpdateTD(ag1.Consumer, td1JSON)
 	time.Sleep(time.Millisecond * 10)
 	require.NoError(t, err)
 
@@ -189,9 +188,8 @@ func TestSubscribeValues(t *testing.T) {
 	// 1. consumer subscribes to events/properties
 	err := cl1.Subscribe("", "")
 	require.NoError(t, err)
-	cl1.SetResponseHandler(func(msg *messaging.ResponseMessage) error {
+	cl1.SetNotificationHandler(func(msg *messaging.NotificationMessage) {
 		msgCount.Add(1)
-		return nil
 	})
 
 	// 2: agent creates a TD first: dtw:agent1:thing-1 - this sends a notification
@@ -200,7 +198,7 @@ func TestSubscribeValues(t *testing.T) {
 	// 3: agent publishes notification
 	//err = ag1.PubTD(td1)
 	td1JSON, _ := jsoniter.MarshalToString(td1)
-	err = digitwin.ThingDirectoryUpdateTD(&ag1.Consumer, td1JSON)
+	err = digitwin.ThingDirectoryUpdateTD(ag1.Consumer, td1JSON)
 
 	time.Sleep(time.Millisecond * 100)
 
@@ -236,16 +234,15 @@ func TestWriteProperties(t *testing.T) {
 	td1 := ts.CreateTestTD(0)
 	//err := ag1.PubTD(td1)
 	td1JSON, _ := jsoniter.MarshalToString(td1)
-	err := digitwin.ThingDirectoryUpdateTD(&ag1.Consumer, td1JSON)
+	err := digitwin.ThingDirectoryUpdateTD(ag1.Consumer, td1JSON)
 
 	// agents listen for property write requests
 	ag1.SetRequestHandler(func(msg *messaging.RequestMessage,
 		c messaging.IConnection) *messaging.ResponseMessage {
-
 		if msg.Operation == vocab.OpWriteProperty && msg.Name == key1 {
 			msgCount.Add(1)
 		}
-		return msg.CreateResponse(nil, nil)
+		return msg.CreateResponse(msg.Input, nil)
 	})
 
 	// consumer subscribes to events/properties changes

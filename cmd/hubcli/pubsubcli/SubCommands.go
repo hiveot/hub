@@ -93,7 +93,7 @@ func HandleSubEvents(hc *messaging.Consumer, thingID string, name string) error 
 
 	err := hc.Subscribe(thingID, name)
 	hc.SetResponseHandler(func(msg *messaging.ResponseMessage) error {
-		createdTime, _ := dateparse.ParseAny(msg.Updated)
+		createdTime, _ := dateparse.ParseAny(msg.Timestamp)
 		timeStr := createdTime.Format("15:04:05.000")
 
 		valueStr := msg.ToString(0)

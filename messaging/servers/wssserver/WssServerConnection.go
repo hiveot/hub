@@ -42,6 +42,8 @@ type WssServerConnection struct {
 	// mutex for controlling writing and closing
 	mux sync.RWMutex
 
+	// handler for notifications sent by agents
+	notificationHandlerPtr atomic.Pointer[messaging.NotificationHandler]
 	// handler for requests send by clients
 	requestHandlerPtr atomic.Pointer[messaging.RequestHandler]
 	// handler for responses sent by agents
@@ -61,18 +63,18 @@ type WssServerConnection struct {
 }
 
 // _send encodes and sends the websocket message to the connected client
-func (c *WssServerConnection) _send(msg any) (err error) {
+func (sc *WssServerConnection) _send(msg any) (err error) {
 
-	if !c.isConnected.Load() {
+	if !sc.isConnected.Load() {
 		err = fmt.Errorf(
-			"_send: connection with client '%s' is now closed", c.cinfo.ClientID)
+			"_send: connection with client '%s' is now closed", sc.cinfo.ClientID)
 		slog.Warn(err.Error())
 	} else {
 		raw, _ := jsoniter.MarshalToString(msg)
 		// websockets do not allow concurrent write
-		c.mux.Lock()
-		defer c.mux.Unlock()
-		err = c.wssConn.WriteMessage(websocket.TextMessage, []byte(raw))
+		sc.mux.Lock()
+		defer sc.mux.Unlock()
+		err = sc.wssConn.WriteMessage(websocket.TextMessage, []byte(raw))
 		if err != nil {
 			err = fmt.Errorf("_send write error: %s", err)
 		}
@@ -81,29 +83,29 @@ func (c *WssServerConnection) _send(msg any) (err error) {
 }
 
 // Disconnect closes the connection and ends the read loop
-func (c *WssServerConnection) Disconnect() {
-	c.mux.Lock()
-	defer c.mux.Unlock()
-	if c.isConnected.Load() {
-		c.onConnection(false, nil)
-		_ = c.wssConn.Close()
+func (sc *WssServerConnection) Disconnect() {
+	sc.mux.Lock()
+	defer sc.mux.Unlock()
+	if sc.isConnected.Load() {
+		sc.onConnection(false, nil)
+		_ = sc.wssConn.Close()
 	}
 }
 
 // GetConnectionInfo returns the client's connection details
-func (c *WssServerConnection) GetConnectionInfo() messaging.ConnectionInfo {
-	return c.cinfo
+func (sc *WssServerConnection) GetConnectionInfo() messaging.ConnectionInfo {
+	return sc.cinfo
 }
 
 // IsConnected returns the connection status
-func (c *WssServerConnection) IsConnected() bool {
-	return c.isConnected.Load()
+func (sc *WssServerConnection) IsConnected() bool {
+	return sc.isConnected.Load()
 }
-func (c *WssServerConnection) onConnection(connected bool, err error) {
-	c.isConnected.Store(connected)
-	chPtr := c.connectionHandlerPtr.Load()
+func (sc *WssServerConnection) onConnection(connected bool, err error) {
+	sc.isConnected.Store(connected)
+	chPtr := sc.connectionHandlerPtr.Load()
 	if chPtr != nil {
-		(*chPtr)(connected, err, c)
+		(*chPtr)(connected, err, sc)
 	}
 }
 
@@ -113,53 +115,78 @@ func (c *WssServerConnection) onConnection(connected bool, err error) {
 // - Ping
 // - (Un)ObserveProperty and (Un)ObserveAllProperties
 // - (Un)SubscribeEvent and (Un)SubscribeAllEvents
-func (c *WssServerConnection) onMessage(raw []byte) {
+func (sc *WssServerConnection) onMessage(raw []byte) {
 	var err error
-	c.mux.Lock()
-	c.lastActivity = time.Now()
-	c.mux.Unlock()
+	sc.mux.Lock()
+	sc.lastActivity = time.Now()
+	sc.mux.Unlock()
+	var notif *messaging.NotificationMessage
+	var req *messaging.RequestMessage
 	var resp *messaging.ResponseMessage
 
-	// both non-agents and agents send requests
-	req := c.messageConverter.DecodeRequest(raw)
-	if req != nil {
+	// both non-agents and agents receive responses
+	notif = sc.messageConverter.DecodeNotification(raw)
+	if notif == nil {
+		resp = sc.messageConverter.DecodeResponse(raw)
+		if resp == nil {
+			req = sc.messageConverter.DecodeRequest(raw)
+		}
+	}
+
+	if notif != nil {
+		notif.SenderID = sc.cinfo.ClientID
+		hPtr := sc.notificationHandlerPtr.Load()
+		if hPtr == nil {
+			slog.Error("HandleWssMessage: no notification handler set",
+				"clientID", sc.cinfo.ClientID,
+				"operation", notif.Operation,
+			)
+			return
+		}
+		// pass the response to the registered handler
+		(*hPtr)(notif)
+	} else if resp != nil {
+		// only agents send responses
+		resp.SenderID = sc.cinfo.ClientID
+		rhPtr := sc.responseHandlerPtr.Load()
+		if rhPtr != nil {
+			err = (*rhPtr)(resp)
+		}
+	} else if req != nil {
 		// sender is identified by the server, not the client
 		// note that this field is still useful for services that need to know the sender
-		req.SenderID = c.cinfo.ClientID
+		req.SenderID = sc.cinfo.ClientID
 		switch req.Operation {
 		case wot.HTOpPing:
 			resp = req.CreateResponse("pong", nil)
 
 		case wot.OpSubscribeEvent, wot.OpSubscribeAllEvents:
-			c.subscriptions.Subscribe(req.ThingID, req.Name, req.CorrelationID)
+			sc.subscriptions.Subscribe(req.ThingID, req.Name, req.CorrelationID)
 			resp = req.CreateResponse(nil, nil)
 
 		case wot.OpUnsubscribeEvent, wot.OpUnsubscribeAllEvents:
-			c.subscriptions.Unsubscribe(req.ThingID, req.Name)
+			sc.subscriptions.Unsubscribe(req.ThingID, req.Name)
 			resp = req.CreateResponse(nil, nil)
 
 		case wot.OpObserveProperty, wot.OpObserveAllProperties:
-			c.observations.Subscribe(req.ThingID, req.Name, req.CorrelationID)
+			sc.observations.Subscribe(req.ThingID, req.Name, req.CorrelationID)
 			resp = req.CreateResponse(nil, nil)
 
 		case wot.OpUnobserveProperty, wot.OpUnobserveAllProperties:
-			c.observations.Unsubscribe(req.ThingID, req.Name)
+			sc.observations.Unsubscribe(req.ThingID, req.Name)
 			resp = req.CreateResponse(nil, nil)
 		default:
-			rhPtr := c.requestHandlerPtr.Load()
+			rhPtr := sc.requestHandlerPtr.Load()
 			if rhPtr != nil {
-				resp = (*rhPtr)(req, c)
+				resp = (*rhPtr)(req, sc)
 			}
 		}
-		err = c.SendResponse(resp)
-	} else {
-		// only agents send responses
-		resp = c.messageConverter.DecodeResponse(raw)
-		resp.SenderID = c.cinfo.ClientID
-		rhPtr := c.responseHandlerPtr.Load()
-		if rhPtr != nil {
-			err = (*rhPtr)(resp)
+		if resp != nil {
+			err = sc.SendResponse(resp)
 		}
+	} else {
+		slog.Warn(
+			"HandleWssMessage: Message is not a notification, request or response")
 	}
 	if err != nil {
 		slog.Warn("Error handling websocket message", "err", err.Error())
@@ -167,10 +194,10 @@ func (c *WssServerConnection) onMessage(raw []byte) {
 }
 
 // ReadLoop reads incoming websocket messages in a loop, until connection closes or context is cancelled
-func (c *WssServerConnection) ReadLoop(ctx context.Context, wssConn *websocket.Conn) {
+func (sc *WssServerConnection) ReadLoop(ctx context.Context, wssConn *websocket.Conn) {
 
 	//var readLoop atomic.Bool
-	c.onConnection(true, nil)
+	sc.onConnection(true, nil)
 
 	// close the client when the context ends drops
 	go func() {
@@ -180,21 +207,57 @@ func (c *WssServerConnection) ReadLoop(ctx context.Context, wssConn *websocket.C
 			// close channel when no-one is writing
 			// in the meantime keep reading to prevent deadlock
 			_ = wssConn.Close()
-			c.onConnection(false, nil)
+			sc.onConnection(false, nil)
 		}
 	}()
 	// read messages from the client until the connection closes
-	for c.isConnected.Load() { // sseMsg := range sseChan {
+	for sc.isConnected.Load() { // sseMsg := range sseChan {
 		_, raw, err := wssConn.ReadMessage()
 		if err != nil {
 			// avoid further writes
-			c.onConnection(false, err)
+			sc.onConnection(false, err)
 			// ending the read loop and returning will close the connection
 			break
 		}
 		// process the message in the background to free up the socket
-		go c.onMessage(raw)
+		go sc.onMessage(raw)
 	}
+}
+
+// SendNotification sends a response to the client if subscribed.
+// this is a response to a long-running subscription request
+// If this returns an error then no response was sent.
+func (sc *WssServerConnection) SendNotification(
+	notif *messaging.NotificationMessage) (err error) {
+
+	if notif.Operation == wot.OpSubscribeEvent || notif.Operation == wot.OpSubscribeAllEvents {
+		correlationID := sc.subscriptions.GetSubscription(notif.ThingID, notif.Name)
+		if correlationID != "" {
+
+			slog.Info("SendNotification (event subscription)",
+				slog.String("clientID", sc.cinfo.ClientID),
+				slog.String("thingID", notif.ThingID),
+				slog.String("event name", notif.Name),
+			)
+			msg, _ := sc.messageConverter.EncodeNotification(notif)
+			err = sc._send(msg)
+		}
+	} else if notif.Operation == wot.OpObserveProperty || notif.Operation == wot.OpObserveAllProperties {
+		correlationID := sc.observations.GetSubscription(notif.ThingID, notif.Name)
+		if correlationID != "" {
+			slog.Info("SendNotification (observed property)",
+				slog.String("clientID", sc.cinfo.ClientID),
+				slog.String("thingID", notif.ThingID),
+				slog.String("name", notif.Name),
+			)
+			msg, _ := sc.messageConverter.EncodeNotification(notif)
+			err = sc._send(msg)
+		}
+	} else {
+		slog.Warn("Unknown notification: " + notif.Operation)
+		//err = sc._send(msg)
+	}
+	return err
 }
 
 // SendRequest sends the request to the client (agent).
@@ -204,20 +267,20 @@ func (c *WssServerConnection) ReadLoop(ctx context.Context, wssConn *websocket.C
 // If this server is the Thing agent then there is no need for this method.
 //
 // If this returns an error then no request was sent.
-func (c *WssServerConnection) SendRequest(req *messaging.RequestMessage) error {
-	msg, err := c.messageConverter.EncodeRequest(req)
+func (sc *WssServerConnection) SendRequest(req *messaging.RequestMessage) error {
+	msg, err := sc.messageConverter.EncodeRequest(req)
 	if err == nil {
-		err = c._send(msg)
+		err = sc._send(msg)
 	}
 	return err
 }
 
 // SendResponse sends a response to the remote client.
 // If this returns an error then no response was sent.
-func (c *WssServerConnection) SendResponse(resp *messaging.ResponseMessage) (err error) {
+func (sc *WssServerConnection) SendResponse(resp *messaging.ResponseMessage) (err error) {
 
 	//slog.Info("SendResponse (server->client)",
-	//	slog.String("clientID", c.cinfo.ClientID),
+	//	slog.String("clientID", sc.cinfo.ClientID),
 	//	slog.String("correlationID", resp.CorrelationID),
 	//	slog.String("operation", resp.Operation),
 	//	slog.String("name", resp.Name),
@@ -226,62 +289,41 @@ func (c *WssServerConnection) SendResponse(resp *messaging.ResponseMessage) (err
 	//	slog.String("senderID", resp.SenderID),
 	//)
 
-	msg, err := c.messageConverter.EncodeResponse(resp)
+	msg, err := sc.messageConverter.EncodeResponse(resp)
 	if err == nil {
-		err = c._send(msg)
+		err = sc._send(msg)
 	}
 	return err
 }
 
-// SendNotification sends a response to the client if subscribed.
-// this is a response to a long-running subscription request
-// If this returns an error then no response was sent.
-func (c *WssServerConnection) SendNotification(resp messaging.ResponseMessage) {
-
-	//slog.Info("SendNotification",
-	//	slog.String("clientID", c.clientID),
-	//	slog.String("correlationID", resp.CorrelationID),
-	//	slog.String("operation", resp.Operation),
-	//	slog.String("senderID", resp.SenderID),
-	//)
-
-	if resp.Operation == wot.OpSubscribeEvent || resp.Operation == wot.OpSubscribeAllEvents {
-		correlationID := c.subscriptions.GetSubscription(resp.ThingID, resp.Name)
-		if correlationID != "" {
-			resp.CorrelationID = correlationID
-			_ = c.SendResponse(&resp)
-		}
-	} else if resp.Operation == wot.OpObserveProperty || resp.Operation == wot.OpObserveAllProperties {
-		correlationID := c.observations.GetSubscription(resp.ThingID, resp.Name)
-		if correlationID != "" {
-			resp.CorrelationID = correlationID
-			_ = c.SendResponse(&resp)
-		}
-	} else {
-		slog.Warn("Unknown notification: " + resp.Operation)
-	}
-	return
-}
-
-func (c *WssServerConnection) SetConnectHandler(cb messaging.ConnectionHandler) {
+func (sc *WssServerConnection) SetConnectHandler(cb messaging.ConnectionHandler) {
 	if cb == nil {
-		c.connectionHandlerPtr.Store(nil)
+		sc.connectionHandlerPtr.Store(nil)
 	} else {
-		c.connectionHandlerPtr.Store(&cb)
+		sc.connectionHandlerPtr.Store(&cb)
 	}
 }
-func (c *WssServerConnection) SetRequestHandler(cb messaging.RequestHandler) {
+
+// SetNotificationHandler set the application handler for received notifications
+func (sc *WssServerConnection) SetNotificationHandler(cb messaging.NotificationHandler) {
 	if cb == nil {
-		c.requestHandlerPtr.Store(nil)
+		sc.notificationHandlerPtr.Store(nil)
 	} else {
-		c.requestHandlerPtr.Store(&cb)
+		sc.notificationHandlerPtr.Store(&cb)
 	}
 }
-func (c *WssServerConnection) SetResponseHandler(cb messaging.ResponseHandler) {
+func (sc *WssServerConnection) SetRequestHandler(cb messaging.RequestHandler) {
 	if cb == nil {
-		c.responseHandlerPtr.Store(nil)
+		sc.requestHandlerPtr.Store(nil)
 	} else {
-		c.responseHandlerPtr.Store(&cb)
+		sc.requestHandlerPtr.Store(&cb)
+	}
+}
+func (sc *WssServerConnection) SetResponseHandler(cb messaging.ResponseHandler) {
+	if cb == nil {
+		sc.responseHandlerPtr.Store(nil)
+	} else {
+		sc.responseHandlerPtr.Store(&cb)
 	}
 }
 

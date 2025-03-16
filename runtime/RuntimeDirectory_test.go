@@ -35,19 +35,20 @@ func TestAddRemoveTD(t *testing.T) {
 	td1 := td.NewTD(agThing1ID, "Title", vocab.ThingSensorMulti)
 	td1JSON, _ := jsoniter.MarshalToString(td1)
 	ag1, _, _ := ts.AddConnectAgent(agentID)
+	defer ag1.Disconnect()
 
 	// Create the consumer
 	co1, _, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
 	defer co1.Disconnect()
 
 	// Add the TD
-	err := digitwin.ThingDirectoryUpdateTD(&ag1.Consumer, td1JSON)
+	err := digitwin.ThingDirectoryUpdateTD(ag1.Consumer, td1JSON)
 	assert.NoError(t, err)
 
 	// Get returns a serialized TD object
 	// use the helper directory client rpc method
 	var dtThing1ID = td.MakeDigiTwinThingID(agentID, agThing1ID)
-	td3JSON, err := digitwin.ThingDirectoryReadTD(&ag1.Consumer, dtThing1ID)
+	td3JSON, err := digitwin.ThingDirectoryReadTD(ag1.Consumer, dtThing1ID)
 	require.NoError(t, err)
 	var td3 td.TD
 	err = jsoniter.UnmarshalFromString(td3JSON, &td3)
@@ -60,6 +61,7 @@ func TestAddRemoveTD(t *testing.T) {
 	require.NoError(t, err)
 
 	// after removal of the TD, getTD should return an error
+	t.Log("Reading non-existing TD should fail")
 	td4Json, err := digitwin.ThingDirectoryReadTD(co1, dtThing1ID)
 	require.Error(t, err)
 	require.Empty(t, td4Json)
@@ -153,7 +155,7 @@ func TestTDEvent(t *testing.T) {
 	defer cl1.Disconnect()
 
 	// wait to directory TD updated events
-	respHandler := func(msg *messaging.ResponseMessage) error {
+	notifHandler := func(msg *messaging.NotificationMessage) {
 		if msg.Operation == vocab.OpSubscribeEvent &&
 			msg.ThingID == digitwin.ThingDirectoryDThingID &&
 			msg.Name == digitwin.ThingDirectoryEventThingUpdated {
@@ -165,9 +167,8 @@ func TestTDEvent(t *testing.T) {
 			assert.NoError(t, err)
 			tdCount.Add(1)
 		}
-		return nil
 	}
-	cl1.SetResponseHandler(respHandler)
+	cl1.SetNotificationHandler(notifHandler)
 	err := cl1.Subscribe("", "")
 	require.NoError(t, err)
 	defer cl1.Unsubscribe("", "")

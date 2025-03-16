@@ -33,7 +33,7 @@ const (
 )
 
 // ActionStatus is used in the response message payload for invokeaction and queryaction
-// operations.
+// responses.
 // Note: keep this in sync with the digital twin ActionStatus in the TD.
 type ActionStatus struct {
 
@@ -134,13 +134,10 @@ func (tv *ThingValue) ToString(maxlen int) string {
 //   - queryallactions          map [name][]ActionStatus objects
 //
 // Property related response output:
-//   - observeproperty          property value as per TD, when status==running
-//   - observeallproperties     map[name]value  (multiple updates)
 //   - readproperty             ThingValue object
 //   - readallproperties        map[name]ThingValue objects
 //
 // Event related response output
-//   - subscribeevent           event value as per TD, when status==running
 //   - readevent                ThingValue object
 //   - readallevents            map[name]ThingValue objects
 type ResponseMessage struct {
@@ -172,18 +169,13 @@ type ResponseMessage struct {
 	// define the missing bits if any. (see documentation)
 	//
 	// If status is failed then output optionally contains a detailed error description.
-	Output any `json:"output"` // native
+	Output any `json:"output"` // value?
 
 	// Timestamp the request was received by the thing agent
-	Received string `json:"received"`
-
-	// Status of the request processing: pending, running, completed or failed.
-	// (use 'StatusPending', ... constants on top of this file)
-	// If status is failed then Error holds the reason and Output possible details
-	Status string `json:"status"`
+	//Received string `json:"received"`
 
 	// Authenticated ID of the agent sending the response, set by the server
-	// The protocol server MUST set this to the authenticated client.
+	// The protocol server MUST set this to the authenticated sender.
 	SenderID string `json:"senderID"`
 
 	// ThingID of the thing this is a response from.
@@ -192,8 +184,8 @@ type ResponseMessage struct {
 	// This field is optional and intended to help debugging and logging.
 	ThingID string `json:"thingID,omitempty"`
 
-	// Timestamp the status was updated in this response
-	Updated string `json:"updated"`
+	// Timestamp the response was created
+	Timestamp string `json:"timestamp"`
 }
 
 // ToString is a helper to easily read the response output as a string
@@ -220,14 +212,11 @@ func NewResponseMessage(operation string, thingID, name string, output any, err 
 		Name:          name,
 		Output:        output,
 		CorrelationID: correlationID,
-		Received:      "",
-		Status:        StatusCompleted,
-		Updated:       time.Now().Format(wot.RFC3339Milli),
+		Timestamp:     time.Now().Format(wot.RFC3339Milli),
 		MessageID:     shortid.MustGenerate(),
 	}
 	if err != nil {
 		resp.Error = err.Error()
-		resp.Status = StatusFailed
 	}
 	return resp
 }

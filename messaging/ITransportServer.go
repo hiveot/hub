@@ -39,7 +39,7 @@ type ITransportServer interface {
 	// SendNotification sends an event or property update notification to connected
 	// event subscribers or property observers.
 	// The subscription is handled by the underlying transport protocol.
-	SendNotification(msg *ResponseMessage)
+	SendNotification(msg *NotificationMessage)
 
 	// CloseAll closes all connections but do not stop the server
 	CloseAll()

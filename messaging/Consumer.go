@@ -23,6 +23,9 @@ type Consumer struct {
 	// application callback that handles asynchronous responses
 	appResponseHandlerPtr atomic.Pointer[ResponseHandler]
 
+	// application callback that handles notifications
+	appNotificationHandlerPtr atomic.Pointer[NotificationHandler]
+
 	// The underlying transport connection for delivering and receiving requests and responses
 	cc IConnection
 
@@ -42,9 +45,6 @@ func (co *Consumer) Disconnect() {
 	co.mux.Lock()
 	co.mux.Unlock()
 	// the connect callback is still needed to notify the client of a disconnect
-	//co.cc.SetConnectHandler(nil)
-	//co.cc.SetRequestHandler(nil)
-	//co.cc.SetResponseHandler(nil)
 }
 
 // GetClientID returns the client's account ID
@@ -117,6 +117,44 @@ func (co *Consumer) onConnect(connected bool, err error, c IConnection) {
 	}
 }
 
+// onNotification passes a response to the RnR response channel and falls back to pass
+// it to the registered application response handler. If neither is available
+// then turn the response in a notification and pass it to the notification handler.
+func (co *Consumer) onNotification(notif *NotificationMessage) {
+
+	hPtr := co.appNotificationHandlerPtr.Load()
+	if hPtr == nil {
+		if notif.Operation == wot.OpInvokeAction {
+			// not everyone is interested in action progress updates
+			slog.Info("onNotification: Action progress received. No handler registered",
+				"operation", notif.Operation,
+				"clientID", co.GetClientID(),
+				"thingID", notif.ThingID,
+				"name", notif.Name,
+			)
+		} else {
+			// When subscribing then a handler is expected
+			slog.Error("onNotification: Notification received but no handler registered",
+				"correlationID", notif.CorrelationID,
+				"operation", notif.Operation,
+				"clientID", co.GetClientID(),
+				"thingID", notif.ThingID,
+				"name", notif.Name,
+			)
+		}
+		return
+	}
+	// pass the response to the registered handler
+	slog.Info("onNotification",
+		"operation", notif.Operation,
+		"clientID", co.GetClientID(),
+		"thingID", notif.ThingID,
+		"name", notif.Name,
+		"value", notif.ToString(50),
+	)
+	(*hPtr)(notif)
+}
+
 // onResponse passes a response to the RnR response channel and falls back to pass
 // it to the registered application response handler. If neither is available
 // then turn the response in a notification and pass it to the notification handler.
@@ -130,13 +168,6 @@ func (co *Consumer) onResponse(resp *ResponseMessage) error {
 	// handle the response as an async response with no wait handler registered
 	hPtr := co.appResponseHandlerPtr.Load()
 	if hPtr == nil {
-		if resp.Status == StatusPending {
-			// NOTE: if no response is expected then this could be an out-of-order response
-			// instead of receiving 'pending' 'completed', the completed response is
-			// received first.
-			// Ignore the pending response for now.
-			return nil
-		}
 		// at least one of the handlers should be registered
 		slog.Error("Response received but no handler registered",
 			"correlationID", resp.CorrelationID,
@@ -145,7 +176,7 @@ func (co *Consumer) onResponse(resp *ResponseMessage) error {
 			"thingID", resp.ThingID,
 			"name", resp.Name,
 		)
-		err := fmt.Errorf("Response received but no handler registered")
+		err := fmt.Errorf("response received but no handler registered")
 		return err
 	}
 	// pass the response to the registered handler
@@ -301,7 +332,7 @@ func (co *Consumer) Rpc(operation, thingID, name string, input any, output any) 
 	req := NewRequestMessage(operation, thingID, name, input, correlationID)
 	resp, err := co.SendRequest(req, true)
 	if err == nil {
-		if resp.Status == StatusFailed {
+		if resp.Error != "" {
 			detail := fmt.Sprintf("%v", resp.Output)
 			errTxt := resp.Error
 			if detail != "" {
@@ -318,7 +349,12 @@ func (co *Consumer) Rpc(operation, thingID, name string, input any, output any) 
 // SendRequest sends an operation request and optionally waits for completion or timeout.
 // If waitForCompletion is true and no correlationID is provided then a correlationID will
 // be generated to wait for completion.
-// If waitForCompletion is false then the response will go to the response handler
+//
+// If waitForCompletion is false then any response will go to the async response
+// handler and this returns nil response.
+// If waitForCompletion is true this will wait until a response is received with
+// a matching correlationID, or until a timeout occurs.
+//
 // If the request has no correlation ID, one will be generated.
 func (co *Consumer) SendRequest(req *RequestMessage, waitForCompletion bool) (
 	resp *ResponseMessage, err error) {
@@ -334,9 +370,7 @@ func (co *Consumer) SendRequest(req *RequestMessage, waitForCompletion bool) (
 	// if not waiting then return asap with a pending response
 	if !waitForCompletion {
 		err = co.cc.SendRequest(req)
-		resp = req.CreateResponse(nil, err)
-		resp.Status = StatusPending
-		return resp, err
+		return nil, err
 	}
 
 	if req.CorrelationID == "" {
@@ -375,7 +409,7 @@ func (co *Consumer) SendRequest(req *RequestMessage, waitForCompletion bool) (
 			slog.String("op", req.Operation),
 			slog.Float64("duration msec", float64(duration.Microseconds())/1000),
 			slog.String("correlationID", req.CorrelationID),
-			slog.String("status", resp.Status),
+			slog.String("err", resp.Error),
 			slog.String("output", resp.ToString(30)),
 		)
 	}
@@ -390,6 +424,16 @@ func (co *Consumer) SetConnectHandler(cb ConnectionHandler) {
 		co.appConnectHandlerPtr.Store(nil)
 	} else {
 		co.appConnectHandlerPtr.Store(&cb)
+	}
+}
+
+// SetNotificationHandler sets the notification handler of events for this consumer
+// Only a single handler is supported. This replaces the previously set callback.
+func (co *Consumer) SetNotificationHandler(cb NotificationHandler) {
+	if cb == nil {
+		co.appNotificationHandlerPtr.Store(nil)
+	} else {
+		co.appNotificationHandlerPtr.Store(&cb)
 	}
 }
 
@@ -452,7 +496,6 @@ func (co *Consumer) WaitForCompletion(
 
 	waitCount := 0
 	var completed bool
-	var hasResponse bool
 
 	for !completed {
 		// If the server connection no longer exists then don't wait any longer.
@@ -479,12 +522,7 @@ func (co *Consumer) WaitForCompletion(
 				slog.String("correlationID", correlationID),
 			)
 		}
-		hasResponse, resp = co.rnrChan.WaitForResponse(rChan, time.Second)
-		if hasResponse {
-			// ignore pending or other transient responses
-			completed = resp.Status == StatusCompleted ||
-				resp.Status == StatusFailed
-		}
+		completed, resp = co.rnrChan.WaitForResponse(rChan, time.Second)
 		waitCount++
 	}
 
@@ -524,6 +562,7 @@ func (co *Consumer) WriteProperty(thingID string, name string, input any, wait b
 // This provides the API for common WoT operations such as invoking actions and
 // supports RPC calls by waiting for a response.
 //
+// Use SetNotificationHandler to set the callback to receive async notifications.
 // Use SetResponseHandler to set the callback to receive async responses.
 // Use SetConnectHandler to set the callback to be notified of connection changes.
 //
@@ -538,9 +577,11 @@ func NewConsumer(cc IConnection, rpcTimeout time.Duration) *Consumer {
 		rnrChan:    NewRnRChan(),
 		rpcTimeout: rpcTimeout,
 	}
+	consumer.SetNotificationHandler(nil)
 	consumer.SetConnectHandler(nil)
 	consumer.SetResponseHandler(nil)
 	// set the connection callbacks to this consumer
+	cc.SetNotificationHandler(consumer.onNotification)
 	cc.SetResponseHandler(consumer.onResponse)
 	cc.SetConnectHandler(consumer.onConnect)
 	return &consumer

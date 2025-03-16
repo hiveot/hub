@@ -40,6 +40,8 @@ type HiveotSseClient struct {
 	// handler for requests send by clients
 	appConnectHandler messaging.ConnectionHandler
 
+	// handler for notifications sent by agents
+	appNotificationHandler messaging.NotificationHandler
 	// handler for requests send by clients
 	appRequestHandler messaging.RequestHandler
 	// handler for responses sent by agents
@@ -100,22 +102,22 @@ type HiveotSseClient struct {
 //	correlationID: optional correlationID header value
 //
 // This returns the raw serialized response data, a response message ID, return status code or an error
-func (cl *HiveotSseClient) Send(
+func (cc *HiveotSseClient) Send(
 	method string, methodPath string, body []byte) (
 	resp []byte, headers http.Header, code int, err error) {
 
-	if cl.httpClient == nil {
+	if cc.httpClient == nil {
 		err = fmt.Errorf("Send: '%s'. Client is not started", methodPath)
 		return nil, nil, 0, err
 	}
 	// Caution! a double // in the path causes a 301 and changes post to get
 	bodyReader := bytes.NewReader(body)
-	serverURL := cl.cinfo.ConnectURL
+	serverURL := cc.cinfo.ConnectURL
 	parts, _ := url.Parse(serverURL)
 	parts.Scheme = "https" // the sse path has the sse scheme
 	parts.Path = methodPath
 	fullURL := parts.String()
-	//fullURL := parts.cl.GetServerURL() + reqPath
+	//fullURL := parts.cc.GetServerURL() + reqPath
 	req, err := http.NewRequest(method, fullURL, bodyReader)
 	if err != nil {
 		err = fmt.Errorf("Send %s %s failed: %w", method, fullURL, err)
@@ -128,21 +130,21 @@ func (cl *HiveotSseClient) Send(
 	req.Header.Set("Origin", origin)
 
 	// set the authorization header
-	if cl.bearerToken != "" {
-		req.Header.Add("Authorization", "bearer "+cl.bearerToken)
+	if cc.bearerToken != "" {
+		req.Header.Add("Authorization", "bearer "+cc.bearerToken)
 	}
 
 	// set other headers
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set(httpserver.ConnectionIDHeader, cl.cinfo.ConnectionID)
+	req.Header.Set(httpserver.ConnectionIDHeader, cc.cinfo.ConnectionID)
 	//if correlationID != "" {
 	//	req.Header.Set(httpserver.CorrelationIDHeader, correlationID)
 	//}
-	for k, v := range cl.headers {
+	for k, v := range cc.headers {
 		req.Header.Set(k, v)
 	}
 
-	httpResp, err := cl.httpClient.Do(req)
+	httpResp, err := cc.httpClient.Do(req)
 	if err != nil {
 		slog.Error(err.Error())
 		return nil, nil, 0, err
@@ -186,37 +188,14 @@ func (cl *HiveotSseClient) Send(
 //		return err
 //	}
 
-// ConnectWithLoginForm connects to a HTTP/SSE server using a login ID and password
-// and obtain an auth token for use with ConnectWithToken.
-//
-// This is currently hub specific, until a standard way is fond using the Hub TD
-//func (cc *HiveotSseClient) ConnectWithLoginForm(password string) (newToken string, err error) {
-//	newToken, err = cc.LoginWithForm(password)
-//	if err == nil {
-//		err = cc.ConnectWithToken(newToken)
-//	}
-//	return newToken, err
-//}
-
-// ConnectWithPassword connects to the Hub TLS server using the http handler,
-// and on success establish an SSE connection using the same TLS client.
-//
-// This returns an authentication token for use with ConnectWithToken.
-//func (cc *HiveotSseClient) ConnectWithPassword(password string) (newToken string, err error) {
-//	newToken, err = cc.LoginWithPassword(password)
-//	if err == nil {
-//		err = cc.ConnectWithToken(newToken)
-//	}
-//	return newToken, err
-//}
-
 // ConnectWithToken sets the bearer token to use with requests and establishes
 // an SSE connection.
+// If a connection exists it is closed first.
 func (cc *HiveotSseClient) ConnectWithToken(token string) error {
-	if cc.IsConnected() {
-		slog.Error("ConnectWithToken: already connected")
-		return fmt.Errorf("ConnectWithToken: already connected")
-	}
+
+	// ensure disconnected (note that this resets retryOnDisconnect)
+	cc.Disconnect()
+
 	err := cc.SetBearerToken(token)
 	if err != nil {
 		return err
@@ -231,56 +210,35 @@ func (cc *HiveotSseClient) ConnectWithToken(token string) error {
 }
 
 // Disconnect from the server
-func (cl *HiveotSseClient) Disconnect() {
+func (cc *HiveotSseClient) Disconnect() {
 	slog.Debug("HiveotSseClient.Disconnect",
-		slog.String("clientID", cl.cinfo.ClientID),
+		slog.String("clientID", cc.cinfo.ClientID),
 	)
-
-	cl.mux.Lock()
-	cb := cl.sseCancelFn
-	cl.sseCancelFn = nil
-	cl.mux.Unlock()
+	cc.mux.Lock()
+	cb := cc.sseCancelFn
+	cc.sseCancelFn = nil
+	cc.mux.Unlock()
 
 	// the connection status will update, if changed, through the sse callback
 	if cb != nil {
 		cb()
 	}
 
-	cl.mux.Lock()
-	defer cl.mux.Unlock()
-	if cl.isConnected.Load() {
-		cl.httpClient.CloseIdleConnections()
+	cc.mux.Lock()
+	defer cc.mux.Unlock()
+	if cc.isConnected.Load() {
+		cc.httpClient.CloseIdleConnections()
 	}
 }
 
 // GetConnectionInfo returns the client's connection details
-func (c *HiveotSseClient) GetConnectionInfo() messaging.ConnectionInfo {
-	return c.cinfo
+func (cc *HiveotSseClient) GetConnectionInfo() messaging.ConnectionInfo {
+	return cc.cinfo
 }
-
-// GetClientID returns the client's account ID
-//func (cl *HiveotSseClient) GetClientID() string {
-//	return cl.clientID
-//}
-//
-//// GetConnectionID returns the client's connection ID
-//func (cl *HiveotSseClient) GetConnectionID() string {
-//	return cl.cid
-//}
-//
-//// GetConnectURL returns the schema://address:port/path of the server SSE connection
-//func (cc *HiveotSseClient) GetConnectURL() string {
-//	return cc.fullURL
-//}
-
-//GetProtocolType returns the type of protocol this client supports
-//func (cl *HiveotSseClient) GetProtocolType() string {
-//	return transports.ProtocolTypeHiveotSSE
-//}
 
 // GetDefaultForm return the default http form for the operation
 // This simply returns nil for anything else than login, logout, ping or refresh.
-func (cl *HiveotSseClient) GetDefaultForm(op, thingID, name string) (f *td.Form) {
+func (cc *HiveotSseClient) GetDefaultForm(op, thingID, name string) (f *td.Form) {
 	// login has its own URL as it is unauthenticated
 	if op == wot.HTOpPing {
 		href := httpserver.HttpGetPingPath
@@ -307,15 +265,15 @@ func (cl *HiveotSseClient) GetDefaultForm(op, thingID, name string) (f *td.Form)
 	return f
 }
 
-func (cl *HiveotSseClient) GetTlsClient() *http.Client {
-	cl.mux.RLock()
-	defer cl.mux.RUnlock()
-	return cl.httpClient
+func (cc *HiveotSseClient) GetTlsClient() *http.Client {
+	cc.mux.RLock()
+	defer cc.mux.RUnlock()
+	return cc.httpClient
 }
 
 // IsConnected return whether the return channel is connection, eg can receive data
-func (cl *HiveotSseClient) IsConnected() bool {
-	return cl.isConnected.Load()
+func (cc *HiveotSseClient) IsConnected() bool {
+	return cc.isConnected.Load()
 }
 
 // LoginWithForm invokes login using a form - temporary helper
@@ -416,16 +374,6 @@ func (cl *HiveotSseClient) IsConnected() bool {
 //	return newToken, err
 //}
 
-// Logout from the server and end the session.
-// This is specific to the Hiveot Hub.
-//func (cl *HiveotSseClient) Logout() error {
-//	// TODO: can this be derived from a form?
-//	slog.Info("Logout",
-//		slog.String("clientID", cl.GetClientID()))
-//	_, _, err := cl.Send(http.MethodPost, httpserver.HttpPostLogoutPath, nil, "")
-//	return err
-//}
-
 // SendRequest sends a request message and passes the result as a response
 // to the registered response handler.
 //
@@ -445,7 +393,7 @@ func (cl *HiveotSseClient) IsConnected() bool {
 //
 // The result is passed to the BaseRnR channel associated with the request just
 // like it is done with an async response.
-func (cl *HiveotSseClient) SendRequest(req *messaging.RequestMessage) error {
+func (cc *HiveotSseClient) SendRequest(req *messaging.RequestMessage) error {
 
 	var inputJSON string
 	var method string
@@ -464,7 +412,7 @@ func (cl *HiveotSseClient) SendRequest(req *messaging.RequestMessage) error {
 	// use the hiveot fallback if not available
 	// If a form is provided and it doesn't use the hiveot subprotocol then fall
 	// back to invoking using http basic using the form href.
-	f := cl.getForm(req.Operation, req.ThingID, req.Name)
+	f := cc.getForm(req.Operation, req.ThingID, req.Name)
 	if f != nil {
 		method, _ = f.GetMethodName()
 		href, _ = f.GetHRef()
@@ -503,58 +451,90 @@ func (cl *HiveotSseClient) SendRequest(req *messaging.RequestMessage) error {
 		"name":      name,
 		"operation": req.Operation}
 	reqPath := tputils.Substitute(href, vars)
-	outputRaw, headers, code, err := cl.Send(method, reqPath, []byte(inputJSON))
+	outputRaw, headers, code, err := cc.Send(method, reqPath, []byte(inputJSON))
 	_ = headers
 
 	// 1. error response
 	if err != nil {
 		return err
 	}
-	resp := req.CreateResponse(nil, nil)
 	// follow the HTTP Basic specification
 	if code == http.StatusOK {
+		resp := req.CreateResponse(nil, nil)
+		// unmarshal output. This is either the json encoded output or the ResponseMessage envelope
+		if outputRaw == nil || len(outputRaw) == 0 {
+			// nothing to unmarshal
+		} else if useRequestEnvelope {
+			err = jsoniter.UnmarshalFromString(string(outputRaw), &resp)
+		} else {
+			err = jsoniter.UnmarshalFromString(string(outputRaw), &resp.Output)
+		}
+		if err != nil {
+			resp.Error = err.Error()
+		}
+
+		// pass a direct response to the application handler
+		cc.mux.RLock()
+		h := cc.appResponseHandler
+		cc.mux.RUnlock()
+		go func() {
+			_ = h(resp)
+		}()
+	} else if code > 200 && code < 300 {
+		// httpbasic servers/things might respond with 201 for pending as per spec
+		// this is a notification.
+		var notif *messaging.NotificationMessage
+		if outputRaw == nil || len(outputRaw) == 0 {
+			// no response yet. do not send process a notification
+		} else if useRequestEnvelope {
+			// hiveot uses NotificationMessage envelopes
+			notif = req.CreateRunningNotification()
+			err = jsoniter.Unmarshal(outputRaw, &notif)
+		} else {
+			// output is http basic actionstatus
+			tmp := hiveotsseserver.HttpActionStatusMessage{}
+			err = jsoniter.Unmarshal(outputRaw, &tmp)
+			notif.Data = tmp
+		}
+
+		// pass a direct response to the application handler
+		if notif != nil {
+			cc.mux.RLock()
+			h := cc.appNotificationHandler
+			cc.mux.RUnlock()
+			go func() {
+				h(notif)
+			}()
+		}
+	} else {
+		// unknown response, create an error response
+		resp := req.CreateResponse(nil, nil)
 		// unmarshal output. This is either the json encoded output or the ResponseMessage envelope
 		if outputRaw == nil {
 			// nothing to unmarshal
 		} else if useRequestEnvelope {
 			err = jsoniter.UnmarshalFromString(string(outputRaw), &resp)
 		} else {
-			resp.Status = messaging.StatusCompleted
 			err = jsoniter.UnmarshalFromString(string(outputRaw), &resp.Output)
 		}
-	} else if code > 200 && code < 300 {
-		// httpbasic servers/things might respond with 201 for pending as per spec
-		resp.Status = messaging.StatusPending
-		if outputRaw == nil || len(outputRaw) == 0 {
-			// nothing to unmarshal
-		} else if useRequestEnvelope {
-			err = jsoniter.Unmarshal(outputRaw, &resp)
-		} else {
-			// output is http basic actionstatus
-			tmp := hiveotsseserver.HttpActionStatusMessage{}
-			err = jsoniter.Unmarshal(outputRaw, &tmp)
-			resp.Output = tmp
-		}
-	} else {
-		// unknown response, create an error response
 		httpProblemDetail := map[string]string{}
-		resp.Status = messaging.StatusFailed
 		if outputRaw != nil && len(outputRaw) > 0 {
 			err = jsoniter.Unmarshal(outputRaw, &httpProblemDetail)
 			resp.Error = httpProblemDetail["title"]
 			resp.Output = httpProblemDetail["detail"]
+		} else {
+			resp.Error = "request failed"
 		}
-	}
 
-	// pass a direct response to the application handler
-	cl.mux.RLock()
-	h := cl.appResponseHandler
-	cl.mux.RUnlock()
-	go func() {
-		_ = h(resp)
-	}()
-	// since the request was sent succesful, any error is part of the response
-	return nil
+		// pass a direct response to the application handler
+		cc.mux.RLock()
+		h := cc.appResponseHandler
+		cc.mux.RUnlock()
+		go func() {
+			_ = h(resp)
+		}()
+	}
+	return err
 }
 
 // SendResponse Agent posts a response using the hiveot protocol.
@@ -563,40 +543,67 @@ func (cl *HiveotSseClient) SendRequest(req *messaging.RequestMessage) error {
 // This posts the JSON-encoded ResponseMessage on the well-known hiveot response href.
 // In WoT Agents are typically a server, not a client, so this is intended for
 // agents that use connection-reversal.
-func (cl *HiveotSseClient) SendResponse(resp *messaging.ResponseMessage) error {
+func (cc *HiveotSseClient) SendResponse(resp *messaging.ResponseMessage) error {
 	outputJSON, _ := jsoniter.MarshalToString(resp)
-	_, _, _, err := cl.Send(http.MethodPost,
+	_, _, _, err := cc.Send(http.MethodPost,
 		hiveotsseserver.DefaultHiveotPostResponseHRef, []byte(outputJSON))
 	return err
 }
 
+// SendNotification Agent posts a notification using the hiveot protocol.
+// This passes the notification as-is as a payload.
+//
+// This posts the JSON-encoded NotificationMessage on the well-known hiveot notification href.
+// In WoT Agents are typically a server, not a client, so this is intended for
+// agents that use connection-reversal.
+//
+// This returns an error if the notification could not be delivered to the server
+func (cc *HiveotSseClient) SendNotification(msg *messaging.NotificationMessage) error {
+	outputJSON, _ := jsoniter.MarshalToString(msg)
+	_, _, _, err := cc.Send(http.MethodPost,
+		hiveotsseserver.DefaultHiveotPostNotificationHRef, []byte(outputJSON))
+	if err != nil {
+		slog.Warn("SendNotification failed",
+			"clientID", cc.cinfo.ClientID,
+			"err", err.Error())
+	}
+	return err
+}
+
 // SetBearerToken sets the authentication bearer token to authenticate http requests.
-func (cl *HiveotSseClient) SetBearerToken(token string) error {
-	cl.mux.Lock()
-	cl.bearerToken = token
-	cl.mux.Unlock()
+func (cc *HiveotSseClient) SetBearerToken(token string) error {
+	cc.mux.Lock()
+	cc.bearerToken = token
+	cc.mux.Unlock()
 	return nil
 }
 
 // SetConnectHandler set the application handler for connection status updates
-func (cl *HiveotSseClient) SetConnectHandler(cb messaging.ConnectionHandler) {
-	cl.mux.Lock()
-	cl.appConnectHandler = cb
-	cl.mux.Unlock()
+func (cc *HiveotSseClient) SetConnectHandler(cb messaging.ConnectionHandler) {
+	cc.mux.Lock()
+	cc.appConnectHandler = cb
+	cc.mux.Unlock()
+}
+
+// SetNotificationHandler set the application handler for received notifications
+func (cc *HiveotSseClient) SetNotificationHandler(cb messaging.NotificationHandler) {
+	cc.mux.Lock()
+	cc.appNotificationHandler = cb
+	cc.mux.Unlock()
 }
 
 // SetRequestHandler set the application handler for incoming requests
-func (cl *HiveotSseClient) SetRequestHandler(cb messaging.RequestHandler) {
-	cl.mux.Lock()
-	cl.appRequestHandler = cb
-	cl.mux.Unlock()
+func (cc *HiveotSseClient) SetRequestHandler(cb messaging.RequestHandler) {
+	cc.mux.Lock()
+	cc.appRequestHandler = cb
+	cc.mux.Unlock()
 }
 
 // SetResponseHandler set the application handler for received responses
-func (cl *HiveotSseClient) SetResponseHandler(cb messaging.ResponseHandler) {
-	cl.mux.Lock()
-	cl.appResponseHandler = cb
-	cl.mux.Unlock()
+func (cc *HiveotSseClient) SetResponseHandler(cb messaging.ResponseHandler) {
+	cc.mux.Lock()
+	cc.appResponseHandler = cb
+	cc.mux.Unlock()
 }
 
 // NewHiveotSseClient creates a new instance of the http-basic protocol binding client.

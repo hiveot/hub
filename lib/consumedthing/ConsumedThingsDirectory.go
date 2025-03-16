@@ -83,22 +83,22 @@ func (cts *ConsumedThingsDirectory) GetTD(thingID string) *td.TD {
 	return tdi
 }
 
-// OnResponse updates the consumed things from subscriptions.
+// OnNotification updates the consumed things from subscriptions.
 // To be invoked by the owner of the consumer when an async notification has
 // been received.
 // Any updates from things not in the directory are ignored.
-func (cts *ConsumedThingsDirectory) OnResponse(msg *messaging.ResponseMessage) error {
+func (cts *ConsumedThingsDirectory) OnNotification(notif *messaging.NotificationMessage) error {
 
 	slog.Debug("ConsumedThingsDirectory.OnResponse",
-		slog.String("senderID", msg.SenderID),
-		slog.String("operation", msg.Operation),
-		slog.String("thingID", msg.ThingID),
-		slog.String("name", msg.Name),
+		slog.String("senderID", notif.SenderID),
+		slog.String("operation", notif.Operation),
+		slog.String("thingID", notif.ThingID),
+		slog.String("name", notif.Name),
 		slog.String("clientID (me)", cts.co.GetClientID()),
 	)
-	ct, _ := cts.consumedThings[msg.ThingID]
+	ct, _ := cts.consumedThings[notif.ThingID]
 	if ct != nil {
-		ct.OnResponse(msg)
+		ct.OnNotification(notif)
 	}
 	return nil
 }

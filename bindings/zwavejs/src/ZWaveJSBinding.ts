@@ -186,7 +186,7 @@ export class ZwaveJSBinding {
             this.vidCsvFD = fs.openSync(this.config.vidCsvFile, "w+", 0o640)
             logVid(this.vidCsvFD)
         }
-        this.hc.setRequestHandler( (msg:RequestMessage):ResponseMessage => {
+        this.hc.setRequestHandler( (msg:RequestMessage):ResponseMessage|null => {
             const resp = handleRequest(msg,this.zwapi, this.hc)
             return resp
         })

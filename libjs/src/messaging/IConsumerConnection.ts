@@ -21,7 +21,7 @@ export const ProtocolTypeHiveotWSS = "hiveot-wss"
 
 
 export type ConnectionHandler = (status: ConnectionStatus)=>void;
-export type RequestHandler = (msg: RequestMessage)=>ResponseMessage;
+export type RequestHandler = (msg: RequestMessage)=>ResponseMessage|null;
 export type ResponseHandler = (resp: ResponseMessage)=>void;
 
 // IConsumerConnection defines the interface of the consumer facing protocol binding.

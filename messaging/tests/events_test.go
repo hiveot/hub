@@ -28,7 +28,7 @@ func TestSubscribeAll(t *testing.T) {
 	var agentRxEvent atomic.Bool
 
 	// 1. start the servers
-	srv, cancelFn := StartTransportServer(nil, nil)
+	srv, cancelFn := StartTransportServer(nil, nil, nil)
 	defer cancelFn()
 
 	// 2. connect as consumers
@@ -48,22 +48,20 @@ func TestSubscribeAll(t *testing.T) {
 	ctx, cancelFn := context.WithTimeout(context.Background(), time.Minute)
 	defer cancelFn()
 
-	cons1.SetResponseHandler(func(ev *messaging.ResponseMessage) error {
+	cons1.SetNotificationHandler(func(ev *messaging.NotificationMessage) {
 		slog.Info("client 1 receives event")
 		// receive event
-		rxVal.Store(ev.Output)
-		cancelFn()
-		return nil
+		rxVal.Store(ev.Data)
+		//cancelFn()
 	})
-	cons2.SetResponseHandler(func(ev *messaging.ResponseMessage) error {
+	cons2.SetNotificationHandler(func(ev *messaging.NotificationMessage) {
 		slog.Info("client 2 receives event")
-		return nil
 	})
-	agent1.SetResponseHandler(func(ev *messaging.ResponseMessage) error {
+	agent1.SetNotificationHandler(func(ev *messaging.NotificationMessage) {
 		// receive event
 		slog.Info("Agent receives event")
 		agentRxEvent.Store(true)
-		return nil
+		cancelFn()
 	})
 
 	// Subscribe to events. Each binding implements this as per its spec
@@ -76,15 +74,14 @@ func TestSubscribeAll(t *testing.T) {
 
 	// 3. Server sends event to consumers
 	time.Sleep(time.Millisecond * 10)
-	notif1 := messaging.NewResponseMessage(
-		wot.OpSubscribeEvent, thingID, eventKey, testMsg1, nil, "")
-	notif1.SenderID = agentID
+	notif1 := messaging.NewNotificationMessage(
+		wot.OpSubscribeEvent, thingID, eventKey, testMsg1)
 	srv.SendNotification(notif1)
 
 	// 4. subscriber should have received them
 	<-ctx.Done()
+	time.Sleep(time.Millisecond * 10)
 	assert.Equal(t, testMsg1, rxVal.Load())
-	time.Sleep(time.Millisecond)
 	assert.True(t, agentRxEvent.Load())
 
 	// Unsubscribe from events
@@ -98,9 +95,8 @@ func TestSubscribeAll(t *testing.T) {
 	agentRxEvent.Store(false)
 
 	// 5. Server sends another event to consumers
-	notif2 := messaging.NewResponseMessage(
-		wot.OpSubscribeEvent, thingID, eventKey, testMsg2, nil, "")
-	notif2.SenderID = agentID
+	notif2 := messaging.NewNotificationMessage(
+		wot.OpSubscribeEvent, thingID, eventKey, testMsg2)
 	srv.SendNotification(notif2)
 	time.Sleep(time.Millisecond)
 	// update not received
@@ -123,11 +119,10 @@ func TestPublishEventsByAgent(t *testing.T) {
 
 	// 1. start the transport
 	// handler of event notification on the server
-	notificationHandler := func(msg *messaging.ResponseMessage) error {
-		evVal.Store(msg.Output)
-		return nil
+	notificationHandler := func(msg *messaging.NotificationMessage) {
+		evVal.Store(msg.Data)
 	}
-	srv, cancelFn := StartTransportServer(nil, notificationHandler)
+	srv, cancelFn := StartTransportServer(notificationHandler, nil, nil)
 	_ = srv
 	defer cancelFn()
 

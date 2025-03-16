@@ -127,7 +127,7 @@ func TestAutomaticProvisioning(t *testing.T) {
 	require.NoError(t, err)
 	//err = agConn.ConnectWithToken(token1)
 	//require.NoError(t, err)
-	ag1 := messaging.NewAgent(cc, nil, nil, nil, 0)
+	ag1 := messaging.NewAgent(cc, nil, nil, nil, nil, 0)
 	//ag1.SetRetryConnect(false)
 	ag1.Disconnect()
 }

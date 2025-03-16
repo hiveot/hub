@@ -26,6 +26,11 @@ func (srv *HiveotSseServer) CreateRoutes() {
 	srv.httpTransport.AddOps(nil, []string{SSEOpConnect},
 		http.MethodGet, srv.ssePath, srv.Serve)
 
+	// Handle notification messages from agents, containing a notification message envelope.
+	srv.httpTransport.AddOps(nil,
+		[]string{"*"},
+		http.MethodPost, DefaultHiveotPostNotificationHRef, srv.HandleNotificationMessage)
+
 	// Handle request messages using a single path with URI variables.
 	srv.httpTransport.AddOps(nil,
 		[]string{"*"},
@@ -35,6 +40,60 @@ func (srv *HiveotSseServer) CreateRoutes() {
 	srv.httpTransport.AddOps(nil,
 		[]string{"*"},
 		http.MethodPost, DefaultHiveotPostResponseHRef, srv.HandleResponseMessage)
+}
+
+// HandleNotificationMessage handles responses sent by agents.
+//
+// As WoT doesn't support reverse connections this is only used by hiveot agents
+// that connect as clients. In that case the server is the consumer.
+//
+// This receives a NotificationMessage envelope and passes it to the corresponding
+// connection as if the connection received the response itself.
+//
+// Message flow: agent POST response -> server forwards to -> connection ->
+// forwards to subscriber (which is the server again, or a consumer)
+//
+// The message body is unmarshalled and included as the response.
+func (srv *HiveotSseServer) HandleNotificationMessage(w http.ResponseWriter, r *http.Request) {
+	notif := messaging.NotificationMessage{}
+	notif.MessageType = messaging.MessageTypeNotification
+
+	// 1. Decode the message
+	rp, err := httpserver.GetRequestParams(r, &notif)
+	if err != nil {
+		slog.Error(err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	} else if notif.Operation == "" {
+		err = fmt.Errorf("HandleResponseMessage: missing ResponseMessage in payload")
+		slog.Error(err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	notif.SenderID = rp.ClientID
+
+	// A NotificationMessage was received but the client doesnt have an SSE connection
+	// http requests without connectionID should not receive responses.
+	// why is there a connectionID?
+	c := srv.GetSseConnection(rp.ClientID, rp.ConnectionID)
+	if c == nil {
+		// this is possible when a connectionID is provided in a request but no SSE
+		// has been established. Not an error.
+		//err = fmt.Errorf("HandleResponseMessage: no corresponding connection")
+		slog.Info("HandleNotificationMessage. No connection to handle the notification/subscription.",
+			"clientID", rp.ClientID,
+			"connectionID", rp.ConnectionID,
+			"name", rp.Name,
+		)
+	} else {
+		// pass it on to the server notification flow handler
+		h := c.notificationHandlerPtr.Load()
+		if h != nil {
+			(*h)(&notif)
+		}
+	}
+
+	srv.httpTransport.WriteReply(w, true, nil, err)
 }
 
 // HandleRequestMessage handles request messages sent by consumers or agents.
@@ -50,7 +109,7 @@ func (srv *HiveotSseServer) CreateRoutes() {
 // message will be sent asynchronously by the agent, containing an ActionStatus message payload.
 func (srv *HiveotSseServer) HandleRequestMessage(w http.ResponseWriter, r *http.Request) {
 	var output any
-	var status string
+	var handled bool
 	var req messaging.RequestMessage
 
 	// 1. Decode the request message
@@ -69,40 +128,25 @@ func (srv *HiveotSseServer) HandleRequestMessage(w http.ResponseWriter, r *http.
 	if req.Operation == wot.HTOpPing {
 		//resp := req.CreateResponse("pong", nil)
 		output = "pong"
-		status = messaging.StatusCompleted
+		handled = true
 		err = nil
 	} else {
-		// locate the connection that handles the request.
+		// 2. locate the connection that handles the request.
 		c := srv.GetSseConnection(req.SenderID, connectionID)
 		if c == nil {
 			// When using the sse subprotocol endpoint this is an error.
 			err = fmt.Errorf("HandleRequestMessage: no corresponding connection")
-			status = messaging.StatusFailed
+			handled = true
 			slog.Error("HandleRequestMessage. No connection to handle the request.",
 				"clientID", rp.ClientID, "connectionID", connectionID,
 				"correlationID", req.CorrelationID)
 		} else {
 			// 3. pass it on to the application
-			output, status, err = c.onRequestMessage(&req)
+			handled, output, err = c.onRequestMessage(&req)
 		}
 	}
-	// 3. Return the response
-	replyHeader := w.Header()
-	if replyHeader == nil {
-		// this happened a few times during testing. perhaps a broken connection while debugging?
-		err = fmt.Errorf("HandleRequest: Can't return result."+
-			" Write header is nil. This is unexpected. clientID='%s", rp.ClientID)
-		srv.httpTransport.WriteError(w, err, http.StatusInternalServerError)
-		return
-	}
-	// hiveot used headers for interoperability
-	//replyHeader.Set(httpserver.CorrelationIDHeader, req.CorrelationID)
-
-	// progress is complete, return the default output
-	resp := req.CreateResponse(output, err)
-	resp.Status = status
-	//respJSON, _ := jsoniter.MarshalToString(resp)
-	srv.httpTransport.WriteReply(w, resp, status, err)
+	// 4. Return the response
+	srv.httpTransport.WriteReply(w, handled, output, err)
 }
 
 // HandleResponseMessage handles responses sent by agents.
@@ -167,7 +211,7 @@ func (srv *HiveotSseServer) HandleResponseMessage(w http.ResponseWriter, r *http
 	//	}
 	//}
 	//
-	srv.httpTransport.WriteReply(w, nil, "", err)
+	srv.httpTransport.WriteReply(w, true, nil, err)
 }
 
 // Serve a new incoming hiveot sse connection.
@@ -200,6 +244,7 @@ func (srv *HiveotSseServer) Serve(w http.ResponseWriter, r *http.Request) {
 	// By default the server collects the requests/responses to pass it to subscribers
 	// If a consumer takes over the connection (connection reversal) it will register
 	// its own handlers.
+	c.SetNotificationHandler(srv.serverNotificationHandler)
 	c.SetRequestHandler(srv.serverRequestHandler)
 	c.SetResponseHandler(srv.serverResponseHandler)
 	err = srv.cm.AddConnection(c)

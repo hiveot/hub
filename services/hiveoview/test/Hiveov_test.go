@@ -70,6 +70,7 @@ func getHiveoviewForm(op, thingID, name string) *td.Form {
 // This returns a client. Call Close() when done.
 func WebLogin(sseURL string, clientID string,
 	onConnection func(bool, error, messaging.IConnection),
+	onNotification messaging.NotificationHandler,
 	onRequest messaging.RequestHandler,
 	onResponse messaging.ResponseHandler,
 ) (
@@ -94,6 +95,7 @@ func WebLogin(sseURL string, clientID string,
 	// hiveoview uses a different login path as the hub
 	//sseCl.SetSSEPath(service.WebSsePath)
 	sseCl.SetConnectHandler(onConnection)
+	sseCl.SetNotificationHandler(onNotification)
 	sseCl.SetResponseHandler(onResponse)
 	sseCl.SetRequestHandler(onRequest)
 
@@ -245,9 +247,8 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	// create the user account this test is going to connect as.
 	// no notifications are expected as it doesnt subscribe
 	// hiveoview server only supports HTTP/SSE
-	cl1, _, token1 := ts.AddConnectConsumer(clientID1, authz.ClientRoleOperator)
-	defer cl1.Disconnect()
-	//err = cl1.Subscribe("", "")
+	co1, _, token1 := ts.AddConnectConsumer(clientID1, authz.ClientRoleOperator)
+	defer co1.Disconnect()
 	require.NoError(t, err)
 	time.Sleep(waitamoment)
 
@@ -261,13 +262,13 @@ func TestMultiConnectDisconnect(t *testing.T) {
 		}
 	}
 	// handler hiveoview SSE notifications
-	onResponse := func(msg *messaging.ResponseMessage) error {
+	onNotification := func(msg *messaging.NotificationMessage) {
 		// the UI expects this format for triggering htmx
 		expectedType := fmt.Sprintf("event/dtw:%s:%s/%s", agentID, td1.ID, eventName)
 		if msg.Operation == expectedType {
 			messageCount.Add(1)
 		}
-		return nil
+		return
 	}
 
 	// 2: connect and subscribe web clients and verify
@@ -276,8 +277,8 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	// The hiveoview server only supports SSE on a fixed (WebSsePath) path
 	hiveoviewURL := fmt.Sprintf("https://localhost:%d%s", servicePort, service.WebSsePath)
 	for range testConnections {
-		sseCl, err := WebLogin(
-			hiveoviewURL, clientID1, onConnection, nil, onResponse)
+		sseCl, err := WebLogin(hiveoviewURL, clientID1,
+			onConnection, onNotification, nil, nil)
 		// an event streamm error occurs when auth fails
 		require.NoError(t, err)
 		require.NotNil(t, sseCl)

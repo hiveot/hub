@@ -34,7 +34,7 @@ func (svc *HiveoviewService) PublishServiceTD() error {
 
 	myTD := svc.CreateHiveoviewTD()
 	tdJSON, _ := jsoniter.MarshalToString(myTD)
-	err := digitwin.ThingDirectoryUpdateTD(&svc.ag.Consumer, tdJSON)
+	err := digitwin.ThingDirectoryUpdateTD(svc.ag.Consumer, tdJSON)
 	//err := svc.ag.PubTD(myTD)
 
 	if err != nil {

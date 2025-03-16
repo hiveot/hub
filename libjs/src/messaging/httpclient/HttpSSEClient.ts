@@ -20,7 +20,7 @@ import {
     type RequestHandler,
     type ResponseHandler, ConnectionStatus
 } from "../IConsumerConnection.ts";
-import {RequestMessage, ResponseMessage} from "../Messages.ts";
+import {NotificationMessage, RequestMessage, ResponseMessage} from "../Messages.ts";
 
 // FIXME: import from vocab is not working
 const RequestCompleted = "completed"
@@ -52,6 +52,7 @@ const HttpGetDigitwinPath = "/digitwin/{operation}/{thingID}/{name}"
 // corresponding standardized message.
 const HiveOTPostRequestHRef      = "/hiveot/request"
 const HiveOTPostResponseHRef     = "/hiveot/response"
+const HiveOTPostNotificationHRef = "/hiveot/notification"
 
 const hcLog = new tslog.Logger({prettyLogTimeZone:"local"})
 
@@ -78,6 +79,7 @@ export default class HttpSSEClient implements IAgentConnection {
     requestHandler?: RequestHandler;
     // response handler for receiving responses to non-rpc requests
     responseHandler?: ResponseHandler;
+    // this client does not receive notifications
 
     // the provider of forms for an operation
     getForm?: (op: string) => TDForm;
@@ -229,8 +231,8 @@ export default class HttpSSEClient implements IAgentConnection {
     }
 
     // Handle incoming request (as an agent) and pass them to the registered handler
-    onRequest(req: RequestMessage):  ResponseMessage {
-        let resp: ResponseMessage
+    onRequest(req: RequestMessage):  ResponseMessage|null {
+        let resp: ResponseMessage|null
         try {
             if (this.requestHandler) {
                 resp = this.requestHandler(req)
@@ -243,13 +245,15 @@ export default class HttpSSEClient implements IAgentConnection {
             const err = Error(`Error handling request sender=${req.senderID}, messageType=${req.operation}, thingID=${req.thingID}, name=${req.name}, error=${e}`)
             hcLog.warn(err)
             resp = req.createResponse(null,err)
-            resp.received = req.created
         }
-        this.sendResponse(resp)
+        // only send a response if one is available
+        if (resp) {
+            this.sendResponse(resp)
+        }
         return resp
     }
 
-    // Handle response to previous sent request or notification to subscriptions
+    // Handle response to previous sent request
     onResponse(resp:ResponseMessage):void{
         let cb: ResponseHandler|undefined
 
@@ -400,8 +404,8 @@ export default class HttpSSEClient implements IAgentConnection {
     pubEvent(thingID: string, name: string, data: any) {
 
         hcLog.info("pubEvent. thingID:", thingID, ", name:", name)
-        const msg = new ResponseMessage(OpSubscribeEvent, thingID,name,data)
-        return this.sendResponse(msg)
+        const msg = new NotificationMessage(OpSubscribeEvent, thingID,name,data)
+        return this.sendNotification(msg)
 
         // let eventPath = PostAgentPublishEventPath.replace("{thingID}", thingID)
         // eventPath = eventPath.replace("{name}", name)
@@ -418,14 +422,14 @@ export default class HttpSSEClient implements IAgentConnection {
     pubMultipleProperties(thingID: string, propMap: { [key: string]: any }) {
 
         hcLog.info("pubMultipleProperties. thingID:", thingID)
-        const msg = new ResponseMessage(OpObserveAllProperties, thingID,"",propMap)
+        const msg = new NotificationMessage(OpObserveAllProperties, thingID,"",propMap)
         return this.sendResponse(msg)
     }
 
     // Publish thing property value update to property observers
     pubProperty(thingID: string, name:string, value: any) {
         hcLog.info("pubProperty. thingID:", thingID)
-        const msg = new ResponseMessage(OpObserveProperty, thingID,name,value)
+        const msg = new NotificationMessage(OpObserveProperty, thingID,name,value)
         return this.sendResponse(msg)
     }
 
@@ -522,6 +526,15 @@ export default class HttpSSEClient implements IAgentConnection {
         })
     }
 
+    // sendNotification [agent] sends a notification message to the hub.
+    // @param notif: notification to send
+    sendNotification(notif: NotificationMessage) {
+        // responses can only be sent to the fixed endpoint
+        this.pubMessage(
+            "POST",HiveOTPostNotificationHRef, notif,notif.correlationID)
+            .then().catch()
+    }
+
     // sendResponse [agent] sends a response status message to the hub.
     // @param resp: response to send
     sendResponse(resp: ResponseMessage) {
@@ -530,7 +543,6 @@ export default class HttpSSEClient implements IAgentConnection {
             "POST",HiveOTPostResponseHRef, resp,resp.correlationID)
             .then().catch()
     }
-
 
     // Rpc publishes an RPC request to a service and waits for a response.
     // Intended for users and services to invoke RPC to services.

@@ -14,12 +14,9 @@ import (
 )
 
 const (
-	DefaultWotWssPath    = "/wot/wss"
-	DefaultHiveotWssPath = "/hiveot/wss"
-
-	SubprotocolWotWSS    = "websocket"
-	SubprotocolHiveotWSS = "hiveot-wss"
-	WssSchema            = "wss"
+	DefaultWssPath = "/hiveot/wss"
+	SubprotocolWSS = "websocket"
+	WssSchema      = "wss"
 )
 
 // WssServer is a websocket transport protocol server for use with HiveOT and WoT
@@ -43,6 +40,8 @@ type WssServer struct {
 	// registered handler of incoming cm
 	serverConnectHandler messaging.ConnectionHandler
 
+	// registered handler of incoming notifications
+	serverNotificationHandler messaging.NotificationHandler
 	// registered handler of incoming requests (which return a reply)
 	serverRequestHandler messaging.RequestHandler
 	// registered handler of incoming responses (which sends a reply to the request sender)
@@ -65,10 +64,7 @@ type WssServer struct {
 
 // AddTDForms adds forms for use of this protocol to the given TD
 func (svc *WssServer) AddTDForms(tdi *td.TD) error {
-	subProtocol := SubprotocolHiveotWSS
-	if svc.protocol == messaging.ProtocolTypeWotWSS {
-		subProtocol = SubprotocolWotWSS
-	}
+	subProtocol := SubprotocolWSS
 	// 1 form for all operations
 	form := td.Form{}
 	form["op"] = "*"
@@ -123,11 +119,10 @@ func (srv *WssServer) GetProtocolType() string {
 }
 
 // SendNotification sends a property update or event response message to subscribers
-func (svc *WssServer) SendNotification(msg *messaging.ResponseMessage) {
+func (svc *WssServer) SendNotification(msg *messaging.NotificationMessage) {
 	// pass the response to all subscribed cm
-	// FIXME: track cm
 	svc.cm.ForEachConnection(func(c messaging.IServerConnection) {
-		c.SendNotification(*msg)
+		_ = c.SendNotification(msg)
 	})
 }
 
@@ -164,6 +159,7 @@ func (svc *WssServer) Serve(w http.ResponseWriter, r *http.Request) {
 	}
 
 	c := NewWSSServerConnection(clientID, r, wssConn, svc.messageConverter)
+	c.SetNotificationHandler(svc.serverNotificationHandler)
 	c.SetRequestHandler(svc.serverRequestHandler)
 	c.SetResponseHandler(svc.serverResponseHandler)
 
@@ -205,19 +201,21 @@ func StartWssServer(
 	protocol string,
 	httpTransport *httpserver.HttpTransportServer,
 	handleConnect messaging.ConnectionHandler,
+	handleNotification messaging.NotificationHandler,
 	handleRequest messaging.RequestHandler,
 	handleResponse messaging.ResponseHandler,
 ) (*WssServer, error) {
 
 	srv := &WssServer{
-		protocol:              protocol,
-		httpTransport:         httpTransport,
-		serverConnectHandler:  handleConnect,
-		serverRequestHandler:  handleRequest,
-		serverResponseHandler: handleResponse,
-		wssPath:               wssPath,
-		messageConverter:      converter,
-		cm:                    connections.NewConnectionManager(),
+		protocol:                  protocol,
+		httpTransport:             httpTransport,
+		serverConnectHandler:      handleConnect,
+		serverNotificationHandler: handleNotification,
+		serverRequestHandler:      handleRequest,
+		serverResponseHandler:     handleResponse,
+		wssPath:                   wssPath,
+		messageConverter:          converter,
+		cm:                        connections.NewConnectionManager(),
 	}
 	httpTransport.AddOps(nil, nil, http.MethodGet, wssPath, srv.Serve)
 

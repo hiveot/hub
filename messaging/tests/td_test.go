@@ -70,7 +70,7 @@ func TestAddForms(t *testing.T) {
 
 	// handler of TDs on the server
 	// 1. start the transport
-	_, cancelFn := StartTransportServer(nil, nil)
+	_, cancelFn := StartTransportServer(nil, nil, nil)
 	defer cancelFn()
 
 	// 2. Create a TD

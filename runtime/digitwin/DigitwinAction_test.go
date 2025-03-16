@@ -37,21 +37,23 @@ func TestActionFlow(t *testing.T) {
 	err := svc.DirSvc.UpdateTD(agentID, string(tddjson))
 	require.NoError(t, err)
 
-	// update the action
+	// create the action
 	req := messaging.NewRequestMessage(
 		wot.OpInvokeAction, dThingID, actionName, actionValue, correlationID)
-	stored, err := dtwStore.NewActionStart(req)
+	as, stored, err := dtwStore.NewActionStart(req)
 	require.NoError(t, err)
 	require.True(t, stored)
+	require.Equal(t, messaging.StatusPending, as.Status)
 
 	// check progress
-	as, err := svc.ValuesSvc.QueryAction(consumerID, digitwin.ThingValuesQueryActionArgs{
+	as, err = svc.ValuesSvc.QueryAction(consumerID, digitwin.ThingValuesQueryActionArgs{
 		ThingID: dThingID,
 		Name:    actionName})
 	require.NoError(t, err)
 	inputVal := tputils.DecodeAsInt(as.Input)
 	require.Equal(t, actionValue, inputVal)
 	require.Equal(t, correlationID, as.Id)
+	require.Equal(t, messaging.StatusPending, as.Status)
 
 	// complete the action
 	resp := messaging.NewResponseMessage(
@@ -130,7 +132,7 @@ func TestInvokeActionErrors(t *testing.T) {
 	// invoke the action with the wrong thing
 	req := messaging.NewRequestMessage(
 		wot.OpInvokeAction, "badThingID", actionName, actionValue, correlationID)
-	stored, err := dtwStore.NewActionStart(req)
+	_, stored, err := dtwStore.NewActionStart(req)
 
 	// unknown thingIDs are still allowed for now.
 	assert.NoError(t, err)
@@ -139,7 +141,7 @@ func TestInvokeActionErrors(t *testing.T) {
 	// invoke the action with the wrong name
 	req = messaging.NewRequestMessage(
 		wot.OpInvokeAction, dThingID, "badName", actionValue, correlationID)
-	stored, err = dtwStore.NewActionStart(req)
+	_, stored, err = dtwStore.NewActionStart(req)
 	// same as above
 	assert.NoError(t, err)
 	assert.False(t, stored)
@@ -147,7 +149,7 @@ func TestInvokeActionErrors(t *testing.T) {
 	// complete the action on wrong thing
 	resp := messaging.NewResponseMessage(
 		wot.OpInvokeAction, "badThingID", actionName, actionValue, nil, correlationID)
-	resp.Status = messaging.StatusPending
+
 	_, err = dtwStore.UpdateActionStatus(agentID, resp)
 	assert.Error(t, err)
 

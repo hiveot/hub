@@ -62,11 +62,12 @@ func (it *IsySwitchThing) HandleActionRequest(
 		return req.CreateResponse(nil, err)
 	}
 	// return a 'running' status while reading back the result
-	resp := req.CreateResponse(nil, nil)
-	resp.Status = messaging.StatusRunning
+	//send a 'running' ActionStatus message
+	//ag.PubActionStatus(req)
 
 	// in the background poll for status update until completed
 	go func() {
+		var resp *messaging.ResponseMessage
 		hasUpdated := false
 		// TODO: clean this up. Use websocket instead of repeated polling.
 		for i := 0; i < 5; i++ {
@@ -104,7 +105,8 @@ func (it *IsySwitchThing) HandleActionRequest(
 		}
 		_ = ag.GetConnection().SendResponse(resp)
 	}()
-	return resp
+	// send the response async when done
+	return nil
 }
 
 // HandleValueUpdate receives a new value for the given property

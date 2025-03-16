@@ -62,7 +62,7 @@ func (svc *HistoryService) Start(ag *messaging.Agent) (err error) {
 		ThingID: historyapi.ReadHistoryServiceID,
 		Deny:    []authz.ClientRole{authz.ClientRoleNone},
 	}
-	err = authz.UserSetPermissions(&ag.Consumer, permissions)
+	err = authz.UserSetPermissions(ag.Consumer, permissions)
 
 	//if err == nil {
 	//	// only admin role can manage the history

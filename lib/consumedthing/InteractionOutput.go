@@ -167,7 +167,7 @@ func NewInteractionOutputFromValue(ct *ConsumedThing, affType string, tv digitwi
 	return iout
 }
 
-// NewInteractionOutputFromResponse creates a new immutable interaction output from
+// NewInteractionOutputFromNotification creates a new immutable interaction output from
 // a NotificationMessage (event,property) and optionally its associated TD.
 //
 // If no td is available, this value conversion will still be usable but it won't
@@ -181,11 +181,11 @@ func NewInteractionOutputFromValue(ct *ConsumedThing, affType string, tv digitwi
 //
 //	tm contains the received ThingMessage data
 //	tdi is the associated thing description
-func NewInteractionOutputFromResponse(
-	ct *ConsumedThing, affType string, resp *messaging.ResponseMessage) *InteractionOutput {
+func NewInteractionOutputFromNotification(
+	ct *ConsumedThing, affType string, notif *messaging.NotificationMessage) *InteractionOutput {
 
-	iout := NewInteractionOutput(ct, affType, resp.Name, resp.Output, resp.Updated)
-	iout.SenderID = resp.SenderID
+	iout := NewInteractionOutput(ct, affType, notif.Name, notif.Data, notif.Timestamp)
+	iout.SenderID = notif.SenderID
 	return iout
 }
 

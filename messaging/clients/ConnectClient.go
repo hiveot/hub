@@ -110,11 +110,7 @@ func ConnectWithToken(
 		protocol = GetProtocolFromURL(connectURL)
 	}
 
-	if protocol == messaging.ProtocolTypeWotWSS {
-		cc, err = NewWotClient(clientID, caCert, nil, connectURL, timeout)
-	} else {
-		cc, err = NewHiveotClient(clientID, caCert, connectURL, timeout)
-	}
+	cc, err = NewHiveotClient(clientID, caCert, connectURL, timeout)
 	if err == nil {
 		err = cc.ConnectWithToken(token)
 	}
@@ -154,8 +150,7 @@ func ConnectWithTokenFile(clientID string, keysDir string, protocol string, conn
 //	https://addr:port/ for http-basic
 //	sse://addr:port/hiveot/sse for hiveot sse-sc subprotocol binding
 //	sse://addr:port/... default WoT SSE (not supported)
-//	wss://addr:port/hiveot/wss  path for hiveot websocket direct messaging
-//	wss://addr:port/... default WoT websocket (strawman)
+//	wss://addr:port/wss  path for websocket direct messaging
 //	mqtts://addr:port/ for mqtt over websocket over TLS
 func GetProtocolFromURL(fullURL string) string {
 	// determine the protocol to use from the URL
@@ -173,10 +168,7 @@ func GetProtocolFromURL(fullURL string) string {
 		protocolType = messaging.ProtocolTypeWotHTTPBasic
 	} else if parts.Scheme == wssserver.WssSchema {
 		// websocket protocol can use either WoT or hiveot message envelopes
-		protocolType = messaging.ProtocolTypeWotWSS
-		if strings.HasSuffix(fullURL, wssserver.DefaultHiveotWssPath) {
-			protocolType = messaging.ProtocolTypeHiveotWSS
-		}
+		protocolType = messaging.ProtocolTypeWSS
 	} else if parts.Scheme == hiveotsseserver.HiveotSSESchema {
 		// wot SSE is not supported
 		protocolType = messaging.ProtocolTypeHiveotSSE
@@ -266,81 +258,9 @@ func NewHiveotClient(
 	} else if parts.Scheme == "mqtts" {
 		//	bc = mqttclient.NewMqttAgentClient(
 		//		fullURL, clientID, nil, caCert, timeout)
-		err = fmt.Errorf("NewWotClient: mqtt client is not yet supported for '%s'", connectURL)
+		err = fmt.Errorf("NewHiveotClient: mqtt client is not yet supported for '%s'", connectURL)
 	} else {
-		err = fmt.Errorf("NewWotClient: Server URL '%s' does not have a valid schema (https://, wss:// ...", connectURL)
-	}
-	return cc, err
-}
-
-// NewWotClient returns a new unconnected WoT compatible client ready for connecting
-// to a thing server.
-//
-// This currently only supports the wot websocket protocols.
-// Intended for use with WoT Things but will also work with the hiveot hub.
-//
-// This expects the thing level base URL and uses the schema to determine what
-// protocol to use. Supported schema's:
-// * 'https'  - plain https no async return channel
-// * 'wss'    - secure websocket connection.
-// * 'mqtts'  - for mqtt over tcp  (future)
-//
-// Note 1: individual thing affordances can specify a different protocol in its form.
-// This is currently not supported.
-// Note 2: wss does not support https request other than establishing a connection
-// Note 3: Use the separate auth method to get a token
-//
-//	clientID is the ID to identify as
-//	connectURL contains the connection URL for the protocol. Typically the TD baseURL.
-//	caCert is the server's CA certificate to verify the connection.
-//
-//	If caCert is not provided then the server connection is not verified
-//
-//	getForm handler to return a Form when invoking a Thing request.
-//
-//	This is intended to be provided by a directory which can retrieve the forms of
-//	a Thing for issuing requests. HiveOT presents all Things as a digital twin.
-//	The forms of all Things are identical and use URI variables to fill in the
-//	operation, thingID and name of the affordance.
-//
-// If no connectURL is specified then this falls back to using the "baseURL" param
-// in the discovery record of the hiveot instance to connect to.
-//
-// timeout is optional maximum wait time for connecting or waiting for responses.
-// Use 0 for default.
-func NewWotClient(
-	clientID string, caCert *x509.Certificate,
-	getForm messaging.GetFormHandler, connectURL string, timeout time.Duration) (
-	cc messaging.IClientConnection, err error) {
-
-	// 1. determine the connection address
-	if connectURL == "" {
-
-		// use the first hiveot instance to connect to
-		discoList, err := discovery.DiscoverWithDnsSD(
-			discoserver.DefaultServiceName, timeout, true)
-		if err != nil || len(discoList) == 0 {
-			return nil, fmt.Errorf("hub not found")
-		}
-		rec0 := discoList[0]
-		connectURL = fmt.Sprintf("%s://%s%d", rec0.Scheme, rec0.Addr, rec0.Port)
-	}
-
-	if timeout <= 0 {
-		timeout = DefaultTimeout
-	}
-
-	// Create the client for the protocol
-	if strings.HasPrefix(connectURL, "wss") {
-		msgConverter := &wssserver.WotWssMessageConverter{}
-		cc = wssclient.NewHiveotWssClient(connectURL, clientID, caCert,
-			msgConverter, timeout)
-	} else if strings.HasPrefix(connectURL, "mqtts") {
-		//	bc = mqttclient.NewMqttAgentClient(
-		//		fullURL, clientID, nil, caCert, timeout)
-		err = fmt.Errorf("NewWotClient: mqtt client is not yet supported for '%s'", connectURL)
-	} else {
-		err = fmt.Errorf("NewWotClient: Server URL '%s' does not have a valid schema (https://, wss:// ...", connectURL)
+		err = fmt.Errorf("NewHiveotClient: Server URL '%s' does not have a valid schema (https://, wss:// ...", connectURL)
 	}
 	return cc, err
 }

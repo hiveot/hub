@@ -41,14 +41,14 @@ func StartHistoryAgent(svc *HistoryService, ag *messaging.Agent) {
 	mah := hubagent.NewAgentHandler(historyapi.ManageHistoryServiceID, manageHistoryMethods)
 
 	// receive subscribed updates for events and properties
-	ag.Consumer.SetResponseHandler(func(resp *messaging.ResponseMessage) error {
-		if resp.Operation == wot.OpSubscribeEvent {
-			return svc.addHistory.AddMessage(resp)
-		} else if resp.Operation == wot.OpObserveProperty {
-			return svc.addHistory.AddMessage(resp)
+	ag.Consumer.SetNotificationHandler(func(notif *messaging.NotificationMessage) {
+		if notif.Operation == wot.OpSubscribeEvent {
+			_ = svc.addHistory.AddMessage(notif)
+		} else if notif.Operation == wot.OpObserveProperty {
+			_ = svc.addHistory.AddMessage(notif)
 		}
 		//ignore the rest
-		return nil
+		return
 	})
 
 	// handle service requests

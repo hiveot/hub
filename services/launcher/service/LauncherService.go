@@ -209,7 +209,7 @@ func (svc *LauncherService) Start() error {
 			svc.clientID, svc.certsDir, svc.protocolType, svc.serverURL, 0)
 		_ = token
 		if err == nil {
-			svc.ag = messaging.NewAgent(cc, nil, nil, nil, 0)
+			svc.ag = messaging.NewAgent(cc, nil, nil, nil, nil, 0)
 		} else {
 			err = fmt.Errorf("failed starting launcher service: %w", err)
 			return err
@@ -217,7 +217,7 @@ func (svc *LauncherService) Start() error {
 	}
 
 	// permissions for using this service
-	err = authz.UserSetPermissions(&svc.ag.Consumer, authz.ThingPermissions{
+	err = authz.UserSetPermissions(svc.ag.Consumer, authz.ThingPermissions{
 		AgentID: svc.ag.GetClientID(),
 		ThingID: launcherapi.ManageServiceID,
 		Allow:   []authz.ClientRole{authz.ClientRoleManager, authz.ClientRoleAdmin, authz.ClientRoleService},

@@ -37,7 +37,7 @@ The messaging layer is a thin application layer built on the messaging protocols
 
 The purpose of this messaging layer is to enable WoT applications to work over any supported messaging protocol.
 
-HiveOT messaging uses a simple request-response message envelope. Clients send requests for operations and receive responses for these operations. It supports both direct and asynchronous transports. 
+HiveOT messaging uses simple request-response-notification message envelopes. Clients send requests for operations, receive responses for these operations, and receive notifications to subscribed events and properties. It supports both direct and asynchronous transports. 
 
 This approach builds on top of the WoT definition for 'operations' and adds operations for use by agents, supporting agents as clients of a hub or gateway. 
 
@@ -63,6 +63,7 @@ The request message defines the following fields:
 | type          | string    | "request". Identifies the message as a request message | Required  |
 | operation     | string    | Describes the request to perform                       | Required  |
 | messageID     | string    | Unique identification of the message.                  | Required  |
+| messageType   | string    | "request"                                              | Required  |
 | correlationID | string    | Unique identifier of the request.                      | Optional  |
 | thingID       | string    | ID of the thing the request applies to                 | Optional  |
 | name          | string    | Name of the affordance the request applies to.         | Optional  |
@@ -72,9 +73,9 @@ The request message defines the following fields:
 
 ### Response Message
 
-Responses serve to provide a client the progress or result of a request. A response message is linked to the request message through the correlationID field. 
+Responses serve to provide a client the progress or result of a request. A response message is linked to the request message through the correlationID field.
 
-Response output is defined by the affordance in the TD. 
+Response output is defined by the affordance in the TD.
 
 
 | name          | data type | description                                              | required  |
@@ -82,20 +83,40 @@ Response output is defined by the affordance in the TD.
 | type          | string    | "response". Identifies the message as a response message | required  |
 | operation     | string    | The operation this is a response of.                     | optional  |
 | messageID     | string    | Unique identification of the message.                    | required  |
+| messageType   | string    | "response"                                               | Required  |
 | correlationID | string    | identifies the request this is a response to.            | required  |
 | thingID       | string    | ID of the thing the request applies.                     | optional  |
 | name          | string    | Name of the affordance the request applies.              | optional  |
 | output        | any       | Result of processing when status is "completed".         | optional  |
 | status        | string    | Status of the request processing                         | required  |
 | error         | string    | Error title if status is "failed".                       | optional  |
-| requested     | string    | Timestamp the request was received                       | optional  |
-| updated       | string    | Timestamp the status was updated                         | optional  |
+| timestamp     | string    | Timestamp the response was created                       | optional  |
+
+### Notification Message
+
+Notifications serve to provide a client with asynchronous updates of events, properties or actions. 
+
+Notification data is defined by the corresponding affordance in the TD.
+
+| name          | data type | description                                              | required  |
+|---------------|-----------|----------------------------------------------------------|-----------|
+| type          | string    | "response". Identifies the message as a response message | required  |
+| operation     | string    | The operation this is a response of.                     | optional  |
+| messageID     | string    | Unique identification of the message.                    | required  |
+| messageType   | string    | "notification"                                           | Required  |
+| correlationID | string    | identifies the request this is a response to.            | required  |
+| thingID       | string    | ID of the thing the request applies.                     | optional  |
+| name          | string    | Name of the affordance the request applies.              | optional  |
+| output        | any       | Result of processing when status is "completed".         | optional  |
+| status        | string    | Status of the request processing                         | required  |
+| error         | string    | Error title if status is "failed".                       | optional  |
+| requested     | string    | Timestamp the notification was created                   | optional  |
 
 ### Behavior
 
 Any client can send a request. They can choose to wait for a response message or handle the response asynchronously. The HiveOT message envelope is identical regardless the underlying messaging protocol used such as http-basic, websocket, sse, mqtt and others. 
 
-HiveOT uses a simple message request and response message envelope that the message protocols implement as their API. An additional 'agent' and 'consumer' helper builds these message envelopes for the various operations such as invoke action, subscribe events, write and observe properties.   
+HiveOT uses simple message request, response, and notification message envelopes that the message protocols implement as their API. An additional 'agent' and 'consumer' helper builds these message envelopes for the various operations such as invoke action, subscribe events, write and observe properties.   
 
 Requests are handled by the protocol server, which is run by the HiveOT Hub, or a Thing agent. When requests are received by the Hub, the hub digital twin responds to requests that read or query the digital twin state. Actions are forwarded to the actual Thing and the responses are returned to the client sending the request.
 
@@ -115,7 +136,7 @@ If a hub or gateway is used then the response is received by the hub/gateway, wh
 
 Clients will receive a response message containing the correlationID provided in the request, the payload, and any error information. Client implementations can choose to wait for a response (with timeout) or handle it as a separate callback.
 
-When a client subscribes to an event or observes a property, it will receive ongoing events and property updates with the original request correlationID. The response status of the subscription request is 'completed' or 'failed' while the response status of asynchronous events and property updates will be 'running'.
+When a client subscribes to an event or observes a property, it will receive ongoing events and property notifications. For action progress the status indicates the progress of the action, typically running.
 
 ## Design
 
@@ -130,7 +151,7 @@ Applications only need to implement the RequestMessage and ResponseMessage envel
 
 The messaging layer provides a simple application API to perform WoT Thing operations such as InvokeAction, WriteProperty, etc. Most methods reflect the operations defined in the TD-1.1 specification. In addition, the SendRequest method is available.
 
-This layer constructs a RequestMessage and ResponseMessage envelope. ResponseMessages carry the status flag containing one of:
+This layer constructs a RequestMessage, ResponseMessage and NotificationMessage envelope. NotificationMessage carry the status flag containing one of:
 1. completed: The request was completed and no more responses are sent
 2. failed: The request has failed and no more responses are sent. The error field holds an error title.
 3. running: The request is running. Output optionally contains intermediate result or stream data.
@@ -151,9 +172,11 @@ Messaging clients implement the ITransportClient interface containing these meth
 
 1. SendRequest - send a request to the connected server.
 2. SendResponse - send a response to the connected server.
-3. SetConnectionHandler - succesful connections are reported to this handler:
-4. SetRequestHandler - incoming request messages from the server are passed to this handler. (agents)
-5. SetResponseHandler - incoming response messages are passed to this handler. (consumers)
+3. SendNotification - send a notification to the connected server.
+4. SetConnectionHandler - succesful connections are reported to this handler:
+5. SetRequestHandler - incoming request messages from the server are passed to this handler. (agents)
+6. SetResponseHandler - incoming response messages are passed to this handler. (consumers)
+7. SetNotificationHandler - incoming notifications are passed to this handler
 
 Client transports can be used by both consumers and agents. The use of client connection by agents is intended for agents that don't run a server and let the hub handle authentication and authorization.
 
@@ -166,10 +189,12 @@ Servers implement the ITransportServer interface containing these methods:
 2. GetForm - return the form for a specific operation. Primarily intended for testing.
 3. GetConnectURL - provide the URL used to connect to this server. Intended for use in discovery.
 4. SendRequest - send a request to the connected client. Some operations require a subscription. (consumers)
-4. SendResponse - send a response to the connected client (agents)
-6. SetConnectionHandler - incoming connections are reported as an instance of the IServerConnection interface for sending messages to the remote client:
-7. SetRequestHandler - incoming request messages are passed to this handler
-8. SetResponseHandler - incoming response messages are passed to this handler
+5. SendResponse - send a response to the connected client (agents)
+6. SendNotification - send a notification to the connected client.
+7. SetConnectionHandler - incoming connections are reported as an instance of the IServerConnection interface for sending messages to the remote client:
+8. SetRequestHandler - incoming request messages are passed to this handler
+9. SetResponseHandler - incoming response messages are passed to this handler
+10. SetNotificationHandler - incoming notifications are passed to this handler
 
 
 #### Authentication

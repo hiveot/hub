@@ -59,6 +59,8 @@ type HiveotSseServerConnection struct {
 	appRequestHandlerPtr atomic.Pointer[messaging.RequestHandler]
 	// handler for responses sent by agents
 	responseHandlerPtr atomic.Pointer[messaging.ResponseHandler]
+	// handler for notifications sent by agents
+	notificationHandlerPtr atomic.Pointer[messaging.NotificationHandler]
 
 	sseChan chan SSEEvent
 
@@ -129,14 +131,20 @@ func (c *HiveotSseServerConnection) IsConnected() bool {
 }
 
 // Handle incoming request messages.
-// This handles subscriptions or forwards the request to the registered handler
 //
-// This returns nil on completion, or a response message if status info is to be returned.
+// A response is only expected if the request is handled, otherwise nil is returned
+// and a response is received asynchronously.
+// In case of invokeaction, the response is always an ActionStatus object.
+//
+// This returns one of 3 options:
+// 1. on completion, return handled=true, an optional output
+// 2. on error, return handled=true, output optional error details and error the error message
+// 3. on async status, return handled=false, output optional, error nil
 func (c *HiveotSseServerConnection) onRequestMessage(
-	req *messaging.RequestMessage) (output any, status string, err error) {
+	req *messaging.RequestMessage) (handled bool, output any, err error) {
 
 	// handle subscriptions
-	handled := true
+	handled = true
 	switch req.Operation {
 	case wot.OpSubscribeEvent, wot.OpSubscribeAllEvents:
 		c.subscriptions.Subscribe(req.ThingID, req.Name, req.CorrelationID)
@@ -150,57 +158,75 @@ func (c *HiveotSseServerConnection) onRequestMessage(
 		handled = false
 	}
 	if handled {
-		output = nil
-		status = messaging.StatusCompleted
+		// subscription requests dont have output
 		err = nil
-		return output, status, err
+		return handled, nil, nil
 	}
-	// or pass it to the application
+	// not a subscription request, pass it to the application
 	hPtr := c.appRequestHandlerPtr.Load()
 	if hPtr == nil {
+		// internal error
 		err = fmt.Errorf("HiveotSseServerConnection:onRequestMessage: no request handler registered")
-		return output, status, err
+		return true, nil, err
 	}
 
 	resp := (*hPtr)(req, c)
-	output = resp.Output
-	status = resp.Status
-	if resp.Error != "" {
-		err = errors.New(resp.Error)
-	}
-	return output, status, err
-}
-
-// SendNotification sends a response to the client if subscribed.
-// this is a response to a long-running subscription request
-// If this returns an error then no response was sent.
-func (c *HiveotSseServerConnection) SendNotification(resp messaging.ResponseMessage) {
-
-	slog.Info("SendNotification (subscription response)",
-		slog.String("clientID", c.cinfo.ClientID),
-		slog.String("correlationID", resp.CorrelationID),
-		slog.String("operation", resp.Operation),
-		slog.String("thingID", resp.ThingID),
-		slog.String("name", resp.Name),
-		slog.String("senderID", resp.SenderID),
-	)
-
-	if resp.Operation == wot.OpSubscribeEvent || resp.Operation == wot.OpSubscribeAllEvents {
-		correlationID := c.subscriptions.GetSubscription(resp.ThingID, resp.Name)
-		if correlationID != "" {
-			resp.CorrelationID = correlationID
-			_ = c.SendResponse(&resp)
-		}
-	} else if resp.Operation == wot.OpObserveProperty || resp.Operation == wot.OpObserveAllProperties {
-		correlationID := c.observations.GetSubscription(resp.ThingID, resp.Name)
-		if correlationID != "" {
-			resp.CorrelationID = correlationID
-			_ = c.SendResponse(&resp)
+	// responses are optional
+	if resp != nil {
+		// the hiveot binding returns the response envelope
+		output = resp
+		handled = true
+		err = nil
+		if resp.Error != "" {
+			err = errors.New(resp.Error)
+			handled = true
 		}
 	} else {
-		slog.Warn("Unknown notification: " + resp.Operation)
+		// no response yet, return a 201
+		handled = false
+		err = nil
+		output = nil
 	}
-	return
+	return handled, output, err
+}
+
+// SendNotification sends a notification to the client if subscribed.
+func (c *HiveotSseServerConnection) SendNotification(
+	notif *messaging.NotificationMessage) (err error) {
+
+	if notif.Operation == wot.OpSubscribeEvent || notif.Operation == wot.OpSubscribeAllEvents {
+		correlationID := c.subscriptions.GetSubscription(notif.ThingID, notif.Name)
+		if correlationID != "" {
+			slog.Info("SendNotification (subscribed event)",
+				slog.String("clientID", c.cinfo.ClientID),
+				slog.String("thingID", notif.ThingID),
+				slog.String("name", notif.Name),
+			)
+			err = c._send(messaging.MessageTypeNotification, notif)
+		}
+	} else if notif.Operation == wot.OpObserveProperty || notif.Operation == wot.OpObserveAllProperties {
+		correlationID := c.observations.GetSubscription(notif.ThingID, notif.Name)
+		if correlationID != "" {
+			slog.Info("SendNotification (observed property)",
+				slog.String("clientID", c.cinfo.ClientID),
+				slog.String("thingID", notif.ThingID),
+				slog.String("name", notif.Name),
+			)
+			err = c._send(messaging.MessageTypeNotification, notif)
+		}
+	} else if notif.Operation == wot.OpInvokeAction {
+		// action progress update
+		slog.Info("SendNotification (action stastus)",
+			slog.String("clientID", c.cinfo.ClientID),
+			slog.String("thingID", notif.ThingID),
+			slog.String("name", notif.Name),
+		)
+		err = c._send(messaging.MessageTypeNotification, notif)
+	} else {
+		slog.Warn("Unknown notification: " + notif.Operation)
+		//err = c._send(msg)
+	}
+	return err
 }
 
 // SendRequest sends a request message to an agent over SSE.
@@ -318,6 +344,27 @@ func (c *HiveotSseServerConnection) SetConnectHandler(cb messaging.ConnectionHan
 	c.mux.Unlock()
 }
 
+// SetNotificationHandler sets the handler for incoming notification messages from the
+// http connection.
+//
+// Handlers of notifications must register a callback using SetNotificationHandler on the connection.
+//
+// Note on how this works: The global http server receives notifications as http requests.
+// To make it look like the notification came from this connection it looks up the
+// connection using the clientID and connectionID and passes the message to the
+// registered notification handler on this connection.
+//
+// By default the server registers itself as the notification handler when the connection
+// is created. It is safe to set a different handler for applications that
+// handle each connection separately, for example a server side consumer instance.
+func (c *HiveotSseServerConnection) SetNotificationHandler(cb messaging.NotificationHandler) {
+	if cb == nil {
+		c.notificationHandlerPtr.Store(nil)
+	} else {
+		c.notificationHandlerPtr.Store(&cb)
+	}
+}
+
 // SetRequestHandler sets the handler for incoming request messages from the
 // http connection.
 //
@@ -362,31 +409,6 @@ func (c *HiveotSseServerConnection) SetResponseHandler(cb messaging.ResponseHand
 	}
 }
 
-// SubscribeEvent handles a subscription request for an event
-//func (c *HiveotSseServerConnection) SubscribeEvent(dThingID string, name string) {
-//	c.subscriptions.Subscribe(dThingID, name)
-//}
-//
-//// UnsubscribeEvent removes an event subscription
-//// dThingID and name must match those of ObserveProperty
-//func (c *HiveotSseServerConnection) UnsubscribeEvent(dThingID string, name string) {
-//	c.subscriptions.Unsubscribe(dThingID, name)
-//}
-//
-//// UnobserveProperty removes a property subscription
-//// dThingID and name must match those of ObserveProperty
-//func (c *HiveotSseServerConnection) UnobserveProperty(dThingID string, name string) {
-//	c.observations.Unsubscribe(dThingID, name)
-//}
-
-// WriteProperty sends the property change request to the agent
-//func (c *HiveotSseServerConnection) WriteProperty(
-//	thingID, name string, data any, correlationID string, senderID string) (status string, err error) {
-//
-//	status, err = c._send(vocab.OpWriteProperty, thingID, name, data, correlationID, senderID)
-//	return status, err
-//}
-
 // NewHiveotSseConnection creates a new SSE connection instance.
 // This implements the IServerConnection interface.
 func NewHiveotSseConnection(clientID string, cid string, remoteAddr string,
@@ -401,9 +423,7 @@ func NewHiveotSseConnection(clientID string, cid string, remoteAddr string,
 		Timeout:      0,
 	}
 	c := &HiveotSseServerConnection{
-		cinfo: cinfo,
-		//connectionID:  cid,
-		//clientID:      clientID,
+		cinfo:         cinfo,
 		remoteAddr:    remoteAddr,
 		httpReq:       httpReq,
 		lastActivity:  time.Now(),
@@ -412,8 +432,6 @@ func NewHiveotSseConnection(clientID string, cid string, remoteAddr string,
 		subscriptions: connections.Subscriptions{},
 		correlData:    make(map[string]chan any),
 		sseFallback:   sseFallback,
-		//requestHandler:  reqHandler,
-		//responseHandler: respHandler,
 	}
 	c.isConnected.Store(true)
 

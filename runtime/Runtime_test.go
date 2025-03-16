@@ -117,15 +117,14 @@ func TestMultiConnectSingleClient(t *testing.T) {
 	//	messageCount.Add(1)
 	//	return req.CreateResponse()
 	//}
-	onResponse := func(msg *messaging.ResponseMessage) error {
+	onNotification := func(msg *messaging.NotificationMessage) {
 		messageCount.Add(1)
-		return nil
 	}
 	// 2: connect and subscribe clients and verify
 	for range testConnections {
 		cc, consumer := ts.GetConsumerConnection(clientID1, ts.ConsumerProtocol)
 		cc.SetConnectHandler(onConnection)
-		consumer.SetResponseHandler(onResponse)
+		consumer.SetNotificationHandler(onNotification)
 		err := cc.ConnectWithToken(token1)
 		require.NoError(t, err)
 		// allow server to register its connection

@@ -19,6 +19,9 @@ const (
 	// DefaultHiveotPostResponseHRef HTTP endpoint that accepts HiveOT ResponseMessage envelopes
 	DefaultHiveotPostResponseHRef = "/hiveot/response"
 
+	// DefaultHiveotPostNotificationHRef HTTP endpoint that accepts HiveOT NotificationMessage envelopes
+	DefaultHiveotPostNotificationHRef = "/hiveot/notification"
+
 	SSEOpConnect    = "sse-connect"
 	HiveotSSESchema = "sse"
 )
@@ -78,6 +81,8 @@ type HiveotSseServer struct {
 	// The listening path
 	ssePath string
 
+	// registered handler of incoming requests (which return a reply)
+	serverNotificationHandler messaging.NotificationHandler
 	// registered handler of incoming requests (which return a reply)
 	serverRequestHandler messaging.RequestHandler
 	// registered handler of incoming responses (which sends a reply to the request sender)
@@ -160,13 +165,13 @@ func (srv *HiveotSseServer) GetSseConnection(clientID, connectionID string) *Hiv
 	return sseConn
 }
 
-// SendNotification sends a property update or event response message to subscribers
-func (srv *HiveotSseServer) SendNotification(msg *messaging.ResponseMessage) {
-	// pass the response to all subscribed cm
-	// FIXME: track cm
+// SendNotification sends a property update or event notification message to subscribers
+func (srv *HiveotSseServer) SendNotification(msg *messaging.NotificationMessage) {
+	// pass the notification to all subscribed clients
 	srv.cm.ForEachConnection(func(c messaging.IServerConnection) {
-		c.SendNotification(*msg)
+		_ = c.SendNotification(msg)
 	})
+	return
 }
 
 func (srv *HiveotSseServer) Stop() {
@@ -185,6 +190,7 @@ func StartHiveotSseServer(
 	ssePath string,
 	httpTransport *httpserver.HttpTransportServer,
 	handleConnect messaging.ConnectionHandler,
+	handleNotification messaging.NotificationHandler,
 	handleRequest messaging.RequestHandler,
 	handleResponse messaging.ResponseHandler,
 ) *HiveotSseServer {
@@ -192,12 +198,13 @@ func StartHiveotSseServer(
 		return nil
 	}
 	srv := &HiveotSseServer{
-		cm:                    connections.NewConnectionManager(),
-		serverConnectHandler:  handleConnect,
-		serverRequestHandler:  handleRequest,
-		serverResponseHandler: handleResponse,
-		ssePath:               ssePath,
-		httpTransport:         httpTransport,
+		cm:                        connections.NewConnectionManager(),
+		serverConnectHandler:      handleConnect,
+		serverNotificationHandler: handleNotification,
+		serverRequestHandler:      handleRequest,
+		serverResponseHandler:     handleResponse,
+		ssePath:                   ssePath,
+		httpTransport:             httpTransport,
 	}
 	// Add the routes used in SSE connection and subscription requests
 	srv.CreateRoutes()

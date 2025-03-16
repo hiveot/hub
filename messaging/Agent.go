@@ -14,7 +14,7 @@ import (
 // Hub agents receive requests and return responses.
 // The underlying transport protocol binding handles subscription.
 type Agent struct {
-	Consumer
+	*Consumer
 
 	// the application's request handler set with SetRequestHandler
 	// intended for sub-protocols that can receive requests. (agents)
@@ -38,34 +38,52 @@ func (ag *Agent) onRequest(
 	return resp
 }
 
+// PubActionProgress helper for agents to send a progress notification
+//
+// This sends an ActionStatus message with status of running.
+func (ag *Agent) PubActionProgress(req RequestMessage, value any) error {
+	status := ActionStatus{
+		AgentID:   ag.GetClientID(),
+		ID:        req.CorrelationID,
+		Input:     req.Input,
+		Name:      req.Name,
+		Output:    value,
+		SenderID:  ag.GetClientID(),
+		Status:    StatusRunning,
+		ThingID:   req.ThingID,
+		Requested: req.Created,
+		Updated:   time.Now().Format(wot.RFC3339Milli),
+	}
+
+	resp := NewNotificationMessage(wot.OpInvokeAction, req.ThingID, req.Name, status)
+	return ag.cc.SendNotification(resp)
+}
+
 // PubEvent helper for agents to send an event to subscribers.
-// This sends a subscription response message with status running.
 //
 // The underlying transport protocol binding handles the subscription mechanism
 // as the agent itself doesn't track subscriptions.
 func (ag *Agent) PubEvent(thingID string, name string, value any) error {
 	// This is a response to subscription request.
 	// for now assume this is a hub connection and the hub wants all events
-	resp := NewResponseMessage(
-		wot.OpSubscribeEvent, thingID, name, value, nil, "")
+	resp := NewNotificationMessage(wot.OpSubscribeEvent, thingID, name, value)
 
-	return ag.cc.SendResponse(resp)
+	return ag.cc.SendNotification(resp)
 }
 
-// PubProperty helper for agents to publish a property value update to observers.
+// PubProperty helper for agents to publish a property value notification to observers.
 //
 // The underlying transport protocol binding handles the subscription mechanism.
 func (ag *Agent) PubProperty(thingID string, name string, value any) error {
 	// This is a response to an observation request.
 	// send the property update as a response to the observe request
-	resp := NewResponseMessage(
-		wot.OpObserveProperty, thingID, name, value, nil, "")
+	notif := NewNotificationMessage(wot.OpObserveProperty, thingID, name, value)
 	slog.Info("PubProperty (async)",
 		"thingID", thingID,
-		"name", resp.Name,
-		"value", resp.ToString(50),
+		"name", notif.Name,
+		"value", notif.ToString(50),
 	)
-	return ag.cc.SendResponse(resp)
+	return ag.cc.SendNotification(notif)
 }
 
 // PubProperties helper for agents to publish a map of property values
@@ -74,16 +92,14 @@ func (ag *Agent) PubProperty(thingID string, name string, value any) error {
 func (ag *Agent) PubProperties(thingID string, propMap map[string]any) error {
 	// Implicit rule: if no name is provided the data is a map
 	// the transport adds the correlationID of the subscription.
-	resp := NewResponseMessage(
-		wot.OpObserveAllProperties, thingID, "", propMap, nil, "")
+	notif := NewNotificationMessage(wot.OpObserveAllProperties, thingID, "", propMap)
 
 	slog.Info("PubProperties (async)",
 		"thingID", thingID,
 		"nrProps", len(propMap),
-		"value", resp.ToString(50),
+		"value", notif.ToString(50),
 	)
-
-	return ag.cc.SendResponse(resp)
+	return ag.cc.SendNotification(notif)
 }
 
 // PubTD helper for agents to publish an update of a TD in the directory
@@ -135,9 +151,10 @@ func (ag *Agent) SetRequestHandler(cb RequestHandler) {
 // This is a wrapper around the ClientConnection that provides WoT response messages
 // publishing properties and events to subscribers and publishing a TD.
 func NewAgent(cc IConnection,
+	connHandler ConnectionHandler,
+	notifHandler NotificationHandler,
 	reqHandler RequestHandler,
 	respHandler ResponseHandler,
-	connHandler ConnectionHandler,
 	timeout time.Duration) *Agent {
 
 	if timeout == 0 {
@@ -146,17 +163,20 @@ func NewAgent(cc IConnection,
 
 	//consumer := NewConsumer(cc, respHandler, connHandler, timeout)
 	agent := Agent{
-		Consumer: Consumer{
-			cc:         cc,
-			rnrChan:    NewRnRChan(),
-			rpcTimeout: timeout,
-		},
+		//Consumer: Consumer{
+		//	cc:         cc,
+		//	rnrChan:    NewRnRChan(),
+		//	rpcTimeout: timeout,
+		//},
 	}
+	agent.Consumer = NewConsumer(cc, timeout)
 	agent.SetConnectHandler(connHandler)
+	agent.SetNotificationHandler(notifHandler)
 	agent.SetRequestHandler(reqHandler)
 	agent.SetResponseHandler(respHandler)
-	cc.SetResponseHandler(agent.onResponse)
-	cc.SetConnectHandler(agent.onConnect)
+	//cc.SetNotificationHandler(agent.onNotification)
+	//cc.SetResponseHandler(agent.onResponse)
+	//cc.SetConnectHandler(agent.onConnect)
 	cc.SetRequestHandler(agent.onRequest)
 	return &agent
 }

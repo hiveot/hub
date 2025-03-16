@@ -50,6 +50,8 @@ type MqttClientConnection struct {
 	// handler for requests send by clients
 	appConnectHandlerPtr atomic.Pointer[messaging.ConnectionHandler]
 
+	// handler for notifications sent by agents
+	appNotificationHandler messaging.NotificationHandler
 	// handler for requests send by clients
 	appRequestHandlerPtr atomic.Pointer[messaging.RequestHandler]
 	// handler for responses sent by agents
@@ -533,6 +535,11 @@ func (cl *MqttClientConnection) _send(topic string, msg any, correlationID strin
 	return err
 }
 
+// SendNotification send a notification message
+func (cl *MqttClientConnection) SendNotification(resp *messaging.NotificationMessage) error {
+	panic("todo: implement")
+}
+
 // SendRequest send a request message over websockets
 // This transforms the request to the protocol message and sends it to the server.
 func (cl *MqttClientConnection) SendRequest(req *messaging.RequestMessage) error {
@@ -553,6 +560,13 @@ func (cl *MqttClientConnection) SetConnectHandler(cb messaging.ConnectionHandler
 	} else {
 		cl.appConnectHandlerPtr.Store(&cb)
 	}
+}
+
+// SetNotificationHandler set the application handler for received notifications
+func (cc *MqttClientConnection) SetNotificationHandler(cb messaging.NotificationHandler) {
+	cc.mux.Lock()
+	cc.appNotificationHandler = cb
+	cc.mux.Unlock()
 }
 
 // SetRequestHandler set the application handler for incoming requests

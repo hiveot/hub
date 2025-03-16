@@ -88,8 +88,8 @@ func (svc *AddHistory) AddValue(senderID string, tv messaging.ThingValue) error 
 	return err
 }
 
-// AddMessage adds the value of an event, action or property message to the history store
-func (svc *AddHistory) AddMessage(msg *messaging.ResponseMessage) error {
+// AddMessage adds the value of an event, action or property notification to the history store
+func (svc *AddHistory) AddMessage(msg *messaging.NotificationMessage) error {
 	// FIXME: store the action request or response?
 	// How to obtain the action request?
 	// How to subscribe to action responses?
@@ -99,9 +99,9 @@ func (svc *AddHistory) AddMessage(msg *messaging.ResponseMessage) error {
 	tv := messaging.ThingValue{
 		ID:      msg.CorrelationID,
 		Name:    msg.Name,
-		Output:  msg.Output,
+		Output:  msg.Data,
 		ThingID: msg.ThingID,
-		Updated: msg.Updated,
+		Updated: msg.Timestamp,
 	}
 	switch msg.Operation {
 	case wot.OpInvokeAction:
@@ -114,7 +114,7 @@ func (svc *AddHistory) AddMessage(msg *messaging.ResponseMessage) error {
 		// output is a key:value map
 		tv.AffordanceType = messaging.AffordanceTypeProperty
 		propMap := make(map[string]any)
-		err := tputils.DecodeAsObject(msg.Output, &propMap)
+		err := tputils.DecodeAsObject(msg.Data, &propMap)
 		if err != nil {
 			return err
 		}
