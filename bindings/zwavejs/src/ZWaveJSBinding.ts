@@ -146,7 +146,7 @@ export class ZwaveJSBinding {
                     } else {
                         // Anything else is an event
                         log.info("handleValueUpdate: publish event for deviceID=" + deviceID + ", propID=" + propID + "")
-                        this.hc.pubProperty(deviceID, propID, newValue)
+                        this.hc.pubEvent(deviceID, propID, newValue)
                     }
                 }
             } else {

@@ -23,52 +23,53 @@ func (svc *DigitwinRouter) HandleNotification(notif *messaging.NotificationMessa
 		slog.String("value", tputils.DecodeAsString(notif.Data, 30)),
 	)
 	// Convert the agent ThingID to that of the digital twin
+	notifCpy := *notif
 	dThingID := td.MakeDigiTwinThingID(notif.SenderID, notif.ThingID)
-	notif.ThingID = dThingID
-	if notif.Timestamp == "" {
-		notif.Timestamp = time.Now().Format(wot.RFC3339Milli)
+	notifCpy.ThingID = dThingID
+	if notifCpy.Timestamp == "" {
+		notifCpy.Timestamp = time.Now().Format(wot.RFC3339Milli)
 	}
 
 	// Update the digital twin with this event or property value
-	if notif.Operation == wot.OpSubscribeEvent ||
-		notif.Operation == wot.OpSubscribeAllEvents {
+	if notifCpy.Operation == wot.OpSubscribeEvent ||
+		notifCpy.Operation == wot.OpSubscribeAllEvents {
 		tv := digitwin.ThingValue{
-			Name:           notif.Name,
-			Output:         notif.Data,
-			ThingID:        notif.ThingID,
-			Updated:        notif.Timestamp,
+			Name:           notifCpy.Name,
+			Output:         notifCpy.Data,
+			ThingID:        notifCpy.ThingID,
+			Updated:        notifCpy.Timestamp,
 			AffordanceType: messaging.AffordanceTypeEvent,
 		}
 		err = svc.dtwStore.UpdateEventValue(tv)
 		if err == nil {
 			// broadcast the event to subscribers of the digital twin
-			svc.transportServer.SendNotification(notif)
+			svc.transportServer.SendNotification(&notifCpy)
 		}
-	} else if notif.Operation == wot.OpObserveProperty {
+	} else if notifCpy.Operation == wot.OpObserveProperty {
 		tv := digitwin.ThingValue{
-			Name:           notif.Name,
-			Output:         notif.Data,
-			ThingID:        notif.ThingID,
-			Updated:        notif.Timestamp,
+			Name:           notifCpy.Name,
+			Output:         notifCpy.Data,
+			ThingID:        notifCpy.ThingID,
+			Updated:        notifCpy.Timestamp,
 			AffordanceType: messaging.AffordanceTypeProperty,
 		}
 		changed, _ := svc.dtwStore.UpdatePropertyValue(tv)
 		// unchanged values are still updated in the store but not published
 		// should this be configurable?
 		if changed {
-			svc.transportServer.SendNotification(notif)
+			svc.transportServer.SendNotification(&notifCpy)
 		}
-	} else if notif.Operation == wot.OpObserveAllProperties {
+	} else if notifCpy.Operation == wot.OpObserveAllProperties {
 		// output is a key-value map
 		var propMap map[string]any
-		err := tputils.DecodeAsObject(notif.Data, &propMap)
+		err := tputils.DecodeAsObject(notifCpy.Data, &propMap)
 		if err == nil {
 			for k, v := range propMap {
 				tv := digitwin.ThingValue{
 					Name:    k,
 					Output:  v,
-					ThingID: notif.ThingID,
-					Updated: notif.Timestamp,
+					ThingID: notifCpy.ThingID,
+					Updated: notifCpy.Timestamp,
 				}
 				changed, _ := svc.dtwStore.UpdatePropertyValue(tv)
 				// unchanged values are still updated in the store but not published
@@ -76,11 +77,11 @@ func (svc *DigitwinRouter) HandleNotification(notif *messaging.NotificationMessa
 				if changed {
 					// notify the consumer with individual updates instead of a map
 					// this seems more correct than sending a map.
-					notif := *notif
-					notif.Operation = wot.OpObserveProperty
-					notif.Name = k
-					notif.Data = v
-					svc.transportServer.SendNotification(&notif)
+					notifCpy := *notif
+					notifCpy.Operation = wot.OpObserveProperty
+					notifCpy.Name = k
+					notifCpy.Data = v
+					svc.transportServer.SendNotification(&notifCpy)
 				}
 			}
 		}
@@ -91,7 +92,7 @@ func (svc *DigitwinRouter) HandleNotification(notif *messaging.NotificationMessa
 		//		slog.Warn(err.Error())
 		//	}
 	} else {
-		err = fmt.Errorf("Unknown notification '%s'", notif.Operation)
+		err = fmt.Errorf("Unknown notification '%s'", notifCpy.Operation)
 	}
 	if err != nil {
 		slog.Warn(err.Error())

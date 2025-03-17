@@ -92,7 +92,7 @@ func HandleSubEvents(hc *messaging.Consumer, thingID string, name string) error 
 	fmt.Printf("---------------  --------------- -----------------------------  -----------------------------  ---------\n")
 
 	err := hc.Subscribe(thingID, name)
-	hc.SetResponseHandler(func(msg *messaging.ResponseMessage) error {
+	hc.SetNotificationHandler(func(msg *messaging.NotificationMessage) {
 		createdTime, _ := dateparse.ParseAny(msg.Timestamp)
 		timeStr := createdTime.Format("15:04:05.000")
 
@@ -122,7 +122,6 @@ func HandleSubEvents(hc *messaging.Consumer, thingID string, name string) error 
 
 		fmt.Printf("%-16.16s %-15.15s %-30.30s %-30.30s %-40.40s\n",
 			timeStr, "", msg.ThingID, msg.Name, valueStr)
-		return nil
 	})
 	if err != nil {
 		return err

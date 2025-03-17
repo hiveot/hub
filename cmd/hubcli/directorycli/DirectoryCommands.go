@@ -145,8 +145,8 @@ func HandleListThing(co *messaging.Consumer, thingID string) error {
 	}
 
 	fmt.Println(utils.CORed + "\nActions:")
-	fmt.Println(" ID                             ActionType                Title                                    Arg(s)     Value           Description")
-	fmt.Println(" -----------------------------  ------------------------  ---------------------------------------  ---------  --------------  -----------" + utils.COReset)
+	fmt.Println(" ID                                  ActionType                Title                                    Arg(s)     Value           Description")
+	fmt.Println(" ----------------------------------  ------------------------  ---------------------------------------  ---------  --------------  -----------" + utils.COReset)
 	actionValueMap, err := digitwin.ThingValuesReadAllProperties(co, thingID)
 	keys = utils.OrderedMapKeys(tdDoc.Actions)
 	for _, key := range keys {
@@ -159,7 +159,7 @@ func HandleListThing(co *messaging.Consumer, thingID string) error {
 			//initialValue = action.Input.InitialValue
 		}
 		fmt.Printf(" %-30.30s %-25.25s %-40.40s %-10.10s %s%-15.15s%s %.80s\n",
-			key, action.AtType, action.Title, dataType, utils.CORed, valueStr, utils.COReset, action.Description)
+			key, action.GetAtTypeString(), action.Title, dataType, utils.CORed, valueStr, utils.COReset, action.Description)
 	}
 	fmt.Println()
 	return err
