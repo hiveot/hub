@@ -67,7 +67,7 @@ type NotificationMessage struct {
 	ThingID string `json:"thingID,omitempty"`
 
 	// Timestamp the notification was created
-	Timestamp string `json:"Timestamp"`
+	Timestamp string `json:"timestamp,omitempty"`
 }
 
 // ToString is a helper to easily read the notification data as a string

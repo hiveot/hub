@@ -423,14 +423,14 @@ export default class HttpSSEClient implements IAgentConnection {
 
         hcLog.info("pubMultipleProperties. thingID:", thingID)
         const msg = new NotificationMessage(OpObserveAllProperties, thingID,"",propMap)
-        return this.sendResponse(msg)
+        return this.sendNotification(msg)
     }
 
     // Publish thing property value update to property observers
     pubProperty(thingID: string, name:string, value: any) {
-        hcLog.info("pubProperty. thingID:", thingID)
+        hcLog.info("pubProperty. thingID:", thingID," name:",name,"value",value)
         const msg = new NotificationMessage(OpObserveProperty, thingID,name,value)
-        return this.sendResponse(msg)
+        return this.sendNotification(msg)
     }
 
     // PubTD publishes a req with a Thing TD document.

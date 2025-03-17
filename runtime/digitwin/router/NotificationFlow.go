@@ -9,9 +9,10 @@ import (
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
+	"time"
 )
 
-// HandleNotification handles receiving a subscription notification (event, property)
+// HandleNotification handles receiving a notification from an agent (event, property, action)
 // This updates the digital twin property or event value
 func (svc *DigitwinRouter) HandleNotification(notif *messaging.NotificationMessage) {
 	var err error
@@ -24,6 +25,9 @@ func (svc *DigitwinRouter) HandleNotification(notif *messaging.NotificationMessa
 	// Convert the agent ThingID to that of the digital twin
 	dThingID := td.MakeDigiTwinThingID(notif.SenderID, notif.ThingID)
 	notif.ThingID = dThingID
+	if notif.Timestamp == "" {
+		notif.Timestamp = time.Now().Format(wot.RFC3339Milli)
+	}
 
 	// Update the digital twin with this event or property value
 	if notif.Operation == wot.OpSubscribeEvent ||
