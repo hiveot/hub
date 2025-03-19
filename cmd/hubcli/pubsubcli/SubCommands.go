@@ -71,7 +71,7 @@ func HandleSubTD(hc *messaging.Consumer) error {
 
 		if err == nil {
 			modifiedTime, _ := dateparse.ParseAny(tdi.Modified) // can be in any TZ
-			timeStr := utils.FormatMSE(modifiedTime.In(time.Local).UnixMilli(), false)
+			timeStr := utils.FormatMSE(modifiedTime.UnixMilli(), false)
 			fmt.Printf("%-20.20s %-35.35s %-30.30s %-30.30s %-30.30s\n",
 				"", msg.ThingID, tdi.Title, tdi.AtType, timeStr)
 		}

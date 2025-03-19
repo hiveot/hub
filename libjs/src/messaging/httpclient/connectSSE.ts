@@ -2,7 +2,7 @@ import * as tslog from 'tslog';
 // undici-v7 causes a pkg bundle error: Cannot find module 'node:sqlite'
 // Only use undici-v6.21
 // this might be a pkg bundling error.
-import {Agent,fetch} from "undici";
+import {Agent,fetch,MessageEvent} from "undici";
 
 // https fetch doesn't acce ca certs as attempted. Workaround, specify
 //
@@ -61,11 +61,13 @@ export async function  connectSSE(
         //         rejectUnauthorized: false,
         // })
 
+        // note that keepalive doesn't seem to work
         const undiciAgent = new Agent({
+            // connectTimeout: 0,
+            bodyTimeout: 0,  // otherwise it times out after 5 min
             connect: {
                 ca: [caCertPem],
                 keepAlive: true,
-                // allowH2: true,
                 rejectUnauthorized: true,
         //                 cert: readFileSync('/path/to/crt.pem', 'utf-8'),
         //                 key: readFileSync('/path/to/key.pem', 'utf-8')
@@ -75,6 +77,7 @@ export async function  connectSSE(
             fetch: (input:any, init:any) =>
                 fetch(input, {
                     ...init,
+                    keepalive:true,
                     headers: {
                         ...init.headers,
                         authorization: 'bearer ' + authToken,

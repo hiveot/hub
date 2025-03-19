@@ -220,13 +220,3 @@ func NewResponseMessage(operation string, thingID, name string, output any, err 
 	}
 	return resp
 }
-
-//
-//// NewNotificationResponse create a subscribe/observe response with status Running
-//// The correlationID must be set by the server to the subscription correlationID
-//// If error is set then it is send as part of the response while status is running.
-//func NewNotificationResponse(operation string, thingID, name string, output any, err error) *ResponseMessage {
-//	resp := NewResponseMessage(operation, thingID, name, output, err, "")
-//	resp.Status = StatusRunning
-//	return resp
-//}

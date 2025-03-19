@@ -6,6 +6,7 @@ import (
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/services/launcher/launcherclient"
 	"github.com/urfave/cli/v2"
+	"time"
 )
 
 func LauncherListCommand(hc **messaging.Consumer) *cli.Command {
@@ -70,8 +71,9 @@ func HandleListServices(hc *messaging.Consumer) error {
 		return fmt.Errorf("no Hub connection")
 	}
 	lc := launcherclient.NewLauncherClient("", hc)
+	localTZ, _ := time.Now().Zone()
 
-	fmt.Println("Service                      Size   Starts       PID    CPU   Memory   Status    Since                Last Error")
+	fmt.Println("Service                      Size   Starts       PID    CPU   Memory   Status    Since (" + localTZ + ")          Last Error")
 	fmt.Println("-------                      ----   ------   -------   ----   ------   -------   -------------------  -----------")
 	entries, err := lc.List(false)
 	if err != nil {

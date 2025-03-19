@@ -1,7 +1,7 @@
 package wot
 
 // RFC3339Milli is the M2M format for ISO8601/RFC3339 timestamps in millisecond
-const RFC3339Milli = "2006-01-02T15:04:05.999-0700"
+const RFC3339Milli = "2006-01-02T15:04:05.999Z"
 
 // HiveOT operations that are missing in WoT and those needed by hub connected agents
 // Keep in sync with vocab.yaml
