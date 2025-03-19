@@ -1,17 +1,16 @@
 // ZWaveJSBinding.ts holds the entry point to the zwave binding along with its configuration
 import type {ZWaveNode} from "zwave-js";
-import getNodeTD from "./getNodeTD.ts";
+import createNodeTD from "./createNodeTD.ts";
 import NodeValues from "./NodeValues.ts";
 import ZWAPI from "./ZWAPI.ts";
 import parseController from "./parseController.ts";
 import logVid from "./logVid.ts";
-import getPropName from "./getPropName.ts";
 import * as vocab from "../hivelib/api/vocab/vocab.js";
 import fs from "node:fs";
 import BindingConfig from "./BindingConfig.ts";
 import handleRequest from "./handleRequest.ts";
 import {type ValueID} from "@zwave-js/core";
-import getVidAffordance from "./getVidAffordance.ts";
+import getAffordanceFromVid from "./getAffordanceFromVid.ts";
 import type IAgentConnection from "../hivelib/messaging/IAgentConnection.ts";
 import {RequestMessage, ResponseMessage} from "../hivelib/messaging/Messages.ts";
 import getLogger from "./getLogger.ts";
@@ -91,7 +90,7 @@ export class ZwaveJSBinding {
         log.info("handleNodeUpdate:node:", node.id);
 
         // FIXME: only update the node if it has changed
-        const thingTD = getNodeTD(this.zwapi, node, this.vidCsvFD, this.config.maxNrScenes);
+        const thingTD = createNodeTD(this.zwapi, node, this.vidCsvFD, this.config.maxNrScenes);
 
         if (node.isControllerNode) {
             parseController(thingTD, this.zwapi.driver.controller)
@@ -120,38 +119,38 @@ export class ZwaveJSBinding {
     // @param newValue: the updated value converted to a string
     handleValueUpdate(node: ZWaveNode, vid: ValueID, newValue: unknown) {
         const deviceID = this.zwapi.getDeviceID(node.id)
-        const propID = getPropName(vid)
         const valueMap = this.lastValues.get(deviceID);
         // update the map of recent values
-        const lastValue = valueMap?.values[propID]
-        const va = getVidAffordance(node, vid, this.config.maxNrScenes)
+        const va = getAffordanceFromVid(node, vid, this.config.maxNrScenes)
+        if (!va) {
+            // this is not a VID of interest so ignore it
+            log.info("handleValueUpdate: unused VID ignored: CC="+vid.commandClass,
+                " vidProperty=", vid.property, "vidEndpoint=",vid.endpoint)
+            return
+        }
+        const lastValue = valueMap?.values[va.name]
         try {
 
-            // FIXME: 37-targetValue-0 is not received when the switch is manually changed.
-            //
             if (valueMap && (lastValue !== newValue || !this.config.publishOnlyChanges)) {
                 // TODO: round the value using a precision
                 // TODO: republish after some time even when unchanged
                 // Determine if value changed enough to publish
                 if (newValue != undefined) {
-                    valueMap.values[propID] = newValue
-                    if (va?.vidType === "property") {
-                        this.hc.pubProperty(deviceID, propID, newValue)
-                    } else if (va?.vidType === "action") {
+                    valueMap.values[va.name] = newValue
+                    if (va?.affType === "property") {
+                        this.hc.pubProperty(deviceID, va.name, newValue)
+                    } else if (va?.affType === "action") {
                         // action output state has a matching property
-                        // TODO: can actionstatus be sent as a notification?
-                        // FIXME: looks like 37-targetValue-0 isn't received when
-                        // the switch is toggled manually. to be investigated.
-                        this.hc.pubProperty(deviceID, propID, newValue)
+                        this.hc.pubProperty(deviceID, va.name, newValue)
                     } else {
                         // Anything else is an event
-                        log.info("handleValueUpdate: publish event for deviceID=" + deviceID + ", propID=" + propID + "")
-                        this.hc.pubEvent(deviceID, propID, newValue)
+                        log.info("handleValueUpdate: publish event for deviceID=" + deviceID + ", propName=" + va.name + "")
+                        this.hc.pubEvent(deviceID, va.name, newValue)
                     }
                 }
             } else {
                 // for debugging
-                log.debug("handleValueUpdate: unchanged value deviceID=" + deviceID + ", propID=" + propID + " (ignored)")
+                log.debug("handleValueUpdate: unchanged value deviceID=" + deviceID + ", propName=" + va.name + " (ignored)")
 
             }
         } catch (e) {
@@ -190,6 +189,8 @@ export class ZwaveJSBinding {
             const resp = handleRequest(msg,this.zwapi, this.hc)
             return resp
         })
+        // the binding does not expect async responses
+        // the binding does not expect any notifications
 
         await this.zwapi.connectLoop(this.config);
     }

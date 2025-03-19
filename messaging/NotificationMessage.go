@@ -77,7 +77,7 @@ func (notif *NotificationMessage) ToString(maxlen int) string {
 
 // NewNotificationMessage creates a new NotificationMessage instance.
 //
-//	operation is the notification operation WoTOpSubscribeEvent or WoTOpObserveProperty
+//	operation is the notification operation
 //	thingID is the thing the value applies to (destination of action or source of event)
 //	name is the name of the property, event or action affordance as described in the thing TD
 //	data is the data as defined in the corresponding affordance dataschema or nil if not applicable

@@ -53,7 +53,7 @@ func (svc *OWServerBinding) HandleRequest(req *messaging.RequestMessage,
 		_ = svc.RefreshPropertyValues(false)
 
 	}()
-	//return req.CreateRunningNotification(err)
+	//return req.CreateNotification(err)
 	// nothing to return yet
 	return nil
 }

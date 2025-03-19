@@ -488,7 +488,7 @@ func (cc *HiveotSseClient) SendRequest(req *messaging.RequestMessage) error {
 			// no response yet. do not send process a notification
 		} else if useRequestEnvelope {
 			// hiveot uses NotificationMessage envelopes
-			notif = req.CreateRunningNotification()
+			notif = req.CreateNotification()
 			err = jsoniter.Unmarshal(outputRaw, &notif)
 		} else {
 			// output is http basic actionstatus

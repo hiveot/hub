@@ -3,188 +3,261 @@ import {InterviewStage,  ZWaveNode} from "zwave-js";
 import type IAgentConnection from "../hivelib/messaging/IAgentConnection.ts";
 import {OpWriteProperty} from "../hivelib/api/vocab/vocab.js";
 import {
+    NotificationMessage,
     RequestMessage,
     ResponseMessage,
     StatusCompleted,
     StatusRunning
 } from "../hivelib/messaging/Messages.ts";
 
-import {getPropVid} from "./getPropName.ts";
 import ZWAPI, {getVidValue} from "./ZWAPI.ts";
 import {handleWriteProperty} from "./handleWriteProperty.ts";
 import setValue from "./setValue.ts";
 import getLogger from "./getLogger.ts";
+import {getVidFromActionName} from "./getAffordanceFromVid.ts";
 
 const log = getLogger()
 
 
 
-// handle controller actions as defined in the TD
+// handle request  actions as defined in the TD
 //
 // This sends responses asynchronously and just returns nil
 export default function  handleRequest(
-    req: RequestMessage, zwapi: ZWAPI, hc: IAgentConnection): ResponseMessage|null {
+    req: RequestMessage, zwapi: ZWAPI, hc: IAgentConnection):ResponseMessage|null {
 
-    let err: Error | undefined
-    let output: any = null
-    let status = StatusCompleted
-    // let resp: ResponseMessage
+    let handled = handleControllerRequest(req, zwapi, hc)
+    if (handled) {
+        return null
+    }
 
-    const actionLower = req.name.toLowerCase()
-    let targetNode: ZWaveNode | undefined
     const node = zwapi.getNodeByDeviceID(req.thingID)
     if (node == undefined) {
         const errMsg = new Error("handleActionRequest: node for thingID" + req.thingID + "does not exist")
         log.error(errMsg)
         return req.createResponse(null, errMsg)
     }
+
     if (req.operation == OpWriteProperty) {
         return handleWriteProperty(req, node, zwapi, hc)
     }
 
-    const actionValue = req.input
-    log.info("action: " + req.name + " - value: " + req.input)
-    // be optimistic :)
+    handled = handleNodeAction(req, node, zwapi, hc)
+    if (handled) {
+        return null
+    }
+
+    // last, handle vid actions
+    handleVidAction(req, node, hc)
+    return null
+}
+
+
+// handle controller requests as defined in the TD.
+// This returns true if the request was handled.
+// This sends responses asynchronously
+function  handleControllerRequest(
+    req: RequestMessage, zwapi: ZWAPI, hc: IAgentConnection):boolean {
+
+    let resp: ResponseMessage|null = null
+    let handled: boolean = true
+
     // controller specific commands (see parseController)
+    const actionLower = req.name.toLowerCase()
     switch (actionLower) {
-        case "begininclusion": {
-            zwapi.driver.controller.beginInclusion().then()
-        } break;
-        case "stopinclusion": {
-            zwapi.driver.controller.stopInclusion().then()
-        } break;
-        case "beginexclusion": {
+        case "beginexclusion":
             zwapi.driver.controller.beginExclusion().then()
-        } break;
-        case "stopexclusion": {
-            zwapi.driver.controller.stopExclusion().then()
-        } break;
-        case "beginrebuildingroutes": {
+            resp = req.createResponse(null)
+
+            break;
+        case "begininclusion":
+            zwapi.driver.controller.beginInclusion().then()
+            resp = req.createResponse(null)
+
+            break;
+        case "beginrebuildingroutes":
             zwapi.driver.controller.beginRebuildingRoutes()
-        } break;
-        case "stoprebuildingroutes": {
-            zwapi.driver.controller.stopRebuildingRoutes()
-        } break;
-        case "getnodeneighbors": { // param nodeID
-            targetNode = zwapi.getNodeByDeviceID(req.thingID)
-            if (targetNode) {
-                zwapi.driver.controller.getNodeNeighbors(targetNode.id).then();
-            }
-        } break;
-        case "rebuildnoderoutes": { // param nodeID
-            targetNode = zwapi.getNodeByDeviceID(req.thingID)
-            if (targetNode) {
-                zwapi.driver.controller.rebuildNodeRoutes(targetNode.id).then();
-            }
-        } break;
-        case "removefailednode": { // param nodeID
-            targetNode = zwapi.getNodeByDeviceID(req.thingID)
+            resp = req.createResponse(null)
+            break;
+
+        case "removefailednode":
+            let targetNode = zwapi.getNodeByDeviceID(req.thingID)
             if (targetNode) {
                 zwapi.driver.controller.removeFailedNode(targetNode.id).then();
             }
-        } break;
+            resp = req.createResponse(null)
+            break;
 
-        // Special management actions that are accessible by writing configuration updates that are not VIDs
-        // case PropTypes.Name.toLowerCase():  // FIXME: what is this. set name ???
-        //     node.name = params;
-        //     break;
-        case "checklifelinehealth": {
-            status = StatusRunning // async response
-            // 3 runs; return rating
-            node.checkLifelineHealth(3)
-                .then((ev) => {
-                    let resp = req.createResponse(ev.rating)
-                    hc.sendResponse(resp)
-                })
-                .catch(err => {
-                    let resp = req.createResponse(null, err)
-                    hc.sendResponse(resp)
-                });
-        } break;
+        case "stopexclusion":
+            zwapi.driver.controller.stopExclusion().then()
+            resp = req.createResponse(null)
+            break;
 
-        case "ping": {
-            status = StatusRunning // async response
+        case "stopinclusion":
+            zwapi.driver.controller.stopInclusion().then()
+            resp = req.createResponse(null)
+            break;
 
-            // ping a node. The 'completed' response is sent async
-            const startTime = performance.now()
-            node.ping().then((_success: boolean) => {
-                const endTime = performance.now()
-                const msec = Math.round(endTime - startTime)
-                let resp = req.createResponse(msec)
-                log.info("ping '" + req.thingID + "': " + msec + " msec")
-                hc.sendResponse(resp)
-            })
-        } break;
+        case "stoprebuildingroutes":
+            zwapi.driver.controller.stopRebuildingRoutes()
+            resp = req.createResponse(null)
+            break;
 
-        case "refreshinfo": {
-            status = StatusRunning
-            // doc warning: do not call refreshInfo when node interview is not yet complete
-            if (node.interviewStage == InterviewStage.Complete) {
-                node.refreshInfo({waitForWakeup: true})
-                    .then((result) => {
-                        log.info("refreshinfo. StartedResult:", result)
-                        let resp = req.createResponse(null)
-                        hc.sendResponse(resp) // async
-                    })
-                    .catch(err => {
-                        log.info("refreshinfo failed: ", err)
-                        let resp = req.createResponse(null, err)
-                        hc.sendResponse(resp) // async
-                    })
-            } else {
-                // a previous request was still running.
-                err = new Error("refreshinfo is already running")
-            }
-        } break;
-
-        case "refreshvalues": {
-            status = StatusRunning
-            // this can take 10-20 seconds
-            node.refreshValues().then((_res) => {
-                let resp = req.createResponse(null)
-                hc.sendResponse(resp) // async
-                log.info("refreshvalues completed")
-            }).catch(err => {
-                log.info("refreshvalues failed: ", err)
-                let resp = req.createResponse(null, err)
-                hc.sendResponse(resp) // async
-            })
-        } break;
-
-        default: {
-            let found = false
-            // VID based configuration and actions
-            //  currently propertyIDs are also accepted.
-            // FIXME: only allow defined actions
-            // FIXME: convert actionValue to expected type
-            const propVid = getPropVid(req.name)
-            if (propVid) {
-                setValue(node, propVid, actionValue)
-                    .then(progress => {
-                        const newValue = getVidValue(node, propVid)
-                        let resp = req.createResponse(newValue)
-                        hc.sendResponse(resp)
-                        zwapi.onValueUpdate(node, propVid, newValue)
-                    })
-                    .catch(err => {
-                        let resp = req.createResponse(null, err)
-                        hc.sendResponse(resp)
-                    })
-                found = true
-                break;
-            }
-            if (!found) {
-                err = new Error("action '" + req.name + "' is not a known action for thing '" +
-                    req.thingID + "'")
-            }
-        }
+        default:
+            handled = false
     }
-
-    if (err) {
-        log.error(err)
-        let resp = req.createResponse(output, err)
+    if (resp) {
         hc.sendResponse(resp)
     }
-    // responses are sent async
-    return null
+    return handled
+}
+
+
+// handle node (Thing) actions as defined in the TD.
+// This returns true if the request was handled.
+// This sends responses asynchronously
+function  handleNodeAction(
+    req: RequestMessage, node:ZWaveNode, zwapi: ZWAPI, hc: IAgentConnection):boolean {
+
+    let resp: ResponseMessage | null = null
+    let handled: boolean = true
+    let notif:NotificationMessage|undefined = undefined
+
+    // controller specific commands (see parseController)
+    const actionLower = req.name.toLowerCase()
+    try {
+        switch (actionLower) {
+            case "checklifelinehealth":
+                // 3 runs; return rating
+                node.checkLifelineHealth(3)
+                    .then((ev) => {
+                        let resp = req.createResponse(ev.rating)
+                        hc.sendResponse(resp)
+                    })
+                // request is running, no status neeeded
+                notif = req.createNotification()
+                hc.sendNotification(notif)
+                break;
+
+            case "getnodeneighbors":
+                zwapi.driver.controller.getNodeNeighbors(node.id)
+                    .then((ids) => {
+                        resp = req.createResponse(ids)
+                        hc.sendResponse(resp)
+                    });
+                break;
+
+            case "ping":
+                // ping a node. The 'completed' response is sent async
+                const startTime = performance.now()
+                node.ping()
+                    .then((_success: boolean) => {
+                        const endTime = performance.now()
+                        const msec = Math.round(endTime - startTime)
+                        let resp = req.createResponse(msec)
+                        log.info("ping '" + req.thingID + "': " + msec + " msec")
+                        hc.sendResponse(resp)
+                    })
+                break;
+
+            case "rebuildnoderoutes":
+                zwapi.driver.controller.rebuildNodeRoutes(node.id)
+                    .then((success) => {
+                        let err: Error | undefined
+                        if (!success) {
+                            err = Error("failed rebuilding node routes")
+                        }
+                        resp = req.createResponse(success, err)
+                        hc.sendResponse(resp)
+                    });
+                break;
+
+            case "refreshinfo":
+                // doc warning: do not call refreshInfo when node interview is not yet complete
+                if (node.interviewStage == InterviewStage.Complete) {
+                    node.refreshInfo({waitForWakeup: true})
+                        .then((result) => {
+                            log.info("refreshinfo. StartedResult:", result)
+                            let resp = req.createResponse(null)
+                            hc.sendResponse(resp) // async
+                        })
+                    notif = req.createNotification()
+                    hc.sendNotification(notif)
+                } else {
+                    // a previous request was still running.
+                    let err = new Error("refreshinfo is already running")
+                    let resp = req.createResponse(null, err)
+                    hc.sendResponse(resp) // async
+                }
+                break;
+
+            case "refreshvalues":
+                // this can take 10-20 seconds
+                node.refreshValues().then((_res) => {
+                    let resp = req.createResponse(null)
+                    hc.sendResponse(resp) // async
+                    log.info("refreshvalues completed")
+                }).catch(err => {
+                    log.info("refreshvalues failed: ", err)
+                    let resp = req.createResponse(null, err)
+                    hc.sendResponse(resp) // async
+                })
+                // request is running, no status neeeded
+                notif = req.createNotification()
+                hc.sendNotification(notif)
+            break;
+
+            default:
+                handled = false
+        }
+    } catch (err:any) {
+        log.warn(req.operation + "failed: ", err)
+        let resp = req.createResponse(null, err)
+        hc.sendResponse(resp)
+    }
+    return handled
+}
+
+
+// handle Vid requests.
+//
+// This sends responses asynchronously
+function  handleVidAction(
+    req: RequestMessage, node:ZWaveNode,  hc: IAgentConnection) {
+
+    // VID based configuration and actions
+    //  currently propertyIDs are also accepted.
+    // FIXME: only allow defined actions
+    // FIXME: convert actionValue to expected type
+    const propVid = getVidFromActionName(req.name)
+    if (propVid) {
+        // this is a known property
+        setValue(node, propVid, req.input)
+            .then(progress => {
+                if (progress === StatusCompleted) {
+                    const newValue = getVidValue(node, propVid)
+                    let resp = req.createResponse(newValue)
+                    // FIXME: this should return an ActionStatus value!
+                    hc.sendResponse(resp)
+                    // no longer needed
+                    // zwapi.onValueUpdate(node, propVid, newValue)
+                } else if (progress === StatusRunning) {
+                    // FIXME: add notification support
+                    // const notif = req.createNotification()
+                    // hc.sendNotification(notif)
+                }
+            })
+            .catch(err => {
+                // send a failed response
+                let resp = req.createResponse(null, err)
+                hc.sendResponse(resp)
+                log.error(err)
+            })
+    } else {
+        let err = new Error("action '" + req.name + "' is not a known action for thing '" +
+            req.thingID + "'")
+        let resp = req.createResponse(null, err)
+        log.error(err)
+        hc.sendResponse(resp)
+    }
 }

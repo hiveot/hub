@@ -1,15 +1,36 @@
 import type {ZWaveNode} from "zwave-js";
 import {CommandClasses, type ValueID} from "@zwave-js/core";
 import * as vocab from "../hivelib/api/vocab/vocab.js";
+import {ActionAffordance} from "../hivelib/wot/TD.ts";
+import {ValueMetadata} from "@zwave-js/core/build/values/Metadata";
 
 
 // ValueID to TD event,action or property affordance type
 export interface VidAffordance {
     // @type of the property, event or action, "" if not known
     atType: string,
+    // The property/event/action name that identifies this vid
+    name: string
     // attr is read-only property; config is writable property
-    vidType: "action" | "event" | "property"  | undefined
+    affType: "action" | "event" | "property"  | undefined
+
+    // value metadata
+    meta: ValueMetadata
+
+    // affordance title
+    title: string | undefined
+    //
+    vidID:string
 }
+
+
+// static map of action name to vid conversion
+// used for invoking actions
+const act2vidMap = new Map<string,ValueID>()
+// static map of property name to vid conversion
+// used for handling property writes
+const prop2vidMap = new Map<string,ValueID>()
+
 
 // Override map of zwavejs VID to HiveOT action, event, config or attributes.
 //
@@ -23,30 +44,36 @@ const overrideMap: Map<string, Partial<VidAffordance> | undefined> = new Map([
     ["32-duration", {}],
     ["32-restorePrevious", {}],
 
-    // Binary Switch 0x25 (37) is an actuator
-    ["37-currentValue", {atType: vocab.PropSwitch, vidType: "event"} ],
-    ["37-targetValue", {atType: vocab.ActionSwitch, vidType: "action"}],
+    // Binary Switch 0x25 (37) is an actuator; convert it to a property and action with the same name
+    ["37-currentValue", {atType: vocab.PropSwitch, affType: "property", name:"switch", "title":"On/Off Status"} ],
+    ["37-targetValue", {atType: vocab.ActionSwitch, affType: "action", name:"switch", "title":"On/Off Control"}],
 
     // Multilevel Switch (38) is an actuator
 
     // Binary Sensor (48)
-    ["48-Any", {atType: vocab.PropAlarmStatus, vidType: "event"}],
+    ["48-Any", {atType: vocab.PropAlarmStatus, affType: "event"}],
 
     // Meter - electrical
-    ["50-value-65537", {atType: vocab.PropElectricEnergy, vidType: "event"}],
-    ["50-value-66049", {atType: vocab.PropElectricPower, vidType: "event"}],
-    ["50-value-66561", {atType: vocab.PropElectricVoltage, vidType: "event"}],
-    ["50-value-66817", {atType: vocab.PropElectricCurrent, vidType: "event"}],
-    ["50-reset", {vidType: "action"}], // for managers, not operators
+    ["50-value-65537", {atType: vocab.PropElectricEnergy, affType: "event", name: "energy"}],
+    ["50-value-66049", {atType: vocab.PropElectricPower, affType: "event", name: "power"}],
+    ["50-value-66561", {atType: vocab.PropElectricVoltage, affType: "event", name: "voltage"}],
+    ["50-value-66817", {atType: vocab.PropElectricCurrent, affType: "event", name: "current"}],
+    // reset is an action not a property; stateless
+    ["50-reset", {affType: "action"}], // for managers, not operators
 
     // Notification
     ["113-Home Security-Motion sensor status",
-        {atType: vocab.PropAlarmMotion, vidType: "event"}],
+        {atType: vocab.PropAlarmMotion, affType: "event"}],
 ]);
 
 
 // Default rules to determine whether the vid is an attr, config, event, action or
 // to be ignored.
+//
+// @param node the node whose affordance to get
+// @param vid the vid (property/event/action) whose affordance to get
+// @param maxNrScenes  only provide affordances for a limited nr of scenes
+//
 // This returns:
 //  actuator: the vid is writable and has a value or default
 //  action: the vid is writable, not an actuator, and not readable
@@ -86,7 +113,10 @@ function defaultVidAffordance(node: ZWaveNode, vid: ValueID, maxNrScenes: number
         case CommandClasses["Multilevel Switch"]:
         case CommandClasses["Simple AV Control"]:
         case CommandClasses["Window Covering"]: {
-            return "action";
+            if (vidMeta.writeable) {
+                return "action";
+            }
+            return "property"
         }
 
         //-- CC's for data reporting devices (sensor)
@@ -169,37 +199,122 @@ function defaultVidAffordance(node: ZWaveNode, vid: ValueID, maxNrScenes: number
 }
 
 
-// getVidAffordance determines how to represent the Vid in the TD.
-// This first uses the default rules based mainly on the Vid's CommandClass and writability,
-// then applies the override map to deal with individual Vids.
+// getAffordanceFromVid determines how to represent the Vid in the TD.
+//
+// This first gets the vidID based on the Vid's CommandClass, zw property name and endpoint,
+// Then the override map is applied  to deal with specific Vids.
 // The override map is currently hard coded but intended to be moved to a configuration file.
 //
 // Returns a VidAffordance object or undefined if the Vid is to be ignored.
-export default function getVidAffordance(node: ZWaveNode, vid: ValueID, maxNrScenes: number): VidAffordance | undefined {
+export default function getAffordanceFromVid(node: ZWaveNode, vid: ValueID, maxNrScenes: number): VidAffordance | undefined {
     // Determine default values for @type and affordance
     const affordance = defaultVidAffordance(node, vid, maxNrScenes)
-    const atType = ""
-    const va: VidAffordance = {
-        atType: atType,
-        vidType: affordance
+    if (!affordance) {
+        return
     }
 
-    // Apply values from an override
-    let mapKey = vid.commandClass + "-" + String(vid.property)
-    if (vid.propertyKey != undefined) {
-        mapKey += "-" + String(vid.propertyKey)
+    const va: VidAffordance = {
+        vidID: "",
+        name: "",
+        atType: "",
+        affType: affordance,
+        title:"",
+        meta: node.getValueMetadata(vid)
     }
-    if (overrideMap.has(mapKey)) {
-        const override = overrideMap.get(mapKey)
+
+
+    // Apply values from an override
+    // first determine the unique vid identifier. This is used as the default property name.
+    //
+    //  Format: {vid.commandClass}-{vid.property}[-{vid.endpoint}][-{vid.propertyKey}]
+    //  With spaces replaced by underscore '_'.
+    //
+    va.vidID = getVidID(vid)
+
+    // the overrideMap can replace property info
+    va.name = va.vidID
+    if (overrideMap.has(va.vidID)) {
+        const override = overrideMap.get(va.vidID)
         if (!override) {
             return undefined
         }
-        if (override.atType != undefined) {
+        if (override.atType) {
             va.atType = override.atType
         }
-        if (override.vidType != undefined) {
-            va.vidType = override.vidType
+        if (override.affType) {
+            va.affType = override.affType
+        }
+        if (override.name) {
+            va.name = override.name
+        }
+        // the property title can be overridden
+        if (override.title) {
+            va.title = override.title
         }
     }
-    return va.vidType ? va : undefined
+
+    // store the vid by name for easy lookup on incoming action or property write requests
+    // since vids can change when they are refreshed, keep updating it.
+    if (affordance === "action") {
+        // in case actions and properties have different vid
+        act2vidMap.set(va.name, vid)
+    } else {
+        prop2vidMap.set(va.name, vid)
+    }
+    // store the vid by property name for easy lookup on incoming requests
+    // since vids can change when they are refreshed, keep updating it.
+    // prop2vidMap.set(va.name, vid)
+    return va
+}
+
+
+/**
+getVidID returns the unique identifier of the vid and update the vidID:vid map
+don't use directly. Use getAffordanceFromVid instead.
+
+Format: {vid.commandClass}-{vid.property}[-{vid.propertyKey}][-{vid.endpoint}]
+
+Spaces are replaced by _
+
+Used for TD properties, events, actions and for sending events
+*/
+function getVidID(vid: ValueID): string {
+    let vidID = String(vid.commandClass) + "-" + String(vid.property)
+
+    if (vid.propertyKey != undefined) {
+        vidID += "-" + String(vid.propertyKey)
+    }
+
+    // only if there are multiple endpoints then append it
+    if (vid.endpoint) {
+        vidID += "-" + String(vid.endpoint)
+    }
+
+    // property/event/action names cannot have spaces
+    vidID = vidID.replaceAll(" ", "_")
+    return vidID
+}
+
+
+// getVidFromActionName returns the vid of an action affordance.
+//
+// This uses the previously saved action->vid map.
+// Intended for finding the vid to update configuration or initiate an action.
+//
+// This returns undefined if no such property exists.
+export function getVidFromActionName(name:string): ValueID|undefined {
+    const vid = act2vidMap.get(name)
+    return vid
+}
+
+
+// getVidFromPropertyName reconstructs a vid of a property affordance.
+//
+// This uses the previously saved property->vid map.
+// Intended for finding the vid to update configuration or initiate an action.
+//
+// This returns undefined if no such property exists.
+export function getVidFromPropertyName(name:string): ValueID|undefined {
+    const vid = prop2vidMap.get(name)
+    return vid
 }

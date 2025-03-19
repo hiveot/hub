@@ -49,7 +49,7 @@ func RenderLatestValueRow(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		iout := ct.GetValue(affType, name)
 		fragment = fmt.Sprintf(addRowTemplate,
-			tputils.DecodeAsDatetime(iout.Updated), iout.Value.Text(), unit)
+			tputils.DecodeAsDatetime(iout.Updated, "WT"), iout.Value.Text(), unit)
 	} else {
 		fragment = fmt.Sprintf("")
 	}

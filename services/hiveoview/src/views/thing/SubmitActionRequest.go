@@ -16,6 +16,7 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 	var newValue any
 	actionTitle := ""
 
+	// when RenderCardInput submits a checkbox its value is "" (false) or "on" (true)
 	thingID := chi.URLParam(r, "thingID")
 	actionName := chi.URLParam(r, "name")
 	// booleans from form are non-values. Treat as false

@@ -26,21 +26,21 @@ import {
 
 import type ZWAPI from "./ZWAPI.ts";
 import logVid from "./logVid.ts";
-import getPropName from "./getPropName.ts";
-import getVidAffordance, {type VidAffordance} from "./getVidAffordance.ts";
+import getAffordanceFromVid, { type VidAffordance} from "./getAffordanceFromVid.ts";
 import {getDeviceType} from "./getDeviceType.ts";
 
 
 // Add the ZWave value data to the TD as an action
 // Actions in this binding have the same output schema as input schema
-function addAction(td: TD, node: ZWaveNode, vid: TranslatedValueID, name: string, va: VidAffordance): ActionAffordance {
+function addAction(td: TD, node: ZWaveNode, vid: TranslatedValueID, va: VidAffordance): ActionAffordance {
     // let vidMeta = node.getValueMetadata(vid)
 
     // actions without input have no schema. How to identify these?
     const schema = new DataSchema()
     SetDataSchema(schema, node, vid)
+    // va.title takes precendence if provided
     const action = td.AddAction(
-        name, schema.title || name, schema.description, schema)
+        va.name, va.title || schema.title ||  va.name, schema.description, schema)
         .setVocabType(va.atType)
 
     if (action.input) {
@@ -56,23 +56,28 @@ function addAction(td: TD, node: ZWaveNode, vid: TranslatedValueID, name: string
 }
 
 // Add the ZWave value data to the TD as an attribute property
-function addProperty(td: TD, node: ZWaveNode, vid: TranslatedValueID, name: string, va: VidAffordance): PropertyAffordance {
+function addProperty(tdi: TD, node: ZWaveNode, vid: TranslatedValueID,  va: VidAffordance): PropertyAffordance {
 
-    const prop = td.AddProperty(name, va?.atType, WoTDataTypeNone, "")
+    const prop = tdi.AddProperty(
+        va.name, va.name, "", WoTDataTypeNone, va.atType)
 
     // if va is an action then this property is readonly
     // SetDataSchema also sets the title, data type and read-only
     SetDataSchema(prop, node, vid)
+    if (va.title) {
+        prop.title = va.title
+    }
     // action status is also sent as read-only property
-    if (va?.vidType === "action") {
+    if (va?.affType === "action") {
         prop.readOnly = true
     }
     return prop
 }
 
 // Add the ZWave VID to the TD as a configuration property
-function addConfig(td: TD, node: ZWaveNode, vid: TranslatedValueID, name: string, va: VidAffordance): PropertyAffordance {
-    const prop = td.AddProperty(name, va.atType, WoTDataTypeNone, "")
+function addConfig(tdi: TD, node: ZWaveNode, vid: TranslatedValueID, va: VidAffordance): PropertyAffordance {
+    const prop = tdi.AddProperty(
+        va.name, va.title || va.name,  "",WoTDataTypeNone, va.atType)
     prop.readOnly = false
     // SetDataSchema also sets the title and data type
     SetDataSchema(prop, node, vid)
@@ -80,12 +85,13 @@ function addConfig(td: TD, node: ZWaveNode, vid: TranslatedValueID, name: string
 }
 
 // Add the ZWave VID to the TD as an event
-function addEvent(td: TD, node: ZWaveNode, vid: TranslatedValueID, name: string, va: VidAffordance): EventAffordance {
+function addEvent(td: TD, node: ZWaveNode, vid: TranslatedValueID,  va: VidAffordance): EventAffordance {
 
     const schema = new DataSchema()
     SetDataSchema(schema, node, vid)
 
-    const ev = td.AddEvent(name, schema.title || name, schema.description, schema)
+    const ev = td.AddEvent(
+        va.name, va.title || schema.title || va.name, schema.description, schema)
         .setVocabType(va.atType)
 
     // SetDataSchema use the dataschema title, not the event data title
@@ -96,16 +102,18 @@ function addEvent(td: TD, node: ZWaveNode, vid: TranslatedValueID, name: string,
     return ev
 }
 
-// parseNodeInfo converts a ZWave Node into a WoT TD document
-// - extract available node attributes and configuration
-// - convert ZWave vocabulary to WoT/HiveOT vocabulary
-// - build a TD document containing properties, events and actions
-// - if this is the controller node, add controller attributes and actions
-// @param zwapi: wrapper around the zwave driver
-// @param node: the zwave node definition
-// @param vidLogFD: optional file handle to log VID info to CSV for further analysis
-// @param maxNrScenes: limit the nr of scenes in the TD as it would bloat the TD to a massive size.
-export default function getNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | undefined, maxNrScenes: number): TD {
+/**
+createNodeTD converts a ZWave Node into a WoT TD document
+- extract available node attributes and configuration
+- convert ZWave vocabulary to WoT/HiveOT vocabulary
+- build a TD document containing properties, events and actions
+- if this is the controller node, add controller attributes and actions
+@param zwapi wrapper around the zwave driver
+@param node the zwave node definition
+@param vidLogFD optional file handle to log VID info to CSV for further analysis
+@param maxNrScenes limit the nr of scenes in the TD as it would bloat the TD to a massive size.
+ */
+export default function createNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | undefined, maxNrScenes: number): TD {
 
     //--- Step 1: TD definition
     const deviceID = zwapi.getDeviceID(node.id)
@@ -132,31 +140,28 @@ export default function getNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: numbe
     // these names must match those used in parseNodeValues()
     tdi.AddProperty("associationCount", "Association Count","",WoTDataTypeNumber, );
 
-    tdi.AddPropertyIf(node.canSleep, "canSleep","Can Sleep",
-        "Device sleeps to conserve battery",WoTDataTypeBool);
+    tdi.AddPropertyIf(node.canSleep,
+        "canSleep","Can Sleep", "Device sleeps to conserve battery", WoTDataTypeBool);
     if (node.deviceClass) {
         // tdi.AddPropertyIf( node.deviceClass.basic,"deviceClassBasic",
         //     node.deviceClass.basic.label, "", WoTDataTypeString);
-        tdi.AddPropertyIf(node.deviceClass.generic,"deviceClassGeneric",
-            node.deviceClass.generic.label,"", WoTDataTypeString);
-        tdi.AddPropertyIf(node.deviceClass.specific.label, "deviceClassSpecific",
-            node.deviceClass.specific.label,"", WoTDataTypeString);
+        tdi.AddPropertyIf(node.deviceClass.generic,
+            "deviceClassGeneric", node.deviceClass.generic.label,"", WoTDataTypeString);
+        tdi.AddPropertyIf(node.deviceClass.specific.label,
+            "deviceClassSpecific", node.deviceClass.specific.label,"", WoTDataTypeString);
         // this.setIf("supportedCCs", node.deviceClass.generic.supportedCCs);
     }
-    tdi.AddPropertyIf(node.deviceDatabaseUrl, "deviceDatabaseURL","Database URL",
-        "Link to database with device information", WoTDataTypeString,);
-    tdi.AddProperty(vocab.PropDeviceDescription,"Description",
-        "", WoTDataTypeString)
-        .setVocabType(vocab.PropDeviceDescription);
-    tdi.AddProperty("endpointCount", "Endpoints",
-        "Number of endpoints in this node",WoTDataTypeNumber);
-    tdi.AddProperty(vocab.PropDeviceFirmwareVersion,
-        "Device firmware version","", WoTDataTypeString, vocab.PropDeviceFirmwareVersion);
+    tdi.AddPropertyIf(node.deviceDatabaseUrl,
+        "deviceDatabaseURL","Database URL", "Link to database with device information", WoTDataTypeString,);
+    tdi.AddProperty(vocab.PropDeviceDescription, "Description", "", WoTDataTypeString, vocab.PropDeviceDescription);
 
-    tdi.AddPropertyIf(node.getHighestSecurityClass(), "highestSecurityClass",
-        "Security Class", "",WoTDataTypeString);
-    tdi.AddPropertyIf(node.interviewAttempts, "interviewAttempts",
-        "Nr interview attempts","",WoTDataTypeNumber);
+    tdi.AddProperty("endpointCount", "Endpoints", "Number of endpoints in this node",WoTDataTypeNumber);
+    tdi.AddProperty(vocab.PropDeviceFirmwareVersion, "Device firmware version","", WoTDataTypeString, vocab.PropDeviceFirmwareVersion);
+
+    tdi.AddPropertyIf(node.getHighestSecurityClass(),
+        "highestSecurityClass", "Security Class", "",WoTDataTypeString);
+    tdi.AddPropertyIf(node.interviewAttempts,
+        "interviewAttempts", "Nr interview attempts","",WoTDataTypeNumber);
     if (node.interviewStage) {
         tdi.AddProperty("interviewStage", "Device Interview Stage", "",
             WoTDataTypeString).SetAsEnum(InterviewStage)
@@ -177,46 +182,44 @@ export default function getNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: numbe
         "Time this node was last seen", WoTDataTypeString)
 
 
-    tdi.AddPropertyIf(node.manufacturerId, "manufacturerId","Manufacturer ID",
-        "", WoTDataTypeString);
+    // tdi.AddPropertyIf(node.manufacturerId,
+    //     "manufacturerId","Manufacturer ID", "", WoTDataTypeString);
 
-    tdi.AddPropertyIf(node.deviceConfig?.manufacturer, "manufacturerName",
-        "Manufacturer Name","", WoTDataTypeString,vocab.PropDeviceMake);
+    tdi.AddPropertyIf(node.deviceConfig?.manufacturer,
+        "manufacturerName", "Manufacturer Name","", WoTDataTypeString,vocab.PropDeviceMake);
 
-    tdi.AddPropertyIf(node.maxDataRate, "maxDataRate","Max data rate",
-        "Device maximum communication data rate", WoTDataTypeNumber);
+    tdi.AddPropertyIf(node.maxDataRate,
+        "maxDataRate","Max data rate", "Device maximum communication data rate", WoTDataTypeNumber);
     if (node.nodeType) {
         // td.AddProperty("nodeType", "ZWave node type",
         //     "",WoTDataTypeNumber)
         // td.AddProperty("nodeTypeName", "ZWave node type name",
         //     "",WoTDataTypeString).SetAsEnum(NodeType)
     }
-    tdi.AddPropertyIf(node.productId, "productId","Product ID",
-        "", WoTDataTypeNumber);
-    tdi.AddPropertyIf(node.productType, "productType","Product Type",
-        "", WoTDataTypeNumber);
-    tdi.AddPropertyIf(node.protocolVersion, "protocolVersion","ZWave protocol version",
-        "", WoTDataTypeString);
+    // tdi.AddPropertyIf(node.productId,
+    //     "productId", "Product ID", "", WoTDataTypeNumber);
+    // tdi.AddPropertyIf(node.productType,
+    //     "productType","Product Type", "", WoTDataTypeNumber);
+    tdi.AddPropertyIf(node.protocolVersion,
+        "protocolVersion","ZWave protocol version", "", WoTDataTypeString);
 
-    tdi.AddPropertyIf(node.sdkVersion, vocab.PropDeviceSoftwareVersion,"SDK version",
-        "", WoTDataTypeString,vocab.PropDeviceSoftwareVersion);
+    tdi.AddPropertyIf(node.sdkVersion,
+        vocab.PropDeviceSoftwareVersion,"SDK version", "", WoTDataTypeString, vocab.PropDeviceSoftwareVersion);
     if (node.status) {
-        tdi.AddProperty(vocab.PropDeviceStatus,"Node status",
-            "", WoTDataTypeNumber, vocab.PropDeviceStatus)
+        tdi.AddProperty(vocab.PropDeviceStatus, "Node status", "", WoTDataTypeNumber, vocab.PropDeviceStatus)
             .SetAsEnum(NodeStatus)
     }
-    tdi.AddPropertyIf(node.supportedDataRates, "supportedDataRates","ZWave Data Speed",
-        "", WoTDataTypeString);
+    tdi.AddPropertyIf(node.supportedDataRates,
+        "supportedDataRates","ZWave Data Speed", "", WoTDataTypeString);
 
-    tdi.AddPropertyIf(node.userIcon, "userIcon","Icon",
-        "", WoTDataTypeString);
+    tdi.AddPropertyIf(node.userIcon,
+        "userIcon","Icon","", WoTDataTypeString);
 
     // show whether this is ZWave+
     if (node.zwavePlusNodeType) {
-        tdi.AddProperty("zwavePlusNodeType", "ZWave+ Node Type",
-            "", WoTDataTypeNumber)
-        const prop = tdi.AddProperty("zwavePlusNodeTypeName", "ZWave+ Node Type Name",
-            "", WoTDataTypeString)
+        tdi.AddProperty("zwavePlusNodeType", "ZWave+ Node Type", "", WoTDataTypeNumber)
+        const prop = tdi.AddProperty(
+            "zwavePlusNodeTypeName", "ZWave+ Node Type Name", "", WoTDataTypeString)
         if (node.zwavePlusNodeType != undefined) {
             prop.SetAsEnum(ZWavePlusNodeType)
         } else {
@@ -224,14 +227,12 @@ export default function getNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: numbe
         }
     }
     if (node.zwavePlusRoleType) {
-        tdi.AddProperty("zwavePlusRoleType","ZWave+ Role Type",
-            "",  WoTDataTypeNumber)
-        tdi.AddProperty("zwavePlusRoleTypeName","ZWave+ Role Type Name",
-            "", WoTDataTypeString)
+        tdi.AddProperty("zwavePlusRoleType", "ZWave+ Role Type", "",  WoTDataTypeNumber)
+        tdi.AddProperty("zwavePlusRoleTypeName", "ZWave+ Role Type Name", "", WoTDataTypeString)
             .SetAsEnum(ZWavePlusRoleType)
     }
-    tdi.AddPropertyIf(node.zwavePlusVersion, "zwavePlusVersion","Z-Wave+ Version",
-        "",WoTDataTypeNumber);
+    tdi.AddPropertyIf(node.zwavePlusVersion,
+        "zwavePlusVersion","Z-Wave+ Version", "",WoTDataTypeNumber);
 
     // actions
 
@@ -278,8 +279,8 @@ export default function getNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: numbe
         endpoint: 0,
         property: "name"
     }
-    const titleKey = getPropName(nameVid)
-    let prop = tdi.AddProperty(titleKey, "Device name",
+    const titleAff = getAffordanceFromVid(node,nameVid,0)
+    let prop = tdi.AddProperty(titleAff?.name||"title", "Device name",
         "Custom device name/title",  WoTDataTypeString, vocab.PropDeviceTitle);
     prop.readOnly = false
 
@@ -288,40 +289,41 @@ export default function getNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: numbe
         endpoint: 0,
         property: "location"
     }
-    const locationKey = getPropName(locationVid)
-    prop = tdi.AddProperty(locationKey,"Device location",
+    const locationAff = getAffordanceFromVid(node,locationVid,0)
+    prop = tdi.AddProperty(locationAff?.name||"location", "Device location",
         "Description of the device location",  WoTDataTypeString,vocab.PropLocation);
     prop.readOnly = false
 
-    // now continue with the other vids
+    // now continue with the zwave provided vids
     const vids = node.getDefinedValueIDs()
     for (const vid of vids) {
-        const va = getVidAffordance(node, vid, maxNrScenes)
+        const va = getAffordanceFromVid(node, vid, maxNrScenes)
 
         // let pt = getPropType(node, vid)
-        const tdPropName = getPropName(vid)
         if (va) {
-            logVid(vidLogFD, node, vid, tdPropName, va)
+            logVid(vidLogFD, node, vid, va)
         }
 
         // the vid is either config, attr, action or event based on CC
-        switch (va?.vidType) {
+        switch (va?.affType) {
             case "action":
                 // actuators accept input actions
-                addAction(tdi, node, vid, tdPropName, va)
+                addAction(tdi, node, vid, va)
                 // if action output is stateful there is a read-only property for presenting
                 // the latest state. Some devices can also be manually controlled which will
                 // update the property but not the action status.
                 // let vidMeta = node.getValueMetadata(vid)
-                addProperty(tdi, node, vid, tdPropName, va)
+                if (va.meta.readable) {
+                    // addProperty(tdi, node, vid, va)
+                }
                 break;
             case "event":
                 // sensors emit events
-                addEvent(tdi, node, vid, tdPropName, va)
+                addEvent(tdi, node, vid, va)
                 break;
             // these are varieties of properties
             case "property":
-                addProperty(tdi, node, vid, tdPropName, va)
+                addProperty(tdi, node, vid, va)
                 break;
             default:
             // ignore this vid

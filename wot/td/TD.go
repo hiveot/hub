@@ -250,40 +250,6 @@ func (tdoc *TD) AddPropertyAsInt(
 	return tdoc.AddProperty(propName, title, description, wot.DataTypeInteger)
 }
 
-// AddSwitchAction is short for adding an action to control an on/off switch
-//func (tdoc *TD) AddSwitchAction(actionName string, title string, description string) *ActionAffordance {
-//	act := tdoc.AddAction(actionName, title, description,
-//		&DataSchema{
-//			AtType: vocab.ActionSwitchOnOff,
-//			Type:   wot.DataTypeBool,
-//			Enum:   []interface{}{"on", "off"},
-//		}).SetAtType(vocab.ActionSwitchOnOff)
-//	return act
-//}
-
-// AddSwitchEvent is short for adding an event for a switch
-//func (tdoc *TD) AddSwitchEvent(eventName string, title string, description string) *EventAffordance {
-//	aff := tdoc.AddEvent(eventName, title, description,
-//		&DataSchema{
-//			AtType: vocab.PropSwitchOnOff,
-//			Type:   wot.DataTypeBool,
-//			Enum:   []interface{}{"on", "off"},
-//		})
-//	aff.SetAtType(vocab.PropSwitchOnOff)
-//	return aff
-//}
-
-// AddSensorEvent is short for adding an event for a generic sensor
-//func (tdoc *TD) AddSensorEvent(eventName string, title string, description string) *EventAffordance {
-//	aff := tdoc.AddEvent(eventName, title, description,
-//		&DataSchema{
-//			AtType: vocab.PropEnv,
-//			Type:   wot.DataTypeNumber,
-//		})
-//	aff.SetAtType(vocab.PropEnv)
-//	return aff
-//}
-
 // AsMap returns the TD document as a key-value map
 func (tdoc *TD) AsMap() map[string]interface{} {
 	//tdoc.updateMutex.RLock()

@@ -117,7 +117,7 @@ func (svc *DigitwinRouter) ForwardRequestToRemoteAgent(
 	// actions return a notification with ActionStatus record with status pending.
 	// other requests simply don't return anything until an async response is received.
 	if stored {
-		notif := req.CreateRunningNotification()
+		notif := req.CreateNotification()
 		notif.Data = actionStatus
 		svc.transportServer.SendNotification(notif)
 	}

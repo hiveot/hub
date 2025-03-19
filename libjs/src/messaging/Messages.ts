@@ -22,6 +22,8 @@ export const StatusFailed = "failed"
 
 
 // NotificationMessage serves to notify a single client of an event or property change
+// if operation is invokeaction then this means the action is running.
+// if operation is writeproperty then this means the write is running.
 export class NotificationMessage extends Object {
     public constructor(op:string, thingID:string,name:string,data:any,
                        err?:string, correlationID?:string) {
@@ -146,6 +148,15 @@ export class RequestMessage extends Object {
     // This field is required.
     public thingID: string = ""
 
+    // return a notification with a running status of this request
+    // @param output is the optional progress output.
+    public createNotification(output?: any): NotificationMessage {
+        let notif = new NotificationMessage(
+            this.operation, this.thingID, this.name, output, undefined, this.correlationID)
+        return notif
+    }
+    // return a response for the request and optionall an error
+    // if err is provided then output is either undefined or contains error details.
     public createResponse(output: any, err?: Error): ResponseMessage {
         let resp = new ResponseMessage(
             this.operation, this.thingID, this.name, output, err?.message, this.correlationID)

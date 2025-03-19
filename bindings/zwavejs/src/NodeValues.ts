@@ -8,8 +8,8 @@ import {
 import {InterviewStage, SecurityClass} from '@zwave-js/core';
 
 import * as vocab from "../hivelib/api/vocab/vocab.js";
-import getPropName from "./getPropName.ts";
 import {getVidValue} from "./ZWAPI.ts";
+import getAffordanceFromVid from "./getAffordanceFromVid.ts";
 
 
 // NodeValues holds the latest values of a single node regardless if it is a prop, event or action
@@ -83,7 +83,7 @@ export default class NodeValues {
 
         // this.setIf("label", node.deviceConfig?.label)
         this.setIf("nodeLabel", node.label)
-        this.setIf("manufacturerId", node.manufacturerId);
+        // this.setIf("manufacturerId", node.manufacturerId);
         this.setIf("manufacturerName", node.deviceConfig?.manufacturer);
 
         this.setIf("maxDataRate", node.maxDataRate)
@@ -114,8 +114,11 @@ export default class NodeValues {
         const vids = node.getDefinedValueIDs()
         for (const vid of vids) {
             const vidValue = getVidValue(node, vid)
-            const propID = getPropName(vid)
-            this.setIf(propID, vidValue)
+            const va = getAffordanceFromVid(node,vid,0)
+            if (va) {
+                // const propID = getVidID(vid)
+                this.setIf(va.name, vidValue)
+            }
         }
         // let nameVid = {
         //     commandClass:0x77, endpoint:0, property: "name"}

@@ -74,19 +74,22 @@ type RequestMessage struct {
 	ThingID string `json:"thingID"`
 }
 
-// CreateResponse is a helper to easily create a response from a request with the
-// status set to 'completed' or failed if err is not nil.
-// If err is set then the status is set to failed.
+// CreateResponse is a helper to easily create a response from a request
+//
+//	output contains the request output
+//	err is set when the request has failed. In that case output can contain error details
 func (req *RequestMessage) CreateResponse(output any, err error) (resp *ResponseMessage) {
 	resp = NewResponseMessage(
 		req.Operation, req.ThingID, req.Name, output, err, req.CorrelationID)
 	return resp
 }
 
-// CreateRunningNotification is a helper to easily create a 'running' status update while a request is running.
-func (req *RequestMessage) CreateRunningNotification() (notif *NotificationMessage) {
-	notif = NewNotificationMessage(
-		req.Operation, req.ThingID, req.Name, nil)
+// CreateNotification is a helper to easily create a status update of a running request.
+//
+//	data contains the payload to include in the notification
+func (req *RequestMessage) CreateNotification() (notif *NotificationMessage) {
+
+	notif = NewNotificationMessage(req.Operation, req.ThingID, req.Name, nil)
 	notif.CorrelationID = req.CorrelationID
 	return notif
 }

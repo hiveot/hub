@@ -3,14 +3,14 @@ import type { TranslatedValueID, ValueMetadataNumeric, ValueMetadataString, ZWav
 import type { ConfigurationMetadata, ValueMetadataBuffer } from "@zwave-js/core";
 import { CommandClasses, ConfigValueFormat } from "@zwave-js/core";
 
-import type { VidAffordance } from "./getVidAffordance.ts";
+import type { VidAffordance } from "./getAffordanceFromVid.ts";
 import {getVidValue} from "./ZWAPI.ts";
 
 // Log the given vid to a CSV file.
 // If vid is undefined, then write the header, otherwise the vid data.
 // Intended for gathering info on zwave devices.
 export default function logVid(logFd: number | undefined, node?: ZWaveNode, vid?: TranslatedValueID,
-    propID?: string, va?: VidAffordance) {
+    va?: VidAffordance) {
     if (!logFd) {
         return
     } else if (!node || !vid) {
@@ -92,6 +92,6 @@ export default function logVid(logFd: number | undefined, node?: ZWaveNode, vid?
         `${prop};${propName};${propKey};${propKeyName};` +
         `${vidValue};${vm.label};${vm.type};${vm.readable};${vm.writeable};${defaultValue};${description};` +
         `${unit};${min};${max};${states};${allowManualEntry};${ccSpecific};${other};` +
-        `${propID};${va?.vidType};${dataType};${va?.atType}\n`
+        `${va?.name};${va?.affType};${dataType};${va?.atType}\n`
     fs.appendFileSync(logFd, vidLine)
 }

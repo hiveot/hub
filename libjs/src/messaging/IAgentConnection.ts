@@ -1,7 +1,7 @@
 import TD from "../wot/TD.ts";
 import type IConsumerConnection from "./IConsumerConnection.ts";
 import  {type RequestHandler} from "./IConsumerConnection.ts";
-import {ResponseMessage} from "./Messages.ts";
+import {NotificationMessage, ResponseMessage} from "./Messages.ts";
 
 
 // IAgentClient defines the interface for use by  hub agents.
@@ -46,7 +46,11 @@ export default interface IAgentConnection extends IConsumerConnection {
     // @param td is the Thing Description document describing the Thing
     pubTD(td: TD): void
 
-    // sendResponse [agent] sends a response status message to the hub.
+    // sendNotification [agent] sends a notification message
+    // This can be used to send events, property updates and action progress
+    sendNotification(notif: NotificationMessage):void
+
+    // sendResponse [agent] sends an action/write response message to the hub.
     // The hub will update the status of the action in the digital twin and
     // notify the original sender.
     //
