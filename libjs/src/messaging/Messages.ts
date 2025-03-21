@@ -112,7 +112,7 @@ export class RequestMessage extends Object {
     // This is optional. If omitted, no response will be received.
     public correlationID?: string
 
-    // Created holds the timestamp the request was created using RFC3339milli
+    // Created holds the timestamp the request was created in utc
     // This MUST be set by the protocol server if not provided.
     public created?: string
 

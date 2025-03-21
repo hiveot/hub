@@ -233,7 +233,6 @@ func (sc *WssServerConnection) SendNotification(
 	if notif.Operation == wot.OpSubscribeEvent || notif.Operation == wot.OpSubscribeAllEvents {
 		correlationID := sc.subscriptions.GetSubscription(notif.ThingID, notif.Name)
 		if correlationID != "" {
-
 			slog.Info("SendNotification (event subscription)",
 				slog.String("clientID", sc.cinfo.ClientID),
 				slog.String("thingID", notif.ThingID),
@@ -253,9 +252,17 @@ func (sc *WssServerConnection) SendNotification(
 			msg, _ := sc.messageConverter.EncodeNotification(notif)
 			err = sc._send(msg)
 		}
+	} else if notif.Operation == wot.OpInvokeAction {
+		// action progress update, for original sender only
+		slog.Info("SendNotification (action status)",
+			slog.String("clientID", sc.cinfo.ClientID),
+			slog.String("thingID", notif.ThingID),
+			slog.String("name", notif.Name),
+		)
+		msg, _ := sc.messageConverter.EncodeNotification(notif)
+		err = sc._send(msg)
 	} else {
 		slog.Warn("Unknown notification: " + notif.Operation)
-		//err = sc._send(msg)
 	}
 	return err
 }

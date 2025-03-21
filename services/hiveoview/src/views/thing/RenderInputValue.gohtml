@@ -49,7 +49,7 @@
 {{else if eq .Schema.Type "boolean"}}
     {{/*	=== Switch Input ===*/}}
 {{/*    <h-switch name="value" off="Off" on="On" value="{{$iv}}"></h-switch>*/}}
-		  <input class="switchBoxSwitch" id="input-{{.Name}}" name="{{.Name}}"
+		  <input id="input-{{.Name}}" name="{{.Name}}"
            type="checkbox" role="switch" aria-invalid="false" autofocus
             {{if eq $iv "true"}} checked {{end}}
 	    />

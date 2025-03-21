@@ -2,6 +2,7 @@ package historyclient
 
 import "C"
 import (
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/services/history/historyapi"
 	"github.com/hiveot/hub/wot"
@@ -115,7 +116,7 @@ func (cl *HistoryCursorClient) Release() {
 // This returns an error if the cursor has expired or is not found.
 func (cl *HistoryCursorClient) Seek(timeStamp time.Time) (
 	thingValue *messaging.ThingValue, valid bool, err error) {
-	timeStampStr := timeStamp.Format(wot.RFC3339Milli)
+	timeStampStr := utils.FormatUTCMilli(timeStamp)
 	req := historyapi.CursorSeekArgs{
 		CursorKey: cl.cursorKey,
 		TimeStamp: timeStampStr,

@@ -2,12 +2,10 @@ package tputils
 
 import (
 	"fmt"
-	"github.com/araddon/dateparse"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"strconv"
 	"strings"
-	"time"
 )
 
 // Decode converts the any-type to the given interface type.
@@ -133,32 +131,4 @@ func DecodeAsObject(value any, object interface{}) error {
 		}
 		return err
 	}
-}
-
-// DecodeAsDatetime formats the given value to a time string, optionally with custom formatter
-// value is an iso timestamp
-// format is default RFC822, or use "WT" for a "weekday, time" if less than a week old
-func DecodeAsDatetime(value any, format ...string) string {
-	dateStr := DecodeAsString(value, 0)
-	createdTime, _ := dateparse.ParseAny(dateStr)
-	//createdTime.SetLocalTimezone()
-
-	formattedTime := ""
-
-	if format != nil && len(format) == 1 {
-		if format[0] == "WT" {
-			// Format weekday, time if less than a week old
-			age := time.Now().Sub(createdTime)
-			if age < time.Hour*24*7 {
-				formattedTime = createdTime.Format("Mon, 15:04:05 MST")
-			} else {
-				formattedTime = createdTime.Format(time.RFC822)
-			}
-		} else {
-			formattedTime = createdTime.Format(format[0])
-		}
-	} else {
-		formattedTime = createdTime.Format(time.RFC822)
-	}
-	return formattedTime
 }

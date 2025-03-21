@@ -86,7 +86,8 @@ export class HTimechart extends HTMLElement {
             scales: {
                 // Time axis
                 x: {
-                    max: "2024-07-23T15:00:00.000-07:00",
+                    // max: "2024-07-23T15:00:00.000-MST",
+                    // max: "2024-07-23T15:00:00.000-07:00",
                     grid: {
                         // offset: true,
                         drawTicks: true,
@@ -256,7 +257,6 @@ export class HTimechart extends HTMLElement {
         this.config.options.scales.x.min = newStartTime.toISO();
         this.config.options.scales.x.max = newEndTime.toISO();
 
-
         this.chart.update();
     }
 
@@ -277,6 +277,7 @@ export class HTimechart extends HTMLElement {
 
         this.config.options.scales.x.min = startTime.toISO();
         this.config.options.scales.x.max = endTime.toISO();
+
         // this.config.options.scales.x.clip= false;
 
         // if there is no data then show the No-Data element

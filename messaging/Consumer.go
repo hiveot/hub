@@ -218,6 +218,11 @@ func (co *Consumer) QueryAction(thingID, name string) (
 	value ActionStatus, err error) {
 
 	err = co.Rpc(wot.OpQueryAction, thingID, name, nil, &value)
+	// action has not run before
+	if err == nil && value.Status == "" {
+		value.ThingID = value.ThingID
+		value.Name = name
+	}
 	return value, err
 }
 

@@ -2,8 +2,8 @@ package tile
 
 import (
 	"github.com/hiveot/hub/lib/consumedthing"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"github.com/hiveot/hub/services/hiveoview/src/views/directory"
@@ -72,7 +72,7 @@ func (data RenderSelectSourcesTemplateData) GetUpdated(affType, thingID, name st
 	}
 	iout := ct.GetValue(affType, name)
 	if iout != nil {
-		tputils.DecodeAsDatetime(iout.Updated)
+		utils.FormatDateTime(iout.Updated)
 	}
 	return ""
 }

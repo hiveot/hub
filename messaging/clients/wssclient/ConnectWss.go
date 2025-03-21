@@ -91,9 +91,10 @@ func ConnectWSS(
 	if err != nil {
 		// FIXME: when unauthorized, don't retry. A new token is needed. (session ended).
 		if r != nil && r.StatusCode == http.StatusUnauthorized {
-			err = fmt.Errorf("Connection as '%s' to '%s' failed: %s",
+			msg := fmt.Sprintf("Unauthorized: Connection as '%s' to '%s' failed: %s",
 				cinfo.ClientID, cinfo.ConnectURL, err.Error())
-			slog.Warn(err.Error())
+			slog.Warn(msg)
+			err = messaging.UnauthorizedError
 		}
 		wssCancelFn()
 		return nil, nil, err

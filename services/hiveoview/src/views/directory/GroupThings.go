@@ -34,20 +34,11 @@ func GroupByAgent(tds map[string]*td.TD) []*AgentThings {
 	agentsList := make([]*AgentThings, 0, len(agentMap))
 	for _, grp := range agentMap {
 		agentsList = append(agentsList, grp)
-		SortThingsByTitle(grp.Things)
+		td.SortThingsByTitle(grp.Things)
 	}
 	// last sort the agents
 	sort.Slice(agentsList, func(i, j int) bool {
 		return agentsList[i].AgentID < agentsList[j].AgentID
 	})
 	return agentsList
-}
-
-// SortThingsByTitle as the name suggests sorts the things in the given slice
-func SortThingsByTitle(tds []*td.TD) {
-	sort.Slice(tds, func(i, j int) bool {
-		tdI := tds[i]
-		tdJ := tds[j]
-		return tdI.Title < tdJ.Title
-	})
 }

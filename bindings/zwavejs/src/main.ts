@@ -41,36 +41,19 @@ console.log("Starting hiveot zwavejs binding...")
     }
 
     //--- Step 2: Connect to the Hub
-    const hc =await ConnectToHub(appConfig.hubURL, appConfig.loginID, appConfig.caCertPEM, false)
-    if (!hc) {
-        throw("Unable to connect to the hub")
-    }
-    //
-    // if (!appConfig.hubURL) {
-    //     let uc = await locateHub()
-    //     appConfig.hubURL = uc.hubURL
-    // }
-    // let hc = NewHubClient(appConfig.hubURL, appConfig.loginID, appConfig.caCertPEM)
-
-    // need a key to connect, load or create it
-    // note that the HubClient determines the key type
-    // let kp = hc.createKeyPair()
-    // if (appConfig.clientKey) {
-    //     kp.importPrivate(appConfig.clientKey)
-    // } else {
-    //     fs.writeFileSync(appConfig.keyFile, kp.exportPrivate())
-    // }
+    let binding: ZwaveJSBinding
     try {
+        const hc = await ConnectToHub(appConfig.hubURL, appConfig.loginID, appConfig.caCertPEM, false)
         await hc.connectWithToken(appConfig.loginToken)
-    } catch(e) {
-        console.log("Unable to connect to the Hub:",e)
+
+        //--- Step 3: Start the binding and zwavejs driver
+        binding = new ZwaveJSBinding(hc, appConfig);
+        await binding.start();
+
+    } catch(e){
+        console.log("Unable to connect to the hub:",e)
         exit(1)
     }
-
-    //--- Step 3: Start the binding and zwavejs driver
-    const binding = new ZwaveJSBinding(hc, appConfig);
-
-    await binding.start();
 
     //--- Step 4: Wait for  SIGINT or SIGTERM signal to stop
     log.info("Ready. Waiting for signal to terminate")

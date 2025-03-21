@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"html/template"
@@ -50,13 +51,11 @@ func (svc *TemplateManager) GetTemplate(name string) (*template.Template, error)
 	}
 
 	// Reparse all templates
-	// TODO-1: parse only the files that are needed, but how to know which ones are?
-	// TODO-2: parse only if files have changed
 	slog.Debug("GetTemplate, parsing files")
 	t := template.New("hiveot")
 	t.Funcs(template.FuncMap{
-		"substr":   tputils.DecodeAsString,   // func(any,maxlen)
-		"datetime": tputils.DecodeAsDatetime, // func(any,format)
+		"substr":   tputils.DecodeAsString, // func(any,maxlen)
+		"datetime": utils.FormatDateTime,   // func(any,format)
 	})
 
 	templateFS := os.DirFS(svc.templatePath)
@@ -74,8 +73,8 @@ func (svc *TemplateManager) ParseAllTemplates() {
 	slog.Info("Parsing all templates")
 	t := template.New("hiveot")
 	t.Funcs(template.FuncMap{
-		"substr":   tputils.DecodeAsString,   // func(any,maxlen)
-		"datetime": tputils.DecodeAsDatetime, // func(any,format)
+		"substr":   tputils.DecodeAsString, // func(any,maxlen)
+		"datetime": utils.FormatDateTime,   // func(any,format)
 	})
 	// embed app templates first to allow components to override templates in block statements
 	if svc.templatePath == "" {

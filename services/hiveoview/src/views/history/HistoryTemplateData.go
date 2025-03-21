@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/consumedthing"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/hiveot/hub/services/hiveoview/src"
-	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	"time"
 )
@@ -107,7 +107,8 @@ func NewHistoryTemplateData(ct *consumedthing.ConsumedThing,
 		Name:           name,
 		Title:          ct.Title,
 		Timestamp:      timestamp,
-		TimestampStr:   timestamp.Format(wot.RFC3339Milli),
+		// chart expects ISO timestamp: yyyy-mm-ddTHH:MM:SS.sss-07:00
+		TimestampStr:   utils.FormatUTCMilli(timestamp),
 		DurationSec:    int(duration.Seconds()),
 		Stepped:        false,
 		Values:         nil,

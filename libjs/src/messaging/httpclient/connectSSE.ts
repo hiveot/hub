@@ -129,7 +129,7 @@ export async function  connectSSE(
         // }
         source.onerror = function (err: any) {
             // TODO: differentiate between an auth error and a broken connection
-            log.error("Connection error: "+baseURL+ssePath, err.message)
+            log.error("SSE Connection error: "+baseURL+ssePath, err.message)
             // source.close()
             if (source.readyState == EventSource.CLOSED) {
                 onConnection(ConnectionStatus.Disconnected)

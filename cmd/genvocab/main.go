@@ -53,7 +53,7 @@ func GenVocab(vocabDir string, force bool) error {
 	}
 	// force using updated timestamp
 	if force {
-		modTime = time.Now()
+		modTime = time.Now().UTC()
 	}
 	err = vocab.GenVocabGo(classes, constants, modTime)
 	if err != nil {

@@ -2,6 +2,7 @@ package historycli
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/services/history/historyclient"
@@ -134,7 +135,7 @@ func HandleListEvents(hc *messaging.Consumer, dThingID string, name string, limi
 		//	value = fmt.Sprintf("(%d properties)", len(props))
 		//}
 		// FIXME: reformat timestmp
-		updated := tv.Updated
+		updated := utils.FormatDateTime(tv.Updated)
 		fmt.Printf("%-30s %-30s %-20.20s %-30s\n",
 			tv.ThingID,
 			updated,

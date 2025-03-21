@@ -32,7 +32,7 @@ func (svc *OWServerBinding) setPrevValue(nodeID, attrName string, value any) {
 		svc.values[nodeID] = nodeValues
 	}
 	nodeValues[attrName] = NodeValueStamp{
-		timestamp: time.Now(),
+		timestamp: time.Now().UTC(),
 		value:     value,
 	}
 }

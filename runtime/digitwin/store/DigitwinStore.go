@@ -3,14 +3,14 @@ package store
 import (
 	"fmt"
 	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/tputils"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
-	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"sync"
-	"time"
 )
 
 // DTWBucketName contains the name of the digital twin instances storage bucket
@@ -142,7 +142,7 @@ func (svc *DigitwinStore) NewActionStart(req *messaging.RequestMessage) (
 	actionStatus.Input = req.Input
 	actionStatus.Status = messaging.StatusPending
 	actionStatus.Requested = req.Created
-	actionStatus.Id = req.CorrelationID
+	actionStatus.ActionID = req.CorrelationID
 	dtw.ActionStatuses[req.Name] = actionStatus
 	svc.changedThings[req.ThingID] = true
 
@@ -431,14 +431,60 @@ func (svc *DigitwinStore) UpdateTD(
 	svc.changedThings[dThingID] = true
 }
 
-// UpdateActionStatus (by agent) updates the action with a response.
+// UpdateActionWithNotification (by agent) updates the action with a notification.
 //
-// Note that a response means that the action is a completed.
+// notif is a action notification with progress status
+func (svc *DigitwinStore) UpdateActionWithNotification(notif *messaging.NotificationMessage) {
+	var actionStatus digitwin.ActionStatus
+	var rxStatus digitwin.ActionStatus
+
+	err := tputils.DecodeAsObject(notif.Data, &rxStatus)
+	if err != nil || rxStatus.Status == "" {
+		slog.Warn("UpdateActionWithNotification: Notification does not contain an ActionStatus")
+		return
+	}
+
+	svc.cacheMux.Lock()
+	defer svc.cacheMux.Unlock()
+
+	dtw, found := svc.dtwCache[notif.ThingID]
+	if !found {
+		// not a known thing
+		slog.Warn("UpdateActionWithNotification: not a known Thing",
+			"thingID", notif.ThingID,
+		)
+		return
+	}
+	actionStatus, found = dtw.ActionStatuses[notif.Name]
+	if !found {
+		slog.Warn("UpdateActionWithNotification: no status for the action",
+			"actionID", rxStatus.ActionID,
+			"thingID", notif.ThingID,
+			"name", notif.Name,
+		)
+		return
+	}
+	if actionStatus.Status == messaging.StatusCompleted {
+		slog.Warn("UpdateActionWithNotification: Action is already completed",
+			"actionID", rxStatus.ActionID,
+			"thingID", notif.ThingID,
+			"name", notif.Name,
+		)
+		return
+	}
+	actionStatus.Updated = rxStatus.Updated
+	actionStatus.Status = rxStatus.Status
+	dtw.ActionStatuses[actionStatus.Name] = actionStatus
+	svc.changedThings[actionStatus.ThingID] = true
+}
+
+// UpdateActionWithResponse (by agent) updates the action with a response.
+//
+// Note that a response means that the action is completed.
 //
 // resp is a response with a ThingID of the digital twin
-func (svc *DigitwinStore) UpdateActionStatus(
-	agentID string, resp *messaging.ResponseMessage) (
-	actionStatus digitwin.ActionStatus, err error) {
+func (svc *DigitwinStore) UpdateActionWithResponse(
+	resp *messaging.ResponseMessage) (actionStatus digitwin.ActionStatus, err error) {
 
 	svc.cacheMux.Lock()
 	defer svc.cacheMux.Unlock()
@@ -457,7 +503,7 @@ func (svc *DigitwinStore) UpdateActionStatus(
 		if !found {
 			actionStatus = digitwin.ActionStatus{}
 		}
-		actionStatus.Updated = time.Now().Format(wot.RFC3339Milli)
+		actionStatus.Updated = utils.FormatNowUTCMilli()
 		if resp.Error != "" {
 			actionStatus.Error = resp.Error
 			actionStatus.Status = messaging.StatusFailed
@@ -475,7 +521,7 @@ func (svc *DigitwinStore) UpdateActionStatus(
 		//the property value after applying the write.
 	}
 	return actionStatus, fmt.Errorf(
-		"UpdateActionStatus: Action '%s' not found in digital twin '%s'",
+		"UpdateActionWithResponse: Action '%s' not found in digital twin '%s'",
 		resp.Name, resp.ThingID)
 
 }

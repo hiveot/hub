@@ -103,8 +103,9 @@ button.link {
      height: 0.8em;
      border-width:thin;
      margin-left:2px;  /*prevent knob overrun*/
+     background-color: var(--pico-switch-background-color);
  }
-/* Set the switch background color when enabled*/
+/* Set the switch slider background color when enabled*/
 input[type=checkbox][role=switch]:not([disabled]) {
     background-color: var(--pico-switch-checked-background-color);
 }

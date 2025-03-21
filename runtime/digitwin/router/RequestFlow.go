@@ -4,6 +4,7 @@ package router
 import (
 	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/runtime/api"
@@ -34,12 +35,15 @@ type ActiveRequestRecord struct {
 // This tracks the action in the digitwin store, locates the agent connection,
 // forwards the request to the agent.
 //
-// This returns a response with an ActionStatus message, or with an error if
+// This sends a notification with an ActionStatus message to the sender (sc), or with an error if
 // something went wrong.
+//
+// req is the request to forward
+// sc is the server connection endpoint of the client sending the request
 //
 // If the agent is not connected status is failed.
 func (svc *DigitwinRouter) ForwardRequestToRemoteAgent(
-	req *messaging.RequestMessage, c2 messaging.IConnection) (
+	req *messaging.RequestMessage, sc messaging.IConnection) (
 	resp *messaging.ResponseMessage) {
 
 	agentID, agThingID := td.SplitDigiTwinThingID(req.ThingID)
@@ -66,8 +70,8 @@ func (svc *DigitwinRouter) ForwardRequestToRemoteAgent(
 		return req.CreateResponse(nil, err)
 	}
 	replyTo := ""
-	if c2 != nil {
-		replyTo = c2.GetConnectionInfo().ConnectionID
+	if sc != nil {
+		replyTo = sc.GetConnectionInfo().ConnectionID
 	}
 
 	// track the request progress so async responses can be returned to the client (replyTo)
@@ -76,7 +80,7 @@ func (svc *DigitwinRouter) ForwardRequestToRemoteAgent(
 		Name:          req.Name,
 		Operation:     req.Operation,
 		ReplyTo:       replyTo,
-		Updated:       time.Now(),
+		Updated:       time.Now().UTC(),
 		CorrelationID: req.CorrelationID,
 		Progress:      messaging.StatusPending,
 		SenderID:      req.SenderID,
@@ -108,7 +112,7 @@ func (svc *DigitwinRouter) ForwardRequestToRemoteAgent(
 
 		resp = req.CreateResponse(nil, err)
 		if stored {
-			_, _ = svc.dtwStore.UpdateActionStatus(agentID, resp)
+			_, _ = svc.dtwStore.UpdateActionWithResponse(resp)
 		}
 		return resp
 	}
@@ -116,10 +120,10 @@ func (svc *DigitwinRouter) ForwardRequestToRemoteAgent(
 	// the request has been sent successfully
 	// actions return a notification with ActionStatus record with status pending.
 	// other requests simply don't return anything until an async response is received.
-	if stored {
+	if stored && sc != nil {
 		notif := req.CreateNotification()
 		notif.Data = actionStatus
-		svc.transportServer.SendNotification(notif)
+		_ = sc.SendNotification(notif)
 	}
 	// no immediate result so return nil
 	return nil
@@ -136,7 +140,7 @@ func (svc *DigitwinRouter) HandleRequest(
 	req *messaging.RequestMessage, c messaging.IConnection) (resp *messaging.ResponseMessage) {
 
 	if req.Created == "" {
-		req.Created = time.Now().Format(wot.RFC3339Milli)
+		req.Created = utils.FormatNowUTCMilli()
 	}
 
 	svc.requestLogger.Info("-> REQ:",

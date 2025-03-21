@@ -103,7 +103,7 @@ func (cc *CursorCache) Get(cursorKey string, clientID string, updateLastUsed boo
 		return nil, ci, fmt.Errorf("cursor doesn't belong to client '%s'", clientID)
 	}
 	if found && updateLastUsed {
-		ci.LastUsed = time.Now()
+		ci.LastUsed = time.Now().UTC()
 	}
 	return ci.Cursor, ci, nil
 }
@@ -115,7 +115,7 @@ func (cc *CursorCache) GetExpiredCursors() []*CursorInfo {
 	cc.mux.RLock()
 	defer cc.mux.RUnlock()
 
-	now := time.Now()
+	now := time.Now().UTC()
 	// rather brute force, might need a sorted list if heavily used
 	// however, it is not expected to have a lot of active cursors.
 	for _, ci := range cc.cursorsByKey {

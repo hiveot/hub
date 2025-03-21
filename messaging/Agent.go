@@ -2,6 +2,7 @@ package messaging
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/wot"
 	"log/slog"
 	"sync/atomic"
@@ -38,13 +39,13 @@ func (ag *Agent) onRequest(
 	return resp
 }
 
-// PubActionProgress helper for agents to send a progress notification
+// PubActionProgress helper for agents to send a 'running' ActionStatus notification
 //
 // This sends an ActionStatus message with status of running.
 func (ag *Agent) PubActionProgress(req RequestMessage, value any) error {
 	status := ActionStatus{
 		AgentID:   ag.GetClientID(),
-		ID:        req.CorrelationID,
+		ActionID:  req.CorrelationID,
 		Input:     req.Input,
 		Name:      req.Name,
 		Output:    value,
@@ -52,7 +53,7 @@ func (ag *Agent) PubActionProgress(req RequestMessage, value any) error {
 		Status:    StatusRunning,
 		ThingID:   req.ThingID,
 		Requested: req.Created,
-		Updated:   time.Now().Format(wot.RFC3339Milli),
+		Updated:   utils.FormatNowUTCMilli(),
 	}
 
 	resp := NewNotificationMessage(wot.OpInvokeAction, req.ThingID, req.Name, status)

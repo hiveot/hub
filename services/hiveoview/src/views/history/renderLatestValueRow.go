@@ -3,7 +3,7 @@ package history
 import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
-	"github.com/hiveot/hub/messaging/tputils"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"net/http"
 )
@@ -49,7 +49,7 @@ func RenderLatestValueRow(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		iout := ct.GetValue(affType, name)
 		fragment = fmt.Sprintf(addRowTemplate,
-			tputils.DecodeAsDatetime(iout.Updated, "WT"), iout.Value.Text(), unit)
+			utils.FormatDateTime(iout.Updated, "S"), iout.Value.Text(), unit)
 	} else {
 		fragment = fmt.Sprintf("")
 	}

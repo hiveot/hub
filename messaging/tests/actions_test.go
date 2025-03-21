@@ -186,11 +186,11 @@ func TestQueryActions(t *testing.T) {
 		if req.Operation == wot.OpQueryAction {
 			// reply a response carrying the queried action status
 			actStat := []messaging.ActionStatus{{
-				ThingID: req.ThingID,
-				Name:    req.Name,
-				ID:      actionID,
-				Output:  testMsg1,
-				Status:  messaging.StatusCompleted,
+				ThingID:  req.ThingID,
+				Name:     req.Name,
+				ActionID: actionID,
+				Output:   testMsg1,
+				Status:   messaging.StatusCompleted,
 			}}
 
 			return req.CreateResponse(actStat, nil)
@@ -198,17 +198,17 @@ func TestQueryActions(t *testing.T) {
 			//replyTo.SendResponse(msg.ThingID, msg.Name, output, msg.CorrelationID)
 		} else if req.Operation == wot.OpQueryAllActions {
 			actStat := []messaging.ActionStatus{{
-				ThingID: req.ThingID,
-				Name:    actionKey,
-				ID:      actionID,
-				Output:  testMsg1,
-				Status:  messaging.StatusCompleted,
+				ThingID:  req.ThingID,
+				Name:     actionKey,
+				ActionID: actionID,
+				Output:   testMsg1,
+				Status:   messaging.StatusCompleted,
 			}, {
-				ThingID: req.ThingID,
-				Name:    actionKey,
-				ID:      actionID,
-				Output:  "other output",
-				Status:  messaging.StatusCompleted,
+				ThingID:  req.ThingID,
+				Name:     actionKey,
+				ActionID: actionID,
+				Output:   "other output",
+				Status:   messaging.StatusCompleted,
 			}}
 			resp := req.CreateResponse(actStat, nil)
 			return resp

@@ -3,6 +3,7 @@ package router
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/tputils"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
@@ -27,7 +28,7 @@ func (svc *DigitwinRouter) HandleNotification(notif *messaging.NotificationMessa
 	dThingID := td.MakeDigiTwinThingID(notif.SenderID, notif.ThingID)
 	notifCpy.ThingID = dThingID
 	if notifCpy.Timestamp == "" {
-		notifCpy.Timestamp = time.Now().Format(wot.RFC3339Milli)
+		notifCpy.Timestamp = utils.FormatUTCMilli(time.Now())
 	}
 
 	// Update the digital twin with this event or property value
@@ -85,12 +86,33 @@ func (svc *DigitwinRouter) HandleNotification(notif *messaging.NotificationMessa
 				}
 			}
 		}
-		//} else if notif.Operation == wot.HTOpUpdateTD {
-		//	tdJSON := notif.ToString(0)
-		//	err := svc.dtwService.DirSvc.UpdateTD(notif.SenderID, tdJSON)
-		//	if err != nil {
-		//		slog.Warn(err.Error())
-		//	}
+	} else if notifCpy.Operation == wot.OpInvokeAction {
+		// action progress update. Forward to sender of the request
+		var cc messaging.IConnection
+		svc.mux.Lock()
+		actRec, found := svc.activeCache[notifCpy.CorrelationID]
+		svc.mux.Unlock()
+		if !found {
+			// no associated action for this notification
+			return
+		}
+		// the sender (agents) must be the agent hat handled the action
+		if notifCpy.SenderID != actRec.AgentID {
+			// notification wasn't sent by the correct sender
+			slog.Warn("Notification with correlationID '%s' from sender '%s' is "+
+				"not sent by agent '%s' for action '%s'",
+				notifCpy.CorrelationID, notifCpy.SenderID, actRec.AgentID, notifCpy.Operation,
+			)
+			return
+		}
+		// update the action status
+		svc.dtwStore.UpdateActionWithNotification(&notifCpy)
+
+		// forward the notification to the sender of the request only
+		cc = svc.transportServer.GetConnectionByConnectionID(actRec.SenderID, actRec.ReplyTo)
+		if cc != nil {
+			_ = cc.SendNotification(&notifCpy)
+		}
 	} else {
 		err = fmt.Errorf("Unknown notification '%s'", notifCpy.Operation)
 	}

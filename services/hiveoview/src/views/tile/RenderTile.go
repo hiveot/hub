@@ -2,6 +2,7 @@ package tile
 
 import (
 	"github.com/hiveot/hub/lib/consumedthing"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/services/hiveoview/src"
@@ -36,7 +37,7 @@ type RenderTileTemplateData struct {
 // This truncates the result if there are too many values in the range.
 // The max amount of values is the limit set in historyapi.DefaultLimit (1000)
 func (dt RenderTileTemplateData) GetHistory(affType string, thingID string, name string) *history.HistoryTemplateData {
-	timestamp := time.Now()
+	timestamp := time.Now().Local()
 	ct, err := dt.cts.Consume(thingID)
 	if err != nil {
 		return nil
@@ -111,7 +112,7 @@ func (d RenderTileTemplateData) GetUpdated(thingID string, name string) string {
 	if iout == nil {
 		return "n/a"
 	}
-	val := tputils.DecodeAsDatetime(iout.Updated)
+	val := utils.FormatDateTime(iout.Updated)
 	return val
 }
 

@@ -2,12 +2,13 @@ package td
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/wot"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"net/url"
+	"sort"
 	"strings"
-	"time"
 )
 
 const WoTTDContext = "https://www.w3.org/2022/wot/td/v1.1"
@@ -557,11 +558,11 @@ func NewTD(thingID string, title string, deviceType string) *TD {
 		AtType:  deviceType,
 		Actions: map[string]*ActionAffordance{},
 
-		Created:    time.Now().Format(time.RFC3339),
+		Created:    utils.FormatNowUTCMilli(),
 		Events:     map[string]*EventAffordance{},
 		Forms:      nil,
 		ID:         thingID,
-		Modified:   time.Now().Format(time.RFC3339),
+		Modified:   utils.FormatNowUTCMilli(),
 		Properties: map[string]*PropertyAffordance{},
 
 		// security schemas are optional for devices themselves but will be added by the Hub services
@@ -573,4 +574,22 @@ func NewTD(thingID string, title string, deviceType string) *TD {
 	}
 
 	return &td
+}
+
+// SortThingsByID as the name suggests sorts the things in the given slice
+func SortThingsByID(tds []*TD) {
+	sort.Slice(tds, func(i, j int) bool {
+		tdI := tds[i]
+		tdJ := tds[j]
+		return tdI.ID < tdJ.ID
+	})
+}
+
+// SortThingsByTitle as the name suggests sorts the things in the given slice
+func SortThingsByTitle(tds []*TD) {
+	sort.Slice(tds, func(i, j int) bool {
+		tdI := tds[i]
+		tdJ := tds[j]
+		return tdI.Title < tdJ.Title
+	})
 }

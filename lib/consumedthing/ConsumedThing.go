@@ -349,8 +349,7 @@ func (ct *ConsumedThing) OnNotification(notif *messaging.NotificationMessage) {
 }
 
 // QueryAction queries the action status record from the hub
-//
-// # The cached interaction output of this value can be obtained with GetActionOutputFromStatus
+// If no action exists then actionstatus will be mostly empty
 //
 // This returns an empty ActionStatus if not found
 func (ct *ConsumedThing) QueryAction(name string) messaging.ActionStatus {

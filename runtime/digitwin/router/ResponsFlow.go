@@ -3,11 +3,10 @@ package router
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
-	"time"
 )
 
 // HandleActionResponse handles receiving a response to an action
@@ -59,7 +58,7 @@ func (svc *DigitwinRouter) HandleActionResponse(resp *messaging.ResponseMessage)
 
 	// 2: Update the response status in the digital twin action record and log errors
 	// not all requests are tracked.
-	_, _ = svc.dtwStore.UpdateActionStatus(resp.SenderID, resp)
+	_, _ = svc.dtwStore.UpdateActionWithResponse(resp)
 
 	// 3: Forward the response to the sender of the request
 	c := svc.transportServer.GetConnectionByConnectionID(as.SenderID, as.ReplyTo)
@@ -106,7 +105,7 @@ func (svc *DigitwinRouter) HandleResponse(resp *messaging.ResponseMessage) error
 	resp.ThingID = dThingID
 	// ensure the updated time is set
 	if resp.Timestamp == "" {
-		resp.Timestamp = time.Now().Format(wot.RFC3339Milli)
+		resp.Timestamp = utils.FormatNowUTCMilli()
 	}
 
 	// for now the only external response message is an action response

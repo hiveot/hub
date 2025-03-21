@@ -2,8 +2,8 @@
 package messaging
 
 import (
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging/tputils"
-	"github.com/hiveot/hub/wot"
 	"github.com/teris-io/shortid"
 	"time"
 )
@@ -37,6 +37,12 @@ const (
 // Note: keep this in sync with the digital twin ActionStatus in the TD.
 type ActionStatus struct {
 
+	// ID that uniquely identifies the action
+	// This can be an identifier or a URL.
+	//
+	// The action request identifier
+	ActionID string `json:"actionID,omitempty"`
+
 	// AgentID with Agent ID
 	//
 	// The agent handling the action
@@ -46,12 +52,6 @@ type ActionStatus struct {
 	//
 	// Action error info when failed
 	Error string `json:"error,omitempty"`
-
-	// ID that uniquely identifies the action
-	// This can be an identifier or a URL.
-	//
-	// The action request identifier
-	ID string `json:"id,omitempty"`
 
 	// Input with Action input
 	//
@@ -212,7 +212,7 @@ func NewResponseMessage(operation string, thingID, name string, output any, err 
 		Name:          name,
 		Output:        output,
 		CorrelationID: correlationID,
-		Timestamp:     time.Now().Format(wot.RFC3339Milli),
+		Timestamp:     utils.FormatUTCMilli(time.Now()),
 		MessageID:     shortid.MustGenerate(),
 	}
 	if err != nil {

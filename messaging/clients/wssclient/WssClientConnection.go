@@ -3,12 +3,14 @@ package wssclient
 import (
 	"context"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/servers/httpserver"
 	"github.com/teris-io/shortid"
 	"log/slog"
+	"math/rand/v2"
 	"net/url"
 	"sync"
 	"sync/atomic"
@@ -204,8 +206,11 @@ func (cc *WssClient) IsConnected() bool {
 }
 
 // Reconnect attempts to re-establish a dropped connection using the last token
+// This uses an increasing backoff period up to 15 seconds, starting random between 0-2 seconds
 func (cc *WssClient) Reconnect() {
 	var err error
+	var backoffDuration time.Duration = time.Duration(rand.Uint64N(uint64(time.Second * 2)))
+
 	for i := 0; cc.maxReconnectAttempts == 0 || i < cc.maxReconnectAttempts; i++ {
 		slog.Warn("Reconnecting attempt",
 			slog.String("clientID", cc.cinfo.ClientID),
@@ -214,12 +219,20 @@ func (cc *WssClient) Reconnect() {
 		if err == nil {
 			break
 		}
-		// retry until max repeat is reached or disconnect is called
+		// retry until max repeat is reached, disconnect is called or authorization failed
 		if !cc.retryOnDisconnect.Load() {
 			break
 		}
+		if errors.Is(err, messaging.UnauthorizedError) {
+			break
+		}
 		// the connection timeout doesn't seem to work for some reason
-		time.Sleep(time.Second)
+		//
+		time.Sleep(backoffDuration)
+		// slowly wait longer until 10 sec. FIXME: use random
+		if backoffDuration < time.Second*15 {
+			backoffDuration += time.Second
+		}
 	}
 	if err != nil {
 		slog.Warn("Reconnect failed: ", "err", err.Error())

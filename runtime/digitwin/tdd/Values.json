@@ -37,6 +37,11 @@
 			"description": "Status of the an action",
 			"type": "object",
 			"properties": {
+				"actionID": {
+					"title": "Action ID",
+					"description": "Unique identifier of the action",
+					"type": "string"
+				},
 				"agentID": {
 					"title": "Agent ID",
 					"description": "The agent handling the action",
@@ -45,11 +50,6 @@
 				"error": {
 					"title": "Error",
 					"description": "Action error info when failed",
-					"type": "string"
-				},
-				"id": {
-					"title": "Action ID",
-					"description": "Unique identifier of the action",
 					"type": "string"
 				},
 				"input": {

@@ -42,7 +42,7 @@ type ThingDetailsTemplateData struct {
 
 // GetEventHistory returns the previous 24 hour for the given event name
 func (dt *ThingDetailsTemplateData) GetEventHistory(name string) *history.HistoryTemplateData {
-	timestamp := time.Now()
+	timestamp := time.Now().Local()
 	duration := time.Hour * time.Duration(-24)
 	hsd, err := history.NewHistoryTemplateData(dt.CT,
 		messaging.AffordanceTypeEvent, name, timestamp, duration)

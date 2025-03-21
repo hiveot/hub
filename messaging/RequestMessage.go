@@ -2,8 +2,8 @@
 package messaging
 
 import (
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging/tputils"
-	"github.com/hiveot/hub/wot"
 	"github.com/teris-io/shortid"
 	"time"
 )
@@ -36,7 +36,7 @@ type RequestMessage struct {
 	// This is optional. If omitted, no response will be received.
 	CorrelationID string `json:"correlationID,omitempty"`
 
-	// Created holds the timestamp the request was created using RFC3339milli
+	// Created holds the timestamp the request was created in utc
 	// This MUST be set by the protocol server if not provided.
 	Created string `json:"created"`
 
@@ -120,7 +120,7 @@ func NewRequestMessage(operation string, thingID, name string, input any, correl
 		Name:          name,
 		Input:         input,
 		CorrelationID: correlationID,
-		Created:       time.Now().Format(wot.RFC3339Milli),
+		Created:       utils.FormatUTCMilli(time.Now()),
 		MessageID:     shortid.MustGenerate(),
 	}
 }

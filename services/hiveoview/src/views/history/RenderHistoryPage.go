@@ -3,9 +3,9 @@ package history
 import (
 	"github.com/araddon/dateparse"
 	"github.com/go-chi/chi/v5"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
-	"github.com/hiveot/hub/wot"
 	"net/http"
 	"strconv"
 	"time"
@@ -28,9 +28,11 @@ func RenderHistoryPage(w http.ResponseWriter, r *http.Request) {
 	durationStr := r.URL.Query().Get("duration")
 	durationSec, _ := strconv.ParseInt(durationStr, 10, 32)
 	if timestampStr == "" {
-		timestampStr = time.Now().Format(wot.RFC3339Milli)
+		// this formats as local time with zulu timezone!
+		timestampStr = utils.FormatNowUTCMilli()
 	}
 	timestamp, err := dateparse.ParseAny(timestampStr)
+	timestamp = timestamp.Local()
 	if durationSec == 0 {
 		durationSec = -24 * 3600
 	}

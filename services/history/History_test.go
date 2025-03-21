@@ -7,6 +7,7 @@ import (
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/bucketstore"
 	"github.com/hiveot/hub/lib/testenv"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/tputils"
 	authz "github.com/hiveot/hub/runtime/authz/api"
@@ -114,7 +115,7 @@ func makeValueBatch(agentID string, nrValues, nrThings, timespanSec int) (
 			Name:           names[randomName],
 			Output:         fmt.Sprintf("%2.3f", randomValue),
 			ThingID:        dThingID,
-			Updated:        randomTime.Format(wot.RFC3339Milli),
+			Updated:        utils.FormatUTCMilli(randomTime),
 			AffordanceType: affType,
 		}
 
@@ -197,7 +198,7 @@ func TestAddGetEvent(t *testing.T) {
 	ev1_1 := &messaging.NotificationMessage{
 		Operation: wot.OpSubscribeEvent,
 		SenderID:  agent1ID, ThingID: dThing1ID, Name: evTemperature,
-		Data: "12.5", Timestamp: fivemago.Format(wot.RFC3339Milli),
+		Data: "12.5", Timestamp: utils.FormatUTCMilli(fivemago),
 	}
 	err := addHist.AddMessage(ev1_1)
 	assert.NoError(t, err)
@@ -205,7 +206,7 @@ func TestAddGetEvent(t *testing.T) {
 	ev1_2 := &messaging.NotificationMessage{
 		Operation: vocab.OpSubscribeEvent,
 		SenderID:  agent1ID, ThingID: dThing1ID, Name: evHumidity,
-		Data: "70", Timestamp: fiftyfivemago.Format(wot.RFC3339Milli),
+		Data: "70", Timestamp: utils.FormatUTCMilli(fiftyfivemago),
 	}
 	err = addHist.AddMessage(ev1_2)
 	assert.NoError(t, err)
@@ -215,7 +216,7 @@ func TestAddGetEvent(t *testing.T) {
 	ev2_1 := &messaging.NotificationMessage{
 		Operation: vocab.OpSubscribeEvent,
 		SenderID:  agent1ID, ThingID: dThing2ID, Name: evHumidity,
-		Data: "50", Timestamp: fivemago.Format(wot.RFC3339Milli),
+		Data: "50", Timestamp: utils.FormatUTCMilli(fivemago),
 	}
 	err = addHist.AddMessage(ev2_1)
 	assert.NoError(t, err)
@@ -224,7 +225,7 @@ func TestAddGetEvent(t *testing.T) {
 	ev2_2 := &messaging.NotificationMessage{
 		Operation: vocab.OpSubscribeEvent,
 		SenderID:  agent1ID, ThingID: dThing2ID, Name: evTemperature,
-		Data: "17.5", Timestamp: fiftyfivemago.Format(wot.RFC3339Milli),
+		Data: "17.5", Timestamp: utils.FormatUTCMilli(fiftyfivemago),
 	}
 	err = addHist.AddMessage(ev2_2)
 	assert.NoError(t, err)
@@ -256,7 +257,7 @@ func TestAddGetEvent(t *testing.T) {
 	if assert.True(t, valid) {
 		assert.Equal(t, dThing1ID, tv3.ThingID)  // must match the filtered id1
 		assert.Equal(t, evTemperature, tv3.Name) // must match evTemperature from 5 minutes ago
-		assert.Equal(t, fivemago.Format(wot.RFC3339Milli), tv3.Updated)
+		assert.Equal(t, utils.FormatUTCMilli(fivemago), tv3.Updated)
 	}
 	c1Release()
 	// Stop the service before phase 2

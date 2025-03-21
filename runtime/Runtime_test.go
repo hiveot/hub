@@ -250,6 +250,9 @@ func TestServiceReconnect(t *testing.T) {
 	actionID := "action-1" // match the test TD action
 	ts.AddTD(agentID, td1)
 
+	// time for agent to connect
+	time.Sleep(time.Millisecond * 10)
+
 	hasAgent := ts.Runtime.TransportsMgr.GetConnectionByClientID(ag1.GetClientID())
 	require.NotNil(t, hasAgent)
 
@@ -279,8 +282,8 @@ func TestServiceReconnect(t *testing.T) {
 	defer r.Stop()
 	t.Log("--- server restarted; expecting an agent reconnect")
 
-	// wait for the reconnect
-	time.Sleep(time.Second * 1)
+	// wait for the agent reconnect
+	time.Sleep(time.Second * 2)
 
 	hasAgent = ts.Runtime.TransportsMgr.GetConnectionByClientID(ag1.GetClientID())
 	assert.NotNil(t, hasAgent)

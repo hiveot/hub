@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/lib/consumedthing"
-	"github.com/hiveot/hub/messaging/tputils"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"net/http"
 )
@@ -72,7 +72,7 @@ func RenderTileSourceRow(w http.ResponseWriter, r *http.Request) {
 
 	// if no value was ever received then use n/a
 	latestValue := iout.Value.Text() + " " + iout.UnitSymbol()
-	latestUpdated := tputils.DecodeAsDatetime(iout.Updated, "WT")
+	latestUpdated := utils.FormatDateTime(iout.Updated)
 	title := ct.Title + " " + iout.Title
 
 	// the input hidden hold the real source value

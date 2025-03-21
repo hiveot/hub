@@ -2,7 +2,6 @@ package messaging
 
 import (
 	"crypto/x509"
-	"fmt"
 	"time"
 )
 
@@ -24,8 +23,16 @@ const (
 	ProtocolTypeHTEmbedded = "embedded" // for testing
 )
 
+var UnauthorizedError error = unauthorizedError{}
+
 // UnauthorizedError for dealing with authorization problems
-var UnauthorizedError = fmt.Errorf("Unauthorized")
+type unauthorizedError struct {
+	Message string
+}
+
+func (e unauthorizedError) Error() string {
+	return "Unauthorized: " + e.Message
+}
 
 // ConnectionInfo provides details of a connection
 type ConnectionInfo struct {

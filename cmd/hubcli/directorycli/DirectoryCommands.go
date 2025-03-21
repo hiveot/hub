@@ -53,20 +53,24 @@ func HandleListDirectory(co *messaging.Consumer) (err error) {
 	if err != nil || err2 != nil {
 		return err
 	}
-	fmt.Printf("Thing ID                            @type                               Title                                #props  #events #actions   Modified         \n")
-	fmt.Printf("----------------------------------  ----------------------------------  -----------------------------------  ------  ------- --------   -----------------------------\n")
+	td.SortThingsByID(tdList)
+
+	fmt.Printf("Thing ID                            Title                                 @type                                #props  #events #actions   Modified         \n")
+	fmt.Printf("----------------------------------  ------------------------------------  -----------------------------------  ------  ------- --------   -----------------------------\n")
 	for _, tdDoc := range tdList {
 		var updatedStr = ""
 		if tdDoc.Modified != "" {
-			updatedStr = tputils.DecodeAsDatetime(tdDoc.Modified)
+			//updatedStr = tputils.DecodeAsDatetime(tdDoc.Modified)
+			updatedStr = utils.FormatDateTime(tdDoc.Modified)
 		} else if tdDoc.Created != "" {
-			updatedStr = tputils.DecodeAsDatetime(tdDoc.Created)
+			//updatedStr = tputils.DecodeAsDatetime(tdDoc.Created)
+			updatedStr = utils.FormatDateTime(tdDoc.Created)
 		}
 
-		fmt.Printf("%-35s %-35.35s %-35.35s %7d  %7d  %7d   %-30s\n",
+		fmt.Printf("%-35s %-37.37s %-35.35s %7d  %7d  %7d   %-30s\n",
 			tdDoc.ID,
-			tdDoc.AtType,
 			tdDoc.Title,
+			tdDoc.AtType,
 			len(tdDoc.Properties),
 			len(tdDoc.Events),
 			len(tdDoc.Actions),
@@ -94,7 +98,7 @@ func HandleListThing(co *messaging.Consumer, thingID string) error {
 	fmt.Printf(" title:       %s\n", tdDoc.Title)
 	fmt.Printf(" description: %s\n", tdDoc.Description)
 	fmt.Printf(" @type:       %s\n", tdDoc.AtType)
-	fmt.Printf(" modified:    %s\n", tputils.DecodeAsDatetime(tdDoc.Modified))
+	fmt.Printf(" modified:    %s\n", utils.FormatDateTime(tdDoc.Modified))
 	fmt.Println("")
 
 	fmt.Println(utils.COGreen + "Attributes:")

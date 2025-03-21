@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/consumedthing"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/wot"
@@ -300,7 +301,7 @@ func (sess *WebClientSession) onNotification(notif *messaging.NotificationMessag
 		// also notify of a change to updated timestamp
 		propID = fmt.Sprintf("%s/%s/%s/updated",
 			messaging.AffordanceTypeProperty, notif.ThingID, notif.Name)
-		sess.SendSSE(propID, tputils.DecodeAsDatetime(notif.Timestamp))
+		sess.SendSSE(propID, utils.FormatDateTime(notif.Timestamp))
 	} else if notif.Operation == wot.OpSubscribeEvent {
 		// Publish sse event indicating the event affordance or value has changed.
 		// The UI that displays this event can use this as a trigger to reload the
@@ -312,7 +313,7 @@ func (sess *WebClientSession) onNotification(notif *messaging.NotificationMessag
 		sess.SendSSE(eventID, notif.ToString(0))
 		eventID = fmt.Sprintf("%s/%s/%s/updated",
 			messaging.AffordanceTypeEvent, notif.ThingID, notif.Name)
-		sess.SendSSE(eventID, tputils.DecodeAsDatetime(notif.Timestamp))
+		sess.SendSSE(eventID, utils.FormatDateTime(notif.Timestamp))
 	}
 	return
 }

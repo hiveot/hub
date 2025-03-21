@@ -25,10 +25,10 @@ func TestNilSchema(t *testing.T) {
 	slog.Info("--- TestNilSchema ---")
 	data1 := "text"
 
-	notif := &messaging.ResponseMessage{Name: key1ID, Output: data1}
+	notif := &messaging.NotificationMessage{Name: key1ID, Data: data1}
 	tdi := MakeTD()
 	ct := NewConsumedThing(tdi, nil)
-	io := NewInteractionOutputFromResponse(ct, messaging.AffordanceTypeProperty, notif)
+	io := NewInteractionOutputFromNotification(ct, messaging.AffordanceTypeProperty, notif)
 
 	asValue := io.Value.Text()
 	assert.Equal(t, data1, asValue)
@@ -37,20 +37,20 @@ func TestNilSchema(t *testing.T) {
 
 func TestArray(t *testing.T) {
 	data1 := []string{"item 1", "item 2"}
-	tv := &messaging.ResponseMessage{Name: key1ID, Output: data1}
+	tv := &messaging.NotificationMessage{Name: key1ID, Data: data1}
 	tdi := MakeTD()
 	ct := NewConsumedThing(tdi, nil)
-	io := NewInteractionOutputFromResponse(ct, messaging.AffordanceTypeProperty, tv)
+	io := NewInteractionOutputFromNotification(ct, messaging.AffordanceTypeProperty, tv)
 	asArray := io.Value.Array()
 	assert.Len(t, asArray, 2)
 }
 
 func TestBool(t *testing.T) {
 	data1 := true
-	tv := &messaging.ResponseMessage{Name: key1ID, Output: data1}
+	tv := &messaging.NotificationMessage{Name: key1ID, Data: data1}
 	tdi := MakeTD()
 	ct := NewConsumedThing(tdi, nil)
-	io := NewInteractionOutputFromResponse(ct, messaging.AffordanceTypeProperty, tv)
+	io := NewInteractionOutputFromNotification(ct, messaging.AffordanceTypeProperty, tv)
 	asBool := io.Value.Boolean()
 	assert.Equal(t, true, asBool)
 	asString := io.Value.Text()
@@ -61,10 +61,10 @@ func TestBool(t *testing.T) {
 
 func TestInt(t *testing.T) {
 	data1 := 42
-	tv := &messaging.ResponseMessage{Name: key1ID, Output: data1}
+	tv := &messaging.NotificationMessage{Name: key1ID, Data: data1}
 	tdi := MakeTD()
 	ct := NewConsumedThing(tdi, nil)
-	io := NewInteractionOutputFromResponse(ct, messaging.AffordanceTypeProperty, tv)
+	io := NewInteractionOutputFromNotification(ct, messaging.AffordanceTypeProperty, tv)
 	asInt := io.Value.Integer()
 	assert.Equal(t, 42, asInt)
 	asString := io.Value.Text()
@@ -73,10 +73,10 @@ func TestInt(t *testing.T) {
 
 func TestString(t *testing.T) {
 	data1 := "Hello world"
-	tv := &messaging.ResponseMessage{Name: key1ID, Output: data1}
+	tv := &messaging.NotificationMessage{Name: key1ID, Data: data1}
 	tdi := MakeTD()
 	ct := NewConsumedThing(tdi, nil)
-	io := NewInteractionOutputFromResponse(ct, messaging.AffordanceTypeProperty, tv)
+	io := NewInteractionOutputFromNotification(ct, messaging.AffordanceTypeProperty, tv)
 	asString := io.Value.Text()
 	assert.Equal(t, data1, asString)
 }
@@ -90,10 +90,10 @@ func TestObject(t *testing.T) {
 		LastLoginAt string
 	}
 	data1 := User{Name: "Bob", Age: 10, Active: true, LastLoginAt: "today"}
-	tv := &messaging.ResponseMessage{Name: key1ID, Output: data1}
+	notif := &messaging.NotificationMessage{Name: key1ID, Data: data1}
 	tdi := MakeTD()
 	ct := NewConsumedThing(tdi, nil)
-	io := NewInteractionOutputFromResponse(ct, messaging.AffordanceTypeProperty, tv)
+	io := NewInteractionOutputFromNotification(ct, messaging.AffordanceTypeProperty, notif)
 	asMap := io.Value.Map()
 	assert.Equal(t, data1.Name, asMap["Name"])
 }

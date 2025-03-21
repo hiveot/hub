@@ -2,10 +2,9 @@
 package messaging
 
 import (
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging/tputils"
-	"github.com/hiveot/hub/wot"
 	"github.com/teris-io/shortid"
-	"time"
 )
 
 // ResponseMessage, ActionStatus and ThingValue define the standardized messaging
@@ -88,7 +87,7 @@ func NewNotificationMessage(operation string, thingID, name string, data any) *N
 		ThingID:     thingID,
 		Name:        name,
 		Data:        data,
-		Timestamp:   time.Now().Format(wot.RFC3339Milli),
+		Timestamp:   utils.FormatNowUTCMilli(),
 		MessageID:   shortid.MustGenerate(),
 	}
 	return notif

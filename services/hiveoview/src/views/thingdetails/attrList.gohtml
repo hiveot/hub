@@ -40,8 +40,8 @@
 				     sse-swap="property/{{$.ThingID}}/{{$name}}/updated"
 				     hx-swap="innerHTML"
 				     hx-target="this"
-				     title="Updated: {{datetime $v.Updated}}">
-            {{datetime $v.Updated}}</div>
+				     title='Updated: {{datetime $v.Updated "V"}}'>
+            {{datetime $v.Updated "S"}}</div>
 			</li>
     {{end}}
 </ul>

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/wot"
@@ -32,12 +33,12 @@ type AddHistory struct {
 // where a|e|p indicates message type "action", "event" or "property"
 func (svc *AddHistory) encodeValue(senderID string, tv *messaging.ThingValue) (storageKey string, data []byte) {
 	var err error
-	createdTime := time.Now()
+	createdTime := time.Now().UTC()
 	if tv.Updated != "" {
 		createdTime, err = dateparse.ParseAny(tv.Updated)
 		if err != nil {
 			slog.Warn("Invalid Updated time. Using current time instead", "created", tv.Updated)
-			createdTime = time.Now()
+			createdTime = time.Now().UTC()
 		}
 	}
 
@@ -148,7 +149,7 @@ func (svc *AddHistory) validateValue(senderID string, tv *messaging.ThingValue) 
 		return false, fmt.Errorf("missing sender for action on thing '%s'", tv.ThingID)
 	}
 	if tv.Updated == "" {
-		tv.Updated = time.Now().Format(wot.RFC3339Milli)
+		tv.Updated = utils.FormatNowUTCMilli()
 	}
 	if svc.retentionMgr != nil {
 		retain, rule := svc.retentionMgr._IsRetained(tv)

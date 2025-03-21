@@ -296,9 +296,9 @@ export default class HttpSSEClient implements IAgentConnection {
     // if the http/2 connection is closed, then try to initialize it again.
     async pubMessage(methodName: string, path: string, data: any, correlationID?:string):Promise<string> {
         // if the session is invalid, restart it
-        if (!this._http2Session || this._http2Session.closed) {
+        if (!this._http2Session || this._http2Session.destroyed) {
             // this._http2Client.
-            hcLog.error("pubMessage but connection is closed")
+            hcLog.warn("pubMessage but connection is closed. Attempting to reconnect")
             await this.connect()
         }
 
@@ -405,7 +405,7 @@ export default class HttpSSEClient implements IAgentConnection {
 
         hcLog.info("pubEvent. thingID:", thingID, ", name:", name)
         const msg = new NotificationMessage(OpSubscribeEvent, thingID,name,data)
-        return this.sendNotification(msg)
+        this.sendNotification(msg)
 
         // let eventPath = PostAgentPublishEventPath.replace("{thingID}", thingID)
         // eventPath = eventPath.replace("{name}", name)
@@ -423,14 +423,14 @@ export default class HttpSSEClient implements IAgentConnection {
 
         hcLog.info("pubMultipleProperties. thingID:", thingID)
         const msg = new NotificationMessage(OpObserveAllProperties, thingID,"",propMap)
-        return this.sendNotification(msg)
+        this.sendNotification(msg)
     }
 
     // Publish thing property value update to property observers
     pubProperty(thingID: string, name:string, value: any) {
         hcLog.info("pubProperty. thingID:", thingID," name:",name,"value",value)
         const msg = new NotificationMessage(OpObserveProperty, thingID,name,value)
-        return this.sendNotification(msg)
+        this.sendNotification(msg)
     }
 
     // PubTD publishes a req with a Thing TD document.
@@ -532,7 +532,10 @@ export default class HttpSSEClient implements IAgentConnection {
         // responses can only be sent to the fixed endpoint
         this.pubMessage(
             "POST",HiveOTPostNotificationHRef, notif,notif.correlationID)
-            .then().catch()
+            .then()
+            .catch((e) => {
+                console.log("sendNotification error", e);
+            })
     }
 
     // sendResponse [agent] sends a response status message to the hub.
@@ -541,7 +544,10 @@ export default class HttpSSEClient implements IAgentConnection {
         // responses can only be sent to the fixed endpoint
         this.pubMessage(
             "POST",HiveOTPostResponseHRef, resp,resp.correlationID)
-            .then().catch()
+            .then()
+            .catch((e) => {
+                console.log("sendResponse error: ", e);
+            })
     }
 
     // Rpc publishes an RPC request to a service and waits for a response.

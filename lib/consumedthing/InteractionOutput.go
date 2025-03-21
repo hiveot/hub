@@ -1,13 +1,11 @@
 package consumedthing
 
 import (
-	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/tputils"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/wot/td"
-	"time"
 )
 
 type InteractionOutputMap map[string]*InteractionOutput
@@ -35,7 +33,7 @@ type InteractionOutput struct {
 	Value DataSchemaValue
 
 	// RFC822 timestamp this was last updated.
-	// Use tputils.DecodeAsDatetime(Updated,format) to format.
+	// Use utils.FormatDateTime(Updated,format) to format.
 	Updated string
 
 	// Type of affordance: "property", "action", "event"
@@ -48,21 +46,12 @@ type InteractionOutput struct {
 	SenderID string
 }
 
-// FormatTime is a helper function to return the formatted time of the given ISO timestamp
-// The default format is RFC822 ("02 Jan 06 15:04 MST")
-// Optionally "WT" is weekday, time (Mon, 14:31:01 PDT)
-// or, provide the time format directly, eg: "02 Jan 06 15:04 MST" for rfc822
-func (iout *InteractionOutput) FormatTime(stamp string) (formattedTime string) {
-	createdTime, _ := dateparse.ParseAny(stamp)
-	// Format weekday, time if less than a week old
-	age := time.Now().Sub(createdTime)
-	if age < time.Hour*24*7 {
-		formattedTime = createdTime.Format("Mon, 15:04:05 MST")
-	} else {
-		formattedTime = createdTime.Format(time.RFC822)
-	}
-	return formattedTime
-}
+//// FormatTime is a helper function to return the formatted time of the given ISO timestamp
+//// The default format is RFC822 ("02 Jan 06 15:04 MST")
+//func (iout *InteractionOutput) FormatTime(stamp string) (formattedTime string) {
+//	formattedTime = utils.FormatAuto(stamp)
+//	return formattedTime
+//}
 
 // Substr is a simple helper that returns a substring of the given input
 func (iout *InteractionOutput) Substr(data any, maxLen int) string {

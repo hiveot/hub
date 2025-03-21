@@ -3,9 +3,9 @@ package service
 import (
 	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/services/history/historyapi"
-	"github.com/hiveot/hub/wot"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"strconv"
@@ -79,7 +79,7 @@ func decodeValue(bucketID string, storageKey string, raw []byte) (
 		ThingID:        bucketID, // digital twin thingID that includes the agent prefix
 		Name:           name,
 		Output:         data,
-		Updated:        createdTime.Format(wot.RFC3339Milli),
+		Updated:        utils.FormatUTCMilli(createdTime),
 		AffordanceType: valueType,
 	}
 	_ = senderID
@@ -88,7 +88,7 @@ func decodeValue(bucketID string, storageKey string, raw []byte) (
 
 // First returns the oldest value in the history
 func (svc *ReadHistory) First(senderID string, args historyapi.CursorArgs) (*historyapi.CursorSingleResp, error) {
-	until := time.Now()
+	until := time.Now().UTC()
 
 	cursor, ci, err := svc.cursorCache.Get(args.CursorKey, senderID, true)
 	if err != nil {

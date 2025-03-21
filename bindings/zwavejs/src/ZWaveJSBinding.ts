@@ -124,37 +124,32 @@ export class ZwaveJSBinding {
         const va = getAffordanceFromVid(node, vid, this.config.maxNrScenes)
         if (!va) {
             // this is not a VID of interest so ignore it
-            log.info("handleValueUpdate: unused VID ignored: CC="+vid.commandClass,
-                " vidProperty=", vid.property, "vidEndpoint=",vid.endpoint)
+            log.info("handleValueUpdate: unused VID ignored: CC=" + vid.commandClass,
+                " vidProperty=", vid.property, "vidEndpoint=", vid.endpoint)
             return
         }
         const lastValue = valueMap?.values[va.name]
-        try {
-
-            if (valueMap && (lastValue !== newValue || !this.config.publishOnlyChanges)) {
-                // TODO: round the value using a precision
-                // TODO: republish after some time even when unchanged
-                // Determine if value changed enough to publish
-                if (newValue != undefined) {
-                    valueMap.values[va.name] = newValue
-                    if (va?.affType === "property") {
-                        this.hc.pubProperty(deviceID, va.name, newValue)
-                    } else if (va?.affType === "action") {
-                        // action output state has a matching property
-                        this.hc.pubProperty(deviceID, va.name, newValue)
-                    } else {
-                        // Anything else is an event
-                        log.info("handleValueUpdate: publish event for deviceID=" + deviceID + ", propName=" + va.name + "")
-                        this.hc.pubEvent(deviceID, va.name, newValue)
-                    }
+        if (valueMap && (lastValue !== newValue || !this.config.publishOnlyChanges)) {
+            // TODO: round the value using a precision
+            // TODO: republish after some time even when unchanged
+            // Determine if value changed enough to publish
+            if (newValue != undefined) {
+                valueMap.values[va.name] = newValue
+                if (va?.affType === "property") {
+                    this.hc.pubProperty(deviceID, va.name, newValue)
+                } else if (va?.affType === "action") {
+                    // action output state has a matching property
+                    this.hc.pubProperty(deviceID, va.name, newValue)
+                } else {
+                    // Anything else is an event
+                    log.info("handleValueUpdate: publish event for deviceID=" + deviceID + ", propName=" + va.name + "")
+                    this.hc.pubEvent(deviceID, va.name, newValue)
                 }
-            } else {
-                // for debugging
-                log.debug("handleValueUpdate: unchanged value deviceID=" + deviceID + ", propName=" + va.name + " (ignored)")
-
             }
-        } catch (e) {
-            log.error("handleValueUpdate: caught exception", e)
+        } else {
+            // for debugging
+            log.debug("handleValueUpdate: unchanged value deviceID=" + deviceID + ", propName=" + va.name + " (ignored)")
+
         }
     }
 

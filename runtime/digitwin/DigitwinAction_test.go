@@ -52,15 +52,15 @@ func TestActionFlow(t *testing.T) {
 	require.NoError(t, err)
 	inputVal := tputils.DecodeAsInt(as.Input)
 	require.Equal(t, actionValue, inputVal)
-	require.Equal(t, correlationID, as.Id)
+	require.Equal(t, correlationID, as.ActionID)
 	require.Equal(t, messaging.StatusPending, as.Status)
 
 	// complete the action
 	resp := messaging.NewResponseMessage(
 		wot.OpInvokeAction, dThingID, actionName, actionValue, nil, correlationID)
-	as, err = dtwStore.UpdateActionStatus(agentID, resp)
+	as, err = dtwStore.UpdateActionWithResponse(resp)
 	require.NoError(t, err)
-	require.Equal(t, correlationID, as.Id)
+	require.Equal(t, correlationID, as.ActionID)
 
 	// read action status
 	as, err = svc.ValuesSvc.QueryAction(consumerID, digitwin.ThingValuesQueryActionArgs{
@@ -150,13 +150,13 @@ func TestInvokeActionErrors(t *testing.T) {
 	resp := messaging.NewResponseMessage(
 		wot.OpInvokeAction, "badThingID", actionName, actionValue, nil, correlationID)
 
-	_, err = dtwStore.UpdateActionStatus(agentID, resp)
+	_, err = dtwStore.UpdateActionWithResponse(resp)
 	assert.Error(t, err)
 
 	// complete the action on wrong action name
 	resp.ThingID = thingID
 	resp.Name = "badName"
-	_, err = dtwStore.UpdateActionStatus(agentID, resp)
+	_, err = dtwStore.UpdateActionWithResponse(resp)
 	assert.Error(t, err)
 }
 

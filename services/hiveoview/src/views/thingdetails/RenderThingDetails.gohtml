@@ -26,15 +26,12 @@
 		<summary id="detailsSummary" class="outline h-row" >
 				<h3 style="display:contents" >{{.CT.Title}}</h3>
 				<div class="h-grow"></div>
-				<!--=== button to delete this TD ===-->
-				<button title="Delete TD" slot="button" class="h-icon-button  outline"
-				        hx-trigger="click"
-				        hx-get="{{.RenderConfirmDeleteTDPath}}"
-								hx-target="#modalLevel1"
-								hx-swap="innerHTML"
-				>
-					<iconify-icon icon="mdi:trash-can-outline"></iconify-icon>
-				</button>
+			<!--=== button to open the raw TD in a new tab ===-->
+			<button title="view raw TD document"  class="h-icon-button outline h-row">
+				<a href="{{.RenderRawTDPath}}" target="_blank">
+					<iconify-icon icon="mdi:text-box-outline"></iconify-icon>
+				</a>
+			</button>
 		</summary>
 
 		<ul class="h-grid-table details-header">
@@ -53,12 +50,16 @@
 						<input id="thingID" readonly style="margin: 0; text-overflow: ellipsis; "
 					      value="{{.ThingID}}"/>
 
-						<!--=== button to open the raw TD in a new tab ===-->
-						<button title="view raw TD document"  class="h-icon-button outline h-row">
-								<a href="{{.RenderRawTDPath}}" target="_blank">
-								<iconify-icon icon="mdi:text-box-outline"></iconify-icon>
-								</a>
-						</button>
+					<!--=== button to delete this TD (with confirmation) ===-->
+					<button title="Delete TD" slot="button" class="h-icon-button  outline"
+					        hx-trigger="click"
+					        hx-get="{{.RenderConfirmDeleteTDPath}}"
+					        hx-target="#modalLevel1"
+					        hx-swap="innerHTML"
+					>
+						<iconify-icon icon="mdi:trash-can-outline"></iconify-icon>
+					</button>
+
 				</div>
 
 				<div class="h-grow"></div>

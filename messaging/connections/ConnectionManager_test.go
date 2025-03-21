@@ -156,13 +156,12 @@ func TestPublishEventProp(t *testing.T) {
 	c1 := NewDummyConnection(client1ID, remoteAddr, session1ID)
 	c1.SubscribeEvent(dThingID, "")
 	c1.ObserveProperty(dThingID, "")
-	c1.SendResponseHandler = func(notif *messaging.ResponseMessage) error {
+	c1.SendNotificationHandler = func(notif *messaging.NotificationMessage) {
 		if notif.Operation == wot.OpSubscribeEvent {
 			evCount++
 		} else if notif.Operation == wot.OpObserveProperty {
 			propCount++
 		}
-		return nil
 	}
 	c1.SendRequestHandler = func(req *messaging.RequestMessage, replyTo messaging.IConnection) *messaging.ResponseMessage {
 		assert.Fail(t, "unexpected")
