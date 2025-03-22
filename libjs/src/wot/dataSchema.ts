@@ -1,6 +1,7 @@
 // Definition of the DataSchema used in TD affordances
 
 import {WoTDataTypeNone} from "../api/vocab/vocab.js"
+import {PropertyAffordance} from "./TD.ts";
 export default class DataSchema extends Object {
     public constructor(init?: Partial<DataSchema>) {
         super();
@@ -39,6 +40,13 @@ export default class DataSchema extends Object {
 
     // string minimum length
     public minLength: number | undefined = undefined
+
+    // property map when type is object
+    public properties: { [key: string]: Partial<PropertyAffordance> } |undefined= undefined;
+
+    // Optional nested properties. Map with PropertyAffordance
+    // used when a property has multiple instances, each with their own name
+    // public properties: Map<string, Partial<PropertyAffordance>> | undefined = undefined
 
     // Boolean value to indicate whether a property interaction / value is read-only (=true) or not (=false)
     // the value true implies read-only.

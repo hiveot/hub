@@ -1,7 +1,7 @@
 // ZWaveJSBinding.ts holds the entry point to the ZWave binding along with its configuration
 import {InterviewStage,  ZWaveNode} from "zwave-js";
 import type IAgentConnection from "../hivelib/messaging/IAgentConnection.ts";
-import {OpWriteProperty} from "../hivelib/api/vocab/vocab.js";
+import {OpSubscribeEvent, OpWriteProperty} from "../hivelib/api/vocab/vocab.js";
 import {
     NotificationMessage,
     RequestMessage,
@@ -73,18 +73,9 @@ function  handleControllerRequest(
         case "begininclusion":
             zwapi.driver.controller.beginInclusion().then()
             resp = req.createResponse(null)
-
             break;
         case "beginrebuildingroutes":
             zwapi.driver.controller.beginRebuildingRoutes()
-            resp = req.createResponse(null)
-            break;
-
-        case "removefailednode":
-            let targetNode = zwapi.getNodeByDeviceID(req.thingID)
-            if (targetNode) {
-                zwapi.driver.controller.removeFailedNode(targetNode.id).then();
-            }
             resp = req.createResponse(null)
             break;
 
@@ -99,8 +90,9 @@ function  handleControllerRequest(
             break;
 
         case "stoprebuildingroutes":
-            zwapi.driver.controller.stopRebuildingRoutes()
-            resp = req.createResponse(null)
+            let stopped = zwapi.driver.controller.stopRebuildingRoutes()
+            let msg = stopped? "Rebuilding routes stopped" : "Done. Routes were not building"
+            resp = req.createResponse(msg)
             break;
 
         default:
@@ -128,27 +120,63 @@ function  handleNodeAction(
     try {
         switch (actionLower) {
             case "checklifelinehealth":
+                if (node.isHealthCheckInProgress()) {
+                    let err = new Error("Health check already in progress")
+                    let resp = req.createResponse(null,err)
+                    hc.sendResponse(resp)
+                    break
+                }
+                node.checkLifelineHealth(1, (round,total,lastRating,lastResult)=>{
+                    // todo progress notifications
+                    // request is running, no status neeeded
+                    notif = req.createNotification(round)
+                    hc.sendNotification(notif)
+                })
+                .then((summary) => {
+                    // rating is 0 to 10
+                    log.info(req.name+":", summary)
+                    let resp = req.createResponse(summary.rating)
+                    hc.sendResponse(resp)
+                })
+                break;
+
+            case "checkroutehealth":
                 // 3 runs; return rating
-                node.checkLifelineHealth(3)
-                    .then((ev) => {
-                        let resp = req.createResponse(ev.rating)
-                        hc.sendResponse(resp)
-                    })
-                // request is running, no status neeeded
-                notif = req.createNotification()
-                hc.sendNotification(notif)
+                if (node.isHealthCheckInProgress()) {
+                    let err = new Error("Health check already in progress")
+                    let resp = req.createResponse(null,err)
+                    hc.sendResponse(resp)
+                    break
+                }
+                let targetNode = req.input
+                node.checkRouteHealth(targetNode, 1, (round,total,lastRating,lastResult)=>{
+                    // todo progress notifications
+                    // request is running, no status neeeded
+                    notif = req.createNotification(round)
+                    hc.sendNotification(notif)
+                })
+                .then((summary) => {
+                    log.info(req.name+":", summary)
+                    // rating is 0 to 10
+                    let resp = req.createResponse(summary.rating)
+                    hc.sendResponse(resp)
+                })
                 break;
 
             case "getnodeneighbors":
+                // update the list of node neighbors
+                // the result is also published as a property
                 zwapi.driver.controller.getNodeNeighbors(node.id)
                     .then((ids) => {
                         resp = req.createResponse(ids)
                         hc.sendResponse(resp)
+                        hc.pubProperty(req.thingID, req.name, ids)
                     });
                 break;
 
             case "ping":
                 // ping a node. The 'completed' response is sent async
+                // the result is also published as a property
                 const startTime = performance.now()
                 node.ping()
                     .then((_success: boolean) => {
@@ -157,6 +185,8 @@ function  handleNodeAction(
                         let resp = req.createResponse(msec)
                         log.info("ping '" + req.thingID + "': " + msec + " msec")
                         hc.sendResponse(resp)
+                        // persist action output as a property and notify subscribers
+                        hc.pubProperty(req.thingID, req.name, msec)
                     })
                 break;
 
@@ -167,7 +197,7 @@ function  handleNodeAction(
                         if (!success) {
                             err = Error("failed rebuilding node routes")
                         }
-                        resp = req.createResponse(success, err)
+                        resp = req.createResponse(success?"success":"failed", err)
                         hc.sendResponse(resp)
                     });
                 break;
@@ -184,11 +214,14 @@ function  handleNodeAction(
                     notif = req.createNotification()
                     hc.sendNotification(notif)
                 } else {
-                    // a previous request was still running.
+                    // a previous request was still running if interview is in progress.
                     let err = new Error("refreshinfo is already running")
                     let resp = req.createResponse(null, err)
                     hc.sendResponse(resp) // async
                 }
+                // notify of the progress
+                notif = req.createNotification()
+                hc.sendNotification(notif)
                 break;
 
             case "refreshvalues":
@@ -202,10 +235,16 @@ function  handleNodeAction(
                     let resp = req.createResponse(null, err)
                     hc.sendResponse(resp) // async
                 })
-                // request is running, no status neeeded
+                // notify of the progress
                 notif = req.createNotification()
                 hc.sendNotification(notif)
             break;
+
+            case "removefailednode":
+                zwapi.driver.controller.removeFailedNode(node.id).then();
+                resp = req.createResponse(null)
+                hc.sendResponse(resp)
+                break;
 
             default:
                 handled = false

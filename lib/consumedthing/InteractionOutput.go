@@ -237,7 +237,7 @@ func NewInteractionOutput(ct *ConsumedThing, affType string, name string, raw an
 			Title: "NewInteractionOutput: tdi has no " + affType + " output schema: " + name,
 		}
 		schema.ReadOnly = true // default unless proven otherwise
-		raw = "no output"
+		raw = ""
 
 	}
 	if title == "" {

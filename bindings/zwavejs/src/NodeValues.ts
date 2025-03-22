@@ -1,6 +1,7 @@
 import {
+    Driver,
     getEnumMemberName,
-    NodeStatus,
+    NodeStatus, ZWaveApiVersion,
     ZWaveNode,
     ZWavePlusNodeType,
     ZWavePlusRoleType,
@@ -15,17 +16,18 @@ import getAffordanceFromVid from "./getAffordanceFromVid.ts";
 // NodeValues holds the latest values of a single node regardless if it is a prop, event or action
 export default class NodeValues {
     values: { [key: string]: any }
+    zwDriver?: Driver
 
     // @param zwapi: driver to read node vid value
     // @param node: create the map for this node
-    constructor(node?: ZWaveNode) {
+    constructor(node?: ZWaveNode, driver?: Driver) {
         this.values = {}
+        this.zwDriver = driver
         if (node) {
             // load the latest node values into the values map
             this.updateNodeValues(node)
         }
     }
-
 
     // Set a value if it is not undefined
     setIf(key: string, val: unknown) {
@@ -74,6 +76,9 @@ export default class NodeValues {
 
         this.setIf("interviewAttempts", node.interviewAttempts);
         this.setIf("interviewStage", getEnumMemberName(InterviewStage, node.interviewStage));
+
+
+        this.setIf("isFailedNode", node.status == NodeStatus.Dead);
         this.setIf("isListening", node.isListening);
         this.setIf("isSecure", node.isSecure);
         this.setIf("isRouting", node.isRouting);

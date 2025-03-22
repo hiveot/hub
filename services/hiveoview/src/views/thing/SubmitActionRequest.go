@@ -3,6 +3,7 @@ package thing
 import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
+	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/wot/td"
@@ -91,12 +92,18 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 
 	// the async reply will contain status update
 	//sess.SendNotify(session.NotifyInfo, "Delivery Status for '"+actionName+"': "+stat.Status)
-	unit := ""
+	unitSymbol := ""
 	if actionAff.Output != nil {
-		unit = actionAff.Output.Unit
+		unit := actionAff.Output.Unit
+		if unit != "" {
+			unitInfo, found := vocab.UnitClassesMap[unit]
+			if found {
+				unitSymbol = unitInfo.Symbol
+			}
+		}
 	}
 
-	notificationText := fmt.Sprintf("Action %s: %v %s", actionTitle, reply, unit)
+	notificationText := fmt.Sprintf("Action %s: %v %s", actionTitle, reply, unitSymbol)
 	sess.SendNotify(session.NotifySuccess, "", notificationText)
 
 	w.WriteHeader(http.StatusOK)

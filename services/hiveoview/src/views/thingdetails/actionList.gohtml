@@ -33,6 +33,7 @@
 					</div>
 
 					{{/* Status: last known value*/}}
+					{{/*FIXME: refresh this with action response*/}}
 					<div class="h-show-sm">
               {{if and $actionOutput $actionOutput.Schema}}
                   {{template "RenderOutputValue.gohtml" $actionOutput }}

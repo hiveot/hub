@@ -15,6 +15,8 @@ export class InteractionAffordance extends Object {
     // type of affordance, eg temperature, switch,...
     "@type": string | undefined
 
+    public comment: string|undefined
+
     // Provides additional (human-readable) information based on a default language
     public description: string | undefined
     // Provides additional nulti-language information
@@ -92,10 +94,10 @@ export class PropertyAffordance extends DataSchema {
 
     // name is the property name in the map, so it is available when the properties are provided as an array
     name: string = ""
-
-    // Optional nested properties. Map with PropertyAffordance
-    // used when a property has multiple instances, each with their own name
-    public properties: Map<string, PropertyAffordance> | undefined = undefined
+    //
+    // // Optional nested properties. Map with PropertyAffordance
+    // // used when a property has multiple instances, each with their own name
+    // public properties: Map<string, PropertyAffordance> | undefined = undefined
 
     // set the property's vocabulary @type field
     public setVocabType(atType: string): PropertyAffordance {

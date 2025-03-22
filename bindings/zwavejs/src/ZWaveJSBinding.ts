@@ -3,7 +3,7 @@ import type {ZWaveNode} from "zwave-js";
 import createNodeTD from "./createNodeTD.ts";
 import NodeValues from "./NodeValues.ts";
 import ZWAPI from "./ZWAPI.ts";
-import parseController from "./parseController.ts";
+import createControllerTD from "./createControllerTD.ts";
 import logVid from "./logVid.ts";
 import * as vocab from "../hivelib/api/vocab/vocab.js";
 import fs from "node:fs";
@@ -15,6 +15,7 @@ import type IAgentConnection from "../hivelib/messaging/IAgentConnection.ts";
 import {RequestMessage, ResponseMessage} from "../hivelib/messaging/Messages.ts";
 import getLogger from "./getLogger.ts";
 import process from "node:process";
+import TD from "../hivelib/wot/TD.ts";
 const log = getLogger()
 
 
@@ -84,30 +85,32 @@ export class ZwaveJSBinding {
         }
     }
 
-    // Handle discovery or update of a node.
+    // Handle discovery or update of a node attributes.
     // This publishes the TD and its property values
     handleNodeUpdate(node: ZWaveNode) {
         log.info("handleNodeUpdate:node:", node.id);
 
         // FIXME: only update the node if it has changed
-        const thingTD = createNodeTD(this.zwapi, node, this.vidCsvFD, this.config.maxNrScenes);
+        let tdi: TD
 
         if (node.isControllerNode) {
-            parseController(thingTD, this.zwapi.driver.controller)
+            tdi = createControllerTD(this.zwapi,node,this.vidCsvFD)
+        } else {
+            tdi = createNodeTD(this.zwapi, node, this.vidCsvFD, this.config.maxNrScenes);
         }
         // republish the TD
-        this.hc.pubTD(thingTD)
+        this.hc.pubTD(tdi)
 
         // publish the thing property (attr, config) values
-        const newValues = new NodeValues(node);
-        const lastNodeValues = this.lastValues.get(thingTD.id)
+        const newValues = new NodeValues(node,this.zwapi.driver);
+        const lastNodeValues = this.lastValues.get(tdi.id)
         let diffValues = newValues
         if (lastNodeValues) {
             // diffValues = lastNodeValues.diffValues(newValues)
             diffValues = newValues.diffValues(lastNodeValues)
         }
-        this.hc.pubMultipleProperties(thingTD.id, diffValues.values)
-        this.lastValues.set(thingTD.id, newValues);
+        this.hc.pubMultipleProperties(tdi.id, diffValues.values)
+        this.lastValues.set(tdi.id, newValues);
         console.info("handleNodeUpdate completed: "+node.id)
 
     }

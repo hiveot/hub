@@ -21,6 +21,7 @@ import {
     WoTDataTypeBool,
     WoTDataTypeNone,
     WoTDataTypeNumber,
+    WoTDataTypeObject,
     WoTDataTypeString
 } from "../hivelib/api/vocab/vocab.js";
 
@@ -166,12 +167,16 @@ export default function createNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: nu
         tdi.AddProperty("interviewStage", "Device Interview Stage", "",
             WoTDataTypeString).SetAsEnum(InterviewStage)
     }
+    tdi.AddProperty("isFailedNode", "Is Dead Node",
+        "Node was marked as failed in the controller", WoTDataTypeBool);
     tdi.AddProperty("isListening", "Is Listening",
         "The device is always listening and does not sleep", WoTDataTypeBool);
+
     tdi.AddPropertyIf(node.isSecure, "isSecure","Secured",
         "Device communicates securely with controller",WoTDataTypeBool );
     tdi.AddPropertyIf(node.isRouting, "isRouting","Routing Device",
         "Device support message routing/forwarding (if listening)", WoTDataTypeBool );
+
     tdi.AddPropertyIf(node.isControllerNode, "isControllerNode",
         "Controller Node", "Device is a ZWave controller", WoTDataTypeBool);
     tdi.AddPropertyIf(node.keepAwake, "keepAwake","Keep Awake",
@@ -234,29 +239,64 @@ export default function createNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: nu
     tdi.AddPropertyIf(node.zwavePlusVersion,
         "zwavePlusVersion","Z-Wave+ Version", "",WoTDataTypeNumber);
 
-    // actions
+    // Node actions
 
-    tdi.AddAction("checkLifelineHealth", "Check connection health",
-        "Initiates tests to check the health of the connection between the controller and this node and returns the results. " +
-        "This should NOT be done while there is a lot of traffic on the network because it will negatively impact the test results"
-        ).output = new DataSchema({
+    let act = tdi.AddAction("checkLifelineHealth", "Check connection health",
+        "Initiates tests to check the health of the connection between the controller and this node. " +
+        "This should NOT be done while there is a lot of traffic on the network because it will negatively impact the test results")
+    act.output = new DataSchema({
+        "title": "Health Rating",
+        "description": "Health rating 0-10",
+        "type": WoTDataTypeNumber,
+    })
+
+    act = tdi.AddAction("checkRouteHealth", "Check Route Health",
+        "Check connection health between this node and another node."+
+        "This should NOT be done while there is a lot of traffic on the network because it will negatively impact the test results",
+        new DataSchema({title: "Node Nr", type: WoTDataTypeNumber}))
+    act.output = new DataSchema({
         "title": "Rating",
-        "description": "Worst of runs",
+        "description": "Health rating 0-10",
         "type": WoTDataTypeNumber,
     })
 
-    tdi.AddAction("ping", "Ping", "Ping the device").output=new DataSchema({
+    // https://zwave-js.github.io/zwave-js/#/api/controller?id=getnodeneighbors
+    act = tdi.AddAction("getNodeNeighbors",  "Update Neighbors",
+        "Request update of this node's neighbors list",
+    )
+    act.comment = "https://zwave-js.github.io/zwave-js/#/api/controller?id=getnodeneighbors"
+    act.output = new DataSchema({
+        "title": "Neighbors",
+        "description": "Obtain the known list of neighbors of this node.",
+        "type": WoTDataTypeArray,
+    })
+    // ping result is also updated as a property
+    tdi.AddProperty("getNodeNeighbors", "Neighbors", "The last result of reading the list of connected neighbors.", WoTDataTypeNumber)
+
+    act = tdi.AddAction("ping", "Ping", "Ping the device")
+    act.output = new DataSchema({
         "title": "Duration",
+        "description": "Delay in msec before a response is received.",
         "type": WoTDataTypeNumber,
-        "unit": "msec"
+        "unit": vocab.UnitMilliSecond
     })
-    // todo: what type of response is expected: latency in msec
+    // ping result is also updated as a property
+    let prop = tdi.AddProperty("ping", "Latency", "Ping latency between controller and this node", WoTDataTypeNumber)
+    prop.unit = vocab.UnitMilliSecond
 
-    tdi.AddAction("refreshInfo",  "Refresh Device Info",
+    // controllers use beginRebuildingRoutes instead
+    if (!node.isControllerNode) {
+        act = tdi.AddAction("rebuildNodeRoutes", "Rebuild node routes",
+            "Rebuilds routes for a single alive node in the network, updating the neighbor list and " +
+            "assigning fresh routes to association targets. "
+        )
+        act.comment = "https://zwave-js.github.io/zwave-js/#/api/controller?id=rebuildnoderoutes"
+    }
+    act = tdi.AddAction("refreshInfo",  "Refresh Device Info",
         "Resets (almost) all information about this node and forces a fresh interview. " +
         "Ignored when interview is in progress. After this action, the node will "+
         "no longer be ready. This can take a long time.")
-    // todo: what type of response is expected: progress status updates until completed
+    act.comment = "https://zwave-js.github.io/zwave-js/#/api/node?id=refreshinfo"
 
 
     tdi.AddAction("refreshValues", "Refresh Device Values",
@@ -264,7 +304,11 @@ export default function createNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: nu
         "Use sparingly. This can take a long time and generate a lot of traffic.")
     // todo: what type of response is expected: progress status updates until completed
 
-
+    if (!node.isControllerNode) {
+        tdi.AddAction("removeFailedNode", "Remove failed node",
+            "Remove this node from the network if status is failed"
+        )
+    }
     //--- Step 4: add properties, events, and actions from the ValueIDs
 
     //--- FIXME: use the CC for device title and location
@@ -280,7 +324,7 @@ export default function createNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: nu
         property: "name"
     }
     const titleAff = getAffordanceFromVid(node,nameVid,0)
-    let prop = tdi.AddProperty(titleAff?.name||"title", "Device name",
+    prop = tdi.AddProperty(titleAff?.name||"title", "Device name",
         "Custom device name/title",  WoTDataTypeString, vocab.PropDeviceTitle);
     prop.readOnly = false
 
@@ -309,13 +353,6 @@ export default function createNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: nu
             case "action":
                 // actuators accept input actions
                 addAction(tdi, node, vid, va)
-                // if action output is stateful there is a read-only property for presenting
-                // the latest state. Some devices can also be manually controlled which will
-                // update the property but not the action status.
-                // let vidMeta = node.getValueMetadata(vid)
-                if (va.meta.readable) {
-                    // addProperty(tdi, node, vid, va)
-                }
                 break;
             case "event":
                 // sensors emit events

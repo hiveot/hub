@@ -129,9 +129,14 @@ export class HTimechart extends HTMLElement {
                     display: true,
                     text: "title"
                 },
+                // https://www.chartjs.org/docs/latest/configuration/tooltip.html
                 tooltip: {
                     intersect:false,
+                    backgroundColor: "#3d415a",// "darkgray",
                     mode:'index',
+                    padding: "10",
+                    borderColor: "lightgreen",
+                    borderWidth: "1"
                 }
             }
         }
@@ -300,6 +305,7 @@ export class HTimechart extends HTMLElement {
     // @param dataColor optional override of the default color
     setTimeSeries = (nr,key, label, timePoints, dataUnit, stepped, dataColor) => {
 
+        // console.log("setTimeSeries; stepped=",stepped)
         // assign a color
         if (!dataColor) {
             if (nr < DefaultColors.length) {

@@ -4,9 +4,21 @@ import {RFRegion} from "zwave-js";
 import TD from "../hivelib/wot/TD.ts";
 import  DataSchema from "../hivelib/wot/dataSchema.ts";
 import {WoTDataTypeNone, WoTDataTypeString} from "../hivelib/api/vocab/vocab.js";
+import type ZWAPI from "./ZWAPI.ts";
+import createNodeTD from "./createNodeTD.ts";
+
+
+// Create the node of the controller.
+// The controller has a few extra events and actions.
+export default function createControllerTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: number | undefined): TD {
+    let tdi = createNodeTD(zwapi,node,vidLogFD,0)
+
+    parseController(tdi, zwapi.driver.controller)
+    return tdi
+}
 
 // parseController adds controller actions and attributes to the Thing TD
-export default function parseController(tdi: TD, ctl: ZWaveController) {
+function parseController(tdi: TD, ctl: ZWaveController) {
 
     if (ctl.rfRegion) {
         tdi.AddProperty("rfRegion",  "RF Region","Geographic region for RF emission rules",WoTDataTypeString)
@@ -16,10 +28,10 @@ export default function parseController(tdi: TD, ctl: ZWaveController) {
     }
 
     // controller events. Note these must match the controller event handler
-    tdi.AddEvent("healNetworkState",  "Heal Network Progress", undefined,
-        new DataSchema({title: "Heal State", type: WoTDataTypeString}))
-    tdi.AddEvent("inclusionState",  "Node Inclusion Progress", undefined,
-        new DataSchema({title: "Inclusion State", type: WoTDataTypeString}))
+    // tdi.AddEvent("healNetworkState",  "Heal Network Progress", undefined,
+    //     new DataSchema({title: "Heal State", type: WoTDataTypeString}))
+    // tdi.AddEvent("inclusionState",  "Return the node Inclusion Progress", undefined,
+    //     new DataSchema({title: "Inclusion State", type: WoTDataTypeString}))
     tdi.AddEvent("nodeAdded", "Node Added", undefined,
         new DataSchema({title: "ThingID", type: WoTDataTypeString}))
     tdi.AddEvent("nodeRemoved",  "Node Removed", undefined,
@@ -28,26 +40,29 @@ export default function parseController(tdi: TD, ctl: ZWaveController) {
     // controller network actions
     tdi.AddAction("beginInclusion", "Start add node process",
         "Start the inclusion process for new nodes. Prefer S2 security if supported")
-    tdi.AddAction("stopInclusion",  "Stop add node process")
     tdi.AddAction("beginExclusion", "Start node removal process")
-    tdi.AddAction("stopExclusion",  "Stop node removal process")
-    tdi.AddAction("beginHealingNetwork", "Start heal network process",
-        "Start healing the network routes. This can take a long time and slow things down.")
-    tdi.AddAction("stopHealingNetwork", "Stop the ongoing healing process")
 
-    // controller node actions
-    tdi.AddAction("getNodeNeighbors",  "Update Neighbors",
-        "Request update to a node's neighbor list",
-        new DataSchema({title: "ThingID", type: WoTDataTypeString})
-    )
-    tdi.AddAction("healNode", "Heal the node",
-        "Heal the node and update its neighbor list",
-        new DataSchema({title: "ThingID", type: WoTDataTypeString})
-    )
-    tdi.AddAction("removeFailedNode", "Remove failed node",
-        "Remove a failed node from the network",
-        new DataSchema({title: "ThingID", type: WoTDataTypeString})
-    )
+    tdi.AddAction("beginRebuildingRoutes", "Start rebuilding routes",
+        "Start healing the network routes. This can take a long time and slow things down.")
+
+
+    tdi.AddAction("stopExclusion",  "Stop node removal process")
+    tdi.AddAction("stopInclusion",  "Stop add node process")
+    tdi.AddAction("stopRebuildingRoutes", "Stop rebuilding routes")
+
+    // // controller node actions
+    // tdi.AddAction("getNodeNeighbors",  "Update Neighbors",
+    //     "Request update to a node's neighbor list",
+    //     new DataSchema({title: "ThingID", type: WoTDataTypeString})
+    // )
+    // tdi.AddAction("healNode", "Heal the node",
+    //     "Heal the node and update its neighbor list",
+    //     new DataSchema({title: "ThingID", type: WoTDataTypeString})
+    // )
+    // tdi.AddAction("removeFailedNode", "Remove failed node",
+    //     "Remove a failed node from the network",
+    //     new DataSchema({title: "ThingID", type: WoTDataTypeString})
+    // )
     // td.AddAction("replaceFailedNode", "Replace a failed node with another node (thingID, thingID)", DataType.String)
 
     // ctl.getBackgroundRSSI().then(value => {

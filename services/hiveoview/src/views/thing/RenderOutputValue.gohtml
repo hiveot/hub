@@ -37,8 +37,14 @@
 		/>
 	{{else}}
 
-      {{/* Dynamic refresh of value on sse event*/}}
-	    <span sse-swap="{{.AffordanceType}}/{{.ThingID}}/{{.Name}}"
+      {{/* Dynamic refresh on event or property notification. Actions only update
+           if there is a corresponding property. */}}
+	    <span
+		        {{if eq .AffordanceType "action"}}
+					    sse-swap="property/{{.ThingID}}/{{.Name}}"
+            {{else}}
+			        sse-swap="{{.AffordanceType}}/{{.ThingID}}/{{.Name}}"
+            {{end}}
 				      hx-target="this"
 			>
 					{{.Value.Text}}
@@ -47,6 +53,7 @@
   {{end}}
 </a>
 
+{{if eq .Schema.Type "boolean"}}
 <script>
 	function isChecked(ev) {
         console.log("isChecked",ev)
@@ -56,7 +63,7 @@
         return false
 	}
 </script>
-
+{{end}}
 
 <style>
     input[type=checkbox][role=switch]:checked {
