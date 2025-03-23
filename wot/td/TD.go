@@ -528,9 +528,8 @@ func (tdoc *TD) UpdateTitleDescription(title string, description string) {
 //
 // Conventions:
 // 1. thingID is a URI, starting with the "urn:" prefix as per WoT standard.
-// 2. If title is editable then the agent should add a property with name wot.WoTTitle and update the TD if it is set.
-// 3. If description is editable then the agent should add a property with ID wot.WoTDescription and
-// update the TD description if it is set.
+// 2. Agents should add a property wot.WoTTitle and update the TD if it is set.
+// 3. Agents should add a property wot.WoTDescription and update the TD description if it is set.
 // 4. the deviceType comes from the vocabulary and has ID vocab.DeviceType<Xyz>
 //
 // Devices or bindings are not expected to use forms. The form content describes the

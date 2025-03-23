@@ -1,5 +1,5 @@
 // ZWaveJSBinding.ts holds the entry point to the ZWave binding along with its configuration
-import {InterviewStage,  ZWaveNode} from "zwave-js";
+import {InclusionStrategy, InterviewStage, ZWaveNode} from "zwave-js";
 import type IAgentConnection from "../hivelib/messaging/IAgentConnection.ts";
 import {OpSubscribeEvent, OpWriteProperty} from "../hivelib/api/vocab/vocab.js";
 import {
@@ -71,7 +71,9 @@ function  handleControllerRequest(
 
             break;
         case "begininclusion":
-            zwapi.driver.controller.beginInclusion().then()
+            zwapi.driver.controller.beginInclusion({
+                strategy: InclusionStrategy.Default,
+            }).then()
             resp = req.createResponse(null)
             break;
         case "beginrebuildingroutes":

@@ -6,12 +6,10 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/runtime/api"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
-	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"time"
@@ -350,14 +348,5 @@ func (svc *DigitwinRouter) HandleUpdateTD(
 func (svc *DigitwinRouter) HandleWriteProperty(
 	req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
 
-	// TODO: move this to a more appropriate spot
-	// if the TD title property is written then modify its title as well
-	if req.Name == wot.WoTTitle {
-		tdi := svc.dtwStore.GetDigitwinInfo(req.ThingID)
-		tdi.DigitwinTD.Title = tputils.DecodeAsString(req.Input, 0)
-	} else if req.Name == wot.WoTDescription {
-		tdi := svc.dtwStore.GetDigitwinInfo(req.ThingID)
-		tdi.DigitwinTD.Description = tputils.DecodeAsString(req.Input, 0)
-	}
 	return svc.ForwardRequestToRemoteAgent(req, c)
 }

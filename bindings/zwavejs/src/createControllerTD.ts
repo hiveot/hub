@@ -40,13 +40,13 @@ function parseController(tdi: TD, ctl: ZWaveController) {
     // controller network actions
     tdi.AddAction("beginInclusion", "Start add node process",
         "Start the inclusion process for new nodes. Prefer S2 security if supported")
-    tdi.AddAction("beginExclusion", "Start node removal process")
+    tdi.AddAction("beginExclusion", "Start remove node process")
 
     tdi.AddAction("beginRebuildingRoutes", "Start rebuilding routes",
         "Start healing the network routes. This can take a long time and slow things down.")
 
 
-    tdi.AddAction("stopExclusion",  "Stop node removal process")
+    tdi.AddAction("stopExclusion",  "Stop remove node process")
     tdi.AddAction("stopInclusion",  "Stop add node process")
     tdi.AddAction("stopRebuildingRoutes", "Stop rebuilding routes")
 

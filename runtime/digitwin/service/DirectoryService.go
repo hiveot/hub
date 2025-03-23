@@ -1,7 +1,6 @@
 package service
 
 import (
-	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/messaging"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/runtime/digitwin/store"
@@ -46,13 +45,6 @@ func (svc *DirectoryService) MakeDigitalTwinTD(
 	dtwTD.Security = ""
 	dtwTD.SecurityDefinitions = make(map[string]td.SecurityScheme)
 
-	// add a writable title property
-	_, hasTitle := dtwTD.Properties[wot.WoTTitle]
-	if !hasTitle {
-		prop := dtwTD.AddProperty(wot.WoTTitle, "Title", "", wot.DataTypeString)
-		prop.SetAtType(vocab.PropDeviceTitle)
-		prop.ReadOnly = false
-	}
 	for _, aff := range dtwTD.Properties {
 		aff.Forms = make([]td.Form, 0)
 	}

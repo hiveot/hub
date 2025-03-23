@@ -22,7 +22,7 @@ import {
     WoTDataTypeNone,
     WoTDataTypeNumber,
     WoTDataTypeObject,
-    WoTDataTypeString
+    WoTDataTypeString, WoTTitle
 } from "../hivelib/api/vocab/vocab.js";
 
 import type ZWAPI from "./ZWAPI.ts";
@@ -119,6 +119,10 @@ export default function createNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: nu
     //--- Step 1: TD definition
     const deviceID = zwapi.getDeviceID(node.id)
     const deviceType = getDeviceType(node)
+
+    // node name is the customizable name (if provided) used as device title and
+    // persisted in the driver using CC 119-name.
+    // device name: https://zwave-js.github.io/zwave-js/#/api/node?id=name
     let title = node.name
     if (!title) {
         title = node.label || deviceID
@@ -126,6 +130,7 @@ export default function createNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: nu
             title += " " + node.deviceConfig?.description
         }
     }
+    // node.label is the manufacturer provided device label
     let description = (node.label || deviceID) + ", " + deviceType
     if (node.deviceConfig) {
         description = node.deviceConfig.manufacturer + " " + description + ", " + node.deviceConfig.description
@@ -311,7 +316,7 @@ export default function createNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: nu
     }
     //--- Step 4: add properties, events, and actions from the ValueIDs
 
-    //--- FIXME: use the CC for device title and location
+    //--- Use the CC 119- (config) for device title and location
     // Currently the name and location VID (CC 119) is only included when a
     // name and location is set, so create the Vid here manually to ensure it is
     // always there.
@@ -324,10 +329,11 @@ export default function createNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: nu
         property: "name"
     }
     const titleAff = getAffordanceFromVid(node,nameVid,0)
-    prop = tdi.AddProperty(titleAff?.name||"title", "Device name",
-        "Custom device name/title",  WoTDataTypeString, vocab.PropDeviceTitle);
+    prop = tdi.AddProperty(titleAff?.name||WoTTitle, "Device name",
+        "Custom device name/title used as the TD title",  WoTDataTypeString, vocab.PropDeviceTitle);
     prop.readOnly = false
 
+    // force device location to show up
     const locationVid = {
         commandClass: titleCC,
         endpoint: 0,

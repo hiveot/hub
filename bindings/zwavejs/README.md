@@ -10,7 +10,6 @@ Installation requires node-v18.
 
 
 TODO:
-1. Reconnect to Hub if the runtime restarts (javascript HttpSseClient bug)
 2. Report heal network status/progress of a node
 1. ZWave stick reconnect support (Recover after serial port removal)
 1. Detect and track health of nodes; dropped messages, etc.
@@ -19,12 +18,10 @@ TODO:
 1. Improve mapping of zwave-js VID names to hiveot property/event/action vocabulary. 
    A. map of vid names to vocab names in the driver, and/or 
    B. just publish native values and manage mapping on the Hub C. define proper handling of multi-value properties
-1. Include DataSchema in controller configurations for properties that aren't in the zwave-js vids.
 1. Dimming duration is currently not supported
-1. Change back to JS using JSDoc for types. Simplifying the build process.
 
 
-## Mapping zwave VID to TD property, event and action keys
+## Mapping zwave VID to TD property, event and action affordances
 
 Values of ZWaveJS nodes are identified by so-called value ID's or VID's.
 

@@ -12,11 +12,14 @@
 #vidCsvFile: /home/henk/bin/hiveot/logs/zwinfo.csv
 
 # ZWave S2 security keys. 16 Byte hex strings
+# These keys should be generated with: < /dev/urandom tr -dc A-F0-9 | head -c32 ;echo
 # Keep these secure to protect your network:
-S2_Unauthenticated: 00112233445566778899aabbccddeeff
-S2_Authenticated: 00112233445566778899aabbccddeeff
-S2_AccessControl: 00112233445566778899aabbccddeeff
-S2_Legacy: 00112233445566778899aabbccddeeff
+#S0_Legacy: 00112233445566778899aabbccddeeff
+#S2_Unauthenticated: 00112233445566778899aabbccddeeff
+#S2_Authenticated: 00112233445566778899aabbccddeeff
+#S2_AccessControl: 00112233445566778899aabbccddeeff
+#S2LR_Authenticated: 00112233445566778899aabbccddeeff
+#S2LR_AccessControl: 00112233445566778899aabbccddeeff
 
 
 # Serial port of ZWave USB controller. Default is automatic.
@@ -43,4 +46,5 @@ S2_Legacy: 00112233445566778899aabbccddeeff
 
 # bindling loglevel: error, warn (default), info, debug. 
 #loglevel: info
+#vidCsvFile: zwave-vids.log
 

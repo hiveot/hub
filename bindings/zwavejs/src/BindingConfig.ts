@@ -7,10 +7,12 @@ import  NodeEnvironment from "../hivelib/appenv/NodeEnvironment.ts";
 // This binding's service configuration  
 export default class BindingConfig extends NodeEnvironment implements IZWaveConfig {
     // zwave network keys
-    S2_Unauthenticated: string | undefined
-    S2_Authenticated: string | undefined
-    S2_AccessControl: string | undefined
     S0_Legacy: string | undefined
+    S2_AccessControl: string | undefined
+    S2_Authenticated: string | undefined
+    S2_Unauthenticated: string | undefined
+    S2LR_AccessControl: string | undefined
+    S2LR_Authenticated: string | undefined
     //
     zwDisableSoftReset: boolean | undefined  // disable the soft reset if driver fails to connect 
     zwPort: string | undefined               // controller port: ""=auto, /dev/ttyACM0, ...
@@ -42,6 +44,8 @@ export default class BindingConfig extends NodeEnvironment implements IZWaveConf
             // writable for current process only
             fs.mkdirSync(this.cacheDir, { mode: 0o700 })
         }
+
+        // last, the zwave driver needs security keys
     }
 }
 

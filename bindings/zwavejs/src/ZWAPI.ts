@@ -9,7 +9,7 @@ import {
     ZWaveNode,
 } from "zwave-js";
 import type {
-    Endpoint, InclusionResult,
+    Endpoint, InclusionGrant, InclusionResult,
     PartialZWaveOptions,
     RebuildRoutesStatus,
     ValueMetadataNumeric,
@@ -27,19 +27,24 @@ import type {EventEmitter} from "node:events";
 import findSerialPort from "./serial/findserialport.ts";
 
 // Default keys for testing, if none are configured. Please set the keys in config/zwavejs.yaml
+const DefaultS2AccessControl = "2233445566778899AABBCCDDEEFF0011"
 const DefaultS2Authenticated = "00112233445566778899AABBCCDDEEFF"
 const DefaultS2Unauthenticated = "112233445566778899AABBCCDDEEFF00"
-const DefaultS2AccessControl = "2233445566778899AABBCCDDEEFF0011"
 const DefaultS0Legacy = "33445566778899AABBCCDDEEFF001122"
+const DefaultS2LRAccessControl = "2233445566778899AABBCCFFFEEE0011"
+const DefaultS2LRAuthenticated = "00112233445566778899EEEFFFDDEEFF"
 
 // Configuration of the ZWaveJS driver
 export interface IZWaveConfig {
     // These keys are generated with "< /dev/urandom tr -dc A-F0-9 | head -c32 ;echo"
     // or use MD5(password text)
+    S0_Legacy: string | undefined
     S2_Unauthenticated: string | undefined
     S2_Authenticated: string | undefined
     S2_AccessControl: string | undefined
-    S0_Legacy: string | undefined
+    S2LR_AccessControl: string | undefined  // zwave long range keys
+    S2LR_Authenticated: string | undefined  // zwave long range keys
+
     // disable soft reset on startup. Use if driver fails to connect to the controller
     zwDisableSoftReset: boolean | undefined,
     // controller port: default auto, /dev/serial/by-id/usb...
@@ -122,18 +127,37 @@ export default class ZWAPI {
         log.info("connecting", "port", zwPort)
 
         // These keys should be generated with "< /dev/urandom tr -dc A-F0-9 | head -c32 ;echo"
+        const S0_Legacy = zwConfig.S0_Legacy || DefaultS0Legacy
+        const S2_AccessControl = zwConfig.S2_AccessControl || DefaultS2AccessControl
         const S2_Authenticated = zwConfig.S2_Authenticated || DefaultS2Authenticated
         const S2_Unauthenticated = zwConfig.S2_Unauthenticated || DefaultS2Unauthenticated
-        const S2_AccessControl = zwConfig.S2_AccessControl || DefaultS2AccessControl
-        const S0_Legacy = zwConfig.S0_Legacy || DefaultS0Legacy
+        const S2LR_AccessControl = zwConfig.S2LR_AccessControl || DefaultS2LRAccessControl
+        const S2LR_Authenticated = zwConfig.S2LR_Authenticated || DefaultS2LRAuthenticated
 
         const options: PartialZWaveOptions = {
             securityKeys: {
                 // These keys should be generated with "< /dev/urandom tr -dc A-F0-9 | head -c32 ;echo"
-                S2_Unauthenticated: Buffer.from(S2_Unauthenticated, "hex"),
-                S2_Authenticated: Buffer.from(S2_Authenticated, "hex"),
-                S2_AccessControl: Buffer.from(S2_AccessControl, "hex"),
                 S0_Legacy: Buffer.from(S0_Legacy, "hex"),
+                S2_AccessControl: Buffer.from(S2_AccessControl, "hex"),
+                S2_Authenticated: Buffer.from(S2_Authenticated, "hex"),
+                S2_Unauthenticated: Buffer.from(S2_Unauthenticated, "hex"),
+            },
+            securityKeysLongRange: {
+                S2_AccessControl: Buffer.from(S2LR_AccessControl, "hex"),
+                S2_Authenticated: Buffer.from(S2LR_Authenticated, "hex"),
+            },
+            inclusionUserCallbacks: {
+                grantSecurityClasses: function (requested: InclusionGrant): Promise<InclusionGrant | false> {
+                    return new Promise<InclusionGrant>(requested=>{
+                        log.warn("Granting security inclusion "+requested.toString())
+                        return requested})
+                },
+                validateDSKAndEnterPIN: function (dsk: string): Promise<string | false> {
+                    throw new Error("Function not implemented.");
+                },
+                abort: function (): void {
+                    throw new Error("Function not implemented.");
+                }
             },
             // wait for the device verification before sending value updated event.
             //  instead some kind of 'pending' status should be tracked.
@@ -280,7 +304,7 @@ export default class ZWAPI {
         });
         // for zwave-12
         this.driver.controller.on("inclusion started", (secure: boolean) => {
-            log.info("inclusion has started. secure=%v", secure);
+            log.info("inclusion has started. secure=", secure);
         });
         // for zwave-13 and up
         // this.driver.controller.on("inclusion started", (strategy: InclusionStrategy) => {

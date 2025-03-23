@@ -80,7 +80,6 @@ clean: ## Clean distribution files
 	mkdir -p $(DIST_FOLDER)/certs
 	mkdir -p $(DIST_FOLDER)/config
 	mkdir -p $(DIST_FOLDER)/logs
-	mkdir -p $(DIST_FOLDER)/run
 	go mod tidy
 	go get all
 
@@ -95,7 +94,6 @@ install:  ## core plugins ## build and install the services
 	mkdir -p $(INSTALL_HOME)/config
 	mkdir -p $(INSTALL_HOME)/logs
 	mkdir -p $(INSTALL_HOME)/stores
-	mkdir -p $(INSTALL_HOME)/run
 	cp -af $(BIN_FOLDER)/* $(INSTALL_HOME)/bin
 	cp -af $(PLUGINS_FOLDER)/* $(INSTALL_HOME)/plugins
 	cp -n $(DIST_FOLDER)/config/*.yaml $(INSTALL_HOME)/config/

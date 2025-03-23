@@ -25,12 +25,11 @@ console.log("Starting hiveot zwavejs binding...")
 
     const appConfig = new BindingConfig(clientID)
 
-    // REMOVE THE FOLLOWING LINE AFTER INITIAL DEVELOPMENT
+    // MOVE THE FOLLOWING LINE TO CONFIG AFTER INITIAL DEVELOPMENT
     // My Z-stick doesn't handle soft reset
     appConfig.zwDisableSoftReset = true
 
-
-    // When running from a pkg'ed binary, zwavejs must have a writable copy for device config. 
+    // When running from a pkg'ed binary, zwavejs must have a writable copy for device config.
     // Use the storage folder set in app config.
     log.info("storage dir", "path", appConfig.storesDir)
     if (appConfig.storesDir) {

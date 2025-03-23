@@ -189,7 +189,6 @@ export class ZwaveJSBinding {
         })
         // the binding does not expect async responses
         // the binding does not expect any notifications
-
         await this.zwapi.connectLoop(this.config);
     }
 

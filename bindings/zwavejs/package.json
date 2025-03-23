@@ -7,8 +7,8 @@
   "type": "module",
   "scripts": {
     "build": "node esbuild.cjs",
-    "devnode": "ZWAVEJS_EXTERNAL_CONFIG=dist/cache node --preserve-symlinks build/index.js --clientID zwavejs --home ~/bin/hiveot",
-    "devtsx": "ZWAVEJS_EXTERNAL_CONFIG=dist/cache tsx --preserve-symlinks src/main.ts --clientID zwavejs --home ~/bin/hiveot",
+    "devnode": "ZWAVEJS_EXTERNAL_CONFIG=dist/cache node --preserve-symlinks build/index.js --clientID test --home ~/bin/hiveot",
+    "devtsx": "ZWAVEJS_EXTERNAL_CONFIG=dist/cache tsx --preserve-symlinks src/main.ts --clientID test --home ~/bin/hiveot",
     "pkg": "./build.sh",
     "distinstall": "cp dist/zwavejs ~/bin/hiveot/plugins",
     "testtsx": "tsx --preserve-symlinks src/tests/hubconnect_test.ts",
