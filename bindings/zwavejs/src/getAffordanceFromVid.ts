@@ -1,8 +1,8 @@
-import type {ZWaveNode} from "zwave-js";
+import {ValueMetadata, ZWaveNode} from "zwave-js";
 import {CommandClasses, type ValueID} from "@zwave-js/core";
 import * as vocab from "../hivelib/api/vocab/vocab.js";
-import {ActionAffordance} from "../hivelib/wot/TD.ts";
-import {ValueMetadata} from "@zwave-js/core/build/values/Metadata";
+// import {ActionAffordance} from "../hivelib/wot/TD.ts";
+// import {ValueMetadata} from "@zwave-js/core/build/values/Metadata";
 
 
 // ValueID to TD event,action or property affordance type

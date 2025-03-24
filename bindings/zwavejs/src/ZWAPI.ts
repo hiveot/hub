@@ -1,30 +1,28 @@
-import fs from "node:fs";
-import path from "node:path";
 import { Buffer } from "node:buffer";
+
+import getLogger from "./getLogger.ts";
+import findSerialPort from "./serial/findserialport.ts";
 import {
     Driver,
-     InclusionStrategy,
+    InclusionResult,
+    InclusionStrategy,
     NodeStatus,
-    RemoveNodeReason,
-    ZWaveNode,
-} from "zwave-js";
-import type {
-    Endpoint, InclusionGrant, InclusionResult,
     PartialZWaveOptions,
     RebuildRoutesStatus,
-    ValueMetadataNumeric,
-    ZWaveNodeMetadataUpdatedArgs,
+    RemoveNodeReason,
+    ValueID, ValueMetadataNumeric,
+    ZWaveNode, ZWaveNodeMetadataUpdatedArgs,
     ZWaveNodeValueAddedArgs,
     ZWaveNodeValueNotificationArgs,
     ZWaveNodeValueRemovedArgs,
-    ZWaveNodeValueUpdatedArgs,
+    ZWaveNodeValueUpdatedArgs
 } from "zwave-js";
-import {CommandClasses, type ValueID} from '@zwave-js/core';
 
-import getLogger from "./getLogger.ts";
-import type {Duplex} from "node:stream";
-import type {EventEmitter} from "node:events";
-import findSerialPort from "./serial/findserialport.ts";
+// fix 'require is not defined' when running as a module
+// This comes from zwave-js-server: server.ts
+// import { createRequire } from "node:module";
+// export var require = createRequire(import.meta.url);
+
 
 // Default keys for testing, if none are configured. Please set the keys in config/zwavejs.yaml
 const DefaultS2AccessControl = "2233445566778899AABBCCDDEEFF0011"
@@ -45,7 +43,7 @@ export interface IZWaveConfig {
     S2LR_AccessControl: string | undefined  // zwave long range keys
     S2LR_Authenticated: string | undefined  // zwave long range keys
 
-    // disable soft reset on startup. Use if driver fails to connect to the controller
+    // disable soft reset on startup. Use if driver has difficulty connecting to the controller
     zwDisableSoftReset: boolean | undefined,
     // controller port: default auto, /dev/serial/by-id/usb...
     zwPort: string | undefined,
@@ -104,10 +102,12 @@ export default class ZWAPI {
     // Add a known node and subscribe to its ready event before doing anything else
     addNode(node: ZWaveNode) {
         log.info(`Node ${node.id} - waiting for it to be ready`)
-        node.on("ready", (node) => {
-            log.info("--- Node", node.id, "is ready. Setting up the node.");
-            this.setupNode(node);
-        });
+        // node.on("ready", (node:any) => {
+        //     log.info("--- Node", node.id, "is ready. Setting up the node.");
+        //     this.setupNode(node);
+        // });
+        // looks like nodes don't get ready in the latest zwave-js driver
+        this.setupNode(node);
     }
 
     // connect initializes the zwave-js driver and connect it to the ZWave controller.
@@ -135,6 +135,21 @@ export default class ZWAPI {
         const S2LR_Authenticated = zwConfig.S2LR_Authenticated || DefaultS2LRAuthenticated
 
         const options: PartialZWaveOptions = {
+            attempts: {
+                controller: 3,
+            },
+            emitValueUpdateAfterSetValue: true,
+            logConfig: {
+                enabled: (zwConfig.zwLogLevel != ""),
+                level: zwConfig.zwLogLevel,
+                logToFile: !!(zwConfig.zwLogFile),
+                filename: zwConfig.zwLogFile,
+            },
+            features: {
+                // workaround for sticks that don't handle this and refuse connection after reset
+                softReset: !zwConfig.zwDisableSoftReset,
+                unresponsiveControllerRecovery: true
+            },
             securityKeys: {
                 // These keys should be generated with "< /dev/urandom tr -dc A-F0-9 | head -c32 ;echo"
                 S0_Legacy: Buffer.from(S0_Legacy, "hex"),
@@ -146,39 +161,13 @@ export default class ZWAPI {
                 S2_AccessControl: Buffer.from(S2LR_AccessControl, "hex"),
                 S2_Authenticated: Buffer.from(S2LR_Authenticated, "hex"),
             },
-            inclusionUserCallbacks: {
-                grantSecurityClasses: function (requested: InclusionGrant): Promise<InclusionGrant | false> {
-                    return new Promise<InclusionGrant>(requested=>{
-                        log.warn("Granting security inclusion "+requested.toString())
-                        return requested})
-                },
-                validateDSKAndEnterPIN: function (dsk: string): Promise<string | false> {
-                    throw new Error("Function not implemented.");
-                },
-                abort: function (): void {
-                    throw new Error("Function not implemented.");
-                }
-            },
-            // wait for the device verification before sending value updated event.
-            //  instead some kind of 'pending' status should be tracked.
-            emitValueUpdateAfterSetValue: false,
-            //
-            logConfig: {
-                enabled: (zwConfig.zwLogLevel != ""),
-                level: zwConfig.zwLogLevel,
-                logToFile: !!(zwConfig.zwLogFile),
-                filename: zwConfig.zwLogFile,
-            },
             storage: {
                 // allow for a different cache directory
                 cacheDir: zwConfig.cacheDir,
             },
-            // enableSoftReset: !zwConfig.zwDisableSoftReset,
-            features: {
-                // workaround for sticks that don't handle this and refuse connection after reset
-                softReset: !zwConfig.zwDisableSoftReset,
+            timeouts: {
+              ack: 10000   // how long to wait for an ack - 10sec for testing
             }
-
         };
         log.info("ZWaveJS config option soft_reset on startup is " + (options.features?.softReset ? "enabled" : "disabled"))
 
@@ -186,10 +175,11 @@ export default class ZWAPI {
         // Start the driver. To await this method, put this line into an async method
         this.driver = new Driver(zwPort, options);
 
-        log.info("Starting zwave-js. Version="+this.driver.configVersion)
+        // driver.configVersion causes panic "require is not defined" when using modules
+        // log.info("Starting zwave-js. Version="+this.driver.configVersion)
 
         // notify of driver errors
-        this.driver.on("error", (e) => {
+        this.driver.on("error", (e:any) => {
             if (this.onFatalError) {
                 this.onFatalError(e)
             }
@@ -199,12 +189,18 @@ export default class ZWAPI {
 
         // Listen for the driver ready event before doing anything with the driver
         this.driver.once("driver ready", () => {
+            log.info("driver ready")
             this.handleDriverReady()
+        });
+        this.driver.once("all nodes ready", () => {
+            log.info("all nodes ready")
+            // this.handleDriverReady()
         });
         // wrong serial port is not detected until after the return
         // this throws an error if connection failed. Up to the caller to retry
         // onError is not invoked until after a successful connect
-        return this.driver.start();
+        await this.driver.start();
+        log.info("driver started")
     }
 
     // connectLoop auto-reconnects to the controller
@@ -215,6 +211,7 @@ export default class ZWAPI {
         setInterval(() => {
             if (this.doReconnect) {
                 this.doReconnect = false
+                // connect does not return until a disconnect
                 this.connect(zwConfig)
                     .then(() => {
                         log.info("connectLoop: connect successful")
@@ -222,6 +219,7 @@ export default class ZWAPI {
                     .catch((e) => {
                         log.error("connectLoop: no connection with controller",e);
                         //retry
+                        // fix exception
                         this.doReconnect = true
                     })
             }
@@ -275,7 +273,7 @@ export default class ZWAPI {
         log.info("Cache Dir: ", this.driver.cacheDir);
         log.info("Home ID:   ", this.driver.controller.homeId?.toString(16));
 
-        ctl.nodes.forEach((node) => {
+        ctl.nodes.forEach((node:ZWaveNode) => {
             // Subscribe to each node to catch its ready event.
             this.addNode(node);
         });
@@ -302,20 +300,22 @@ export default class ZWAPI {
         this.driver.controller.on("inclusion failed", () => {
             log.info("inclusion has failed");
         });
-        // for zwave-12
-        this.driver.controller.on("inclusion started", (secure: boolean) => {
-            log.info("inclusion has started. secure=", secure);
-        });
-        // for zwave-13 and up
-        // this.driver.controller.on("inclusion started", (strategy: InclusionStrategy) => {
-        //     log.info("inclusion has started. strategy=%v", strategy);
+        // for zwave-js-12
+        // this.driver.controller.on("inclusion started", (secure: boolean) => {
+        //     log.info("inclusion has started. secure=", secure);
         // });
+        // for zwave-js-13 and up
+        this.driver.controller.on("inclusion started", (strategy: InclusionStrategy) => {
+            log.info("inclusion has started. strategy=%v", strategy);
+        });
         this.driver.controller.on("inclusion stopped", () => {
             log.info("inclusion has stopped");
         });
 
+        // this.driver.controller.on("node found", (node: FoundNode) => {
+        //     log.info(`new found: nodeId=${node.id}`)
+        // });
         this.driver.controller.on("node added", (node: ZWaveNode, result: InclusionResult) => {
-            result.lowSecurity
             log.info(`new node added: nodeId=${node.id} lowSecurity=${result.lowSecurity}`)
             this.setupNode(node);
         });
@@ -336,6 +336,7 @@ export default class ZWAPI {
 
     // setup a new node after it is ready
     setupNode(node: ZWaveNode) {
+        console.log("setting up node", node.id)
         // first time publish node TD and value map
         this.onNodeUpdate?.(node);
 
@@ -379,11 +380,10 @@ export default class ZWAPI {
             // FIXME: this causes duplicate events
             // this.onValueUpdate(node, args, newValue)
         });
-
-        node.on("notification", (endpoint: Endpoint, cc: CommandClasses, args) => {
-            log.info(`Node ${endpoint.nodeId} Notification: CC=${cc}, args=${args}`)
-            // TODO: what/when is this notification providing?
-        });
+        // node.on("notification", (endpoint: Endpoint, cc: CommandClasses, args:any) => {
+        //     log.info(`Node ${endpoint.nodeId} Notification: CC=${cc}, args=${args}`)
+        //     // TODO: what/when is this notification providing?
+        // });
 
         node.on("sleep", (node: ZWaveNode) => {
             log.info(`Node ${node.id}: is sleeping`);

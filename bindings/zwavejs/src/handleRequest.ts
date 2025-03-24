@@ -1,7 +1,7 @@
 // ZWaveJSBinding.ts holds the entry point to the ZWave binding along with its configuration
 import {InclusionStrategy, InterviewStage, ZWaveNode} from "zwave-js";
 import type IAgentConnection from "../hivelib/messaging/IAgentConnection.ts";
-import {OpSubscribeEvent, OpWriteProperty} from "../hivelib/api/vocab/vocab.js";
+import { OpWriteProperty} from "../hivelib/api/vocab/vocab.js";
 import {
     NotificationMessage,
     RequestMessage,

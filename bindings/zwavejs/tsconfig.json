@@ -1,49 +1,18 @@
 {
-  // typescript should generate JS files that support nodejs type loading
+  "extends": "@tsconfig/node20/tsconfig.json",
   "compilerOptions": {
     "allowImportingTsExtensions": true,
     "allowJs": true,
     "baseUrl": ".",
-    "checkJs": false,
-    // using references would be nice but it doesn't work with tsc-alias
-    // "composite": true,
     "declaration": true,
-    "declarationMap": true,
     "esModuleInterop": true,
-    "emitDecoratorMetadata": false,
-    "forceConsistentCasingInFileNames": true,
-    "isolatedModules": true,
-    "incremental": true,
-    // Avoid runtime imports that are unnecessary
-    "lib": [
-      "esnext"
-    ],
-    "module": "ES2020",
-    "moduleResolution": "node",
-    "noEmit": true,
-    "noEmitOnError": false,
-    "noErrorTruncation": true,
-    "noImplicitAny": true,
-    "noImplicitThis": true,
     "outDir": "./build",
-    // paths avoids the need for relative paths
     "preserveSymlinks": true,
-    "pretty": true,
     "rootDir": ".",
-    "removeComments": false,
     "resolveJsonModule": true,
     "skipLibCheck": true,
-    "sourceMap": true,
-    "strict": true,
-    "target": "esnext",
-    "types": ["node"],
+    "sourceMap": true
   },
-  // tsc-alias doesn't work with references. using symlink to hivelib/src instead
-  // "references": [
-  //   {
-  //     "path": "../hivelib"
-  //   },
-  // ],
   "include": [
     "./src/**/*.ts",
     "./hivelib/**/*.ts"

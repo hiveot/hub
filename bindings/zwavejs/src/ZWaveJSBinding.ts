@@ -187,8 +187,8 @@ export class ZwaveJSBinding {
             const resp = handleRequest(msg,this.zwapi, this.hc)
             return resp
         })
-        // the binding does not expect async responses
-        // the binding does not expect any notifications
+        // not registering response and notification handler. The binding does
+        // not expect any async notifications or responses.
         await this.zwapi.connectLoop(this.config);
     }
 

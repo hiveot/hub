@@ -21,7 +21,6 @@ import {
     WoTDataTypeBool,
     WoTDataTypeNone,
     WoTDataTypeNumber,
-    WoTDataTypeObject,
     WoTDataTypeString, WoTTitle
 } from "../hivelib/api/vocab/vocab.js";
 

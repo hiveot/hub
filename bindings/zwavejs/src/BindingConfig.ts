@@ -14,9 +14,9 @@ export default class BindingConfig extends NodeEnvironment implements IZWaveConf
     S2LR_AccessControl: string | undefined
     S2LR_Authenticated: string | undefined
     //
-    zwDisableSoftReset: boolean | undefined  // disable the soft reset if driver fails to connect 
-    zwPort: string | undefined               // controller port: ""=auto, /dev/ttyACM0, ...
-    zwLogFile: string | undefined            // driver logfile if any
+    zwDisableSoftReset: boolean = true  // disable the soft reset if driver has trouble connecting
+    zwPort: string | undefined          // controller port: ""=auto, /dev/ttyACM0, ...
+    zwLogFile: string | undefined       // driver logfile if any
     // driver log level, "" no logging
     zwLogLevel: "error" | "warn" | "info" | "verbose" | "debug" | "" = "warn"
     // cacheDir where zwavejs stores its discovered node info

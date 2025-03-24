@@ -1,7 +1,7 @@
 {
   "name": "zwavejs",
-  "version": "0.4-alpha",
-  "description": "HiveOT Zwave binding using zwavejs",
+  "version": "0.5-alpha",
+  "description": "HiveOT ZWave binding using zwave-js",
   "license": "MIT",
   "main": "src/main.ts",
   "type": "module",
@@ -9,6 +9,7 @@
     "build": "node esbuild.cjs",
     "devnode": "ZWAVEJS_EXTERNAL_CONFIG=dist/cache node --preserve-symlinks build/index.js --clientID test --home ~/bin/hiveot",
     "devtsx": "ZWAVEJS_EXTERNAL_CONFIG=dist/cache tsx --preserve-symlinks src/main.ts --clientID test --home ~/bin/hiveot",
+    "devx": "ZWAVEJS_EXTERNAL_CONFIG=dist/cache node --trace-warnings --preserve-symlinks --experimental-transform-types src/main.ts --clientID test --home ~/bin/hiveot",
     "pkg": "./build.sh",
     "distinstall": "cp dist/zwavejs ~/bin/hiveot/plugins",
     "testtsx": "tsx --preserve-symlinks src/tests/hubconnect_test.ts",
@@ -26,7 +27,7 @@
   },
   "bin": "build/index.cjs",
   "engines": {
-    "node": ">= 22.0"
+    "node": ">= 22.7"
   },
   "targets": [
     "node22-linux-x64",
@@ -55,12 +56,16 @@
     "serialport": "^12.0.0",
     "tslog": "^4.9.2",
     "undici": "6.21",
-    "yaml": "^2.7.0",
-    "zwave-js": "12.13"
+    "yaml": "^2.7.0"
+  },
+  "peerDependencies": {
+    "zwave-js": "^13.10.1"
   },
   "devDependencies": {
+    "@tsconfig/node20": "^20.1.4",
     "@types/eventsource": "^1.1.15",
     "@types/md5": "^2.3.5",
+    "@types/node": "^22.5.0",
     "@types/ws": "^8.18.0",
     "@yao-pkg/pkg": "^6.3.2",
     "esbuild": "^0.25.1",
@@ -69,7 +74,8 @@
     "tsc": "^2.0.4",
     "tsc-alias": "^1.8.8",
     "tsx": "^4.5.0",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.2",
+    "zwave-js": "^13.10.1"
   },
   "readme": "readme - todo",
   "_id": "zwavejs-binding"

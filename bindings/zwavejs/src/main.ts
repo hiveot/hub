@@ -7,14 +7,19 @@ import BindingConfig from "./BindingConfig.ts";
 import ConnectToHub from "../hivelib/messaging/ConnectToHub.ts";
 import getLogger from "./getLogger.ts";
 
-const log = getLogger()
+const log = getLogger();
 
-process.on("uncaughtException", (err) => {
-    log.error("uncaught exception:", err)
-})
 
-async function main() {
-console.log("Starting hiveot zwavejs binding...")
+{
+    process.on("uncaughtException", (err) => {
+        log.error("uncaught exception:", err);
+        process.exit(1);
+    })
+}
+
+
+(async () => {
+    console.log("Starting hiveot zwavejs binding...")
     //--- Step 1: load config
 
     // the client ID is application binary. This allows using multiple instances for
@@ -27,11 +32,11 @@ console.log("Starting hiveot zwavejs binding...")
 
     // MOVE THE FOLLOWING LINE TO CONFIG AFTER INITIAL DEVELOPMENT
     // My Z-stick doesn't handle soft reset
-    appConfig.zwDisableSoftReset = true
+    // appConfig.zwDisableSoftReset = true
 
     // When running from a pkg'ed binary, zwavejs must have a writable copy for device config.
     // Use the storage folder set in app config.
-    log.info("storage dir", "path", appConfig.storesDir)
+    // log.info("storage dir", "path", appConfig.storesDir)
     if (appConfig.storesDir) {
         const hasEnv = env.ZWAVEJS_EXTERNAL_CONFIG
         if (!hasEnv || hasEnv == "") {
@@ -55,14 +60,26 @@ console.log("Starting hiveot zwavejs binding...")
     }
 
     //--- Step 4: Wait for  SIGINT or SIGTERM signal to stop
-    log.info("Ready. Waiting for signal to terminate")
-    for (const signal of ["SIGINT", "SIGTERM"]) {
-        process.on(signal, async () => {
-            await binding.stop();
-            exit(0);
-        });
+    console.log("Ready. Waiting for signal to terminate")
+    //
+    // for (const signal of ["SIGINT", "SIGTERM"]) {
+    //     process.on(signal, async () => {
+    //         await binding.stop();
+    //         exit(0);
+    //     });
+    // }
+    const handleShutdown = async (exitCode = 0) => {
+        console.log("Shutting down");
+        await binding.stop();
+        process.exit(0);
     }
-}
+
+    process.on("SIGINT", () => handleShutdown(0));
+    process.on("SIGTERM", () => handleShutdown(0));
 
 
-main()
+})().catch((err:any) => {
+    console.error("Unable to start driver", err);
+    process.exit(1);
+});
+

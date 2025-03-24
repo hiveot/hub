@@ -1,7 +1,7 @@
 import {
     Driver,
     getEnumMemberName,
-    NodeStatus, ZWaveApiVersion,
+    NodeStatus,
     ZWaveNode,
     ZWavePlusNodeType,
     ZWavePlusRoleType,
