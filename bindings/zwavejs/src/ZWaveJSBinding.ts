@@ -1,5 +1,5 @@
 // ZWaveJSBinding.ts holds the entry point to the zwave binding along with its configuration
-import type {ZWaveNode} from "zwave-js";
+import {InterviewStage, ZWaveNode} from "zwave-js";
 import createNodeTD from "./createNodeTD.ts";
 import NodeValues from "./NodeValues.ts";
 import ZWAPI from "./ZWAPI.ts";
@@ -90,19 +90,23 @@ export class ZwaveJSBinding {
     handleNodeUpdate(node: ZWaveNode) {
         log.info("handleNodeUpdate:node:", node.id);
 
+        // don't process the node until all its info is gathered
+        if (node.interviewStage != InterviewStage.Complete && node.interviewStage != InterviewStage.OverwriteConfig) {
+            // comment this out once we understand when this happens
+            log.info("node not ready; nodeID=", node.id, "; status=",node.status)
+            return
+        }
         // FIXME: only update the node if it has changed
         let tdi: TD
 
         if (node.isControllerNode) {
-            tdi = createControllerTD(this.zwapi,node,this.vidCsvFD)
+            tdi = createControllerTD(this.zwapi, node, this.vidCsvFD)
         } else {
             tdi = createNodeTD(this.zwapi, node, this.vidCsvFD, this.config.maxNrScenes);
         }
-        // republish the TD
         this.hc.pubTD(tdi)
-
         // publish the thing property (attr, config) values
-        const newValues = new NodeValues(node,this.zwapi.driver);
+        const newValues = new NodeValues(node, this.zwapi.driver);
         const lastNodeValues = this.lastValues.get(tdi.id)
         let diffValues = newValues
         if (lastNodeValues) {
@@ -111,8 +115,7 @@ export class ZwaveJSBinding {
         }
         this.hc.pubMultipleProperties(tdi.id, diffValues.values)
         this.lastValues.set(tdi.id, newValues);
-        console.info("handleNodeUpdate completed: "+node.id)
-
+        console.info("handleNodeUpdate completed: " + node.id)
     }
 
     // Handle update of a node's value.

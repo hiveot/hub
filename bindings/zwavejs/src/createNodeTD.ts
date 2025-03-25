@@ -212,6 +212,12 @@ export default function createNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: nu
     tdi.AddPropertyIf(node.protocolVersion,
         "protocolVersion","ZWave protocol version", "", WoTDataTypeString);
 
+    tdi.AddProperty("rssi","RSSI", "", WoTDataTypeNumber)
+        .unit = "dBm"
+
+    tdi.AddPropertyIf(node.supportedDataRates,
+        "supportedDataRates","ZWave Data Speed", "", WoTDataTypeString);
+
     tdi.AddPropertyIf(node.sdkVersion,
         vocab.PropDeviceSoftwareVersion,"SDK version", "", WoTDataTypeString, vocab.PropDeviceSoftwareVersion);
     if (node.status) {
@@ -368,6 +374,7 @@ export default function createNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: nu
                 addProperty(tdi, node, vid, va)
                 break;
             default:
+                //console.log("Not adding property", va?.name)
             // ignore this vid
         }
     }

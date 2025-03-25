@@ -99,6 +99,7 @@ export default class NodeValues {
         this.setIf("productId", node.productId);
         this.setIf("productType", node.productType);
         this.setIf("protocolVersion", node.protocolVersion);
+        this.setIf("rssi", node.statistics?.rssi);
         this.setIf(vocab.PropDeviceSoftwareVersion, node.sdkVersion);
         this.setIf(vocab.PropDeviceStatus, getEnumMemberName(NodeStatus, node.status));
         this.setIf("supportedDataRates", node.supportedDataRates);

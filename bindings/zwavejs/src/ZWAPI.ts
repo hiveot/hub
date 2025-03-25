@@ -3,7 +3,7 @@ import { Buffer } from "node:buffer";
 import getLogger from "./getLogger.ts";
 import findSerialPort from "./serial/findserialport.ts";
 import {
-    Driver,
+    Driver, FoundNode,
     InclusionResult,
     InclusionStrategy,
     NodeStatus,
@@ -102,11 +102,19 @@ export default class ZWAPI {
     // Add a known node and subscribe to its ready event before doing anything else
     addNode(node: ZWaveNode) {
         log.info(`Node ${node.id} - waiting for it to be ready`)
-        // node.on("ready", (node:any) => {
-        //     log.info("--- Node", node.id, "is ready. Setting up the node.");
-        //     this.setupNode(node);
-        // });
-        // looks like nodes don't get ready in the latest zwave-js driver
+
+        // workaround for node interview not completing.
+        // requesting a refresh seems to help
+        node.refreshInfo()
+            .then(res=>{
+                log.info("AddNode refresh completed", res)
+            })
+            .catch(err=>{
+                log.info("AddNode refresh failed", err)
+        })
+
+        // subscribe to the node events
+        // Warning: looks like nodes don't get ready in the latest zwave-js driver
         this.setupNode(node);
     }
 
@@ -137,6 +145,7 @@ export default class ZWAPI {
         const options: PartialZWaveOptions = {
             attempts: {
                 controller: 3,
+                nodeInterview: 10,
             },
             emitValueUpdateAfterSetValue: true,
             logConfig: {
@@ -166,7 +175,10 @@ export default class ZWAPI {
                 cacheDir: zwConfig.cacheDir,
             },
             timeouts: {
-              ack: 10000   // how long to wait for an ack - 10sec for testing
+              ack: 10000,   // how long to wait for an ack - 10sec for testing
+                retryJammed: 2000,
+                report: 2000,
+                sendToSleep: 500
             }
         };
         log.info("ZWaveJS config option soft_reset on startup is " + (options.features?.softReset ? "enabled" : "disabled"))
@@ -306,21 +318,24 @@ export default class ZWAPI {
         // });
         // for zwave-js-13 and up
         this.driver.controller.on("inclusion started", (strategy: InclusionStrategy) => {
-            log.info("inclusion has started. strategy=%v", strategy);
+            log.info("ZWinclusion has started. strategy=%v", strategy);
         });
         this.driver.controller.on("inclusion stopped", () => {
-            log.info("inclusion has stopped");
+            log.info("ZWinclusion has stopped");
         });
 
-        // this.driver.controller.on("node found", (node: FoundNode) => {
-        //     log.info(`new found: nodeId=${node.id}`)
-        // });
         this.driver.controller.on("node added", (node: ZWaveNode, result: InclusionResult) => {
-            log.info(`new node added: nodeId=${node.id} lowSecurity=${result.lowSecurity}`)
+            // a node was added to the network and initial setup completed
+            // the node is not yet ready to be used until after the node interview.
+            log.info(`ZWnode added: nodeId=${node.id} lowSecurity=${result.lowSecurity}`)
             this.setupNode(node);
         });
+        this.driver.controller.on("node found", (node: FoundNode) => {
+            // At this point, the initial setup and the node interview is still pending, so the node is not yet operational.
+            log.info(`new found: nodeId=${node.id}`)
+        });
         this.driver.controller.on("node removed", (node: ZWaveNode, reason: RemoveNodeReason) => {
-            log.info(`node removed: id=${node.id}, reason=${reason}`);
+            log.info(`ZWnode removed: id=${node.id}, reason=${reason}`);
         });
 
     }
@@ -334,36 +349,36 @@ export default class ZWAPI {
         return homeIDStr
     }
 
-    // setup a new node after it is ready
+    // setup a new node after it is added and listen for its events
     setupNode(node: ZWaveNode) {
         console.log("setting up node", node.id)
         // first time publish node TD and value map
-        this.onNodeUpdate?.(node);
+        // this.onNodeUpdate?.(node);
 
         node.on("alive", (node: ZWaveNode, oldStatus: NodeStatus) => {
-            log.info(`Node ${node.id}: is alive`);
+            log.info(`ZWNode ${node.id}: is alive`);
             if (node.status != oldStatus) {
                 this.onStateUpdate(node, "alive")
             }
         });
         node.on("dead", (node: ZWaveNode, oldStatus: NodeStatus) => {
-            log.info(`Node ${node.id}: is dead`);
+            log.info(`ZWNode ${node.id}: is dead`);
             if (node.status != oldStatus) {
                 this.onStateUpdate(node, "dead")
             }
         });
 
         node.on("interview completed", (node: ZWaveNode) => {
-            log.info(`Node ${node.id}: interview completed`);
-            // event
-            this.onStateUpdate(node, "interview completed")
+            log.info(`ZWNode ${node.id}: interview completed`);
+            // reload the TD
+            this.onNodeUpdate(node)
         });
         node.on("interview failed", (node: ZWaveNode) => {
-            log.info(`Node ${node.id}: interview failed`);
+            log.info(`ZWNode ${node.id}: interview failed`);
             this.onStateUpdate(node, "interview failed")
         });
         node.on("interview started", (node: ZWaveNode) => {
-            log.info(`Node ${node.id}: interview started`);
+            log.info(`ZWNode ${node.id}: interview started`);
             this.onStateUpdate(node, "interview started")
         });
 
@@ -372,7 +387,7 @@ export default class ZWAPI {
             // this.onNodeUpdate(node)
             // let newValue = node.getValue(args)
             const newValue = getVidValue(node,args)
-            log.info(`Node ${node.id} value metadata updated`,
+            log.info(`ZWNode ${node.id} value metadata updated`,
                 "property=", args.property,
                 "propertyKeyName=", args.propertyKeyName,
                 "newValue=", newValue,
@@ -384,9 +399,14 @@ export default class ZWAPI {
         //     log.info(`Node ${endpoint.nodeId} Notification: CC=${cc}, args=${args}`)
         //     // TODO: what/when is this notification providing?
         // });
+        node.on("ready", (node2:any) => {
+            // log.info("--- Node", node2.id, "is ready. Updated the node. status=",node2.status);
+            // handle in interview completed
+            // this.onNodeUpdate(node);
+        });
 
         node.on("sleep", (node: ZWaveNode) => {
-            log.info(`Node ${node.id}: is sleeping`);
+            log.info(`ZWNode ${node.id}: is sleeping`);
             this.onStateUpdate(node, "sleeping")
         });
 
@@ -395,7 +415,7 @@ export default class ZWAPI {
         // });
 
         node.on("value added", (node: ZWaveNode, args: ZWaveNodeValueAddedArgs) => {
-            log.info(`Node ${node.id}, value added: propName=${args.propertyName}, value=${args.newValue}`);
+            log.info(`ZWNode ${node.id}: value added: zw-property-name=${args.propertyName}, value=${args.newValue}`);
             // FIXME: only update the node if the value is new
             // refreshvalues triggers this a lot. we don't want to send a new TD for each value
             // this.onNodeUpdate(node)
@@ -403,7 +423,7 @@ export default class ZWAPI {
         });
 
         node.on("value notification", (node: ZWaveNode, vid: ZWaveNodeValueNotificationArgs) => {
-            log.info(`Node ${node.id}, value notification: propName=${vid.propertyName}, value=${vid.value}`);
+            log.info(`ZWNode ${node.id}, value notification: propName=${vid.propertyName}, value=${vid.value}`);
             this.onValueUpdate(node, vid, vid.value)
         });
 

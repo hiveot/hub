@@ -269,14 +269,14 @@ export default function getAffordanceFromVid(node: ZWaveNode, vid: ValueID, maxN
 
 
 /**
-getVidID returns the unique identifier of the vid and update the vidID:vid map
-don't use directly. Use getAffordanceFromVid instead.
+    getVidID returns the unique identifier of the vid and update the vidID:vid map
+    don't use directly. Use getAffordanceFromVid instead.
 
-Format: {vid.commandClass}-{vid.property}[-{vid.propertyKey}][-{vid.endpoint}]
+    Format: {vid.commandClass}-{vid.property}[-{vid.propertyKey}][-{vid.endpoint}]
 
-Spaces are replaced by _
+    Spaces are replaced by _
 
-Used for TD properties, events, actions and for sending events
+    Used for TD properties, events, actions and for sending events
 */
 function getVidID(vid: ValueID): string {
     let vidID = String(vid.commandClass) + "-" + String(vid.property)

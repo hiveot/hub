@@ -140,6 +140,10 @@ function  handleNodeAction(
                     let resp = req.createResponse(summary.rating)
                     hc.sendResponse(resp)
                 })
+                .catch(err =>{
+                    let resp = req.createResponse(null,err)
+                    hc.sendResponse(resp)
+                })
                 break;
 
             case "checkroutehealth":
@@ -162,6 +166,9 @@ function  handleNodeAction(
                     // rating is 0 to 10
                     let resp = req.createResponse(summary.rating)
                     hc.sendResponse(resp)
+                }).catch(err=>{
+                    let resp = req.createResponse(null,err)
+                    hc.sendResponse(resp)
                 })
                 break;
 
@@ -173,7 +180,10 @@ function  handleNodeAction(
                         resp = req.createResponse(ids)
                         hc.sendResponse(resp)
                         hc.pubProperty(req.thingID, req.name, ids)
-                    });
+                    }).catch(err => {
+                        let resp = req.createResponse(null, err)
+                        hc.sendResponse(resp) // async
+                    })
                 break;
 
             case "ping":
@@ -189,8 +199,11 @@ function  handleNodeAction(
                         hc.sendResponse(resp)
                         // persist action output as a property and notify subscribers
                         hc.pubProperty(req.thingID, req.name, msec)
+                    }).catch(err => {
+                      let resp = req.createResponse(null, err)
+                        hc.sendResponse(resp) // async
                     })
-                break;
+            break;
 
             case "rebuildnoderoutes":
                 zwapi.driver.controller.rebuildNodeRoutes(node.id)
@@ -201,16 +214,23 @@ function  handleNodeAction(
                         }
                         resp = req.createResponse(success?"success":"failed", err)
                         hc.sendResponse(resp)
-                    });
-                break;
+                  }).catch(err => {
+                    let resp = req.createResponse(null, err)
+                    hc.sendResponse(resp) // async
+                })
+            break;
 
             case "refreshinfo":
                 // doc warning: do not call refreshInfo when node interview is not yet complete
-                if (node.interviewStage == InterviewStage.Complete) {
-                    node.refreshInfo({waitForWakeup: true})
+                // prolly not needed
+                if (true || node.interviewStage == InterviewStage.Complete) {
+                    node.refreshInfo({waitForWakeup: true,resetSecurityClasses:true})
                         .then((result) => {
                             log.info("refreshinfo. StartedResult:", result)
                             let resp = req.createResponse(null)
+                            hc.sendResponse(resp) // async
+                        }).catch(err => {
+                            let resp = req.createResponse(null, err)
                             hc.sendResponse(resp) // async
                         })
                     notif = req.createNotification()
@@ -243,7 +263,7 @@ function  handleNodeAction(
             break;
 
             case "removefailednode":
-                zwapi.driver.controller.removeFailedNode(node.id).then();
+                zwapi.driver.controller.removeFailedNode(node.id).then().catch();
                 resp = req.createResponse(null)
                 hc.sendResponse(resp)
                 break;
