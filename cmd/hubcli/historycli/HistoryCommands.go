@@ -128,13 +128,6 @@ func HandleListEvents(hc *messaging.Consumer, dThingID string, name string, limi
 
 		count++
 		value := tputils.DecodeAsString(tv.Output, 30)
-		// show number of properties
-		//if msg.Name == vocab.EventNameProperties {
-		//	props := make(map[string]interface{})
-		//	_ = utils.DecodeAsObject(msg.Data, &props)
-		//	value = fmt.Sprintf("(%d properties)", len(props))
-		//}
-		// FIXME: reformat timestmp
 		updated := utils.FormatDateTime(tv.Updated)
 		fmt.Printf("%-30s %-30s %-20.20s %-30s\n",
 			tv.ThingID,

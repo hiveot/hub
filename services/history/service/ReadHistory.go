@@ -67,7 +67,7 @@ func (svc *ReadHistory) readHistory(
 	ts, _ := dateparse.ParseAny(timestamp)
 	item0, valid := svc.seek(cursor, ts, filterOnKey)
 	if valid {
-		// item0 is nil when seek afer the last available item
+		// item0 is nil when seek after the last available item
 		values = append(values, item0)
 	}
 	var batch []*messaging.ThingValue

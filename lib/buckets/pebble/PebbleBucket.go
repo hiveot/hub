@@ -50,8 +50,11 @@ func (bucket *PebbleBucket) Cursor() (buckets.IBucketCursor, error) {
 	// bucket prefix is {bucketID}$
 	// range bounds end at {bucketID}@
 	opts := &pebble.IterOptions{
-		LowerBound:      []byte(bucket.bucketID + "$"),
-		UpperBound:      []byte(bucket.bucketID + "@"), // this key never exists
+		LowerBound: []byte(bucket.bucketID + "$"),
+		// a bucketID that is longer would be included when using @. Is this a bug?
+		//UpperBound: []byte(bucket.bucketID + "@"), // this key never exists
+		// FIXME: add testcase
+		UpperBound:      []byte(bucket.bucketID + "%"), // this key never exists
 		TableFilter:     nil,
 		PointKeyFilters: nil,
 		RangeKeyFilters: nil,

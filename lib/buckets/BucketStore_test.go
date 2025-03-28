@@ -21,9 +21,9 @@ import (
 
 var testBucketID = "default"
 
-var testBackendType = buckets.BackendKVBTree
+//var testBackendType = buckets.BackendKVBTree
 
-// var testBackendType = buckets.BackendPebble
+var testBackendType = buckets.BackendPebble
 var testBackendDirectory = "/tmp/test-bucketstore"
 
 const (
@@ -359,6 +359,12 @@ func TestSeek(t *testing.T) {
 	// set cursor 'base' records forward
 	cursor, err := bucket.Cursor()
 	require.NoError(t, err)
+
+	//// last should work  without seek
+	//k, v, valid := cursor.Last()
+	//_ = k
+	//_ = v
+	//assert.True(t, valid)
 
 	k1, v1, valid := cursor.First()
 	assert.True(t, valid)

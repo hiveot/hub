@@ -11,9 +11,9 @@ The WoT specification is closer to a framework than an application. As such it d
 
 ## What Are 'Things'?
 
-Things are I/O Devices and Services that are a source of information. 
+Things are I/O Devices and Services that consumers interact with. 
 
-Most IoT 'things' are pieces of hardware that have embedded software that manages its behavior. Virtual IOT devices build with software are also considered Things as are Services that provide a capability to retrieve information, for example a weather forecasting service.
+Most IoT 'things' are pieces of hardware that have embedded software that manages its behavior. Virtual IoT devices build with software are also considered Things as are Services that provide a capability to retrieve information, for example a weather forecasting service.
 
 HiveOT makes the following distinction based on the primary role of the device. These are identified by their device type as provided in the TD @type field and defined in the HiveOT vocabulary.
 

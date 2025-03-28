@@ -85,8 +85,27 @@ func (store *PebbleStore) Open() (err error) {
 	}
 	if err == nil {
 		store.db, err = pebble.Open(store.storeDirectory, options)
-	} else {
+	}
+	if err != nil {
 		slog.Error("failed to open bucket store", "directory", store.storeDirectory, "err", err)
+	} else {
+		version := store.db.FormatMajorVersion()
+		metrics := store.db.Metrics()
+		stats := pebble.CheckLevelsStats{}
+		err = store.db.CheckLevels(&stats)
+		if err != nil {
+			slog.Error("PebbleStore.open DB.CheckLevels failed: ", "err", err.Error())
+		}
+		_ = err
+		slog.Info("pebble bucket store opened",
+			slog.String("path", store.storeDirectory),
+			slog.Uint64("FormatMajorVersion", uint64(version)),
+			slog.Uint64("memtables size", metrics.MemTable.Size),
+			slog.Uint64("data size", metrics.WAL.Size),
+		)
+
+		// auto upgrade the database
+		//store.db.RatchetFormatMajorVersion()
 	}
 	return err
 }

@@ -1,16 +1,5 @@
 # Questions related to the use of TD in HiveOT
 
-1. How to define an event or action in the TD that carries a TD? [Solved]
-> Use-case: Thing agents (like protocol bindings) publish events with the TD of the things they manage.
-> Use-case: Consumers query TD's from the directory.
-* Solution: use the JSON serialized TD. Things write their TD to the directory if available. Things can make their TD available through HTTP on the well known address (see discovery). 
-
-2. How to notify consumers of changed property values? [Solved]
-> Use-case: When one or more property values have changed, consumers must be notified.
-* Sending them as an event would mean duplicating all properties in the TD as events which seems overkill and not the intended use.
-* Old solution: define a '$properties' event that contains a list of property values, similar to [webthings.io events resource](https://webthings.io/api/#events-resource).
-* New solution: Use the WoT 'observeproperty' operation and let the protocol handle it.
-
 3. How to write multiple properties? [solved]
 > Use-case: user applies changes to multiple properties values in one request.
 > Solution: Don't support writing multiple properties. Use writeproperty instead. This avoids the ambiguity of the payload. Writing properties is rare enough so it isn't needed.
@@ -69,9 +58,6 @@ HiveOT Rules:
 * Current Solution: add a dataschema with single or enum constants to 'schemaDefinitions'
   The code generator creates the type and constants in the scope of the agent defining the thing.
 
-10. Would it be out of scope to use a TD to define a RPC service API? [Answered]
- * Answer: yes out of scope for WoT. Creating RPCs is a protocol implementation detail.
-  
 11. 5.3.3.1 SecurityScheme  [Ambiguous]
 > The forth paragraph: "Security schemes generally may require additional authentication parameters, such as a password or key. The location of this information is indicated by the value associated with the name in, often in combination with the value associated with name."
 * Is this an example of security through obscurity?  
