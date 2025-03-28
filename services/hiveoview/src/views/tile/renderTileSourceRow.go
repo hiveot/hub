@@ -7,6 +7,7 @@ import (
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"net/http"
+	"html"
 )
 
 // RenderTileSourceRow renders a single table row with the tile 'source'
@@ -89,7 +90,7 @@ func RenderTileSourceRow(w http.ResponseWriter, r *http.Request) {
 		"  <div>%s</div>"+
 		"  <div>%s</div>"+
 		"</li>",
-		sourceID, title, sourceID, latestValue, latestUpdated)
+		html.EscapeString(sourceID), html.EscapeString(title), html.EscapeString(sourceID), html.EscapeString(latestValue), html.EscapeString(latestUpdated))
 
 	_, _ = w.Write([]byte(htmlToAdd))
 	return
