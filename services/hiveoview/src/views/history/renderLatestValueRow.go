@@ -6,6 +6,7 @@ import (
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"net/http"
+	"html"
 )
 
 // Add the latest event value to the history table and to the history chart
@@ -36,7 +37,7 @@ func RenderLatestValueRow(w http.ResponseWriter, r *http.Request) {
 	affType := chi.URLParam(r, "affordanceType")
 	thingID := chi.URLParam(r, "thingID")
 	name := chi.URLParam(r, "name")
-	unit := r.URL.Query().Get("unit")
+	unit := html.EscapeString(r.URL.Query().Get("unit"))
 	fragment := ""
 
 	// Read the TD being displayed and its latest values
