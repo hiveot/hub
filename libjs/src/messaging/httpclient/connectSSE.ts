@@ -61,7 +61,7 @@ export async function  connectSSE(
         //         rejectUnauthorized: false,
         // })
 
-        // note that keepalive doesn't seem to work
+        // use the undici agent to use a CA certificate
         const undiciAgent = new Agent({
             // connectTimeout: 0,
             bodyTimeout: 0,  // otherwise it times out after 5 min
@@ -91,12 +91,10 @@ export async function  connectSSE(
                     // },
                     dispatcher: undiciAgent,
                     // agent:httpsAgent,
-
                 }),
         }
 
         const sseURL = baseURL + ssePath
-        // const source = new EventSource(sseURL, eventSourceInitDict)
         const source = new EventSource(sseURL, eventSourceInit)
 
         source.onopen = (e: any) => {
@@ -132,6 +130,7 @@ export async function  connectSSE(
             log.error("SSE Connection error: "+baseURL+ssePath, err.message)
             // source.close()
             if (source.readyState == EventSource.CLOSED) {
+                source.close()
                 onConnection(ConnectionStatus.Disconnected)
             }
             reject(err)

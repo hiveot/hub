@@ -34,8 +34,8 @@ type ConnectionManager struct {
 
 // AddConnection adds a new connection.
 // This requires the connection to have a unique client connection ID (connectionID).
-// If an endpoint with this connectionID exists both connections are forcibly closed
-// and an error is returned.
+//
+// If an endpoint with this connectionID exists the existing connection is forcibly closed.
 func (cm *ConnectionManager) AddConnection(c messaging.IServerConnection) error {
 	cm.mux.Lock()
 	defer cm.mux.Unlock()
@@ -51,10 +51,9 @@ func (cm *ConnectionManager) AddConnection(c messaging.IServerConnection) error 
 			cinfo.ConnectionID, cinfo.ClientID)
 		slog.Error("AddConnection: duplicate ConnectionID", "connectionID",
 			cinfo.ConnectionID, "err", err.Error())
-		existingConn.Disconnect()
-		c.Disconnect()
-		go cm.RemoveConnection(existingConn)
-		return err
+		// close the existing connection
+		cm._removeConnection(existingConn)
+		existingConn = nil
 	}
 	cm.connectionsByConnectionID[clcid] = c
 	// update the client index
@@ -175,13 +174,11 @@ func (cm *ConnectionManager) SendNotification(notif *messaging.NotificationMessa
 	return nil
 }
 
-// RemoveConnection removes the connection by its connectionID
+// _removeConnection removes the connection by its connectionID
+// internal function that can be used from a locked section.
 // This will close the connnection if it isn't closed already.
 // Call this after the connection is closed or before closing.
-func (cm *ConnectionManager) RemoveConnection(c messaging.IServerConnection) {
-	cm.mux.Lock()
-	defer cm.mux.Unlock()
-
+func (cm *ConnectionManager) _removeConnection(c messaging.IServerConnection) {
 	cinfo := c.GetConnectionInfo()
 	clientID := cinfo.ClientID
 	connectionID := cinfo.ConnectionID
@@ -214,6 +211,15 @@ func (cm *ConnectionManager) RemoveConnection(c messaging.IServerConnection) {
 		//clientCids = utils.Remove(clientCids, i)
 		cm.connectionsByClientID[clientID] = clientCids
 	}
+}
+
+// RemoveConnection removes the connection by its connectionID
+// This will close the connnection if it isn't closed already.
+// Call this after the connection is closed or before closing.
+func (cm *ConnectionManager) RemoveConnection(c messaging.IServerConnection) {
+	cm.mux.Lock()
+	defer cm.mux.Unlock()
+	cm._removeConnection(c)
 }
 
 // NewConnectionManager creates a new instance of the connection manager

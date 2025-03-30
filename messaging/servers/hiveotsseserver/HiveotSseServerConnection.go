@@ -110,7 +110,9 @@ func (c *HiveotSseServerConnection) Disconnect() {
 	c.mux.Lock()
 	defer c.mux.Unlock()
 	if c.isConnected.Load() {
-		close(c.sseChan)
+		if c.sseChan != nil {
+			close(c.sseChan)
+		}
 		c.isConnected.Store(false)
 	}
 }

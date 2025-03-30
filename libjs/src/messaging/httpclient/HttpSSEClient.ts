@@ -21,6 +21,7 @@ import {
     type ResponseHandler, ConnectionStatus
 } from "../IConsumerConnection.ts";
 import {NotificationMessage, RequestMessage, ResponseMessage} from "../Messages.ts";
+import {EventSource} from "eventsource";
 
 // FIXME: import from vocab is not working
 const RequestCompleted = "completed"
@@ -65,11 +66,11 @@ export default class HttpSSEClient implements IAgentConnection {
     _disableCertCheck: boolean
     _http2Session: http2.ClientHttp2Session | undefined;
     _ssePath: string;
-    _sseClient: any;
+    _sseClient: EventSource | undefined;
     _cid:string;
 
     isInitialized: boolean = false;
-    connStatus: ConnectionStatus;
+    sseConnStatus: ConnectionStatus;
     // the auth token when using connectWithToken
     authToken: string;
 
@@ -102,7 +103,7 @@ export default class HttpSSEClient implements IAgentConnection {
         this._clientID = clientID;
         this._disableCertCheck = disableCertCheck;
         // this._ssePath = DefaultSSESCPath;
-        this.connStatus = ConnectionStatus.Disconnected;
+        this.sseConnStatus = ConnectionStatus.Disconnected;
         this.authToken = "";
         this._correlData = new Map();
         this._cid = nanoid() // connection id
@@ -119,7 +120,7 @@ export default class HttpSSEClient implements IAgentConnection {
 
     // return the current connection status
     get connectionStatus(): { status: ConnectionStatus } {
-        return {status: this.connStatus};
+        return {status: this.sseConnStatus};
     }
 
     // setup a TLS connection with the hub.
@@ -141,22 +142,24 @@ export default class HttpSSEClient implements IAgentConnection {
 
         // When an error occurs, show it.
         this._http2Session.on('close', () => {
-            console.warn("connection has closed");
+            console.warn("http/2 connection has closed");
             // don't do anything here. on the next post-message a reconnect will be attempted.
-            // this.disconnect()
+            // the sse connection is more important
         });
         this._http2Session.on('connect', (ev) => {
-            console.warn("connected to server, cid=",this._cid,"url",this._baseURL);
+            console.warn("http/2 connected to server, cid=",this._cid,"url",this._baseURL);
+            // the sse connection is more important
         });
         this._http2Session.on('error', (error) => {
-            console.error("connection error: "+error);
+            console.error("http/2 connection error: "+error);
+            // the sse connection is more important
         });
         this._http2Session.on('frameError', (error) => {
             console.error(error);
         });
         this._http2Session.on('end', () => {
             // TODO: determine when this gets called
-            console.log('server ended the connection?');
+            console.log('http/2 server ended the connection?');
             this.disconnect()
         });
 
@@ -181,7 +184,7 @@ export default class HttpSSEClient implements IAgentConnection {
             this._baseURL, this._ssePath, this.authToken, this._caCertPem, this._cid,
             this.onRequest.bind(this),
             this.onResponse.bind(this),
-            this.onConnection.bind(this))
+            this.onSseConnection.bind(this))
 
         return loginResp.token
     }
@@ -195,7 +198,7 @@ export default class HttpSSEClient implements IAgentConnection {
             this._baseURL, this._ssePath, this.authToken, this._caCertPem, this._cid,
             this.onRequest.bind(this),
             this.onResponse.bind(this),
-            this.onConnection.bind(this))
+            this.onSseConnection.bind(this))
         return ""
     }
 
@@ -210,23 +213,25 @@ export default class HttpSSEClient implements IAgentConnection {
             this._http2Session.close();
             this._http2Session = undefined
         }
-        if (this.connStatus != ConnectionStatus.Disconnected) {
-            this.connStatus = ConnectionStatus.Disconnected
+        if (this.sseConnStatus != ConnectionStatus.Disconnected) {
+            this.sseConnStatus = ConnectionStatus.Disconnected
         }
     }
 
     // TODO: logout
 
     // callback handler invoked when the SSE connection status has changed
-    onConnection(status: ConnectionStatus) {
-        this.connStatus = status
-        if (this.connStatus === ConnectionStatus.Connected) {
-            hcLog.info('HubClient connected to '+ this._baseURL+this._ssePath + ' as '+this._clientID);
-        } else if (this.connStatus == ConnectionStatus.Connecting) {
-            hcLog.warn('HubClient attempt connecting');
+    onSseConnection(status: ConnectionStatus) {
+        this.sseConnStatus = status
+        if (this.sseConnStatus === ConnectionStatus.Connected) {
+            hcLog.info('HubClient SSE connected to '+ this._baseURL+this._ssePath + ' as '+this._clientID);
+        } else if (this.sseConnStatus == ConnectionStatus.Connecting) {
+            hcLog.warn('HubClient SSE attempt connecting');
         } else {
-            hcLog.warn('HubClient disconnected');
-            // todo: retry connecting
+            hcLog.warn('HubClient SSE disconnected. Will attempt to reconnect');
+            // TODO: can this be done here in the callback?
+            this._sseClient = undefined
+            this.connectWithToken(this.authToken).then()
         }
     }
 
@@ -297,8 +302,7 @@ export default class HttpSSEClient implements IAgentConnection {
     async pubMessage(methodName: string, path: string, data: any, correlationID?:string):Promise<string> {
         // if the session is invalid, restart it
         if (!this._http2Session || this._http2Session.destroyed) {
-            // this._http2Client.
-            hcLog.warn("pubMessage but connection is closed. Attempting to reconnect")
+             hcLog.warn("http2.pubMessage but connection is closed. Attempting to reconnect")
             await this.connect()
         }
 
@@ -310,7 +314,7 @@ export default class HttpSSEClient implements IAgentConnection {
             if (!this._http2Session || this._http2Session.closed) {
                 // getting here is weird. this._http2Session is undefined while
                 // the debugger shows a value.
-                reject(new Error("Unable to send. Connection was closed"))
+                reject(new Error("pubMessage: Unable to send. http2 connection was closed"))
             } else {
                 const h2req = this._http2Session.request({
                     origin: this._baseURL,
@@ -339,7 +343,7 @@ export default class HttpSSEClient implements IAgentConnection {
                 h2req.on('end', () => {
                     h2req.destroy()
                     if (statusCode >= 400) {
-                        hcLog.warn(`pubMessage status code  ${statusCode}`)
+                        hcLog.warn(`pubMessage http/2 connection closed with status code  ${statusCode}`)
                         reject(new Error("Error " + statusCode + ": " + replyData))
                     } else {
                         // hclog.info(`pubMessage to ${path}. Received reply. size=` + replyData.length)
@@ -348,6 +352,7 @@ export default class HttpSSEClient implements IAgentConnection {
                     }
                 });
                 h2req.on('error', (err) => {
+                    hcLog.warn(`pubMessage http/2 error: ${err}`)
                     h2req.destroy()
                     reject(err)
                 });
@@ -595,7 +600,7 @@ export default class HttpSSEClient implements IAgentConnection {
     // 	return global.hapiReadDirectory(publisherID, thingID);
     // }
 
-
+    // application connect/disconnect handler
     setConnectHandler(handler: (status: ConnectionStatus) => void): void {
         this.connectHandler = handler
     }

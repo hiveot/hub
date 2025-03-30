@@ -130,10 +130,13 @@ func TestConnectionTwice(t *testing.T) {
 	c1 := NewDummyConnection(client1ID, remoteAddr, session1ID)
 	err := cm.AddConnection(c1)
 	require.NoError(t, err)
-	// these two connections have the same connection ID. This should fail
+	// The first connection with the same cid should be disconnected.
 	c2 := NewDummyConnection(client1ID, remoteAddr, session1ID)
 	err = cm.AddConnection(c2)
-	require.Error(t, err)
+	time.Sleep(time.Millisecond * 100)
+	require.NoError(t, err)
+	assert.False(t, c1.IsConnected())
+	assert.True(t, c2.IsConnected())
 
 	// One connection remains
 	c1a := cm.GetConnectionByConnectionID(client1ID, c1.cinfo.ConnectionID)

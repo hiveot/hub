@@ -72,18 +72,22 @@ func (srv *HiveotSseServer) HandleNotificationMessage(w http.ResponseWriter, r *
 	}
 	notif.SenderID = rp.ClientID
 
-	// A NotificationMessage was received but the client doesnt have an SSE connection
+	// A NotificationMessage was received but the client doesn't have an SSE connection
 	// http requests without connectionID should not receive responses.
 	// why is there a connectionID?
 	c := srv.GetSseConnection(rp.ClientID, rp.ConnectionID)
 	if c == nil {
-		// this is possible when a connectionID is provided in a request but no SSE
-		// has been established. Not an error.
-		//err = fmt.Errorf("HandleResponseMessage: no corresponding connection")
-		slog.Info("HandleNotificationMessage. No connection to handle the notification/subscription.",
-			"clientID", rp.ClientID,
+		// this is possible when:
+		// 1. a connectionID is provided in a request but no SSE has been established.
+		//    if the connectionID is provided you'd expect an SSE connection so this is a warning
+		// 2. the server restarted and the client reconnects with the same connectionID?
+		//    hmm, did the agent sse connection get lost?
+		slog.Warn("HandleNotificationMessage. No connection to handle the notification/subscription.",
+			"senderID", rp.ClientID,
 			"connectionID", rp.ConnectionID,
+			"thingID", rp.ThingID,
 			"name", rp.Name,
+			"operation", rp.Op,
 		)
 	} else {
 		// pass it on to the server notification flow handler

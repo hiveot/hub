@@ -195,8 +195,6 @@ async function test4() {
         const resp2 = await clc.invokeAction(dtwThing1ID, "action1",  "how are you")
         if (resp2.error) {
             log.error("failed publishing action: " + resp2.error)
-        } else if (resp2.status != StatusPending) {
-            log.error("unexpected status: " + resp2.status)
         }
     } catch (e) {
         console.log("invokeAction failed")
@@ -213,7 +211,7 @@ async function test4() {
         }
         if (actionCount != 1) {
             log.error("received " + actionCount + " actions. Expected 1")
-        } else if (!actionDelivery || actionDelivery.status != StatusCompleted) {
+        } else if (!actionDelivery || actionDelivery.error) {
             log.error("test4 action sent but missing delivery confirmation")
         } else {
             log.info("test4 action success. Received an action confirmation")

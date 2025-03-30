@@ -17,12 +17,15 @@ type DummyConnection struct {
 	SendNotificationHandler messaging.NotificationHandler
 	SendRequestHandler      messaging.RequestHandler
 	SendResponseHandler     messaging.ResponseHandler
+	isConnected             bool
 }
 
-func (c *DummyConnection) Disconnect() {}
+func (c *DummyConnection) Disconnect() {
+	c.isConnected = false
+}
 
 func (c *DummyConnection) GetConnectionInfo() messaging.ConnectionInfo { return c.cinfo }
-func (c *DummyConnection) IsConnected() bool                           { return true }
+func (c *DummyConnection) IsConnected() bool                           { return c.isConnected }
 
 //func (c *DummyConnection) GetSessionID() string    { return c.sessID }
 
@@ -90,6 +93,7 @@ func NewDummyConnection(clientID, remoteAddr, cid string) *DummyConnection {
 			ConnectionID: cid,
 			ClientID:     clientID,
 		},
-		remoteAddr: remoteAddr,
+		remoteAddr:  remoteAddr,
+		isConnected: true,
 	}
 }
