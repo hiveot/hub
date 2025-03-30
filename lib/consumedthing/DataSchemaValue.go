@@ -40,7 +40,7 @@ func (v DataSchemaValue) ToString(maxlen int) string {
 func (v DataSchemaValue) Boolean() bool {
 	return tputils.DecodeAsBool(v.Raw)
 }
-func (v DataSchemaValue) Integer() int {
+func (v DataSchemaValue) Integer() int64 {
 	return tputils.DecodeAsInt(v.Raw)
 }
 

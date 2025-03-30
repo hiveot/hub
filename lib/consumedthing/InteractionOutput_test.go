@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const thing1ID = "thing1"
 const key1ID = "key1"
 
 func MakeTD() *td.TD {
@@ -46,8 +45,8 @@ func TestArray(t *testing.T) {
 }
 
 func TestBool(t *testing.T) {
-	data1 := true
-	tv := &messaging.NotificationMessage{Name: key1ID, Data: data1}
+
+	tv := &messaging.NotificationMessage{Name: key1ID, Data: true}
 	tdi := MakeTD()
 	ct := NewConsumedThing(tdi, nil)
 	io := NewInteractionOutputFromNotification(ct, messaging.AffordanceTypeProperty, tv)
@@ -56,7 +55,7 @@ func TestBool(t *testing.T) {
 	asString := io.Value.Text()
 	assert.Equal(t, "true", asString)
 	asInt := io.Value.Integer()
-	assert.Equal(t, 1, asInt)
+	assert.Equal(t, int64(1), asInt)
 }
 
 func TestInt(t *testing.T) {
@@ -66,7 +65,7 @@ func TestInt(t *testing.T) {
 	ct := NewConsumedThing(tdi, nil)
 	io := NewInteractionOutputFromNotification(ct, messaging.AffordanceTypeProperty, tv)
 	asInt := io.Value.Integer()
-	assert.Equal(t, 42, asInt)
+	assert.Equal(t, int64(42), asInt)
 	asString := io.Value.Text()
 	assert.Equal(t, "42", asString)
 }

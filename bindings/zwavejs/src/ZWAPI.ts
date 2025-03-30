@@ -182,6 +182,7 @@ export default class ZWAPI {
             }
         };
         log.info("ZWaveJS config option soft_reset on startup is " + (options.features?.softReset ? "enabled" : "disabled"))
+        log.info("Using cache directory: ", zwConfig.cacheDir)
 
         // retry starting the driver until disconnect is called
         // Start the driver. To await this method, put this line into an async method
@@ -227,6 +228,8 @@ export default class ZWAPI {
                 this.connect(zwConfig)
                     .then(() => {
                         log.info("connectLoop: connect successful")
+                        let drvConfig = this.driver.configManager
+                        log.info("config version", drvConfig.configVersion)
                     })
                     .catch((e) => {
                         log.error("connectLoop: no connection with controller",e);
@@ -400,7 +403,7 @@ export default class ZWAPI {
         //     // TODO: what/when is this notification providing?
         // });
         node.on("ready", (node2:any) => {
-            // log.info("--- Node", node2.id, "is ready. Updated the node. status=",node2.status);
+            log.info("--- Node", node2.id, "is ready. Updated the node. status=",node2.status);
             // handle in interview completed
             // this.onNodeUpdate(node);
         });

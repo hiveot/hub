@@ -382,7 +382,7 @@ func TestAddProperties(t *testing.T) {
 			//require.NoError(t, err)
 		} else if msg.Name == vocab.PropEnvTemperature {
 			dataInt := tputils.DecodeAsInt(msg.Output)
-			require.Equal(t, temp1, dataInt)
+			require.Equal(t, int64(temp1), dataInt)
 		}
 		msg, valid, err = c.Next()
 	}

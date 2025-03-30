@@ -104,7 +104,7 @@ func BenchmarkAddEvents(b *testing.B) {
 
 		// test reading records
 		// readHist uses the hubclient library
-		time.Sleep(time.Millisecond * 100) // let the add settle
+		time.Sleep(time.Millisecond * 300) // let the add settle
 		b.Run(fmt.Sprintf("[dbsize:%d] #things:%d get-single:%d", tbl.dataSize, tbl.nrThings, tbl.nrSets),
 			func(b *testing.B) {
 				for n := 0; n < b.N; n++ {

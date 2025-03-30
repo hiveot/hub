@@ -50,7 +50,7 @@ func DecodeAsString(value any, maxlen int) string {
 func DecodeAsBool(value any) bool {
 	b := false
 	if value == nil {
-		return b
+		return false
 	}
 	switch value.(type) {
 	case bool:
@@ -70,8 +70,8 @@ func DecodeAsBool(value any) bool {
 // DecodeAsInt converts the value to an integer.
 // This accepts int, int64, *int, bool, uint, float32/64
 // If value is already an integer then it is returned as-is.
-func DecodeAsInt(value any) int {
-	i := 0
+func DecodeAsInt(value any) int64 {
+	var i int64 = 0
 	switch value.(type) {
 	case bool:
 		if value.(bool) {
@@ -79,17 +79,17 @@ func DecodeAsInt(value any) int {
 		}
 	case string:
 		i64, _ := strconv.ParseInt(value.(string), 10, 64)
-		i = int(i64)
+		i = i64
 	case *int:
-		i = *value.(*int)
-	case int:
-		i = value.(int)
+		i = int64(*value.(*int))
+	case int, int64:
+		i = int64(value.(int))
 	case uint:
-		i = int(value.(uint))
+		i = int64(value.(uint))
 	case float32:
-		i = int(value.(float32))
+		i = int64(value.(float32))
 	case float64:
-		i = int(value.(float64))
+		i = int64(value.(float64))
 	default:
 		slog.Warn("Can't convert value to a integer", "value", value)
 	}
