@@ -34,6 +34,9 @@ func GenServiceInterface(l *utils.SL, agentID, serviceID string, tdi *td.TD) {
 //
 // > methodName( args ArgsType ) (resp RespType, err error)
 //
+// TODO: this code to generate a method signature is similar to that in
+// GenServiceConsumer.GenActionMethod
+//
 // The generated method arguments are the senderID and the value.
 // The value is either a native type or a struct, based on the TDD definition
 func GenInterfaceMethod(l *utils.SL, serviceTitle string, name string, action *td.ActionAffordance) {
@@ -57,14 +60,24 @@ func GenInterfaceMethod(l *utils.SL, serviceTitle string, name string, action *t
 	respString := "error"
 	if action.Output != nil {
 		respName := getParamName("resp", action.Output)
-		goType := ""
-		//if action.Output.Type == "object" &&
-		//	action.Output.Schema == "" &&
-		//	action.Output.Properties != nil &&
-		//	action.Output.Properties[""] == nil { // map
-		//	goType = fmt.Sprintf("%s%sResp", serviceTitle, methodName)
-		//} else {
-		goType = gentypes.GoTypeFromSchema(action.Output)
+		goType := gentypes.GoTypeFromSchema(action.Output)
+
+		// if the output is an object with a schema then use schema as the type
+		if action.Output.Type == "array" {
+			// the type of an array is determined by its 'items' dataschema:
+			//  when items is an object dataschema then the type is a predefined RespType
+			itemsType := action.Output.ArrayItems
+			if itemsType != nil && itemsType.Type == "object" && itemsType.Schema == "" {
+				// this special array-of-objects case has to be handled here as the
+				// type is already predefined in the Types file.
+				respName = serviceTitle + methodName
+				goType = fmt.Sprintf("%sResp", respName)
+			} else {
+				// otherwise use as-is
+				goType = gentypes.GoTypeFromSchema(action.Output)
+			}
+		}
+
 		//}
 		respString = fmt.Sprintf("(%s %s, err error)", respName, goType)
 	}

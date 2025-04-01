@@ -167,11 +167,41 @@
         "title": "Client Profiles",
         "items": {
           "title": "Client Profile",
-          "type": "ClientProfile"
+          "type": "object",
+          "schema": "ClientProfile"
         }
       }
     },
 
+    "getSessions": {
+      "@type": "hiveot:function",
+      "title": "Get Sessions",
+      "description": "Get a list of active sessions",
+      "idempotent": true,
+      "safe": true,
+      "output": {
+        "type": "array",
+        "title": "Client Sessions",
+        "items": {
+          "title": "Client session",
+          "type": "object",
+          "properties": {
+            "clientID": {
+              "title": "Client ID",
+              "type": "string"
+            },
+            "created": {
+              "title": "Session created",
+              "type": "string"
+            },
+            "expiry": {
+              "title": "Session expires",
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
     "newAgentToken": {
       "@type": "hiveot:function",
       "title": "New Agent Token",

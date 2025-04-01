@@ -230,7 +230,7 @@ func HandleListClients(hc *messaging.Consumer) (err error) {
 				profile.ClientID,
 				profile.DisplayName,
 				role,
-				utils.FormatMSE(profile.Updated, false),
+				utils.FormatDateTime(profile.Updated, ""),
 			)
 		}
 	}
@@ -243,7 +243,7 @@ func HandleListClients(hc *messaging.Consumer) (err error) {
 			fmt.Printf("%-20s %-15s %s\n",
 				profile.ClientID,
 				profile.ClientType,
-				utils.FormatMSE(profile.Updated, false),
+				utils.FormatDateTime(profile.Updated, ""),
 			)
 		}
 	}

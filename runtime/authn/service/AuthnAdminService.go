@@ -3,11 +3,13 @@ package service
 import (
 	"fmt"
 	"github.com/hiveot/hub/lib/keys"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/clients"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	"github.com/hiveot/hub/runtime/authn/authnstore"
 	"github.com/hiveot/hub/runtime/authn/config"
+	"github.com/hiveot/hub/runtime/authn/sessions"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	"log/slog"
 	"os"
@@ -23,8 +25,11 @@ type AuthnAdminService struct {
 	// key used to create and verify session tokens
 	signingKey keys.IHiveKey
 
-	// the authenticator for jwt tokens
+	// the authenticator for auth tokens
 	sessionAuth messaging.IAuthenticator
+
+	// sessions
+	sm *sessions.SessionManager
 }
 
 // AddConsumer adds a consumer account to the service without a role.
@@ -185,6 +190,28 @@ func (svc *AuthnAdminService) GetProfiles(
 	return profiles, err
 }
 
+// GetSessions returns a list of all sessions
+func (svc *AuthnAdminService) GetSessions(
+	_ string) (sessionResp authn.AdminGetSessionsResp, err error) {
+
+	profiles, err := svc.authnStore.GetProfiles()
+	sessionResp = make([]struct {
+		ClientID string `json:"clientID,omitempty"`
+		Created  string `json:"created,omitempty"`
+		Expiry   string `json:"expiry,omitempty"`
+	}, len(profiles))
+	i := 0
+	for _, prof := range profiles {
+		sessInfo, found := svc.sm.GetSessionByClientID(prof.ClientID)
+		if found {
+			sessionResp[i].Expiry = sessInfo.Expiry.Format(utils.MilliTimeFormat)
+			sessionResp[i].ClientID = prof.ClientID
+			sessionResp[i].Created = sessInfo.Created.Format(utils.MilliTimeFormat)
+		}
+	}
+	return sessionResp, err
+}
+
 // NewAgentToken creates a new authentication token for a service or agent.
 // This token is not tied to a session so should only be handed out to services or agents
 func (svc *AuthnAdminService) NewAgentToken(senderID string, agentID string) (token string, err error) {
@@ -282,15 +309,18 @@ func (svc *AuthnAdminService) Stop() {
 //
 //	authnConfig with the configuration settings for the signing key
 //	authnStore is the client and credentials store. Must be opened before starting this service.
-//	msgServer used to apply changes to users, devices and services
+//	sm session manager for viewing active client sessions
+//	sessionAuth authenticator for new or extended sessions
 func NewAuthnAdminService(
 	authConfig *config.AuthnConfig,
 	authnStore authnstore.IAuthnStore,
+	sm *sessions.SessionManager,
 	sessionAuth messaging.IAuthenticator) *AuthnAdminService {
 
 	authnSvc := &AuthnAdminService{
 		cfg:         authConfig,
 		authnStore:  authnStore,
+		sm:          sm,
 		sessionAuth: sessionAuth,
 	}
 	return authnSvc

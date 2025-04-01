@@ -68,8 +68,8 @@
           "title": "Public Key"
         },
         "updated": {
-          "type": "int64",
-          "title": "Updated timestamp in msec since epoch"
+          "type": "string",
+          "title": "Client name or auth updated timestamp"
         }
       }
     }

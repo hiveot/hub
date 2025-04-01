@@ -67,40 +67,23 @@ func GenActionArgs(l *utils.SL, serviceTitle string, key string, action *td.Acti
 // If the affordance has no output, or it is not an object, then no type is generated.
 func GenActionResp(l *utils.SL, serviceTitle string, key string, action *td.ActionAffordance) {
 	// don't generate a response struct when there is no output or it isn't an object
-	if action.Output == nil || action.Output.Type != "object" {
+	if action.Output == nil {
 		// don't generate a response struct when output is a native type (non-object)
 		return
+	} else if action.Output.Type == "object" || action.Output.Type == "array" {
+		// the output is a regular struct. Define this as a response struct.
+		typeName := Name2ID(key)
+		schemaType := fmt.Sprintf("%s%sResp", serviceTitle, typeName)
+		l.Indent = 0
+		l.Add("// %s defines the response of the %s function", schemaType, key)
+		l.Add("// %s - %s", action.Title, action.Description)
+		GenDescription(l, action.Output.Description, action.Output.Comments)
+
+		// add the output schema to the response struct
+		// object: add individual fields
+		// array: add array with struct of fields
+		_ = GenDataSchemaObject(l, schemaType, action.Output)
+
+		l.Add("")
 	}
-	// the output is a regular struct. Define this as a response struct.
-	typeName := Name2ID(key)
-	l.Indent = 0
-	l.Add("// %s%sResp defines the response of the %s function", serviceTitle, typeName, key)
-	l.Add("// %s - %s", action.Title, action.Description)
-	GenDescription(l, action.Output.Description, action.Output.Comments)
-
-	schemaType := fmt.Sprintf("%s%sResp", serviceTitle, typeName)
-	_ = GenDataSchemaObject(l, schemaType, action.Output)
-
-	//if action.Output.Schema != "" {
-	//	// use schema type as response type
-	//	titleType := ToTitle(action.Output.Schema)
-	//	l.Add("type %s%sResp %s", serviceTitle, typeName, titleType)
-	//} else if len(action.Output.Properties) == 1 && action.Output.Properties[""] != nil {
-	//	// maps are defined as an object with a single empty property field
-	//	outputMapProperties := action.Output.Properties[""]
-	//	// the output is a map (key is "")
-	//	titleType := ToTitle(action.Output.Schema)
-	//	l.Add("type %s%sResp map[string]%s", serviceTitle, typeName, titleType)
-	//} else {
-	//	l.Add("type %s%sResp struct {", serviceTitle, typeName)
-	//	// output is a dataschema which can be a native value or an object with multiple fields
-	//	// if this is a native value then name it 'Output'
-	//	//attrList := GetSchemaAttrs("output", action.Output)
-	//	l.Indent++
-	//	GenDataSchemaFields(l, "output", action.Output)
-	//	//GenDataSchemaParams(l, attrList)
-	//	l.Indent--
-	//	l.Add("}")
-	//}
-	l.Add("")
 }

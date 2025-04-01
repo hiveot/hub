@@ -108,19 +108,26 @@ func GenActionMethod(l *utils.SL, serviceTitle string, key string, action *td.Ac
 			invokeArgs = "&" + argName
 		}
 	}
-	// add a response struct to arguments
+	// add a response struct as output argument
 	if action.Output != nil {
 		respName := getParamName("resp", action.Output)
 		goType := ""
-		//// define a response struct
-		//if action.Output.Type == "object" &&
-		//	action.Output.Schema == "" &&
-		//	action.Output.Properties != nil &&
-		//	action.Output.Properties[""] != nil { // map
-		//	goType = fmt.Sprintf("%sResp", methodName)
-		//} else {
-		// this also handles maps
-		goType = gentypes.GoTypeFromSchema(action.Output)
+		// if the output is an object with a schema then use schema as the type
+		if action.Output.Type == "array" {
+			// the type of an array is determined by its 'items' dataschema:
+			//  when items is an object dataschema then the type is a predefined RespType
+			itemsType := action.Output.ArrayItems
+			if itemsType != nil && itemsType.Type == "object" && itemsType.Schema == "" {
+				// this special array-of-objects case has to be handled here as the
+				// type is already predefined in the Types file.
+				goType = fmt.Sprintf("%sResp", methodName)
+			} else {
+				// otherwise use as-is
+				goType = gentypes.GoTypeFromSchema(action.Output)
+			}
+		} else { // use a native response type
+			goType = gentypes.GoTypeFromSchema(action.Output)
+		}
 		//}
 		respString = fmt.Sprintf("%s %s, err error", respName, goType)
 		invokeResp = "&" + respName

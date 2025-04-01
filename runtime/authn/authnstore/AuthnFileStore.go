@@ -4,18 +4,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/alexedwards/argon2id"
+	"github.com/fsnotify/fsnotify"
+	"github.com/hiveot/hub/lib/utils"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	"github.com/hiveot/hub/runtime/authn/config"
 	jsoniter "github.com/json-iterator/go"
+	"golang.org/x/crypto/bcrypt"
 	"log/slog"
 	"os"
 	"path"
 	"sync"
-	"time"
-
-	"github.com/alexedwards/argon2id"
-	"github.com/fsnotify/fsnotify"
-	"golang.org/x/crypto/bcrypt"
 
 	"github.com/hiveot/hub/lib/watcher"
 )
@@ -57,7 +56,7 @@ func (store *AuthnFileStore) Add(clientID string, profile authn.ClientProfile) e
 		slog.Info("Add: Updating existing client", slog.String("clientID", clientID))
 		entry.ClientProfile = profile
 	}
-	entry.Updated = time.Now().UnixMilli()
+	entry.Updated = utils.FormatNowUTCMilli()
 
 	store.entries[clientID] = entry
 
@@ -256,7 +255,7 @@ func (store *AuthnFileStore) SetPasswordHash(loginID string, hash string) (err e
 		return fmt.Errorf("Client '%s' not found", loginID)
 	}
 	entry.PasswordHash = hash
-	entry.Updated = time.Now().UnixMilli()
+	entry.Updated = utils.FormatNowUTCMilli()
 	store.entries[loginID] = entry
 
 	err = store.save()
@@ -305,7 +304,7 @@ func (store *AuthnFileStore) UpdateProfile(senderID string, profile authn.Client
 	if profile.PubKey != "" {
 		entry.PubKey = profile.PubKey
 	}
-	entry.Updated = time.Now().UnixMilli()
+	entry.Updated = utils.FormatNowUTCMilli()
 	store.entries[profile.ClientID] = entry
 
 	err := store.save()

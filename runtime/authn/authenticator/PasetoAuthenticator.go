@@ -193,7 +193,11 @@ func (svc *PasetoAuthenticator) ValidateToken(token string) (clientID string, se
 }
 
 // NewPasetoAuthenticator returns a new instance of a Paseto token authenticator using the given signing key
-func NewPasetoAuthenticator(authnStore authnstore.IAuthnStore, signingKey ed25519.PrivateKey) *PasetoAuthenticator {
+func NewPasetoAuthenticator(
+	authnStore authnstore.IAuthnStore,
+	signingKey ed25519.PrivateKey,
+	sm *sessions.SessionManager) *PasetoAuthenticator {
+
 	paseto.NewV4AsymmetricSecretKey()
 
 	svc := PasetoAuthenticator{
@@ -203,7 +207,7 @@ func NewPasetoAuthenticator(authnStore authnstore.IAuthnStore, signingKey ed2551
 		AgentTokenValiditySec:    config.DefaultAgentTokenValiditySec,
 		ConsumerTokenValiditySec: config.DefaultConsumerTokenValiditySec,
 		ServiceTokenValiditySec:  config.DefaultServiceTokenValiditySec,
-		sm:                       sessions.NewSessionmanager(),
+		sm:                       sm,
 	}
 	return &svc
 }
@@ -211,7 +215,10 @@ func NewPasetoAuthenticator(authnStore authnstore.IAuthnStore, signingKey ed2551
 // NewPasetoAuthenticatorFromFile returns a new instance of a Paseto token authenticator
 // loading a keypair from file or creating one if it doesn't exist.
 // This returns nil if no signing key can be loaded or created
-func NewPasetoAuthenticatorFromFile(authnStore authnstore.IAuthnStore, keysDir string) *PasetoAuthenticator {
+func NewPasetoAuthenticatorFromFile(
+	authnStore authnstore.IAuthnStore,
+	keysDir string,
+	sm *sessions.SessionManager) *PasetoAuthenticator {
 
 	clientID := "authn"
 	authKey, err := keys.LoadCreateKeyPair(clientID, keysDir, keys.KeyTypeEd25519)
@@ -223,6 +230,6 @@ func NewPasetoAuthenticatorFromFile(authnStore authnstore.IAuthnStore, keysDir s
 	}
 	signingKey := authKey.PrivateKey().(ed25519.PrivateKey)
 	_ = err
-	svc := NewPasetoAuthenticator(authnStore, signingKey)
+	svc := NewPasetoAuthenticator(authnStore, signingKey, sm)
 	return svc
 }

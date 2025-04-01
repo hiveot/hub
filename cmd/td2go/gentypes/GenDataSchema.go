@@ -53,8 +53,8 @@ func GenDataSchemaObject(l *utils.SL, typeName string, ds *td.DataSchema) (err e
 	if ds.Schema != "" {
 		l.Add("type %s %s", typeName, ds.Schema)
 	} else if len(ds.Properties) == 1 && ds.Properties[""] != nil {
-		mapSchema := ds.Properties[""]
 		// 2. if dataschema is a map
+		mapSchema := ds.Properties[""]
 		if mapSchema.Schema != "" {
 			l.Add("type %s map[string]%s", typeName, mapSchema.Schema)
 		} else {
@@ -67,13 +67,22 @@ func GenDataSchemaObject(l *utils.SL, typeName string, ds *td.DataSchema) (err e
 			l.Add("}")
 		}
 	} else {
-		l.Add("type %s struct {", typeName)
+		// 3. if dataschema is an object or array of objects
+		// in both cases the content is a list of struct fields
+		if ds.Type == "array" {
+			l.Add("type %s []struct {", typeName)
+			l.Indent++
+			// NOTE: this currently only support a single array data type, similar to object
+			err = GenDataSchemaFields(l, typeName, ds.ArrayItems)
+			l.Indent--
+		} else {
+			l.Add("type %s struct {", typeName)
 
-		l.Indent++
-		// define an agent wide data struct
-		err = GenDataSchemaFields(l, typeName, ds)
-		l.Indent--
-
+			l.Indent++
+			// define an agent wide data struct
+			err = GenDataSchemaFields(l, typeName, ds)
+			l.Indent--
+		}
 		l.Add("}")
 	}
 	l.Add("")

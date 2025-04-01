@@ -19,6 +19,9 @@ type ClientSession struct {
 	// SenderID is the login ID of the agent or consumer
 	ClientID string
 
+	// Created time of the session.
+	Created time.Time
+
 	// Time the session expires. Tokens won't be refreshed after this time.
 	Expiry time.Time
 }
@@ -80,6 +83,7 @@ func (sm *SessionManager) NewSession(clientID string, sessionID string) {
 		sess = &ClientSession{
 			SessionID: sessionID,
 			ClientID:  clientID,
+			Created:   time.Now(),
 			Expiry:    time.Now().Add(sm.sessionDuration),
 		}
 		sm.sidSessions[sessionID] = sess
@@ -95,6 +99,7 @@ func (sm *SessionManager) NewSession(clientID string, sessionID string) {
 		sess = &ClientSession{
 			SessionID: sessionID,
 			ClientID:  clientID,
+			Created:   time.Now(),
 			Expiry:    time.Now().Add(sm.sessionDuration),
 		}
 		sm.sidSessions[sessionID] = sess

@@ -16,7 +16,9 @@ import (
 // GoTypeFromSchema returns the golang type of a dataschema type,
 // or the non-standard type if this not a WoT type.
 //
-// If the type is an object and the 'schema' field contains a type name then u
+// If the type is an object and the 'schema' field contains a type name then use
+// the schema name as the type.
+//
 // return the schema value as the type.
 func GoTypeFromSchema(ds *td.DataSchema) string {
 	switch ds.Type {

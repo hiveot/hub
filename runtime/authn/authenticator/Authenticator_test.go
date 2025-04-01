@@ -4,29 +4,48 @@ import (
 	"crypto/ed25519"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/messaging"
+	authn "github.com/hiveot/hub/runtime/authn/api"
 	"github.com/hiveot/hub/runtime/authn/authenticator"
 	"github.com/hiveot/hub/runtime/authn/authnstore"
+	"github.com/hiveot/hub/runtime/authn/config"
+	"github.com/hiveot/hub/runtime/authn/sessions"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"os"
+	"path"
 	"testing"
 )
 
 var authnStore authnstore.IAuthnStore
+var testDir = path.Join(os.TempDir(), "test-authn")
+var defaultHash = config.PWHASH_ARGON2id
 
-func NewAuthenticator() messaging.IAuthenticator {
+func NewAuthenticator() (messaging.IAuthenticator, *sessions.SessionManager) {
+	passwordFile := path.Join(testDir, "test.passwd")
+	authnStore = authnstore.NewAuthnFileStore(passwordFile, defaultHash)
 	//signingKey := keys.NewEcdsaKey()
 	//svc := authenticator.NewJWTAuthenticator(authnStore, signingKey)
 	signingKey := keys.NewEd25519Key().PrivateKey().(ed25519.PrivateKey)
-	svc := authenticator.NewPasetoAuthenticator(authnStore, signingKey)
-	return svc
+	sm := sessions.NewSessionmanager()
+	svc := authenticator.NewPasetoAuthenticator(authnStore, signingKey, sm)
+	return svc, sm
 }
 
 func TestCreateSessionToken(t *testing.T) {
 	const clientID = "user1"
+	const pass1 = "pass1"
 	//const clientType = authn.ClientTypeConsumer
 	sessionID := "session1"
 
-	svc := NewAuthenticator()
+	svc, sm := NewAuthenticator()
+	_ = authnStore.Add(clientID, authn.ClientProfile{
+		ClientID:    clientID,
+		ClientType:  authn.ClientTypeConsumer,
+		Disabled:    false,
+		DisplayName: "test",
+	})
+	err := authnStore.SetPassword(clientID, pass1)
+	require.NoError(t, err)
 
 	token1 := svc.CreateSessionToken(clientID, sessionID, 100)
 	assert.NotEmpty(t, token1)
@@ -43,12 +62,21 @@ func TestCreateSessionToken(t *testing.T) {
 	require.Equal(t, clientID, clientID3)
 	require.Equal(t, sessionID, sid3)
 
+	_, err = svc.Login(clientID, pass1)
+
 	// create a persistent session token (use clientID as sessionID)
 	token2 := svc.CreateSessionToken(clientID, clientID, 100)
 	clientID4, sid4, err := svc.ValidateToken(token2)
 	require.NoError(t, err)
 	require.Equal(t, clientID, clientID4)
 	require.Equal(t, clientID, sid4)
+
+	// session info must exist
+	sessInfo, found := sm.GetSessionByClientID(clientID)
+	assert.True(t, found)
+	assert.Equal(t, clientID4, sessInfo.ClientID)
+	assert.NotEmpty(t, sessInfo.Created)
+	assert.NotEmpty(t, sessInfo.Expiry)
 
 }
 
@@ -57,7 +85,7 @@ func TestBadTokens(t *testing.T) {
 	//const clientType = authn.ClientTypeConsumer
 	sessionID := "session1"
 
-	svc := NewAuthenticator()
+	svc, _ := NewAuthenticator()
 
 	token1 := svc.CreateSessionToken(clientID, sessionID, 100)
 	assert.NotEmpty(t, token1)
