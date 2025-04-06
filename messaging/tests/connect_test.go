@@ -69,7 +69,7 @@ func NewTestClient(clientID string) (messaging.IClientConnection, string) {
 		//	fullURL = testServerMqttWssURL
 	}
 	caCert := certBundle.CaCert
-	cc, err := clients.ConnectWithToken(clientID, token, caCert, defaultProtocol, fullURL, testTimeout)
+	cc, err := clients.ConnectWithToken(clientID, token, caCert, fullURL, testTimeout)
 	if err != nil {
 		panic("NewClient failed:" + err.Error())
 	}

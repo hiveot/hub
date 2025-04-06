@@ -14,6 +14,7 @@ import (
 	"log/slog"
 	"os"
 	"path"
+	"time"
 )
 
 // AuthnAdminService handles administration of clients
@@ -111,8 +112,8 @@ func (svc *AuthnAdminService) AddAgent(senderID string,
 	if err == nil {
 		// agent tokens are not restricted to a session. If sessionID matches clientID then
 		// no additional session check will take place.
-		token = svc.sessionAuth.CreateSessionToken(
-			args.ClientID, args.ClientID, svc.cfg.AgentTokenValiditySec)
+		validity := time.Duration(svc.cfg.AgentTokenValidityDays) * time.Hour * 24
+		token = svc.sessionAuth.CreateSessionToken(args.ClientID, args.ClientID, validity)
 	}
 	return token, err
 }
@@ -157,8 +158,8 @@ func (svc *AuthnAdminService) AddService(senderID string,
 	}
 	if err == nil {
 		// service tokens are not linked to a session (sessionID equals clientID)
-		token = svc.sessionAuth.CreateSessionToken(
-			args.ClientID, args.ClientID, svc.cfg.ServiceTokenValiditySec)
+		validity := time.Duration(svc.cfg.ServiceTokenValidityDays) * time.Hour * 24
+		token = svc.sessionAuth.CreateSessionToken(args.ClientID, args.ClientID, validity)
 
 		// remove the readonly token file if it exists, to be able to overwrite
 		tokenFile := path.Join(svc.cfg.KeysDir, args.ClientID+clients.TokenFileExt)
@@ -219,15 +220,16 @@ func (svc *AuthnAdminService) NewAgentToken(senderID string, agentID string) (to
 	prof, err := svc.authnStore.GetProfile(agentID)
 	_ = prof
 	if err == nil {
-		validitySec := 1
+		validityDays := 1
 		if prof.ClientType == authn.ClientTypeAgent {
-			validitySec = svc.cfg.AgentTokenValiditySec
+			validityDays = svc.cfg.AgentTokenValidityDays
 		} else if prof.ClientType == authn.ClientTypeService {
-			validitySec = svc.cfg.ServiceTokenValiditySec
+			validityDays = svc.cfg.ServiceTokenValidityDays
 		} else {
-			validitySec = svc.cfg.ConsumerTokenValiditySec
+			validityDays = svc.cfg.ConsumerTokenValidityDays
 		}
-		token = svc.sessionAuth.CreateSessionToken(agentID, agentID, validitySec)
+		validity := time.Duration(validityDays) * time.Hour * 24
+		token = svc.sessionAuth.CreateSessionToken(agentID, agentID, validity)
 	}
 	return token, err
 }

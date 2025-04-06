@@ -93,19 +93,6 @@ type IConnection interface {
 	// GetConnectionInfo return details of the connection
 	GetConnectionInfo() ConnectionInfo
 
-	// GetClientID returns the authenticated clientID of this connection
-	//GetClientID() string
-
-	// GetConnectionID returns the client's connection ID belonging to this endpoint
-	//GetConnectionID() string
-
-	// GetProtocolType returns the name of the protocol of this connection
-	// See ProtocolType... constants above for valid values.
-	//GetProtocolType() string
-
-	// GetConnectURL returns the full URL used to establish this connection
-	//GetConnectURL() string
-
 	// IsConnected returns the current connection status
 	IsConnected() bool
 

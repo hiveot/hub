@@ -61,9 +61,9 @@ func StartAuthnService(cfg *config.AuthnConfig) (*AuthnService, error) {
 	//	authnStore, cfg.KeysDir, cfg.DefaultKeyType)
 	sm := sessions.NewSessionmanager()
 	sessionAuth := authenticator.NewPasetoAuthenticatorFromFile(authnStore, cfg.KeysDir, sm)
-	sessionAuth.AgentTokenValiditySec = cfg.AgentTokenValiditySec
-	sessionAuth.ConsumerTokenValiditySec = cfg.ConsumerTokenValiditySec
-	sessionAuth.ServiceTokenValiditySec = cfg.ServiceTokenValiditySec
+	sessionAuth.AgentTokenValidityDays = cfg.AgentTokenValidityDays
+	sessionAuth.ConsumerTokenValidityDays = cfg.ConsumerTokenValidityDays
+	sessionAuth.ServiceTokenValidityDays = cfg.ServiceTokenValidityDays
 
 	svc := NewAuthnService(cfg, authnStore, sm, sessionAuth)
 	err := svc.Start()

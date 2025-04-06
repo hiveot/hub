@@ -22,9 +22,9 @@ type PasetoAuthenticator struct {
 	// authentication store for login verification
 	authnStore authnstore.IAuthnStore
 	//
-	AgentTokenValiditySec    int
-	ConsumerTokenValiditySec int
-	ServiceTokenValiditySec  int
+	AgentTokenValidityDays    int
+	ConsumerTokenValidityDays int
+	ServiceTokenValidityDays  int
 
 	// sessionmanager tracks session IDs
 	sm *sessions.SessionManager
@@ -38,13 +38,12 @@ type PasetoAuthenticator struct {
 //
 // This returns the token
 func (svc *PasetoAuthenticator) CreateSessionToken(
-	clientID string, sessionID string, validitySec int) (token string) {
+	clientID string, sessionID string, validity time.Duration) (token string) {
 
 	// TODO: add support for nonce challenge with client pubkey
 
 	// CreateSessionToken creates a signed Paseto session token for a client.
 	// The token is signed with the given signing key-pair and valid for the given duration.
-	validity := time.Second * time.Duration(validitySec)
 	expiryTime := time.Now().Add(validity)
 
 	pToken := paseto.NewToken()
@@ -77,17 +76,22 @@ func (svc *PasetoAuthenticator) CreateSessionToken(
 // This returns the client info reconstructed from the token or an error if invalid
 func (svc *PasetoAuthenticator) DecodeSessionToken(sessionKey string, signedNonce string, nonce string) (
 	clientID string, sessionID string, err error) {
+	var pToken *paseto.Token
 
 	pasetoParser := paseto.NewParserForValidNow()
 	pubKey := svc.signingKey.Public().(ed25519.PublicKey)
 	v4PubKey, err := paseto.NewV4AsymmetricPublicKeyFromEd25519(pubKey)
-	pToken, err := pasetoParser.ParseV4Public(v4PubKey, sessionKey, nil)
-	if err != nil {
-		return "", "", err
+	if err == nil {
+		pToken, err = pasetoParser.ParseV4Public(v4PubKey, sessionKey, nil)
 	}
-	sessionID, err = pToken.GetString("sessionID")
 	if err == nil {
 		clientID, err = pToken.GetString("clientID")
+	}
+	if err == nil {
+		sessionID, err = pToken.GetString("sessionID")
+	}
+	if err != nil {
+		slog.Warn("DecodeSessionToken: the given session token is no longer valid: ", "err", err.Error())
 	}
 	return clientID, sessionID, err
 }
@@ -120,7 +124,8 @@ func (svc *PasetoAuthenticator) Login(clientID string, password string) (token s
 	}
 	// create the session to allow token refresh
 	svc.sm.NewSession(clientID, sessionID)
-	token = svc.CreateSessionToken(clientID, sessionID, svc.ConsumerTokenValiditySec)
+	validity := time.Hour * time.Duration(24*svc.ConsumerTokenValidityDays)
+	token = svc.CreateSessionToken(clientID, sessionID, validity)
 
 	return token, err
 }
@@ -149,13 +154,14 @@ func (svc *PasetoAuthenticator) RefreshToken(
 	if err != nil || prof.Disabled {
 		return newToken, fmt.Errorf("Profile for '%s' is disabled", senderID)
 	}
-	validitySec := svc.ConsumerTokenValiditySec
+	validityDays := svc.ConsumerTokenValidityDays
 	if prof.ClientType == authn.ClientTypeAgent {
-		validitySec = svc.AgentTokenValiditySec
+		validityDays = svc.AgentTokenValidityDays
 	} else if prof.ClientType == authn.ClientTypeService {
-		validitySec = svc.ServiceTokenValiditySec
+		validityDays = svc.ServiceTokenValidityDays
 	}
-	newToken = svc.CreateSessionToken(senderID, sessionID, validitySec)
+	validity := time.Duration(validityDays) * 24 * time.Hour
+	newToken = svc.CreateSessionToken(senderID, sessionID, validity)
 	return newToken, err
 }
 
@@ -204,10 +210,10 @@ func NewPasetoAuthenticator(
 		signingKey: signingKey,
 		authnStore: authnStore,
 		// validity can be changed by user of this service
-		AgentTokenValiditySec:    config.DefaultAgentTokenValiditySec,
-		ConsumerTokenValiditySec: config.DefaultConsumerTokenValiditySec,
-		ServiceTokenValiditySec:  config.DefaultServiceTokenValiditySec,
-		sm:                       sm,
+		AgentTokenValidityDays:    config.DefaultAgentTokenValidityDays,
+		ConsumerTokenValidityDays: config.DefaultConsumerTokenValidityDays,
+		ServiceTokenValidityDays:  config.DefaultServiceTokenValidityDays,
+		sm:                        sm,
 	}
 	return &svc
 }

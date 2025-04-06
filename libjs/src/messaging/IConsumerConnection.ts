@@ -9,16 +9,6 @@ export enum ConnectionStatus {
     Unauthorized = "unauthorized"
 }
 
-// Supported transport protocol bindings types
-export const ProtocolTypeWotHTTPBasic = "wot-http-basic"
-// WoT http websocket subprotocol based on strawman proposal
-export const ProtocolTypeWotWSS = "wot-wss"
-
-// HiveOT http SSE subprotocol return channel with direct messaging
-export const ProtocolTypeHiveotSSE = "hiveot-sse"
-// HiveOT http WSS subprotocol with direct messaging
-export const ProtocolTypeHiveotWSS = "hiveot-wss"
-
 
 export type ConnectionHandler = (status: ConnectionStatus)=>void;
 export type RequestHandler = (msg: RequestMessage)=>ResponseMessage|null;

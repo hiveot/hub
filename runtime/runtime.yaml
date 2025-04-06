@@ -1,0 +1,81 @@
+# authn config
+authn:
+  # password storage in stores/authn/{filename}
+  #passwordFile: "hub.passwd"      # default "hub.passwd"
+
+  #encryption: "argon2id"          # argon2id (default) or "bcrypt"
+  #agentTokenValidityDays: 90      # default 90 days
+  #consumerTokenValidityDays: 30   # default 30 days
+  #serviceTokenValidityDays: 366   # default 366 days
+
+  # predefined accounts
+  #adminAccountID: "admin"         # default "admin"
+  #launcherAccountID: "launcher"   # default "launcher"
+
+
+# authz config
+#authz:
+  # there is an option to customize role permissions
+  #rolePermissions:
+  #   viewer:
+  #      operations:  ...
+  #   operator:
+  #      operations:  ...
+  #   manager:
+  #     operations:  ...
+  #   admin:
+  #     operations:  ...
+
+  # map of service dThingID  to the allow/deny roles that can invoke it
+  #servicePermissions:
+
+  # file with configured permissions; default in the stores/authz directory
+  #aclFile: "authz.acl"    # default is "authz.acl"
+
+# protocols config
+protocols:
+  # Server hostname used in http
+  #host: ""
+  # https binding listening port
+  #httpsPort: 8444         # default is 8444
+
+  # Enable the HiveOT HTTP/Authentication endpoint.
+  #enableHiveotAuth: true   # Default is true.
+
+  # Enable the HiveOT HTTP/SSE-SC sub protocol server.
+  #enableHiveotSSE: true    # Default is true
+  #hiveotSsePath: "/hiveot/sse"
+
+  # Enable the HTTP/WSS sub protocol server.
+  #enableWSS: true                # Default is true.
+  #hiveotWssPath: "/hiveot/wss"   # Hiveot websocket endpoint path
+  #wotWssPath: "/wot/wss"         # WoT websocket endpoint path
+
+  # Enable the MQTT protocol server. (NOT YET IMPLEMENTED)
+  #enableMQTT: true         # Default is true.
+  #mqttHost: ""
+  #mqttTcpPort: 8883
+  #mqttWssPort: 8884
+
+  # Enable mDNS discovery server. Default is true.
+  #enableDiscovery: true
+
+  # location of the directory service TD
+  # Defaults to "/.well-known/wot" as per spec
+  #directoryTDPath: "/.well-known/wot"
+
+
+
+# runtime logging
+#loglevel: info               # default warn
+#requestLog: requests.log     # RequestLog with logging of request and response messages
+#notifLog: notifications.log  # filename for logging of notification messages
+#runtimeLog: runtime.log      # log the runtime output here
+#logfileInJson: false         # logfile in json format (default false)
+
+# certificate file names or full path
+#caCertFile: caCert.pem        # default caCert.pem
+# not all browsers support certificates with ed25519 keys, so this file contains an ecdsa key
+#caKeyFile:  caKey.pem
+#serverCertFile: hubCert.pem
+#serverKeyFile: hubKey.pem

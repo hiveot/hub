@@ -7,9 +7,9 @@ import (
 
 // Session token validity for client types
 const (
-	DefaultAgentTokenValiditySec    = 90 * 24 * 3600  // 90 days
-	DefaultConsumerTokenValiditySec = 30 * 24 * 3600  // 30 days
-	DefaultServiceTokenValiditySec  = 365 * 24 * 3600 // 1 year
+	DefaultAgentTokenValidityDays    = 90
+	DefaultConsumerTokenValidityDays = 30
+	DefaultServiceTokenValidityDays  = 365
 )
 
 // supported password hashes
@@ -37,12 +37,12 @@ type AuthnConfig struct {
 	// Encryption of passwords: "argon2id" (default) or "bcrypt"
 	Encryption string `yaml:"encryption,omitempty"`
 
-	// Auth token validity for agents in seconds
-	AgentTokenValiditySec int `yaml:"agentTokenValiditySec,omitempty"`
+	// Auth token validity for agents in days
+	AgentTokenValidityDays int `yaml:"agentTokenValidityDays,omitempty"`
 	// Auth token validity for consumers in days
-	ConsumerTokenValiditySec int `yaml:"consumerTokenValiditySec,omitempty"`
+	ConsumerTokenValidityDays int `yaml:"consumerTokenValidityDays,omitempty"`
 	// Auth token validity for services in days
-	ServiceTokenValiditySec int `yaml:"serviceTokenValiditySec,omitempty"`
+	ServiceTokenValidityDays int `yaml:"serviceTokenValidityDays,omitempty"`
 
 	// NoAutoStart prevents the auth service for auto starting. Intended for testing or custom implementation.
 	NoAutoStart bool `yaml:"noAutoStart,omitempty"`
@@ -80,14 +80,14 @@ func (cfg *AuthnConfig) Setup(keysDir, storesDir string) {
 		cfg.Encryption = PWHASH_ARGON2id
 	}
 
-	if cfg.AgentTokenValiditySec == 0 {
-		cfg.AgentTokenValiditySec = DefaultAgentTokenValiditySec
+	if cfg.AgentTokenValidityDays == 0 {
+		cfg.AgentTokenValidityDays = DefaultAgentTokenValidityDays
 	}
-	if cfg.ServiceTokenValiditySec == 0 {
-		cfg.ServiceTokenValiditySec = DefaultServiceTokenValiditySec
+	if cfg.ServiceTokenValidityDays == 0 {
+		cfg.ServiceTokenValidityDays = DefaultServiceTokenValidityDays
 	}
-	if cfg.ConsumerTokenValiditySec == 0 {
-		cfg.ConsumerTokenValiditySec = DefaultConsumerTokenValiditySec
+	if cfg.ConsumerTokenValidityDays == 0 {
+		cfg.ConsumerTokenValidityDays = DefaultConsumerTokenValidityDays
 	}
 	cfg.KeysDir = keysDir
 	cfg.AdminAccountID = DefaultAdminUserID

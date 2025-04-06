@@ -47,7 +47,7 @@ func TestCreateSessionToken(t *testing.T) {
 	err := authnStore.SetPassword(clientID, pass1)
 	require.NoError(t, err)
 
-	token1 := svc.CreateSessionToken(clientID, sessionID, 100)
+	token1 := svc.CreateSessionToken(clientID, sessionID, 1)
 	assert.NotEmpty(t, token1)
 
 	// decode it
@@ -65,7 +65,7 @@ func TestCreateSessionToken(t *testing.T) {
 	_, err = svc.Login(clientID, pass1)
 
 	// create a persistent session token (use clientID as sessionID)
-	token2 := svc.CreateSessionToken(clientID, clientID, 100)
+	token2 := svc.CreateSessionToken(clientID, clientID, 1)
 	clientID4, sid4, err := svc.ValidateToken(token2)
 	require.NoError(t, err)
 	require.Equal(t, clientID, clientID4)
@@ -87,7 +87,7 @@ func TestBadTokens(t *testing.T) {
 
 	svc, _ := NewAuthenticator()
 
-	token1 := svc.CreateSessionToken(clientID, sessionID, 100)
+	token1 := svc.CreateSessionToken(clientID, sessionID, 1)
 	assert.NotEmpty(t, token1)
 
 	// try to refresh as a different client
@@ -98,7 +98,7 @@ func TestBadTokens(t *testing.T) {
 	require.Error(t, err)
 
 	// expired
-	token2 := svc.CreateSessionToken(clientID, sessionID, -100)
+	token2 := svc.CreateSessionToken(clientID, sessionID, -1)
 	clientID2, sid2, err := svc.ValidateToken(token2)
 	require.Error(t, err)
 	assert.Empty(t, clientID2)

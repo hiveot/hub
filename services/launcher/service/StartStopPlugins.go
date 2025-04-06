@@ -3,9 +3,10 @@ package service
 import (
 	"errors"
 	"fmt"
+	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/lib/utils"
 	authn "github.com/hiveot/hub/runtime/authn/api"
-	"github.com/hiveot/hub/services/launcher/launcherapi"
+	launcher "github.com/hiveot/hub/services/launcher/api"
 	"github.com/struCoder/pidusage"
 	"io"
 	"log/slog"
@@ -22,41 +23,53 @@ import (
 // _startPlugin starts the plugin with the given name
 // This creates a plugin authentication key and token files in the credentials directory (certs)
 // before starting the plugin
+//
+// # This passes the server URL to the plugin using the --server
+//
 // This places a mux lock until start is complete.
-func (svc *LauncherService) _startPlugin(pluginName string) (pi launcherapi.PluginInfo, err error) {
+func (svc *LauncherService) _startPlugin(pluginID string) (pi launcher.PluginInfo, err error) {
 
 	svc.mux.Lock()
 	defer svc.mux.Unlock()
 
 	// step 1: pre-launch checks
-	pluginInfo := svc.plugins[pluginName]
-	if pluginInfo == nil {
-		err = fmt.Errorf("plugin ID '%s' not found", pluginName)
-		slog.Error("_startPlugin: plugin not found", "name", pluginName)
+	pluginInfo, found := svc.plugins[pluginID]
+	if !found {
+		err = fmt.Errorf("plugin ID '%s' not found", pluginID)
+		slog.Error("_startPlugin: plugin not found", "name", pluginID)
 		return pi, err
 	}
 	if pluginInfo.Running {
 		slog.Info("_startPlugin: Plugin is already running",
-			slog.String("pluginName", pluginName),
-			slog.String("StartTime", utils.FormatMSE(pluginInfo.StartTimeMSE, true)))
-		return *pluginInfo, nil
+			slog.String("pluginID", pluginID),
+			slog.String("StartTime", pluginInfo.StartedTime))
+		return pluginInfo, nil
 	}
-	slog.Warn("_startPlugin", "pluginName", pluginName, "path", pluginInfo.Path)
+	//
+	slog.Warn("_startPlugin", "pluginID", pluginID, "path", pluginInfo.ExecPath)
 
 	// don't start twice
 	for _, cmd := range svc.cmds {
-		if cmd.Path == pluginInfo.Path {
+		if cmd.Path == pluginInfo.ExecPath {
 			err := fmt.Errorf("process for service '%s' already exists using PID %d",
-				pluginInfo.Name, cmd.Process.Pid)
+				pluginID, cmd.Process.Pid)
 			slog.Error(err.Error())
-			return *pluginInfo, err
+			return pluginInfo, err
 		}
 	}
 
 	// step 2: create the command to start the service ... but wait for step 5
-	svcCmd := exec.Command(pluginInfo.Path)
+	svcCmd := exec.Command(pluginInfo.ExecPath)
 	svcCmd.SysProcAttr = &syscall.SysProcAttr{
 		Pdeathsig: syscall.SIGTERM,
+	}
+	// provide a server url (deprecated - migrating to directory)
+	if svc.serverURL != "" && svc.cfg.ProvideServerURL {
+		svcCmd.Args = append(svcCmd.Args, fmt.Sprintf("--serverURL=%s", svc.serverURL))
+	}
+	// provide a directory url
+	if svc.directoryURL != "" && svc.cfg.ProvideDirectoryURL {
+		svcCmd.Args = append(svcCmd.Args, fmt.Sprintf("--%s=%s", plugin.DirectoryURL_Arg, svc.directoryURL))
 	}
 
 	// step3: setup logging before starting service
@@ -65,7 +78,7 @@ func (svc *LauncherService) _startPlugin(pluginName string) (pi launcherapi.Plug
 		svcCmd.Env = append(os.Environ(), "LOGLEVEL="+svc.cfg.LogLevel)
 
 		// inspired by https://gist.github.com/jerblack/4b98ba48ed3fb1d9f7544d2b1a1be287
-		logfile := path.Join(svc.cfg.LogsDir, pluginName+".log")
+		logfile := path.Join(svc.cfg.LogsDir, pluginID+".log")
 		_ = os.MkdirAll(svc.cfg.LogsDir, 0700)
 		fp, err := os.OpenFile(logfile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 		if err == nil {
@@ -101,16 +114,17 @@ func (svc *LauncherService) _startPlugin(pluginName string) (pi launcherapi.Plug
 		}
 	}
 	// step 4: add the service account and generate its credentials
-	if pluginName != svc.cfg.RuntimeBin {
-		tokenPath := path.Join(svc.certsDir, pluginName+".token")
+	//  (this does not apply to the runtime itself)
+	if pluginID != svc.cfg.RuntimeBin && svc.cfg.CreatePluginCred {
+		tokenPath := path.Join(svc.certsDir, pluginID+".token")
 
 		slog.Info("Adding plugin service client with key and token",
-			"pluginName", pluginName, "certsDir", svc.certsDir, "tokenPath", tokenPath)
+			"pluginID", pluginID, "certsDir", svc.certsDir, "tokenPath", tokenPath)
 
 		// add a service account. Authn admin generates a new token file in the keys directory
 		// the service must have read access to this directory, or the keys must be
 		// copied elsewhere by the administrator.
-		_, err = authn.AdminAddService(svc.ag.Consumer, pluginName, pluginName, "")
+		_, err = authn.AdminAddService(svc.ag.Consumer, pluginID, pluginID, "")
 		if err != nil {
 			slog.Error("Unable to add plugin to hub and create credentials. Continuing anyways", "err", err)
 		}
@@ -119,45 +133,50 @@ func (svc *LauncherService) _startPlugin(pluginName string) (pi launcherapi.Plug
 	// step 5: start the plugin
 	err = svcCmd.Start()
 	if err != nil {
-		pluginInfo.Status = fmt.Sprintf("failed starting '%s': %s", pluginName, err.Error())
+		pluginInfo.Status = fmt.Sprintf("failed starting '%s': %s", pluginID, err.Error())
 		err = errors.New(pluginInfo.Status)
 		slog.Error(err.Error())
-		return *pluginInfo, err
+		svc.plugins[pluginID] = pluginInfo
+
+		return pluginInfo, err
 	}
 	svc.cmds = append(svc.cmds, svcCmd)
 	//slog.Warning("Service has started", "serviceName",pluginID)
 
-	pluginInfo.StartTimeMSE = time.Now().UnixMilli()
-	pluginInfo.PID = svcCmd.Process.Pid
+	pluginInfo.StartedTime = utils.FormatNowUTCMilli()
+	pluginInfo.Pid = int64(svcCmd.Process.Pid)
 	pluginInfo.Status = ""
 	pluginInfo.StartCount++
 	pluginInfo.Running = true
 
 	// step 6: handle command termination and cleanup
-	var startStatus error
+	var exitError error
 	go func() {
 		// cleanup after the process ends
-		startStatus = svcCmd.Wait()
+		exitError = svcCmd.Wait()
 		svc.mux.Lock()
 		defer svc.mux.Unlock()
-		pluginInfo.StopTimeMSE = time.Now().UnixMilli()
+		pluginInfo.StoppedTime = utils.FormatNowUTCMilli()
 		pluginInfo.Running = false
 		// processState holds exit info
 		procState := svcCmd.ProcessState
 
-		if startStatus != nil {
+		if exitError != nil {
+			// expect error is signal:terminated
 			pluginInfo.Status = fmt.Sprintf("Plugin '%s' has stopped with: %s",
-				pluginName, startStatus.Error())
+				pluginID, exitError.Error())
 		} else if procState != nil {
 			pluginInfo.Status = fmt.Sprintf("Plugin '%s' has stopped with exit code %d: sys='%v'",
-				pluginName, procState.ExitCode(), procState.Sys())
+				pluginID, procState.ExitCode(), procState.Sys())
 		} else {
-			pluginInfo.Status = fmt.Sprintf("Plugin '%s' has stopped without info", pluginName)
+			pluginInfo.Status = fmt.Sprintf("Plugin '%s' has stopped without info", pluginID)
 		}
 		slog.Warn("Plugin has stopped",
-			slog.String("pluginName", pluginName),
+			slog.String("pluginID", pluginID),
 			slog.String("status", pluginInfo.Status))
-		svc.updateStatus(pluginInfo)
+		svc.updateStatus(&pluginInfo)
+		svc.plugins[pluginID] = pluginInfo
+
 		// find the service to delete
 		i := lo.IndexOf(svc.cmds, svcCmd)
 		//lo.Delete(svc.cmds, i)  - why doesn't this exist?
@@ -168,29 +187,32 @@ func (svc *LauncherService) _startPlugin(pluginName string) (pi launcherapi.Plug
 	time.Sleep(time.Millisecond * 100)
 
 	// check if its still running
-	if startStatus != nil {
+	if exitError != nil {
 		// something went wrong
-		err = startStatus
+		err = exitError
 	}
 
 	// TODO: publish an started event
 
 	// last, update the CPU and memory status
-	svc.updateStatus(pluginInfo)
+	svc.updateStatus(&pluginInfo)
 	if err != nil {
-		slog.Error("Plugin startup failed", "pluginName", pluginName, "err", err, "status", pluginInfo.Status)
+		slog.Error("Plugin startup failed", "pluginID", pluginID, "err", err, "status", pluginInfo.Status)
 	}
-	return *pluginInfo, err
+	svc.plugins[pluginID] = pluginInfo
+	return pluginInfo, err
 }
 
 // StartAllPlugins starts all enabled plugins
-func (svc *LauncherService) StartAllPlugins() (err error) {
-	slog.Info("StartAll. Starting core and all enabled plugins")
+func (svc *LauncherService) StartAllPlugins(senderID string) (err error) {
 
+	slog.Info("StartAllPlugins",
+		slog.String("senderID", senderID),
+	)
 	// start services in order from config
 	for _, pluginName := range svc.cfg.Autostart {
-		svcInfo := svc.plugins[pluginName]
-		if svcInfo != nil && svcInfo.Running {
+		svcInfo, found := svc.plugins[pluginName]
+		if found && svcInfo.Running {
 			// skip when already running
 		} else {
 			_, err2 := svc._startPlugin(pluginName)
@@ -215,26 +237,33 @@ func (svc *LauncherService) StartAllPlugins() (err error) {
 // StartPlugin starts the plugin with the given name
 // This creates a plugin authentication key and token files in the credentials directory (certs)
 // before starting the plugin.
-func (svc *LauncherService) StartPlugin(args launcherapi.StartPluginArgs) (launcherapi.StartPluginResp, error) {
+func (svc *LauncherService) StartPlugin(senderID string, pluginID string) (launcher.PluginInfo, error) {
 
-	slog.Warn("StartPlugin",
-		slog.String("pluginID", args.Name),
+	slog.Info("StartPlugin",
+		slog.String("senderID", senderID),
+		slog.String("pluginID", pluginID),
 	)
 
-	pluginInfo, err := svc._startPlugin(args.Name)
-	resp := launcherapi.StartPluginResp{PluginInfo: pluginInfo}
-	return resp, err
+	pluginInfo, err := svc._startPlugin(pluginID)
+	if err != nil {
+		// notify subscribers publish a started event
+		go func() {
+			_ = svc.ag.PubEvent(launcher.AdminServiceID, launcher.AdminEventStarted, pluginID)
+		}()
+	}
+	return pluginInfo, err
 }
 
 // StopAllPlugins stops all running plugins in reverse order they were started
 // If includingCore is set then also stop the core.
-func (svc *LauncherService) StopAllPlugins(args *launcherapi.StopAllPluginsArgs) (err error) {
+func (svc *LauncherService) StopAllPlugins(senderID string, fullStop bool) (err error) {
 
 	svc.mux.Lock()
 
 	// use a copy of the commands as the command list will be mutated
 	cmdsToStop := svc.cmds[:]
 	slog.Info("Stopping all plugins",
+		slog.String("senderID", senderID),
 		slog.Int("count", len(cmdsToStop)),
 	)
 
@@ -243,8 +272,8 @@ func (svc *LauncherService) StopAllPlugins(args *launcherapi.StopAllPluginsArgs)
 	// stop each service in reverse order
 	for i := len(cmdsToStop) - 1; i >= 0; i-- {
 		c := cmdsToStop[i]
-		if !args.IncludingRuntime && svc.cfg.RuntimeBin != "" && strings.HasSuffix(c.Path, svc.cfg.RuntimeBin) {
-			// don't stop the core as that would render things unreachable
+		if !fullStop && svc.cfg.RuntimeBin != "" && strings.HasSuffix(c.Path, svc.cfg.RuntimeBin) {
+			// don't stop the runtime as that would render things unreachable
 			slog.Info("Not stopping the core", "path", c.Path)
 		} else {
 			err = Stop(c.Path, c.Process.Pid)
@@ -255,46 +284,51 @@ func (svc *LauncherService) StopAllPlugins(args *launcherapi.StopAllPluginsArgs)
 	return err
 }
 
-func (svc *LauncherService) StopPlugin(args launcherapi.StopPluginArgs) (resp launcherapi.StopPluginResp, err error) {
+func (svc *LauncherService) StopPlugin(senderID string, pluginID string) (pluginInfo launcher.PluginInfo, err error) {
+	slog.Info("Stopping plugin",
+		slog.String("senderID", senderID),
+		slog.String("pluginID", pluginID))
 
 	svc.mux.Lock()
-	pluginInfo, _ := svc.plugins[args.Name]
+	pluginInfo, found := svc.plugins[pluginID]
 	svc.mux.Unlock()
-	if pluginInfo == nil {
-		err = fmt.Errorf("plugin '%s' not found", args.Name)
-		slog.Error("Plugin not found", "pluginName", args.Name)
-		return resp, err
+	if !found {
+		err := fmt.Errorf("plugin '%s' not found", pluginID)
+		slog.Error("Plugin not found", "pluginID", pluginID)
+		return pluginInfo, err
 	}
-	err = Stop(pluginInfo.Name, pluginInfo.PID)
-	// TODO: publish a stopped event
+	// stop status is updated when the process ends
+	err = Stop(pluginID, int(pluginInfo.Pid))
 
 	svc.mux.Lock()
 	defer svc.mux.Unlock()
-	pluginInfo.Running = false
-	// stoptime is set when process stops
-	if err != nil {
-		pluginInfo.Status = err.Error()
-	} else {
-		pluginInfo.Status = "stopped by user"
-	}
+	// reload the plugin status
+	pluginInfo, _ = svc.plugins[pluginID]
+	pluginInfo.Status = "Stopped by user: " + senderID
+	svc.plugins[pluginID] = pluginInfo
 
-	resp.PluginInfo = *pluginInfo
-	return resp, err
+	// notify subscribers publish a stopped event
+	go func() {
+		_ = svc.ag.PubEvent(launcher.AdminServiceID, launcher.AdminEventStopped, pluginID)
+	}()
+
+	return pluginInfo, nil
 }
 
-// updateStatus updates the service  status
-func (svc *LauncherService) updateStatus(svcInfo *launcherapi.PluginInfo) {
-	if svcInfo.PID != 0 {
+// updateStatus updates the service running cpu/mem in the  status
+func (svc *LauncherService) updateStatus(svcInfo *launcher.PluginInfo) {
+	if svcInfo.Pid != 0 {
 
 		//Option A: use pidusage - doesn't work on Windows though
 		//warning, pidusage is not very fast
-		pidStats, _ := pidusage.GetStat(svcInfo.PID)
+		pid := int(svcInfo.Pid)
+		pidStats, _ := pidusage.GetStat(pid)
 		if pidStats != nil {
-			svcInfo.RSS = int(pidStats.Memory) // RSS is in KB
-			svcInfo.CPU = int(pidStats.CPU)
+			svcInfo.Rss = int64(pidStats.Memory) // RSS is in KB
+			svcInfo.Cpu = int64(pidStats.CPU)
 		} else {
-			svcInfo.CPU = 0
-			svcInfo.RSS = 0
+			svcInfo.Cpu = 0
+			svcInfo.Rss = 0
 		}
 
 	}

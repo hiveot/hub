@@ -301,18 +301,18 @@ func (svc *DigitwinStore) ReadDThing(dThingID string) (dtd *td.TD, err error) {
 //
 // limit is the maximum number of records to return
 // offset is the offset of the first record to return
-func (svc *DigitwinStore) ReadTDs(offset int, limit int) (resp []*td.TD, err error) {
+func (svc *DigitwinStore) ReadTDs(offset int64, limit int64) (resp []*td.TD, err error) {
 
 	svc.cacheMux.RLock()
 	defer svc.cacheMux.RUnlock()
 	// Use the thingKeys index to ensure consistent iteration and to quickly
 	// skip offset items (maps are not consistent between iterations)
-	if offset >= len(svc.thingKeys) {
+	if offset >= int64(len(svc.thingKeys)) {
 		// empty result
 		return resp, nil
 	}
-	if offset+limit > len(svc.thingKeys) {
-		limit = len(svc.thingKeys) - offset
+	if offset+limit > int64(len(svc.thingKeys)) {
+		limit = int64(len(svc.thingKeys)) - offset
 	}
 	tdKeys := svc.thingKeys[offset:limit]
 	resp = make([]*td.TD, 0, len(tdKeys))

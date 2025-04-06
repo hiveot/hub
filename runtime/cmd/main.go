@@ -39,6 +39,7 @@ func main() {
 	r := runtime.NewRuntime(cfg)
 	err := r.Start(&env)
 	if err != nil {
+		println("Starting hivot runtime failed: ", err.Error())
 		os.Exit(1)
 	}
 

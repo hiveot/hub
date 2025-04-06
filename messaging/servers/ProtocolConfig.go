@@ -24,7 +24,6 @@ type ProtocolsConfig struct {
 	//EnableMQTT bool `yaml:"enableMQTT"`
 
 	// Enable mDNS discovery. Default is true.
-	// The DiscoveryTDPath must be resolved by the http server
 	EnableDiscovery bool `yaml:"enableDiscovery"`
 	// The service discovery instance. The default is the hostname
 	InstanceName string `yaml:"instanceName"`

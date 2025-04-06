@@ -17,10 +17,10 @@ logLevel: info
 
 # runtime binary to launch before the plugins. The runtime binary must reside in the bin directory.
 # comment out if a runtime is already running elsewhere.
-# runtime: runtime
+runtime: runtime
 
 # write plugin stdout and stderr to logfile at logs/{pluginname}.log (default is true)
-#logplugins: true
+#logPlugins: true
 
 # attach to service stderr for logging and testing (default is true)
 #attachstderr: true
@@ -34,6 +34,11 @@ logLevel: info
 # createPluginCred generates plugin credentials, if they don't exist.
 # location is the application certs directory using the name format {plugin}.key and {plugin}.token.
 #createPluginCred: true    (default true)
+
+# provideDiscovery provides the plugin with the discovery URL of the hub directory TD
+# using the 'directoryURL' commandline argument.
+# The plugin can use it to publish its TD.
+#provideDiscovery: true    (default true)
 
 
 # Plugins to start in order

@@ -1,11 +1,13 @@
 package messaging
 
+import "time"
+
 // IAuthenticator is the interface of the authentication capability to obtain and
 // validate session tokens.
 type IAuthenticator interface {
 	// CreateSessionToken creates a signed session token for a client and adds the session
 	// sessionID is required. For persistent sessions use the clientID.
-	CreateSessionToken(clientID, sessionID string, validitySec int) (token string)
+	CreateSessionToken(clientID, sessionID string, validity time.Duration) (token string)
 
 	// DecodeSessionToken and return its claims
 	DecodeSessionToken(sessionToken string, signedNonce string, nonce string) (

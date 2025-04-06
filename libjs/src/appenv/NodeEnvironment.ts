@@ -159,7 +159,7 @@ export default class NodeEnvironment extends Object {
                 .option('--certs <string>', "override service auth certificate directory")
                 .option('--logs <string>', "override log-files directory")
                 .option('--loglevel <string>', "'error', 'warn', 'info', 'debug'")
-                .option('--server <string>', "server URL or empty for automatic discovery")
+                .option('--serverURL <string>', "server URL or empty for automatic discovery")
             program.parse();
             const options = program.opts()
 

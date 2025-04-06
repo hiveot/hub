@@ -1,0 +1,198 @@
+{
+  "@context": [
+    "https://www.w3.org/2022/wot/td/v1.1",
+    {
+      "hiveot": "https://www.hiveot.net/vocab/v0.1"
+    }
+  ],
+  "@type": "Service",
+  "id": "admin",
+  "title": "Administration of Plugins",
+  "description": "Starting and stopping of plugins",
+  "version": {
+    "instance": "0.1.0"
+  },
+  "created": "2025-04-01T17:00:00.000Z",
+  "modified": "2025-04-01T17:00:00.000Z",
+  "schemaDefinitions": {
+    "PluginInfo": {
+      "title": "Plugin Information",
+      "type": "object",
+      "description": "PluginInfo contains the running status of a service",
+      "properties": {
+        "cpu": {
+          "title": "CPU",
+          "description": "CPU usage in %. 0 when not running",
+          "type": "integer",
+          "unit": "%"
+        },
+        "modifiedTime": {
+          "title": "Modified",
+          "description": "Service modified time ISO8601",
+          "type": "string"
+        },
+        "execPath": {
+          "title": "Path",
+          "description": "Path to the service executable",
+          "type": "string"
+        },
+        "pid": {
+          "title": "PID",
+          "description": "Program PID when started. This remains after stopping.",
+          "type": "integer"
+        },
+        "pluginID": {
+          "title": "Plugin ID",
+          "description": "ID of the service",
+          "type": "string"
+        },
+        "rss": {
+          "title": "RSS",
+          "description": "(Resident Set Size) Memory usage in Bytes. 0 when not running.",
+          "type": "integer",
+          "unit": "Bytes"
+        },
+        "running": {
+          "title": "Running",
+          "description": "Service is currently running",
+          "type": "bool"
+        },
+        "size": {
+          "title": "Size",
+          "description": "Binary size of the service in bytes",
+          "type": "integer"
+        },
+        "status": {
+          "title": "Status",
+          "description": "The last status message received from the process",
+          "type": "string"
+        },
+        "startCount": {
+          "title": "Start Count",
+          "description": "Number of times the service was restarted",
+          "type": "integer"
+        },
+        "startedTime": {
+          "title": "Start Time",
+          "description": "Starting time of the service in ISO8601",
+          "type": "string"
+        },
+        "stoppedTime": {
+          "title": "Stopped Time",
+          "description": "",
+          "type": "string"
+        },
+        "Uptime": {
+          "title": "Uptime",
+          "description": "Time the service is running in seconds.",
+          "type": "integer"
+        }
+      }
+    }
+  },
+  "properties": {
+    "nrPlugins": {
+      "title": "Number of plugins",
+      "type": "integer",
+      "readOnly": true
+    },
+    "nrRunning": {
+      "title": "Number of running plugins",
+      "type": "integer",
+      "readOnly": true
+    }
+  },
+  "events": {
+    "started": {
+      "title": "Plugin Started",
+      "description": "A plugin was started",
+      "data": {
+        "title": "Plugin ID",
+        "type": "string"
+      }
+    },
+    "stopped": {
+      "title": "Plugin Stopped",
+      "description": "A plugin has stopped",
+      "data": {
+        "title": "Plugin ID",
+        "type": "string"
+      }
+    }
+  },
+  "actions": {
+    "listPlugins": {
+      "@type": "hiveot:function",
+      "title": "List Plugins",
+      "description": "List available plugins and their status",
+      "idempotent": true,
+      "safe": true,
+      "input": {
+        "title": "Only running",
+        "type": "bool"
+      },
+      "output": {
+        "type": "array",
+        "title": "Plugins",
+        "items": {
+          "title": "Plugin running status",
+          "type": "object",
+          "schema": "PluginInfo"
+        }
+      }
+    },
+
+    "startAllPlugins": {
+      "@type": "hiveot:function",
+      "title": "Start All",
+      "description": "Start all available plugins",
+      "idempotent": false,
+      "safe": false
+    },
+
+    "startPlugin": {
+      "@type": "hiveot:function",
+      "title": "Start A Plugin",
+      "description": "Start a plugin",
+      "idempotent": false,
+      "safe": false,
+      "input": {
+        "type": "string",
+        "title": "Plugin ID"
+      },
+      "output": {
+        "title": "Plugin Status",
+        "type": "object",
+        "schema": "PluginInfo"
+      }
+    },
+    "stopAllPlugins": {
+      "@type": "hiveot:function",
+      "title": "Stop All",
+      "description": "Stop all running plugins",
+      "idempotent": false,
+      "safe": false,
+      "input": {
+        "type": "bool",
+        "title": "Full Stop",
+        "description": "Stop the runtime if running and this launcher. Starting is no longer possible"
+      }
+    },
+    "stopPlugin": {
+      "@type": "hiveot:function",
+      "title": "Stop A Plugin",
+      "description": "Stop a plugin",
+      "idempotent": false,
+      "safe": false,
+      "input": {
+        "type": "string",
+        "title": "Plugin ID"
+      },
+      "output": {
+        "title": "Plugin Status",
+        "type": "object",
+        "schema": "PluginInfo"
+      }
+    }
+  }
+}

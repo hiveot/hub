@@ -3,11 +3,14 @@ package service
 import (
 	"fmt"
 	"github.com/fsnotify/fsnotify"
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/clients"
+	"github.com/hiveot/hub/messaging/servers/wssserver"
 	authz "github.com/hiveot/hub/runtime/authz/api"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
+	launcher "github.com/hiveot/hub/services/launcher/api"
 	"github.com/hiveot/hub/services/launcher/config"
-	"github.com/hiveot/hub/services/launcher/launcherapi"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -18,6 +21,9 @@ import (
 	"time"
 )
 
+// Use this default path instead of discovery when running locally and no server is configured
+const DefaultLocalServerURL = "wss://localhost" + wssserver.DefaultWssPath
+
 // LauncherService manages starting and stopping of plugins
 // This implements the ILauncher interface
 type LauncherService struct {
@@ -25,9 +31,11 @@ type LauncherService struct {
 	cfg config.LauncherConfig
 	//env plugin.AppEnvironment
 	// server to use or "" for auto discovery
-	serverURL    string
-	protocolType string
-	clientID     string
+	serverURL string
+	// URL with the directory TD
+	directoryURL string
+
+	clientID string
 
 	// directories for launching plugins and obtaining certificates and keys
 	binDir     string
@@ -35,7 +43,7 @@ type LauncherService struct {
 	pluginsDir string
 
 	// map of plugin name to running status
-	plugins map[string]*launcherapi.PluginInfo
+	plugins map[string]launcher.PluginInfo
 	// list of started commands in startup order
 	cmds []*exec.Cmd
 
@@ -50,6 +58,9 @@ type LauncherService struct {
 	isRunning atomic.Bool
 	// closing channel
 	done chan bool
+
+	// request handler
+	adminHandler messaging.RequestHandler
 }
 
 // Add discovered runtime to svc.plugins
@@ -62,22 +73,18 @@ func (svc *LauncherService) addRuntime(runtimeBin string) error {
 			return err
 		}
 		pluginInfo, found := svc.plugins[runtimeBin]
-		if found {
-			// update existing entry for runtime
-			pluginInfo.ModifiedTime = runtimeInfo.ModTime().Format(time.RFC3339)
-			pluginInfo.Size = runtimeInfo.Size()
-		} else {
+		if !found {
 			// add new entry for runtime
-			pluginInfo = &launcherapi.PluginInfo{
-				Name:    runtimeInfo.Name(),
-				Path:    runtimePath,
-				Uptime:  0,
-				Running: false,
+			pluginInfo = launcher.PluginInfo{
+				PluginID: runtimeInfo.Name(),
+				ExecPath: runtimePath,
+				Uptime:   0,
+				Running:  false,
 			}
-			pluginInfo.ModifiedTime = runtimeInfo.ModTime().Format(time.RFC3339)
-			pluginInfo.Size = runtimeInfo.Size()
 			svc.plugins[runtimeBin] = pluginInfo
 		}
+		pluginInfo.ModifiedTime = utils.FormatUTCMilli(runtimeInfo.ModTime())
+		pluginInfo.Size = runtimeInfo.Size()
 	}
 	return nil
 }
@@ -104,13 +111,13 @@ func (svc *LauncherService) addPlugins(folder string) error {
 				count++
 				pluginInfo, found := svc.plugins[entry.Name()]
 				if !found {
-					pluginInfo = &launcherapi.PluginInfo{
-						Name:    entry.Name(),
-						Path:    path.Join(folder, entry.Name()),
-						Uptime:  0,
-						Running: false,
+					pluginInfo = launcher.PluginInfo{
+						PluginID: entry.Name(),
+						ExecPath: path.Join(folder, entry.Name()),
+						Uptime:   0,
+						Running:  false,
 					}
-					svc.plugins[pluginInfo.Name] = pluginInfo
+					svc.plugins[pluginInfo.PluginID] = pluginInfo
 				}
 				pluginInfo.ModifiedTime = fileInfo.ModTime().Format(time.RFC3339)
 				pluginInfo.Size = size
@@ -121,29 +128,28 @@ func (svc *LauncherService) addPlugins(folder string) error {
 	return nil
 }
 
-// List all available or just the running plugins and their status
+// ListPlugins lists all available or just the running plugins and their status
 // This returns the list of plugins sorted by name
-func (svc *LauncherService) List(args launcherapi.ListArgs) (launcherapi.ListResp, error) {
+func (svc *LauncherService) ListPlugins(senderID string, onlyRunning bool) ([]launcher.PluginInfo, error) {
 	svc.mux.Lock()
 	defer svc.mux.Unlock()
 
 	// get the keys of the plugins to include and sort them
 	keys := make([]string, 0, len(svc.plugins))
 	for key, val := range svc.plugins {
-		if !args.OnlyRunning || val.Running {
+		if !onlyRunning || val.Running {
 			keys = append(keys, key)
 		}
 	}
 	sort.Strings(keys)
 
-	infoList := make([]launcherapi.PluginInfo, 0, len(keys))
+	infoList := make([]launcher.PluginInfo, 0, len(keys))
 	for _, key := range keys {
 		svcInfo := svc.plugins[key]
-		svc.updateStatus(svcInfo)
-		infoList = append(infoList, *svcInfo)
+		svc.updateStatus(&svcInfo)
+		infoList = append(infoList, svcInfo)
 	}
-	resp := launcherapi.ListResp{PluginInfoList: infoList}
-	return resp, nil
+	return infoList, nil
 }
 
 // ScanPlugins scans the plugin folder for changes and updates the plugins list
@@ -197,16 +203,20 @@ func (svc *LauncherService) Start() error {
 			return err
 		} else {
 			slog.Warn("Runtime started successfully", "runtimeBin", runtimeBin)
-
+		}
+		// since the runtime is launched locally a local connection is the most efficient
+		// unless a server address is already configured.
+		if svc.serverURL == "" {
+			svc.serverURL = DefaultLocalServerURL
 		}
 	}
 
 	// 3: a connection to the hub is needed to receive requests
 	// this was delayed until after the runtime is up and running
+	// if a local runtime is started then the plugins can use localhost
 	if svc.ag == nil {
-
 		cc, token, _, err := clients.ConnectWithTokenFile(
-			svc.clientID, svc.certsDir, svc.protocolType, svc.serverURL, 0)
+			svc.clientID, svc.certsDir, svc.serverURL, 0)
 		_ = token
 		if err == nil {
 			svc.ag = messaging.NewAgent(cc, nil, nil, nil, nil, 0)
@@ -216,16 +226,25 @@ func (svc *LauncherService) Start() error {
 		}
 	}
 
-	// permissions for using this service
+	// publish this service TD
+	err = digitwin.ThingDirectoryUpdateTD(svc.ag.Consumer, launcher.AdminTD)
+	if err != nil {
+		slog.Error("failed to publish the launcher service TD", "err", err.Error())
+	}
+
+	// permissions for using this service for administrators and managers
 	err = authz.UserSetPermissions(svc.ag.Consumer, authz.ThingPermissions{
 		AgentID: svc.ag.GetClientID(),
-		ThingID: launcherapi.ManageServiceID,
+		ThingID: launcher.AdminServiceID,
 		Allow:   []authz.ClientRole{authz.ClientRoleManager, authz.ClientRoleAdmin, authz.ClientRoleService},
 		Deny:    nil,
 	})
 
 	// 4: start listening to action requests
-	StartLauncherAgent(svc, svc.ag)
+	adminHandler := launcher.NewHandleAdminRequest(svc)
+	svc.ag.SetRequestHandler(adminHandler)
+
+	//StartLauncherAgent(svc, svc.ag)
 
 	// 5: autostart the configured 'autostart' plugins
 	// Log errors but do not stop the launcher
@@ -244,7 +263,7 @@ func (svc *LauncherService) Stop() error {
 
 	_ = svc.serviceWatcher.Close()
 
-	err := svc.StopAllPlugins(&launcherapi.StopAllPluginsArgs{IncludingRuntime: true})
+	err := svc.StopAllPlugins(svc.clientID, true)
 	if svc.ag != nil {
 		svc.ag.Disconnect()
 	}
@@ -291,7 +310,6 @@ func (svc *LauncherService) WatchPlugins() error {
 // This scans the folder for executables, adds these to the list of available plugins and autostarts plugins
 // Logging will be enabled based on LauncherConfig.
 //
-//	protocolType of the client to use
 //	serverURL to connect to once runtime is started
 //	clientID of this service
 //	binDir with location of the runtime
@@ -300,7 +318,6 @@ func (svc *LauncherService) WatchPlugins() error {
 //
 // The hub client is used to create service accounts if needed.
 func NewLauncherService(
-	protocolType string,
 	serverURL string,
 	clientID string,
 	binDir string,
@@ -311,17 +328,18 @@ func NewLauncherService(
 ) *LauncherService {
 
 	ls := &LauncherService{
-		pluginsDir:   pluginsDir,
-		binDir:       binDir,
-		certsDir:     certsDir,
-		serverURL:    serverURL,
-		protocolType: protocolType,
-		clientID:     clientID,
-		cfg:          cfg,
-		plugins:      make(map[string]*launcherapi.PluginInfo),
-		cmds:         make([]*exec.Cmd, 0),
+		pluginsDir: pluginsDir,
+		binDir:     binDir,
+		certsDir:   certsDir,
+		serverURL:  serverURL,
+		clientID:   clientID,
+		cfg:        cfg,
+		plugins:    make(map[string]launcher.PluginInfo),
+		cmds:       make([]*exec.Cmd, 0),
 		//ag:        ag,
 	}
+	// check property api implementation
+	_ = launcher.IAdminService(ls)
 
 	return ls
 }

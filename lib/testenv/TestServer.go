@@ -268,10 +268,10 @@ func (test *TestServer) GetForm(op string, thingID string, name string) *td.Form
 	return srv.GetForm(op, thingID, name)
 }
 
-// GetServerURL returns the default protocol and connection URL to use for the given client type
-func (test *TestServer) GetServerURL(clientType authn.ClientType) (protocolType string, serverURL string) {
+// GetServerURL returns the connection URL to use for the given client type
+func (test *TestServer) GetServerURL(clientType authn.ClientType) (serverURL string) {
 
-	protocolType = test.ConsumerProtocol
+	protocolType := test.ConsumerProtocol
 	if clientType == authn.ClientTypeService {
 		protocolType = test.ServiceProtocol
 	} else if clientType == authn.ClientTypeAgent {
@@ -279,9 +279,9 @@ func (test *TestServer) GetServerURL(clientType authn.ClientType) (protocolType 
 	}
 	s := test.Runtime.TransportsMgr.GetServer(protocolType)
 	if s == nil {
-		return "", ""
+		return ""
 	}
-	return protocolType, s.GetConnectURL()
+	return s.GetConnectURL()
 }
 
 // LoginWithPassword helper function to obtain an auth token from a password

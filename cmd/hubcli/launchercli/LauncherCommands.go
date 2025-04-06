@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/services/launcher/launcherclient"
+	launcher "github.com/hiveot/hub/services/launcher/api"
 	"github.com/urfave/cli/v2"
 	"time"
 )
@@ -65,17 +65,17 @@ func LauncherStopCommand(hc **messaging.Consumer) *cli.Command {
 }
 
 // HandleListServices prints a list of available services
-func HandleListServices(hc *messaging.Consumer) error {
+func HandleListServices(co *messaging.Consumer) error {
 
-	if hc == nil {
+	if co == nil {
 		return fmt.Errorf("no Hub connection")
 	}
-	lc := launcherclient.NewLauncherClient("", hc)
+	//lc := launcherclient.NewLauncherClient("", co)
 	localTZ, _ := time.Now().Zone()
 
 	fmt.Println("Service                      Size   Starts       PID    CPU   Memory   Status    Since (" + localTZ + ")          Last Error")
 	fmt.Println("-------                      ----   ------   -------   ----   ------   -------   -------------------  -----------")
-	entries, err := lc.List(false)
+	entries, err := launcher.AdminListPlugins(co, false)
 	if err != nil {
 		return err
 	}
@@ -83,19 +83,19 @@ func HandleListServices(hc *messaging.Consumer) error {
 		status := "stopped"
 		cpu := ""
 		memory := ""
-		pid := fmt.Sprintf("%d", entry.PID)
-		cpu = fmt.Sprintf("%d%%", entry.CPU)
-		memory = fmt.Sprintf("%d MB", entry.RSS/1024/1024)
+		pid := fmt.Sprintf("%d", entry.Pid)
+		cpu = fmt.Sprintf("%d%%", entry.Cpu)
+		memory = fmt.Sprintf("%d MB", entry.Rss/1024/1024)
 
 		sinceTime := ""
 		if entry.Running {
 			status = "running"
-			sinceTime = utils.FormatMSE(entry.StartTimeMSE, true)
-		} else if entry.StopTimeMSE != 0 {
-			sinceTime = utils.FormatMSE(entry.StopTimeMSE, true)
+			sinceTime = utils.FormatDateTime(entry.StartedTime)
+		} else if entry.StoppedTime != "" {
+			sinceTime = utils.FormatDateTime(entry.StoppedTime)
 		}
 		fmt.Printf("%-25s %4d MB   %6d   %7s   %4s   %6s   %6s   %-20s %s\n",
-			entry.Name,
+			entry.PluginID,
 			entry.Size/1024/1024,
 			entry.StartCount,
 			pid,
@@ -108,51 +108,50 @@ func HandleListServices(hc *messaging.Consumer) error {
 	}
 	// for testing
 	//time.Sleep(time.Second * 1)
-	//hc.Disconnect()
+	//co.Disconnect()
 	return nil
 }
 
 // HandleStartService starts a service
-func HandleStartService(serviceName string, hc *messaging.Consumer) error {
+func HandleStartService(pluginID string, co *messaging.Consumer) error {
 	var err error
-	if hc == nil {
+	if co == nil {
 		return fmt.Errorf("no Hub connection")
 	}
-	lc := launcherclient.NewLauncherClient("", hc)
+	//lc := launcherclient.NewLauncherClient("", hc)
 
-	if serviceName == "all" {
-		err := lc.StartAllPlugins()
-
+	if pluginID == "all" {
+		err = launcher.AdminStartAllPlugins(co)
 		if err != nil {
 			//fmt.Println("Connect all failed with: ", err)
 			return err
 		}
 		fmt.Printf("All services started\n")
 	} else {
-		info, err2 := lc.StartPlugin(serviceName)
+		info, err2 := launcher.AdminStartPlugin(co, pluginID)
 
 		if err2 != nil {
 			//fmt.Println("Connect failed:", err2)
 			return err2
 		}
-		fmt.Printf("Service '%s' started\n", info.Name)
+		fmt.Printf("Service '%s' started\n", info.PluginID)
 	}
 	// last, show a list of running services
-	err = HandleListServices(hc)
+	err = HandleListServices(co)
 	return err
 }
 
 // HandleStopService stops a service
-func HandleStopService(serviceName string, hc *messaging.Consumer) error {
+func HandleStopService(serviceName string, co *messaging.Consumer) error {
 	var err error
 
-	if hc == nil {
+	if co == nil {
 		return fmt.Errorf("no Hub connection")
 	}
-	lc := launcherclient.NewLauncherClient("", hc)
+	//lc := launcherclient.NewLauncherClient("", co)
 
 	if serviceName == "all" {
-		err := lc.StopAllPlugins()
+		err := launcher.AdminStopAllPlugins(co, false)
 
 		if err != nil {
 			fmt.Println("Stop all failed:", err)
@@ -161,14 +160,14 @@ func HandleStopService(serviceName string, hc *messaging.Consumer) error {
 		fmt.Printf("All services stopped\n")
 
 	} else {
-		info, err := lc.StopPlugin(serviceName)
+		info, err := launcher.AdminStopPlugin(co, serviceName)
 		if err != nil {
 			fmt.Printf("Stop %s failed: %s\n", serviceName, err)
 			return err
 		}
-		fmt.Printf("Service '%s' stopped\n", info.Name)
+		fmt.Printf("Service '%s' stopped\n", info.PluginID)
 	}
 	// last, show a list of running services
-	err = HandleListServices(hc)
+	err = HandleListServices(co)
 	return err
 }

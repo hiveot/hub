@@ -3,11 +3,11 @@ package launcher_test
 import (
 	"fmt"
 	"github.com/hiveot/hub/lib/testenv"
+	"github.com/hiveot/hub/messaging"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	authz "github.com/hiveot/hub/runtime/authz/api"
+	launcher "github.com/hiveot/hub/services/launcher/api"
 	"github.com/hiveot/hub/services/launcher/config"
-	"github.com/hiveot/hub/services/launcher/launcherapi"
-	"github.com/hiveot/hub/services/launcher/launcherclient"
 	"github.com/hiveot/hub/services/launcher/service"
 	"log/slog"
 	"os"
@@ -39,8 +39,8 @@ const agentUsesWSS = false
 //	Role:       auth.ClientRoleAdmin,
 //}}
 
-func startService() (l *launcherclient.LauncherClient, stopFn func()) {
-	const launcherID = launcherapi.AgentID
+func startService() (l *messaging.Consumer, stopFn func()) {
+	const launcherID = launcher.AdminAgentID
 	const adminID = "admin"
 
 	ts = testenv.StartTestServer(true)
@@ -52,20 +52,23 @@ func startService() (l *launcherclient.LauncherClient, stopFn func()) {
 	launcherConfig.LogPlugins = true
 	//launcherConfig.LogsDir = ts.AppEnv.LogsDir
 	launcherConfig.LogsDir = logDir
+	// todo: add tests for providing discovery
+	launcherConfig.ProvideDirectoryURL = false
+	launcherConfig.ProvideServerURL = false
 	//var env = plugin.GetAppEnvironment(ts.AppEnv.HomeDir, false)
 
 	binDir := ts.AppEnv.BinDir
 	pluginsDir := "/bin" // for /bin/yes
 	certsDir := ts.AppEnv.CertsDir
-	clientID := launcherapi.AgentID
+	clientID := launcherID
 
 	//env.LogsDir = logDir
 	//env.CertsDir = homeDir
 	//env.CaCert = ts.Certs.CaCert
 
-	protocolType, serverURL := ts.GetServerURL(authn.ClientTypeService)
+	serverURL := ts.GetServerURL(authn.ClientTypeService)
 	svc := service.NewLauncherService(
-		protocolType, serverURL, clientID, binDir, pluginsDir, certsDir, launcherConfig)
+		serverURL, clientID, binDir, pluginsDir, certsDir, launcherConfig)
 	err := svc.Start()
 	if err != nil {
 		slog.Error(err.Error())
@@ -76,8 +79,7 @@ func startService() (l *launcherclient.LauncherClient, stopFn func()) {
 	//_ = agent
 	//--- connect the launcher user
 	co1, _, _ := ts.AddConnectConsumer(adminID, authz.ClientRoleAdmin)
-	lcl := launcherclient.NewLauncherClient(launcherID, co1)
-	return lcl, func() {
+	return co1, func() {
 		co1.Disconnect()
 		//hc1.Disconnect()
 		_ = svc.Stop()
@@ -104,34 +106,32 @@ func TestList(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	userID := "user1"
 
-	svc, cancelFunc := startService()
+	co1, cancelFunc := startService()
 	defer cancelFunc()
-	require.NotNil(t, svc)
+	require.NotNil(t, co1)
 	// using the /bin directory yields a larger number of potential plugins
-	info, err := svc.List(false)
+	infoList, err := launcher.AdminListPlugins(co1, false)
 	require.NoError(t, err)
-	assert.Greater(t, len(info), 10)
+	assert.Greater(t, len(infoList), 10)
 
-	co1, _, _ := ts.AddConnectConsumer(userID, authz.ClientRoleAdmin)
-	defer co1.Disconnect()
-	cl := launcherclient.NewLauncherClient("", co1)
-	info2, err := cl.List(false)
+	co2, _, _ := ts.AddConnectConsumer(userID, authz.ClientRoleAdmin)
+	defer co2.Disconnect()
+	infoList2, err := launcher.AdminListPlugins(co2, false)
 	require.NoError(t, err)
-	require.NotEmpty(t, info2)
+	require.NotEmpty(t, infoList2)
 }
 
 func TestListNoPermission(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	userID := "user1"
 
-	svc, cancelFunc := startService()
+	co1, cancelFunc := startService()
 	defer cancelFunc()
-	require.NotNil(t, svc)
+	require.NotNil(t, co1)
 
-	co1, _, _ := ts.AddConnectConsumer(userID, authz.ClientRoleNone)
+	co2, _, _ := ts.AddConnectConsumer(userID, authz.ClientRoleNone)
 	defer co1.Disconnect()
-	cl := launcherclient.NewLauncherClient("", co1)
-	info2, err := cl.List(false)
+	info2, err := launcher.AdminListPlugins(co2, false)
 	require.Error(t, err, "user without role should not be able to use launcher")
 	require.Empty(t, info2)
 }
@@ -143,90 +143,89 @@ func TestStartYes(t *testing.T) {
 	_ = os.Remove(logFile)
 
 	//
-	svc, cancelFunc := startService()
+	co1, cancelFunc := startService()
 	defer cancelFunc()
 
-	assert.NotNil(t, svc)
-	info, err := svc.StartPlugin("yes")
+	assert.NotNil(t, co1)
+	info, err := launcher.AdminStartPlugin(co1, "yes")
 	require.NoError(t, err)
 	assert.True(t, info.Running)
-	assert.True(t, info.PID > 0)
-	assert.True(t, info.StartTimeMSE != 0)
+	assert.True(t, info.Pid > 0)
+	assert.True(t, info.StartedTime != "")
 	assert.FileExists(t, logFile)
 
 	time.Sleep(time.Millisecond * 1)
 
-	info2, err := svc.StopPlugin("yes")
+	info2, err := launcher.AdminStopPlugin(co1, "yes")
 	time.Sleep(time.Millisecond * 10)
 	assert.NoError(t, err)
 	assert.False(t, info2.Running)
-	assert.True(t, info2.StopTimeMSE != 0)
+	assert.True(t, info2.StoppedTime != "")
 }
 
 func TestStartBadName(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 
-	svc, cancelFunc := startService()
+	co1, cancelFunc := startService()
 	defer cancelFunc()
-	assert.NotNil(t, svc)
+	assert.NotNil(t, co1)
 
 	// FIXME: the error is not received - how to return an error in an action response?!
 
-	_, err := svc.StartPlugin("notaservicename")
+	_, err := launcher.AdminStartPlugin(co1, "notaservicename")
 	require.Error(t, err)
 	//
-	_, err = svc.StopPlugin("notaservicename")
+	_, err = launcher.AdminStopPlugin(co1, "notaservicename")
 	require.Error(t, err)
 }
 
 func TestStartStopTwice(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
-	svc, cancelFunc := startService()
+	co1, cancelFunc := startService()
 	defer cancelFunc()
-	assert.NotNil(t, svc)
+	assert.NotNil(t, co1)
 
-	info, err := svc.StartPlugin("yes")
+	info, err := launcher.AdminStartPlugin(co1, "yes")
 	assert.NoError(t, err)
 	// second start will just return
-	info2, err := svc.StartPlugin("yes")
+	info2, err := launcher.AdminStartPlugin(co1, "yes")
 	assert.NoError(t, err)
 	_ = info2
 	//assert.Equal(t, info.PID, info2.PID)
 
 	// stop twice
-	info3, err := svc.StopPlugin("yes")
+	info3, err := launcher.AdminStopPlugin(co1, "yes")
 	assert.NoError(t, err)
 	assert.False(t, info3.Running)
-	assert.Equal(t, info.PID, info3.PID)
+	assert.Equal(t, info.Pid, info3.Pid)
 	// stopping is idempotent
-	info4, err := svc.StopPlugin("yes")
+	info4, err := launcher.AdminStopPlugin(co1, "yes")
 	assert.NoError(t, err)
 	assert.False(t, info3.Running)
-	assert.Equal(t, info.PID, info4.PID)
+	assert.Equal(t, info.Pid, info4.Pid)
 }
 
 func TestStartStopAll(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
-	svc, cancelFunc := startService()
+	co1, cancelFunc := startService()
 	defer cancelFunc()
-	assert.NotNil(t, svc)
+	assert.NotNil(t, co1)
 
-	_, err := svc.StartPlugin("yes")
+	_, err := launcher.AdminStartPlugin(co1, "yes")
 	assert.NoError(t, err)
 
 	// result should be 1 service running
-	info, err := svc.List(true)
+	pluginList, err := launcher.AdminListPlugins(co1, true)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(info))
+	assert.Equal(t, 1, len(pluginList))
 
 	// stopping
-	err = svc.StopAllPlugins()
+	err = launcher.AdminStopAllPlugins(co1, false)
 	assert.NoError(t, err)
 
 	// result should be no service running
-	info, err = svc.List(true)
+	pluginList, err = launcher.AdminListPlugins(co1, true)
 	assert.NoError(t, err)
-	assert.Equal(t, 0, len(info))
-	err = svc.Stop()
+	assert.Equal(t, 0, len(pluginList))
 	assert.NoError(t, err)
 }

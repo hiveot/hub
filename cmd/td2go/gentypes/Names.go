@@ -38,7 +38,7 @@ func GoTypeFromSchema(ds *td.DataSchema) string {
 	case wot.DataTypeBool:
 		return "bool"
 	case wot.DataTypeInteger:
-		return "int"
+		return "int64"
 	case wot.DataTypeNumber:
 		return "float64"
 	case wot.DataTypeString:

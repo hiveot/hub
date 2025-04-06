@@ -32,21 +32,31 @@ type LauncherConfig struct {
 	LogToFile bool `yaml:"logtofile"`
 
 	// direct stdout of plugins to logfile at logs/{plugin}.log
-	LogPlugins bool `yaml:"logplugins"`
+	LogPlugins bool `yaml:"logPlugins"`
+
+	// provide plugins with the URL of the directory TD, as used by the launcher itself.
+	// this uses the '--directoryURL' commandline parameter. Default is true.
+	ProvideDirectoryURL bool `yaml:"provideDirectoryURL"`
+
+	// provide plugins with the connection URL of the server, as used by the launcher itself.
+	// this uses the '--serverURL' commandline parameter. Default is true.
+	ProvideServerURL bool `yaml:"provideServerURL"`
 }
 
 // NewLauncherConfig returns a new launcher configuration with defaults
 func NewLauncherConfig() LauncherConfig {
 	lc := LauncherConfig{
-		AttachStderr:     true,
-		AttachStdout:     false,
-		AutoRestart:      false,
-		Autostart:        make([]string, 0),
-		RuntimeBin:       "",
-		CreatePluginCred: true,
-		LogLevel:         "warning",
-		LogToFile:        true,
-		LogPlugins:       true,
+		AttachStderr:        true,
+		AttachStdout:        false,
+		AutoRestart:         false,
+		Autostart:           make([]string, 0),
+		RuntimeBin:          "",
+		CreatePluginCred:    true,
+		LogLevel:            "warning",
+		LogToFile:           true,
+		LogPlugins:          true,
+		ProvideDirectoryURL: true,
+		ProvideServerURL:    true,
 	}
 	return lc
 }

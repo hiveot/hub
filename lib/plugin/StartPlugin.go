@@ -35,12 +35,12 @@ type IPlugin interface {
 //
 //	plugin is the instance of the plugin with Start and Stop methods.
 //	clientID is the client's connect ID. certsDir is the location with the service token
-//	file, primary key, and CA certificate.
+//	 file, primary key, and CA certificate.
 //	certDir contains the service auth tokens
-//	protocol is the preferred transport protocol, if available. For example: ProtocolTypeHiveotWss
-func StartPlugin(plugin IPlugin, clientID string, certsDir string, hubURL string) {
+//	serverURL is the URL of the hub server to connect to, if provided
+func StartPlugin(plugin IPlugin, clientID string, certsDir string, serverURL string) {
 
-	cc, token, _, err := clients.ConnectWithTokenFile(clientID, certsDir, "", hubURL, 0)
+	cc, token, _, err := clients.ConnectWithTokenFile(clientID, certsDir, serverURL, 0)
 	_ = token
 
 	if err != nil {

@@ -19,7 +19,7 @@ import (
 	"os"
 )
 
-const Version = `0.1-alpha`
+const Version = `0.5-alpha`
 
 // var env utils.AppEnvironment
 var nowrap bool
@@ -36,7 +36,6 @@ func main() {
 	var homeDir string
 	var certsDir string
 	var serverURL string
-	var protocol = messaging.ProtocolTypeWSS
 	var authToken string
 
 	// environment defaults
@@ -80,14 +79,8 @@ func main() {
 				Destination: &password,
 			},
 			&cli.StringFlag{
-				Name:        "protocol",
-				Usage:       "preferred transport protocol: hiveot-wss, hiveot-sse, wot-wss",
-				Value:       protocol,
-				Destination: &protocol,
-			},
-			&cli.StringFlag{
-				Name:        "server",
-				Usage:       "server URL (default: use DNS-SD discovery)",
+				Name:        "serverURL",
+				Usage:       "schema://addr:port/path (default: use DNS-SD discovery)",
 				Value:       serverURL,
 				Destination: &serverURL,
 			},
@@ -124,9 +117,9 @@ func main() {
 			}
 			caCert, _ := clients.LoadCA(certsDir)
 			if password != "" {
-				cc, authToken, err = clients.ConnectWithPassword(loginID, password, caCert, "", serverURL, "", 0)
+				cc, authToken, err = clients.ConnectWithPassword(loginID, password, caCert, serverURL, "", 0)
 			} else {
-				cc, err = clients.ConnectWithToken(loginID, authToken, caCert, "", serverURL, 0)
+				cc, err = clients.ConnectWithToken(loginID, authToken, caCert, serverURL, 0)
 			}
 
 			if err != nil {

@@ -120,9 +120,9 @@ func TestAutomaticProvisioning(t *testing.T) {
 	assert.True(t, hasDevice1)
 
 	// token should be used to connect
-	protocol, srvURL := ts.GetServerURL(authn.ClientTypeAgent)
+	srvURL := ts.GetServerURL(authn.ClientTypeAgent)
 
-	cc, err := clients.ConnectWithToken(device1ID, token1, ts.Certs.CaCert, protocol, srvURL, 0)
+	cc, err := clients.ConnectWithToken(device1ID, token1, ts.Certs.CaCert, srvURL, 0)
 	//agConn, err := clients.NewClient(device1ID, ts.Certs.CaCert, ts.GetForm, srvURL, 0)
 	require.NoError(t, err)
 	//err = agConn.ConnectWithToken(token1)

@@ -119,8 +119,7 @@ func TestReadTDsRest(t *testing.T) {
 	// add a whole bunch of things
 	ts.AddTDs(agentID, 100)
 
-	protocolType, serverURL := ts.GetServerURL(authn.ClientTypeConsumer)
-	_ = protocolType
+	serverURL := ts.GetServerURL(authn.ClientTypeConsumer)
 	// FIXME: use the consumer protocol
 	urlParts, _ := url.Parse(serverURL)
 	cl2 := tlsclient.NewTLSClient(urlParts.Host, nil, ts.Certs.CaCert, time.Second*30)

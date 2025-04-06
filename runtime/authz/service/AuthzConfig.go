@@ -53,9 +53,9 @@ type RolePermission struct {
 	// device or service publishing the Thing data, or "" for all
 	//AgentID string
 	// thingID or capability, or "" for all
-	ThingID string
+	ThingID string `yaml:"thingID"`
 	// OpSubscribeEvent,... action, config, or "" for all message types
-	Operations []string
+	Operations []string `yaml:"operations"`
 	// action name or "" for all actions
 	//MsgKey string
 }
@@ -138,10 +138,10 @@ var DefaultRolePermissions = map[authz.ClientRole]RolePermission{
 // AuthzConfig holds the authorization permissions for client roles
 type AuthzConfig struct {
 	// map of role to permissions of that role
-	RolePermissions map[authz.ClientRole]RolePermission `yaml:"RolePermissions"`
+	RolePermissions map[authz.ClientRole]RolePermission `yaml:"rolePermissions"`
 
 	// map of service dThingID  to the allow/deny roles that can invoke it
-	ThingPermissions map[string]authz.ThingPermissions `yaml:"ServicePermissions"`
+	ThingPermissions map[string]authz.ThingPermissions `yaml:"servicePermissions"`
 
 	// file with configured permissions
 	aclFile string `yaml:"aclFile"`

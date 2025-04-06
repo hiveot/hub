@@ -23,9 +23,9 @@ type JWTAuthenticator struct {
 	// authentication store for login verification
 	authnStore authnstore.IAuthnStore
 	//
-	AgentTokenValiditySec    int
-	ConsumerTokenValiditySec int
-	ServiceTokenValiditySec  int
+	AgentTokenValidityDays    int
+	ConsumerTokenValidityDays int
+	ServiceTokenValidityDays  int
 
 	// sessionmanager tracks session IDs
 	sm *sessions.SessionManager
@@ -35,11 +35,11 @@ type JWTAuthenticator struct {
 //
 //	clientID is the account ID of a known client
 //	sessionID for which this token is valid. Use clientID to allow no session (agents)
-//	validitySec is the token validity period or 0 for default based on client type
+//	validityDays is the token validity period in days or 0 for default based on client type
 //
 // This returns the token
 func (svc *JWTAuthenticator) CreateSessionToken(
-	clientID string, sessionID string, validitySec int) (token string) {
+	clientID string, sessionID string, validityDays int) (token string) {
 
 	// TODO: add support for nonce challenge with client pubkey
 
@@ -48,7 +48,7 @@ func (svc *JWTAuthenticator) CreateSessionToken(
 	// "clientID" identifying the connectied client.
 	// The token is signed with the given signing key-pair and valid for the given duration.
 
-	validity := time.Second * time.Duration(validitySec)
+	validity := time.Hour * 24 * time.Duration(validityDays)
 	expiryTime := time.Now().Add(validity)
 	signingKeyPub, _ := x509.MarshalPKIXPublicKey(svc.signingKey.PublicKey())
 	signingKeyPubStr := base64.StdEncoding.EncodeToString(signingKeyPub)
@@ -145,7 +145,7 @@ func (svc *JWTAuthenticator) Login(clientID string, password string) (token stri
 	}
 	// create the session to allow token refresh
 	svc.sm.NewSession(clientID, sessionID)
-	token = svc.CreateSessionToken(clientID, sessionID, svc.ConsumerTokenValiditySec)
+	token = svc.CreateSessionToken(clientID, sessionID, svc.ConsumerTokenValidityDays)
 
 	return token, err
 }
@@ -174,13 +174,13 @@ func (svc *JWTAuthenticator) RefreshToken(
 	if err != nil || prof.Disabled {
 		return newToken, fmt.Errorf("Profile for '%s' is disabled", clientID)
 	}
-	validitySec := svc.ConsumerTokenValiditySec
+	validityDays := svc.ConsumerTokenValidityDays
 	if prof.ClientType == authn.ClientTypeAgent {
-		validitySec = svc.AgentTokenValiditySec
+		validityDays = svc.AgentTokenValidityDays
 	} else if prof.ClientType == authn.ClientTypeService {
-		validitySec = svc.ServiceTokenValiditySec
+		validityDays = svc.ServiceTokenValidityDays
 	}
-	newToken = svc.CreateSessionToken(clientID, sessionID, validitySec)
+	newToken = svc.CreateSessionToken(clientID, sessionID, validityDays)
 	return newToken, err
 }
 
@@ -223,10 +223,10 @@ func NewJWTAuthenticator(authnStore authnstore.IAuthnStore, signingKey keys.IHiv
 		signingKey: signingKey,
 		authnStore: authnStore,
 		// validity can be changed by user of this service
-		AgentTokenValiditySec:    config.DefaultAgentTokenValiditySec,
-		ConsumerTokenValiditySec: config.DefaultConsumerTokenValiditySec,
-		ServiceTokenValiditySec:  config.DefaultServiceTokenValiditySec,
-		sm:                       sessions.NewSessionmanager(),
+		AgentTokenValidityDays:    config.DefaultAgentTokenValidityDays,
+		ConsumerTokenValidityDays: config.DefaultConsumerTokenValidityDays,
+		ServiceTokenValidityDays:  config.DefaultServiceTokenValidityDays,
+		sm:                        sessions.NewSessionmanager(),
 	}
 	return &svc
 }

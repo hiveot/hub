@@ -31,8 +31,6 @@ type WebSessionManager struct {
 
 	// Hub address
 	hubURL string
-	// Client protocolType to use
-	protocolType string
 
 	// Hub CA certificate
 	caCert *x509.Certificate
@@ -208,7 +206,7 @@ func (sm *WebSessionManager) HandleConnectWithPassword(
 		return "", err
 	}
 	// FIXME: use the session's directory cache to get the form
-	cc, err := clients.ConnectWithToken(loginID, newToken, sm.caCert, sm.protocolType, sm.hubURL, sm.timeout)
+	cc, err := clients.ConnectWithToken(loginID, newToken, sm.caCert, sm.hubURL, sm.timeout)
 	if err == nil {
 		if cid != "" {
 			_, err = sm._addSession(r, cid, cc)
@@ -248,7 +246,7 @@ func (sm *WebSessionManager) ConnectWithToken(
 		"nr websessions", len(sm.sessions))
 	//var newToken string
 	cc, err := clients.ConnectWithToken(
-		loginID, authToken, sm.caCert, sm.protocolType, sm.hubURL, sm.timeout)
+		loginID, authToken, sm.caCert, sm.hubURL, sm.timeout)
 	if err == nil {
 		cs, err = sm._addSession(r, cid, cc)
 		// Update the session cookie with the new auth token (default 14 days)
@@ -333,18 +331,16 @@ func NewWebSessionManager(
 	cc := ag.GetConnection()
 	cinfo := cc.GetConnectionInfo()
 	hubURL := cinfo.ConnectURL
-	protocolType := cinfo.ProtocolType
 	sm := &WebSessionManager{
-		sessions:     make(map[string]*WebClientSession),
-		mux:          sync.RWMutex{},
-		signingKey:   signingKey,
-		pubKey:       signingKey.Public().(ed25519.PublicKey),
-		protocolType: protocolType,
-		hubURL:       hubURL,
-		caCert:       caCert,
-		ag:           ag,
-		configStore:  configStore,
-		timeout:      timeout,
+		sessions:    make(map[string]*WebClientSession),
+		mux:         sync.RWMutex{},
+		signingKey:  signingKey,
+		pubKey:      signingKey.Public().(ed25519.PublicKey),
+		hubURL:      hubURL,
+		caCert:      caCert,
+		ag:          ag,
+		configStore: configStore,
+		timeout:     timeout,
 	}
 	return sm
 }

@@ -14,21 +14,28 @@ import (
 	"strings"
 )
 
+// DirectoryURL_Arg is the optional commandline argument name with the URL of the directory TD
+const DirectoryURL_Arg = "directoryURL"
+
+// ServerURL_Arg is the optional commandline argument name with the connection URL of the digitwin server
+const ServerURL_Arg = "serverURL"
+
 // AppEnvironment holds the running environment naming conventions.
 // Intended for services and plugins.
 // This contains folder locations, CA certificate and application clientID
 type AppEnvironment struct {
 	// Directories
-	BinDir     string `yaml:"binDir,omitempty"`     // Application binary folder, e.g. launcher, cli, ...
-	PluginsDir string `yaml:"pluginsDir,omitempty"` // Plugin folder
-	HomeDir    string `yaml:"homeDir,omitempty"`    // Home folder, default this is the parent of bin, config, certs and logs
-	ConfigDir  string `yaml:"configDir,omitempty"`  // config folder with application and configuration files
-	ConfigFile string `yaml:"configFile,omitempty"` // Application configuration file. Default is clientID.yaml
-	CertsDir   string `yaml:"certsDir,omitempty"`   // Certificates and keys location
-	LogsDir    string `yaml:"logsDir,omitempty"`    // Logging output
-	LogLevel   string `yaml:"logLevel,omitempty"`   // logging level: error, warning, info, debug
-	StoresDir  string `yaml:"storesDir,omitempty"`  // Root of the service stores
-	ServerURL  string `yaml:"serverURL,omitempty"`  // forced server to connect to: scheme://host/path or "" for auto
+	BinDir       string `yaml:"binDir,omitempty"`       // Application binary folder, e.g. launcher, cli, ...
+	PluginsDir   string `yaml:"pluginsDir,omitempty"`   // Plugin folder
+	HomeDir      string `yaml:"homeDir,omitempty"`      // Home folder, default this is the parent of bin, config, certs and logs
+	ConfigDir    string `yaml:"configDir,omitempty"`    // config folder with application and configuration files
+	ConfigFile   string `yaml:"configFile,omitempty"`   // Application configuration file. Default is clientID.yaml
+	CertsDir     string `yaml:"certsDir,omitempty"`     // Certificates and keys location
+	LogsDir      string `yaml:"logsDir,omitempty"`      // Logging output
+	LogLevel     string `yaml:"logLevel,omitempty"`     // logging level: error, warning, info, debug
+	StoresDir    string `yaml:"storesDir,omitempty"`    // Root of the service stores
+	ServerURL    string `yaml:"serverURL,omitempty"`    // forced server to connect to: scheme://host/path or "" for auto
+	DirectoryURL string `yaml:"directoryURL,omitempty"` // Discovery URL of the directory
 
 	// Credentials
 	CaCert    *x509.Certificate `yaml:"-"`         // default cert if loaded
@@ -111,6 +118,7 @@ func GetAppEnvironment(homeDir string, withFlags bool) AppEnvironment {
 	var certsDir string
 	var logsDir string
 	var storesDir string
+	var directoryURL string
 	var serverURL string
 	// The default clientID is the binary name. This allows for multiple instances
 	// by copying the binary.
@@ -139,7 +147,8 @@ func GetAppEnvironment(homeDir string, withFlags bool) AppEnvironment {
 		flag.StringVar(&configFile, "configFile", configFile, "Configuration file")
 		flag.StringVar(&clientID, "clientID", clientID, "Application clientID to authenticate with")
 		flag.StringVar(&logLevel, "logLevel", logLevel, "logging level: debug, warning, info, error")
-		flag.StringVar(&serverURL, "serverURL", serverURL, "connection url for server")
+		flag.StringVar(&directoryURL, DirectoryURL_Arg, directoryURL, "url of directory TD")
+		flag.StringVar(&serverURL, ServerURL_Arg, serverURL, "connection url for server")
 		if flag.Usage == nil {
 			flag.Usage = func() {
 				fmt.Println("Usage: " + clientID + " [options] ")
@@ -197,19 +206,20 @@ func GetAppEnvironment(homeDir string, withFlags bool) AppEnvironment {
 	keyFile := path.Join(certsDir, clientID+".key")
 
 	return AppEnvironment{
-		BinDir:     binDir,
-		PluginsDir: pluginsDir,
-		HomeDir:    homeDir,
-		ConfigDir:  configDir,
-		ConfigFile: configFile,
-		CertsDir:   certsDir,
-		LogsDir:    logsDir,
-		LogLevel:   logLevel,
-		StoresDir:  storesDir,
-		ClientID:   clientID,
-		KeyFile:    keyFile,
-		TokenFile:  tokenFile,
-		CaCert:     caCert,
-		ServerURL:  serverURL,
+		BinDir:       binDir,
+		PluginsDir:   pluginsDir,
+		HomeDir:      homeDir,
+		ConfigDir:    configDir,
+		ConfigFile:   configFile,
+		CertsDir:     certsDir,
+		LogsDir:      logsDir,
+		LogLevel:     logLevel,
+		StoresDir:    storesDir,
+		ClientID:     clientID,
+		KeyFile:      keyFile,
+		TokenFile:    tokenFile,
+		CaCert:       caCert,
+		DirectoryURL: directoryURL,
+		ServerURL:    serverURL,
 	}
 }

@@ -33,13 +33,12 @@ var DefaultTimeout = time.Second * 3
 //	loginID is the clientID to login as
 //	password to authenticate with
 //	caCert is the server CA. See also LoadCA()
-//	protocol identifies the client instance to create
 //	connectURL of the server to connect to, or "" to use discovery
 //	authURL of the authentication server, or "" to use connectURL
 //
 // This returns the client connection with the authentication token used or an error if invalid
 func ConnectWithPassword(
-	loginID string, password string, caCert *x509.Certificate, protocol string, connectURL string, authURL string, timeout time.Duration) (
+	loginID string, password string, caCert *x509.Certificate, connectURL string, authURL string, timeout time.Duration) (
 	cc messaging.IClientConnection, token string, err error) {
 
 	// 1. obtain the CA public cert to verify the server
@@ -90,25 +89,23 @@ func ConnectWithPassword(
 	}
 
 	// 4. create protocol client and connect with token
-	cc, err = ConnectWithToken(loginID, token, caCert, protocol, connectURL, timeout)
+	cc, err = ConnectWithToken(loginID, token, caCert, connectURL, timeout)
 	return cc, token, err
 }
 
 // ConnectWithToken is a convenience function to create a client and connect with a token
 // and CA certificate.
 //
-//	protocol to use or "" to automatically determine based on URL
+//	clientID to identify as
+//	token to authenticate with
+//	caCert of the server for validating the SSL connect
 //	connectURL is the optional URL of the server. Leave empty to auto-discover
-//	clientID to identify
+//	timeout is optional connection timeout or 0 for default
 //
 // This returns the client connection or an error if invalid
 func ConnectWithToken(
-	clientID string, token string, caCert *x509.Certificate, protocol string, connectURL string, timeout time.Duration) (
+	clientID string, token string, caCert *x509.Certificate, connectURL string, timeout time.Duration) (
 	cc messaging.IClientConnection, err error) {
-
-	if protocol == "" && connectURL != "" {
-		protocol = GetProtocolFromURL(connectURL)
-	}
 
 	cc, err = NewHiveotClient(clientID, caCert, connectURL, timeout)
 	if err == nil {
@@ -121,12 +118,13 @@ func ConnectWithToken(
 // a saved token and optional CA file.
 // This is similar to ConnectWithToken but reads a token and CA from file.
 //
+//	clientID to identify as
 //	keysDir is the directory with the {clientID}.key, {clientID}.token and caCert.pem files.
-//	protocol is used to select the client implementation. Use "" for hiveot defaults.
-//	connectURL is the base endpoint to connect to.
+//	connectURL is the full connection URL of the server to connect to.
+//	timeout is optional connection timeout or 0 for default
 //
 // This returns the connection, token and CaCert used or an error if invalid
-func ConnectWithTokenFile(clientID string, keysDir string, protocol string, connectURL string, timeout time.Duration) (
+func ConnectWithTokenFile(clientID string, keysDir string, connectURL string, timeout time.Duration) (
 	cc messaging.IClientConnection, token string, caCert *x509.Certificate, err error) {
 
 	caCert, err = LoadCA(keysDir)
@@ -134,7 +132,7 @@ func ConnectWithTokenFile(clientID string, keysDir string, protocol string, conn
 		token, err = LoadToken(clientID, keysDir)
 	}
 	if err == nil {
-		cc, err = ConnectWithToken(clientID, token, caCert, protocol, connectURL, timeout)
+		cc, err = ConnectWithToken(clientID, token, caCert, connectURL, timeout)
 	}
 	return cc, token, caCert, err
 }
@@ -217,8 +215,8 @@ func LoadToken(clientID string, keysDir string) (string, error) {
 // Note 1: This doesnt use forms as request/response envelopes dont need it.
 //
 //	clientID is the ID to authenticate as when using one of the Connect... methods
-//	connectURL contains the connection URL for the protocol.
 //	caCert is the server's CA certificate to verify the connection.
+//	connectURL contains the connection URL for the protocol.
 //	timeout is optional maximum wait time for connecting or waiting for responses.
 //
 // If no connectURL is specified then this uses discovery to determine the best protocol.

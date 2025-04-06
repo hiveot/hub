@@ -27,7 +27,7 @@ func (d *DummyAuthenticator) AddClient(clientID string, password string) string 
 //}
 
 func (d *DummyAuthenticator) CreateSessionToken(
-	clientID, sessionID string, validitySec int) (token string) {
+	clientID, sessionID string, validityDays int) (token string) {
 
 	if sessionID == "" {
 		sessionID = shortid.MustGenerate()
