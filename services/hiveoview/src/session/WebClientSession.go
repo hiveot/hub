@@ -21,6 +21,7 @@ type NotifyType string
 // the key under which client session data is stored
 const HiveOViewDataKey = "hiveoview"
 const dashboardsStorageKey = "dashboards"
+const ConnectionChangedNotifyID = "connchanged"
 
 const (
 	NotifyInfo    NotifyType = "info"
@@ -39,9 +40,6 @@ type SSEEvent struct {
 const DefaultExpiryHours = 72
 
 // WebClientSession manages the connection and state of a web client session.
-// FIXME: when the webserver restarts, the WebClientSession disconnects but
-// is not removed (or recreated). When the browser submits a request,
-// notifications are sent to the disconnected session.
 //
 //		cause?: When webserver restarts all sessions are cleared. Then sse
 //		eventlistener reconnects, using a new sessionID while the browser still
@@ -207,7 +205,10 @@ func (sess *WebClientSession) HandleHubConnectionClosed() {
 		// Shutting down this session should first kill the hub so there might
 		// still be a web connection. Attempt to notify.
 		// TODO: these notifications should be in JS using sse
-		sess.SendNotify(NotifyWarning, "", "Disconnected from the Hub")
+
+		// FIXME: connect/reconnect should use the same messageID so a reconnect removes the connect lost
+		sess.SendNotify(NotifyWarning, ConnectionChangedNotifyID, "Disconnected from the Hub")
+
 		sess.SendSSE("connectStatus", "Disconnected from the Hub")
 
 		// this will call back into HandleWebConnectionClosed, which will not do
@@ -257,6 +258,10 @@ func (sess *WebClientSession) NewSseChan() chan SSEEvent {
 	}
 	// need 1+ deep so that writing isn't blocked before reading it
 	sess.sseChan = make(chan SSEEvent, 1)
+
+	// use the channel to send a notification to the UI
+	go sess.SendNotify(NotifySuccess, ConnectionChangedNotifyID, "Connection restablished with the Hub")
+
 	return sess.sseChan
 }
 
@@ -270,10 +275,10 @@ func (sess *WebClientSession) onHubConnectionChange(connected bool, err error, c
 		slog.String("lastError", lastErrText))
 
 	if connected {
-		sess.SendNotify(NotifySuccess, "", "Connection established with the Hub")
+		sess.SendNotify(NotifySuccess, ConnectionChangedNotifyID, "Connection established with the Hub")
 	} else if err != nil {
 		//  a normal disconnect?
-		sess.SendNotify(NotifyWarning, "", "Connection with Hub failed: "+err.Error())
+		sess.SendNotify(NotifyWarning, ConnectionChangedNotifyID, "Connection with Hub failed: "+err.Error())
 		// notify the client and close session
 		sess.HandleHubConnectionClosed()
 	} else {
@@ -352,8 +357,13 @@ func (sess *WebClientSession) SendNotify(ntype NotifyType, msgID string, text st
 		sess.sseChan <- SSEEvent{Event: "notify",
 			Payload: string(ntype) + ":" + msgID + ":" + text}
 	} else {
-		// not neccesarily an error as a notification can be sent after the channel closes
-		slog.Warn("SendNotify. SSE channel was closed")
+		// not necessarily an error as a notification can be sent after the channel closes
+		slog.Warn("SendNotify. SSE channel was closed",
+			"clientID", sess.clientID,
+			"cid", sess.cid,
+			"type", ntype,
+			"msgID", msgID,
+			"text", text)
 	}
 }
 
@@ -479,7 +489,7 @@ func NewWebClientSession(
 	// prevent orphaned sessions. Cleanup after 3 sec
 	// the number is arbitrary and not sensitive.
 	go func() {
-		time.Sleep(time.Second * 30) // for testing change from 3 to 30
+		time.Sleep(time.Second * 5) // for testing change from 3 to 30
 		webSess.mux.RLock()
 		hasSSE := webSess.sseChan != nil
 		webSess.mux.RUnlock()
