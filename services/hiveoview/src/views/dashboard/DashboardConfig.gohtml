@@ -1,6 +1,6 @@
 <!-- Render dashboard config editor -->
 
-{{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/dashboard.ConfigDashboardTemplateData*/ -}}
+{{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/dashboard.RenderDashboardConfigTemplateData*/ -}}
 
 <h-modal show showClose shadow>
 	<article>
@@ -9,6 +9,7 @@
 		</header>
 
 		<main>
+		{{/*	Use hx-post in form to submit on enter*/}}
 		<form tabindex="0" id="config-dashboard-form"
 		      hx-post="{{.SubmitConfigDashboard}}"
 		      hx-swap="none"
@@ -28,6 +29,7 @@
 			        onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
 			        class="secondary">Cancel
 			</button>
+      {{/* Use hx-post in button to submit on button click*/}}
 			<button type="submit"
 			        hx-post="{{.SubmitConfigDashboard}}"
 			        hx-include="#config-dashboard-form"

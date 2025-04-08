@@ -32,7 +32,7 @@
  *  8. support sse 'toast' {"type":"info","text","toast text"} events
  */
 const PROGRESS_BAR_ANIMATION = "progressbar"
-const DEFAULT_DURATION = 10000  // msec showing toast
+const DEFAULT_DURATION = 3000  // msec showing toast
 const template = `
 
 <style>
@@ -393,10 +393,11 @@ class HToast extends HTMLElement {
         if (!timeout) {
             // provide more time to read errors
             if (ttype === "error") {
-                timeout = this.duration * 5
+                timeout = this.duration * 10
             } else if (ttype === "warning") {
-                timeout = this.duration*3
+                timeout = this.duration*5
             } else {
+                // console.log("setting duration to:",this.duration)
                 timeout = this.duration
             }
         }

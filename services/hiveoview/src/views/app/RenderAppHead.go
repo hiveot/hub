@@ -18,11 +18,13 @@ type AppHeadDashboardData struct {
 	ID    string
 	Title string
 	// paths
-	RenderDashboardPath              string
+	GetDashboardRawPath              string
+	RenderAddDashboardPath           string
 	RenderAddTilePath                string
 	RenderConfirmDeleteDashboardPath string
+	RenderDashboardPath              string
 	RenderEditDashboardPath          string
-	RenderAddDashboardPath           string
+	RenderRestoreDashboardPath       string
 }
 
 // AppHeadTemplateData contains the rendering information for the application header
@@ -62,11 +64,13 @@ func RenderAppHead(w http.ResponseWriter, r *http.Request) {
 		dashboardData := AppHeadDashboardData{
 			ID:                               dashboardModel.ID,
 			Title:                            dashboardModel.Title,
+			GetDashboardRawPath:              tputils.Substitute(src.RenderDashboardExportPath, pathArgs),
 			RenderDashboardPath:              tputils.Substitute(src.RenderDashboardPath, pathArgs),
 			RenderAddTilePath:                tputils.Substitute(src.RenderTileAddPath, pathArgs),
 			RenderConfirmDeleteDashboardPath: tputils.Substitute(src.RenderDashboardConfirmDeletePath, pathArgs),
 			RenderEditDashboardPath:          tputils.Substitute(src.PostDashboardConfigPath, pathArgs),
 			RenderAddDashboardPath:           tputils.Substitute(src.RenderDashboardAddPath, pathArgs),
+			RenderRestoreDashboardPath:       tputils.Substitute(src.RenderDashboardImportPath, pathArgs),
 		}
 		data.AppHeadDashboards = append(data.AppHeadDashboards, dashboardData)
 	}

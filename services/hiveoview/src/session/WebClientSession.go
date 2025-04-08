@@ -39,6 +39,14 @@ type SSEEvent struct {
 const DefaultExpiryHours = 72
 
 // WebClientSession manages the connection and state of a web client session.
+// FIXME: when the webserver restarts, the WebClientSession disconnects but
+// is not removed (or recreated). When the browser submits a request,
+// notifications are sent to the disconnected session.
+//
+//		cause?: When webserver restarts all sessions are cleared. Then sse
+//		eventlistener reconnects, using a new sessionID while the browser still
+//		uses the old one in sending requests???
+//	     how can 2 session ids exist from the same browser tab
 type WebClientSession struct {
 	// ID of this session
 	//sessionID string
@@ -345,7 +353,7 @@ func (sess *WebClientSession) SendNotify(ntype NotifyType, msgID string, text st
 			Payload: string(ntype) + ":" + msgID + ":" + text}
 	} else {
 		// not neccesarily an error as a notification can be sent after the channel closes
-		//slog.Error("SendNotify. SSE channel is closed")
+		slog.Warn("SendNotify. SSE channel was closed")
 	}
 }
 

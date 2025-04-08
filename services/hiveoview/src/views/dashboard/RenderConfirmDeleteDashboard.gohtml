@@ -41,7 +41,8 @@
     function onSubmitCompleted(ev, btn) {
         ev.stopImmediatePropagation()
         let details = ev.detail
-        if (details.successful) {
+		    console.log("submit confirm delete; success=",details.successful)
+        if (details.xhr.status === 200) {
             let closeEv = new Event('close-modal',{bubbles:true})
             btn.dispatchEvent(closeEv)
         }

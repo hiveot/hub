@@ -10,7 +10,8 @@ import (
 	"net/http"
 )
 
-const RenderDashboardTemplate = "RenderDashboardPage.gohtml"
+const RenderDashboardTemplate = "DashboardPage.gohtml"
+const RenderDashboardImportTemplate = "DashboardImport.gohtml"
 
 type DashboardPageTemplateData struct {
 	Dashboard session.DashboardModel

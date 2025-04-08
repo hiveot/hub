@@ -17,7 +17,7 @@
 {{/*Show the dashboard. Reload when tiles are deleted*/}}
 <main class="dashboard"
       hx-get=""
-      hx-trigger="sse:{{.DashboardUpdatedEvent}}"
+      hx-trigger="sse:{{.DashboardUpdatedEvent}}, refreshPage from:body"
       hx-target="#dashboardPage"
 >
 

@@ -1,0 +1,91 @@
+<!-- Render confirm restoring dashboard -->
+
+{{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/dashboard.DashboardImportTemplateData*/ -}}
+{{/*TODO-1: show dashboard stats after load*/}}
+<h-modal role="dialog" show showClose >
+	<article>
+		<header class="h-row-centered">
+			<h3>Restore Dashboard</h3>
+		</header>
+
+	  {{/*The user must select a file first */}}
+		<form id="import-form">
+			<fieldset>
+				<span class="h-row" style="min-width:600px">
+					<input type="file" id="dashboard-file-input" tabindex="0"
+					       name="selected file"
+								accept=".dashboard"
+					       onchange="handleSelectFile(this)"
+					>
+				</span>
+
+				<input id="dashboard-content" hidden name="{{.NewDashboardField}}">
+
+				<label for="dashboard-info">Dashboard Info:</label>
+				<textarea id="dashboard-info" readonly value="please load a file">
+				</textarea>
+
+			</fieldset>
+		</form>
+
+		<footer class="h-row" >
+	    {{- /*close-modal is handled by h-modal component*/ -}}
+			<button id="cancelBtn"
+			        onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
+			        class="secondary">Cancel
+			</button>
+{{/*			Post the content of 'dashboard-content' but do not swap*/}}
+			<button id="submitBtn" type="submit" autofocus disabled
+			        hx-swap="none"
+			        hx-include="#import-form"
+			        hx-post="{{.SubmitDashboardImportPath}}"
+			        hx-on::after-request="closeOnSuccess(event, this)"
+			        style="margin-bottom: 0">Replace Dashboard
+			</button>
+		</footer>
+	</article>
+
+</h-modal>
+
+<script>
+		function handleSelectFile(input) {
+        if (input.files.length === 0) {
+            return
+        }
+        // elements to update
+        const contentEl = document.getElementById("dashboard-content");
+        const infoEl = document.getElementById("dashboard-info");
+        const submitEl =  document.getElementById("submitBtn");
+
+        const selectedFile = input.files[0]
+        const fileURL = URL.createObjectURL(selectedFile);
+
+				fetch(fileURL)
+						.then((resp)=>resp.text())
+						.then((dashText)=>{
+								// debugger
+								// contentEl gets the raw dashboard content for form submission
+                contentEl.value = dashText
+                // infotEl gets some nice stats on the loaded dashboard
+								const dbJSON = JSON.parse(dashText)
+								const title = dbJSON.title
+								const nrTiles = Object.getOwnPropertyNames(dbJSON.tiles).length
+                infoEl.value = `Title: ${title}\nNr tiles: ${nrTiles}`
+								URL.revokeObjectURL(fileURL)
+                submitEl.disabled = false
+						})
+    }
+
+		// Close the dialog on success
+    function closeOnSuccess(ev, btn) {
+        let details = ev.detail
+        if (details.xhr.status === 200) {
+            console.log("submit new dashboard; success=",details.successful)
+            let closeEv = new Event('close-modal',{bubbles:true})
+            btn.dispatchEvent(closeEv)
+        } else {
+            const respText = details.xhr.responseText
+            console.error("submit new dashboard error:",respText)
+        }
+    }
+</script>

@@ -46,5 +46,23 @@
             Delete Dashboard
         </li>
 
+        <li class="h-horizontal-divider"></li>
+
+        <li><a href="{{.GetDashboardRawPath}}" download="{{.Title}}.dashboard"
+            onClick="window.navigateTo(null,'')">
+                <iconify-icon icon="mdi:content-copy"></iconify-icon>
+            Save dashboard
+            </a>
+        </li>
+        <li hx-get="{{.RenderRestoreDashboardPath}}"
+            hx-target="#modalLevel1"
+            hx-trigger="click"
+        >
+            <iconify-icon icon="mdi:content-paste"></iconify-icon>
+            Restore dashboard
+        </li>
+
     </ul>
 </h-dropdown>
+
+

@@ -83,14 +83,17 @@ func (svc *HiveoviewService) CreateRoutes(router *chi.Mux, rootPath string) http
 		r.Get(src.RenderAboutPath, about.RenderAboutPage)
 
 		// dashboard endpoints
+		r.Get(src.RenderDashboardExportPath, dashboard.RenderDashboardExport)
 		r.Get(src.RenderDashboardRootPath, dashboard.RenderDashboardPage)
-		r.Get(src.RenderDashboardAddPath, dashboard.RenderConfigDashboard)
-		r.Get(src.RenderDashboardPath, dashboard.RenderDashboardPage)
+		r.Get(src.RenderDashboardAddPath, dashboard.RenderDashboardConfig)
 		r.Get(src.RenderDashboardConfirmDeletePath, dashboard.RenderConfirmDeleteDashboard)
-		r.Get(src.RenderDashboardEditPath, dashboard.RenderConfigDashboard)
+		r.Get(src.RenderDashboardEditPath, dashboard.RenderDashboardConfig)
+		r.Get(src.RenderDashboardPath, dashboard.RenderDashboardPage)
+		r.Get(src.RenderDashboardImportPath, dashboard.RenderDashboardImport)
 		r.Post(src.PostDashboardLayoutPath, dashboard.SubmitDashboardLayout)
-		r.Post(src.PostDashboardConfigPath, dashboard.SubmitConfigDashboard)
-		r.Delete(src.DeleteDashboardPath, dashboard.SubmitDeleteDashboard)
+		r.Post(src.PostDashboardConfigPath, dashboard.SubmitDashboardConfig)
+		r.Post(src.PostDashboardImportPath, dashboard.SubmitDashboardImport)
+		r.Delete(src.DeleteDashboardPath, dashboard.SubmitDashboardDelete)
 
 		// Directory endpoints
 		r.Get(src.RenderThingDirectoryPath, directory.RenderDirectory)

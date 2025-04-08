@@ -8,8 +8,8 @@ import (
 	"net/http"
 )
 
-// SubmitDeleteDashboard applies deleting a dashboard
-func SubmitDeleteDashboard(w http.ResponseWriter, r *http.Request) {
+// SubmitDashboardDelete applies deleting a dashboard
+func SubmitDashboardDelete(w http.ResponseWriter, r *http.Request) {
 	sess, cdc, err := getDashboardContext(r, false)
 	if err != nil {
 		sess.WriteError(w, err, http.StatusBadRequest)

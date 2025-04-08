@@ -34,11 +34,14 @@ const (
 	// dashboard paths
 	RenderDashboardRootPath          = "/dashboard"
 	RenderDashboardAddPath           = "/dashboard/add"
-	RenderDashboardPath              = "/dashboard/{dashboardID}"
 	RenderDashboardConfirmDeletePath = "/dashboard/{dashboardID}/confirmDelete"
 	RenderDashboardEditPath          = "/dashboard/{dashboardID}/config"
+	RenderDashboardExportPath        = "/dashboard/{dashboardID}/json"
+	RenderDashboardPath              = "/dashboard/{dashboardID}"
+	RenderDashboardImportPath        = "/dashboard/{dashboardID}/restore"
 	PostDashboardLayoutPath          = "/dashboard/{dashboardID}/layout"
 	PostDashboardConfigPath          = "/dashboard/{dashboardID}/config"
+	PostDashboardImportPath          = "/dashboard/{dashboardID}/import"
 	DeleteDashboardPath              = "/dashboard/{dashboardID}"
 
 	// dashboard tile paths
