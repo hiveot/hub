@@ -6,6 +6,7 @@ import (
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"github.com/hiveot/hub/services/hiveoview/src/views/tile"
+	"html/template"
 	"log/slog"
 	"net/http"
 )
@@ -21,6 +22,7 @@ type DashboardPageTemplateData struct {
 	RenderConfirmDeleteTilePath      string
 	RenderNewTilePath                string
 	SubmitDashboardLayoutPath        string
+	Background                       template.URL
 }
 
 // GetTileTemplateData returns empty rendering data for rendering a tile.
@@ -50,6 +52,8 @@ func RenderDashboardPage(w http.ResponseWriter, r *http.Request) {
 	)
 	data := DashboardPageTemplateData{}
 	data.Dashboard = cdc.CurrentDashboard()
+	// html template requires a 'safe' image source
+	data.Background = template.URL(data.Dashboard.Background)
 
 	// dashboard paths
 	data.RenderConfirmDeleteDashboardPath = getDashboardPath(src.RenderDashboardConfirmDeletePath, cdc)

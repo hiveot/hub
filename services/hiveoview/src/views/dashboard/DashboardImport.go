@@ -15,7 +15,7 @@ const NewDashboardFieldName = "new-dashboard"
 
 type DashboardImportTemplateData struct {
 	SubmitDashboardImportPath string
-	NewDashboardField         string
+	NewDashboardFieldName     string
 }
 
 // RenderDashboardExport returns the raw dashboard JSON
@@ -42,7 +42,7 @@ func RenderDashboardImport(w http.ResponseWriter, r *http.Request) {
 
 	data := DashboardImportTemplateData{
 		SubmitDashboardImportPath: getDashboardPath(src.PostDashboardImportPath, cdc),
-		NewDashboardField:         NewDashboardFieldName,
+		NewDashboardFieldName:     NewDashboardFieldName,
 	}
 	buff, err := app.RenderAppOrFragment(r, RenderDashboardImportTemplate, data)
 	sess.WritePage(w, buff, err)

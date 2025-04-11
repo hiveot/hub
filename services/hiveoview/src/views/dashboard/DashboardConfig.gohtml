@@ -2,26 +2,41 @@
 
 {{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/dashboard.RenderDashboardConfigTemplateData*/ -}}
 
-<h-modal show showClose shadow>
-	<article>
+<h-modal show showClose shadow style="max-width:90vw; max-height: 90vh">
+	<article style="max-width:90vw; max-height: 90vh">
 		<header class="h-row-centered">
 			<h3>Dashboard Configuration</h3>
 		</header>
 
-		<main>
 		{{/*	Use hx-post in form to submit on enter*/}}
 		<form tabindex="0" id="config-dashboard-form"
 		      hx-post="{{.SubmitConfigDashboard}}"
 		      hx-swap="none"
+		      style="overflow: hidden; display:flex;flex-direction: column"
 		      hx-on::after-request="onSubmitCompleted(event, this)"
 		>
-			<fieldset>
 				<label for="dashboard-title-id">Dashboard Name</label>
 				<input autofocus tabindex="0" id="dashboard-title-id" name="title" value="{{.Dashboard.Title}}"/>
-			</fieldset>
+
+				<label for="background-file-input-id">Background Image</label>
+				<span class="h-row">
+					<input type="file" id="background-file-input-id"
+					       accept=".png, .jpg, .jpeg"
+					       onchange="handleSelectFile(this)"
+					>
+					<button type="button" onclick="clearBackground(this)">Clear</button>
+				</span>
+				{{/* for form submission*/}}
+				<input type="hidden" id="background-image-input" name="background"
+						value="{{.Background}}">
+{{/* overflow hidden with object-fit cover, crops the image to fill the available area*/}}
+{{/* Without object-fit the image doesnt preserve aspect ratio*/}}
+				<img type="image" id="background-image-show"
+				     style="object-fit:cover;overflow:hidden"
+				     src="{{.Background}}"
+				>
 
 		</form>
-		</main>
 
 		<footer class="h-row">
         {{- /*close-modal is handled by h-modal component*/ -}}
@@ -44,6 +59,30 @@
 
 
 <script>
+
+	function clearBackground() {
+      // elements to update
+      let imageInput = document.getElementById("background-image-input");
+      let imageShow = document.getElementById("background-image-show");
+      imageInput.value = ""
+      imageShow.src = ""
+	}
+		// upload an image and embed it in base64
+		// todo: make a web component for this
+    function handleSelectFile(input) {
+        if (input.files.length === 0) {
+            return
+        }
+        let imageInput = document.getElementById("background-image-input");
+        let imageShow = document.getElementById("background-image-show");
+        const selectedFile = input.files[0]
+        let reader = new FileReader();
+        reader.onloadend = function() {
+            imageInput.value = reader.result
+            imageShow.src = reader.result
+        };
+        reader.readAsDataURL(selectedFile)
+    }
 
     // Ugly to have to do this!
     function onSubmitCompleted(ev, btn) {

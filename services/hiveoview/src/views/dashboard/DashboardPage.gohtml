@@ -20,7 +20,6 @@
       hx-trigger="sse:{{.DashboardUpdatedEvent}}, refreshPage from:body"
       hx-target="#dashboardPage"
 >
-
     {{/* Add a div to ensure filling the screen size*/}}
     <div style="flex-grow:1">
         {{/* change event: When layout changes push the new layout to the server*/}}
@@ -68,9 +67,9 @@
                 // handle: ".drag-target",
                 cancel: ".no-drag"
             },
-            margin:"5px",       // gap between widgets
+            margin:"4px",       // gap between widgets
             nomove:true,
-            float: false,       // cells move to the top (false)
+            float: true,       // false=cells move to the top (false)
             // custom storage to detect resize
             lastSize: "",
             layouts:  {{.Dashboard.GridLayouts}},
@@ -169,6 +168,16 @@
         /*padding-left: var(--pico-spacing);*/
         /*padding-right: var(--pico-spacing);*/
         /*background-color: var(--pico-background-color);*/
+
+        {{if .Background}}
+            background-image: url({{.Background}});
+            background-position: center;
+        background-size: cover;
+        {{end}}
+    }
+    .dashboard-background {
+        position: absolute;
+        /*object-fit: cover;*/
     }
     .grid-stack-item {
     }
@@ -197,6 +206,7 @@
         margin:0;
         /*z-index:1;*/
     }
+    /* tile-header is defined in dashboard page as it is shared amongst all tiles */
     /* remove section header bunch of padding/margin offsets
      * this is used by RenderTile.gohtml
      */
@@ -213,12 +223,14 @@
         background-color: var(--pico-header-background-color);
         border-bottom: var(--pico-card-border);
     }
+    /* tile-content is defined in dashboard page as it is shared amongst all tiles */
     .tile-content{
         flex-grow:1;
         background-color: var(--pico-card-background-color);
         border-bottom-left-radius: 8px;
         border-bottom-right-radius: 8px;
     }
+    /* a table in a tile is full height and has border radius matching the tile */
     .tile-content table {
         margin: 0;
         height: 100%;

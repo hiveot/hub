@@ -68,6 +68,27 @@
 							{{end}}
 						</ul>
 
+					<fieldset>
+						<datalist id="vals">
+							<option value="0%"></option>
+							<option value="50%"></option>
+							<option value="100%"></option>
+						</datalist>
+						<span class="h-row">
+							<label style="text-wrap: nowrap" for="tile-bg-color">Background color: </label>
+							<input id="tile-bg-color" name="bgColor"
+							       type="color"
+							       title="{{.Tile.BackgroundColor}}"
+							       value="{{.Tile.BackgroundColor}}">
+						</span>
+						<span class="h-row">
+							<label style="text-wrap: nowrap" for="tile-bg-transparency">Background transparency: </label>
+							<input id="tile-bg-transparency" name="bgTransparency"
+							       class="input-percent"
+							       type="range" min="0" max="1" step="0.1"
+							       value="{{.Tile.BackgroundTransparency}}">
+						</span>
+					</fieldset>
 					</fieldset>
 				</form>
 			</main>
@@ -97,7 +118,6 @@
 	        minmax(100px, max-content)        /*Value*/
 	        minmax(100px, max-content); /*updated*/
     }
-
 </style>
 
 

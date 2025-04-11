@@ -19,6 +19,9 @@
 {{else}}
 
 	<section id="{{.Tile.ID}}" class="tile-panel"
+        {{if .Tile.BackgroundColor}}
+	         style="background-color: {{.Tile.GetRGBA}};"
+        {{end}}
      hx-trigger="sse:{{.TileUpdatedEvent}}"
      hx-swap="outerHTML"
      hx-target="this"
@@ -27,15 +30,21 @@
      hx-params="none"
   >
 
+	{{/*  Tile header and dropdown*/}}
 	<nav  class="tile-header drag-target">
 		<span></span>
 		<div style="cursor:move; flex-grow:1; text-align:center"
-						title="{{.Tile.ID}}">{{.Tile.Title}}</div>
+      title="{{.Tile.ID}}">{{.Tile.Title}}</div>
 		{{/* The menu works best within a pico css nav element*/}}
     {{template "tileMenu.gohtml" .}}
 	</nav>
-	<main class="tile-content no-drag">
 
+  {{/*Tile content*/}}
+	<main class="tile-content no-drag"
+          {{if .Tile.BackgroundColor}}
+						style="background-color: {{.Tile.GetRGBA}};"
+          {{end}}
+	>
 		{{/*The TileTypes are defined in DashboardModel.go*/}}
     {{if eq .Tile.TileType "area"}}
       {{template "Chart.gohtml" .}}

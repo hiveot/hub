@@ -1,7 +1,9 @@
 package session
 
 import (
+	"fmt"
 	"github.com/teris-io/shortid"
+	"strconv"
 )
 
 // Tile types as used in rendering templates
@@ -52,9 +54,22 @@ type DashboardTile struct {
 	// ID of type of tile that controls how it its content is displayed
 	// See TileTypeCard, TileType...
 	TileType string `json:"tileType"`
+	// tile background
+	BackgroundColor        string `json:"bgColor"`
+	BackgroundTransparency string `json:"bgTransparency"`
 
 	// Tile sources
 	Sources []TileSource `json:"sources"`
+}
+
+// RGBA returns the rgba value of the tile
+func (t DashboardTile) GetRGBA() string {
+	// color has format #aabbcc
+	// rgba has the format rgba(aa,bb,cc, tp)
+	tp, _ := strconv.ParseFloat(t.BackgroundTransparency, 10)
+	tpInt := int(tp * 255) // to hex
+	rgba := fmt.Sprintf("%s%0X", t.BackgroundColor, tpInt)
+	return rgba
 }
 
 type TileLayout struct {
@@ -71,6 +86,9 @@ type DashboardModel struct {
 	ID string `json:"id"`
 	// Title of the dashboard
 	Title string `json:"title"`
+	// Dashboard background image in base64 (if any)
+	Background string `json:"background"`
+
 	// Tiles in this dashboard
 	Tiles map[string]DashboardTile `json:"tiles"`
 

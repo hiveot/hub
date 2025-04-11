@@ -11,16 +11,19 @@ This viewer has reached alpha status with Phase 1-3 completed. The information b
 ### Phase 3: Basic Dashboard [done]
 
 ### Phase 4: Request/Response Handling Improvements [in progress]
-* critical fixes: 
-  * edit tile add value - doesnt show all TDs
 * Re-usable DataSchema component/template with text,number,bool,enum,on-off [in progress]
-* Switch to use ConsumedThing for properties, events and actions [in progress]
 * Track action progress using async response messages (ActionStatus) [in progress]
 * Indication of pending property writes (owserver updates can take 10 seconds)
-* Store dashboard layout locally instead of using the state service [complete]
 
 ### Phase 5: Enhancements [todo]
-* only show edit button if the user has permissions to edit
+* multiple dashboards
+* configure 
+  * dashboard static background image from file [done]
+  * dashboard background image from URL
+  * dashboard periodically refresh background image
+  * configure tile transparency, background and color [in progress]
+  * configure allowing tile placement anywhere  [done]
+* only allow edit/move tiles if the user has permissions to edit, eg a manager+
   * depends on the authz change to define roles in the TD
 * briefly fade in/out a highlight of a changed value (css transition?)
 * color value based on age - red is older than 3 days

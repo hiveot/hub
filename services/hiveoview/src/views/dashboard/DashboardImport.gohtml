@@ -19,7 +19,7 @@
 					>
 				</span>
 
-				<input id="dashboard-content" hidden name="{{.NewDashboardField}}">
+				<input id="dashboard-content" hidden name="{{.NewDashboardFieldName}}">
 
 				<label for="dashboard-info">Dashboard Info:</label>
 				<textarea id="dashboard-info" readonly value="please load a file">
@@ -63,7 +63,7 @@
 				fetch(fileURL)
 						.then((resp)=>resp.text())
 						.then((dashText)=>{
-								// debugger
+								debugger
 								// contentEl gets the raw dashboard content for form submission
                 contentEl.value = dashText
                 // infotEl gets some nice stats on the loaded dashboard

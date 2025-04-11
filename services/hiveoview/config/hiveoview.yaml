@@ -1,5 +1,6 @@
 # Hiveoview configuration
 
+# https server port (default is 8443)
 # serverPort: 8443
 
 
