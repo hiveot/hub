@@ -33,14 +33,15 @@ const (
 
 	// dashboard paths
 	RenderDashboardRootPath          = "/dashboard"
+	RenderDashboardDefaultPath       = "/dashboard/default"
 	RenderDashboardAddPath           = "/dashboard/add"
+	RenderDashboardPath              = "/dashboard/{dashboardID}"
 	RenderDashboardConfirmDeletePath = "/dashboard/{dashboardID}/confirmDelete"
 	RenderDashboardEditPath          = "/dashboard/{dashboardID}/config"
 	RenderDashboardExportPath        = "/dashboard/{dashboardID}/json"
-	RenderDashboardPath              = "/dashboard/{dashboardID}"
-	RenderDashboardImportPath        = "/dashboard/{dashboardID}/restore"
+	RenderDashboardImportPath        = "/dashboard/{dashboardID}/import"
 	PostDashboardLayoutPath          = "/dashboard/{dashboardID}/layout"
-	PostDashboardConfigPath          = "/dashboard/{dashboardID}/config"
+	PostDashboardEditPath            = "/dashboard/{dashboardID}/edit"
 	PostDashboardImportPath          = "/dashboard/{dashboardID}/import"
 	DeleteDashboardPath              = "/dashboard/{dashboardID}"
 

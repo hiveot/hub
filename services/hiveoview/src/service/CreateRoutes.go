@@ -45,6 +45,7 @@ func (svc *HiveoviewService) CreateRoutes(router *chi.Mux, rootPath string) http
 	//-- add the routes and middleware
 	router.Use(middleware.Logger)
 	router.Use(middleware.Recoverer)
+	router.Use(middleware.StripSlashes) // /dashboard/(missing id) -> /dashboard
 	//router.Use(csrfMiddleware)
 	router.Use(middleware.Compress(5,
 		"text/html", "text/css", "text/javascript", "image/svg+xml"))
@@ -78,22 +79,23 @@ func (svc *HiveoviewService) CreateRoutes(router *chi.Mux, rootPath string) http
 		// see also:https://medium.com/gravel-engineering/i-find-it-hard-to-reuse-root-template-in-go-htmx-so-i-made-my-own-little-tools-to-solve-it-df881eed7e4d
 		// these render full page or fragments for non hx-boost hx-requests
 		//r.Get("/", app.RenderApp)
-		r.Handle("/", http.RedirectHandler(src.RenderDashboardRootPath, http.StatusPermanentRedirect))
+		r.Handle("/", http.RedirectHandler(src.RenderDashboardDefaultPath, http.StatusPermanentRedirect))
 		r.Get(src.RenderAppHeadPath, app.RenderAppHead)
 		r.Get(src.RenderAboutPath, about.RenderAboutPage)
 
-		// dashboard endpoints
-		r.Get(src.RenderDashboardExportPath, dashboard.RenderDashboardExport)
-		r.Get(src.RenderDashboardRootPath, dashboard.RenderDashboardPage)
-		r.Get(src.RenderDashboardAddPath, dashboard.RenderDashboardConfig)
-		r.Get(src.RenderDashboardConfirmDeletePath, dashboard.RenderConfirmDeleteDashboard)
-		r.Get(src.RenderDashboardEditPath, dashboard.RenderDashboardConfig)
+		// dashboard endpoints. If dashboardID is missing then redirect to default
+		r.Handle(src.RenderDashboardRootPath, http.RedirectHandler(src.RenderDashboardDefaultPath, http.StatusPermanentRedirect))
 		r.Get(src.RenderDashboardPath, dashboard.RenderDashboardPage)
+		r.Get(src.RenderDashboardExportPath, dashboard.RenderDashboardExport)
+		r.Get(src.RenderDashboardAddPath, dashboard.RenderAddDashboard)
+		r.Get(src.RenderDashboardConfirmDeletePath, dashboard.RenderConfirmDeleteDashboard)
+		r.Get(src.RenderDashboardEditPath, dashboard.RenderEditDashboard)
 		r.Get(src.RenderDashboardImportPath, dashboard.RenderDashboardImport)
 		r.Post(src.PostDashboardLayoutPath, dashboard.SubmitDashboardLayout)
-		r.Post(src.PostDashboardConfigPath, dashboard.SubmitDashboardConfig)
+		r.Post(src.PostDashboardEditPath, dashboard.SubmitEditDashboard)
 		r.Post(src.PostDashboardImportPath, dashboard.SubmitDashboardImport)
-		r.Delete(src.DeleteDashboardPath, dashboard.SubmitDashboardDelete)
+		r.Delete(src.RenderDashboardRootPath, dashboard.SubmitDeleteDashboard) // recover delete in case of no-ID
+		r.Delete(src.DeleteDashboardPath, dashboard.SubmitDeleteDashboard)
 
 		// Directory endpoints
 		r.Get(src.RenderThingDirectoryPath, directory.RenderDirectory)

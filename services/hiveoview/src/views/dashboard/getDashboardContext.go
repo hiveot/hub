@@ -45,31 +45,31 @@ func getDashboardContext(r *http.Request, createDashboard bool) (
 	cdc.clientModel = sess.GetClientData()
 	cdc.dashboardID = chi.URLParam(r, URLParamDashboardID)
 	if cdc.dashboardID == "" {
-		if len(cdc.clientModel.Dashboards) > 0 {
-			dashboard := cdc.clientModel.GetFirstDashboard()
-			cdc.dashboardID = dashboard.ID
-		} else {
-			cdc.dashboardID = "default"
-		}
+		return sess, cdc, fmt.Errorf("missing dashboard ID")
+		//if len(cdc.clientModel.Dashboards) > 0 {
+		//	dashboard := cdc.clientModel.GetFirstDashboard()
+		//	cdc.dashboardID = dashboard.ID
+		//} else {
+		//	cdc.dashboardID = "default"
+		//}
 	}
 	dashboard, found := cdc.clientModel.GetDashboard(cdc.dashboardID)
 	if !found {
 		if createDashboard {
 			dashboard = session.NewDashboard(cdc.dashboardID, "New Dashboard")
 			// make it available for rendering tiles
-			cdc.clientModel.UpdateDashboard(&dashboard)
+			err = cdc.clientModel.UpdateDashboard(&dashboard)
 		} else {
 			err = fmt.Errorf("Dashboard with ID '%s' not found", cdc.dashboardID)
-			return sess, cdc, err
 		}
 	}
-	return sess, cdc, nil
+	return sess, cdc, err
 }
 
-// substitute the directory ID in the given path
+// substitute the dashboardID in the given path
 //
-//	 dashboardPath must include the {dashboardID} string
-//		cdc dashboard context info
+// dashboardPath must include the {dashboardID} string
+// cdc dashboard context info
 func getDashboardPath(dashboardPath string, cdc ClientDashboardContext) string {
 	pathArgs := map[string]string{"dashboardID": cdc.dashboardID}
 	return tputils.Substitute(dashboardPath, pathArgs)

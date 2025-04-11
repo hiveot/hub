@@ -83,7 +83,11 @@ func SubmitDashboardImport(w http.ResponseWriter, r *http.Request) {
 		fmt.Sprintf("Dashboard '%s' was successfully imported", dashboard.Title))
 	// replace the existing dashboard
 	newDashboard.ID = dashboard.ID
-	cdc.clientModel.UpdateDashboard(&newDashboard)
+	err = cdc.clientModel.UpdateDashboard(&newDashboard)
+	if err != nil {
+		sess.WriteError(w, err, http.StatusBadRequest)
+		return
+	}
 
 	// Notify the dashboard it has been updated so it will reload the fragment
 	ev := getDashboardPath(src.DashboardUpdatedEvent, cdc)

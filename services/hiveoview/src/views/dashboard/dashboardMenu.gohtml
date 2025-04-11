@@ -1,4 +1,4 @@
-{{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/app.AppHeadDashboardData*/ -}}
+{{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/app.AppHeadTemplateData*/ -}}
 
 <!-- dropdown menu
     Menu triggered dialogs are targeted to the element 'dashboardMenuDialog'.
@@ -31,13 +31,6 @@
             Edit Dashboard
         </li>
 
-        <li hx-get="{{.RenderAddDashboardPath}}"
-            hx-target="#modalLevel1"
-        >
-            <iconify-icon icon='mdi:plus'></iconify-icon>
-            Add Dashboard
-        </li>
-
         <li hx-get="{{.RenderConfirmDeleteDashboardPath}}"
             hx-target="#modalLevel1"
             hx-trigger="click"
@@ -51,7 +44,7 @@
         <li><a href="{{.GetDashboardRawPath}}" download="{{.Title}}.dashboard"
             onClick="window.navigateTo(null,'')">
                 <iconify-icon icon="mdi:content-copy"></iconify-icon>
-            Save dashboard
+            Export dashboard
             </a>
         </li>
         <li hx-get="{{.RenderRestoreDashboardPath}}"
@@ -59,7 +52,7 @@
             hx-trigger="click"
         >
             <iconify-icon icon="mdi:content-paste"></iconify-icon>
-            Restore dashboard
+            Import dashboard
         </li>
 
     </ul>

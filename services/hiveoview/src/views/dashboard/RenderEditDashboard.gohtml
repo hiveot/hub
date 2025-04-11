@@ -1,6 +1,6 @@
 <!-- Render dashboard config editor -->
 
-{{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/dashboard.RenderDashboardConfigTemplateData*/ -}}
+{{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/dashboard.RenderEditDashboardTemplateData*/ -}}
 
 <h-modal show showClose shadow style="max-width:90vw; max-height: 90vh">
 	<article style="max-width:90vw; max-height: 90vh">
@@ -10,7 +10,7 @@
 
 		{{/*	Use hx-post in form to submit on enter*/}}
 		<form tabindex="0" id="config-dashboard-form"
-		      hx-post="{{.SubmitConfigDashboard}}"
+		      hx-post="{{.SubmitEditDashboard}}"
 		      hx-swap="none"
 		      style="overflow: hidden; display:flex;flex-direction: column"
 		      hx-on::after-request="onSubmitCompleted(event, this)"
@@ -46,7 +46,7 @@
 			</button>
       {{/* Use hx-post in button to submit on button click*/}}
 			<button type="submit"
-			        hx-post="{{.SubmitConfigDashboard}}"
+			        hx-post="{{.SubmitEditDashboard}}"
 			        hx-include="#config-dashboard-form"
 			        hx-swap="none"
 			        hx-on::after-request="onSubmitCompleted(event, this)"

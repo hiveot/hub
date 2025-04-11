@@ -1,9 +1,11 @@
 package session
 
 import (
+	"errors"
 	"fmt"
 	"github.com/hiveot/hub/lib/buckets"
 	jsoniter "github.com/json-iterator/go"
+	"log/slog"
 	"sync"
 )
 
@@ -38,6 +40,10 @@ func (model *SessionData) GetDashboard(id string) (d DashboardModel, found bool)
 	if found {
 		if dashboard.GridLayouts == nil {
 			dashboard.GridLayouts = make(map[string]string)
+		}
+		// in case dashboards have been newly created
+		if dashboard.Tiles == nil {
+			dashboard.Tiles = make(map[string]DashboardTile)
 		}
 		return *dashboard, found
 	}
@@ -99,11 +105,16 @@ func (model *SessionData) SaveState() error {
 }
 
 // UpdateDashboard adds or replaces a dashboard in the model
-func (model *SessionData) UpdateDashboard(dashboard *DashboardModel) {
+func (model *SessionData) UpdateDashboard(dashboard *DashboardModel) error {
+	if dashboard.ID == "" {
+		slog.Error("UpdateDashboard: missing ID", "title", dashboard.Title)
+		return errors.New("missing dashboard ID")
+	}
 	model.mux.Lock()
 	model.Dashboards[dashboard.ID] = dashboard
 	model.mux.Unlock()
 	_ = model.SaveState()
+	return nil
 }
 
 // GetTile returns a tile in the model with a flag if it was found

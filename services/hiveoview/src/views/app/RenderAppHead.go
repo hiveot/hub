@@ -19,7 +19,6 @@ type AppHeadDashboardData struct {
 	Title string
 	// paths
 	GetDashboardRawPath              string
-	RenderAddDashboardPath           string
 	RenderAddTilePath                string
 	RenderConfirmDeleteDashboardPath string
 	RenderDashboardPath              string
@@ -29,14 +28,15 @@ type AppHeadDashboardData struct {
 
 // AppHeadTemplateData contains the rendering information for the application header
 type AppHeadTemplateData struct {
-	Ready               bool
-	Logo                string
-	Title               string
-	Status              *ConnectStatusTemplateData
-	AppHeadDashboards   []AppHeadDashboardData
-	ReRenderAppHeadPath string
-	RenderAppAboutPath  string
-	RenderDirectoryPath string
+	Ready                  bool
+	Logo                   string
+	Title                  string
+	Status                 *ConnectStatusTemplateData
+	AppHeadDashboards      []AppHeadDashboardData
+	ReRenderAppHeadPath    string
+	RenderDashboardAddPath string
+	RenderAppAboutPath     string
+	RenderDirectoryPath    string
 	// needed to render the connection status button. must be empty so a fragment re-render is triggered
 	RenderConnectStatusPath string
 }
@@ -48,14 +48,15 @@ func RenderAppHead(w http.ResponseWriter, r *http.Request) {
 	cm := sess.GetClientData()
 
 	data := AppHeadTemplateData{
-		Ready:               true,
-		Logo:                "/static/hiveot.svg",
-		Title:               "HiveOT",
-		Status:              GetConnectStatus(r),
-		AppHeadDashboards:   []AppHeadDashboardData{},
-		ReRenderAppHeadPath: src.RenderAppHeadPath,
-		RenderAppAboutPath:  src.RenderAboutPath,
-		RenderDirectoryPath: src.RenderThingDirectoryPath,
+		Ready:                  true,
+		Logo:                   "/static/hiveot.svg",
+		Title:                  "HiveOT",
+		Status:                 GetConnectStatus(r),
+		AppHeadDashboards:      []AppHeadDashboardData{},
+		ReRenderAppHeadPath:    src.RenderAppHeadPath,
+		RenderAppAboutPath:     src.RenderAboutPath,
+		RenderDirectoryPath:    src.RenderThingDirectoryPath,
+		RenderDashboardAddPath: src.RenderDashboardAddPath,
 	}
 
 	// add the dashboards from the client data model to the menu
@@ -68,8 +69,7 @@ func RenderAppHead(w http.ResponseWriter, r *http.Request) {
 			RenderDashboardPath:              tputils.Substitute(src.RenderDashboardPath, pathArgs),
 			RenderAddTilePath:                tputils.Substitute(src.RenderTileAddPath, pathArgs),
 			RenderConfirmDeleteDashboardPath: tputils.Substitute(src.RenderDashboardConfirmDeletePath, pathArgs),
-			RenderEditDashboardPath:          tputils.Substitute(src.PostDashboardConfigPath, pathArgs),
-			RenderAddDashboardPath:           tputils.Substitute(src.RenderDashboardAddPath, pathArgs),
+			RenderEditDashboardPath:          tputils.Substitute(src.RenderDashboardEditPath, pathArgs),
 			RenderRestoreDashboardPath:       tputils.Substitute(src.RenderDashboardImportPath, pathArgs),
 		}
 		data.AppHeadDashboards = append(data.AppHeadDashboards, dashboardData)

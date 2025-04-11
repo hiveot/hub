@@ -1,3 +1,5 @@
+{{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/app.AppHeadTemplateData*/ -}}
+
 <!-- dropdown menu -->
 <h-dropdown position="bottomright">
     <button slot="button" class="h-icon-button  outline">
@@ -14,10 +16,11 @@
                 Dashboard</a>
         </li>
         <li>
-            <iconify-icon icon='mdi:view-dashboard'></iconify-icon>
+            <iconify-icon icon='mdi:list-box-outline'></iconify-icon>
             <a href="/directory" onclick="window.navigateTo(event,this.href)">
                 Directory</a>
         </li>
+
         <li>
             <iconify-icon icon="mdi:bell"></iconify-icon>
             <a href="/notifications" onclick="window.navigateTo(event,this.href)">
@@ -26,6 +29,13 @@
 
 
         <li class="h-horizontal-divider"></li>
+
+        <li hx-get="{{.RenderDashboardAddPath}}"
+            hx-target="#modalLevel1"
+        >
+            <iconify-icon icon='mdi:view-dashboard-edit'></iconify-icon>
+            New Dashboard
+        </li>
 
         <li>
             <iconify-icon icon='mdi:logout'></iconify-icon>
