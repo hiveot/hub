@@ -68,27 +68,29 @@
 							{{end}}
 						</ul>
 
-					<fieldset>
-						<datalist id="vals">
-							<option value="0%"></option>
-							<option value="50%"></option>
-							<option value="100%"></option>
-						</datalist>
-						<span class="h-row">
-							<label style="text-wrap: nowrap" for="tile-bg-color">Background color: </label>
-							<input id="tile-bg-color" name="bgColor"
-							       type="color"
-							       title="{{.Tile.BackgroundColor}}"
-							       value="{{.Tile.BackgroundColor}}">
-						</span>
-						<span class="h-row">
-							<label style="text-wrap: nowrap" for="tile-bg-transparency">Background transparency: </label>
-							<input id="tile-bg-transparency" name="bgTransparency"
-							       class="input-percent"
-							       type="range" min="0" max="1" step="0.1"
-							       value="{{.Tile.BackgroundTransparency}}">
-						</span>
-					</fieldset>
+						<fieldset>
+							<span class="h-row">
+								{{/* Option to set background color */}}
+								<label style="text-wrap: nowrap" for="use-color-id">Background color</label>
+								<input id="use-color-id" type="checkbox" name="useColor"
+								       {{if .Tile.UseColor}}checked{{end}}
+								>
+								<input id="tile-bg-color" name="bgColor"
+								       type="color" style="margin-bottom: 0"
+								       title="{{.Tile.BackgroundColor}}"
+								       value="{{.Tile.BackgroundColor}}">
+							</span>
+							</fieldset>
+							<fieldset>
+							<span class="h-row">
+								<label style="text-wrap: nowrap" for="tile-bg-transparency">Background transparency: </label>
+								<input id="tile-bg-transparency" name="bgTransparency"
+								       class="input-percent"
+								       type="range" min="0" max="1" step="0.1"
+								       value="{{.Tile.BackgroundTransparency}}">
+							</span>
+						</fieldset>
+
 					</fieldset>
 				</form>
 			</main>
@@ -125,6 +127,11 @@
 		// tileSources holds the sources currently being edited
 		var tileSources = {{.Tile.Sources}}
 
+				// set the background color to inherit
+		function inheritBackgroundColor() {
+      let el = document.getElementById("tile-bg-color")
+			el.value = ""
+		}
 
     // delete the table row
     function deleteRow(rowEl) {

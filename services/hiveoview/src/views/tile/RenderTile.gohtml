@@ -19,7 +19,7 @@
 {{else}}
 
 	<section id="{{.Tile.ID}}" class="tile-panel"
-        {{if .Tile.BackgroundColor}}
+        {{if .Tile.UseColor}}
 	         style="background-color: {{.Tile.GetRGBA}};"
         {{end}}
      hx-trigger="sse:{{.TileUpdatedEvent}}"
@@ -41,7 +41,7 @@
 
   {{/*Tile content*/}}
 	<main class="tile-content no-drag"
-          {{if .Tile.BackgroundColor}}
+          {{if .Tile.UseColor}}
 						style="background-color: {{.Tile.GetRGBA}};"
           {{end}}
 	>

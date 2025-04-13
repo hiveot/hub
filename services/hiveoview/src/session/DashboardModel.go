@@ -56,6 +56,7 @@ type DashboardTile struct {
 	TileType string `json:"tileType"`
 	// tile background
 	BackgroundColor        string `json:"bgColor"`
+	UseColor               bool   `json:"useColor"`
 	BackgroundTransparency string `json:"bgTransparency"`
 
 	// Tile sources
@@ -88,6 +89,11 @@ type DashboardModel struct {
 	Title string `json:"title"`
 	// Dashboard background image in base64 (if any)
 	Background string `json:"background"`
+
+	// time the dashboard was updated
+	Updated string `json:"updated"`
+	// The dashboard is locked and cannot be edited
+	Locked bool `json:"locked"`
 
 	// Tiles in this dashboard
 	Tiles map[string]DashboardTile `json:"tiles"`
@@ -141,10 +147,7 @@ func (d *DashboardModel) UpdateTile(t DashboardTile) {
 func NewDashboard(
 	ID string, title string) (d DashboardModel) {
 
-	if ID == "" {
-		ID = shortid.MustGenerate()
-	}
-	d.ID = "default"
+	d.ID = ID
 	d.Title = title
 	d.GridLayouts = make(map[string]string)
 	d.Tiles = make(map[string]DashboardTile)

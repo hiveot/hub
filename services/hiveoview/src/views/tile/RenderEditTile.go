@@ -1,6 +1,7 @@
 package tile
 
 import (
+	"fmt"
 	"github.com/hiveot/hub/lib/consumedthing"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/hiveoview/src"
@@ -99,6 +100,9 @@ func SubmitEditTile(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		sess.WriteError(w, err, http.StatusBadRequest)
 		return
+	} else if cdc.tileID == "" {
+		sess.WriteError(w, fmt.Errorf("SubmitEditTile: missing Tile ID"), http.StatusBadRequest)
+		return
 	}
 	err = r.ParseForm()
 
@@ -114,6 +118,7 @@ func SubmitEditTile(w http.ResponseWriter, r *http.Request) {
 	tileType := r.FormValue("tileType")
 	bgTransparency := r.FormValue("bgTransparency")
 	bgColor := r.FormValue("bgColor")
+	useColor := r.FormValue("useColor")
 	sources, _ := r.Form["sources"]
 	sourceTitles, _ := r.Form["sourceTitles"]
 
@@ -122,10 +127,12 @@ func SubmitEditTile(w http.ResponseWriter, r *http.Request) {
 		// this is a new tile
 		tile = cdc.dashboard.NewTile(cdc.tileID, "", session.TileTypeCard)
 	}
+	tile.ID = cdc.tileID
 	tile.Title = newTitle
 	tile.TileType = tileType
 	tile.BackgroundTransparency = bgTransparency
 	tile.BackgroundColor = bgColor
+	tile.UseColor = !(useColor == "")
 	tile.Sources = make([]session.TileSource, 0)
 
 	// Convert the list of sources from the form to a TileSource object.

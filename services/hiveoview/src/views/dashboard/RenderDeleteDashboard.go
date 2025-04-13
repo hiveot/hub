@@ -9,15 +9,15 @@ import (
 	"net/http"
 )
 
-const RenderConfirmDeleteDashboardTemplate = "RenderConfirmDeleteDashboard.gohtml"
+const RenderDeleteDashboardTemplate = "RenderDeleteDashboard.gohtml"
 
-type ConfirmDeleteDashboardTemplateData struct {
+type DeleteDashboardTemplateData struct {
 	Dashboard                 session.DashboardModel
 	SubmitDeleteDashboardPath string
 }
 
-// RenderConfirmDeleteDashboard renders confirmation dialog for deleting a dashboard
-func RenderConfirmDeleteDashboard(w http.ResponseWriter, r *http.Request) {
+// RenderDeleteDashboard renders confirmation dialog for deleting a dashboard
+func RenderDeleteDashboard(w http.ResponseWriter, r *http.Request) {
 
 	sess, cdc, err := getDashboardContext(r, false)
 	if err != nil {
@@ -26,11 +26,12 @@ func RenderConfirmDeleteDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// setup the rendering data
-	data := ConfirmDeleteDashboardTemplateData{
-		Dashboard:                 cdc.CurrentDashboard(),
-		SubmitDeleteDashboardPath: getDashboardPath(src.DeleteDashboardPath, cdc),
+	dashboard, _ := cdc.SelectedDashboard()
+	data := DeleteDashboardTemplateData{
+		Dashboard:                 dashboard,
+		SubmitDeleteDashboardPath: getDashboardPath(src.PostDashboardDeletePath, cdc),
 	}
-	buff, err := app.RenderAppOrFragment(r, RenderConfirmDeleteDashboardTemplate, data)
+	buff, err := app.RenderAppOrFragment(r, RenderDeleteDashboardTemplate, data)
 	sess.WritePage(w, buff, err)
 }
 
@@ -49,15 +50,7 @@ func SubmitDeleteDashboard(w http.ResponseWriter, r *http.Request) {
 	msgText := fmt.Sprintf("Dashboard '%s' removed from the directory", cdc.dashboardID)
 	sess.SendNotify(session.NotifySuccess, "", msgText)
 
-	// navigate back to the default dashboard. Notes:
-	// 1. http.Redirect doesn't work
-	// 2. Setting the HX-Redirect header does but does a full page reload.
-	// 3. hx-location works with boost, but needs a target:
-	//    See https://htmx.org/headers/hx-location/
-	// todo; standardize this type of navigation along with the templates
-	w.Header().Add("HX-Location", fmt.Sprintf(
-		"{\"path\":\"%s\", \"target\":\"%s\"}",
-		src.RenderDashboardRootPath, "#dashboardPage"))
-
+	// need a full page reload for the menu to update list of dashboards
+	w.Header().Add("HX-Redirect", src.RenderDashboardRootPath)
 	w.WriteHeader(http.StatusOK)
 }

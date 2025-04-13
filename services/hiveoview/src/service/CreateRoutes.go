@@ -88,14 +88,14 @@ func (svc *HiveoviewService) CreateRoutes(router *chi.Mux, rootPath string) http
 		r.Get(src.RenderDashboardPath, dashboard.RenderDashboardPage)
 		r.Get(src.RenderDashboardExportPath, dashboard.RenderDashboardExport)
 		r.Get(src.RenderDashboardAddPath, dashboard.RenderAddDashboard)
-		r.Get(src.RenderDashboardConfirmDeletePath, dashboard.RenderConfirmDeleteDashboard)
+		r.Get(src.RenderDashboardDeletePath, dashboard.RenderDeleteDashboard)
 		r.Get(src.RenderDashboardEditPath, dashboard.RenderEditDashboard)
 		r.Get(src.RenderDashboardImportPath, dashboard.RenderDashboardImport)
 		r.Post(src.PostDashboardLayoutPath, dashboard.SubmitDashboardLayout)
 		r.Post(src.PostDashboardEditPath, dashboard.SubmitEditDashboard)
 		r.Post(src.PostDashboardImportPath, dashboard.SubmitDashboardImport)
 		r.Delete(src.RenderDashboardRootPath, dashboard.SubmitDeleteDashboard) // recover delete in case of no-ID
-		r.Delete(src.DeleteDashboardPath, dashboard.SubmitDeleteDashboard)
+		r.Delete(src.PostDashboardDeletePath, dashboard.SubmitDeleteDashboard)
 
 		// Directory endpoints
 		r.Get(src.RenderThingDirectoryPath, directory.RenderDirectory)

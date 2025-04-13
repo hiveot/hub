@@ -14,9 +14,9 @@ import (
 const RenderEditDashboardTemplateFile = "RenderEditDashboard.gohtml"
 
 type RenderEditDashboardTemplateData struct {
-	Dashboard           session.DashboardModel
-	SubmitEditDashboard string
-	Background          template.URL // safe embedded image
+	Dashboard       session.DashboardModel
+	SubmitDashboard string
+	Background      template.URL // safe embedded image
 }
 
 // RenderAddDashboard renders the dialog for adding a dashboard
@@ -30,8 +30,8 @@ func RenderAddDashboard(w http.ResponseWriter, r *http.Request) {
 	newDashboard := session.NewDashboard(shortid.MustGenerate(), "New Dashboard")
 	pathArgs := map[string]string{"dashboardID": newDashboard.ID}
 	data := RenderEditDashboardTemplateData{
-		Dashboard:           newDashboard,
-		SubmitEditDashboard: tputils.Substitute(src.PostDashboardEditPath, pathArgs),
+		Dashboard:       newDashboard,
+		SubmitDashboard: tputils.Substitute(src.PostDashboardEditPath, pathArgs),
 	}
 	data.Background = template.URL(data.Dashboard.Background)
 	buff, err := app.RenderAppOrFragment(r, RenderEditDashboardTemplateFile, data)
@@ -45,9 +45,10 @@ func RenderEditDashboard(w http.ResponseWriter, r *http.Request) {
 		sess.WriteError(w, err, http.StatusBadRequest)
 		return
 	}
+	dashboard, _ := cdc.SelectedDashboard()
 	data := RenderEditDashboardTemplateData{
-		Dashboard:           cdc.CurrentDashboard(),
-		SubmitEditDashboard: getDashboardPath(src.PostDashboardEditPath, cdc),
+		Dashboard:       dashboard,
+		SubmitDashboard: getDashboardPath(src.PostDashboardEditPath, cdc),
 	}
 	data.Background = template.URL(data.Dashboard.Background)
 	buff, err := app.RenderAppOrFragment(r, RenderEditDashboardTemplateFile, data)
@@ -66,11 +67,12 @@ func SubmitEditDashboard(w http.ResponseWriter, r *http.Request) {
 	newTitle := r.PostFormValue("title")
 	bgImg := r.PostFormValue("background")
 
-	slog.Info("SubmitEditDashboard", "SenderID", cdc.clientID,
+	slog.Info("SubmitDashboard", "SenderID", cdc.clientID,
 		"dashboardID", cdc.dashboardID)
+
 	// add or update the dashboard
-	dashboard := cdc.CurrentDashboard()
-	dashboard.ID = cdc.dashboardID
+	dashboard, _ := cdc.SelectedDashboard()
+	dashboard.ID = cdc.dashboardID // the URL determines the ID
 	dashboard.Title = newTitle
 	dashboard.Background = bgImg
 	err = cdc.clientModel.UpdateDashboard(&dashboard)
@@ -79,10 +81,9 @@ func SubmitEditDashboard(w http.ResponseWriter, r *http.Request) {
 		sess.WriteError(w, err, http.StatusBadRequest)
 		return
 	}
+	// do a full reload in case title and dashboard selection changed
+	args := map[string]string{URLParamDashboardID: cdc.dashboardID}
+	dashboardPath := tputils.Substitute(src.RenderDashboardPath, args)
+	w.Header().Add("HX-Redirect", dashboardPath)
 	w.WriteHeader(http.StatusOK)
-
-	// Notify the dashboard it has been updated so it will reload the fragment
-	ev := getDashboardPath(src.DashboardUpdatedEvent, cdc)
-	sess.SendSSE(ev, "")
-
 }

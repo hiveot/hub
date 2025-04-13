@@ -18,12 +18,12 @@ type AppHeadDashboardData struct {
 	ID    string
 	Title string
 	// paths
-	GetDashboardRawPath              string
-	RenderAddTilePath                string
-	RenderConfirmDeleteDashboardPath string
-	RenderDashboardPath              string
-	RenderEditDashboardPath          string
-	RenderRestoreDashboardPath       string
+	GetDashboardRawPath        string
+	RenderAddTilePath          string
+	RenderDashboardPath        string
+	RenderDeleteDashboardPath  string
+	RenderEditDashboardPath    string
+	RenderRestoreDashboardPath string
 }
 
 // AppHeadTemplateData contains the rendering information for the application header
@@ -63,14 +63,14 @@ func RenderAppHead(w http.ResponseWriter, r *http.Request) {
 	for _, dashboardModel := range cm.Dashboards {
 		pathArgs := map[string]string{"dashboardID": dashboardModel.ID}
 		dashboardData := AppHeadDashboardData{
-			ID:                               dashboardModel.ID,
-			Title:                            dashboardModel.Title,
-			GetDashboardRawPath:              tputils.Substitute(src.RenderDashboardExportPath, pathArgs),
-			RenderDashboardPath:              tputils.Substitute(src.RenderDashboardPath, pathArgs),
-			RenderAddTilePath:                tputils.Substitute(src.RenderTileAddPath, pathArgs),
-			RenderConfirmDeleteDashboardPath: tputils.Substitute(src.RenderDashboardConfirmDeletePath, pathArgs),
-			RenderEditDashboardPath:          tputils.Substitute(src.RenderDashboardEditPath, pathArgs),
-			RenderRestoreDashboardPath:       tputils.Substitute(src.RenderDashboardImportPath, pathArgs),
+			ID:                         dashboardModel.ID,
+			Title:                      dashboardModel.Title,
+			GetDashboardRawPath:        tputils.Substitute(src.RenderDashboardExportPath, pathArgs),
+			RenderDashboardPath:        tputils.Substitute(src.RenderDashboardPath, pathArgs),
+			RenderAddTilePath:          tputils.Substitute(src.RenderTileAddPath, pathArgs),
+			RenderDeleteDashboardPath:  tputils.Substitute(src.RenderDashboardDeletePath, pathArgs),
+			RenderEditDashboardPath:    tputils.Substitute(src.RenderDashboardEditPath, pathArgs),
+			RenderRestoreDashboardPath: tputils.Substitute(src.RenderDashboardImportPath, pathArgs),
 		}
 		data.AppHeadDashboards = append(data.AppHeadDashboards, dashboardData)
 	}

@@ -8,22 +8,22 @@ import (
 	"net/http"
 )
 
+// URL parameter for dashboard ID
+const URLParamDashboardID = "dashboardID"
+
 type ClientDashboardContext struct {
 	clientID    string
 	clientModel *session.SessionData
 	dashboardID string
 }
 
-// CurrentDashboard returns the dashboard that is currently selected in the context
-// This returns an empty dashboard if none is selected.
-// Use clientModel.GetDashboard to get a specific dashboard and know if it is found.
-func (cdc *ClientDashboardContext) CurrentDashboard() session.DashboardModel {
-	d, _ := cdc.clientModel.GetDashboard(cdc.dashboardID)
-	return d
+// SelectedDashboard is a convenience function to return the dashboard that is
+// selected in the URL.
+// This is short for cdc.clientModel.GetDashboard(cdc.dashboardID)
+func (cdc *ClientDashboardContext) SelectedDashboard() (session.DashboardModel, bool) {
+	d, found := cdc.clientModel.GetDashboard(cdc.dashboardID)
+	return d, found
 }
-
-// URL parameters used
-const URLParamDashboardID = "dashboardID"
 
 // getDashboardContext is a helper to read session and dashboard from
 // the request context.

@@ -10,11 +10,21 @@
         <!--TODO: use a link component which stops href propagation and invokes navigateTo
         and changes focus to the new window
         -->
+        {{range .AppHeadDashboards}}
         <li>
+            {{/*Dashboard pages are recreated when selected*/}}
             <iconify-icon icon='mdi:view-dashboard'></iconify-icon>
-            <a href="/dashboard" onclick="window.navigateTo(event,this.href)">
-                Dashboard</a>
+            <a href="{{.RenderDashboardPath}}"
+               hx-get="{{.RenderDashboardPath}}"
+               hx-target="#dashboardPage"
+               hx-swap="innerHTML"
+               hx-on::after-request="window.navigateTo(event,this.href)"
+            >
+                {{.Title}}
+            </a>
         </li>
+        {{end}}
+
         <li>
             <iconify-icon icon='mdi:list-box-outline'></iconify-icon>
             <a href="/directory" onclick="window.navigateTo(event,this.href)">

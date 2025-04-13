@@ -3,6 +3,7 @@ package dashboard
 import (
 	"errors"
 	"fmt"
+	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
@@ -25,7 +26,7 @@ func RenderDashboardExport(w http.ResponseWriter, r *http.Request) {
 		sess.WriteError(w, err, 0)
 		return
 	}
-	dash := cdc.CurrentDashboard()
+	dash, _ := cdc.SelectedDashboard()
 	dashJSON, _ := jsoniter.MarshalIndent(dash, "", "  ")
 	w.Write(dashJSON)
 }
@@ -56,7 +57,7 @@ func SubmitDashboardImport(w http.ResponseWriter, r *http.Request) {
 		sess.WriteError(w, err, http.StatusBadRequest)
 		return
 	}
-	dashboard := cdc.CurrentDashboard()
+	dashboard, _ := cdc.SelectedDashboard()
 	newDashboardJson := r.PostFormValue(NewDashboardFieldName)
 
 	if len(newDashboardJson) == 0 {
@@ -88,9 +89,9 @@ func SubmitDashboardImport(w http.ResponseWriter, r *http.Request) {
 		sess.WriteError(w, err, http.StatusBadRequest)
 		return
 	}
-
-	// Notify the dashboard it has been updated so it will reload the fragment
-	ev := getDashboardPath(src.DashboardUpdatedEvent, cdc)
-	sess.SendSSE(ev, "")
-
+	// do a full reload in case title and dashboard selection changed
+	args := map[string]string{URLParamDashboardID: cdc.dashboardID}
+	dashboardPath := tputils.Substitute(src.RenderDashboardPath, args)
+	w.Header().Add("HX-Redirect", dashboardPath)
+	w.WriteHeader(http.StatusOK)
 }

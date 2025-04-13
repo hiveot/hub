@@ -10,7 +10,7 @@
 
 		{{/*	Use hx-post in form to submit on enter*/}}
 		<form tabindex="0" id="config-dashboard-form"
-		      hx-post="{{.SubmitEditDashboard}}"
+		      hx-post="{{.SubmitDashboard}}"
 		      hx-swap="none"
 		      style="overflow: hidden; display:flex;flex-direction: column"
 		      hx-on::after-request="onSubmitCompleted(event, this)"
@@ -46,7 +46,7 @@
 			</button>
       {{/* Use hx-post in button to submit on button click*/}}
 			<button type="submit"
-			        hx-post="{{.SubmitEditDashboard}}"
+			        hx-post="{{.SubmitDashboard}}"
 			        hx-include="#config-dashboard-form"
 			        hx-swap="none"
 			        hx-on::after-request="onSubmitCompleted(event, this)"
@@ -86,15 +86,9 @@
 
     // Ugly to have to do this!
     function onSubmitCompleted(ev, btn) {
-
-        // ev.preventDefault();
         ev.stopImmediatePropagation()
 		    console.log("Submitted dashboard changes")
-		    // ev.details holds the submit response
-        let details = ev.detail
-        if (details.successful) {
-            let closeEv = new Event('close-modal',{bubbles:true})
-            btn.dispatchEvent(closeEv)
-        }
+        let closeEv = new Event('close-modal',{bubbles:true})
+        btn.dispatchEvent(closeEv)
     }
 </script>

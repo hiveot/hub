@@ -346,7 +346,7 @@ class HToast extends HTMLElement {
                 mutations.forEach((mut) => {
                     if (mut.addedNodes.length > 0) {
                         let node = mut.addedNodes[0]
-                        if (node.nodeName !== "LI") {
+                        if (node.nodeName !== "LI" && node.wholeText) {
                             // console.log("child added through htmx", node)
                             // expect <type>:<id>: text
                             let parts = node.wholeText.split(":")

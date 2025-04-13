@@ -20,12 +20,12 @@ const RenderDashboardImportTemplate = "DashboardImport.gohtml"
 type DashboardPageTemplateData struct {
 	Dashboard session.DashboardModel
 	// navigation
-	DashboardUpdatedEvent            string
-	RenderConfirmDeleteDashboardPath string
-	RenderConfirmDeleteTilePath      string
-	RenderNewTilePath                string
-	SubmitDashboardLayoutPath        string
-	Background                       template.URL
+	DashboardUpdatedEvent       string
+	RenderDeleteDashboardPath   string
+	RenderConfirmDeleteTilePath string
+	RenderNewTilePath           string
+	SubmitDashboardLayoutPath   string
+	Background                  template.URL
 }
 
 // GetTileTemplateData returns empty rendering data for rendering a tile.
@@ -54,7 +54,7 @@ func RenderDashboardPage(w http.ResponseWriter, r *http.Request) {
 		slog.String("remoteAddr", r.RemoteAddr),
 	)
 	data := DashboardPageTemplateData{}
-	data.Dashboard = cdc.CurrentDashboard()
+	data.Dashboard, _ = cdc.SelectedDashboard()
 	// fixme: redirect in router
 	if data.Dashboard.ID == "" {
 		http.Redirect(w, r, "/dashboard/default", http.StatusPermanentRedirect)
@@ -63,7 +63,7 @@ func RenderDashboardPage(w http.ResponseWriter, r *http.Request) {
 	data.Background = template.URL(data.Dashboard.Background)
 
 	// dashboard paths
-	data.RenderConfirmDeleteDashboardPath = getDashboardPath(src.RenderDashboardConfirmDeletePath, cdc)
+	data.RenderDeleteDashboardPath = getDashboardPath(src.RenderDashboardDeletePath, cdc)
 	data.SubmitDashboardLayoutPath = getDashboardPath(src.PostDashboardLayoutPath, cdc)
 
 	// tile paths
@@ -112,7 +112,7 @@ func SubmitDashboardLayout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// update the dashboard with the new layout
-	dashboard := cdc.CurrentDashboard()
+	dashboard, _ := cdc.SelectedDashboard()
 	for _, tilePlacement := range proposedLayout {
 		_, found := dashboard.Tiles[tilePlacement.ID]
 		if found {

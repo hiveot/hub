@@ -1,6 +1,7 @@
 package tile
 
 import (
+	"fmt"
 	"github.com/hiveot/hub/lib/consumedthing"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging"
@@ -123,6 +124,9 @@ func RenderTile(w http.ResponseWriter, r *http.Request) {
 	sess, ctc, err := GetTileContext(r, true)
 	if err != nil {
 		sess.WriteError(w, err, http.StatusBadRequest)
+		return
+	} else if ctc.tile.ID == "" {
+		sess.WriteError(w, fmt.Errorf("RenderTile: invalid Tile ID"+ctc.tileID), http.StatusBadRequest)
 		return
 	}
 	pathArgs := map[string]string{"dashboardID": ctc.dashboardID, "tileID": ctc.tileID}
