@@ -87,8 +87,13 @@ type DashboardModel struct {
 	ID string `json:"id"`
 	// Title of the dashboard
 	Title string `json:"title"`
+
 	// Dashboard background image in base64 (if any)
-	Background string `json:"background"`
+	BackgroundEnabled bool   `json:"backgroundEnabled"`
+	BackgroundImage   string `json:"backgroundImage"` // background image
+	SourceFile        string `json:"sourceFile"`      // filename
+	SourceURL         string `json:"sourceURL"`       // URL
+	ReloadInterval    int    `json:"reloadInterval"`  // Image reload from URL
 
 	// time the dashboard was updated
 	Updated string `json:"updated"`

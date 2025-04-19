@@ -440,7 +440,7 @@ func (cl *MqttClientConnection) _parseResponse(data []byte, resp interface{}) er
 //func (cl *MqttClientConnection) _pub(topic string, payload []byte) (resp []byte, err error) {
 //	slog.Debug("SendRequest", "topic", topic)
 //
-//	ctx, cancelFn := context.WithTimeout(context.Background(), cl.BaseTimeout)
+//	ctx, cancelFn := context.WithTimeout(context.BackgroundImage(), cl.BaseTimeout)
 //	defer cancelFn()
 //	//
 //	//// FIXME! a deadlock can occur here

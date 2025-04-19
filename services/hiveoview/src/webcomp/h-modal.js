@@ -20,6 +20,9 @@
  *  @attr showclose    show the close icon button in the topright modal corner
  *  @attr shadow       show a box shadow around the content panel
  *
+ * Element events:
+ *  @event ready        event when the modal is ready
+ *
  * Element styles:
  *  --mask-background    background color of the mask
  *  --mask-opacity       transparancy of the mask 0-1
@@ -200,17 +203,11 @@ template.innerHTML = `
 /**
  * # h-modal custom web component
  * Usage:
- *   <h-modal position="top|bottom|left|right|...">
+ *   <h-modal>
  *     <div>...content... </div>
  *  </h-modal>
  *
  * @attribute show: show the dialog on initial render
- * @attribute position: position of the dialog
- *  center: center in the middle (default)
- *  top: the top half
- *  left: left half
- *  right: right half
- *  bottom: bottom half
  *
  * @slot: content of the dialog
  */
@@ -223,7 +220,6 @@ class HModal extends HTMLElement {
         // clone the template to support multiple instances
         shadowRoot.append(template.content.cloneNode(true));
         this.classList.add("shadow")
-
     }
 
     static get observedAttributes() {
@@ -259,6 +255,18 @@ class HModal extends HTMLElement {
                 ev.stopImmediatePropagation();
                 this.closeModal();
             }
+        })
+        // need to wait until the webcomponent eventloop is completed
+        setTimeout( () => {
+            // Note: for some reason this only works when using addEventListener in the app
+            // https://stackoverflow.com/questions/43061417/how-to-listen-for-custom-events-defined-web-component
+            let ev = new CustomEvent("ready", {
+                bubbles: true,
+                cancelable: false,
+                composed: true, // break out of the shadow root
+                detail: "test"
+            })
+            this.dispatchEvent(ev)
         })
     }
 

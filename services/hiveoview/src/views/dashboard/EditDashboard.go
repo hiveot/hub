@@ -9,14 +9,15 @@ import (
 	"html/template"
 	"log/slog"
 	"net/http"
+	"strconv"
 )
 
-const RenderEditDashboardTemplateFile = "RenderEditDashboard.gohtml"
+const RenderEditDashboardTemplateFile = "EditDashboard.gohtml"
 
 type RenderEditDashboardTemplateData struct {
-	Dashboard       session.DashboardModel
-	SubmitDashboard string
-	Background      template.URL // safe embedded image
+	Dashboard          session.DashboardModel
+	SubmitDashboard    string
+	BackgroundImageURL template.URL // safe embedded image
 }
 
 // RenderAddDashboard renders the dialog for adding a dashboard
@@ -33,7 +34,7 @@ func RenderAddDashboard(w http.ResponseWriter, r *http.Request) {
 		Dashboard:       newDashboard,
 		SubmitDashboard: tputils.Substitute(src.PostDashboardEditPath, pathArgs),
 	}
-	data.Background = template.URL(data.Dashboard.Background)
+	data.BackgroundImageURL = template.URL(data.Dashboard.BackgroundImage)
 	buff, err := app.RenderAppOrFragment(r, RenderEditDashboardTemplateFile, data)
 	sess.WritePage(w, buff, err)
 }
@@ -50,7 +51,11 @@ func RenderEditDashboard(w http.ResponseWriter, r *http.Request) {
 		Dashboard:       dashboard,
 		SubmitDashboard: getDashboardPath(src.PostDashboardEditPath, cdc),
 	}
-	data.Background = template.URL(data.Dashboard.Background)
+	// source-URL overrides any existing image
+	if data.Dashboard.SourceURL != "" {
+		data.Dashboard.BackgroundImage = data.Dashboard.SourceURL
+	}
+	data.BackgroundImageURL = template.URL(data.Dashboard.BackgroundImage)
 	buff, err := app.RenderAppOrFragment(r, RenderEditDashboardTemplateFile, data)
 	sess.WritePage(w, buff, err)
 }
@@ -65,7 +70,10 @@ func SubmitEditDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 	// 'title' is the form field from gohtml
 	newTitle := r.PostFormValue("title")
-	bgImg := r.PostFormValue("background")
+	sourceURL := r.PostFormValue("sourceURL")
+	reloadInterval := r.PostFormValue("reloadInterval")
+	bgEnabled := r.PostFormValue("backgroundEnabled")
+	bgStored := r.PostFormValue("backgroundStored")
 
 	slog.Info("SubmitDashboard", "SenderID", cdc.clientID,
 		"dashboardID", cdc.dashboardID)
@@ -74,7 +82,11 @@ func SubmitEditDashboard(w http.ResponseWriter, r *http.Request) {
 	dashboard, _ := cdc.SelectedDashboard()
 	dashboard.ID = cdc.dashboardID // the URL determines the ID
 	dashboard.Title = newTitle
-	dashboard.Background = bgImg
+	dashboard.BackgroundImage = bgStored
+	dashboard.BackgroundEnabled = bgEnabled == "on"
+	dashboard.SourceURL = sourceURL
+	dashboard.ReloadInterval, _ = strconv.Atoi(reloadInterval)
+
 	err = cdc.clientModel.UpdateDashboard(&dashboard)
 
 	if err != nil {

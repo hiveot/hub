@@ -60,7 +60,7 @@ func RenderDashboardPage(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/dashboard/default", http.StatusPermanentRedirect)
 	}
 	// html template requires a 'safe' image source
-	data.Background = template.URL(data.Dashboard.Background)
+	data.Background = template.URL(data.Dashboard.BackgroundImage)
 
 	// dashboard paths
 	data.RenderDeleteDashboardPath = getDashboardPath(src.RenderDashboardDeletePath, cdc)
