@@ -9,7 +9,7 @@ import (
 	"net/http"
 )
 
-const RenderDeleteDashboardTemplate = "RenderDeleteDashboard.gohtml"
+const RenderDeleteDashboardTemplate = "DeleteDashboard.gohtml"
 
 type DeleteDashboardTemplateData struct {
 	Dashboard                 session.DashboardModel

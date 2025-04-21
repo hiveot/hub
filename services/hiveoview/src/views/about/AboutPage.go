@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-const TemplateFile = "RenderAboutPage.gohtml"
+const RenderAboutTemplate = "AboutPage.gohtml"
 
 type AboutPageTemplateData struct {
 	// HiveOT version
@@ -16,7 +16,7 @@ func RenderAboutPage(w http.ResponseWriter, r *http.Request) {
 	data := &AboutPageTemplateData{
 		Version: "Early Alpha",
 	}
-	buff, err := app.RenderAppOrFragment(r, TemplateFile, data)
+	buff, err := app.RenderAppOrFragment(r, RenderAboutTemplate, data)
 	_ = err
 	buff.WriteTo(w)
 }

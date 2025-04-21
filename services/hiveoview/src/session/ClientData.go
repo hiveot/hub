@@ -6,6 +6,7 @@ import (
 	"github.com/hiveot/hub/lib/buckets"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
+	"slices"
 	"sync"
 )
 
@@ -15,7 +16,10 @@ type SessionData struct {
 	mux sync.RWMutex // mutex to protect the maps below
 
 	// client dashboard(s) - allow for serialization. do not use directly
-	Dashboards map[string]*DashboardModel `json:"dashboards"`
+	Dashboards []*DashboardModel `json:"dashboards"`
+
+	// presentation order of dashboards
+	DashboardIds []string
 
 	// storage bucket of client state
 	dataBucket buckets.IBucket
@@ -26,7 +30,10 @@ type SessionData struct {
 // DeleteDashboard removes a dashboard from the model
 func (model *SessionData) DeleteDashboard(id string) {
 	model.mux.Lock()
-	delete(model.Dashboards, id)
+	newList := slices.DeleteFunc(model.Dashboards, func(d *DashboardModel) bool {
+		return d.ID == id
+	})
+	model.Dashboards = newList
 	model.mux.Unlock()
 
 	_ = model.SaveState()
@@ -36,18 +43,21 @@ func (model *SessionData) DeleteDashboard(id string) {
 func (model *SessionData) GetDashboard(id string) (d DashboardModel, found bool) {
 	model.mux.RLock()
 	defer model.mux.RUnlock()
-	dashboard, found := model.Dashboards[id]
-	if found {
-		if dashboard.GridLayouts == nil {
-			dashboard.GridLayouts = make(map[string]string)
+	for _, dashboard := range model.Dashboards {
+		if dashboard.ID == id {
+			// recover from bad data
+			if dashboard.GridLayouts == nil {
+				dashboard.GridLayouts = make(map[string]string)
+			}
+			// in case dashboards have been newly created
+			if dashboard.Tiles == nil {
+				dashboard.Tiles = make(map[string]DashboardTile)
+			}
+			// return a copy
+			return *dashboard, true
 		}
-		// in case dashboards have been newly created
-		if dashboard.Tiles == nil {
-			dashboard.Tiles = make(map[string]DashboardTile)
-		}
-		return *dashboard, found
 	}
-	return
+	return d, false
 }
 
 // GetFirstDashboard returns the first dashboard in the map
@@ -68,20 +78,21 @@ func (model *SessionData) GetFirstDashboard() (d DashboardModel) {
 // LoadState loads the client session state containing dashboard and other model data,
 // and clear 'clientModelChanged' status
 func (model *SessionData) LoadState() error {
-	dashboards := make(map[string]*DashboardModel)
+	dashboards := make([]*DashboardModel, 0)
 
 	// load the stored view state from the state service
 	dashboardsRaw, err := model.dataBucket.Get(dashboardsStorageKey)
-	// nothing saved so use defaults
-	if err != nil {
-		defaultDashboard := NewDashboard("default", "New Dashboard")
-		dashboards["default"] = &defaultDashboard
-		err = nil
-	} else {
+	if err == nil {
 		err = jsoniter.Unmarshal(dashboardsRaw, &dashboards)
 		if err != nil {
 			err = fmt.Errorf("invalid dashboard data in store: %w", err)
 		}
+	}
+	// nothing saved so use defaults
+	if len(dashboards) == 0 {
+		defaultDashboard := NewDashboard("default", "New Dashboard")
+		dashboards = append(dashboards, &defaultDashboard)
+		err = nil
 	}
 
 	// then lock and load
@@ -105,13 +116,23 @@ func (model *SessionData) SaveState() error {
 }
 
 // UpdateDashboard adds or replaces a dashboard in the model
-func (model *SessionData) UpdateDashboard(dashboard *DashboardModel) error {
-	if dashboard.ID == "" {
-		slog.Error("UpdateDashboard: missing ID", "title", dashboard.Title)
+func (model *SessionData) UpdateDashboard(d *DashboardModel) error {
+	if d.ID == "" {
+		slog.Error("UpdateDashboard: missing ID", "title", d.Title)
 		return errors.New("missing dashboard ID")
 	}
+	found := false
 	model.mux.Lock()
-	model.Dashboards[dashboard.ID] = dashboard
+	for i, dashboard := range model.Dashboards {
+		if dashboard.ID == d.ID {
+			model.Dashboards[i] = d
+			found = true
+			break
+		}
+	}
+	if !found {
+		model.Dashboards = append(model.Dashboards, d)
+	}
 	model.mux.Unlock()
 	_ = model.SaveState()
 	return nil
@@ -142,7 +163,7 @@ func NewClientDataModel(dataBucket buckets.IBucket) *SessionData {
 	model := SessionData{
 		mux:        sync.RWMutex{},
 		dataBucket: dataBucket,
-		Dashboards: make(map[string]*DashboardModel),
+		Dashboards: make([]*DashboardModel, 0),
 	}
 	_ = model.LoadState()
 	return &model

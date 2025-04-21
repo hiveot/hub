@@ -25,11 +25,27 @@
 				</label>
 			</div>
 
+        {{/*Lock the dashboard */}}
+			<label>
+				<input type="checkbox" name="locked"
+               {{if .Dashboard.Locked}}checked{{end}}
+				>
+				Lock the dashboard
+			</label>
+
+        {{/*Float vs reflow grid items*/}}
+			<label>
+				<input type="checkbox" name="float"
+               {{if .Dashboard.Grid.Float}}checked{{end}}
+				>
+				Manual place tiles
+			</label>
+
         {{/*Enable/disable background image*/}}
 			<label>
 				<input id="background-enabled" type="checkbox" name="backgroundEnabled"
                {{if .Dashboard.BackgroundEnabled}}checked{{end}}
-							 >
+				>
 				Background Image
 			</label>
 
@@ -37,17 +53,11 @@
 			<fieldset id="bgEnabledSection" class="h-col" {{if not .Dashboard.BackgroundEnabled}} disabled {{end}}>
 				<fieldset role="group">
 					<label>URL
-						<input id="sourceURL" type="url" name="sourceURL" placeholder="Enter a source image URL"
-						       value="{{.Dashboard.SourceURL}}">
+						<input id="background-url" type="url" name="backgroundURL" placeholder="Enter a background image URL"
+						       value="{{.Dashboard.BackgroundURL}}">
 					</label>
 				</fieldset>
 
-				<fieldset role="group">
-					<label>Reload interval when using URL
-						<input type="number" name="reloadInterval" placeholder="Reload interval in seconds"
-						       value="{{.Dashboard.ReloadInterval}}">
-					</label>
-				</fieldset>
 				or
           {{/* Upload a file*/}}
 				<fieldset role="group">
@@ -59,7 +69,7 @@
 
           {{/*Hidden input containing the actual background for form submission
 			 This is set to base64 image or URL. Unlike img this can be empty */}}
-				<input id="background-stored" name="backgroundStored" type="hidden"
+				<input id="background-image" name="backgroundImage" type="hidden"
 				       value="{{.Dashboard.BackgroundImage}}">
 
           {{/* Current selected image for presentation only */}}
@@ -67,7 +77,7 @@
           {{/* Without object-fit the image doesnt preserve aspect ratio*/}}
 				<img type="image" id="background-shown" alt="background image"
 				     src="{{.BackgroundImageURL}}"
-				     style="object-fit:cover;overflow:hidden; max-height: 50vh; width:50vw"
+				     style="object-fit:cover;  height: 20vh;max-height: 50vh; "
 				/>
 			</fieldset>
 		</form>
@@ -90,72 +100,118 @@
 </h-modal>
 
 
-<script >
+<script>
 
-		console.log("editDashboard swapped in")
+    console.log("editDashboard swapped in")
 
-		// enable/disable the background section when the 'Background Image' checkbox is toggled
-		document.getElementById("background-enabled").addEventListener("change", (ev)=>{
-            let bgSection = document.getElementById("bgEnabledSection")
-            bgSection.disabled = !ev.target.checked
-             console.log("background-enabled triggered")
-		})
-
-    // const noImage = '<svg width="800px" height="800px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M7.828 5l-1-1H22v15.172l-1-1v-.69l-3.116-3.117-.395.296-.714-.714.854-.64a.503.503 0 0 1 .657.046L21 16.067V5zM3 20v-.519l2.947-2.947a1.506 1.506 0 0 0 .677.163 1.403 1.403 0 0 0 .997-.415l2.916-2.916-.706-.707-2.916 2.916a.474.474 0 0 1-.678-.048.503.503 0 0 0-.704.007L3 18.067V5.828l-1-1V21h16.172l-1-1zM17 8.5A1.5 1.5 0 1 1 15.5 7 1.5 1.5 0 0 1 17 8.5zm-1 0a.5.5 0 1 0-.5.5.5.5 0 0 0 .5-.5zm5.646 13.854l.707-.707-20-20-.707.707z"/><path fill="none" d="M0 0h24v24H0z"/></svg>'
-
-    // when the edit dialog is loaded, reload the image from URL and update the stored image
+    // Listen for the editor ready event and setup the inputs
     document.getElementById("editDashModal")
         .addEventListener('ready', () => {
-            let bgStored = document.getElementById("background-stored")
-            let bgShown = document.getElementById("background-shown");
-            let sourceURL = document.getElementById("sourceURL");
-            // console.log("editDashModal is ready. url=", imageShown.src)
-            bgShown.addEventListener('error', () => {
-                bgShown.alt = "Failed loading " + bgShown.src
-                console.error("error: load image error. source:", bgShown.src)
-            })
-
-            // recover load the image source from URL if background differs
-            // this means something went wrong
-            if (sourceURL.value && sourceURL.value !== bgShown.src) {
-                debugger
-                bgShown.src = sourceURL.value
-            }
-
+            setup()
         })
 
+    // Listen for the background enable/disable input toggle and enable or diable the background image
+    document.getElementById("background-enabled")
+        .addEventListener("change", (ev) => {
+            if (ev.target.checked) {
+                enableBackground()
+            } else {
+                disableBackground()
+            }
+        })
+
+    // Listen for the URL input changes and update the image
+    document.getElementById("background-url")
+        .addEventListener('focusout', (ev) => {
+            let backgroundURL = ev.target.value
+            if (backgroundURL !== "") {
+                let bgImageEl = document.getElementById("background-image")
+                let bgShownEl = document.getElementById("background-shown");
+                bgImageEl.value = backgroundURL
+                bgShownEl.src = backgroundURL
+            }
+        })
+
+    // Clear the background image.
+    // This disables the background input section and disables the background image
     function clearBackground() {
         // elements to update
-        let bgStored = document.getElementById("background-stored")
-        let bgShown = document.getElementById("background-shown");
+        let bgImageEl = document.getElementById("background-image")
+        let bgEnabledEl = document.getElementById("background-enabled")
 
-        // fixme: an image should only be shown when there is a file or URL to show
-        // another reason to dislike html. Can't clear an img.
-        const noImage = '<svg width="800px" height="800px" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M7.828 5l-1-1H22v15.172l-1-1v-.69l-3.116-3.117-.395.296-.714-.714.854-.64a.503.503 0 0 1 .657.046L21 16.067V5zM3 20v-.519l2.947-2.947a1.506 1.506 0 0 0 .677.163 1.403 1.403 0 0 0 .997-.415l2.916-2.916-.706-.707-2.916 2.916a.474.474 0 0 1-.678-.048.503.503 0 0 0-.704.007L3 18.067V5.828l-1-1V21h16.172l-1-1zM17 8.5A1.5 1.5 0 1 1 15.5 7 1.5 1.5 0 0 1 17 8.5zm-1 0a.5.5 0 1 0-.5.5.5.5 0 0 0 .5-.5zm5.646 13.854l.707-.707-20-20-.707.707z"/><path fill="none" d="M0 0h24v24H0z"/></svg>'
-				bgStored.value = undefined
-        bgShown.src = noImage
+        // do not clear the URL input to allow recovery of the URL by toggling enable
+        bgImageEl.value = undefined
+        bgEnabledEl.removeAttribute("checked")
+        disableBackground()
     }
+
+    // Disable the background settings
+    // This disables the background input section and hides any image.
+    function disableBackground() {
+        console.log("disableBackground")
+        let bgSectionEl = document.getElementById("bgEnabledSection")
+        let bgShownEl = document.getElementById("background-shown");
+        bgSectionEl.disabled = true
+        bgShownEl.hidden = true
+    }
+
+    // Enable the background settings
+    // This enables the background input section, show the stored background-image
+    // in the shown background-shown image.
+    // If a URL is set, use it for the shown image.
+    function enableBackground() {
+        console.log("enableBackground")
+        let bgSectionEl = document.getElementById("bgEnabledSection")
+        let bgShownEl = document.getElementById("background-shown");
+        let bgImageEl = document.getElementById("background-image")
+        let bgURLEl = document.getElementById("background-url");
+        bgSectionEl.disabled = false
+        bgShownEl.hidden = false
+        bgShownEl.src = bgImageEl.value
+        if (bgURLEl.value) {
+            bgShownEl.src = bgURLEl.value
+        }
+    }
+
+    // Setup the edit dialog with background image
+    // This will log image loading errors to the console
+    function setup() {
+        let bgEnabledEl = document.getElementById("background-enabled")
+        if (bgEnabledEl.checked) {
+            enableBackground()
+        } else {
+            disableBackground()
+        }
+        // show an error in the console if no image can be shown
+        let bgShownEl = document.getElementById("background-shown");
+        bgShownEl.addEventListener('error', () => {
+            bgShownEl.alt = "Failed loading " + bgShownEl.src
+            console.error("error: load image error. source:", bgShownEl.src)
+        })
+
+    }
+
 
     function getImage() {
-        let shownImage = document.getElementById("background-shown");
-        return shownImage.src
+        let bgShownEl = document.getElementById("background-shown");
+        return bgShownEl.src
     }
 
-    // upload an image file and embed it in base64 and clear the URL
-    // todo: make a web component for this
+    // upload an image file and embed it as base64 and clear the URL
+    // On completion both the shown and image element hold the base64 image.
     function handleSelectFile(input) {
         if (input.files.length === 0) {
             return
         }
-        let bgStored = document.getElementById("background-stored")
-        let bgShown = document.getElementById("background-shown");
-        let sourceURL = document.getElementById("sourceURL");
+        let bgImageEl = document.getElementById("background-image")
+        let bgShownEl = document.getElementById("background-shown");
+        let bgURLEl = document.getElementById("background-url");
         const selectedFile = input.files[0]
         let reader = new FileReader();
         reader.onloadend = function () {
-            bgShown.src = reader.result
-            bgStored.value = reader.result
-            sourceURL.value = ""
+            bgShownEl.src = reader.result
+            bgImageEl.value = reader.result
+            bgURLEl.value = ""
         };
         reader.readAsDataURL(selectedFile)
     }

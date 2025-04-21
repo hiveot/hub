@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-const EditTileTemplate = "RenderEditTile.gohtml"
+const RenderEditTileTemplate = "EditTile.gohtml"
 
 type EditTileTemplateData struct {
 	Dashboard session.DashboardModel
@@ -85,7 +85,7 @@ func RenderEditTile(w http.ResponseWriter, r *http.Request) {
 		SubmitEditTilePath:          getTilePath(src.PostTileEditPath, ctc),
 		ctDir:                       ctDir,
 	}
-	buff, err := app.RenderAppOrFragment(r, EditTileTemplate, data)
+	buff, err := app.RenderAppOrFragment(r, RenderEditTileTemplate, data)
 	sess.WritePage(w, buff, err)
 }
 

@@ -8,7 +8,7 @@ import (
 	"net/http"
 )
 
-const AppTemplate = "app.gohtml"
+const RenderAppTemplate = "App.gohtml"
 
 // RenderApp is used to render the full app view without a specific page
 func RenderApp(w http.ResponseWriter, r *http.Request) {
@@ -34,10 +34,10 @@ func RenderAppPages(r *http.Request) (buff *bytes.Buffer, err error) {
 		cs := ctxClientSession.(*session.WebClientSession)
 		cid = cs.GetCID()
 	}
-	// This Cid field must match the one in app.gohtml hx-headers=...
-	// app.gohtml:6  sse-connect="/websse?cid={{.Cid}}"
+	// This Cid field must match the one in App.gohtml hx-headers=...
+	// App.gohtml:6  sse-connect="/websse?cid={{.Cid}}"
 	data := map[string]string{"Cid": cid}
-	return views.TM.RenderFull(AppTemplate, data)
+	return views.TM.RenderFull(RenderAppTemplate, data)
 }
 
 // RenderAppOrFragment renders the page fragment, or the full app html frame
@@ -51,11 +51,11 @@ func RenderAppPages(r *http.Request) (buff *bytes.Buffer, err error) {
 // the browser to re-render the whole page. After this each fragement will
 // rerender itself with the data once they are shown.
 //
-// Note: app.gohtml is designed to select/render the main page fragments
+// Note: App.gohtml is designed to select/render the main page fragments
 // based on the url target:
 //
 //	<div id="directory" class="hidden" displayIfTarget="/directory">
-//	      {{template "directory.gohtml" .}}
+//	      {{template "Directory.gohtml" .}}
 //	</div>
 //
 // If the URL matches the path prefix in displayIfTarget, the fragment will

@@ -19,7 +19,7 @@ import (
 	"time"
 )
 
-const TemplateFile = "RenderThingDetails.gohtml"
+const RenderThingDetailsPageTemplate = "ThingDetailsPage.gohtml"
 
 type ThingDetailsTemplateData struct {
 	AgentID    string
@@ -164,6 +164,6 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	// full render or fragment render
-	buff, err := app.RenderAppOrFragment(r, TemplateFile, thingData)
+	buff, err := app.RenderAppOrFragment(r, RenderThingDetailsPageTemplate, thingData)
 	sess.WritePage(w, buff, err)
 }

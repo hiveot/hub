@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-const ConfirmDeleteTileTemplate = "RenderConfirmDeleteTile.gohtml"
+const RenderConfirmDeleteTileTemplate = "DeleteTile.gohtml"
 
 type ConfirmDeleteTileTemplateData struct {
 	Dashboard            session.DashboardModel
@@ -29,7 +29,7 @@ func RenderConfirmDeleteTile(w http.ResponseWriter, r *http.Request) {
 		Tile:                 ctc.tile,
 		SubmitDeleteTilePath: getTilePath(src.PostTileDeletePath, ctc),
 	}
-	buff, err := app.RenderAppOrFragment(r, ConfirmDeleteTileTemplate, data)
+	buff, err := app.RenderAppOrFragment(r, RenderConfirmDeleteTileTemplate, data)
 	sess.WritePage(w, buff, err)
 }
 

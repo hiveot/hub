@@ -63,7 +63,7 @@ type DashboardTile struct {
 	Sources []TileSource `json:"sources"`
 }
 
-// RGBA returns the rgba value of the tile
+// RGBA returns the background rgba value of the tile
 func (t DashboardTile) GetRGBA() string {
 	// color has format #aabbcc
 	// rgba has the format rgba(aa,bb,cc, tp)
@@ -81,6 +81,14 @@ type TileLayout struct {
 	H  int    `json:"h,omitempty"`
 }
 
+// GridOptions for grid behavior
+type GridOptions struct {
+	// animate changes to tile reflow on resize/start
+	Animate bool `json:"animate"`
+	// Float enables fully manual positioning of tiles instead of automatic
+	Float bool `json:"float"`
+}
+
 // DashboardModel containing dashboard properties and its tiles
 type DashboardModel struct {
 	// ID of the dashboard page
@@ -92,13 +100,16 @@ type DashboardModel struct {
 	BackgroundEnabled bool   `json:"backgroundEnabled"`
 	BackgroundImage   string `json:"backgroundImage"` // background image
 	SourceFile        string `json:"sourceFile"`      // filename
-	SourceURL         string `json:"sourceURL"`       // URL
-	ReloadInterval    int    `json:"reloadInterval"`  // Image reload from URL
+	BackgroundURL     string `json:"backgroundURL"`   // URL
+	//ReloadInterval    int    `json:"reloadInterval"`  // Image reload from URL
 
 	// time the dashboard was updated
 	Updated string `json:"updated"`
-	// The dashboard is locked and cannot be edited
+	// The dashboard is locked and tiles cannot be edited or moved
 	Locked bool `json:"locked"`
+
+	// options for grid behavior
+	Grid GridOptions `json:"grid"`
 
 	// Tiles in this dashboard
 	Tiles map[string]DashboardTile `json:"tiles"`

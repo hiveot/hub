@@ -10,7 +10,7 @@
 
 		{{/* The application header bar with menu */}}
 		<div id="appHead" class="app-head" hx-boost="on">
-	      {{template "RenderAppHead.gohtml" .}}
+	      {{template "AppHead.gohtml" .}}
 		</div>
 
 	<!-- These pages are updated using htmx fragments.
@@ -18,22 +18,22 @@
 	 -->
 	<div class="app-pages" tabindex="1" style="outline: none">
 		<div id="statusPage" class="hidden" displayIfTarget="/status">
-        {{template "status.gohtml" .}}
+        {{template "StatusPage.gohtml" .}}
 		</div>
 		<div id="dashboardPage" class="hidden" displayIfTarget="/dashboard" style="height:100%">
         {{template "DashboardPage.gohtml" .}}
 		</div>
 		<div id="directoryPage" class="hidden" displayIfTarget="/directory">
-        {{template "RenderDirectory.gohtml" .}}
+        {{template "DirectoryPage.gohtml" .}}
 		</div>
 		<div id="aboutPage" class="hidden" displayIfTarget="/about">
-        {{template "RenderAboutPage.gohtml" .}}
+        {{template "AboutPage.gohtml" .}}
 		</div>
 		<div id="detailsPage" class="hidden" displayIfTarget="/thing" style="height:100%">
-        {{template "RenderThingDetails.gohtml" .}}
+        {{template "ThingDetailsPage.gohtml" .}}
 		</div>
 		<div id="historyPage" class="hidden" displayIfTarget="/value" style="height:100%">
-        {{template "RenderHistoryPage.gohtml" .}}
+        {{template "HistoryPage.gohtml" .}}
 		</div>
 	</div>
 

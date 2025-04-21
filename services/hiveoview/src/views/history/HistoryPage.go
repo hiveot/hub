@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const RenderHistoryTemplate = "RenderHistoryPage.gohtml"
+const RenderHistoryTemplate = "HistoryPage.gohtml"
 
 // RenderHistoryPage renders a table with historical event values
 // URL parameters:

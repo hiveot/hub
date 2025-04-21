@@ -3,13 +3,13 @@ package directory
 import (
 	"bytes"
 	"fmt"
-	session2 "github.com/hiveot/hub/services/hiveoview/src/session"
+	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"log/slog"
 	"net/http"
 )
 
-const DirectoryTemplate = "RenderDirectory.gohtml"
+const RenderDirectoryPageTemplate = "DirectoryPage.gohtml"
 
 //type DirGroup struct {
 //	AgentID string
@@ -35,7 +35,7 @@ func RenderDirectory(w http.ResponseWriter, r *http.Request) {
 	var buff *bytes.Buffer
 
 	// 1: get session
-	_, sess, err := session2.GetSessionFromContext(r)
+	_, sess, err := session.GetSessionFromContext(r)
 	if err != nil {
 		sess.WriteError(w, err, 0)
 		return
@@ -46,7 +46,7 @@ func RenderDirectory(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		err = fmt.Errorf("unable to load directory: %w", err)
 		slog.Error(err.Error())
-		sess.SendNotify(session2.NotifyError, "", err.Error())
+		sess.SendNotify(session.NotifyError, "", err.Error())
 	}
 
 	agentGroups := GroupByAgent(tdMap)
@@ -55,7 +55,7 @@ func RenderDirectory(w http.ResponseWriter, r *http.Request) {
 
 	if err == nil {
 		// full render or fragment render
-		buff, err = app.RenderAppOrFragment(r, DirectoryTemplate, data)
+		buff, err = app.RenderAppOrFragment(r, RenderDirectoryPageTemplate, data)
 	}
 	sess.WritePage(w, buff, err)
 }

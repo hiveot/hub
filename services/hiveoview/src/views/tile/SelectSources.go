@@ -10,7 +10,7 @@ import (
 	"net/http"
 )
 
-const RenderSelectSourceTemplateFile = "RenderSelectSources.gohtml"
+const RenderSelectSourceTemplate = "SelectSources.gohtml"
 
 type RenderSelectSourcesTemplateData struct {
 	ctDir       *consumedthing.ConsumedThingsDirectory
@@ -101,7 +101,7 @@ func RenderSelectSources(w http.ResponseWriter, r *http.Request) {
 		ctDir: ctDir,
 	}
 	data.AgentThings = directory.GroupByAgent(tds)
-	buff, err := app.RenderAppOrFragment(r, RenderSelectSourceTemplateFile, data)
+	buff, err := app.RenderAppOrFragment(r, RenderSelectSourceTemplate, data)
 
 	// TODO: TBD Retarget to #modalLevel2 so the gohtml doesn't need to know
 	sess.WritePage(w, buff, err)

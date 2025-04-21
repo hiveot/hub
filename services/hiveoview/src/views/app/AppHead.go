@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-const AppHeadTemplate = "RenderAppHead.gohtml"
+const RenderAppHeadTemplate = "AppHead.gohtml"
 
 //const AppMenuTemplate = "appMenu.gohtml"
 //const DashboardMenuTemplate = "dashboardMenu.gohtml"
@@ -74,6 +74,6 @@ func RenderAppHead(w http.ResponseWriter, r *http.Request) {
 		}
 		data.AppHeadDashboards = append(data.AppHeadDashboards, dashboardData)
 	}
-	buff, err := RenderAppOrFragment(r, AppHeadTemplate, data)
+	buff, err := RenderAppOrFragment(r, RenderAppHeadTemplate, data)
 	sess.WritePage(w, buff, err)
 }

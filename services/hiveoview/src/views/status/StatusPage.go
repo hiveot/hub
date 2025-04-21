@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-const TemplateFile = "status.gohtml"
+const RenderStatusPageTemplate = "StatusPage.gohtml"
 
 // RenderStatus renders the client status page
 func RenderStatus(w http.ResponseWriter, r *http.Request) {
@@ -21,7 +21,7 @@ func RenderStatus(w http.ResponseWriter, r *http.Request) {
 
 	// full render or fragment render
 	if err == nil {
-		buff, err = app2.RenderAppOrFragment(r, TemplateFile, data)
+		buff, err = app2.RenderAppOrFragment(r, RenderStatusPageTemplate, data)
 	}
 	sess.WritePage(w, buff, err)
 }

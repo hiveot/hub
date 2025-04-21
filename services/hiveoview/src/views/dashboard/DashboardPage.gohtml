@@ -3,389 +3,443 @@
 
 {{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/dashboard.DashboardPageTemplateData*/ -}}
 {{if not .Dashboard}}
-<div  hx-trigger="intersect once"
-      hx-get=""
-      hx-target="#dashboardPage"
->
-    <p>reloading page fragment...</p>
-    <h-loading></h-loading>
-</div>
+	<div hx-trigger="intersect once"
+	     hx-get=""
+	     hx-target="#dashboardPage"
+	>
+		<p>reloading page fragment...</p>
+		<h-loading></h-loading>
+	</div>
 
 {{else}}
 
 
-{{/*Show the dashboard. Reload when tiles are deleted*/}}
-<main class="dashboard"
-      hx-get=""
-      hx-trigger="sse:{{.DashboardUpdatedEvent}}, refreshPage from:body"
-      hx-target="#dashboardPage"
->
-    {{/* Add a div to ensure filling the screen size*/}}
-    <div style="flex-grow:1">
-        {{/* change event: When layout changes push the new layout to the server*/}}
-        <div class="grid-stack"
-             hx-trigger="change"
-             hx-post="{{.SubmitDashboardLayoutPath}}"
-             hx-vals='js:{layout: getLayout(), size:getLayoutSize()}'
-             hx-swap="none"
-        >
+    {{/*Show the dashboard. Reload when tiles are deleted*/}}
+		<main id="current-dashboard" class="dashboard"
+		      hx-get=""
+		      hx-trigger="sse:{{.DashboardUpdatedEvent}}, refreshPage from:body"
+		      hx-target="#dashboardPage"
+		>
+        {{/* Add a div to ensure filling the screen size*/}}
+			<div style="flex-grow:1">
+          {{/* change event: When layout changes push the new layout to the server*/}}
+				<div class="grid-stack"
+				     hx-trigger="change"
+				     hx-post="{{.SubmitDashboardLayoutPath}}"
+				     hx-vals='js:{layout: getLayout(), size:getLayoutSize()}'
+				     hx-swap="none"
+				>
             {{range $k,$v := .Dashboard.Tiles }}
-            <div class="grid-stack-item "gs-id="{{$k}}"
-                 gs-min-h="4"
-                 gs-min-w="2"
-                 gs-size-to-content="false">
-                <div class="grid-stack-item-content" style="overflow:unset">
+							<div class="grid-stack-item " gs-id="{{$k}}"
+							     gs-min-h="4"
+							     gs-min-w="2"
+							     gs-size-to-content="false">
+								<div class="grid-stack-item-content" style="overflow:unset">
                     {{template "RenderTile.gohtml" $.GetTileTemplateData $k}}
-                </div>
-            </div>
+								</div>
+							</div>
             {{end}}
 
-        </div>
-    </div>
-</main>
+				</div>
+			</div>
+		</main>
 
-<script>
-    var grid;
-    var options;
-    startGridStack();
+		<script>
+        var grid;
+        var options;
+        startGridStack();
 
-    function startGridStack() {
-        // debugger;
-        options = { // put in gridstack options here
-            animate:true,
-            cellHeight: 30,     // fixed row height to avoid scaling content
-            column:24,          // support 24 columns (needs the CSS at bottom)
-            columnOpts: {
-             // layout: "none", // we reload the previously saved layout for the size
-             // layout: "moveResize",
-             //  breakpointForWindow:true,  // not sure what this does window vs grid size?
-             // using breakpoints changes with the layout after resizing such it doesn't restore to old placement
-                // breakpoints: [{w: 300, c: 3}, {w: 600, c: 6}, {w: 800, c: 8}, {w:1200, c:12}, {w:4096, c:24}]
-                // breakpoints: [{w: 1024, c: 12},  {w:4096, c:24}]
-            },
-            draggable: {
-                // handle: ".drag-target",
-                cancel: ".no-drag"
-            },
-            margin:"4px",       // gap between widgets
-            nomove:true,
-            float: true,       // false=cells move to the top (false)
-            // custom storage to detect resize
-            lastSize: "",
-            layouts:  {{.Dashboard.GridLayouts}},
-            minRow: 3,
-            // local store with latest layouts without loading back from the
-            staticGrid:false,   // allow resize in edit mode
-        };
-        grid = GridStack.init(options)//.load(serializedData);
+            // initialize the dashboard using gridstack
+        function startGridStack() {
+            // debugger;
+            options = { // put in gridstack options here
+                animate: {{.Dashboard.GridLayouts.Animate}},
+                cellHeight: 30,     // fixed row height to avoid scaling content
+                column: 24,          // support 24 columns (needs the CSS at bottom)
+                columnOpts: {
+                    // layout: "none", // we reload the previously saved layout for the size
+                    // layout: "moveResize",
+                    //  breakpointForWindow:true,  // not sure what this does window vs grid size?
+                    // using breakpoints changes with the layout after resizing such it doesn't restore to old placement
+                    // breakpoints: [{w: 300, c: 1}, {w: 500, c: 2}, {w: 800, c: 6}, {w: 1024, c: 12},  {w:4096, c:24}]
+                },
+                draggable: {
+                    // handle: ".drag-target",
+                    cancel: ".no-drag"
+                },
+                float: {{.Dashboard.Grid.Float}},       // false=cells move to the top (false)
+                // custom storage to detect resize
+                lastSize: "",
+                layouts:  {{.Dashboard.GridLayouts}},
+                lazyLoad: false,
+                margin: "4px",       // gap between widgets
+                minRow: 3,
+                //  disable element moving
+                disableDrag: {{.Dashboard.Locked}},
+                // disable element resizing
+                disableResize: {{.Dashboard.Locked}},
+                // local store with latest layouts without loading back from the
+                staticGrid: false,   // allow resize in edit mode
+            };
+            grid = GridStack.init(options)//.load(serializedData);
 
-        // htmx posts layout changes to the server but we also need these client side
-        grid.on("change", function() {
-            console.log("grid.onchange")
-            let newLayout = getLayout()
-            let size = getLayoutSize()
-            options.layouts[size] = newLayout
-        })
+            // htmx posts layout changes to the server but we also need these client side
+            grid.on("change", function () {
+                console.log("grid.onchange")
+                let newLayout = getLayout()
+                let size = getLayoutSize()
+                options.layouts[size] = newLayout
+            })
 
-        // listen for screen size changes to reload a new layout
-        window.onresize = function() {
-            let size = getLayoutSize()
-            console.info("onresize. size=",size)
-            if (size !== options.lastSize) {
-                options.lastSize = size
-                loadGridLayout(grid, options.layouts)
-            }
-        }
-        loadGridLayout(grid, options.layouts)
-    }
-
-
-    // Return the screen size name "sm, md, lg, xl"
-    // used to store a separate layout per size
-    function getLayoutSize() {
-        let size = "xl"
-        let w = window.innerWidth;
-        if (w < 600) {
-            size = "sm"
-        } else if (w < 1024) {
-            size = "md"
-        } else if (w < 1560) {
-            size = "lg"
-        }
-        return size
-    }
-
-    // load the layout for the current window size into the grid.
-    function loadGridLayout(grid,layouts) {
-
-        {{if .Dashboard.GridLayouts}}
-        // TODO: reload the layout from the server to avoid two devices with
-        //  different size overwriting each other.
-        //  Alteratively, save only the current size in post.
-        let size = getLayoutSize()
-
-        if (layouts) {
-            let layoutJSON = layouts[size]
-            if (!layoutJSON) {
-                console.log("No layout for size "+size+". Keeping current layout")
-            } else {
-                let layout = JSON.parse(layoutJSON)
-                if (layout) {
-                    grid.load(layout, false)
+            // listen for screen size changes to reload a new layout
+            window.onresize = function () {
+                let size = getLayoutSize()
+                console.info("onresize. size=", size)
+                if (size !== options.lastSize) {
+                    options.lastSize = size
+                    loadGridLayout(grid, options.layouts)
                 }
             }
+            loadGridLayout(grid, options.layouts)
         }
-        // console.log("loadLayout size=", size)
-        {{end}}
-    }
 
-    // return the current layout as used by the grid.
-    function getLayout() {
-        let size = getLayoutSize()
-        // console.info("getLayout: size=",size)
-
-        let dashData = grid.save(saveContent=false)
-        if (dashData) {
-            return JSON.stringify(dashData)
+        // Return the screen size name "sm, md, lg, xl"
+        // used to store a separate layout per size
+        function getLayoutSize() {
+            let size = "xl"
+            let w = window.innerWidth;
+            if (w < 600) {
+                size = "sm"
+            } else if (w < 1024) {
+                size = "md"
+            } else if (w < 1560) {
+                size = "lg"
+            }
+            return size
         }
-        return ""
-    }
-    function update() {
-        grid.update();
-    }
 
-</script>
+        // load the layout for the current window size into the grid.
+        function loadGridLayout(grid, layouts) {
 
-<style>
-    .dashboard {
-        width: 100%;
-        height: 100%;
-        overflow: auto;
-        display: flex;
-        flex-direction: column;
-        padding-left: 0;
-        padding-right:0;
-        /*padding-left: var(--pico-spacing);*/
-        /*padding-right: var(--pico-spacing);*/
-        /*background-color: var(--pico-background-color);*/
+            {{if .Dashboard.GridLayouts}}
+            // TODO: reload the layout from the server to avoid two devices with
+            //  different size overwriting each other.
+            //  Alteratively, save only the current size in post.
+            let size = getLayoutSize()
+
+            if (layouts) {
+                let layoutJSON = layouts[size]
+                if (!layoutJSON) {
+                    console.log("No layout for size " + size + ". Keeping current layout")
+                } else {
+                    let layout = JSON.parse(layoutJSON)
+                    if (layout) {
+                        grid.load(layout, false)
+                    }
+                }
+            }
+            // console.log("loadLayout size=", size)
+            {{end}}
+        }
+
+        // return the current layout as used by the grid.
+        function getLayout() {
+            let size = getLayoutSize()
+            // console.info("getLayout: size=",size)
+
+            let dashData = grid.save(saveContent = false)
+            if (dashData) {
+                return JSON.stringify(dashData)
+            }
+            return ""
+        }
+
+        function update() {
+            grid.update();
+        }
+
+		</script>
+
+		<style>
+        .dashboard {
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            display: flex;
+            flex-direction: column;
+            padding-left: 0;
+            padding-right: 0;
+            /*padding-left: var(--pico-spacing);*/
+            /*padding-right: var(--pico-spacing);*/
+            /*background-color: var(--pico-background-color);*/
 
         {{if .Background}}
             background-image: url({{.Background}});
             background-position: center;
-        background-size: cover;
+            background-size: cover;
         {{end}}
-    }
-    .dashboard-background {
-        position: absolute;
-        /*object-fit: cover;*/
-    }
-    .grid-stack-item {
-    }
-    .grid-stack-item-content {
+        }
 
-        /*Allow overflow for menu*/
-        overflow: unset;
+        .grid-stack-item {
+        }
 
-        display:flex;
-        flex-direction:column;
-        border-radius: var(--pico-card-border-radius);
-    }
-    /*fix: resize handle should not appear in popup dialog*/
-    .ui-resizable-handle {
-        z-index:6 !important;
-    }
+        .grid-stack-item-content {
 
-    /*Dashboard tile styles */
-    .tile-panel {
-        display:flex;
-        flex-direction:column;
-        height:100%;
-        border: var(--pico-card-border);
-        border-radius: var(--pico-card-border-radius);
-        padding:0;
-        margin:0;
-        /*z-index:1;*/
-    }
-    /* tile-header is defined in dashboard page as it is shared amongst all tiles */
-    /* remove section header bunch of padding/margin offsets
-     * this is used by RenderTile.gohtml
-     */
-    .tile-header {
-        display: flex;
-        flex-direction: row;
-        font-size: 1.1em;
-        min-height: 20px;
-        /*header top corner must match the panel radius*/
-        border-top-left-radius: 8px;
-        border-top-right-radius: 8px;
-        padding: 6px; /* reduce padding*/
-        align-items: center;
-        background-color: var(--pico-header-background-color);
-        border-bottom: var(--pico-card-border);
-    }
-    /* tile-content is defined in dashboard page as it is shared amongst all tiles */
-    .tile-content{
-        flex-grow:1;
-        background-color: var(--pico-card-background-color);
-        border-bottom-left-radius: 8px;
-        border-bottom-right-radius: 8px;
-    }
-    /* a table in a tile is full height and has border radius matching the tile */
-    .tile-content table {
-        margin: 0;
-        height: 100%;
-    }
-    .tile-content tr:last-child td:first-child {
-        border-bottom-left-radius: var(--pico-card-border-radius);
-    }
-    .tile-content tr:last-child td:last-child {
-        border-bottom-right-radius: var(--pico-card-border-radius);
-    }
+            /*Allow overflow for menu*/
+            overflow: unset;
+
+            display: flex;
+            flex-direction: column;
+            border-radius: var(--pico-card-border-radius);
+        }
+
+        /*fix: resize handle should not appear in popup dialog*/
+        .ui-resizable-handle {
+            z-index: 6 !important;
+        }
+
+        /*Dashboard tile styles */
+        .tile-panel {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            border: var(--pico-card-border);
+            border-radius: var(--pico-card-border-radius);
+            padding: 0;
+            margin: 0;
+            /*z-index:1;*/
+        }
+
+        /* tile-header is defined in dashboard page as it is shared amongst all tiles */
+        /* remove section header bunch of padding/margin offsets
+				 * this is used by RenderTile.gohtml
+				 */
+        .tile-header {
+            display: flex;
+            flex-direction: row;
+            font-size: 1.1em;
+            min-height: 20px;
+            /*header top corner must match the panel radius*/
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+            padding: 6px; /* reduce padding*/
+            align-items: center;
+            background-color: var(--pico-header-background-color);
+            border-bottom: var(--pico-card-border);
+        }
+
+        /* tile-content is defined in dashboard page as it is shared amongst all tiles */
+        .tile-content {
+            flex-grow: 1;
+            background-color: var(--pico-card-background-color);
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
+        }
+
+        /* a table in a tile is full height and has border radius matching the tile */
+        .tile-content table {
+            margin: 0;
+            height: 100%;
+        }
+
+        .tile-content tr:last-child td:first-child {
+            border-bottom-left-radius: var(--pico-card-border-radius);
+        }
+
+        .tile-content tr:last-child td:last-child {
+            border-bottom-right-radius: var(--pico-card-border-radius);
+        }
 
 
-    /* support for 24 columns instead of 12 */
-    .gs-24 > .grid-stack-item {
-        width: 4.167%;
-    }
-    .gs-24 > .grid-stack-item[gs-x="1"] {
-        left: 4.167%;
-    }
-    .gs-24 > .grid-stack-item[gs-w="2"] {
-        width: 8.333%;
-    }
-    .gs-24 > .grid-stack-item[gs-x="2"] {
-        left: 8.333%;
-    }
-    .gs-24 > .grid-stack-item[gs-w="3"] {
-        width: 12.5%;
-    }
-    .gs-24 > .grid-stack-item[gs-x="3"] {
-        left: 12.5%;
-    }
-    .gs-24 > .grid-stack-item[gs-w="4"] {
-        width: 16.667%;
-    }
-    .gs-24 > .grid-stack-item[gs-x="4"] {
-        left: 16.667%;
-    }
-    .gs-24 > .grid-stack-item[gs-w="5"] {
-        width: 20.833%;
-    }
-    .gs-24 > .grid-stack-item[gs-x="5"] {
-        left: 20.833%;
-    }
-    .gs-24 > .grid-stack-item[gs-w="6"] {
-        width: 25%;
-    }
-    .gs-24 > .grid-stack-item[gs-x="6"] {
-        left: 25%;
-    }
-    .gs-24 > .grid-stack-item[gs-w="7"] {
-        width: 29.167%;
-    }
-    .gs-24 > .grid-stack-item[gs-x="7"] {
-        left: 29.167%;
-    }
-    .gs-24 > .grid-stack-item[gs-w="8"] {
-        width: 33.333%;
-    }
-    .gs-24 > .grid-stack-item[gs-x="8"] {
-        left: 33.333%;
-    }
-    .gs-24 > .grid-stack-item[gs-w="9"] {
-        width: 37.5%;
-    }
-    .gs-24 > .grid-stack-item[gs-x="9"] {
-        left: 37.5%;
-    }
-    .gs-24 > .grid-stack-item[gs-w="10"] {
-        width: 41.667%;
-    }
-    .gs-24 > .grid-stack-item[gs-x="10"] {
-        left: 41.667%;
-    }
-    .gs-24 > .grid-stack-item[gs-w="11"] {
-        width: 45.833%;
-    }
-    .gs-24 > .grid-stack-item[gs-x="11"] {
-        left: 45.833%;
-    }
-    .gs-24 > .grid-stack-item[gs-w="12"] {
-        width: 50%;
-    }
-    .gs-24 > .grid-stack-item[gs-x="12"] {
-        left: 50%;
-    }
-    .gs-24 > .grid-stack-item[gs-w="13"] {
-        width: 54.167%;
-    }
-    .gs-24 > .grid-stack-item[gs-x="13"] {
-        left: 54.167%;
-    }
-    .gs-24 > .grid-stack-item[gs-w="14"] {
-        width: 58.333%;
-    }
-    .gs-24 > .grid-stack-item[gs-x="14"] {
-        left: 58.333%;
-    }
-    .gs-24 > .grid-stack-item[gs-w="15"] {
-        width: 62.5%;
-    }
-    .gs-24 > .grid-stack-item[gs-x="15"] {
-        left: 62.5%;
-    }
-    .gs-24 > .grid-stack-item[gs-w="16"] {
-        width: 66.667%;
-    }
-    .gs-24 > .grid-stack-item[gs-x="16"] {
-        left: 66.667%;
-    }
-    .gs-24 > .grid-stack-item[gs-w="17"] {
-        width: 70.833%;
-    }
-    .gs-24 > .grid-stack-item[gs-x="17"] {
-        left: 70.833%;
-    }
-    .gs-24 > .grid-stack-item[gs-w="18"] {
-        width: 75%;
-    }
-    .gs-24 > .grid-stack-item[gs-x="18"] {
-        left: 75%;
-    }
-    .gs-24 > .grid-stack-item[gs-w="19"] {
-        width: 79.167%;
-    }
-    .gs-24 > .grid-stack-item[gs-x="19"] {
-        left: 79.167%;
-    }
-    .gs-24 > .grid-stack-item[gs-w="20"] {
-        width: 83.333%;
-    }
-    .gs-24 > .grid-stack-item[gs-x="20"] {
-        left: 83.333%;
-    }
-    .gs-24 > .grid-stack-item[gs-w="21"] {
-        width: 87.5%;
-    }
-    .gs-24 > .grid-stack-item[gs-x="21"] {
-        left: 87.5%;
-    }
-    .gs-24 > .grid-stack-item[gs-w="22"] {
-        width: 91.667%;
-    }
-    .gs-24 > .grid-stack-item[gs-x="22"] {
-        left: 91.667%;
-    }
-    .gs-24 > .grid-stack-item[gs-w="23"] {
-        width: 95.833%;
-    }
-    .gs-24 > .grid-stack-item[gs-x="23"] {
-        left: 95.833%;
-    }
-    .gs-24 > .grid-stack-item[gs-w="24"] {
-        width: 100%;
-    }
-</style>
+        /* support for 24 columns instead of 12 */
+        .gs-24 > .grid-stack-item {
+            width: 4.167%;
+        }
 
-<!--end of dashboard-->
+        .gs-24 > .grid-stack-item[gs-x="1"] {
+            left: 4.167%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-w="2"] {
+            width: 8.333%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-x="2"] {
+            left: 8.333%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-w="3"] {
+            width: 12.5%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-x="3"] {
+            left: 12.5%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-w="4"] {
+            width: 16.667%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-x="4"] {
+            left: 16.667%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-w="5"] {
+            width: 20.833%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-x="5"] {
+            left: 20.833%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-w="6"] {
+            width: 25%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-x="6"] {
+            left: 25%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-w="7"] {
+            width: 29.167%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-x="7"] {
+            left: 29.167%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-w="8"] {
+            width: 33.333%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-x="8"] {
+            left: 33.333%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-w="9"] {
+            width: 37.5%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-x="9"] {
+            left: 37.5%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-w="10"] {
+            width: 41.667%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-x="10"] {
+            left: 41.667%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-w="11"] {
+            width: 45.833%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-x="11"] {
+            left: 45.833%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-w="12"] {
+            width: 50%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-x="12"] {
+            left: 50%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-w="13"] {
+            width: 54.167%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-x="13"] {
+            left: 54.167%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-w="14"] {
+            width: 58.333%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-x="14"] {
+            left: 58.333%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-w="15"] {
+            width: 62.5%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-x="15"] {
+            left: 62.5%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-w="16"] {
+            width: 66.667%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-x="16"] {
+            left: 66.667%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-w="17"] {
+            width: 70.833%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-x="17"] {
+            left: 70.833%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-w="18"] {
+            width: 75%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-x="18"] {
+            left: 75%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-w="19"] {
+            width: 79.167%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-x="19"] {
+            left: 79.167%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-w="20"] {
+            width: 83.333%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-x="20"] {
+            left: 83.333%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-w="21"] {
+            width: 87.5%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-x="21"] {
+            left: 87.5%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-w="22"] {
+            width: 91.667%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-x="22"] {
+            left: 91.667%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-w="23"] {
+            width: 95.833%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-x="23"] {
+            left: 95.833%;
+        }
+
+        .gs-24 > .grid-stack-item[gs-w="24"] {
+            width: 100%;
+        }
+		</style>
+
+		<!--end of dashboard-->
 {{end}}

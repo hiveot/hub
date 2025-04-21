@@ -9,7 +9,6 @@ import (
 	"html/template"
 	"log/slog"
 	"net/http"
-	"strconv"
 )
 
 const RenderEditDashboardTemplateFile = "EditDashboard.gohtml"
@@ -52,8 +51,8 @@ func RenderEditDashboard(w http.ResponseWriter, r *http.Request) {
 		SubmitDashboard: getDashboardPath(src.PostDashboardEditPath, cdc),
 	}
 	// source-URL overrides any existing image
-	if data.Dashboard.SourceURL != "" {
-		data.Dashboard.BackgroundImage = data.Dashboard.SourceURL
+	if data.Dashboard.BackgroundURL != "" {
+		data.Dashboard.BackgroundImage = data.Dashboard.BackgroundURL
 	}
 	data.BackgroundImageURL = template.URL(data.Dashboard.BackgroundImage)
 	buff, err := app.RenderAppOrFragment(r, RenderEditDashboardTemplateFile, data)
@@ -70,22 +69,27 @@ func SubmitEditDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 	// 'title' is the form field from gohtml
 	newTitle := r.PostFormValue("title")
-	sourceURL := r.PostFormValue("sourceURL")
-	reloadInterval := r.PostFormValue("reloadInterval")
-	bgEnabled := r.PostFormValue("backgroundEnabled")
-	bgStored := r.PostFormValue("backgroundStored")
+	bgURL := r.PostFormValue("bgURL")
+	bgEnabled := r.PostFormValue("backgroundEnabled") == "on" // "on" or ""
+	bgImage := r.PostFormValue("backgroundImage")
+	locked := r.PostFormValue("locked") == "on"    // "on" or ""
+	floatTiles := r.PostFormValue("float") == "on" // "on" or ""
 
 	slog.Info("SubmitDashboard", "SenderID", cdc.clientID,
 		"dashboardID", cdc.dashboardID)
 
-	// add or update the dashboard
+	// add or update the dashboard; bgURL takes precedence
+	if bgURL != "" {
+		bgImage = bgURL
+	}
 	dashboard, _ := cdc.SelectedDashboard()
 	dashboard.ID = cdc.dashboardID // the URL determines the ID
 	dashboard.Title = newTitle
-	dashboard.BackgroundImage = bgStored
-	dashboard.BackgroundEnabled = bgEnabled == "on"
-	dashboard.SourceURL = sourceURL
-	dashboard.ReloadInterval, _ = strconv.Atoi(reloadInterval)
+	dashboard.BackgroundEnabled = bgEnabled
+	dashboard.BackgroundImage = bgImage
+	dashboard.BackgroundURL = bgURL
+	dashboard.Locked = locked
+	dashboard.Grid.Float = floatTiles
 
 	err = cdc.clientModel.UpdateDashboard(&dashboard)
 

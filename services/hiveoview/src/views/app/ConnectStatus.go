@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-const ConnectStatusTemplate = "RenderConnectStatus.gohtml"
+const RenderConnectStatusTemplate = "ConnectStatus.gohtml"
 
 // ConnectStatusTemplateData describes the message bus connection status of the current session
 type ConnectStatusTemplateData struct {
@@ -64,7 +64,7 @@ func RenderConnectStatus(w http.ResponseWriter, r *http.Request) {
 	_, sess, _ := session.GetSessionFromContext(r)
 
 	// render with base or as fragment
-	//views.TM.RenderTemplate(w, r, ConnectStatusTemplate, data)
-	buff, err := RenderAppOrFragment(r, ConnectStatusTemplate, status)
+	//views.TM.RenderTemplate(w, r, RenderConnectStatusTemplate, data)
+	buff, err := RenderAppOrFragment(r, RenderConnectStatusTemplate, status)
 	sess.WritePage(w, buff, err)
 }
