@@ -49,58 +49,111 @@
         var options;
         startGridStack();
 
-            // initialize the dashboard using gridstack
+        // initialize the dashboard using gridstack
         function startGridStack() {
             // debugger;
             options = { // put in gridstack options here
-                animate: {{.Dashboard.GridLayouts.Animate}},
+                animate: false,// {{.Dashboard.GridLayouts.Animate}},
                 cellHeight: 30,     // fixed row height to avoid scaling content
-                column: 24,          // support 24 columns (needs the CSS at bottom)
+                column: 24,
                 columnOpts: {
-                    // layout: "none", // we reload the previously saved layout for the size
+                    // columnMax: 24,
+                    // columnWidth: 100,
+                    // layout: 'moveScale',
+                    layout: "none", // we reload the previously saved layout for the size
                     // layout: "moveResize",
                     //  breakpointForWindow:true,  // not sure what this does window vs grid size?
                     // using breakpoints changes with the layout after resizing such it doesn't restore to old placement
                     // breakpoints: [{w: 300, c: 1}, {w: 500, c: 2}, {w: 800, c: 6}, {w: 1024, c: 12},  {w:4096, c:24}]
+                    // breakpoints: [
+                    //     {w:300, c:1}, {w:500, c:3}, {w: 600, c: 5}, {w: 800, c: 7},
+                    //     {w: 1000, c: 10}, {w:1200, c:12}, {w:1500, c:15}
+                    // ]
                 },
+                //  disable element moving
+                disableDrag: false,//{{.Dashboard.Locked}},
+                // disable element resizing
+                disableResize: false,//{{.Dashboard.Locked}},
                 draggable: {
                     // handle: ".drag-target",
                     cancel: ".no-drag"
                 },
                 float: {{.Dashboard.Grid.Float}},       // false=cells move to the top (false)
-                // custom storage to detect resize
-                lastSize: "",
-                layouts:  {{.Dashboard.GridLayouts}},
                 lazyLoad: false,
                 margin: "4px",       // gap between widgets
                 minRow: 3,
-                //  disable element moving
-                disableDrag: {{.Dashboard.Locked}},
-                // disable element resizing
-                disableResize: {{.Dashboard.Locked}},
-                // local store with latest layouts without loading back from the
-                staticGrid: false,   // allow resize in edit mode
+                sizeToContent: false, // this maximizes the widget height which is not what is needed
+                staticGrid: {{.Dashboard.Locked}},   // allow resize in edit mode
+
+                //--- custom storage to detect resize
+                lastSize: "",
+                // map of size by serialized layouts
+                layouts:  {{.Dashboard.GridLayouts}},
             };
             grid = GridStack.init(options)//.load(serializedData);
 
             // htmx posts layout changes to the server but we also need these client side
-            grid.on("change", function () {
-                console.log("grid.onchange")
-                let newLayout = getLayout()
+            grid.on("change", function (ev, items) {
+                // console.log("grid.onchange", items)
+
                 let size = getLayoutSize()
+                let newLayout = getCurrentLayout()
+                // console.log("on grid change. size=",size,"newLayout",  newLayout)
+                // debugger
                 options.layouts[size] = newLayout
             })
 
             // listen for screen size changes to reload a new layout
             window.onresize = function () {
                 let size = getLayoutSize()
-                console.info("onresize. size=", size)
                 if (size !== options.lastSize) {
                     options.lastSize = size
-                    loadGridLayout(grid, options.layouts)
+                    restoreGridLayout(grid, options.layouts, size)
+                    // debugger
+                    // using breakpoints doesn't restore the proper size so just set the breakpoints
                 }
             }
-            loadGridLayout(grid, options.layouts)
+
+            // first layout
+            let size = getLayoutSize()
+            let columns = getSizeColumns(size)
+            restoreGridLayout(grid, options.layouts, size, columns)
+        }
+
+        // Return the serialized grid item layout.
+        function getCurrentLayout() {
+            let newLayout = []
+            // note, save() is broken and returns negative numbers so this iterates the items instead
+            gridItems = grid.getGridItems()
+            gridItems.forEach(gridItem => {
+                let node = gridItem.gridstackNode
+                let newItem = {
+                    id: node.id,
+                    x: node.x,
+                    y : node.y,
+                    w : node.w,
+                    h : node.h,
+                    minW : node.minW,
+                    minH : node.minH
+                }
+                newLayout.push(newItem)
+            })
+            let serLayout = JSON.stringify(newLayout)
+            return serLayout
+
+        }
+
+        // Return the nr of columns for a size "sm, md, lg, xl"
+        function getSizeColumns(size) {
+            let columns = 24  // xl
+            if (size === "sm") {
+                columns = 2
+            } else if (size === "md") {
+                columns = 8
+            } else if (size === "lg") {
+                columns = 12
+            }
+            return columns
         }
 
         // Return the screen size name "sm, md, lg, xl"
@@ -119,21 +172,26 @@
         }
 
         // load the layout for the current window size into the grid.
-        function loadGridLayout(grid, layouts) {
+        // restore the nr of columns and the layout for the given window size
+        function restoreGridLayout(grid, layouts, size) {
 
             {{if .Dashboard.GridLayouts}}
             // TODO: reload the layout from the server to avoid two devices with
             //  different size overwriting each other.
             //  Alteratively, save only the current size in post.
-            let size = getLayoutSize()
-
             if (layouts) {
+                let columns = getSizeColumns(size)
                 let layoutJSON = layouts[size]
+                grid.column(columns)
                 if (!layoutJSON) {
                     console.log("No layout for size " + size + ". Keeping current layout")
                 } else {
                     let layout = JSON.parse(layoutJSON)
                     if (layout) {
+                        // debugger
+                        // console.log("restoreGridLayout: size=",size, "columns:",columns, "layout:", layout)
+                        // options.column = columns
+                        grid.column(columns)
                         grid.load(layout, false)
                     }
                 }
@@ -145,13 +203,8 @@
         // return the current layout as used by the grid.
         function getLayout() {
             let size = getLayoutSize()
-            // console.info("getLayout: size=",size)
-
-            let dashData = grid.save(saveContent = false)
-            if (dashData) {
-                return JSON.stringify(dashData)
-            }
-            return ""
+            let serLayout = options.layouts[size]
+            return serLayout
         }
 
         function update() {
@@ -173,11 +226,10 @@
             /*padding-right: var(--pico-spacing);*/
             /*background-color: var(--pico-background-color);*/
 
-        {{if .Background}}
-            background-image: url({{.Background}});
+				{{if .Background}} background-image: url({{.Background}});
             background-position: center;
             background-size: cover;
-        {{end}}
+				{{end}}
         }
 
         .grid-stack-item {
