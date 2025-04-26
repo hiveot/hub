@@ -10,6 +10,7 @@ import (
 	"github.com/teris-io/shortid"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -38,6 +39,18 @@ func (data EditTileTemplateData) GetTypeLabel(typeID string) string {
 	return label
 }
 
+func (data EditTileTemplateData) GetUpdated(tileSource session.TileSource) string {
+	ct, err := data.ctDir.Consume(tileSource.ThingID)
+	if err != nil {
+		return ""
+	}
+	iout := ct.GetValue(tileSource.AffordanceType, tileSource.Name)
+	if iout != nil {
+		return utils.FormatDateTime(iout.Updated)
+	}
+	return ""
+}
+
 // GetValue returns the value of a tile source
 func (data EditTileTemplateData) GetValue(tileSource session.TileSource) string {
 	ct, err := data.ctDir.Consume(tileSource.ThingID)
@@ -49,17 +62,6 @@ func (data EditTileTemplateData) GetValue(tileSource session.TileSource) string 
 	if iout != nil {
 		unitSymbol := iout.UnitSymbol()
 		return iout.Value.Text() + " " + unitSymbol
-	}
-	return ""
-}
-func (data EditTileTemplateData) GetUpdated(tileSource session.TileSource) string {
-	ct, err := data.ctDir.Consume(tileSource.ThingID)
-	if err != nil {
-		return ""
-	}
-	iout := ct.GetValue(tileSource.AffordanceType, tileSource.Name)
-	if iout != nil {
-		utils.FormatDateTime(iout.Updated)
 	}
 	return ""
 }
@@ -116,9 +118,11 @@ func SubmitEditTile(w http.ResponseWriter, r *http.Request) {
 	// to pass lists in Forms.
 	newTitle := r.FormValue("title")
 	tileType := r.FormValue("tileType")
+	bgEnabled := r.FormValue("bgEnabled") == "on"
 	bgTransparency := r.FormValue("bgTransparency")
 	bgColor := r.FormValue("bgColor")
-	useColor := r.FormValue("useColor")
+	imageURL := r.FormValue("imageURL")
+	reloadInterval := r.FormValue("reloadInterval")
 	sources, _ := r.Form["sources"]
 	sourceTitles, _ := r.Form["sourceTitles"]
 
@@ -130,10 +134,16 @@ func SubmitEditTile(w http.ResponseWriter, r *http.Request) {
 	tile.ID = cdc.tileID
 	tile.Title = newTitle
 	tile.TileType = tileType
+	tile.BackgroundEnabled = bgEnabled
 	tile.BackgroundTransparency = bgTransparency
 	tile.BackgroundColor = bgColor
-	tile.UseColor = !(useColor == "")
+	tile.ImageURL = imageURL
+	tile.ImageReloadInterval, _ = strconv.Atoi(reloadInterval)
 	tile.Sources = make([]session.TileSource, 0)
+	// arbitrary limit to avoid too frequent reloads
+	if tile.ImageReloadInterval < 3 {
+		tile.ImageReloadInterval = 0
+	}
 
 	// Convert the list of sources from the form to a TileSource object.
 	if sources != nil {

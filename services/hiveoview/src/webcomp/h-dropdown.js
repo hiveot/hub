@@ -18,7 +18,8 @@ template.innerHTML = `
        <div button >
            <!-- named slot 'button' to replace the default button-->
            <slot  name="button" button-slot>
-                <button role="button" class="icon-button menu-button" style="border:none">
+                <button role="button" class="icon-button menu-button" style="border:none"
+                >
                       <iconify-icon style="font-size:20px" icon="mdi:menu"></iconify-icon>
                 </button>
            </slot>
@@ -207,15 +208,20 @@ class HDropdown extends HTMLElement {
         // either the default button or the provided button.
         this.elButton = shadowRoot.querySelector("[button]");
         this.elButtonSlot = this.elButton.children[0]
-        this.elButtonSlot.addEventListener("click", ()=>{
+        this.elButtonSlot.addEventListener("click", (ev)=>{
             // console.log("menu click toggle menu")
-            this.toggleMenu()
+            this.toggleMenu(ev)
         })
         // if we're about to click on the button then ignore the focus event that
         // is the result of this click, to prevent the menu from toggling to open.
         this.elButtonSlot.addEventListener("mousedown", (ev) => {
             // console.log("mousedown  set ignoreblur")
             this.ignoreBlur = true
+        })
+        // the right-click also opens the menu
+        this.elButtonSlot.addEventListener("contextmenu", (ev) => {
+            ev.preventDefault()
+            this.toggleMenu(ev)
         })
 
         this.elContent = shadowRoot.querySelector("[content]");
@@ -327,6 +333,7 @@ class HDropdown extends HTMLElement {
     // menu toggle is called, otherwise hideContent will remove 'show' and the toggle
     // will then add 'show' again.
     toggleMenu(ev) {
+        ev.preventDefault()
         // console.log("on toggle and remove ignoreblur")
         // the show class controls menu visibility
         let isShown = this.elContent.classList.contains("show")

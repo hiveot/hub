@@ -69,7 +69,7 @@ func SubmitEditDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 	// 'title' is the form field from gohtml
 	newTitle := r.PostFormValue("title")
-	bgURL := r.PostFormValue("bgURL")
+	bgURL := r.PostFormValue("backgroundURL")
 	bgEnabled := r.PostFormValue("backgroundEnabled") == "on" // "on" or ""
 	bgImage := r.PostFormValue("backgroundImage")
 	locked := r.PostFormValue("locked") == "on"    // "on" or ""

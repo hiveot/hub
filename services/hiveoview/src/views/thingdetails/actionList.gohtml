@@ -15,8 +15,7 @@
     {{range $name := .ActionNames }}
         {{$aff := $.CT.TD.GetAction $name}}
         {{$actionStatus := $.CT.QueryAction $name}}
-        {{$actionInput := $.CT.GetActionInputFromStatus $actionStatus}}
-        {{$actionOutput := $.CT.GetActionOutputFromStatus $actionStatus}}
+        {{$actionOutput := $.CT.GetActionOutput $name}}
 				<li>
 
          {{/* Action Name with link to action dialog */}}

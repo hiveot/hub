@@ -41,6 +41,8 @@ type ConsumedThing struct {
 	// subscribers to events by eventName
 	subscribers map[string]InteractionListener
 
+	// action status input values
+	actionInputs map[string]*InteractionInput
 	// action status output values
 	actionOutputs map[string]*InteractionOutput
 	// prop values
@@ -82,10 +84,14 @@ func (ct *ConsumedThing) GetActionInputFromStatus(as messaging.ActionStatus) *In
 	return iin
 }
 
-// GetActionOutputFromStatus returns the interaction output of the given action status
+// GetActionOutputFromStatus returns the interaction output of the given
+// action status.
+//
+// If as.name is not a known action then fallback to property and event schema.
+//
 // See also GetValue that always return an iout (for rendering purpose)
 //
-// This returns nil if name is not a known action
+// This returns nil if as.name is not a known action
 func (ct *ConsumedThing) GetActionOutputFromStatus(as messaging.ActionStatus) (iout *InteractionOutput) {
 
 	iout = NewInteractionOutput(ct, messaging.AffordanceTypeAction, as.Name, as.Output, as.Updated)
@@ -105,9 +111,9 @@ func (ct *ConsumedThing) GetActionOutputFromStatus(as messaging.ActionStatus) (i
 	return iout
 }
 
-// GetActionOutput returns the interaction output of the given action affordance
+// GetActionOutput returns the cached interaction output of the given action affordance
 //
-// This returns nil if name is not a known action
+// This returns nil if no cached value is available
 func (ct *ConsumedThing) GetActionOutput(name string) (iout *InteractionOutput) {
 
 	ct.mux.RLock()
@@ -225,7 +231,7 @@ func (ct *ConsumedThing) GetValue(affType string, name string) (iout *Interactio
 	_ = found
 	if iout == nil {
 		// not a known value so create an empty io
-		// TODO: should this lookup a schema?
+		// TODO: should this lookup a schema from the TD?
 		iout = &InteractionOutput{
 			ThingID: ct.tdi.ID,
 			Name:    name,
@@ -348,12 +354,16 @@ func (ct *ConsumedThing) OnNotification(notif *messaging.NotificationMessage) {
 	}
 }
 
-// QueryAction queries the action status record from the hub
+// QueryAction queries the action status record from the hub and update the cache.
 // If no action exists then actionstatus will be mostly empty
 //
 // This returns an empty ActionStatus if not found
 func (ct *ConsumedThing) QueryAction(name string) messaging.ActionStatus {
 	as, _ := ct.co.QueryAction(ct.ThingID, name)
+	iin := ct.GetActionInputFromStatus(as)
+	iout := ct.GetActionOutputFromStatus(as)
+	ct.actionOutputs[name] = iout
+	ct.actionInputs[name] = iin
 	return as
 }
 
@@ -430,18 +440,20 @@ func (ct *ConsumedThing) Refresh() error {
 		}
 		ct.propValues[name] = iout
 	}
-
 	// refresh action status
 	actionStatusMap, err := ct.co.QueryAllActions(ct.ThingID)
 	if err != nil {
 		return err
 	}
-	for name, as := range actionStatusMap {
-		// if the TD doesn't have this property then ignore it
-		actionAff := ct.tdi.GetAction(name)
-		if actionAff != nil {
-			iout := NewInteractionOutputFromActionStatus(ct, as)
-			ct.actionOutputs[name] = iout
+	for name, _ := range ct.tdi.Actions {
+		as, found := actionStatusMap[name]
+		if found {
+			// if the TD doesn't have this action then ignore it
+			actionAff := ct.tdi.GetAction(name)
+			if actionAff != nil {
+				iout := NewInteractionOutputFromActionStatus(ct, as)
+				ct.actionOutputs[name] = iout
+			}
 		}
 	}
 	return nil
@@ -491,6 +503,7 @@ func NewConsumedThing(tdi *td.TD, co *messaging.Consumer) *ConsumedThing {
 		co:            co,
 		observers:     make(map[string]InteractionListener),
 		subscribers:   make(map[string]InteractionListener),
+		actionInputs:  make(map[string]*InteractionInput),
 		actionOutputs: make(map[string]*InteractionOutput),
 		eventValues:   make(map[string]*InteractionOutput),
 		propValues:    make(map[string]*InteractionOutput),

@@ -2,112 +2,149 @@
 
 {{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/tile.EditTileTemplateData*/ -}}
 
-<h-modal show showClose shadow>
-		<article>
-			<header class="h-row-centered" style="height: 60px">
-					<h3 style="margin:0">Edit Tile</h3>
-			</header>
-			<main>
-				<form id="edit-tile-form" style="overflow:auto"
-				>
+<h-modal id="editTileModal"
+         show showClose shadow>
+	<article>
+		<header class="h-row-centered" style="height: 60px">
+			<h3 style="margin:0">Edit Tile</h3>
+		</header>
+		<main>
+			<form id="edit-tile-form" style="overflow:auto"
+			>
 
-					<fieldset>
-						<label title="Tile ID: {{.Tile.ID}}"
-										for="tile-title">Title: </label>
+          {{/*Title and Type*/}}
+				<fieldset>
+
+					<label title="Tile ID: {{.Tile.ID}}">
+						Title:
 						<input autofocus id="tile-title" name="title" required
 						       value="{{.Tile.Title}}" placeholder="{{.Tile.Title}}"
 						/>
+					</label>
 
-						<label for="tile-type">Type: </label>
-						<select id="tile-type" name="tileType" autofocus>
+					<label>
+						Type:
+						<select id="tile-type" name="tileType" autofocus
+						        onchange="setSourceForImageType()">
+
                 {{ range $ttID, $ttLabel := .TileTypeLabels}}
 									<option value="{{$ttID}}"
-													{{if eq $ttID $.Tile.TileType}} selected {{end}}>
+                          {{if eq $ttID $.Tile.TileType}} selected {{end}}>
                       {{$ttLabel}}
 									</option>
                 {{end}}
 						</select>
+					</label>
+				</fieldset>
 
-						<label  class="h-row">Sources:
-							<button type="button" class="outline h-icon-button"
-							        title="Add Source"
-							        hx-target="#modalLevel2"
-							        hx-get="{{.RenderSelectTileSourcesPath}}"
-							        hx-swap="innerHTML"
-							>
-								<iconify-icon icon='mdi:playlist-plus'></iconify-icon>
-							</button>
-						</label>
 
-						{{/* RenderSelectSources uses this ID to add sources in this list */}}
-						<ul id="edit-tile-sources"
-						    class="h-grid-table tile-sources-table" striped border>
+				<fieldset id="image-source-section">
+					<label>Image URL
+						<input id="image-url" type="url" name="imageURL" placeholder="Enter a background image URL"
+						       value="{{.Tile.ImageURL}}">
+					</label>
+					<label class="h-row" style="white-space: nowrap">
+						Reload Interval
+						<input  name="reloadInterval"
+						        type="number" min="3"
+						        placeholder="Nr of seconds to reload the image"
+						       value="{{.Tile.ImageReloadInterval}}">
+						Seconds
+					</label>
+				</fieldset>
+
+				<fieldset id="sources-section">
+            {{/* Sources if type is not image*/}}
+					<label class="h-row">
+						Sources:
+						<button type="button" class="outline h-icon-button"
+						        title="Add Source"
+						        hx-target="#modalLevel2"
+						        hx-get="{{.RenderSelectTileSourcesPath}}"
+						        hx-swap="innerHTML"
+						>
+							<iconify-icon icon='mdi:playlist-plus'></iconify-icon>
+						</button>
+					</label>
+
+            {{/* NOTE!: RenderSelectSources uses this ID 'edit-tile-sources' to add sources in this list */}}
+					<ul id="edit-tile-sources"
+					    class="h-grid-table tile-sources-table" striped border>
               {{/* Header*/}}
-							<li>
-								<div></div>
-								<div>Thing Event</div>
-								<div>Value</div>
-								<div>Updated</div>
-							</li>
+						<li>
+							<div></div>
+							<div>Thing Source</div>
+							<div>Value</div>
+							<div>Updated</div>
+						</li>
               {{range $k,$v := .Tile.Sources}}
-	                <li>
-										{{/* The hidden input is used to submit list of sources with the form*/}}
-		                <input type="hidden" name="sources"
-		                       value="{{$v.AffordanceType}}/{{$v.ThingID}}/{{$v.Name}}"/>
-		                <button type="button" class="h-row outline h-icon-button"
-		                        onclick="deleteRow(this.parentNode)"
-		                >
-			                <iconify-icon icon="mdi:delete"></iconify-icon>
-		                </button>
-				            <input name="sourceTitles" value="{{$v.Title}}"
-				                   style="margin:0"
-				                   title="Edit the label here. ThingID: {{$v.ThingID}}/{{$v.Name}}"/>
-		                <div class="h-row">{{$.GetValue $v}}</div>
-		                <div class="h-row">{{$.GetUpdated $v}}</div>
-	                </li>
-							{{end}}
-						</ul>
+								<li>
+                    {{/* The hidden input is used to submit list of sources with the form*/}}
+									<input type="hidden" name="sources"
+									       value="{{$v.AffordanceType}}/{{$v.ThingID}}/{{$v.Name}}"/>
+									<button type="button" class="h-row outline h-icon-button"
+									        onclick="deleteRow(this.parentNode)"
+									>
+										<iconify-icon icon="mdi:delete"></iconify-icon>
+									</button>
+									<input name="sourceTitles" value="{{$v.Title}}"
+									       style="margin:0"
+									       title="Edit the label here. ThingID: {{$v.ThingID}}/{{$v.Name}}"/>
+									<div class="h-row">{{$.GetValue $v}}</div>
+									<div class="h-row">{{$.GetUpdated $v}}</div>
+								</li>
+              {{end}}
+					</ul>
+				</fieldset>
 
-						<fieldset>
-							<span class="h-row">
-								{{/* Option to set background color */}}
-								<label style="text-wrap: nowrap" for="use-color-id">Background color</label>
-								<input id="use-color-id" type="checkbox" name="useColor"
-								       {{if .Tile.UseColor}}checked{{end}}
-								>
+          {{/*Select the background color/transparency (when not image)*/}}
+				<fieldset id="backgroundSection">
+					<label>
+						<input id="background-enabled" type="checkbox" name="bgEnabled"
+                   {{if .Tile.BackgroundEnabled}}checked{{end}}
+						>
+						Background
+					</label>
+
+					<fieldset style="padding:8px; border: var(--pico-card-border);"
+					          id="bgEnabledSection" class="h-col" {{if not .Tile.BackgroundEnabled}} disabled {{end}}>
+              {{/* Option to set background color */}}
+						<label class="h-row">
+							<label style="width:100%">
+								Color
 								<input id="tile-bg-color" name="bgColor"
 								       type="color" style="margin-bottom: 0"
 								       title="{{.Tile.BackgroundColor}}"
 								       value="{{.Tile.BackgroundColor}}">
-							</span>
-							</fieldset>
-							<fieldset>
-							<span class="h-row">
-								<label style="text-wrap: nowrap" for="tile-bg-transparency">Background transparency: </label>
+							</label>
+						</label>
+
+						<span class="h-row">
+								<label style="text-wrap: nowrap" for="tile-bg-transparency">Transparency: </label>
 								<input id="tile-bg-transparency" name="bgTransparency"
 								       class="input-percent"
 								       type="range" min="0" max="1" step="0.1"
 								       value="{{.Tile.BackgroundTransparency}}">
-							</span>
-						</fieldset>
-
+					</span>
 					</fieldset>
-				</form>
-			</main>
+				</fieldset>
 
-			<footer>
-	      {{- /*close-modal is handled by h-modal component*/ -}}
-				<button id="cancelBtn"
-				        onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
-				        class="secondary">Cancel
-				</button>
-				<button type="submit"
-				        hx-include="#edit-tile-form"
-				        hx-post="{{.SubmitEditTilePath}}"
-				        hx-swap="none"
-				        hx-on::after-request="onSubmitCompleted(event, this)"
-				>Submit
-				</button>
+			</form>
+		</main>
+
+		<footer>
+        {{- /*close-modal is handled by h-modal component*/ -}}
+			<button id="cancelBtn"
+			        onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
+			        class="secondary">Cancel
+			</button>
+			<button type="submit"
+			        hx-include="#edit-tile-form"
+			        hx-post="{{.SubmitEditTilePath}}"
+			        hx-swap="none"
+			        hx-on::after-request="onSubmitCompleted(event, this)"
+			>Submit
+			</button>
 		</footer>
 	</article>
 </h-modal>
@@ -124,14 +161,24 @@
 
 
 <script>
-		// tileSources holds the sources currently being edited
-		var tileSources = {{.Tile.Sources}}
+    // tileSources holds the sources currently being edited
+    var tileSources = {{.Tile.Sources}}
 
-				// set the background color to inherit
-		function inheritBackgroundColor() {
-      let el = document.getElementById("tile-bg-color")
-			el.value = ""
-		}
+        // Listen for the editor ready event and setup the inputs
+        document.getElementById("editTileModal")
+            .addEventListener('ready', (ev) => {
+                setup();
+            })
+
+    // Listen for the background enable/disable input toggle and enable or diable the background image
+    document.getElementById("background-enabled")
+        .addEventListener("change", (ev) => {
+            if (ev.target.checked) {
+                enableBackground()
+            } else {
+                disableBackground()
+            }
+        })
 
     // delete the table row
     function deleteRow(rowEl) {
@@ -139,12 +186,67 @@
         table.removeChild(rowEl);
     }
 
+    // Disable the background settings
+    // This disables the background input section and hides any image.
+    function disableBackground() {
+        console.log("disableBackground")
+        let bgSectionEl = document.getElementById("bgEnabledSection")
+        // let bgShownEl = document.getElementById("background-shown");
+        bgSectionEl.disabled = true
+        // bgShownEl.hidden = true
+    }
+
+    // Enable the background settings
+    // This enables the background input section, show the stored background-image
+    // in the shown background-shown image.
+    // If a URL is set, use it for the shown image.
+    function enableBackground() {
+        console.log("enableBackground")
+        let bgSectionEl = document.getElementById("bgEnabledSection")
+        bgSectionEl.disabled = false
+    }
+
+    // set the background color to inherit
+    // function inheritBackgroundColor() {
+    //     let el = document.getElementById("tile-bg-color")
+    //     el.value = ""
+    // }
+
+    // if type is Image, show the URL otherwise the sources
+    function setSourceForImageType() {
+        let tileTypeEl = document.getElementById("tile-type")
+        let backgroundSection = document.getElementById("backgroundSection")
+        let sourcesSectionEl = document.getElementById("sources-section")
+        let imageSourceSectionEl = document.getElementById("image-source-section")
+        // todo: use the actual type ID
+        if (tileTypeEl.value === "image") {
+            sourcesSectionEl.hidden = true
+            imageSourceSectionEl.hidden = false
+            backgroundSection.hidden = true
+        } else {
+            sourcesSectionEl.hidden = false
+            imageSourceSectionEl.hidden = true
+            backgroundSection.hidden = false
+        }
+    }
+
+    function setup() {
+        let bgEnabledEl = document.getElementById("background-enabled")
+        if (bgEnabledEl.checked) {
+            enableBackground()
+        } else {
+            disableBackground()
+        }
+        setSourceForImageType()
+    }
+
+
     // Ugly to have to do this!
     function onSubmitCompleted(ev, btn) {
         ev.stopImmediatePropagation()
         let details = ev.detail
         if (details.successful) {
-            let closeEv = new Event('close-modal',{bubbles:true})
+            let closeEv = new Event('close-modal', {bubbles: true})
             btn.dispatchEvent(closeEv)
         }
     }

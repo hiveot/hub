@@ -1551,7 +1551,7 @@ label > :where(input, select, textarea) {
  */
 label:has([type=checkbox], [type=radio]) {
   width: -moz-fit-content;
-  width: fit-content;
+  /* width: fit-content; */
   cursor: pointer;
 }
 

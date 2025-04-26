@@ -24,7 +24,7 @@
     {{/*	=== Boolean Output ===*/}}
     {{/*    <h-switch name="value" off="Off" on="On" value="{{$iv}}"></h-switch>*/}}
 		{{/*	Actions updates are triggered by their property state event */}}
-		<input type="checkbox" role="switch" disabled
+		<input name="output-{{.Name}}-switch" type="checkbox" role="switch" disabled
            style="margin-top:0"
 		        {{if eq .AffordanceType "action"}}
 			        sse-swap="property/{{.ThingID}}/{{.Name}}"

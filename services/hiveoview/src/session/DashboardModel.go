@@ -55,8 +55,10 @@ type DashboardTile struct {
 	// See TileTypeCard, TileType...
 	TileType string `json:"tileType"`
 	// tile background
+	BackgroundEnabled      bool   `json:"backgroundEnabled"`
 	BackgroundColor        string `json:"bgColor"`
-	UseColor               bool   `json:"useColor"`
+	ImageURL               string `json:"imageURL"`
+	ImageReloadInterval    int    `json:"imageReloadInterval"`
 	BackgroundTransparency string `json:"bgTransparency"`
 
 	// Tile sources

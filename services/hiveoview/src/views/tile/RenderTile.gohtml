@@ -5,64 +5,78 @@
 
 
 {{if not .Tile.ID}}
-{{/*	hx-params="none" hides hx-vals defined in parent*/}}
-<div  hx-trigger="intersect once"
-      hx-swap="outerHTML"
-      hx-params="none"
-      hx-target="this"
-      hx-get="{{.ReRenderTilePath}}"
->
-	<p>reloading tile fragment...</p>
-	<h-loading></h-loading>
-</div>
+    {{/*	hx-params="none" hides hx-vals defined in parent*/}}
+		<div hx-trigger="intersect once"
+		     hx-swap="outerHTML"
+		     hx-params="none"
+		     hx-target="this"
+		     hx-get="{{.ReRenderTilePath}}"
+		>
+			<p>reloading tile fragment...</p>
+			<h-loading></h-loading>
+		</div>
 
 {{else}}
 
 	<section id="{{.Tile.ID}}" class="tile-panel"
-        {{if .Tile.UseColor}}
-	         style="background-color: {{.Tile.GetRGBA}};"
-        {{end}}
-     hx-trigger="sse:{{.TileUpdatedEvent}}"
-     hx-swap="outerHTML"
-     hx-target="this"
-     hx-get="{{.ReRenderTilePath}}"
-		 {{/* prevent including input params from layout in all requests*/}}
-     hx-params="none"
-  >
-
-	{{/*  Tile header and dropdown*/}}
-	<nav  class="tile-header drag-target">
-		<span></span>
-		<div style="cursor:move; flex-grow:1; text-align:center"
-      title="{{.Tile.ID}}">{{.Tile.Title}}</div>
-		{{/* The menu works best within a pico css nav element*/}}
-    {{template "tileMenu.gohtml" .}}
-	</nav>
-
-  {{/*Tile content*/}}
-	<main class="tile-content no-drag"
-          {{if .Tile.UseColor}}
+          {{if .Tile.BackgroundEnabled}}
 						style="background-color: {{.Tile.GetRGBA}};"
           {{end}}
-	>
-		{{/*The TileTypes are defined in DashboardModel.go*/}}
-    {{if eq .Tile.TileType "area"}}
-      {{template "Chart.gohtml" .}}
-    {{else if eq .Tile.TileType "bar"}}
-      {{template "Chart.gohtml" .}}
-		{{else if eq .Tile.TileType "line"}}
-			{{template "Chart.gohtml" .}}
-    {{else if eq .Tile.TileType "scatter"}}
-      {{template "Chart.gohtml" .}}
-    {{else if eq .Tile.TileType "image"}}
-      {{template "ImageCard.gohtml" .}}
-    {{else if eq .Tile.TileType "gauge"}}
-      {{template "GaugeCard.gohtml" .}}
-		{{else}}
-			{{template "TextCard.gohtml" .}}
-		{{end}}
+					 hx-trigger="sse:{{.TileUpdatedEvent}}"
+					 hx-swap="outerHTML"
+					 hx-target="this"
+					 hx-get="{{.ReRenderTilePath}}"
+          {{/* prevent including input params from layout in all requests*/}}
+					 hx-params="none"
 
-	</main>
-</section>
+          {{/*trigger the tile menu with right-click*/}}
+					 oncontextmenu="this.getElementsByTagName('h-dropdown')[0].toggleMenu(event)"
+	>
+
+      {{/* header and dropdown, draggable in dashboard gridstack*/}}
+		<nav class="tile-header drag-target"
+		>
+			<span></span>
+			<div style="cursor:move; flex-grow:1; text-align:center"
+			     title="{{.Tile.ID}}">{{.Tile.Title}}</div>
+        {{/* The menu works best within a pico css nav element*/}}
+        {{/* Only show menu when dashboard not locked*/}}
+        {{if not $.Locked}}
+            {{template "tileMenu.gohtml" .}}
+        {{end}}
+		</nav>
+
+      {{/*Tile content is not draggable*/}}
+		<main class="tile-content drag-target"
+            {{if .Tile.BackgroundEnabled}}
+							style="background-color: {{.Tile.GetRGBA}};"
+            {{end}}
+		>
+        {{/*The TileTypes are defined in DashboardModel.go*/}}
+        {{if eq .Tile.TileType "area"}}
+            {{template "Chart.gohtml" .}}
+        {{else if eq .Tile.TileType "bar"}}
+            {{template "Chart.gohtml" .}}
+        {{else if eq .Tile.TileType "line"}}
+            {{template "Chart.gohtml" .}}
+        {{else if eq .Tile.TileType "scatter"}}
+            {{template "Chart.gohtml" .}}
+        {{else if eq .Tile.TileType "image"}}
+            {{template "ImageCard.gohtml" .}}
+        {{else if eq .Tile.TileType "gauge"}}
+            {{template "GaugeCard.gohtml" .}}
+        {{else}}
+            {{template "TextCard.gohtml" .}}
+        {{end}}
+
+		</main>
+	</section>
+
+	<script>
+      {{/*document.getElementById("{{.Tile.ID}}").addEventListener('contextmenu',(ev)=>{*/}}
+      {{/*    alert("this is 1")*/}}
+      {{/*    console.log("right-clicked on tile 1")*/}}
+      {{/*})*/}}
+	</script>
 
 {{end}}

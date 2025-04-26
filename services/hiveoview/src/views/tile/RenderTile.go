@@ -28,6 +28,8 @@ type RenderTileTemplateData struct {
 	RenderConfirmDeleteTilePath string
 	// sse event name to refresh the tile after edit
 	TileUpdatedEvent string
+	// When the dashboard is locked there is no edit menu
+	Locked bool
 
 	// viewmodel to draw live data from
 	//VM *session.ClientViewModel
@@ -69,8 +71,8 @@ func (d RenderTileTemplateData) GetOutputValue(tileSource session.TileSource) (i
 	if tileSource.AffordanceType == messaging.AffordanceTypeAction {
 		aff := ct.GetActionAff(tileSource.Name)
 		if aff != nil {
-			as := ct.QueryAction(tileSource.Name)
-			iout = ct.GetActionOutputFromStatus(as)
+			ct.QueryAction(tileSource.Name)
+			iout = ct.GetActionOutput(tileSource.Name)
 		}
 	} else if tileSource.AffordanceType == messaging.AffordanceTypeEvent {
 		iout = ct.GetEventOutput(tileSource.Name)
@@ -137,6 +139,7 @@ func RenderTile(w http.ResponseWriter, r *http.Request) {
 		ReRenderTilePath:            tputils.Substitute(src.RenderTilePath, pathArgs),
 		TileUpdatedEvent:            tputils.Substitute(src.TileUpdatedEvent, pathArgs),
 		cts:                         sess.GetConsumedThingsDirectory(),
+		Locked:                      ctc.dashboard.Locked,
 	}
 	buff, err := app.RenderAppOrFragment(r, RenderTileTemplate, data)
 	sess.WritePage(w, buff, err)
