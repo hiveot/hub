@@ -162,6 +162,47 @@ export class HTimechart extends HTMLElement {
         // this.innerHTML = template;
     }
 
+    // addValue injects a new value without having to reload the whole chart.
+    // if time is empty then use 'now'
+    // key is the dataset key to add to. Default is the first one.
+    addValue = (time, val, key) => {
+        if (!time) {
+            time = luxon.DateTime.now().toISO()
+        }
+// TODO: support for enums. For now just do binary true/false === 1/0
+        if (val === "true") {
+            val = 1
+        } else if (val === "false") {
+            val = 0
+        }
+//- end test
+
+        let ds = this.config.data.datasets[0];
+        // locate the dataset
+        for (let i = 0; i < this.config.data.datasets.length; i++) {
+            let hasKey = this.config.data.datasets[i].key === key;
+            if (hasKey) {
+                ds = this.config.data.datasets[i];
+                break
+            }
+        }
+        // insert the new value to the beginning of the data array
+        ds.data.unshift({x:time,y:val})
+
+        // update the end time to the new value and start time 24 hours before the end time
+        let endTime = luxon.DateTime.fromISO(time)
+        if (endTime > this.timestamp) {
+            this.timestamp = endTime
+        }
+        let newStartTime = endTime.plus((this.duration-1800)*1000)
+        let newEndTime = endTime.plus({minute:30})
+
+        this.config.options.scales.x.min = newStartTime.toISO();
+        this.config.options.scales.x.max = newEndTime.toISO();
+
+        this.chart.update();
+    }
+
     attributeChangedCallback(name, oldValue, newValue) {
         if (name === PropChartTitle) {
             this.chartTitle = newValue
@@ -230,39 +271,6 @@ export class HTimechart extends HTMLElement {
             text:  this.chartTitle
         }
         this.chart = new Chart(this.chartCanvas, this.config);
-    }
-
-    // experiment inject a value
-    // if time is empty then use 'now'
-    // key is the dataset key to add to. Default is the first one.
-    addValue = (time, val, key) => {
-        if (!time) {
-            time = luxon.DateTime.now().toISO()
-        }
-        let ds = this.config.data.datasets[0];
-        // locate the dataset
-        for (let i = 0; i < this.config.data.datasets.length; i++) {
-            let hasKey = this.config.data.datasets[i].key === key;
-            if (hasKey) {
-                ds = this.config.data.datasets[i];
-                break
-            }
-        }
-
-        ds.data.unshift({x:time,y:val})
-
-        let endTime = luxon.DateTime.fromISO(time)
-        if (endTime > this.timestamp) {
-            this.timestamp = endTime
-        }
-        let newStartTime = endTime.plus((this.duration-1800)*1000)
-        let newEndTime = endTime.plus({minute:30})
-
-        // modify the start time so its exactly 24 hours before the end time
-        this.config.options.scales.x.min = newStartTime.toISO();
-        this.config.options.scales.x.max = newEndTime.toISO();
-
-        this.chart.update();
     }
 
     // Insert or replace a chartjs dataset at the given index.
@@ -349,8 +357,9 @@ export class HTimechart extends HTMLElement {
         if (!hasScale) {
             // the first scale is at the left, additional scales are on the right
             let isFirstScale = (nr === 0);
-            this.config.options.scales[yaxisID] = {
-                // backgroundColor: 'green',
+
+            // default scale for numeric vertical axis
+            let scale = {
                 display: true,
                 position: isFirstScale ? 'left' : 'right',
                 grid: {
@@ -367,6 +376,14 @@ export class HTimechart extends HTMLElement {
                     }
                 }
             }
+            // TODO: support for labels as y-axis values
+            let axisIsLabel = false
+            if (axisIsLabel) {
+                scale.type = 'category'
+                scale.labels = ['true', 'false']
+            } else {
+            }
+            this.config.options.scales[yaxisID] = scale
         }
 
         // fixme: per dataset setting?

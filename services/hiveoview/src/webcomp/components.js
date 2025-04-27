@@ -5,6 +5,7 @@ import "./h-brand.js";
 import "./h-dark-toggle.js";
 import "./h-device-icon.js";
 import "./h-dropdown.js";
+import "./h-img.js";
 import "./h-loading.js";
 import "./h-modal.js";
 import "./h-timechart.js";

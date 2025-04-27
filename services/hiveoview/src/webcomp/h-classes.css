@@ -226,7 +226,7 @@ h-modal > article {
 }
 /* Horizontal navigation bar
  * h-navbar highlights the tab with the href matching the url.
- * this requires that
+ * this requires that h-target class is set when selecting a tab
  */
 .h-navbar {
     display: flex;
