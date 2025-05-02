@@ -10,9 +10,8 @@
         hx-swap="innerHTML"
         hx-target="#modalLevel1">
 
-        {{/* NOTE: sometimes the li item doesn't register a click but the button does*/}}
         <li hx-get="{{.RenderEditTilePath}}">
-            <button class="link" hx-get="{{.RenderEditTilePath}}">
+            <button class="link">
                 <iconify-icon icon='mdi:edit'></iconify-icon>
                 Edit Tile
             </button></li>
@@ -27,10 +26,8 @@
 
         <li class="h-horizontal-divider"></li>
 
-        {{/* NOTE: sometimes only a button receives clicks. No idea why.*/}}
         <li hx-get="{{.RenderConfirmDeleteTilePath}}">
-            <button class="link"
-                hx-get="{{.RenderConfirmDeleteTilePath}}">
+            <button class="link">
                 <iconify-icon icon='mdi:delete'></iconify-icon>
                 Delete Tile
             </button>

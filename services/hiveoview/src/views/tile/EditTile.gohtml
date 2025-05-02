@@ -45,9 +45,9 @@
 					</label>
 					<label class="h-row" style="white-space: nowrap">
 						Reload Interval
-						<input  name="reloadInterval"
-						        type="number" min="3"
-						        placeholder="Nr of seconds to reload the image"
+						<input name="reloadInterval"
+						       type="number" min="3"
+						       placeholder="Nr of seconds to reload the image"
 						       value="{{.Tile.ImageReloadInterval}}">
 						Seconds
 					</label>
@@ -68,33 +68,39 @@
 					</label>
 
             {{/* NOTE!: RenderSelectSources uses this ID 'edit-tile-sources' to add sources in this list */}}
-					<ul id="edit-tile-sources"
-					    class="h-grid-table tile-sources-table" striped border>
+					<h-list id="edit-tile-sources"
+					    ulClass="tile-sources-tablez" striped border>
               {{/* Header*/}}
-						<li>
+						<li titlerow class="h-row">
 							<div></div>
 							<div>Thing Source</div>
 							<div>Value</div>
 							<div>Updated</div>
+							<div>remove</div>
 						</li>
               {{range $k,$v := .Tile.Sources}}
-								<li>
+								<li draggable="true" id="{{$k}}-source">
+                    {{/*drag handle to re-order the list*/}}
+									<div class="h-row-centered drag-handle" >
+										<iconify-icon style="font-size:24px" icon='mdi:drag'></iconify-icon>
+									</div>
                     {{/* The hidden input is used to submit list of sources with the form*/}}
 									<input type="hidden" name="sources"
 									       value="{{$v.AffordanceType}}/{{$v.ThingID}}/{{$v.Name}}"/>
-									<button type="button" class="h-row outline h-icon-button"
-									        onclick="deleteRow(this.parentNode)"
-									>
-										<iconify-icon icon="mdi:delete"></iconify-icon>
-									</button>
 									<input name="sourceTitles" value="{{$v.Title}}"
 									       style="margin:0"
 									       title="Edit the label here. ThingID: {{$v.ThingID}}/{{$v.Name}}"/>
 									<div class="h-row">{{$.GetValue $v}}</div>
 									<div class="h-row">{{$.GetUpdated $v}}</div>
+                    {{/*delete source*/}}
+									<button type="button" class="h-row-centered outline h-icon-button"
+									        onclick="deleteRow(this.parentNode)"
+									>
+										<iconify-icon icon="mdi:delete"></iconify-icon>
+									</button>
 								</li>
               {{end}}
-					</ul>
+					</h-list>
 				</fieldset>
 
           {{/*Select the background color/transparency (when not image)*/}}
@@ -150,12 +156,16 @@
 </h-modal>
 
 <style>
+
+    /*Sortable list of tile sources*/
     .tile-sources-table {
+        display: grid;
         grid-template-columns:
-          max-content                 /*delete icon*/
+          max-content  /*drag handle */
 	        minmax(200px, max-content)          /*Name*/
 	        minmax(100px, max-content)        /*Value*/
-	        minmax(100px, max-content); /*updated*/
+	        minmax(100px, max-content) /*updated*/
+        max-content; /*delete icon*/
     }
 </style>
 
@@ -189,11 +199,34 @@
     // Disable the background settings
     // This disables the background input section and hides any image.
     function disableBackground() {
-        console.log("disableBackground")
+        // console.log("disableBackground")
         let bgSectionEl = document.getElementById("bgEnabledSection")
         // let bgShownEl = document.getElementById("background-shown");
         bgSectionEl.disabled = true
         // bgShownEl.hidden = true
+    }
+
+    var _el
+
+    function dragOver(e) {
+        if (isBefore(_el, e.target))
+            e.target.parentNode.insertBefore(_el, e.target);
+        else
+            e.target.parentNode.insertBefore(_el, e.target.nextSibling);
+    }
+
+    function dragStart(e) {
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", null); // Thanks to bqlou for their comment.
+        _el = e.target;
+    }
+
+    function isBefore(el1, el2) {
+        if (el2.parentNode === el1.parentNode)
+            for (var cur = el1.previousSibling; cur && cur.nodeType !== 9; cur = cur.previousSibling)
+                if (cur === el2)
+                    return true;
+        return false;
     }
 
     // Enable the background settings
@@ -201,7 +234,7 @@
     // in the shown background-shown image.
     // If a URL is set, use it for the shown image.
     function enableBackground() {
-        console.log("enableBackground")
+        // console.log("enableBackground")
         let bgSectionEl = document.getElementById("bgEnabledSection")
         bgSectionEl.disabled = false
     }
