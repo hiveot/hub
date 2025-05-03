@@ -150,7 +150,7 @@ class HList extends HTMLElement {
                 if (this.draggedEl) {
                     this.draggedEl.classList.remove('dragging');
                 }
-                for (let r of items) {
+                for (let r of rows) {
                     r.classList.remove("hover")
                 }
             })

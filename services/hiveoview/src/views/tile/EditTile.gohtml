@@ -68,18 +68,17 @@
 					</label>
 
             {{/* NOTE!: RenderSelectSources uses this ID 'edit-tile-sources' to add sources in this list */}}
-					<h-list id="edit-tile-sources"
-					    ulClass="tile-sources-tablez" striped border>
+					<h-grid-table2 id="edit-tile-sources" title="{{.Tile.ID}}" striped border>
               {{/* Header*/}}
-						<li titlerow class="h-row">
-							<div></div>
-							<div>Thing Source</div>
-							<div>Value</div>
-							<div>Updated</div>
-							<div>remove</div>
+						<li title-row>
+							<div ></div>
+							<div width="minmax(200px, max-content)">Thing Source</div>
+							<div width="minmax(100px, max-content)">Value</div>
+							<div width="minmax(100px,max-content)">Updated</div>
+							<div >remove</div>
 						</li>
               {{range $k,$v := .Tile.Sources}}
-								<li draggable="true" id="{{$k}}-source">
+								<li id="{{$k}}-source" draggable="true">
                     {{/*drag handle to re-order the list*/}}
 									<div class="h-row-centered drag-handle" >
 										<iconify-icon style="font-size:24px" icon='mdi:drag'></iconify-icon>
@@ -100,7 +99,7 @@
 									</button>
 								</li>
               {{end}}
-					</h-list>
+					</h-grid-table2>
 				</fieldset>
 
           {{/*Select the background color/transparency (when not image)*/}}
@@ -155,19 +154,6 @@
 	</article>
 </h-modal>
 
-<style>
-
-    /*Sortable list of tile sources*/
-    .tile-sources-table {
-        display: grid;
-        grid-template-columns:
-          max-content  /*drag handle */
-	        minmax(200px, max-content)          /*Name*/
-	        minmax(100px, max-content)        /*Value*/
-	        minmax(100px, max-content) /*updated*/
-        max-content; /*delete icon*/
-    }
-</style>
 
 
 <script>
