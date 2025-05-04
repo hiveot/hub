@@ -54,7 +54,7 @@ template.innerHTML = `
 </div>
 
 <style>
-  
+
  .h-modal {
     position: fixed;
     top: 0;
@@ -67,6 +67,22 @@ template.innerHTML = `
     flex-direction: column; 
     align-items: center;
     justify-content: center;
+    
+    /*The opacity of the modal mask*/
+    --mask-opacity: 80%;
+    /*The background color of the modal mask*/
+    --mask-background: var(--pico-background-color);
+    /* the animation timing of opening and closing the modal */
+    --animation-duration: 3500ms;
+}
+
+/* the top level article (panel) inside a model has no bottom margin
+ * must be set outside the shadow root
+ */
+::slotted(article) {
+    margin:0;
+    max-height:100vh;
+    overflow:auto;
 }
   
   /*if the component has a show attribute set then show modal and fade in*/
@@ -100,11 +116,10 @@ template.innerHTML = `
     z-index: 3;  /*same as h-modal-content*/
     opacity: var(--mask-opacity);
     background-color: var(--mask-background);
-
   }
 
 
-/*The close button is show if the 'showclose' attribute is set
+/*The close button is show if the 'showclose' attribute is set.
  it is placed relative to the model content div
 */
 .h-modal-close-button {
@@ -125,8 +140,11 @@ template.innerHTML = `
 }
  /* show the close button if the h-modal element has the 'showclose' attr set*/
  :host([showclose]) .h-modal-close-button {
+    @media only screen {
       display: flex;
+    }
   } 
+  
   /*On show of the modal, move the close button in position*/
   :host([show]) .h-modal-close-button {
     transition: top 1.5s, right 1.5s ease;
@@ -140,15 +158,24 @@ template.innerHTML = `
     position: relative;
     z-index: 3; /* same as mask */
   }
+  
   /*The slot has the border with rounded corners. This requires overflow
    set to hidden otherwise the corners are cut off.
    Unfortunately this will cut off the close button so the close button
    must be set outside the div with overflow hidden*/
 .h-modal-slot {
+    /*overflow:auto;*/
+
+    /* on small screens use the whole screen for the modal*/
+    @media (max-width: 500px) {
+        width:100vw;
+        height:100vh;
+    }
+
     /*position: relative;*/
     align-items: center;
     justify-content: center;
-    display: flex;
+    /*display: flex;*/
     overflow:hidden; /*don't cut off rounded corners*/
     flex-direction: column;
     opacity: 1;

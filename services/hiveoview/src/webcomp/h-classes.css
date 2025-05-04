@@ -210,20 +210,7 @@ ul > li:hover{
     background-color: var(--pico-dropdown-hover-background-color);
 }
 
-/* modal with mask settings */
-h-modal {
-    /*The opacity of the modal mask*/
-    --mask-opacity: 80%;
-    /*The background color of the modal mask*/
-    --mask-background: var(--pico-background-color);
-    /* the animation timing of opening and closing the modal */
-    --animation-duration: 500ms;
-}
 
-/* the top level article (panel) inside a model has no bottom margin */
-h-modal > article {
-    margin:0;
-}
 /* Horizontal navigation bar
  * h-navbar highlights the tab with the href matching the url.
  * this requires that h-target class is set when selecting a tab

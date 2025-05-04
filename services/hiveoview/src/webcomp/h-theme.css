@@ -75,13 +75,13 @@ article header, article footer, footer  {
     width: auto; /* 100% doesn't work due to box-sizing ?:(  */
     gap: var(--pico-grid-row-gap);
 }
-/* Fix: submit button in a footer has no extra bottom margin as it isnt a form */
+/* Fix: submit button in a footer has no extra bottom margin as it isn't a form */
 article footer button[type=submit] {
-    margin:0;
+    margin:0;  /* instead of 16 */
 }
 /* Fix: article main should have the card background color */
 article main {
-    padding: var(--pico-spacing);
+    /*padding: var(--pico-spacing);*/
     background-color: var(--pico-card-background-color)
 }
 

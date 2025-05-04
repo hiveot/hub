@@ -58,7 +58,7 @@ const template = `
   display:grid;
   grid-template-columns:subgrid;
   grid-column: 1/-1; /* magic feature to span all columns */
-  
+    background-color: var(--pico-form-element-active-background-color);
 }
 
 .h-grid-table2 > * div {
@@ -77,10 +77,13 @@ const template = `
     border-bottom: 2px solid green !important;
 }
 
+[striped] .h-grid-table2 *  {
+    background-color: inherit;
+}
+
 /* when list is striped*/
 [striped] .h-grid-table2 > *:nth-child(even)  {
-    background-color: var(--pico-form-element-active-background-color);
-    /*background-color: blue;*/
+    background-color: var(--pico-table-row-stripped-background-color);
 }
 
 /* title of first row if set*/
