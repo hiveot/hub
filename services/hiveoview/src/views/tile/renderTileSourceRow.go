@@ -6,8 +6,8 @@ import (
 	"github.com/hiveot/hub/lib/consumedthing"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
-	"net/http"
 	"html"
+	"net/http"
 )
 
 // RenderTileSourceRow renders a single table row with the tile 'source'
@@ -73,24 +73,31 @@ func RenderTileSourceRow(w http.ResponseWriter, r *http.Request) {
 
 	// if no value was ever received then use n/a
 	latestValue := iout.Value.Text() + " " + iout.UnitSymbol()
-	latestUpdated := utils.FormatDateTime(iout.Updated)
+	latestUpdated := utils.FormatAge(iout.Updated)
 	title := ct.Title + " " + iout.Title
 
 	// the input hidden hold the real source value
 	// this must match the list in RenderEditTile.gohtml
-	// FIXME: this is ridiculous htmx. Use JS to simplify it.
+	// FIXME: this is ridiculous htmx. Use JS to simplify it?.
 	htmlToAdd := fmt.Sprintf(""+
-		"<li>"+
+		"<li id='new-source' draggable='true'>"+
+		"  <div class='h-row-centered drag-handle'>"+
+		"     <iconify-icon style='font-size:24px' icon='mdi:drag'></iconify-icon>"+
+		"  </div>"+
 		"  <input type='hidden' name='sources' value='%s'/>"+
-		"  <button type='button' class='h-row outline h-icon-button'"+
-		"    onclick='deleteRow(this.parentNode)'>"+
-		"		<iconify-icon icon='mdi:delete'></iconify-icon>"+
-		"	</button>"+
 		"  <input name='sourceTitles' value='%s' title='%s' style='margin:0'/>"+
 		"  <div>%s</div>"+
 		"  <div>%s</div>"+
+		"  <button type='button' class='h-row-centered outline h-icon-button' style='border:none'"+
+		"    onclick='deleteRow(this.parentNode)'>"+
+		"		<iconify-icon icon='mdi:delete'></iconify-icon>"+
+		"  </button>"+
 		"</li>",
-		html.EscapeString(sourceID), html.EscapeString(title), html.EscapeString(sourceID), html.EscapeString(latestValue), html.EscapeString(latestUpdated))
+		html.EscapeString(sourceID),
+		html.EscapeString(title),
+		html.EscapeString(sourceID),
+		html.EscapeString(latestValue),
+		html.EscapeString(latestUpdated))
 
 	_, _ = w.Write([]byte(htmlToAdd))
 	return

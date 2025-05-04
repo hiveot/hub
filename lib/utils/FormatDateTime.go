@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"github.com/araddon/dateparse"
 	"time"
 )
@@ -32,6 +33,39 @@ const rfc3339Milli = "2006-01-02T15:04:05.999Z"
 //	}
 //	return formattedTime
 //}
+
+// FormatAge converts the given time to the current short age format h m s ago
+//
+// If time is less than an hour:  minutes seconds ago
+// If time is less than a day:  hours minutes ago
+// If time is less than a month:  days hours minutes ago
+// If time is more than a month:  days hours ago
+func FormatAge(dateStr string) (age string) {
+	if dateStr == "" {
+		return "n/a"
+	}
+	parsedTime, _ := dateparse.ParseAny(dateStr)
+	localTime := parsedTime.Local()
+
+	dur := int(time.Now().Sub(localTime).Round(time.Second).Seconds())
+	days := dur / (24 * 3600)
+	if days >= 1 {
+		dur -= days * (24 * 3600)
+	}
+	hours := dur / 3600
+	dur -= hours * 3600
+	minutes := dur / 60
+	sec := dur - minutes*60
+	if days > 30 {
+		age = fmt.Sprintf("%dd, %dh", days, hours)
+	} else if days > 0 {
+		age = fmt.Sprintf("%dd, %dh %dm", days, hours, minutes)
+	} else if hours > 0 {
+		age = fmt.Sprintf("%dh %dm", hours, minutes)
+	}
+	age = fmt.Sprintf("%dm %ds", minutes, sec)
+	return age + " ago"
+}
 
 // FormatDateTime format an iso date/time string into a human readable format
 // value is an iso timestamp

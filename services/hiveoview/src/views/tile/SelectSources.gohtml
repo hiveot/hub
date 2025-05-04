@@ -43,9 +43,9 @@
 													<div>
                               {{/* hx-get the html of the source and inject (hx-target) it in the edit tile dialog*/}}
 														<a href="#"
-														   hx-swap="beforeend scroll:bottom"
+														   hx-swap="beforebegin"
 														   hx-trigger="click"
-														   hx-target="#edit-tile-sources"
+														   hx-target="#insert-tile-sources-here"
 														   hx-get="/tile/event/{{$thing.ID}}/{{$k}}/sourceRow"
 														   onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
 														>

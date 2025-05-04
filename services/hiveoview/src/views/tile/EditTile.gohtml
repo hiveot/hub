@@ -72,8 +72,8 @@
               {{/* Header*/}}
 						<li title-row>
 							<div ></div>
-							<div width="minmax(200px, max-content)">Thing Source</div>
-							<div width="minmax(100px, max-content)">Value</div>
+							<div width="minmax(100px, max-content)">Thing Source</div>
+							<div width="minmax(60px, max-content)">Value</div>
 							<div width="minmax(100px,max-content)">Updated</div>
 							<div >remove</div>
 						</li>
@@ -89,16 +89,19 @@
 									<input name="sourceTitles" value="{{$v.Title}}"
 									       style="margin:0"
 									       title="Edit the label here. ThingID: {{$v.ThingID}}/{{$v.Name}}"/>
-									<div class="h-row">{{$.GetValue $v}}</div>
-									<div class="h-row">{{$.GetUpdated $v}}</div>
+									<div>{{$.GetValue $v}}</div>
+									<div>{{$.GetUpdated $v}}</div>
                     {{/*delete source*/}}
 									<button type="button" class="h-row-centered outline h-icon-button"
+									        style="border:none"
 									        onclick="deleteRow(this.parentNode)"
 									>
 										<iconify-icon icon="mdi:delete"></iconify-icon>
 									</button>
 								</li>
               {{end}}
+{{/*						Insertion point for adding rows*/}}
+							<li id="insert-tile-sources-here" style="display:none"></li>
 					</h-grid-table2>
 				</fieldset>
 
@@ -157,14 +160,11 @@
 
 
 <script>
-    // tileSources holds the sources currently being edited
-    var tileSources = {{.Tile.Sources}}
 
-        // Listen for the editor ready event and setup the inputs
-        document.getElementById("editTileModal")
-            .addEventListener('ready', (ev) => {
-                setup();
-            })
+    // Listen for the editor ready event and setup the inputs
+    document.getElementById("editTileModal").addEventListener("ready", () => {
+        setup()
+    })
 
     // Listen for the background enable/disable input toggle and enable or diable the background image
     document.getElementById("background-enabled")
@@ -207,14 +207,6 @@
         _el = e.target;
     }
 
-    function isBefore(el1, el2) {
-        if (el2.parentNode === el1.parentNode)
-            for (var cur = el1.previousSibling; cur && cur.nodeType !== 9; cur = cur.previousSibling)
-                if (cur === el2)
-                    return true;
-        return false;
-    }
-
     // Enable the background settings
     // This enables the background input section, show the stored background-image
     // in the shown background-shown image.
@@ -223,6 +215,14 @@
         // console.log("enableBackground")
         let bgSectionEl = document.getElementById("bgEnabledSection")
         bgSectionEl.disabled = false
+    }
+
+    function isBefore(el1, el2) {
+        if (el2.parentNode === el1.parentNode)
+            for (var cur = el1.previousSibling; cur && cur.nodeType !== 9; cur = cur.previousSibling)
+                if (cur === el2)
+                    return true;
+        return false;
     }
 
     // set the background color to inherit

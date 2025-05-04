@@ -46,7 +46,8 @@ func (data EditTileTemplateData) GetUpdated(tileSource session.TileSource) strin
 	}
 	iout := ct.GetValue(tileSource.AffordanceType, tileSource.Name)
 	if iout != nil {
-		return utils.FormatDateTime(iout.Updated)
+		return utils.FormatAge(iout.Updated)
+		//return utils.FormatDateTime(iout.Updated, "S")
 	}
 	return ""
 }

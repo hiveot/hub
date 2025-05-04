@@ -96,6 +96,7 @@ const template = `
 
 </style>
 `
+
 // const HList = class extends baseClass {
 class HGridTable extends HTMLElement {
 
@@ -185,78 +186,88 @@ class HGridTable extends HTMLElement {
             this.gridContainer.classList.add(...tokens)
         }
 
-        // All rows listen for drag events on all 'li' elements but only 'draggable' items can be dragged
-        // let rows = this.querySelectorAll('li[draggable="true"],li[title-row]');
-        // let rows = this.querySelectorAll('li');
-        let rows = this.gridContainer.children
-
-        for (let row of rows) {
-            row.classList.add("h-grid-table2-row")
-            // only draggable items can be dragged (eg not the title row)
-            row.addEventListener('dragstart', (ev) => {
-                console.log("dragstart")
-                // a cell in this row starts dragging
-                if (ev.target.hasAttribute("draggable")) {
-                    this.draggedEl = row
-                    ev.dataTransfer.dropEffect = "move"
-                    ev.dataTransfer.effectAllowed = "move"
-                    ev.dataTransfer.setData("text/html", row.id)
-                } else {
-                    // this is not a drag start point
-                    ev.preventDefault()
-                    ev.stopPropagation()
-                }
-            })
-
-            row.addEventListener('dragover', (ev) => {
-                // console.log("dragover")
-                // ??? why?
-                ev.preventDefault();
-            })
-            row.addEventListener('dragend', (ev) => {
-                console.log("dragend")
-                if (this.draggedEl) {
-                    this.draggedEl.classList.remove('dragging');
-                }
-                for (let r of rows) {
-                    r.classList.remove("hover")
-                }
-            })
-            row.addEventListener('drop', (ev) => {
-                console.log("drop")
+        // only draggable items can be dragged (eg not the title row)
+        this.gridContainer.addEventListener('dragstart', (ev) => {
+            console.log("dragstart")
+            // a cell in this row starts dragging
+            if (ev.target.hasAttribute("draggable")) {
+                this.draggedEl = this.getRow(this.gridContainer, ev.target)
+                ev.dataTransfer.dropEffect = "move"
+                ev.dataTransfer.effectAllowed = "move"
+                ev.dataTransfer.setData("text/html", this.draggedEl.id)
+            } else {
+                // this is not a drag start point
                 ev.stopPropagation()
-                ev.preventDefault();
-                // move the dragged element after this element
-                if (this.draggedEl !== row) {
-                    this.draggedEl.remove()
-                    row.after(this.draggedEl)
-                }
-            })
-            row.addEventListener('dragenter', (ev) => {
-                // if this is a different target, clear the current target
-                if (this.enterTarget && this.enterTarget !== ev.currentTarget) {
-                    this.dragEnterCount = 0
-                    this.enterTarget.classList.remove("hover")
-                }
+            }
+        })
 
-                this.enterTarget = ev.currentTarget
+        this.gridContainer.addEventListener('dragover', (ev) => {
+            // console.log("dragover")
+            // ??? why?
+            ev.preventDefault();
+            ev.stopPropagation()
+        })
+        this.gridContainer.addEventListener('dragend', (ev) => {
+            console.log("dragend")
+            if (this.draggedEl) {
+                this.draggedEl.classList.remove('dragging');
+            }
+            // TODO: is this neccesary?
+            for (let r of this.gridContainer.children) {
+                r.classList.remove("hover")
+            }
+        })
+        this.gridContainer.addEventListener('drop', (ev) => {
+            console.log("drop")
+            ev.stopPropagation()
+            // move the dragged element after this element
+            let targetRow = this.getRow(this.gridContainer, ev.target)
+            if (this.draggedEl !== targetRow) {
+                this.draggedEl.remove()
+                targetRow.after(this.draggedEl)
+            }
+        })
+        this.gridContainer.addEventListener('dragenter', (ev) => {
+            // if this is a different target, clear the current target
+            let currentTarget = this.getRow(this.gridContainer, ev.target)
+            if (this.enterTarget && this.enterTarget !== currentTarget) {
+                this.dragEnterCount = 0
+                this.enterTarget.classList.remove("hover")
+            }
+            if (currentTarget) {
+                console.log("dragenter; target", currentTarget.id)
+                this.enterTarget = currentTarget
                 this.dragEnterCounter++
-                console.log("dragenter; target", row.id)
-                // ev.stopPropagation()
-                ev.preventDefault()
-                row.classList.add("hover")
-            })
-            row.addEventListener('dragleave', (ev) => {
-                this.dragEnterCounter--
-                if (this.dragEnterCounter === 0) {
-                    console.log("dragleave; target", row.id)
-                    // ev.stopPropagation()
-                    // ev.preventDefault()
-                    row.classList.remove("hover")
-                    this.enterTarget = undefined
+                ev.stopPropagation()
+                currentTarget.classList.add("hover")
+            }
+        })
+        this.gridContainer.addEventListener('dragleave', (ev) => {
+            this.dragEnterCounter--
+            if (this.dragEnterCounter === 0) {
+                let currentTarget = this.getRow(this.gridContainer, ev.target)
+                if (currentTarget) {
+                    console.log("dragleave; target", currentTarget.id)
+                ev.stopPropagation()
+                currentTarget.classList.remove("hover")
                 }
-            })
+                this.enterTarget = undefined
+            }
+        })
+    }
+
+    // Get the container child row that has the given element
+    // This returns the row element that is a direct child of a container
+    getRow(container, child) {
+        let row = child
+        while (row) {
+            if (row.parentElement === container) {
+                return row
+            }
+            row = row.parentElement
         }
+        console.log("element is not a container child. id=",child.id)
+        return undefined
     }
 
 
