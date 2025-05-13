@@ -8,56 +8,56 @@
 		<span>- {{len .Things}} things</span>
 	</summary>
 
-	<ul class="directory-table h-grid-table" striped border>
+	<h-grid-table id="directory-group-id" class="directory-table" striped border>
 		<li>
-			<div class="h-show-sm"></div>
+			<div show="sm" width="40px"></div>
 			<div>Name</div>
-			<div class="h-show-sm">Type</div>
-			<div class="h-show-xl">Description</div>
-			<div class="h-show-lg">Properties</div>
-			<div class="h-show-md">Events</div>
-			<div class="h-show-lg">Actions</div>
-			<div class="h-show-xxl">Thing ID</div>
+			<div show="sm">Type</div>
+			<div show="lg">Description</div>
+			<div show="md" width="minmax(140px,max-content)">Properties</div>
+			<div show="md"  width="minmax(120px,max-content)">Events</div>
+			<div show="lg"  width="minmax(120px,max-content)">Actions</div>
+			<div show="xl">Thing ID</div>
 		</li>
 
 		<!--=== for TD in .Things ===-->
       {{range .Things}}
 				<li>
-	          {{/*Icon*/}}
-						<div class="h-show-sm" title="Show TD">
-							<h-device-icon deviceType={{.AtType}}></h-device-icon>
-						</div>
+            {{/*Icon*/}}
+					<div title="Show TD">
+						<h-device-icon deviceType={{.AtType}}></h-device-icon>
+					</div>
 
 
-	          {{/*Title*/}}
-						<div>
-							<a href="/thing/{{.ID}}/details"
-							   hx-get="/thing/{{.ID}}/details"
-							   hx-target="#detailsPage"
-							   hx-swap="innerHTML"
-							   hx-on::after-request="window.navigateTo(event,this.href)"
-							>{{.Title}}
-							</a>
-						</div>
+            {{/*Title*/}}
+					<div>
+						<a href="/thing/{{.ID}}/details"
+						   hx-get="/thing/{{.ID}}/details"
+						   hx-target="#detailsPage"
+						   hx-swap="innerHTML"
+						   hx-on::after-request="window.navigateTo(event,this.href)"
+						>{{.Title}}
+						</a>
+					</div>
 
             {{/*Type TODO: use .GetAtTypeTitle() but it needs a consumed thing*/}}
-						<div class="h-show-sm">{{.AtType}}</div>
+					<div>{{.AtType}}</div>
 
             {{/*Description*/}}
-						<div class="h-show-xl">{{.Description}}</div>
+					<div>{{.Description}}</div>
 
             {{/*Nr Properties*/}}
-					<div class="h-show-lg">{{len .Properties}} Properties</div>
+					<div>{{len .Properties}} Properties</div>
 
             {{/*Nr Outputs*/}}
-					<div class="h-show-md">{{len .Events}} events</div>
+					<div>{{len .Events}} events</div>
 
-						{{/*Nr Actions*/}}
-						<div class="h-show-lg">{{len .Actions}} actions</div>
+            {{/*Nr Actions*/}}
+					<div>{{len .Actions}} actions</div>
 
 
             {{/*Show ThingID on big screens */}}
-					<div class="h-show-xxl">
+					<div>
 						<a href="/thing/{{.ID}}/details"
 						   hx-get="/thing/{{.ID}}/details"
 						   hx-target="#detailsPage"
@@ -74,5 +74,5 @@
 			<!--   <div colspan="3">Nr Things: {{ len .Things }}</div>-->
 		</li>
 		</tfoot>
-	</ul>
+	</h-grid-table>
 </details>

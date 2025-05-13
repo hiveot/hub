@@ -1,15 +1,73 @@
 /* Adjustments to  pico's theme settings */
+/* See also: https://github.com/picocss/pico/discussions/482
+ */
 
 :root {
     /* theme  */
-    --pico-font-size: 16px;
+    --pico-font-family-sans-serif: Inter, system-ui, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, Helvetica, Arial, "Helvetica Neue", sans-serif, var(--pico-font-family-emoji);
+    --pico-font-size: 87.5%;
+    /* Original: 100% */
+    --pico-line-height: 1.25;
+    /* Original: 1.5 */
+    --pico-form-element-spacing-vertical: 0.5rem;
+    /* Original: 1rem */
+    --pico-form-element-spacing-horizontal: 1.0rem;
+    /* Original: 1.25rem */
+    --pico-border-radius: 0.375rem;
+    /* Original: 0.25rem */
+
+    /*Fixes picocss increasing font size on larger screen
+    Shouldn't font sizes be based on pixel density?
+    */
+    @media (min-width: 576px) {
+        :root {
+            --pico-font-size: 87.5%;
+            /* Original: 106.25% */
+        }
+    }
+
+    @media (min-width: 768px) {
+        :root {
+            --pico-font-size: 87.5%;
+            /* Original: 112.5% */
+        }
+    }
+
+    @media (min-width: 1024px) {
+        :root {
+            --pico-font-size: 87.5%;
+            /* Original: 118.75% */
+        }
+    }
+
+    @media (min-width: 1280px) {
+        :root {
+            --pico-font-size: 87.5%;
+            /* Original: 125% */
+        }
+    }
+
+    @media (min-width: 1536px) {
+        :root {
+            --pico-font-size: 87.5%;
+            /* Original: 131.25% */
+        }
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        --pico-font-weight: 600;
+        /* Original: 700 */
+    }
 
     details {
         /* why does <details/> have a bottom margin when using flex horizontal  ? */
         margin-bottom: 0;
     }
-
-    --pico-form-element-spacing-vertical: 0.6rem;
 
     /*differentiate background of readonly inputs from writable*/
 
@@ -78,6 +136,7 @@ article header, article footer, footer  {
 /* Fix: submit button in a footer has no extra bottom margin as it isn't a form */
 article footer button[type=submit] {
     margin:0;  /* instead of 16 */
+    /*border-radius: calc(var(--pico-border-radius) * 2);*/
 }
 /* Fix: article main should have the card background color */
 article main {
@@ -127,6 +186,8 @@ input[type=checkbox][role=switch]:checked:before {
     background-color:red;
     left: 2px;		    /*overlap the border with the slider*/
 }
+
+
 
 /*---
    Picocss's doesn't educate on what to use when and where. The intent is missing.

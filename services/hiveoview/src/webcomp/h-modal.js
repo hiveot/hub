@@ -73,7 +73,8 @@ template.innerHTML = `
     /*The background color of the modal mask*/
     --mask-background: var(--pico-background-color);
     /* the animation timing of opening and closing the modal */
-    --animation-duration: 3500ms;
+    /*FIXME: animation stopped working somewhere along the way */
+    --animation-duration: 300ms;
 }
 
 /* the top level article (panel) inside a model has no bottom margin
@@ -85,27 +86,28 @@ template.innerHTML = `
     overflow:auto;
 }
   
-  /*if the component has a show attribute set then show modal and fade in*/
-  :host([show]) .h-modal {
+/*if the component has a show attribute set then show modal and fade in*/
+:host([show]) .h-modal {
     display: flex;
-  }
-    /* if animation is enabled then fade out */
-  :host([animate]) .h-modal {
+}
+  
+/* if animation is enabled then fade out */
+:host([animate]) .h-modal {
     /*  fadeOut sets display:flex while animating, keeping the transition visible.*/
     animation-name: fadeOut;
     animation-duration: var(--animation-duration);
     animation-timing-function: ease;
-  }
+}
 
-  /*if animation is enabled then fade in*/
-  :host([show][animate]) .h-modal {
+/*if animation is enabled then fade in*/
+:host([show][animate]) .h-modal {
     animation-name: fadeIn;
     animation-duration: var(--animation-duration);
     animation-timing-function: ease;
-    }
+}
 
-  /* mask closing when clicking outside the modal content */
-  .h-modal-mask {
+/* mask closing when clicking outside the modal content */
+.h-modal-mask {
     display: block;
     position: fixed;
     cursor: pointer;
@@ -116,8 +118,7 @@ template.innerHTML = `
     z-index: 3;  /*same as h-modal-content*/
     opacity: var(--mask-opacity);
     background-color: var(--mask-background);
-  }
-
+}
 
 /*The close button is show if the 'showclose' attribute is set.
  it is placed relative to the model content div
@@ -138,34 +139,34 @@ template.innerHTML = `
     cursor: pointer;
     transition: top 0.5s, right 0.5s ease;
 }
- /* show the close button if the h-modal element has the 'showclose' attr set*/
- :host([showclose]) .h-modal-close-button {
+
+/* show the close button if the h-modal element has the 'showclose' attr set*/
+:host([showclose]) .h-modal-close-button {
     @media only screen {
       display: flex;
     }
-  } 
+} 
   
-  /*On show of the modal, move the close button in position*/
-  :host([show]) .h-modal-close-button {
+/*On show of the modal, move the close button in position*/
+:host([show]) .h-modal-close-button {
     transition: top 1.5s, right 1.5s ease;
     top: -10px;
     right: -10px;
     z-index:5; /*cover modal-content*/
-  }
+}
   
 .h-modal-content {
     /*position the content relative for the close button and the z-index to work*/
     position: relative;
     z-index: 3; /* same as mask */
-  }
+}
   
-  /*The slot has the border with rounded corners. This requires overflow
-   set to hidden otherwise the corners are cut off.
-   Unfortunately this will cut off the close button so the close button
-   must be set outside the div with overflow hidden*/
+/* The slot has the border with rounded corners. This requires overflow
+  set to hidden otherwise the corners are cut off.
+  Unfortunately this will cut off the close button so the close button
+  must be set outside the div with overflow hidden
+*/
 .h-modal-slot {
-    /*overflow:auto;*/
-
     /* on small screens use the whole screen for the modal*/
     @media (max-width: 500px) {
         width:100vw;
@@ -191,7 +192,7 @@ template.innerHTML = `
   /*box-shadow: 0px 4px 8px -2px rgba(9, 30, 66, 0.35),*/
   /*      0px 0px 0px 1px rgba(37,64,111,0.59);*/
    box-shadow: var(--pico-box-shadow);
-    
+}    
 
 @keyframes fadeIn {
     0% {

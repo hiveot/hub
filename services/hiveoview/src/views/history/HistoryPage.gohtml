@@ -17,80 +17,94 @@
 
 	<article style="height: 100%">
 
-     {{/*	History header section with Thing title, date and nr of history values in the last 24 hours*/}}
-			<ul class="h-grid-table history-header"
-			     style="grid-column-gap: 10px;  align-items: baseline">
+      {{/*	History header section with Thing title, date and nr of history values in the last 24 hours*/}}
+		<div class="history-page-title">
 
-				<label for="histDeviceName">History of:</label>
-				<div id="histDeviceName" class="h-row" style="width:auto">
-					<span  readonly
-					       title="thing-ID: {{.ThingID}}/{{.Name}}"
-					       class="h-box"
-					       style="margin: 0; text-overflow: ellipsis; background:none;width:fit-content"
-					      >{{.Title}}</span>
+			<label for="histDeviceName">History of:</label>
+			<div id="histDeviceName" class="h-row" style="width:auto">
+					<span readonly
+					      title="thing-ID: {{.ThingID}}/{{.Name}}"
+					      class="h-box"
+					      style="margin: 0; text-overflow: ellipsis; background:none;width:fit-content"
+					>{{.Title}}</span>
 
-					<a href="/thing/{{.ThingID}}/details"
- 						  hx-get="/thing/{{.ThingID}}/details"
-			        hx-target="#detailsPage"
-			        hx-swap="innerHTML"
-			        hx-on::after-request="window.navigateTo(event,this.href)"
-					    title="Thing details..."
-	        >
-						<iconify-icon icon='mdi:page-next-outline'></iconify-icon>
-					</a>
-				</div>
+				<a href="/thing/{{.ThingID}}/details"
+				   hx-get="/thing/{{.ThingID}}/details"
+				   hx-target="#detailsPage"
+				   hx-swap="innerHTML"
+				   hx-on::after-request="window.navigateTo(event,this.href)"
+				   title="Thing details..."
+				>
+					<iconify-icon icon='mdi:page-next-outline'></iconify-icon>
+				</a>
+			</div>
 
-				<label for="histDate">Date:</label>
-				<div class="h-row">
+			<label for="histDate">Date:</label>
+			<div class="h-row">
 					<span id="histDate" readonly
-						     class="h-box" style="margin: 0; text-overflow: ellipsis; background:none;"
-						     >
+					      class="h-box" style="margin: 0; text-overflow: ellipsis; background:none;"
+					>
 						{{.Timestamp.Format "Mon, 02 Jan 2006"}}
 						</span>
 
-					<a href="{{.PrevDayPath}}"
-							   hx-get="{{.PrevDayPath}}"
-							   hx-target="#historyPage"
-							   hx-swap="innerHTML"
-					>
-							Previous Day
-					</a>
-					{{if eq .CompareToday -1}}
+				<a href="{{.PrevDayPath}}"
+				   hx-get="{{.PrevDayPath}}"
+				   hx-target="#historyPage"
+				   hx-swap="innerHTML"
+				>
+					Previous Day
+				</a>
+          {{if eq .CompareToday -1}}
 						<a href="{{.NextDayPath}}"
-							   hx-get="{{.NextDayPath}}"
-							   hx-target="#historyPage"
-							   hx-swap="innerHTML"
+						   hx-get="{{.NextDayPath}}"
+						   hx-target="#historyPage"
+						   hx-swap="innerHTML"
 						>
-								Next Day
+							Next Day
 						</a>
-					{{end}}
-					{{if ne .CompareToday 0}}
-					<a href="{{.TodayPath}}"
+          {{end}}
+          {{if ne .CompareToday 0}}
+						<a href="{{.TodayPath}}"
 						   hx-get="{{.TodayPath}}"
 						   hx-target="#historyPage"
 						   hx-swap="innerHTML"
-					>
-						Today
-					</a>
-					{{end}}
-				</div>
-
-				<label for="nrItems">Nr of entries:</label>
-				<input id="nrItems" readonly
-					       style="text-overflow: ellipsis; background:none;"
-					       value="{{len .Values}} in the previous 24 hours"/>
-			</ul>
-
-			{{/* Show a table with a chart beside it */}}
-			<div class="h-row" style="align-items:start; flex-grow:1; overflow:hidden">
-				<details open style="height:100%;overflow:auto">
-						<summary title="Show details"></summary>
-						{{template "historyTable.gohtml" .}}
-				</details>
-				<div class="h-show-xs" style="height:100%; flex-grow:1">
-          {{template "historyChart.gohtml" .}}
-				</div>
+						>
+							Today
+						</a>
+          {{end}}
 			</div>
+
+			<label for="nrItems">Nr of entries:</label>
+			<input id="nrItems" readonly
+			       style="text-overflow: ellipsis; background:none;"
+			       value="{{len .Values}} in the previous 24 hours"/>
+		</div>
+
+      {{/* Show a table with a chart beside it */}}
+		<div class="h-row" style="align-items:start; flex-grow:1; overflow:hidden">
+			<details open style="height:100%;overflow:auto">
+				<summary title="Show details"></summary>
+          {{template "historyTable.gohtml" .}}
+			</details>
+			<div class="h-show-xs" style="height:100%; flex-grow:1">
+          {{template "historyChart.gohtml" .}}
+			</div>
+		</div>
 	</article>
 
 {{end}}
+
+<style>
+    .history-page-title {
+        display: grid;
+        grid-template-columns:  max-content 1fr;
+        grid-gap: 10px;
+        align-items: baseline;
+    }
+    @media (width < 640px) {
+        .history-page-title {
+            grid-template-columns:  1fr;
+        }
+    }
+
+</style>

@@ -34,7 +34,7 @@
 			</button>
 		</summary>
 
-		<ul class="h-grid-table details-header">
+		<div class="details-header">
 				<label for="manufacturer">Device Description:</label>
 				<input id="manufacturer" type="text" readonly
 				       style="margin: 0; text-overflow: ellipsis;"
@@ -63,7 +63,7 @@
 				</div>
 
 				<div class="h-grow"></div>
-		</ul>
+		</div>
 		<p></p>
 
 		<h-details-group id="thingDetails" group-name="thingDetails">
@@ -114,6 +114,7 @@
 <style>
   /* responsive columns for the details page heading*/
     .details-header {
+		    display:grid;
       grid-column-gap: 10px;
       align-items: baseline;
 

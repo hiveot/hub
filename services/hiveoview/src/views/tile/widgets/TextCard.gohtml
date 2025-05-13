@@ -11,7 +11,7 @@
     {{$s := (index $.Tile.Sources 0)}}
     {{$iout := $.GetOutputValue $s}}
 		<div class="h-col-centered h-grow"
-		     style="width:100%; height:100%;font-size:1.5em; justify-content:center"
+		     style="width:100%; height:100%;font-size:large; justify-content:center"
 		>
         {{/* Show the output itself. Render booleans as switches*/}}
 				{{if $iout.Schema.ReadOnly}}
@@ -38,8 +38,8 @@
 		<div class="h-col-centered h-grow"
 		     style="width:100%; height:100%; overflow:hidden; margin:0">
 
-		<table aria-label="GridTable" class="h-grid-table striped"
-		        style="grid-template-columns:1fr max-content">
+		<table aria-label="GridTable" class="striped"
+		        style="display:grid; grid-template-columns:1fr max-content">
 			<tbody style="display:contents">
 			{{range .Tile.Sources}}
 				{{$iout := $.GetOutputValue .}}

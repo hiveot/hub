@@ -2,14 +2,14 @@
 <!--@param '.' object of type thing.ThingDetailsTemplateData -->
 {{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/thingdetails.ThingDetailsTemplateData*/ -}}
 
-<ul class="h-grid-table thing-actions" striped border>
-	<li>
+<h-grid-table id="action-list-id" striped border>
+	<li class="title-row">
 		<div>Action Name</div>
-		<div class="h-show-sm">Status</div>
-		<div class="h-show-md">Description</div>
-		<div class="h-show-xl">Requested</div>
-		<div class="h-show-xl">Progress</div>
-		<div class="h-show-xl">By</div>
+		<div>Status</div>
+		<div show="sm" width="1fr">Description</div>
+		<div show="md">Progress</div>
+		<div show="lg">Requested</div>
+		<div show="lg">By</div>
 	</li>
 
     {{range $name := .ActionNames }}
@@ -18,7 +18,7 @@
         {{$actionOutput := $.CT.GetActionOutput $name}}
 				<li>
 
-         {{/* Action Name with link to action dialog */}}
+            {{/* Action Name with link to action dialog */}}
 					<div title="name: {{$name}}">
 						<button class="outline" style="border:none;
 										display:inline-flex; gap: 5px;
@@ -27,27 +27,29 @@
 						        hx-get="{{$.GetRenderActionPath $name}}"
 						        hx-target="#modalLevel1"
 						>
-	            {{$aff.Title}}
+                {{$aff.Title}}
 						</button>
 					</div>
 
-					{{/* Status: last known value*/}}
-					{{/*FIXME: refresh this with action response*/}}
-					<div class="h-show-sm">
+            {{/* 2: Status: last known value*/}}
+            {{/*FIXME: refresh this with action response*/}}
+					<div>
               {{if and $actionOutput $actionOutput.Schema}}
                   {{template "RenderOutputValue.gohtml" $actionOutput }}
               {{end}}
 					</div>
 
-					<div class="h-show-md">{{$aff.Description}}</div>
+            {{/*3: Description*/}}
+					<div>{{$aff.Description}}</div>
 
-					{{/*Updated*/}}
-					<div class="h-show-xl">{{datetime $actionStatus.Requested "S"}}</div>
+            {{/*4: Progress*/}}
+					<div>{{$actionStatus.Status}}</div>
 
-          {{/*Progress*/}}
-					<div class="h-show-xl">{{$actionStatus.Status}}</div>
+            {{/*5: Updated*/}}
+					<div>{{datetime $actionStatus.Requested "S"}}</div>
 
-					<div class="h-show-xl">{{$actionStatus.SenderID}}</div>
+            {{/*6: By*/}}
+					<div>{{$actionStatus.SenderID}}</div>
 				</li>
     {{end}}
     {{if not .CT.TD.Actions}}
@@ -57,59 +59,4 @@
 				</div>
 			</li>
     {{end}}
-</ul>
-
-<style>
-
-    @media (width < 576px) {
-        .thing-actions {
-            /*xs, show column 1, 2 */
-            grid-template-columns:
-				            minmax(200px, 1fr) /* name */
-        }
-    }
-
-    @media (width >= 576px) and (width < 768px) {
-        .thing-actions {
-            /*sm, show column 1,2 */
-            grid-template-columns:
-				            minmax(200px, 1fr) /*name*/
-				            minmax(200px, max-content);   /* Status*/
-        }
-    }
-
-    @media (width >= 768px) and (width < 1024px) {
-        .thing-actions {
-            /*md,show column 1,2,3 */
-            grid-template-columns:
-				            minmax(200px, max-content) /*name*/
-				            200px   /* Status*/
-				            minmax(100px, 1fr); /*description*/
-        }
-    }
-
-    @media (width >= 1024px) and (width < 1280px) {
-        .thing-actions {
-            /*lg,show column 1,2,3 */
-            grid-template-columns:
-				            minmax(200px, max-content) /*name*/
-				            200px   /* Status*/
-				            minmax(100px, 1fr); /*description*/
-        }
-    }
-
-    @media (width >= 1280px) {
-        .thing-actions {
-            /*xl, show all columns*/
-            grid-template-columns:
-				            minmax(200px, max-content) /*name*/
-				            200px   /* Status*/
-				            minmax(100px, 1fr) /*description*/
-		                max-content /*requested*/
-				            max-content /*Progress*/
-						        minmax(100px, max-content); /*by*/
-        }
-    }
-
-
-</style>
+</h-grid-table>

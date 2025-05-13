@@ -1,8 +1,7 @@
 {{/*Display a table of event values from the history */}}
 
 {{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/history.HistoryTemplateData*/ -}}
-<ul class="history-table h-grid-table"
-    style="overflow-y:auto; height:100%;margin:0" striped border>
+<h-grid-table id="history-table-id" striped border>
 
 		{{/* Table Header*/}}
 		<li id="hist-table-title"
@@ -25,18 +24,4 @@
 				</li>
 		{{end}}
 
-</ul>
-<style>
-
-    /*xs, show column 1 (time), 2 (value) */
-		.history-table {
-	    grid-template-columns:
-	        minmax(200px, max-content )
-	        minmax(100px, max-content)
-		}
-
-      .history-header {
-          grid-template-columns: max-content 1fr;
-      }
-
-</style>
+</h-grid-table>

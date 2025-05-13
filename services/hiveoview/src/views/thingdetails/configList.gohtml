@@ -2,21 +2,21 @@
 
 {{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/thingdetails.ThingDetailsTemplateData*/ -}}
 
-<ul class="h-grid-table thing-config" striped border >
-	<li>
-		<div class="h-show-md">{{/*icon*/}}</div>
-		<div>Configuration Name</div>
-		<div>Value</div>
-		<div class="h-show-lg">Default</div>
-		<div class="h-show-lg">Description</div>
-		<div class="h-show-sm">Updated</div>
+<h-grid-table id="config-list-id" striped border >
+	<li class="title-row">
+		<div show="sm" width="40px">{{/*icon*/}}</div>
+		<div >Configuration Name</div>
+		<div width="1fr">Value</div>
+		<div show="xl" width="minmax(auto,300px)">Default</div>
+		<div show="lg" width="minmax(100px,3fr)">Description</div>
+		<div show="md">Updated</div>
 	</li>
 
     {{/*	Iterate the sorted writable property names */}}
     {{range $name := .ConfigNames}}
       {{$v := $.CT.GetValue "property" $name}}
 				<li>
-					<div class="h-show-md">{{/*icon*/}}</div>
+					<div>{{/*icon*/}}</div>
           {{/*	Configuration Name*/}}
 					<div>
 						<button class="link" style="text-align:left"
@@ -45,11 +45,11 @@
 						</button>
 					</div>
 
-					<div class="h-show-lg">{{$v.Schema.Default}}</div>
+					<div>{{$v.Schema.Default}}</div>
 
-					<div class="h-show-lg">{{$v.Schema.Description}}</div>
+					<div>{{$v.Schema.Description}}</div>
 
-					<div class="h-show-sm" style="white-space:nowrap"
+					<div style="white-space:nowrap"
 					     sse-swap="property/{{$.ThingID}}/{{$name}}/updated"
 					     hx-swap="innerHTML"
 					     hx-target="this"
@@ -60,55 +60,4 @@
 
 				</li>
     {{end}}
-</ul>
-
-<style>
-
-    .thing-config {
-        overflow-x: auto;
-    }
-
-    @media (width < 576px) {
-        .thing-config {
-            /*xs, show column 2,3 */
-            grid-template-columns:
-                minmax(200px, 1fr) /*name*/
-                minmax(100px, max-content);
-        }
-    }
-
-    @media (width >= 576px) and (width < 768px) {
-        .thing-config {
-            /*sm, show column 2,3,6 */
-            grid-template-columns:
-                minmax(200px,1fr) /*name*/
-                minmax(100px, max-content) /*value*/
-				        minmax(100px, max-content); /*updated*/
-        }
-    }
-
-    @media (width >= 768px) and (width < 1024px) {
-        .thing-config {
-            /*md,show column 1,2,3, 6 */
-            grid-template-columns:
-				        40px /*icon*/
-                minmax(200px, 1fr) /*name*/
-                minmax(100px, max-content) /*value*/
-                minmax(max-content, max-content); /*updated*/
-        }
-    }
-
-    @media (width >= 1024px) {
-        .thing-config {
-            /*lg, show all columns*/
-            grid-template-columns:
-				        40px /*icon*/
-                minmax(200px, 1fr) /*name*/
-                minmax(100px, max-content) /*value*/
-                minmax(100px, max-content) /*default*/
-                minmax(100px, 2fr) /*description*/
-                minmax(100px, max-content); /*updated*/
-            }
-    }
-
-</style>
+</h-grid-table>

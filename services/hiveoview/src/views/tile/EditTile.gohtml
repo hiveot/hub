@@ -67,46 +67,48 @@
 						</button>
 					</label>
 
-            {{/* NOTE!: RenderSelectSources uses this ID 'edit-tile-sources' to add sources in this list */}}
-					<h-grid-table2 id="edit-tile-sources" title="{{.Tile.ID}}" striped border>
+            {{/* NOTE!: RenderSelectSources uses this ID 'edit-tile-sources-id' to add sources in this list */}}
+					<h-grid-table  id="edit-tile-sources-id" gridClass="edit-tile-sources" title="{{.Tile.ID}}" striped border>
               {{/* Header*/}}
-						<li title-row>
-							<div ></div>
+						<li class="title-row">
+							<div></div>
 							<div width="minmax(100px, max-content)">Thing Source</div>
 							<div width="minmax(60px, max-content)">Value</div>
 							<div width="minmax(100px,max-content)">Updated</div>
-							<div >remove</div>
+							<div>remove</div>
 						</li>
               {{range $k,$v := .Tile.Sources}}
 								<li id="{{$k}}-source" draggable="true">
                     {{/*drag handle to re-order the list*/}}
-									<div class="h-row-centered drag-handle" >
-										<iconify-icon style="font-size:24px" icon='mdi:drag'></iconify-icon>
+									<div class="h-row-centered drag-handle">
+										<iconify-icon style="font-size:1.4em" icon='mdi:drag'></iconify-icon>
 									</div>
-                    {{/* The hidden input is used to submit list of sources with the form*/}}
-									<input type="hidden" name="sources"
-									       value="{{$v.AffordanceType}}/{{$v.ThingID}}/{{$v.Name}}"/>
+                    {{/*Editable title of the source*/}}
 									<input name="sourceTitles" value="{{$v.Title}}"
 									       style="margin:0"
 									       title="Edit the label here. ThingID: {{$v.ThingID}}/{{$v.Name}}"/>
+                    {{/*Lasted known value and timestamp */}}
 									<div>{{$.GetValue $v}}</div>
 									<div>{{$.GetUpdated $v}}</div>
-                    {{/*delete source*/}}
+                    {{/*button to delete this source*/}}
 									<button type="button" class="h-row-centered outline h-icon-button"
 									        style="border:none"
 									        onclick="deleteRow(this.parentNode)"
 									>
 										<iconify-icon icon="mdi:delete"></iconify-icon>
 									</button>
+                    {{/* The hidden input is used to submit list of sources with the form*/}}
+									<input type="hidden" name="sources"
+									       value="{{$v.AffordanceType}}/{{$v.ThingID}}/{{$v.Name}}"/>
 								</li>
               {{end}}
-{{/*						Insertion point for adding rows*/}}
-							<li id="insert-tile-sources-here" style="display:none"></li>
-					</h-grid-table2>
+              {{/*	Insertion point for adding rows. Used in 'SelectSources.gohtml' */}}
+						<li id="insert-tile-sources-here" style="display:none"></li>
+					</h-grid-table>
 				</fieldset>
 
           {{/*Select the background color/transparency (when not image)*/}}
-				<fieldset id="backgroundSection">
+				<fieldset id="background-section">
 					<label>
 						<input id="background-enabled" type="checkbox" name="bgEnabled"
                    {{if .Tile.BackgroundEnabled}}checked{{end}}
@@ -114,8 +116,9 @@
 						Background
 					</label>
 
-					<fieldset style="padding:8px; border: var(--pico-card-border);"
-					          id="bgEnabledSection" class="h-col" {{if not .Tile.BackgroundEnabled}} disabled {{end}}>
+					<fieldset id="bg-enabled-section" class="h-col"
+					          style="padding:8px; border: var(--pico-card-border);"
+					>
               {{/* Option to set background color */}}
 						<label class="h-row">
 							<label style="width:100%">
@@ -157,7 +160,18 @@
 	</article>
 </h-modal>
 
+<style>
+    /*only show 4th column on medium and larger screens*/
+    .edit-tile-sources > li > :nth-child(4) {
+        display: var(--h-show-md);
+    }
 
+
+    #bg-enabled-section:disabled {
+        opacity: var(--pico-form-element-disabled-opacity);
+    }
+
+</style>
 
 <script>
 
@@ -176,7 +190,7 @@
             }
         })
 
-    // delete the table row
+    // delete a table row
     function deleteRow(rowEl) {
         let table = rowEl.parentNode;
         table.removeChild(rowEl);
@@ -186,25 +200,8 @@
     // This disables the background input section and hides any image.
     function disableBackground() {
         // console.log("disableBackground")
-        let bgSectionEl = document.getElementById("bgEnabledSection")
-        // let bgShownEl = document.getElementById("background-shown");
+        let bgSectionEl = document.getElementById("bg-enabled-section")
         bgSectionEl.disabled = true
-        // bgShownEl.hidden = true
-    }
-
-    var _el
-
-    function dragOver(e) {
-        if (isBefore(_el, e.target))
-            e.target.parentNode.insertBefore(_el, e.target);
-        else
-            e.target.parentNode.insertBefore(_el, e.target.nextSibling);
-    }
-
-    function dragStart(e) {
-        e.dataTransfer.effectAllowed = "move";
-        e.dataTransfer.setData("text/plain", null); // Thanks to bqlou for their comment.
-        _el = e.target;
     }
 
     // Enable the background settings
@@ -213,7 +210,7 @@
     // If a URL is set, use it for the shown image.
     function enableBackground() {
         // console.log("enableBackground")
-        let bgSectionEl = document.getElementById("bgEnabledSection")
+        let bgSectionEl = document.getElementById("bg-enabled-section")
         bgSectionEl.disabled = false
     }
 
@@ -234,7 +231,7 @@
     // if type is Image, show the URL otherwise the sources
     function setSourceForImageType() {
         let tileTypeEl = document.getElementById("tile-type")
-        let backgroundSection = document.getElementById("backgroundSection")
+        let backgroundSection = document.getElementById("background-section")
         let sourcesSectionEl = document.getElementById("sources-section")
         let imageSourceSectionEl = document.getElementById("image-source-section")
         // todo: use the actual type ID
@@ -250,6 +247,7 @@
     }
 
     function setup() {
+        // can't use css to disable an element so use JS
         let bgEnabledEl = document.getElementById("background-enabled")
         if (bgEnabledEl.checked) {
             enableBackground()

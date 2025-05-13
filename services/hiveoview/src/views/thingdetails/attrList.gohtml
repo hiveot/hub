@@ -2,21 +2,20 @@
 <!--@param '.' object of type DetailsTemplateData -->
 {{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/thingdetails.ThingDetailsTemplateData*/ -}}
 
-<ul class="h-grid-table thing-attr " border striped>
-
-	<li>
-		<div class="h-show-sm">{{/*icon*/}}</div>
-		<div>Attribute Name</div>
-		<div>Value</div>
-		<div class="h-show-lg">Description</div>
-		<div class="h-show-md">Updated</div>
+<h-grid-table id="attr-list-id" striped border>
+	<li class="title-row">
+		<div show="sm" width="40px">{{/*icon*/}}</div>
+		<div >Attribute Name</div>
+		<div >Value</div>
+		<div show="lg">Description</div>
+		<div show="md">Updated</div>
 	</li>
 
     {{/*	Iterate the sorted read-only names */}}
     {{range $name := .AttrNames}}
 	    {{$v := $.CT.GetValue "property" $name}}
 			<li>
-				<div class="h-show-sm">{{/*icon*/}}</div>
+				<div>{{/*icon*/}}</div>
 
         {{/* Attribute Name */}}
 				<div title="name: {{$name}}">
@@ -34,9 +33,9 @@
           {{$v.UnitSymbol}}
 				</div>
 
-				<div class="h-show-lg">{{$v.Schema.Description}}</div>
+				<div>{{$v.Schema.Description}}</div>
 
-				<div class="h-show-md" style="white-space:nowrap"
+				<div style="white-space:nowrap"
 				     sse-swap="property/{{$.ThingID}}/{{$name}}/updated"
 				     hx-swap="innerHTML"
 				     hx-target="this"
@@ -44,46 +43,4 @@
             {{datetime $v.Updated "S"}}</div>
 			</li>
     {{end}}
-</ul>
-
-<style>
-
-    @media (width < 576px) {
-        .thing-attr {
-            /*xs, show column 2,3 */
-            grid-template-columns:
-                minmax(200px, max-content) /*name*/
-                minmax(100px, 1fr);
-        }
-    }
-    @media (width >= 576px) and (width < 768px) {
-        .thing-attr {
-		        /*sm, column 1,2,3,*/
-            grid-template-columns: 40px          /*icon*/
-                minmax(min-content, max-content) /*name*/
-                minmax(100px, 1fr);              /*value*/
-        }
-    }
-
-    @media (width >= 768px) {
-        .thing-attr {
-            /*md,show column 1,2,3,5*/
-            grid-template-columns: 40px   /*icon*/
-              minmax(200px, max-content)  /*name*/
-              minmax(100px, max-content)  /*value*/
-              minmax(max-content, 1fr);   /*updated*/
-        }
-    }
-
-    @media (width >= 1024px) {
-        .thing-attr {
-            /*md,show column 1,2,3,4,5 */
-            grid-template-columns: 40px           /*icon*/
-              minmax(200px, max-content)          /*title*/
-              minmax(min-content, 1fr)            /*value*/
-              minmax(min-content, 1fr)            /*description*/
-		          minmax(max-content, max-content);   /*updated*/
-        }
-    }
-
-</style>
+</h-grid-table>
