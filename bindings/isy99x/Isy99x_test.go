@@ -151,7 +151,7 @@ func TestSwitch(t *testing.T) {
 	//// fetch result
 	//switchOutput := pub.GetOutputByNodeHWID(deckLightsID, types.OutputTypeSwitch, types.DefaultOutputInstance)
 	//// switchOutput := deckSwitch.GetOutput(types.InputTypeSwitch)
-	//require.NotNilf(t, switchOutput, "Output switch of node %s not found", deckLightsID)
+	//require.NotNilf(t, switchOutput, "Value switch of node %s not found", deckLightsID)
 	//
 	//outputValue := pub.GetOutputValueByNodeHWID(switchOutput.NodeHWID, types.OutputTypeSwitch, types.DefaultOutputInstance)
 	//assert.Equal(t, "false", outputValue.Value)

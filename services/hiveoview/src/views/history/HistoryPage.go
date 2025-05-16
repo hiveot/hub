@@ -4,6 +4,7 @@ import (
 	"github.com/araddon/dateparse"
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"net/http"
@@ -53,7 +54,7 @@ func RenderHistoryPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	duration := time.Second * time.Duration(durationSec)
-	data, err := NewHistoryTemplateData(ct, affType, name, timestamp, duration)
+	data, err := NewHistoryTemplateData(ct, messaging.AffordanceType(affType), name, timestamp, duration)
 
 	if err != nil {
 		sess.WriteError(w, err, 0)

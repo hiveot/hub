@@ -33,11 +33,11 @@ type InteractionOutput struct {
 	Value DataSchemaValue
 
 	// RFC822 timestamp this was last updated.
-	// Use utils.FormatDateTime(Updated,format) to format.
-	Updated string
+	// Use utils.FormatDateTime(Timestamp,format) to format.
+	Timestamp string
 
 	// Type of affordance: "property", "action", "event"
-	AffordanceType string
+	AffordanceType messaging.AffordanceType
 
 	// Error value in case reading the value failed
 	Err error
@@ -71,18 +71,18 @@ func (iout *InteractionOutput) UnitSymbol() string {
 	return unit.Symbol
 }
 
-func NewInteractionOutputFromValueList(ct *ConsumedThing, affType string, values []digitwin.ThingValue) InteractionOutputMap {
+func NewInteractionOutputFromValueList(ct *ConsumedThing, affType messaging.AffordanceType, values []digitwin.ThingValue) InteractionOutputMap {
 	ioMap := make(map[string]*InteractionOutput)
 	for _, tv := range values {
-		iout := NewInteractionOutput(ct, affType, tv.Name, tv.Output, tv.Updated)
+		iout := NewInteractionOutput(ct, affType, tv.Name, tv.Data, tv.Timestamp)
 		ioMap[tv.Name] = iout
 
 	}
 	return ioMap
 }
 
-func NewInteractionOutputFromValue(ct *ConsumedThing, affType string, tv digitwin.ThingValue) *InteractionOutput {
-	iout := NewInteractionOutput(ct, affType, tv.Name, tv.Output, tv.Updated)
+func NewInteractionOutputFromValue(ct *ConsumedThing, affType messaging.AffordanceType, tv digitwin.ThingValue) *InteractionOutput {
+	iout := NewInteractionOutput(ct, affType, tv.Name, tv.Data, tv.Timestamp)
 	return iout
 }
 
@@ -101,7 +101,7 @@ func NewInteractionOutputFromValue(ct *ConsumedThing, affType string, tv digitwi
 //	tm contains the received ThingMessage data
 //	tdi is the associated thing description
 func NewInteractionOutputFromNotification(
-	ct *ConsumedThing, affType string, notif *messaging.NotificationMessage) *InteractionOutput {
+	ct *ConsumedThing, affType messaging.AffordanceType, notif *messaging.NotificationMessage) *InteractionOutput {
 
 	iout := NewInteractionOutput(ct, affType, notif.Name, notif.Data, notif.Timestamp)
 	iout.SenderID = notif.SenderID
@@ -132,7 +132,7 @@ func NewInteractionOutputFromActionStatus(
 //	name is the interaction affordance name the output belongs to
 //	raw is the raw data
 //	updated is the timestamp the data is last updated
-func NewInteractionOutput(ct *ConsumedThing, affType string, name string, raw any, updated string) *InteractionOutput {
+func NewInteractionOutput(ct *ConsumedThing, affType messaging.AffordanceType, name string, raw any, updated string) *InteractionOutput {
 
 	var schema *td.DataSchema
 	var title string
@@ -164,7 +164,7 @@ func NewInteractionOutput(ct *ConsumedThing, affType string, name string, raw an
 	}
 	if schema == nil {
 		schema = &td.DataSchema{
-			Title: "NewInteractionOutput: tdi has no " + affType + " output schema: " + name,
+			Title: "NewInteractionOutput: tdi has no " + string(affType) + " output schema: " + name,
 		}
 		schema.ReadOnly = true // default unless proven otherwise
 		raw = ""
@@ -178,7 +178,7 @@ func NewInteractionOutput(ct *ConsumedThing, affType string, name string, raw an
 		ThingID:        ct.ThingID,
 		Name:           name,
 		Title:          title,
-		Updated:        updated,
+		Timestamp:      updated,
 		Schema:         *schema,
 		Value:          NewDataSchemaValue(raw),
 	}

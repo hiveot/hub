@@ -76,11 +76,11 @@ type RequestMessage struct {
 
 // CreateResponse is a helper to easily create a response from a request
 //
-//	output contains the request output
-//	err is set when the request has failed. In that case output can contain error details
-func (req *RequestMessage) CreateResponse(output any, err error) (resp *ResponseMessage) {
+//	value contains the response data
+//	err is set when the request has failed. In that case value can contain error details
+func (req *RequestMessage) CreateResponse(value any, err error) (resp *ResponseMessage) {
 	resp = NewResponseMessage(
-		req.Operation, req.ThingID, req.Name, output, err, req.CorrelationID)
+		req.Operation, req.ThingID, req.Name, value, err, req.CorrelationID)
 	return resp
 }
 

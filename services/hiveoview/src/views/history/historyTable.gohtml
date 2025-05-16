@@ -19,7 +19,7 @@
 		{{/* Table values*/}}
 		{{range .Values}}
 				<li>
-						<div>{{datetime .Updated "S"}}</div>
+						<div>{{datetime .Timestamp "S"}}</div>
 						<div>{{.ToString 0}} {{$.UnitSymbol}}</div>
 				</li>
 		{{end}}

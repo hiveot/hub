@@ -509,9 +509,9 @@ export default class HttpSSEClient implements IAgentConnection {
                 // using a form means following http-basic
                 this.pubMessage("POST", href, req.input, req.correlationID)
                     .then((reply: string) => {
-                        const output = JSON.parse(reply)
+                        const value = JSON.parse(reply)
                         const resp = new ResponseMessage(
-                            req.operation, req.thingID, req.name, output, "", "")
+                            req.operation, req.thingID, req.name, value, "", "")
                         resolve(resp)
                     })
             } else {
@@ -583,7 +583,7 @@ export default class HttpSSEClient implements IAgentConnection {
                 .then((resp: ResponseMessage) => {
                     // complete the request if the result is returned, otherwise wait for
                     // the callback from _correlData
-                    resolve(resp.output)
+                    resolve(resp.value)
                 })
                 .catch((e) => {
                     console.error("RPC failed", e);

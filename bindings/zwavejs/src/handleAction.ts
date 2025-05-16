@@ -23,23 +23,21 @@ const log = getLogger()
 // handle request  actions as defined in the TD
 //
 // This sends responses asynchronously and just returns nil
-export default function  handleRequest(
+export default function  handleAction(
     req: RequestMessage, zwapi: ZWAPI, hc: IAgentConnection):ResponseMessage|null {
 
-    let handled = handleControllerRequest(req, zwapi, hc)
+    // handle zwave controller actions
+    let handled = handleControllerActions(req, zwapi, hc)
     if (handled) {
         return null
     }
 
+    // handle device actions
     const node = zwapi.getNodeByDeviceID(req.thingID)
     if (node == undefined) {
-        const errMsg = new Error("handleActionRequest: node for thingID" + req.thingID + "does not exist")
+        const errMsg = new Error("handleAction: node for thingID" + req.thingID + "does not exist")
         log.error(errMsg)
         return req.createResponse(null, errMsg)
-    }
-
-    if (req.operation == OpWriteProperty) {
-        return handleWriteProperty(req, node, zwapi, hc)
     }
 
     handled = handleNodeAction(req, node, zwapi, hc)
@@ -53,10 +51,10 @@ export default function  handleRequest(
 }
 
 
-// handle controller requests as defined in the TD.
+// handle controller actions as defined in the TD.
 // This returns true if the request was handled.
 // This sends responses asynchronously
-function  handleControllerRequest(
+function  handleControllerActions(
     req: RequestMessage, zwapi: ZWAPI, hc: IAgentConnection):boolean {
 
     let resp: ResponseMessage|null = null
@@ -128,12 +126,7 @@ function  handleNodeAction(
                     hc.sendResponse(resp)
                     break
                 }
-                node.checkLifelineHealth(1, (round,total,lastRating,lastResult)=>{
-                    // todo progress notifications
-                    // request is running, no status neeeded
-                    notif = req.createNotification(round)
-                    hc.sendNotification(notif)
-                })
+                node.checkLifelineHealth(1)
                 .then((summary) => {
                     // rating is 0 to 10
                     log.info(req.name+":", summary)
@@ -155,12 +148,7 @@ function  handleNodeAction(
                     break
                 }
                 let targetNode = req.input
-                node.checkRouteHealth(targetNode, 1, (round,total,lastRating,lastResult)=>{
-                    // todo progress notifications
-                    // request is running, no status neeeded
-                    notif = req.createNotification(round)
-                    hc.sendNotification(notif)
-                })
+                node.checkRouteHealth(targetNode, 1)
                 .then((summary) => {
                     log.info(req.name+":", summary)
                     // rating is 0 to 10

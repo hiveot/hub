@@ -16,10 +16,19 @@
 
     {{/*Show the dashboard. Reload when tiles are deleted*/}}
 		<main id="current-dashboard" class="dashboard"
+          style="position:relative"
 		      hx-get=""
 		      hx-trigger="sse:{{.DashboardUpdatedEvent}}, refreshPage from:body"
 		      hx-target="#dashboardPage"
 		>
+
+        {{if .Dashboard.BackgroundEnabled}}
+					<h-img class="dashboard-background-image"
+					       interval={{.Dashboard.BackgroundReloadInterval}}
+					       src="{{.Background}}">
+					</h-img>
+        {{end}}
+
         {{/* Add a div to ensure filling the screen size*/}}
 			<div style="flex-grow:1">
           {{/* change event: When layout changes push the new layout to the server*/}}
@@ -130,11 +139,11 @@
                 let newItem = {
                     id: node.id,
                     x: node.x,
-                    y : node.y,
-                    w : node.w,
-                    h : node.h,
-                    minW : node.minW,
-                    minH : node.minH
+                    y: node.y,
+                    w: node.w,
+                    h: node.h,
+                    minW: node.minW,
+                    minH: node.minH
                 }
                 newLayout.push(newItem)
             })
@@ -151,7 +160,7 @@
             } else if (size === "md") {
                 columns = 8
             } else if (size === "lg") {
-                columns = 12
+                columns = 16
             }
             return columns
         }
@@ -163,9 +172,9 @@
             let w = window.innerWidth;
             if (w < 600) {
                 size = "sm"
-            } else if (w < 1024) {
+            } else if (w <= 1280) {
                 size = "md"
-            } else if (w < 1560) {
+            } else if (w <= 1920) {
                 size = "lg"
             }
             return size
@@ -222,14 +231,14 @@
             flex-direction: column;
             padding-left: 0;
             padding-right: 0;
-            /*padding-left: var(--pico-spacing);*/
-            /*padding-right: var(--pico-spacing);*/
-            /*background-color: var(--pico-background-color);*/
+        }
 
-				{{if .Background}} background-image: url({{.Background}});
-            background-position: center;
-            background-size: cover;
-				{{end}}
+        .dashboard-background-image {
+            position:absolute;
+            width:100%;
+            height:100%;
+            pointer-events:none;
+            z-index:-1;
         }
 
         .grid-stack-item {

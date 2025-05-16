@@ -67,7 +67,7 @@ func HandleSubTD(hc *messaging.Consumer) error {
 
 		var tdi td.TD
 		//fmt.Printf("%s\n", event.ValueJSON)
-		err := tputils.DecodeAsObject(msg.Output, &tdi)
+		err := tputils.DecodeAsObject(msg.Value, &tdi)
 
 		if err == nil {
 			modifiedTime, _ := dateparse.ParseAny(tdi.Modified) // can be in any TZ
@@ -77,7 +77,7 @@ func HandleSubTD(hc *messaging.Consumer) error {
 		}
 		return nil
 	})
-	fmt.Printf("Sender ID            Thing ID                            Title                          @type                          Updated                       \n")
+	fmt.Printf("Sender ID            Thing ID                            Title                          @type                          Timestamp                       \n")
 	fmt.Printf("-------------------  ----------------------------------  -----------------------------  -----------------------------  ------------------------------\n")
 
 	time.Sleep(time.Hour * 24)

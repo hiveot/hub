@@ -44,7 +44,7 @@ export class NotificationMessage extends Object {
     public correlationID?:string
 
     // Data containing the notification data as described in the TD event or property dataschema.
-    // If the operation is one of the Thing level operations, the output is specified
+    // If the operation is one of the Thing level operations, the data is specified
     // by the operation's dataschema. WoT doesn't have this yet so hiveot will
     // define the missing bits if any. (see documentation)
     public data?: any
@@ -149,17 +149,17 @@ export class RequestMessage extends Object {
     public thingID: string = ""
 
     // return a notification with a running status of this request
-    // @param output is the optional progress output.
-    public createNotification(output?: any): NotificationMessage {
+    // @param data is the optional progress data.
+    public createNotification(data?: any): NotificationMessage {
         let notif = new NotificationMessage(
-            this.operation, this.thingID, this.name, output, undefined, this.correlationID)
+            this.operation, this.thingID, this.name, data, undefined, this.correlationID)
         return notif
     }
     // return a response for the request and optionall an error
-    // if err is provided then output is either undefined or contains error details.
-    public createResponse(output: any, err?: Error): ResponseMessage {
+    // if err is provided then value is either undefined or contains error details.
+    public createResponse(value: any, err?: Error): ResponseMessage {
         let resp = new ResponseMessage(
-            this.operation, this.thingID, this.name, output, err?.message, this.correlationID)
+            this.operation, this.thingID, this.name, value, err?.message, this.correlationID)
         return resp
     }
 }
@@ -167,14 +167,14 @@ export class RequestMessage extends Object {
 // ResponseMessage serves to notify a single client of the result of a request.
 // The operation of the response MUST be that of the request.
 export class ResponseMessage extends Object {
-    public constructor(op:string, thingID:string,name:string,output:any,
+    public constructor(op:string, thingID:string, name:string, value:any,
                        err?:string, correlationID?:string) {
         super()
         this.operation = op
         this.thingID = thingID
         this.messageType = MessageTypeResponse
         this.name = name
-        this.output = output
+        this.value = value
         this.error = err
         this.correlationID = correlationID
         this.messageID = nanoid()
@@ -197,21 +197,16 @@ export class ResponseMessage extends Object {
     public messageType: string
 
     // Name of the action or property affordance this is a response from.
-    // This field is optional and intended to help debugging and logging.
-    public name?: string
+    public name: string
 
     // Operation of the request this is the response to.
     // This is required.
     public operation: string
 
-    // Output for the request as described in the TD affordance dataschema.
-    // If the operation is one of the Thing level operations, the output is specified
-    // by the operation's dataschema. WoT doesn't have this yet so hiveot will
-    // define the missing bits if any. (see documentation)
-    public output?: any
-
     // SenderID is the account ID of the agent sending the response.
-    // The protocol server MUST set this to the authenticated client.
+    //
+    // This is a non-WOT feature of the HiveOT Hub.
+    // The Hub protocol server MUST set this to the authenticated client.
     public senderID: string = ""
 
     // ThingID of the thing this is a response from.
@@ -220,7 +215,12 @@ export class ResponseMessage extends Object {
     // This field is optional and intended to help debugging and logging.
     public thingID?: string
 
-
     // Timestamp the response was created
     public timestamp?: string
+
+    // Value of the response as described in the TD affordance dataschema.
+    // If the operation is one of the Thing level operations, the value is specified
+    // by the operation's dataschema.
+    public value?: any
+
 }

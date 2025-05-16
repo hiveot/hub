@@ -111,18 +111,18 @@ func makeValueBatch(agentID string, nrValues, nrThings, timespanSec int) (
 		}
 
 		tv := messaging.ThingValue{
-			ID:             fmt.Sprintf("%d", randomID),
+			//ID:             fmt.Sprintf("%d", randomID),
 			Name:           names[randomName],
-			Output:         fmt.Sprintf("%2.3f", randomValue),
+			Data:           fmt.Sprintf("%2.3f", randomValue),
 			ThingID:        dThingID,
-			Updated:        utils.FormatUTCMilli(randomTime),
+			Timestamp:      utils.FormatUTCMilli(randomTime),
 			AffordanceType: affType,
 		}
 
 		// track the actual most recent event for the name for things 3
 		if randomID == 0 {
 			if _, exists := highest[tv.Name]; !exists ||
-				highest[tv.Name].Updated < tv.Updated {
+				highest[tv.Name].Timestamp < tv.Timestamp {
 				highest[tv.Name] = tv
 			}
 		}
@@ -257,7 +257,7 @@ func TestAddGetEvent(t *testing.T) {
 	if assert.True(t, valid) {
 		assert.Equal(t, dThing1ID, tv3.ThingID)  // must match the filtered id1
 		assert.Equal(t, evTemperature, tv3.Name) // must match evTemperature from 5 minutes ago
-		assert.Equal(t, utils.FormatUTCMilli(fivemago), tv3.Updated)
+		assert.Equal(t, utils.FormatUTCMilli(fivemago), tv3.Timestamp)
 	}
 	c1Release()
 	// Stop the service before phase 2
@@ -373,15 +373,15 @@ func TestAddProperties(t *testing.T) {
 		if msg.AffordanceType == messaging.AffordanceTypeProperty {
 			hasProps = true
 			require.NotEmpty(t, msg.Name)
-			require.NotEmpty(t, msg.Output)
+			require.NotEmpty(t, msg.Data)
 			if msg.Name == vocab.PropDeviceBattery {
-				assert.Equal(t, float64(battTemp), msg.Output)
+				assert.Equal(t, float64(battTemp), msg.Data)
 			}
 			//props := make(map[string]interface{})
 			//err = utils.DecodeAsObject(msg.Data, &props)
 			//require.NoError(t, err)
 		} else if msg.Name == vocab.PropEnvTemperature {
-			dataInt := tputils.DecodeAsInt(msg.Output)
+			dataInt := tputils.DecodeAsInt(msg.Data)
 			require.Equal(t, int64(temp1), dataInt)
 		}
 		msg, valid, err = c.Next()
@@ -452,7 +452,7 @@ func TestPrevNext(t *testing.T) {
 	item0b, valid, err := cursor.Prev()
 	require.NoError(t, err)
 	assert.True(t, valid)
-	assert.Equal(t, item0.Updated, item0b.Updated)
+	assert.Equal(t, item0.Timestamp, item0b.Timestamp)
 
 	// can't skip before the beginning of time
 	iteminv, valid, err := cursor.Prev()
@@ -462,7 +462,7 @@ func TestPrevNext(t *testing.T) {
 
 	// seek to item11 should succeed
 	item11 := items2to11[9]
-	timeStamp, _ := dateparse.ParseAny(item11.Updated)
+	timeStamp, _ := dateparse.ParseAny(item11.Timestamp)
 	item11b, valid, err := cursor.Seek(timeStamp)
 	require.NoError(t, err)
 	assert.True(t, valid)
@@ -513,7 +513,7 @@ func TestPrevNextFiltered(t *testing.T) {
 	item0b, valid, err := cursor.Prev()
 	assert.True(t, valid)
 	require.Nil(t, err)
-	assert.Equal(t, item0.Updated, item0b.Updated)
+	assert.Equal(t, item0.Timestamp, item0b.Timestamp)
 	assert.Equal(t, propName, item0b.Name)
 
 	// can't skip before the beginning of time
@@ -523,7 +523,7 @@ func TestPrevNextFiltered(t *testing.T) {
 
 	// seek to item11 should succeed
 	item11 := items2to11[9]
-	timeStamp, _ := dateparse.ParseAny(item11.Updated)
+	timeStamp, _ := dateparse.ParseAny(item11.Timestamp)
 	item11b, valid, err := cursor.Seek(timeStamp)
 	assert.True(t, valid)
 	require.Nil(t, err)

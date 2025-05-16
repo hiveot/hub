@@ -215,7 +215,7 @@ func (ct *ConsumedThing) GetPropertyOutput(name string) (iout *InteractionOutput
 // If name is an event it is returned first, otherwise it falls back to property.
 //
 // This returns an empty InteractionOutput if no value is found
-func (ct *ConsumedThing) GetValue(affType string, name string) (iout *InteractionOutput) {
+func (ct *ConsumedThing) GetValue(affType messaging.AffordanceType, name string) (iout *InteractionOutput) {
 	var found bool
 
 	//should name be matched against the affordances TD instead of cached values?
@@ -272,7 +272,7 @@ func (ct *ConsumedThing) InvokeAction(name string, iin InteractionInput) (*Inter
 	}
 	// update the
 	iout := NewInteractionOutput(ct,
-		messaging.AffordanceTypeAction, name, resp.Output, resp.Timestamp)
+		messaging.AffordanceTypeAction, name, resp.Value, resp.Timestamp)
 	ct.mux.Lock()
 	ct.actionOutputs[name] = iout
 	ct.mux.Unlock()
@@ -375,7 +375,7 @@ func (ct *ConsumedThing) ReadEvent(name string) *InteractionOutput {
 	if err != nil {
 		return nil
 	}
-	iout := NewInteractionOutput(ct, messaging.AffordanceTypeEvent, name, tv.Output, tv.Updated)
+	iout := NewInteractionOutput(ct, messaging.AffordanceTypeEvent, name, tv.Data, tv.Timestamp)
 	//iout.setSchemaFromTD(ct.tdi)
 	ct.mux.Lock()
 	ct.eventValues[name] = iout
@@ -391,7 +391,7 @@ func (ct *ConsumedThing) ReadProperty(name string) *InteractionOutput {
 	if err != nil {
 		return nil
 	}
-	iout := NewInteractionOutput(ct, messaging.AffordanceTypeProperty, name, resp.Output, resp.Updated)
+	iout := NewInteractionOutput(ct, messaging.AffordanceTypeProperty, name, resp.Data, resp.Timestamp)
 	ct.mux.Lock()
 	ct.propValues[name] = iout
 	ct.mux.Unlock()

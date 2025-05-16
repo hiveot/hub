@@ -9,6 +9,7 @@ import (
 	"html/template"
 	"log/slog"
 	"net/http"
+	"strconv"
 )
 
 const RenderEditDashboardTemplateFile = "EditDashboard.gohtml"
@@ -72,6 +73,8 @@ func SubmitEditDashboard(w http.ResponseWriter, r *http.Request) {
 	bgURL := r.PostFormValue("backgroundURL")
 	bgEnabled := r.PostFormValue("backgroundEnabled") == "on" // "on" or ""
 	bgImage := r.PostFormValue("backgroundImage")
+	bgInterval := r.PostFormValue("reloadInterval")
+	bgIntervalInt, _ := strconv.ParseInt(bgInterval, 10, 32)
 	locked := r.PostFormValue("locked") == "on"    // "on" or ""
 	floatTiles := r.PostFormValue("float") == "on" // "on" or ""
 
@@ -88,6 +91,7 @@ func SubmitEditDashboard(w http.ResponseWriter, r *http.Request) {
 	dashboard.BackgroundEnabled = bgEnabled
 	dashboard.BackgroundImage = bgImage
 	dashboard.BackgroundURL = bgURL
+	dashboard.BackgroundReloadInterval = int(bgIntervalInt)
 	dashboard.Locked = locked
 	dashboard.Grid.Float = floatTiles
 

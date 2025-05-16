@@ -196,7 +196,7 @@ func TestDigitwinAgentAction(t *testing.T) {
 	resp := ag.HandleRequest(req, nil)
 
 	require.Empty(t, resp.Error)
-	require.NotEmpty(t, resp.Output)
+	require.NotEmpty(t, resp.Value)
 
 	// a non-existing TD should fail
 	req = messaging.NewRequestMessage(vocab.OpInvokeAction,

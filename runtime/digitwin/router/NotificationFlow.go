@@ -36,10 +36,10 @@ func (svc *DigitwinRouter) HandleNotification(notif *messaging.NotificationMessa
 		notifCpy.Operation == wot.OpSubscribeAllEvents {
 		tv := digitwin.ThingValue{
 			Name:           notifCpy.Name,
-			Output:         notifCpy.Data,
+			Data:           notifCpy.Data,
 			ThingID:        notifCpy.ThingID,
-			Updated:        notifCpy.Timestamp,
-			AffordanceType: messaging.AffordanceTypeEvent,
+			Timestamp:      notifCpy.Timestamp,
+			AffordanceType: string(messaging.AffordanceTypeEvent),
 		}
 		err = svc.dtwStore.UpdateEventValue(tv)
 		if err == nil {
@@ -49,10 +49,10 @@ func (svc *DigitwinRouter) HandleNotification(notif *messaging.NotificationMessa
 	} else if notifCpy.Operation == wot.OpObserveProperty {
 		tv := digitwin.ThingValue{
 			Name:           notifCpy.Name,
-			Output:         notifCpy.Data,
+			Data:           notifCpy.Data,
 			ThingID:        notifCpy.ThingID,
-			Updated:        notifCpy.Timestamp,
-			AffordanceType: messaging.AffordanceTypeProperty,
+			Timestamp:      notifCpy.Timestamp,
+			AffordanceType: string(messaging.AffordanceTypeProperty),
 		}
 		changed, _ := svc.dtwStore.UpdatePropertyValue(tv)
 		// unchanged values are still updated in the store but not published
@@ -67,10 +67,11 @@ func (svc *DigitwinRouter) HandleNotification(notif *messaging.NotificationMessa
 		if err == nil {
 			for k, v := range propMap {
 				tv := digitwin.ThingValue{
-					Name:    k,
-					Output:  v,
-					ThingID: notifCpy.ThingID,
-					Updated: notifCpy.Timestamp,
+					AffordanceType: string(messaging.AffordanceTypeProperty),
+					Name:           k,
+					Data:           v,
+					ThingID:        notifCpy.ThingID,
+					Timestamp:      notifCpy.Timestamp,
 				}
 				changed, _ := svc.dtwStore.UpdatePropertyValue(tv)
 				// unchanged values are still updated in the store but not published

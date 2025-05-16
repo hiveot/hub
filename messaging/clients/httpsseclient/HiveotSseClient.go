@@ -467,7 +467,7 @@ func (cc *HiveotSseClient) SendRequest(req *messaging.RequestMessage) error {
 		} else if useRequestEnvelope {
 			err = jsoniter.UnmarshalFromString(string(outputRaw), &resp)
 		} else {
-			err = jsoniter.UnmarshalFromString(string(outputRaw), &resp.Output)
+			err = jsoniter.UnmarshalFromString(string(outputRaw), &resp.Value)
 		}
 		if err != nil {
 			resp.Error = err.Error()
@@ -515,13 +515,13 @@ func (cc *HiveotSseClient) SendRequest(req *messaging.RequestMessage) error {
 		} else if useRequestEnvelope {
 			err = jsoniter.UnmarshalFromString(string(outputRaw), &resp)
 		} else {
-			err = jsoniter.UnmarshalFromString(string(outputRaw), &resp.Output)
+			err = jsoniter.UnmarshalFromString(string(outputRaw), &resp.Value)
 		}
 		httpProblemDetail := map[string]string{}
 		if outputRaw != nil && len(outputRaw) > 0 {
 			err = jsoniter.Unmarshal(outputRaw, &httpProblemDetail)
 			resp.Error = httpProblemDetail["title"]
-			resp.Output = httpProblemDetail["detail"]
+			resp.Value = httpProblemDetail["detail"]
 		} else {
 			resp.Error = "request failed"
 		}

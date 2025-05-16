@@ -127,8 +127,8 @@ func HandleListEvents(hc *messaging.Consumer, dThingID string, name string, limi
 	for tv, valid, err := cursor.Last(); err == nil && valid && count < limit; tv, valid, err = cursor.Prev() {
 
 		count++
-		value := tputils.DecodeAsString(tv.Output, 30)
-		updated := utils.FormatDateTime(tv.Updated)
+		value := tputils.DecodeAsString(tv.Data, 30)
+		updated := utils.FormatDateTime(tv.Timestamp)
 		fmt.Printf("%-30s %-30s %-20.20s %-30s\n",
 			tv.ThingID,
 			updated,

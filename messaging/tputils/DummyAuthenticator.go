@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/teris-io/shortid"
 	"strings"
+	"time"
 )
 
 // DummyAuthenticator for testing the transport protocol bindings
@@ -27,7 +28,7 @@ func (d *DummyAuthenticator) AddClient(clientID string, password string) string 
 //}
 
 func (d *DummyAuthenticator) CreateSessionToken(
-	clientID, sessionID string, validityDays int) (token string) {
+	clientID, sessionID string, validity time.Duration) (token string) {
 
 	if sessionID == "" {
 		sessionID = shortid.MustGenerate()

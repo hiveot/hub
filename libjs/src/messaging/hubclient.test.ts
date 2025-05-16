@@ -153,12 +153,12 @@ async function test4() {
 
         clc.setResponseHandler((notif: ResponseMessage) => {
             if (notif.thingID == "dtw:testsvc:thing1") {
-                log.info("Received event: " + notif.name + "; data=" + notif.output)
+                log.info("Received event: " + notif.name + "; data=" + notif.value)
                 ev1Count++
             }
         })
         clc.setResponseHandler((resp: ResponseMessage) => {
-            actionDelivery = JSON.parse(resp.output)
+            actionDelivery = JSON.parse(resp.value)
         })
 
     } catch (e) {

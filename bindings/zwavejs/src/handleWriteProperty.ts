@@ -23,10 +23,16 @@ const log = getLogger()
 // completed or failed.
 // This returns a nil response when still running.
 export function handleWriteProperty(
-    req: RequestMessage, node: ZWaveNode, zwapi: ZWAPI, hc: IAgentConnection):  ResponseMessage|null {
-
+    req: RequestMessage, zwapi: ZWAPI, hc: IAgentConnection):  ResponseMessage|null {
     let err: Error | undefined
     let resp: ResponseMessage|null = null
+
+    const node = zwapi.getNodeByDeviceID(req.thingID)
+    if (node == undefined) {
+        const errMsg = new Error("handleWriteProperty: node for thingID" + req.thingID + "does not exist")
+        log.error(errMsg)
+        return req.createResponse(null, errMsg)
+    }
 
     log.info("handleWriteProperty: node '" + node.nodeId + "' setting prop '" +
         req.name + "' to value: " + req.input)

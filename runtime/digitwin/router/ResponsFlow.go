@@ -26,7 +26,7 @@ func (svc *DigitwinRouter) HandleActionResponse(resp *messaging.ResponseMessage)
 		slog.String("dThingID", resp.ThingID),
 		slog.String("name", resp.Name),
 		slog.String("error", resp.Error),
-		slog.String("Output", resp.ToString(20)),
+		slog.String("Value", resp.ToString(20)),
 		slog.String("senderID", resp.SenderID),
 	)
 

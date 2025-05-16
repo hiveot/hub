@@ -16,9 +16,9 @@ Objective:
 Option 1: define TD in code with go-generate
 
 Input: Server interface with annotations
-Output: TD json file
-Output: Client source code in golang
-Output: Client source code in other languages
+Value: TD json file
+Value: Client source code in golang
+Value: Client source code in other languages
 
 Example:
 // @title: Action Status

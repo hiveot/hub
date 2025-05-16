@@ -8,7 +8,7 @@ import logVid from "./logVid.ts";
 import * as vocab from "../hivelib/api/vocab/vocab.js";
 import fs from "node:fs";
 import BindingConfig from "./BindingConfig.ts";
-import handleRequest from "./handleRequest.ts";
+import handleAction from "./handleAction.ts";
 import {type ValueID} from "@zwave-js/core";
 import getAffordanceFromVid from "./getAffordanceFromVid.ts";
 import type IAgentConnection from "../hivelib/messaging/IAgentConnection.ts";
@@ -16,6 +16,8 @@ import {RequestMessage, ResponseMessage} from "../hivelib/messaging/Messages.ts"
 import getLogger from "./getLogger.ts";
 import process from "node:process";
 import TD from "../hivelib/wot/TD.ts";
+import {OpWriteProperty} from "../hivelib/api/vocab/vocab.js";
+import {handleWriteProperty} from "./handleWriteProperty.js";
 const log = getLogger()
 
 
@@ -187,8 +189,11 @@ export class ZwaveJSBinding {
             logVid(this.vidCsvFD)
         }
         this.hc.setRequestHandler( (msg:RequestMessage):ResponseMessage|null => {
-            const resp = handleRequest(msg,this.zwapi, this.hc)
-            return resp
+            if (msg.operation === OpWriteProperty) {
+                return  handleWriteProperty(msg, this.zwapi, this.hc)
+            } else {
+                return  handleAction(msg, this.zwapi, this.hc)
+            }
         })
         // not registering response and notification handler. The binding does
         // not expect any async notifications or responses.

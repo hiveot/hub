@@ -30,7 +30,7 @@ func startTestAuthnService(testHash string) (
 	authnConfig = config.NewAuthnConfig()
 	authnConfig.Setup(testDir, testDir)
 	authnConfig.PasswordFile = passwordFile
-	authnConfig.AgentTokenValiditySec = 100
+	authnConfig.AgentTokenValidityDays = 1
 	authnConfig.Encryption = testHash
 
 	svc, err := service.StartAuthnService(&authnConfig)

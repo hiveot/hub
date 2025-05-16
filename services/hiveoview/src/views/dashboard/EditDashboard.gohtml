@@ -38,7 +38,7 @@
 				<input type="checkbox" name="float"
                {{if .Dashboard.Grid.Float}}checked{{end}}
 				>
-				Manual vertical tile placement
+				Floating tiles
 			</label>
 
         {{/*Enable/disable background image*/}}
@@ -50,14 +50,21 @@
 			</label>
 
         {{/* fields for background image selection*/}}
-			<fieldset id="bgEnabledSection" class="h-col" {{if not .Dashboard.BackgroundEnabled}} disabled {{end}}>
-				<fieldset role="group">
-					<label>URL
+			<fieldset id="bgEnabledSection" class="bg-enabled-section"
+			          {{if not .Dashboard.BackgroundEnabled}} disabled {{end}}>
+
+					<label  class="h-row">URL
 						<input id="background-url" type="url" name="backgroundURL" placeholder="Enter a background image URL"
 						       value="{{.Dashboard.BackgroundURL}}">
 					</label>
-				</fieldset>
-
+					<label class="h-row" style="white-space: nowrap">
+						Reload Interval
+						<input name="reloadInterval"
+						       type="number"
+						       placeholder="Nr of seconds to reload the image"
+						       value="{{.Dashboard.BackgroundReloadInterval}}">
+						Seconds
+					</label>
 				or
           {{/* Upload a file*/}}
 				<fieldset role="group">
@@ -99,6 +106,18 @@
 
 </h-modal>
 
+<style>
+	.bg-enabled-section {
+			padding-left: 24px;
+			display: flex;
+			flex-direction:column;
+
+      input:not([type=checkbox], [type=radio]), select, textarea {
+          margin-bottom: calc( var(--pico-spacing) *0.375);
+      }
+	}
+
+</style>
 
 <script>
 

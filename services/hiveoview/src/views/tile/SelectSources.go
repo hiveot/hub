@@ -52,7 +52,7 @@ func (data RenderSelectSourcesTemplateData) GetPropertyUpdated(thingID, name str
 }
 
 // GetValue returns the value of a tile source
-func (data RenderSelectSourcesTemplateData) GetValue(affType, thingID, name string) string {
+func (data RenderSelectSourcesTemplateData) GetValue(affType messaging.AffordanceType, thingID, name string) string {
 	ct, err := data.ctDir.Consume(thingID)
 	if err != nil {
 		// should never happen, but just in case
@@ -65,14 +65,14 @@ func (data RenderSelectSourcesTemplateData) GetValue(affType, thingID, name stri
 	}
 	return ""
 }
-func (data RenderSelectSourcesTemplateData) GetUpdated(affType, thingID, name string) string {
+func (data RenderSelectSourcesTemplateData) GetUpdated(affType messaging.AffordanceType, thingID, name string) string {
 	ct, err := data.ctDir.Consume(thingID)
 	if err != nil {
 		return ""
 	}
 	iout := ct.GetValue(affType, name)
 	if iout != nil {
-		utils.FormatDateTime(iout.Updated)
+		utils.FormatDateTime(iout.Timestamp)
 	}
 	return ""
 }

@@ -508,7 +508,7 @@ func (svc *DigitwinStore) UpdateActionWithResponse(
 			actionStatus.Error = resp.Error
 			actionStatus.Status = messaging.StatusFailed
 		} else {
-			actionStatus.Output = resp.Output
+			actionStatus.Output = resp.Value
 			actionStatus.Updated = resp.Timestamp
 			actionStatus.Status = messaging.StatusCompleted
 		}
@@ -536,7 +536,7 @@ func (svc *DigitwinStore) UpdateEventValue(ev digitwin.ThingValue) error {
 	svc.cacheMux.Lock()
 	defer svc.cacheMux.Unlock()
 
-	ev.AffordanceType = messaging.AffordanceTypeEvent
+	ev.AffordanceType = string(messaging.AffordanceTypeEvent)
 	dtw, found := svc.dtwCache[ev.ThingID]
 	if !found {
 		err := fmt.Errorf("dThing with ID '%s' not found", ev.ThingID)
@@ -560,7 +560,7 @@ func (svc *DigitwinStore) UpdatePropertyValue(newValue digitwin.ThingValue) (
 	svc.cacheMux.Lock()
 	defer svc.cacheMux.Unlock()
 
-	newValue.AffordanceType = messaging.AffordanceTypeProperty
+	newValue.AffordanceType = string(messaging.AffordanceTypeProperty)
 	dtw, found := svc.dtwCache[newValue.ThingID]
 	if !found {
 		err := fmt.Errorf("dThing with ID '%s' not found", newValue.ThingID)
@@ -583,15 +583,15 @@ func (svc *DigitwinStore) UpdatePropertyValue(newValue digitwin.ThingValue) (
 	//	hasChanged = true
 	//	dtw.PropValues[newValue.Name] = newValue
 	//	svc.changedThings[newValue.ThingID] = true
-	//} else if newValue.Updated < propValue.Updated {
+	//} else if newValue.Timestamp < propValue.Timestamp {
 	//	slog.Warn("Timestamp of new property value is before last value",
 	//		"thingID", propValue.ThingID,
 	//		"name", propValue.Name,
-	//		"last timestamp", propValue.Updated,
-	//		"new timestamp", newValue.Updated,
+	//		"last timestamp", propValue.Timestamp,
+	//		"new timestamp", newValue.Timestamp,
 	//	)
 	//	hasChanged = false
-	//} else if newValue.Updated > now {
+	//} else if newValue.Timestamp > now {
 	//	slog.Warn("Timestamp of new value is in the future")
 	//	hasChanged = false
 	//} else {

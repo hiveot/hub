@@ -39,7 +39,7 @@ type RenderTileTemplateData struct {
 // GetHistory returns the 24 hour history for the given thing affordance.
 // This truncates the result if there are too many values in the range.
 // The max amount of values is the limit set in historyapi.DefaultLimit (1000)
-func (dt RenderTileTemplateData) GetHistory(affType string, thingID string, name string) *history.HistoryTemplateData {
+func (dt RenderTileTemplateData) GetHistory(affType messaging.AffordanceType, thingID string, name string) *history.HistoryTemplateData {
 	timestamp := time.Now().Local()
 	ct, err := dt.cts.Consume(thingID)
 	if err != nil {
@@ -115,7 +115,7 @@ func (d RenderTileTemplateData) GetUpdated(thingID string, name string) string {
 	if iout == nil {
 		return "n/a"
 	}
-	val := utils.FormatDateTime(iout.Updated)
+	val := utils.FormatDateTime(iout.Timestamp)
 	return val
 }
 
@@ -128,7 +128,7 @@ func RenderTile(w http.ResponseWriter, r *http.Request) {
 		sess.WriteError(w, err, http.StatusBadRequest)
 		return
 	} else if ctc.tile.ID == "" {
-		sess.WriteError(w, fmt.Errorf("RenderTile: invalid Tile ID"+ctc.tileID), http.StatusBadRequest)
+		sess.WriteError(w, fmt.Errorf("RenderTile: invalid Tile ID %s", ctc.tileID), http.StatusBadRequest)
 		return
 	}
 	pathArgs := map[string]string{"dashboardID": ctc.dashboardID, "tileID": ctc.tileID}

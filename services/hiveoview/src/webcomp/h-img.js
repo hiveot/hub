@@ -1,6 +1,14 @@
 // Web element with img supporting refresh interval
 const template = `
-<img alt="" src="" style="width:100%;height:100%">
+<img alt="" src="" class="h-img">
+   
+<style>
+    .h-img {
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    }
+</style>
 `
 
 /**
@@ -32,8 +40,10 @@ class HImg extends HTMLElement {
 
     connectedCallback() {
         this.imgEl.src= this.src
-        if (this.intervalSec) {
-            this.intervalID = setInterval(this.reloadTile.bind(this), this.intervalSec*1000)
+        if (this.intervalSec && this.intervalSec > 3) {
+            // console.log("h-img interval=",this.intervalSec)
+
+            this.intervalID = setInterval(this.reloadImage.bind(this), this.intervalSec*1000)
         }
     }
     disconnectedCallback() {
@@ -41,9 +51,10 @@ class HImg extends HTMLElement {
             clearInterval(this.intervalID)
         }
     }
-    reloadTile() {
+    reloadImage() {
         let ts = new Date().getTime().toString()
         let newSrc = this.src + "?&ts="+ts
+        console.log("reloading image: src=",newSrc)
         this.imgEl.src = newSrc
     }
 }

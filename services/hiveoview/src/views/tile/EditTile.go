@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/lib/consumedthing"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
@@ -46,8 +47,8 @@ func (data EditTileTemplateData) GetUpdated(tileSource session.TileSource) strin
 	}
 	iout := ct.GetValue(tileSource.AffordanceType, tileSource.Name)
 	if iout != nil {
-		return utils.FormatAge(iout.Updated)
-		//return utils.FormatDateTime(iout.Updated, "S")
+		return utils.FormatAge(iout.Timestamp)
+		//return utils.FormatDateTime(iout.Timestamp, "S")
 	}
 	return ""
 }
@@ -158,7 +159,7 @@ func SubmitEditTile(w http.ResponseWriter, r *http.Request) {
 			parts := strings.Split(s, "/")
 			if len(parts) >= 3 {
 				tileSource := session.TileSource{
-					AffordanceType: parts[0],
+					AffordanceType: messaging.AffordanceType(parts[0]),
 					ThingID:        parts[1],
 					Name:           parts[2],
 					Title:          sourceTitle,

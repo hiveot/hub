@@ -13,12 +13,12 @@
 
 
 <nav class="container-fluid h-row" style="height:60px">
-		<a href="{{.RenderAppAboutPath}}"
-		   hx-get="{{.RenderAppAboutPath}}"
-		   hx-target="#aboutPage"
+		<a href="{{(index .AppHeadDashboards 0).RenderDashboardPath}}"
+		   hx-get="{{(index .AppHeadDashboards 0).RenderDashboardPath}}"
+		   hx-target="#dashboardPage"
 		   hx-on::after-request="window.navigateTo(event,this.href)"
 		>
-			<h-brand title="HiveOT" logo="{{.Logo}}"></h-brand>
+			<h-brand logo="{{.Logo}}"></h-brand>
 		</a>
 
 		<!-- === Tabs for selecting (not loading) application pages === -->

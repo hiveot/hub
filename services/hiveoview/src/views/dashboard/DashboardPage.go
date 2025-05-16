@@ -25,7 +25,8 @@ type DashboardPageTemplateData struct {
 	RenderConfirmDeleteTilePath string
 	RenderNewTilePath           string
 	SubmitDashboardLayoutPath   string
-	Background                  template.URL
+	// safe URL for background image
+	Background template.URL
 }
 
 // GetTileTemplateData returns empty rendering data for rendering a tile.

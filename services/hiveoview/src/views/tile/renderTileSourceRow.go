@@ -5,6 +5,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/lib/consumedthing"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"html"
 	"net/http"
@@ -61,7 +62,7 @@ func RenderTileSourceRow(w http.ResponseWriter, r *http.Request) {
 	var iout *consumedthing.InteractionOutput
 	ct, err := cts.Consume(thingID)
 	if ct != nil {
-		iout = ct.GetValue(affType, name)
+		iout = ct.GetValue(messaging.AffordanceType(affType), name)
 	}
 	if err == nil && iout == nil {
 		err = fmt.Errorf("RenderTileSourceRow: No such affordance!?: %s", sourceID)
@@ -73,7 +74,7 @@ func RenderTileSourceRow(w http.ResponseWriter, r *http.Request) {
 
 	// if no value was ever received then use n/a
 	latestValue := iout.Value.Text() + " " + iout.UnitSymbol()
-	latestUpdated := utils.FormatAge(iout.Updated)
+	latestUpdated := utils.FormatAge(iout.Timestamp)
 	title := ct.Title + " " + iout.Title
 
 	// the input hidden hold the real source value

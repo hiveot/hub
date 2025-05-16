@@ -34,10 +34,10 @@ type AddHistory struct {
 func (svc *AddHistory) encodeValue(senderID string, tv *messaging.ThingValue) (storageKey string, data []byte) {
 	var err error
 	createdTime := time.Now().UTC()
-	if tv.Updated != "" {
-		createdTime, err = dateparse.ParseAny(tv.Updated)
+	if tv.Timestamp != "" {
+		createdTime, err = dateparse.ParseAny(tv.Timestamp)
 		if err != nil {
-			slog.Warn("Invalid Updated time. Using current time instead", "created", tv.Updated)
+			slog.Warn("Invalid Timestamp time. Using current time instead", "created", tv.Timestamp)
 			createdTime = time.Now().UTC()
 		}
 	}
@@ -55,7 +55,7 @@ func (svc *AddHistory) encodeValue(senderID string, tv *messaging.ThingValue) (s
 	}
 	storageKey = storageKey + "/" + senderID
 	//if msg.Data != nil {
-	data, _ = jsoniter.Marshal(tv.Output)
+	data, _ = jsoniter.Marshal(tv.Data)
 	//}
 	return storageKey, data
 }
@@ -98,11 +98,11 @@ func (svc *AddHistory) AddMessage(msg *messaging.NotificationMessage) error {
 	// Option2: digitwin publishes an actionstatus event (OpSubscribeEvent) - thingID won't match
 	// Option3: digitwin publishes the last action response as notification - not a TD event
 	tv := messaging.ThingValue{
-		ID:      msg.CorrelationID,
-		Name:    msg.Name,
-		Output:  msg.Data,
-		ThingID: msg.ThingID,
-		Updated: msg.Timestamp,
+		//ID:      msg.CorrelationID,
+		Name:      msg.Name,
+		Data:      msg.Data,
+		ThingID:   msg.ThingID,
+		Timestamp: msg.Timestamp,
 	}
 	switch msg.Operation {
 	case wot.OpInvokeAction:
@@ -121,7 +121,7 @@ func (svc *AddHistory) AddMessage(msg *messaging.NotificationMessage) error {
 		}
 		for k, v := range propMap {
 			tv.Name = k
-			tv.Output = v
+			tv.Data = v
 			_ = svc.AddValue(msg.SenderID, tv)
 		}
 		return err
@@ -148,8 +148,8 @@ func (svc *AddHistory) validateValue(senderID string, tv *messaging.ThingValue) 
 	if senderID == "" && tv.AffordanceType == messaging.AffordanceTypeAction {
 		return false, fmt.Errorf("missing sender for action on thing '%s'", tv.ThingID)
 	}
-	if tv.Updated == "" {
-		tv.Updated = utils.FormatNowUTCMilli()
+	if tv.Timestamp == "" {
+		tv.Timestamp = utils.FormatNowUTCMilli()
 	}
 	if svc.retentionMgr != nil {
 		retain, rule := svc.retentionMgr._IsRetained(tv)

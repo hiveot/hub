@@ -33,7 +33,7 @@ func TestAddReadEvent(t *testing.T) {
 	err := svc.DirSvc.UpdateTD(agent1ID, string(tdDoc1Json))
 
 	// provide an event value
-	evVal := digitwin.ThingValue{Output: eventValue, Name: eventName, ThingID: dThing1ID}
+	evVal := digitwin.ThingValue{Data: eventValue, Name: eventName, ThingID: dThing1ID}
 	err = dtwStore.UpdateEventValue(evVal)
 	assert.NoError(t, err)
 
@@ -43,7 +43,7 @@ func TestAddReadEvent(t *testing.T) {
 		Name:    eventName,
 	})
 	assert.NoError(t, err)
-	assert.Equal(t, eventValue, ev2.Output)
+	assert.Equal(t, eventValue, ev2.Data)
 	evList, err := svc.ValuesSvc.ReadAllEvents("user1", dThing1ID)
 	assert.Equal(t, 1, len(evList))
 	assert.NoError(t, err)
@@ -101,13 +101,13 @@ func TestEventUpdateFail(t *testing.T) {
 	err := svc.DirSvc.UpdateTD(agentID, string(tdDoc1Json))
 	require.NoError(t, err)
 
-	evVal := digitwin.ThingValue{Output: 123, Name: EventName, ThingID: "notathing"}
+	evVal := digitwin.ThingValue{Data: 123, Name: EventName, ThingID: "notathing"}
 	err = dtwStore.UpdateEventValue(evVal)
 	assert.Error(t, err)
 
 	//event names not in the TD are accepted
 	dThingID2 := td.MakeDigiTwinThingID(agentID, thingID)
-	evVal = digitwin.ThingValue{Output: 123, Name: "notanevent", ThingID: dThingID2}
+	evVal = digitwin.ThingValue{Data: 123, Name: "notanevent", ThingID: dThingID2}
 	err = dtwStore.UpdateEventValue(evVal)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, dThingID2)

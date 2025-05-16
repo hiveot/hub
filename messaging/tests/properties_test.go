@@ -136,13 +136,8 @@ func TestReadProperty(t *testing.T) {
 	// in this case the consumer connects to the agent (unlike when using a hub)
 	agentReqHandler := func(req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
 		if req.Operation == wot.OpReadProperty && req.ThingID == thingID && req.Name == propKey {
-			tv := messaging.ThingValue{
-				ID:      "uniqueid1",
-				Name:    req.Name,
-				Output:  propValue,
-				ThingID: "thingID",
-				Updated: timestamp,
-			}
+			tv := messaging.NewThingValue(messaging.AffordanceTypeProperty,
+				"thingID", req.Name, propValue, timestamp)
 			resp := req.CreateResponse(tv, nil)
 			resp.Timestamp = timestamp
 			return resp
@@ -159,8 +154,8 @@ func TestReadProperty(t *testing.T) {
 
 	rxVal, err := consumer1.ReadProperty(thingID, propKey)
 	require.NoError(t, err)
-	assert.Equal(t, propValue, rxVal.Output)
-	assert.Equal(t, timestamp, rxVal.Updated)
+	assert.Equal(t, propValue, rxVal.Data)
+	assert.Equal(t, timestamp, rxVal.Timestamp)
 }
 
 // Consumer reads events from agent
@@ -176,9 +171,11 @@ func TestReadAllProperties(t *testing.T) {
 	// in this case the consumer connects to the agent (unlike when using a hub)
 	agentReqHandler := func(req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
 		if req.Operation == wot.OpReadAllProperties {
-			output := make(map[string]*messaging.ResponseMessage)
-			output[name1] = messaging.NewResponseMessage(wot.OpSubscribeEvent, thingID, name1, value1, nil, "")
-			output[name2] = messaging.NewResponseMessage(wot.OpSubscribeEvent, thingID, name2, value2, nil, "")
+			output := make(map[string]*messaging.ThingValue)
+			output[name1] = messaging.NewThingValue(
+				messaging.AffordanceTypeProperty, thingID, name1, value1, "")
+			output[name2] = messaging.NewThingValue(
+				messaging.AffordanceTypeProperty, thingID, name2, value2, "")
 			resp := req.CreateResponse(output, nil)
 			return resp
 		}
@@ -195,6 +192,6 @@ func TestReadAllProperties(t *testing.T) {
 	propMap, err := consumer1.ReadAllProperties(thingID)
 	require.NoError(t, err)
 	require.Equal(t, 2, len(propMap))
-	require.Equal(t, value1, propMap[name1].Output)
-	require.Equal(t, value2, propMap[name2].Output)
+	require.Equal(t, value1, propMap[name1].Data)
+	require.Equal(t, value2, propMap[name2].Data)
 }

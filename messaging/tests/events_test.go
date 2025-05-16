@@ -156,12 +156,12 @@ func TestPublishEventsByAgent(t *testing.T) {
 //			evVal := transports.ThingValue{
 //				ID:      "ud1",
 //				Name:    req.Name,
-//				Output:  eventValue,
+//				Value:  eventValue,
 //				ThingID: thingID,
-//				Updated: timestamp,
+//				Timestamp: timestamp,
 //			}
 //			resp := req.CreateResponse(evVal, nil)
-//			resp.Updated = timestamp
+//			resp.Timestamp = timestamp
 //			return resp
 //		}
 //		return req.CreateResponse(nil, errors.New("unexpected request"))
@@ -176,8 +176,8 @@ func TestPublishEventsByAgent(t *testing.T) {
 //
 //	rxVal, err := consumer1.ReadEvent(thingID, eventKey)
 //	require.NoError(t, err)
-//	assert.Equal(t, eventValue, rxVal.Output)
-//	assert.Equal(t, timestamp, rxVal.Updated)
+//	assert.Equal(t, eventValue, rxVal.Value)
+//	assert.Equal(t, timestamp, rxVal.Timestamp)
 //}
 
 // Consumer reads events from agent
@@ -212,6 +212,6 @@ func TestPublishEventsByAgent(t *testing.T) {
 //	evMap, err := consumer1.ReadAllEvents(thingID)
 //	require.NoError(t, err)
 //	require.Equal(t, 2, len(evMap))
-//	require.Equal(t, event1Value, evMap[event1Name].Output)
-//	require.Equal(t, event2Value, evMap[event2Name].Output)
+//	require.Equal(t, event1Value, evMap[event1Name].Value)
+//	require.Equal(t, event2Value, evMap[event2Name].Value)
 //}

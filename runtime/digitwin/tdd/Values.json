@@ -101,34 +101,29 @@
 			"type": "object",
 			"comment": "This has the same fields as a transports ThingValue",
 			"properties": {
-				"id": {
-					"title": "Value identifier",
-					"description": "Unique identification of this reported value",
+				"affordanceType": {
+					"title": "Type of value",
+					"description": "Affordance this is a value of, eg 'property', 'event', or 'action'",
 					"type": "string"
+				},
+				"data": {
+					"title": "Payload",
+					"description": "Data in format as described by the thing's property affordance",
+					"type": "any"
 				},
 				"name": {
 					"title": "Name",
 					"description":"Name of the property holding the value",
 					"type": "string"
 				},
-				"output": {
-					"title": "Payload",
-					"description": "Data in format as described by the thing's property affordance",
-					"type": "any"
-				},
 				"thingID": {
 					"title": "Thing ID",
 					"description": "Digital twin Thing ID",
 					"type": "string"
 				},
-				"updated": {
+				"timestamp": {
 					"title": "Updated time",
 					"description": "Time the value was last updated",
-					"type": "string"
-				},
-				"affordanceType": {
-					"title": "Type of value",
-					"description": "Value of an 'property', 'event', or 'action'",
 					"type": "string"
 				}
 			}

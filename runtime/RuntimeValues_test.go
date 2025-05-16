@@ -113,14 +113,14 @@ func TestReadEvents(t *testing.T) {
 	dtwValues, err := digitwin.ThingValuesReadAllEvents(co1, dThing1ID)
 	require.NoError(t, err)
 	require.NotZero(t, len(dtwValues))
-	require.Equal(t, data, dtwValues[key1].Output)
+	require.Equal(t, data, dtwValues[key1].Data)
 
 	// read latest using the generated client api
 	valueMap, err := digitwin.ThingValuesReadAllEvents(co1, dThing1ID)
 	require.NoError(t, err)
 	require.NotNil(t, valueMap)
 	require.Equal(t, len(dtwValues), len(valueMap))
-	require.Equal(t, data, valueMap[key1].Output)
+	require.Equal(t, data, valueMap[key1].Data)
 }
 
 func TestHttpsGetProps(t *testing.T) {
@@ -164,7 +164,7 @@ func TestHttpsGetProps(t *testing.T) {
 	require.Equal(t, 2, len(valueMap))
 
 	// note: golang unmarshalls integers as float64.
-	data2raw := valueMap[key2].Output.(float64)
+	data2raw := valueMap[key2].Data.(float64)
 	require.Equal(t, data2, int(data2raw))
 }
 

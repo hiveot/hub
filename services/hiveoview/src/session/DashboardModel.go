@@ -2,6 +2,7 @@ package session
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/messaging"
 	"github.com/teris-io/shortid"
 	"strconv"
 )
@@ -36,7 +37,7 @@ var TileTypesLabels = map[string]string{
 // The corresponding TD affordance is provided through a lookup method.
 type TileSource struct {
 	// Affordance to present "property", "event" or "action"
-	AffordanceType string `json:"affordanceType"`
+	AffordanceType messaging.AffordanceType `json:"affordanceType"`
 	// ThingID source
 	ThingID string `json:"thingID"`
 	// Event/property name
@@ -99,11 +100,15 @@ type DashboardModel struct {
 	Title string `json:"title"`
 
 	// Dashboard background image in base64 (if any)
-	BackgroundEnabled bool   `json:"backgroundEnabled"`
-	BackgroundImage   string `json:"backgroundImage"` // background image
-	SourceFile        string `json:"sourceFile"`      // filename
-	BackgroundURL     string `json:"backgroundURL"`   // URL
-	//ReloadInterval    int    `json:"reloadInterval"`  // Image reload from URL
+	BackgroundEnabled bool `json:"backgroundEnabled"`
+	// uploaded static image
+	BackgroundImage string `json:"backgroundImage"` // background image
+	// or a URL
+	BackgroundURL string `json:"backgroundURL"` // URL
+	// auto refresh in seconds
+	BackgroundReloadInterval int `json:"backgroundReloadInterval"`
+	// sourcefile of static image
+	SourceFile string `json:"sourceFile"` // filename
 
 	// time the dashboard was updated
 	Updated string `json:"updated"`

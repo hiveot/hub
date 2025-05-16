@@ -4,7 +4,6 @@ import process from "node:process";
 import {connect} from 'node:http2';
 import {HttpSSEClient} from "@hivelib/messaging/httpclient/HttpSSEClient.js";
 import {ConnectToHub} from "@hivelib/messaging/ConnectToHub";
-import ky from 'ky';
 import {getlogger} from "@zwavejs/getLogger";
 
 process.on("uncaughtException", (err: Error) => {
@@ -46,10 +45,10 @@ async function test2() {
 
     if (resp.correlationID == "") {
         log.error("readTDs didn't return a correlationID")
-    } else if (!resp.output)  {
+    } else if (!resp.value)  {
         log.error("readTDs didn't return any data")
     } else {
-        let tdList = JSON.parse(resp.output)
+        let tdList = JSON.parse(resp.value)
         if (tdList.length == 0) {
             log.error("Didnt receive any TDs")
         } else {

@@ -78,8 +78,8 @@ func decodeValue(bucketID string, storageKey string, raw []byte) (
 	thingValue = &messaging.ThingValue{
 		ThingID:        bucketID, // digital twin thingID that includes the agent prefix
 		Name:           name,
-		Output:         data,
-		Updated:        utils.FormatUTCMilli(createdTime),
+		Data:           data,
+		Timestamp:      utils.FormatUTCMilli(createdTime),
 		AffordanceType: valueType,
 	}
 	_ = senderID

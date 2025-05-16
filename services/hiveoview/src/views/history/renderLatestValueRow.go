@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
-	"net/http"
 	"html"
+	"net/http"
 )
 
 // Add the latest event value to the history table and to the history chart
@@ -48,9 +49,9 @@ func RenderLatestValueRow(w http.ResponseWriter, r *http.Request) {
 	}
 	ct, err := sess.Consume(thingID)
 	if err == nil {
-		iout := ct.GetValue(affType, name)
+		iout := ct.GetValue(messaging.AffordanceType(affType), name)
 		fragment = fmt.Sprintf(addRowTemplate,
-			utils.FormatDateTime(iout.Updated, "S"), iout.Value.Text(), unit)
+			utils.FormatDateTime(iout.Timestamp, "S"), iout.Value.Text(), unit)
 	} else {
 		fragment = fmt.Sprintf("")
 	}

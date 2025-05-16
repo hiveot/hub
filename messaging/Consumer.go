@@ -72,8 +72,8 @@ func (co *Consumer) InvokeAction(
 	} else if resp.Error != "" {
 		return errors.New(resp.Error)
 	}
-	if output != nil && resp.Output != nil {
-		err = tputils.Decode(resp.Output, output)
+	if output != nil && resp.Value != nil {
+		err = tputils.Decode(resp.Value, output)
 	}
 	return err
 }
@@ -199,7 +199,7 @@ func (co *Consumer) Ping() error {
 	if err != nil {
 		return err
 	}
-	if resp.Output == nil {
+	if resp.Value == nil {
 		return errors.New("ping returned successfully but received no data")
 	}
 	return nil
@@ -261,8 +261,8 @@ func (co *Consumer) QueryAllActions(thingID string) (
 // ReadAllProperties sends a request to read all Thing property values.
 //
 // This depends on the underlying protocol binding to construct appropriate
-// ResponseMessages and include information such as Updated. All hiveot protocols
-// include full information. WoT bindings might be too limited.
+// ResponseMessages and include information such as Timestamp. All hiveot protocols
+// include full information. WoT bindings might be more limited.
 func (co *Consumer) ReadAllProperties(thingID string) (
 	values map[string]ThingValue, err error) {
 
@@ -294,7 +294,7 @@ func (co *Consumer) ReadAllProperties(thingID string) (
 // ReadProperty sends a request to read a Thing property value.
 //
 // This depends on the underlying protocol binding to construct appropriate
-// ResponseMessages and include information such as Updated. All hiveot protocols
+// ResponseMessages and include information such as Timestamp. All hiveot protocols
 // include full information. WoT bindings might be too limited.
 func (co *Consumer) ReadProperty(thingID, name string) (
 	value ThingValue, err error) {
@@ -325,7 +325,7 @@ func (co *Consumer) ReadProperty(thingID, name string) (
 //
 //	// set the new token as the bearer token
 //	if err == nil {
-//		newToken = tputils.DecodeAsString(resp.Output, 0)
+//		newToken = tputils.DecodeAsString(resp.Value, 0)
 //	}
 //	return newToken, err
 //}
@@ -338,14 +338,14 @@ func (co *Consumer) Rpc(operation, thingID, name string, input any, output any) 
 	resp, err := co.SendRequest(req, true)
 	if err == nil {
 		if resp.Error != "" {
-			detail := fmt.Sprintf("%v", resp.Output)
+			detail := fmt.Sprintf("%v", resp.Value)
 			errTxt := resp.Error
 			if detail != "" {
 				errTxt += "\n" + detail
 			}
 			err = errors.New(errTxt)
-		} else if resp.Output != nil && output != nil {
-			err = tputils.Decode(resp.Output, output)
+		} else if resp.Value != nil && output != nil {
+			err = tputils.Decode(resp.Value, output)
 		}
 	}
 	return err

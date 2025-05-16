@@ -35,12 +35,12 @@
 			{{/*Description*/}}
 			<div>{{$iout.Schema.Description}}</div>
 
-      {{/*	Updated*/}}
+      {{/*	Timestamp*/}}
 			<div sse-swap="{{$iout.AffordanceType}}/{{$.ThingID}}/{{$name}}/updated"
 			     hx-target="this"
 			     hx-swap="innerHTML"
 					  style="white-space:nowrap"
-				>{{datetime $iout.Updated "S" }}
+				>{{datetime $iout.Timestamp "S" }}
 			</div>
 
 	    {{/*history chart */}}

@@ -65,7 +65,7 @@ func (svc *ManageHistory) GetRetentionRule(senderID string, args *historyapi.Get
 		//AgentID: args.AgentID,
 		ThingID:        args.ThingID,
 		Name:           args.Name,
-		AffordanceType: args.AffordanceType,
+		AffordanceType: messaging.AffordanceType(args.AffordanceType),
 	}
 	rule := svc._FindFirstRule(&tv)
 	resp = &historyapi.GetRetentionRuleResp{Rule: rule}

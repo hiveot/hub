@@ -68,7 +68,7 @@ func copyTo(inDB *pebble.DB, dest string) {
 	_, err := os.Stat(dest)
 	if err == nil {
 		// todo use -f
-		fmt.Println("Output database already exists. Not copying keys.")
+		fmt.Println("Value database already exists. Not copying keys.")
 		return
 	}
 	options := &pebble.Options{}

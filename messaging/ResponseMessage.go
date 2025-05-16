@@ -12,9 +12,11 @@ import (
 // envelopes for handling responses.
 // Each transport protocol bindings map this format to this specific format.
 
-const AffordanceTypeEvent = "event"
-const AffordanceTypeProperty = "property"
-const AffordanceTypeAction = "action"
+type AffordanceType string
+
+const AffordanceTypeEvent AffordanceType = "event"
+const AffordanceTypeProperty AffordanceType = "property"
+const AffordanceTypeAction AffordanceType = "action"
 
 // MessageTypeResponse identify the message as a response.
 const MessageTypeResponse = "response"
@@ -90,44 +92,55 @@ type ActionStatus struct {
 	Updated string `json:"updated,omitempty"`
 }
 
-// ThingValue is the response payload to subscribeevent, observeproperty,
-// readevent and readproperty operations.
+// ThingValue is the internal API response payload to subscribeevent, observeproperty,
+// readevent and readproperty operations. The protocol binding maps between this
+// and the protocol way of encoding values.
 type ThingValue struct {
-	// ID is the unique identification of the value
-	ID string `json:"id,omitempty"`
+	// Type of affordance this is a value of: AffordanceTypeProperty|Event|Action
+	AffordanceType AffordanceType `json:"affordanceType"`
+
+	// Output with Payload
+	//
+	// Data in format as described by the thing's affordance
+	Data any `json:"data,omitempty"`
 
 	// Name with affordance name
 	//
 	// Name of the affordance holding the value
 	Name string `json:"name,omitempty"`
 
-	// Output with Payload
-	//
-	// Data in format as described by the thing's property affordance
-	Output any `json:"output,omitempty"`
-
 	// ThingID with Thing ID
 	//
 	// Digital twin Thing ID
 	ThingID string `json:"thingID,omitempty"`
 
-	// Updated with Updated time
+	// Timestamp with Timestamp time
 	//
 	// Time the value was last updated
-	Updated string `json:"updated,omitempty"`
-
-	// Type of value: AffordanceTypeProperty|Event|Action
-	AffordanceType string `json:"affordanceType"`
+	Timestamp string `json:"timestamp,omitempty"`
 }
 
 // ToString is a helper to easily read the response output as a string
 func (tv *ThingValue) ToString(maxlen int) string {
-	return tputils.DecodeAsString(tv.Output, maxlen)
+	return tputils.DecodeAsString(tv.Data, maxlen)
+}
+func NewThingValue(affordanceType AffordanceType, thingID, name string, data any, timestamp string) *ThingValue {
+	tv := &ThingValue{
+		AffordanceType: affordanceType,
+		Data:           data,
+		Name:           name,
+		ThingID:        thingID,
+		Timestamp:      timestamp,
+	}
+	if tv.Timestamp == "" {
+		tv.Timestamp = utils.FormatUTCMilli(time.Now())
+	}
+	return tv
 }
 
 // ResponseMessage serves to notify a client of the result of a request.
 //
-// The Output field contains the message response data as defined by the operation
+// The Value field contains the message response data as defined by the operation
 // Action related response output:
 //   - invokeaction             action output as per TD, when status==completed
 //   - queryaction              []ActionStatus object array
@@ -154,28 +167,20 @@ type ResponseMessage struct {
 
 	// MessageType identifies this message payload as a response
 	// This is set to the value of MessageTypeResponse
-	MessageType string `json:"type"`
+	MessageType string `json:"messageType"`
 
 	// Name of the action or property affordance this is a response from.
-	// This field is optional and intended to help debugging and logging.
-	Name string `json:"name,omitempty"`
+	Name string `json:"name"`
 
 	// The operation this is a response to. This MUST be the operation provided in the request.
 	Operation string `json:"operation"`
 
-	// Output for the request as described in the TD affordance dataschema.
-	// If the operation is one of the Thing level operations, the output is specified
-	// by the operation's dataschema. WoT doesn't have this yet so hiveot will
-	// define the missing bits if any. (see documentation)
+	// Authenticated ID of the agent sending the response, set by the server.
 	//
-	// If status is failed then output optionally contains a detailed error description.
-	Output any `json:"output"` // value?
-
-	// Timestamp the request was received by the thing agent
-	//Received string `json:"received"`
-
-	// Authenticated ID of the agent sending the response, set by the server
-	// The protocol server MUST set this to the authenticated sender.
+	// This is non-wot and a feature of the hiveot Hub, to allow services to link requests
+	// to authenticated users.
+	//
+	// The Hub protocol server MUST set this to the authenticated sender.
 	SenderID string `json:"senderID"`
 
 	// ThingID of the thing this is a response from.
@@ -185,12 +190,19 @@ type ResponseMessage struct {
 	ThingID string `json:"thingID,omitempty"`
 
 	// Timestamp the response was created
-	Timestamp string `json:"timestamp"`
+	Timestamp string `json:"timestamp,omitempty"`
+
+	// Value of the response as described in the TD affordance output or value dataschema.
+	// If the operation is one of the Thing level operations, the value is specified
+	// by the operation's dataschema.
+	//
+	// If an error is returned then value optionally contains a detailed error description.
+	Value any `json:"value"`
 }
 
 // ToString is a helper to easily read the response output as a string
 func (resp *ResponseMessage) ToString(maxlen int) string {
-	return tputils.DecodeAsString(resp.Output, maxlen)
+	return tputils.DecodeAsString(resp.Value, maxlen)
 }
 
 // NewResponseMessage creates a new ResponseMessage instance.
@@ -201,16 +213,16 @@ func (resp *ResponseMessage) ToString(maxlen int) string {
 //	operation is the request operation WoTOp... or HTOp...
 //	thingID is the thing the value applies to (destination of action or source of event)
 //	name is the name of the property, event or action affordance as described in the thing TD
-//	output is the output data as defined in the corresponding affordance dataschema or nil if not applicable
+//	data is the response data as defined in the corresponding affordance dataschema or nil if not applicable
 //	err is the optional error response which will set status to failed
 //	correlationID  ID provided by the request
-func NewResponseMessage(operation string, thingID, name string, output any, err error, correlationID string) *ResponseMessage {
+func NewResponseMessage(operation string, thingID, name string, data any, err error, correlationID string) *ResponseMessage {
 	resp := &ResponseMessage{
 		MessageType:   MessageTypeResponse,
 		Operation:     operation,
 		ThingID:       thingID,
 		Name:          name,
-		Output:        output,
+		Value:         data,
 		CorrelationID: correlationID,
 		Timestamp:     utils.FormatUTCMilli(time.Now()),
 		MessageID:     shortid.MustGenerate(),

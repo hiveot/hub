@@ -37,7 +37,7 @@
 					</label>
 				</fieldset>
 
-
+          {{/*When type is image*/}}
 				<fieldset id="image-source-section">
 					<label>Image URL
 						<input id="image-url" type="url" name="imageURL" placeholder="Enter a background image URL"
@@ -46,7 +46,7 @@
 					<label class="h-row" style="white-space: nowrap">
 						Reload Interval
 						<input name="reloadInterval"
-						       type="number" min="3"
+						       type="number" 
 						       placeholder="Nr of seconds to reload the image"
 						       value="{{.Tile.ImageReloadInterval}}">
 						Seconds
@@ -68,7 +68,7 @@
 					</label>
 
             {{/* NOTE!: RenderSelectSources uses this ID 'edit-tile-sources-id' to add sources in this list */}}
-					<h-grid-table  id="edit-tile-sources-id" gridClass="edit-tile-sources" title="{{.Tile.ID}}" striped border>
+					<h-grid-table id="edit-tile-sources-id" gridClass="edit-tile-sources" title="{{.Tile.ID}}" striped border>
               {{/* Header*/}}
 						<li class="title-row">
 							<div></div>

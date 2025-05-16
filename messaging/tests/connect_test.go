@@ -8,7 +8,7 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/clients"
-	authenticator2 "github.com/hiveot/hub/messaging/clients/authenticator"
+	"github.com/hiveot/hub/messaging/clients/authenticator"
 	"github.com/hiveot/hub/messaging/servers/hiveotsseserver"
 	"github.com/hiveot/hub/messaging/servers/httpserver"
 	"github.com/hiveot/hub/messaging/servers/wssserver"
@@ -37,12 +37,12 @@ const testServerHiveotWssURL = "wss://localhost:9445" + wssserver.DefaultWssPath
 
 //const testServerMqttWssURL = "mqtts://localhost:9447"
 
-var defaultProtocol = messaging.ProtocolTypeHiveotSSE
+//var defaultProtocol = messaging.ProtocolTypeHiveotSSE
 
-//var defaultProtocol = messaging.ProtocolTypeWSS
+var defaultProtocol = messaging.ProtocolTypeWSS
 
 var transportServer messaging.ITransportServer
-var authenticator *tputils.DummyAuthenticator
+var dummyAuthenticator *tputils.DummyAuthenticator
 var certBundle = certs.CreateTestCertBundle()
 
 // NewClient creates a new connected client with the given client ID. The
@@ -53,7 +53,7 @@ var certBundle = certs.CreateTestCertBundle()
 // ClientID is only used for logging
 func NewTestClient(clientID string) (messaging.IClientConnection, string) {
 	fullURL := testServerHttpURL
-	token := authenticator.AddClient(clientID, clientID)
+	token := dummyAuthenticator.AddClient(clientID, clientID)
 
 	switch defaultProtocol {
 	case messaging.ProtocolTypeHiveotSSE:
@@ -118,7 +118,7 @@ func StartTransportServer(
 
 	caCert := certBundle.CaCert
 	serverCert := certBundle.ServerCert
-	authenticator = tputils.NewDummyAuthenticator()
+	dummyAuthenticator = tputils.NewDummyAuthenticator()
 	if reqHandler == nil {
 		reqHandler = DummyRequestHandler
 	}
@@ -127,13 +127,13 @@ func StartTransportServer(
 	}
 	// test cert uses localhost
 	httpTransportServer, err := httpserver.StartHttpTransportServer(
-		certBundle.ServerAddr, testServerHttpPort, serverCert, caCert, authenticator)
+		certBundle.ServerAddr, testServerHttpPort, serverCert, caCert, dummyAuthenticator)
 
 	switch defaultProtocol {
 	case messaging.ProtocolTypeWotHTTPBasic:
 		// http only, no subprotocol bindings
 		//httpTransportServer, err = httpserver.StartHttpTransportServer(
-		//	"localhost", testServerHttpPort, serverCert, caCert, authenticator, cm,
+		//	"localhost", testServerHttpPort, serverCert, caCert, dummyAuthenticator, cm,
 		//	notifHandler, reqHandler, respHandler)
 		panic("https is broken")
 
@@ -181,9 +181,9 @@ func DummyRequestHandler(req *messaging.RequestMessage,
 	slog.Info("DummyRequestHandler: Received request", "op", req.Operation)
 	//if req.Operation == wot.HTOpRefresh {
 	//	oldToken := req.ToString(0)
-	//	output, err = authenticator.RefreshToken(req.SenderID, oldToken)
+	//	output, err = dummyAuthenticator.RefreshToken(req.SenderID, oldToken)
 	//} else if req.Operation == wot.HTOpLogout {
-	//	authenticator.Logout(c.GetClientID())
+	//	dummyAuthenticator.Logout(c.GetClientID())
 	//} else {
 	output = req.Input // echo
 	//}
@@ -249,7 +249,7 @@ func TestLoginRefresh(t *testing.T) {
 	assert.True(t, isConnected)
 
 	parts, _ := url.Parse(srv.GetConnectURL())
-	authCl := authenticator2.NewAuthClient(parts.Host, certBundle.CaCert, "cid1", testTimeout)
+	authCl := authenticator.NewAuthClient(parts.Host, certBundle.CaCert, "cid1", testTimeout)
 	token2, err := authCl.RefreshToken(token1)
 
 	// refresh should succeed
@@ -263,7 +263,7 @@ func TestLoginRefresh(t *testing.T) {
 
 	// should be able to reconnect with the new token
 	// NOTE: the runtime session manager doesn't allow this as
-	// the session no longer exists, but the authenticator doesn't care.
+	// the session no longer exists, but the dummyAuthenticator doesn't care.
 	err = cc1.ConnectWithToken(token2)
 	require.NoError(t, err)
 
@@ -290,10 +290,10 @@ func TestLogout(t *testing.T) {
 	assert.NotEmpty(t, token1)
 
 	// logout
-	authCl := authenticator2.NewAuthClientFromConnection(cc1, token1)
+	authCl := authenticator.NewAuthClientFromConnection(cc1, token1)
 	err := authCl.Logout()
 
-	//authenticator2.Logout(cc1, "")
+	//authenticator.Logout(cc1, "")
 	//err := co1.Logout()
 	t.Log("logged out, some warnings are expected next")
 	assert.NoError(t, err)
@@ -358,7 +358,7 @@ func TestBadRefresh(t *testing.T) {
 	err = cc1.ConnectWithToken(token1)
 	assert.NoError(t, err)
 	parts, _ := url.Parse(srv.GetConnectURL())
-	authCl := authenticator2.NewAuthClient(
+	authCl := authenticator.NewAuthClient(
 		parts.Host, certBundle.CaCert, "cid1", testTimeout)
 	validToken, err := authCl.RefreshToken(token1)
 	//validToken, err := co1.RefreshToken(token1)
@@ -410,7 +410,7 @@ func TestReconnect(t *testing.T) {
 
 	// connect as client
 	cc1, co1, _ := NewConsumer(testClientID1, srv.GetForm)
-	//token := authenticator.CreateSessionToken(testClientID1, "", 0)
+	//token := dummyAuthenticator.CreateSessionToken(testClientID1, "", 0)
 	//err := cc1.ConnectWithToken(token)
 	//require.NoError(t, err)
 	defer cc1.Disconnect()

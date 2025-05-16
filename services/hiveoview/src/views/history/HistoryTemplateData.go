@@ -15,7 +15,7 @@ import (
 
 // HistoryTemplateData holds the data for rendering a history table or graph
 type HistoryTemplateData struct {
-	AffordanceType string
+	AffordanceType messaging.AffordanceType
 	ThingID        string
 	Title          string // allow override to data description
 	Name           string
@@ -49,9 +49,9 @@ func (ht HistoryTemplateData) AsJSON() string {
 	dataList := []HistoryDataPoint{}
 
 	for _, m := range ht.Values {
-		yValue := m.Output
+		yValue := m.Data
 		if ht.DataSchema.Type == vocab.WoTDataTypeBool {
-			boolValue := tputils.DecodeAsBool(m.Output)
+			boolValue := tputils.DecodeAsBool(m.Data)
 			yValue = 0
 			if boolValue {
 				yValue = 1
@@ -59,7 +59,7 @@ func (ht HistoryTemplateData) AsJSON() string {
 
 		}
 		dataList = append(dataList,
-			HistoryDataPoint{X: m.Updated, Y: yValue})
+			HistoryDataPoint{X: m.Timestamp, Y: yValue})
 	}
 	dataJSON, _ := json.Marshal(dataList)
 	return string(dataJSON)
@@ -98,7 +98,7 @@ func (ht HistoryTemplateData) CompareToday() int {
 //	timestamp of the end-time of the history range
 //	duration to read (negative for history)
 func NewHistoryTemplateData(ct *consumedthing.ConsumedThing,
-	affType, name string, timestamp time.Time, duration time.Duration) (
+	affType messaging.AffordanceType, name string, timestamp time.Time, duration time.Duration) (
 	data *HistoryTemplateData, err error) {
 
 	hs := HistoryTemplateData{
@@ -131,7 +131,7 @@ func NewHistoryTemplateData(ct *consumedthing.ConsumedThing,
 		ct.ThingID, name, timestamp, duration, 500)
 
 	// Add the URL paths for navigating around the history
-	pathParams := map[string]string{"affordanceType": affType, "thingID": ct.ThingID, "name": name}
+	pathParams := map[string]string{"affordanceType": string(affType), "thingID": ct.ThingID, "name": name}
 	prevDayTime := hs.PrevDay().Format(time.RFC3339)
 	nextDayTime := hs.NextDay().Format(time.RFC3339)
 	todayTime := time.Now().Format(time.RFC3339)

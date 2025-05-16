@@ -17,7 +17,7 @@ template.innerHTML = `
           .h-brand {
             display: flex;
             height: 90%;
-            gap: 10px;
+            /*gap: 10px;*/
             flex-direction: row;
             flex-wrap: nowrap;
             align-items: center;
@@ -55,7 +55,7 @@ class HBrand extends HTMLElement {
         shadowRoot.append(template.content.cloneNode(true));
         this.elLogo = shadowRoot.querySelector("[logo]");
         this.elTitle = shadowRoot.querySelector("[title]");
-        if (this.elTitle == null) {
+        if (this.elTitle === null) {
             console.error("title selector not found");
         }
     }

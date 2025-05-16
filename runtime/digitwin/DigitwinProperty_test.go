@@ -35,7 +35,7 @@ func TestUpdateReadProperty(t *testing.T) {
 
 	// agent has provided a new property value
 	changed, err := dtwStore.UpdatePropertyValue(
-		digitwin.ThingValue{ThingID: dThing1ID, Name: propName, Output: propValue})
+		digitwin.ThingValue{ThingID: dThing1ID, Name: propName, Data: propValue})
 	assert.NoError(t, err)
 	assert.True(t, changed)
 
@@ -44,7 +44,7 @@ func TestUpdateReadProperty(t *testing.T) {
 		ThingID: dThing1ID,
 		Name:    propName})
 	assert.NoError(t, err)
-	assert.Equal(t, propValue, v2.Output)
+	assert.Equal(t, propValue, v2.Data)
 
 	propList, err := svc.ValuesSvc.ReadAllProperties(user1ID, dThing1ID)
 	assert.Equal(t, 1, len(propList))
@@ -52,14 +52,14 @@ func TestUpdateReadProperty(t *testing.T) {
 
 	// next write a new value
 	changed, err = dtwStore.UpdatePropertyValue(
-		digitwin.ThingValue{ThingID: dThing1ID, Name: propName, Output: propValue2})
+		digitwin.ThingValue{ThingID: dThing1ID, Name: propName, Data: propValue2})
 
 	assert.NoError(t, err)
 	assert.True(t, changed)
 	v3, err := svc.ValuesSvc.ReadProperty(user1ID, digitwin.ThingValuesReadPropertyArgs{
 		ThingID: dThing1ID,
 		Name:    propName})
-	assert.Equal(t, propValue2, v3.Output)
+	assert.Equal(t, propValue2, v3.Data)
 }
 
 func TestPropertyReadFail(t *testing.T) {
@@ -105,12 +105,12 @@ func TestPropertyUpdateFail(t *testing.T) {
 	require.NoError(t, err)
 
 	changed, err := dtwStore.UpdatePropertyValue(
-		digitwin.ThingValue{ThingID: dBadThingID, Name: propName, Output: 123})
+		digitwin.ThingValue{ThingID: dBadThingID, Name: propName, Data: 123})
 	assert.Error(t, err)
 	assert.False(t, changed)
 	//property names not in the TD are accepted
 	changed, err = dtwStore.UpdatePropertyValue(
-		digitwin.ThingValue{ThingID: dThing1ID, Name: "unknownprop", Output: 123})
+		digitwin.ThingValue{ThingID: dThing1ID, Name: "unknownprop", Data: 123})
 	assert.NoError(t, err)
 	assert.True(t, changed)
 

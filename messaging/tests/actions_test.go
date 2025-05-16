@@ -53,7 +53,7 @@ func TestInvokeActionFromConsumerToServer(t *testing.T) {
 	// client should receive an action/request response via the response callback
 	cl1.SetResponseHandler(func(resp *messaging.ResponseMessage) error {
 		slog.Info("testOutput was updated asynchronously via the message handler")
-		err2 := tputils.Decode(resp.Output, &testOutput)
+		err2 := tputils.Decode(resp.Value, &testOutput)
 		assert.NoError(t, err2)
 		release1()
 		return err2
@@ -113,12 +113,12 @@ func TestInvokeActionFromServerToAgent(t *testing.T) {
 
 		slog.Info("serverHandler: Received action response from agent",
 			"op", resp.Operation,
-			"output", resp.Output,
+			"output", resp.Value,
 		)
-		err := tputils.Decode(resp.Output, &responseData)
+		err := tputils.Decode(resp.Value, &responseData)
 		assert.NoError(t, err)
 
-		replyVal.Store(resp.Output)
+		replyVal.Store(resp.Value)
 		cancelFn1()
 		return nil
 	}
