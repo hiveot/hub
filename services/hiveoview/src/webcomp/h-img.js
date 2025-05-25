@@ -54,7 +54,7 @@ class HImg extends HTMLElement {
     reloadImage() {
         let ts = new Date().getTime().toString()
         let newSrc = this.src + "?&ts="+ts
-        console.log("reloading image: src=",newSrc)
+        // console.log("reloading image: src=",newSrc)
         this.imgEl.src = newSrc
     }
 }

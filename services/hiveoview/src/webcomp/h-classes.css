@@ -180,14 +180,6 @@ h-dropdown > ul:first-of-type {
     margin-right: 0;
 }
 
-/*Use flex for table cells*/
-table td {
-    align-items: center;
-    display: flex;
-}
-table[striped] td:nth-child(even) * {
-    background-color: var(--pico-table-row-stripped-background-color);
-}
 
 ul > li {
     background-color: var(--pico-dropdown-background-color);

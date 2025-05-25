@@ -8,84 +8,88 @@
 {{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/thing.ActionRequestTemplateData*/ -}}
 
 <h-modal show showClose showCancel showSubmit>
-    <article  style="min-width: 410px;max-width:80vw;max-height:90vh">
-        <header class="h-row-centered" style="height: 60px">
-            <h3>{{.Action.Title}}</h3>
-        </header>
+	<article style="min-width: 410px;max-width:80vw;max-height:90vh">
+		<header class="h-row-centered" style="height: 60px">
+			<h3>{{.Action.Title}}</h3>
+		</header>
 
-        <main>
-            <form id="action-input-form"  style="overflow:auto;max-height:80vh">
-                <label>Action</label>
-                {{/* textarea doesnt resize so do this instead*/}}
-                <div style="color:gray;
+		<main>
+			<form id="action-input-form" style="overflow:auto;max-height:80vh">
+				<label>Action
+            {{/* textarea doesnt resize so do this instead*/}}
+					<div style="color:gray;
                      border:1px solid var(--pico-form-element-border-color);
                      padding: var(--pico-form-element-spacing-vertical) var(--pico-form-element-spacing-horizontal);
-                     margin-bottom: var(--pico-spacing);"
-                ><i>{{.Description}}</i></div>
+                     margin-bottom: var(--pico-spacing);">
+						<i>{{.Description}}</i>
+					</div>
+				</label>
 
-{{/*                Show the previous action status and input if available */}}
-                {{if .LastActionRecord}}
-                    <label for="previousAction">Previous Action</label>
-                    <table id="previousAction" class="prevaction">
-                        <tr>
-                            <td>Time</td>
-                            <td>{{.LastActionTime}} ({{.LastActionAge}} ago)</td>
-                        </tr>
-                        <tr>
-                            <td>Status</td>
-                            <td>{{.LastActionRecord.Status}}
-                                {{if .LastActionRecord.Error}}
-                                    <span>: {{.LastActionRecord.Error}}</span>
-                                {{end}}
-                            </td>
-                        </tr>
-                        {{if .Action.Input }}
-                           <tr>
-                              <td>Input</td>
-                              <td>{{.InputValue.Value.ToString 120}}</td>
-                           </tr>
-                        {{end}}
-                    </table>
+          {{/* Show the previous action status and input if available */}}
+          {{if .LastActionRecord}}
+						<label>Previous Action
+							<table class="prevaction">
+								<tr  style="width:800px">
+									<td>Time</td>
+									<td style="width:max-content">{{.LastActionTime}} ({{.LastActionAge}} ago)</td>
+								</tr>
+								<tr>
+									<td>Status</td>
+									<td>{{.LastActionRecord.Status}}
+                      {{if .LastActionRecord.Error}}
+												<span>: {{.LastActionRecord.Error}}</span>
+                      {{end}}
+									</td>
+								</tr>
+                  {{if .Action.Input }}
+										<tr>
+											<td>Input</td>
+											<td>{{.InputValue.Value.ToString 120}}</td>
+										</tr>
+                  {{end}}
+							</table>
+						</label>
 
-                {{end}}
+          {{end}}
 
 
-                {{/* if input is required*/}}
-                {{if .Action.Input}}
-                    <div >
-                        {{/*TODO: support object with multiple input fields*/}}
-                        {{/* the 'for' id must match that of RenderInputValue*/}}
-                        <label for="input-{{.Name}}">{{.InputValue.Schema.Title}}</label>
-                        {{template "RenderInputValue.gohtml" .InputValue}}
-                    </div>
-                {{end}}
-            </form>
-        </main>
+          {{/* if input is required*/}}
+          {{if .Action.Input}}
+						<div>
+                {{/*TODO: support object with multiple input fields*/}}
+                {{/* the 'for' id must match that of RenderInputValue*/}}
+							<label for="input-{{.Name}}">{{.InputValue.Schema.Title}}</label>
+                {{template "RenderInputValue.gohtml" .InputValue}}
+						</div>
+          {{end}}
+			</form>
+		</main>
 
-        <footer>
-            {{- /*close-modal is handled by h-modal component*/ -}}
-            <button id="cancelBtn"
-                    title="cancel and close the dialog"
-                    onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
-                    class="secondary">Cancel
-            </button>
-{{/*            FIXME: disable submit if input type is not supported*/}}
-            <button type="submit"
-                    {{if .Action.Input}}
-                        {{if not .Action.Input.IsNative}}
-                            disabled
-                            title="input format not supported"
-                        {{end}}
-                    {{end}}
-                    hx-post="{{.SubmitActionRequestPath}}"
-                    hx-include="#action-input-form"
-                    hx-swap="none"
-                    hx-on::after-request="onSubmitCompleted(event, this)"
-                    >Submit
-            </button>
-        </footer>
+		<footer>
+        {{- /*close-modal is handled by h-modal component*/ -}}
+			<button id="cancelBtn"
+			        title="cancel and close the dialog"
+			        onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
+			        class="secondary">Cancel
+			</button>
+        {{/* FIXME-1: disable submit if input type is not supported*/}}
+        {{/* FIXME-2: disable submit while waiting for the result*/}}
+			<button type="submit"
+              {{if .Action.Input}}
+                  {{if not .Action.Input.IsNative}}
+										disabled
+										title="input format not supported"
+                  {{end}}
+              {{end}}
+							hx-post="{{.SubmitActionRequestPath}}"
+							hx-include="#action-input-form"
+							hx-swap="none"
+							hx-on::after-request="onSubmitCompleted(event, this)"
+			>Submit
+			</button>
+		</footer>
 
-    </article>
+	</article>
 </h-modal>
 
 <script>
@@ -95,18 +99,20 @@
         ev.stopImmediatePropagation()
         let details = ev.detail
         if (details.successful) {
-            let closeEv = new Event('close-modal',{bubbles:true})
+            let closeEv = new Event('close-modal', {bubbles: true})
             btn.dispatchEvent(closeEv)
         }
     }
 </script>
 
 <style>
-    .prevaction  {
-        border:1px solid var(--pico-form-element-border-color);
+    .prevaction {
+		    /*display: grid;*/
+        border: 1px solid var(--pico-form-element-border-color);
     }
+
     .prevaction td {
-        background-color:inherit;
+        background-color: inherit;
         border: none;
     }
 </style>

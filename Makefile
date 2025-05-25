@@ -96,7 +96,7 @@ install:  ## core plugins ## build and install the services
 	mkdir -p $(INSTALL_HOME)/stores
 	cp -af $(BIN_FOLDER)/* $(INSTALL_HOME)/bin
 	cp -af $(PLUGINS_FOLDER)/* $(INSTALL_HOME)/plugins
-	cp --update=none $(DIST_FOLDER)/config/*.yaml $(INSTALL_HOME)/config/
+	cp -n $(DIST_FOLDER)/config/*.yaml $(INSTALL_HOME)/config/
 
 test: runtime services bindings  ## Run tests (stop on first error, don't run parallel)
 	go test -race -failfast -p 1 ./...

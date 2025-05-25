@@ -17,7 +17,7 @@ import getLogger from "./getLogger.ts";
 import process from "node:process";
 import TD from "../hivelib/wot/TD.ts";
 import {OpWriteProperty} from "../hivelib/api/vocab/vocab.js";
-import {handleWriteProperty} from "./handleWriteProperty.js";
+import {handleWriteProperty} from "./handleWriteProperty.ts";
 const log = getLogger()
 
 

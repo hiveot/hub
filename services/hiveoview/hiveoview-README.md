@@ -13,7 +13,7 @@ This viewer has reached alpha status with Phase 1-3 completed. The information b
 * Show action progress using async response messages (ActionStatus) [in progress]
 * Indication of pending property writes (owserver updates can take 10 seconds)
 * redirect to login when SSE receives unauthorized error (after server restart)
-* Use cached values instead of reload when editing tiles
+* Use cached values instead of reload when adding sources to a tile
 * Only view authorized sources
 
 ### Phase 5: Dashboard enhancements [in progress]
@@ -25,12 +25,15 @@ This viewer has reached alpha status with Phase 1-3 completed. The information b
   * dashboard background image from URL [done]
   * configure tile transparency, background and color [done]
   * configure allowing tile placement anywhere  [done]
-* only allow edit/move tiles if the user has permissions to edit, eg a manager+
-  * depends on the authz change to define roles in the TD
-* briefly fade in/out a highlight of a changed value (css transition?)
-* option to color value based on age 
-* show value error status in tiles
-* disable actions and edits for things that are not reachable (agent offline, no auth) 
+* Permissions
+  * only allow edit/move tiles if the user has permissions to edit, eg a manager+
+    * depends on the authz change to define roles in the TD
+  * disable actions and edits for things that are not reachable (agent offline, no auth)
+* Value presentation
+  * briefly fade in/out a highlight of a changed value (css transition?)
+  * option to color value based on age 
+  * show value error status in tiles
+  * show motion as alarm indicator - using hiveot @type vocab
 * Distinguish between basic and advanced attr/config/events using @type
    (TD does not support this facility, so use a config with @type values for basic values)
 * Improve use of Thing vocabulary types in bindings

@@ -28,6 +28,9 @@ func (svc *OWServerBinding) HandleRequest(req *messaging.RequestMessage,
 	// Custom config. Change device title.
 	if req.Name == wot.WoTTitle {
 		err = svc.SetTitle(req)
+		deviceTitleByte, _ := svc.customTitles.Get(req.ThingID)
+		resp := req.CreateResponse(string(deviceTitleByte), err)
+		return resp
 	}
 
 	// This is a node update
