@@ -10,8 +10,8 @@ This viewer has reached alpha status with Phase 1-3 completed. The information b
 ### Phase 2: Directory view [done]
 ### Phase 3: Basic Dashboard (v1) [done]
 ### Phase 4: Request/Response Handling Improvements [in progress]
-* Show action progress using async response messages (ActionStatus) [in progress]
-* Indication of pending property writes (owserver updates can take 10 seconds)
+* Show action progress using async response messages (ActionStatus) [done]
+* Indication of pending property writes (owserver updates can take 10 seconds) [done]
 * redirect to login when SSE receives unauthorized error (after server restart)
 * Use cached values instead of reload when adding sources to a tile
 * Only view authorized sources
@@ -26,9 +26,8 @@ This viewer has reached alpha status with Phase 1-3 completed. The information b
   * configure tile transparency, background and color [done]
   * configure allowing tile placement anywhere  [done]
 * Permissions
-  * only allow edit/move tiles if the user has permissions to edit, eg a manager+
-    * depends on the authz change to define roles in the TD
-  * disable actions and edits for things that are not reachable (agent offline, no auth)
+  * disable actions for non-authorized consumers
+  * disable config for non-authorized consumers
 * Value presentation
   * briefly fade in/out a highlight of a changed value (css transition?)
   * option to color value based on age 

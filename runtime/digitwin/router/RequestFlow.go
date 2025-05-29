@@ -46,16 +46,6 @@ func (svc *DigitwinRouter) ForwardRequestToRemoteAgent(
 
 	agentID, agThingID := td.SplitDigiTwinThingID(req.ThingID)
 
-	// Treat everything as actions
-	// Store the request progress to be able to respond to queryAction. Only
-	// unsafe (stateful) actions are stored.
-	// TODO: make sure non-action requests are not returned during query
-	actionStatus, stored, err := svc.dtwStore.NewActionStart(req)
-	_ = stored
-	if err != nil {
-		return req.CreateResponse(nil, err)
-	}
-
 	// Determine the agent to forward the request to.
 	// Agents only have a single connection instance so the agentID can be used.
 	agentConn := svc.transportServer.GetConnectionByClientID(agentID)
@@ -64,7 +54,7 @@ func (svc *DigitwinRouter) ForwardRequestToRemoteAgent(
 		// The request cannot be delivered as the agent is not reachable
 		// For now return an error.
 		// TODO: determine the rules and use-cases for queuing a request
-		err = fmt.Errorf("ForwardRequestToRemoteAgent: Agent '%s' not reachable. Ignored", agentID)
+		err := fmt.Errorf("ForwardRequestToRemoteAgent: Agent '%s' not reachable. Ignored", agentID)
 		return req.CreateResponse(nil, err)
 	}
 	replyTo := ""
@@ -92,7 +82,7 @@ func (svc *DigitwinRouter) ForwardRequestToRemoteAgent(
 	// digital twin agThingID.
 	req2 := *req
 	req2.ThingID = agThingID // agent uses the local message ID
-	err = agentConn.SendRequest(&req2)
+	err := agentConn.SendRequest(&req2)
 
 	// if forwarding the request to the agent failed, then remove the tracking,
 	// update the action status, and return an error response
@@ -109,20 +99,12 @@ func (svc *DigitwinRouter) ForwardRequestToRemoteAgent(
 		svc.mux.Unlock()
 
 		resp = req.CreateResponse(nil, err)
-		if stored {
-			_, _ = svc.dtwStore.UpdateActionWithResponse(resp)
-		}
+		//if stored {
+		//	_, _ = svc.dtwStore.UpdateActionWithResponse(resp)
+		//}
 		return resp
 	}
 
-	// the request has been sent successfully
-	// actions return a notification with ActionStatus record with status pending.
-	// other requests simply don't return anything until an async response is received.
-	if stored && sc != nil {
-		notif := req.CreateNotification()
-		notif.Data = actionStatus
-		_ = sc.SendNotification(notif)
-	}
 	// no immediate result so return nil
 	return nil
 }
@@ -238,7 +220,8 @@ func (svc *DigitwinRouter) HandleInvokeAction(
 	agentID, thingID := td.SplitDigiTwinThingID(req.ThingID)
 	_ = thingID
 
-	// internal services return instant result
+	// internal services return instant result.
+	// There is no good use-case to record these actions.
 	switch agentID {
 	case digitwin.ThingDirectoryAgentID:
 		resp = svc.digitwinAction(req, c)
@@ -249,8 +232,32 @@ func (svc *DigitwinRouter) HandleInvokeAction(
 	case api.DigitwinServiceID:
 		resp = svc.digitwinAction(req, c)
 	default:
+		// forward action to external service
+		// Store the request progress to be able to respond to queryAction. Only
+		// unsafe (stateful) actions are stored.
+		actionStatus, stored, err := svc.dtwStore.NewActionStart(req)
+		_ = stored
+		if err != nil {
+			return req.CreateResponse(nil, err)
+		}
+
 		// Forward the action to external agents
+		// Depending on how the agent is connection this can provide an immediate response
+		// or no immediate response, in which case a notification is returned.
 		resp = svc.ForwardRequestToRemoteAgent(req, c)
+
+		// the request has been sent successfully
+		// actions return a response or a notification with ActionStatus record with status pending.
+		// other requests simply don't return anything until an async response is received.
+		if stored && resp != nil {
+			// in case of immediately available response and the action was stored.
+			_, _ = svc.dtwStore.UpdateActionWithResponse(resp)
+		} else if resp == nil && c != nil {
+			// send an async notification if no response is available yet
+			notif := req.CreateNotification()
+			notif.Data = actionStatus
+			_ = c.SendNotification(notif)
+		}
 	}
 	return resp
 }
@@ -340,13 +347,13 @@ func (svc *DigitwinRouter) HandleUpdateTD(
 
 // HandleWriteProperty A consumer requests to write a new value to a property.
 //
-// This follows the same process as invoking an action. The request is forwarded to
-// the agent which is expected to send a response. The request status is tracked
-// to be able to provide a progress update to the consumer.
-//
-// if name is empty then newValue contains a map of properties
+// This follows the same process as invoking an action but without tracking progress.
+// The request is forwarded to the agent which is expected to send a response.
 func (svc *DigitwinRouter) HandleWriteProperty(
 	req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
+
+	// Note: if internal services have writable properties (currently they don't)
+	// then add forwarding it here similar to invoking actions.
 
 	return svc.ForwardRequestToRemoteAgent(req, c)
 }

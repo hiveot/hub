@@ -29,7 +29,7 @@
           {{if .LastActionRecord}}
 						<label>Previous Action
 							<table class="prevaction">
-								<tr  style="width:800px">
+								<tr style="width:800px">
 									<td>Time</td>
 									<td style="width:max-content">{{.LastActionTime}} ({{.LastActionAge}} ago)</td>
 								</tr>
@@ -63,6 +63,14 @@
 						</div>
           {{end}}
 			</form>
+
+        {{/* Show the progress bar after submit*/}}
+			<span>
+			<progress id="action-progress-bar"
+			          style="visibility:hidden; position:absolute;left:1px;width:99%;border-radius:0"></progress>
+			<p id="action-progress-error" style="visibility:hidden; color:red">error</p>
+		</span>
+
 		</main>
 
 		<footer>
@@ -84,6 +92,7 @@
 							hx-post="{{.SubmitActionRequestPath}}"
 							hx-include="#action-input-form"
 							hx-swap="none"
+							hx-on::before-request="showProgress(this)"
 							hx-on::after-request="onSubmitCompleted(event, this)"
 			>Submit
 			</button>
@@ -94,20 +103,37 @@
 
 <script>
 
-    // The dialog remains active until a completed event is received
-    function onSubmitCompleted(ev, btn) {
+    // disable the submit button and show the progress bar
+    function showProgress(submitBtn) {
+        submitBtn.disabled = true
+        let el = document.getElementById("action-progress-bar")
+        el.style.visibility = "visible"
+    }
+
+    // close the modal when completed or present an error
+    function onSubmitCompleted(ev, submitBtn) {
         ev.stopImmediatePropagation()
         let details = ev.detail
         if (details.successful) {
             let closeEv = new Event('close-modal', {bubbles: true})
-            btn.dispatchEvent(closeEv)
+            submitBtn.dispatchEvent(closeEv)
+		        return
         }
+        // submit failed, show the error
+        submitBtn.disabled = false
+        // hide the progress bar
+        let el = document.getElementById("action-progress-bar")
+        el.style.visibility = "hidden"
+        // show the error instead
+        let el2 = document.getElementById("action-progress-error")
+        el2.style.visibility = "visible"
+        el2.textContent=ev.detail.xhr.response
     }
 </script>
 
 <style>
     .prevaction {
-		    /*display: grid;*/
+        /*display: grid;*/
         border: 1px solid var(--pico-form-element-border-color);
     }
 

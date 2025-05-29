@@ -24,7 +24,7 @@
 
 		</form>
 
-		{{/* Hack to show the progress bar in the desired place*/}}
+		{{/* Show the progress bar after submit*/}}
 		<span>
 			<progress id="edit-progress-bar" style="visibility:hidden; position:absolute;left:1px;width:99%;border-radius:0"></progress>
 			<p id="edit-progress-error" style="visibility:hidden; color:red">error</p>
@@ -51,29 +51,25 @@
 </h-modal>
 
 <script>
-		function showProgress(btn) {
-        // disable the cancel and submit buttons
-        btn.disabled = true
-        let cancelBtn = document.getElementById("cancelBtn")
-				cancelBtn.disabled = true
-
-				// show the progress bar
+    // disable the submit button and show the progress bar
+    function showProgress(submitBtn) {
+        submitBtn.disabled = true
         let el = document.getElementById("edit-progress-bar")
 				el.style.visibility = "visible"
 		}
-    // Ugly to have to do this!
-    function onSubmitCompleted(ev, btn) {
+
+    // close the modal when completed or present an error
+    function onSubmitCompleted(ev, submitBtn) {
         ev.stopImmediatePropagation()
         let details = ev.detail
 		    // console.log("details",details)
         if (details.successful) {
             let closeEv = new Event('close-modal',{bubbles:true})
-            btn.dispatchEvent(closeEv)
-        } else {
-            btn.disabled = false
-            let cancelBtn = document.getElementById("cancelBtn")
-            cancelBtn.disabled = false
+            submitBtn.dispatchEvent(closeEv)
+		        return
         }
+        // submit failed, show the error
+        submitBtn.disabled = false
         // hide the progress bar
         let el = document.getElementById("edit-progress-bar")
         el.style.visibility = "hidden"
