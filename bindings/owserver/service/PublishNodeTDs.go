@@ -32,9 +32,8 @@ func (svc *OWServerBinding) CreateTDFromNode(node *eds.OneWireNode) (tdoc *td.TD
 	tdoc.UpdateTitleDescription(thingTitle, node.Description)
 
 	// Add a writable 'title' property so consumer can edit the device's title.
-	// Since owserver doesn't support naming a device, the title is stored in the state service.
+	// Since owserver doesn't support naming a device, the title is stored in this service.
 	// The UI should prefer a title property over the TD title.
-	// TODO: Add this property in the digital twin instead of each device
 	// how does the dtw know if to forward a title property write request?
 	//  look into the device's TD
 	prop := tdoc.AddProperty(wot.WoTTitle, "Title", "", vocab.WoTDataTypeString)
@@ -55,7 +54,7 @@ func (svc *OWServerBinding) CreateTDFromNode(node *eds.OneWireNode) (tdoc *td.TD
 			title := attrInfo.Title
 			dataType := attrInfo.DataType
 
-			prop = tdoc.AddProperty(attrID, title, "", dataType).SetAtType(propType)
+			prop = tdoc.AddProperty(attrID, title, attrInfo.Description, dataType).SetAtType(propType)
 			unit := attrInfo.Unit
 			if attr.Unit != "" {
 				unitID, found := UnitNameVocab[attr.Unit]
@@ -83,7 +82,7 @@ func (svc *OWServerBinding) CreateTDFromNode(node *eds.OneWireNode) (tdoc *td.TD
 				}
 			}
 			// TODO: use a Number/Integerschema for numeric sensors
-			tdoc.AddEvent(attrID, attrInfo.Title, "", evSchema).
+			tdoc.AddEvent(attrID, attrInfo.Title, attrInfo.Description, evSchema).
 				SetAtType(attrInfo.VocabType)
 		}
 		if attrInfo.IsActuator {
@@ -98,7 +97,7 @@ func (svc *OWServerBinding) CreateTDFromNode(node *eds.OneWireNode) (tdoc *td.TD
 					WriteOnly: false,
 				}
 			}
-			aff := tdoc.AddAction(attrID, attrInfo.Title, "", inputSchema)
+			aff := tdoc.AddAction(attrID, attrInfo.Title, attrInfo.Description, inputSchema)
 			aff.SetAtType(attrInfo.VocabType)
 		}
 	}

@@ -18,6 +18,7 @@ import (
 func (svc *DigitwinRouter) HandleNotification(notif *messaging.NotificationMessage) {
 	var err error
 	svc.notifLogger.Info("<- NOTIF: HandleNotification",
+		slog.String("senderID", notif.SenderID),
 		slog.String("operation", notif.Operation),
 		slog.String("thingID", notif.ThingID),
 		slog.String("name", notif.Name),
@@ -79,11 +80,11 @@ func (svc *DigitwinRouter) HandleNotification(notif *messaging.NotificationMessa
 				if changed {
 					// notify the consumer with individual updates instead of a map
 					// this seems more correct than sending a map.
-					notifCpy := *notif
-					notifCpy.Operation = wot.OpObserveProperty
-					notifCpy.Name = k
-					notifCpy.Data = v
-					svc.transportServer.SendNotification(&notifCpy)
+					notifCpy2 := notifCpy
+					notifCpy2.Operation = wot.OpObserveProperty
+					notifCpy2.Name = k
+					notifCpy2.Data = v
+					svc.transportServer.SendNotification(&notifCpy2)
 				}
 			}
 		}

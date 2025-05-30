@@ -143,8 +143,8 @@ func TestMultiConnectSingleClient(t *testing.T) {
 	//err := ag1.PubEvent(td1.ID, eventName, "a value", "message1")
 	require.NoError(t, err)
 
-	// event should have been received N times
-	time.Sleep(time.Millisecond * 100)
+	// event should have been received N times (in debug mode this can be rather slow)
+	time.Sleep(time.Millisecond * 500)
 	require.Equal(t, testConnections, messageCount.Load(), "missing events")
 
 	// 4: disconnect

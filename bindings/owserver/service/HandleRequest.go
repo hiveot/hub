@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const MaxUpdateWaitTime = 5
+const MaxUpdateWaitTime = 10
 
 // HandleRequest handles action or property write requests
 // For 1-wire, configuration and actions are the same thing
@@ -35,12 +35,17 @@ func (svc *OWServerBinding) HandleRequest(req *messaging.RequestMessage,
 
 	// This is a node update
 	err = svc.WriteNode(req)
-
-	// wait for the node value to change
 	if err != nil {
 		resp := req.CreateResponse(nil, err)
 		return resp
 	}
+
+	// Actions do not return a value
+	if req.Operation == wot.OpInvokeAction {
+		resp := req.CreateResponse(nil, nil)
+		return resp
+	}
+
 	// in the background poll the result a few times until the requested
 	// status is reached or until timeout.
 	go func() {
@@ -130,7 +135,12 @@ func (svc *OWServerBinding) WaitForValueUpdate(
 
 	for i := 0; i < seconds; i++ {
 		newValue, err = svc.edsAPI.ReadNodeValue(req.ThingID, req.Name)
-		if err == nil && valueStr == newValue {
+		if err != nil {
+			slog.Error("WaitForValueUpdate: error", "err", err.Error())
+			hasUpdated = false
+			break
+		}
+		if valueStr == newValue {
 			hasUpdated = true
 			break
 		}

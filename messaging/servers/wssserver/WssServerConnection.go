@@ -11,6 +11,7 @@ import (
 	"github.com/teris-io/shortid"
 	"log/slog"
 	"net/http"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -230,6 +231,11 @@ func (sc *WssServerConnection) ReadLoop(ctx context.Context, wssConn *websocket.
 func (sc *WssServerConnection) SendNotification(
 	notif *messaging.NotificationMessage) (err error) {
 
+	if !strings.HasPrefix(notif.ThingID, "dtw") {
+		//panic("missing dtw prefix") // for testing
+		slog.Error("SendNotification: ThingID has no dtw: prefix",
+			"thingID", notif.ThingID, "senderID", notif.SenderID)
+	}
 	if notif.Operation == wot.OpSubscribeEvent || notif.Operation == wot.OpSubscribeAllEvents {
 		correlationID := sc.subscriptions.GetSubscription(notif.ThingID, notif.Name)
 		if correlationID != "" {

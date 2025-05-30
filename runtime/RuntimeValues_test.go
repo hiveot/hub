@@ -156,7 +156,7 @@ func TestHttpsGetProps(t *testing.T) {
 
 	require.NoError(t, err)
 	//
-	time.Sleep(time.Millisecond)
+	time.Sleep(time.Millisecond * 10)
 	var dThingID = td.MakeDigiTwinThingID(agentID, td1.ID)
 	valueMap, err := cl2.ReadAllProperties(dThingID)
 	//valueMap, err := digitwin.ThingValuesReadAllProperties(cl2, dThingID)

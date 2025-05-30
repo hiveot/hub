@@ -98,13 +98,14 @@ func (svc *HistoryService) Stop() {
 		svc.manageHistSvc.Stop()
 		svc.manageHistSvc = nil
 	}
+	_ = svc.bucketStore.Close()
 }
 
 // NewHistoryService creates a new instance for the history service using the given
 // storage bucket.
 //
 //	config optional configuration or nil to use defaults
-//	store contains an opened bucket store to use.
+//	store contains an opened bucket store to use. This will be closed on Stop.
 //	hc connection with the hub
 func NewHistoryService(store buckets.IBucketStore) *HistoryService {
 

@@ -508,6 +508,7 @@ func (svc *DigitwinStore) UpdateActionWithResponse(
 			actionStatus.Error = resp.Error
 			actionStatus.Status = messaging.StatusFailed
 		} else {
+			actionStatus.Error = ""
 			actionStatus.Output = resp.Value
 			actionStatus.Updated = resp.Timestamp
 			actionStatus.Status = messaging.StatusCompleted
