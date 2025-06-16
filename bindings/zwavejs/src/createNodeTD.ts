@@ -17,6 +17,7 @@ import TD, {type ActionAffordance, type EventAffordance, type PropertyAffordance
 import * as vocab from "../hivelib/api/vocab/vocab.js";
 import  DataSchema from "../hivelib/wot/dataSchema.ts";
 import {
+    UnitMilliSecond,
     WoTDataTypeArray,
     WoTDataTypeBool,
     WoTDataTypeNone,
@@ -156,6 +157,7 @@ export default function createNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: nu
             "deviceClassSpecific", node.deviceClass.specific.label,"", WoTDataTypeString);
         // this.setIf("supportedCCs", node.deviceClass.generic.supportedCCs);
     }
+
     tdi.AddPropertyIf(node.deviceDatabaseUrl,
         "deviceDatabaseURL","Database URL", "Link to database with device information", WoTDataTypeString,);
     tdi.AddProperty(vocab.PropDeviceDescription, "Description", "", WoTDataTypeString, vocab.PropDeviceDescription);
@@ -188,7 +190,7 @@ export default function createNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: nu
     tdi.AddPropertyIf(node.label, "nodeLabel","Node Label",
         "Manufacturer device label",  WoTDataTypeString,vocab.PropDeviceModel);
     tdi.AddProperty("lastSeen","Last Seen",
-        "Time this node was last seen", WoTDataTypeString)
+        "Time this node last sent or received a command", WoTDataTypeString)
 
 
     // tdi.AddPropertyIf(node.manufacturerId,
@@ -212,9 +214,19 @@ export default function createNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: nu
     tdi.AddPropertyIf(node.protocolVersion,
         "protocolVersion","ZWave protocol version", "", WoTDataTypeString);
 
-    tdi.AddProperty("rssi","RSSI", "", WoTDataTypeNumber)
-        .unit = "dBm"
+    if (node.statistics) {
+        tdi.AddProperty("commandsTX", "TX commands", "Nr of successful commands sent sent to this node", WoTDataTypeNumber)
+        tdi.AddProperty("commandsRX", "RX commands", "Nr of commands received from this node, including responses to sent commands", WoTDataTypeNumber)
+        tdi.AddProperty("commandsDroppedRX", "RX commands dropped", "Nr of commands sent by the node that were dropped by the controller", WoTDataTypeNumber)
+        tdi.AddProperty("commandsDroppedTX", "TX commands dropped", "Nr of commands that failed to sent to this node", WoTDataTypeNumber)
 
+        tdi.AddProperty("rssi", "RSSI", "Average received signal strength indicator in dBm. A higher value indicates jamming", WoTDataTypeNumber)
+            .unit = "dBm"
+
+        tdi.AddProperty("rtt", "RTT (latency)", "Moving average of the round-trip-time of commands sent to this node", WoTDataTypeNumber)
+            .unit = UnitMilliSecond
+        tdi.AddProperty("timeoutResponse", "Nr Get timeouts", "Number of Get-type commands where the response did not come in time", WoTDataTypeNumber)
+    }
     tdi.AddPropertyIf(node.supportedDataRates,
         "supportedDataRates","ZWave Data Speed", "", WoTDataTypeString);
 
@@ -290,9 +302,6 @@ export default function createNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: nu
         "type": WoTDataTypeNumber,
         "unit": vocab.UnitMilliSecond
     })
-    // ping result is also updated as a property
-    let prop = tdi.AddProperty("ping", "Latency", "Ping latency between controller and this node", WoTDataTypeNumber)
-    prop.unit = vocab.UnitMilliSecond
 
     // controllers use beginRebuildingRoutes instead
     if (!node.isControllerNode) {
@@ -334,7 +343,7 @@ export default function createNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: nu
         property: "name"
     }
     const titleAff = getAffordanceFromVid(node,nameVid,0)
-    prop = tdi.AddProperty(titleAff?.name||WoTTitle, "Device name",
+    let prop = tdi.AddProperty(titleAff?.name||WoTTitle, "Device name",
         "Custom device name/title used as the TD title",  WoTDataTypeString, vocab.PropDeviceTitle);
     prop.readOnly = false
 

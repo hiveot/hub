@@ -83,7 +83,6 @@ export default class NodeValues {
         this.setIf("isSecure", node.isSecure);
         this.setIf("isRouting", node.isRouting);
         this.setIf("isControllerNode", node.isControllerNode)
-        this.setIf("lastSeen", node.statistics.lastSeen?.toString())
         this.setIf("keepAwake", node.keepAwake);
 
         // this.setIf("label", node.deviceConfig?.label)
@@ -99,7 +98,16 @@ export default class NodeValues {
         this.setIf("productId", node.productId);
         this.setIf("productType", node.productType);
         this.setIf("protocolVersion", node.protocolVersion);
-        this.setIf("rssi", node.statistics?.rssi);
+        if (node.statistics) {
+            this.setIf("commandsTX", node.statistics.commandsTX);
+            this.setIf("commandsRX", node.statistics.commandsRX);
+            this.setIf("commandsDroppedTX", node.statistics.commandsDroppedTX);
+            this.setIf("commandsDroppedRX", node.statistics.commandsDroppedRX);
+            this.setIf("lastSeen", node.statistics.lastSeen?.toString())
+            this.setIf("rssi", node.statistics.rssi);
+            this.setIf("rtt", node.statistics.rtt);
+            this.setIf("timeoutResponse", node.statistics.timeoutResponse);
+        }
         this.setIf(vocab.PropDeviceSoftwareVersion, node.sdkVersion);
         this.setIf(vocab.PropDeviceStatus, getEnumMemberName(NodeStatus, node.status));
         this.setIf("supportedDataRates", node.supportedDataRates);

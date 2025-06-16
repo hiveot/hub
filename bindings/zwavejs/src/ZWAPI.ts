@@ -1,11 +1,12 @@
-import { Buffer } from "node:buffer";
+import {Buffer} from "node:buffer";
+import * as tslog from 'tslog';
 
 import getLogger from "./getLogger.ts";
 import findSerialPort from "./serial/findserialport.ts";
 import {
-    Driver, FoundNode,
+    Driver, Endpoint, FoundNode, getEnumMemberName,
     InclusionResult,
-    InclusionStrategy,
+    InclusionStrategy, InterviewStage, NodeStatistics,
     NodeStatus,
     PartialZWaveOptions,
     RebuildRoutesStatus,
@@ -53,7 +54,7 @@ export interface IZWaveConfig {
     cacheDir: string | undefined          // alternate storage directory
 }
 
-const log = getLogger()
+const hcLog = new tslog.Logger({prettyLogTimeZone:"local"})
 
 // ZWAPI is a wrapper around zwave-js for use by the HiveOT binding.
 // Its primary purpose is to hide the ZWave specific logic from the binding; offer a simple API to
@@ -101,17 +102,17 @@ export default class ZWAPI {
 
     // Add a known node and subscribe to its ready event before doing anything else
     addNode(node: ZWaveNode) {
-        log.info(`Node ${node.id} - waiting for it to be ready`)
+        hcLog.info(`Node ${node.id} - waiting for it to be ready`)
 
         // workaround for node interview not completing.
         // requesting a refresh seems to help
         node.refreshInfo()
-            .then(res=>{
-                log.info("AddNode refresh completed", res)
+            .then(res => {
+                hcLog.info("AddNode refresh completed", res)
             })
-            .catch(err=>{
-                log.info("AddNode refresh failed", err)
-        })
+            .catch(err => {
+                hcLog.info("AddNode refresh failed", err)
+            })
 
         // subscribe to the node events
         // Warning: looks like nodes don't get ready in the latest zwave-js driver
@@ -128,11 +129,11 @@ export default class ZWAPI {
 
         let zwPort = zwConfig.zwPort
         if (!zwPort) {
-            log.info("serial port not set... searching")
+            hcLog.info("serial port not set... searching")
             zwPort = findSerialPort()
             // zwPort = "/dev/ttyACM0"
         }
-        log.info("connecting", "port", zwPort)
+        hcLog.info("connecting", "port", zwPort)
 
         // These keys should be generated with "< /dev/urandom tr -dc A-F0-9 | head -c32 ;echo"
         const S0_Legacy = zwConfig.S0_Legacy || DefaultS0Legacy
@@ -175,24 +176,24 @@ export default class ZWAPI {
                 cacheDir: zwConfig.cacheDir,
             },
             timeouts: {
-              ack: 10000,   // how long to wait for an ack - 10sec for testing
+                ack: 10000,   // how long to wait for an ack - 10sec for testing
                 retryJammed: 2000,
                 report: 2000,
                 sendToSleep: 500
             }
         };
-        log.info("ZWaveJS config option soft_reset on startup is " + (options.features?.softReset ? "enabled" : "disabled"))
-        log.info("Using cache directory: ", zwConfig.cacheDir)
+        hcLog.info("ZWaveJS config option soft_reset on startup is " + (options.features?.softReset ? "enabled" : "disabled"))
+        hcLog.info("Using cache directory: ", zwConfig.cacheDir)
 
         // retry starting the driver until disconnect is called
         // Start the driver. To await this method, put this line into an async method
         this.driver = new Driver(zwPort, options);
 
         // driver.configVersion causes panic "require is not defined" when using modules
-        // log.info("Starting zwave-js. Version="+this.driver.configVersion)
+        // hcLog.info("Starting zwave-js. Version="+this.driver.configVersion)
 
         // notify of driver errors
-        this.driver.on("error", (e:any) => {
+        this.driver.on("error", (e: any) => {
             if (this.onFatalError) {
                 this.onFatalError(e)
             }
@@ -202,18 +203,18 @@ export default class ZWAPI {
 
         // Listen for the driver ready event before doing anything with the driver
         this.driver.once("driver ready", () => {
-            log.info("driver ready")
+            hcLog.info("driver ready")
             this.handleDriverReady()
         });
         this.driver.once("all nodes ready", () => {
-            log.info("all nodes ready")
+            hcLog.info("all nodes ready")
             // this.handleDriverReady()
         });
         // wrong serial port is not detected until after the return
         // this throws an error if connection failed. Up to the caller to retry
         // onError is not invoked until after a successful connect
         await this.driver.start();
-        log.info("driver started")
+        hcLog.info("driver started")
     }
 
     // connectLoop auto-reconnects to the controller
@@ -227,12 +228,12 @@ export default class ZWAPI {
                 // connect does not return until a disconnect
                 this.connect(zwConfig)
                     .then(() => {
-                        log.info("connectLoop: connect successful")
+                        hcLog.info("connectLoop: connect successful")
                         let drvConfig = this.driver.configManager
-                        log.info("config version", drvConfig.configVersion)
+                        hcLog.info("config version", drvConfig.configVersion)
                     })
                     .catch((e) => {
-                        log.error("connectLoop: no connection with controller",e);
+                        hcLog.error("connectLoop: no connection with controller", e);
                         //retry
                         // fix exception
                         this.doReconnect = true
@@ -285,60 +286,60 @@ export default class ZWAPI {
         // homeID is ready after the controller interview
         // this.homeID = ctl.homeId ? ctl.homeId.toString(16).toUpperCase() : "n/a";
 
-        log.info("Cache Dir: ", this.driver.cacheDir);
-        log.info("Home ID:   ", this.driver.controller.homeId?.toString(16));
+        hcLog.info("Cache Dir: ", this.driver.cacheDir);
+        hcLog.info("Home ID:   ", this.driver.controller.homeId?.toString(16));
 
-        ctl.nodes.forEach((node:ZWaveNode) => {
+        ctl.nodes.forEach((node: ZWaveNode) => {
             // Subscribe to each node to catch its ready event.
             this.addNode(node);
         });
 
         // controller emitted events
         this.driver.controller.on("exclusion failed", () => {
-            log.info("exclusion has failed");
+            hcLog.info("exclusion has failed");
         });
         this.driver.controller.on("exclusion started", () => {
-            log.info("exclusion has started");
+            hcLog.info("exclusion has started");
         });
         this.driver.controller.on("exclusion stopped", () => {
-            log.info("exclusion has stopped");
+            hcLog.info("exclusion has stopped");
         });
 
         this.driver.controller.on("rebuild routes progress",
             (progress: ReadonlyMap<number, RebuildRoutesStatus>) => {
-                log.info("rebuild routes progress:", progress);
+                hcLog.info("rebuild routes progress:", progress);
             });
         this.driver.controller.on("rebuild routes done", () => {
-            log.info("rebuild routes done");
+            hcLog.info("rebuild routes done");
         });
 
         this.driver.controller.on("inclusion failed", () => {
-            log.info("inclusion has failed");
+            hcLog.info("inclusion has failed");
         });
         // for zwave-js-12
         // this.driver.controller.on("inclusion started", (secure: boolean) => {
-        //     log.info("inclusion has started. secure=", secure);
+        //     hcLog.info("inclusion has started. secure=", secure);
         // });
         // for zwave-js-13 and up
         this.driver.controller.on("inclusion started", (strategy: InclusionStrategy) => {
-            log.info("ZWinclusion has started. strategy=%v", strategy);
+            hcLog.info("ZWinclusion has started. strategy=%v", strategy);
         });
         this.driver.controller.on("inclusion stopped", () => {
-            log.info("ZWinclusion has stopped");
+            hcLog.info("ZWinclusion has stopped");
         });
 
         this.driver.controller.on("node added", (node: ZWaveNode, result: InclusionResult) => {
             // a node was added to the network and initial setup completed
             // the node is not yet ready to be used until after the node interview.
-            log.info(`ZWnode added: nodeId=${node.id} lowSecurity=${result.lowSecurity}`)
+            hcLog.info(`ZWnode added: nodeId=${node.id} lowSecurity=${result.lowSecurity}`)
             this.setupNode(node);
         });
         this.driver.controller.on("node found", (node: FoundNode) => {
             // At this point, the initial setup and the node interview is still pending, so the node is not yet operational.
-            log.info(`new found: nodeId=${node.id}`)
+            hcLog.info(`new found: nodeId=${node.id}`)
         });
         this.driver.controller.on("node removed", (node: ZWaveNode, reason: RemoveNodeReason) => {
-            log.info(`ZWnode removed: id=${node.id}, reason=${reason}`);
+            hcLog.info(`ZWnode removed: id=${node.id}, reason=${reason}`);
         });
 
     }
@@ -359,92 +360,135 @@ export default class ZWAPI {
         // this.onNodeUpdate?.(node);
 
         node.on("alive", (node: ZWaveNode, oldStatus: NodeStatus) => {
-            log.info(`ZWNode ${node.id}: is alive`);
+            hcLog.info(`ZWNode ${node.id}: is alive`);
             if (node.status != oldStatus) {
                 this.onStateUpdate(node, "alive")
             }
         });
         node.on("dead", (node: ZWaveNode, oldStatus: NodeStatus) => {
-            log.info(`ZWNode ${node.id}: is dead`);
+            hcLog.info(`ZWNode ${node.id}: is dead`);
             if (node.status != oldStatus) {
                 this.onStateUpdate(node, "dead")
             }
         });
 
         node.on("interview completed", (node: ZWaveNode) => {
-            log.info(`ZWNode ${node.id}: interview completed`);
-            // reload the TD
+            hcLog.info(`ZWNode ${node.id}: interview completed`);
+            // updated the TD
             this.onNodeUpdate(node)
         });
         node.on("interview failed", (node: ZWaveNode) => {
-            log.info(`ZWNode ${node.id}: interview failed`);
+            hcLog.info(`ZWNode ${node.id}: interview failed`);
             this.onStateUpdate(node, "interview failed")
         });
         node.on("interview started", (node: ZWaveNode) => {
-            log.info(`ZWNode ${node.id}: interview started`);
+            hcLog.info(`ZWNode ${node.id}: interview started`);
             this.onStateUpdate(node, "interview started")
         });
 
         node.on("metadata updated", (node: ZWaveNode, args: ZWaveNodeMetadataUpdatedArgs) => {
-            // FIXME: this is invoked even when metadata isn't updated. What to do?
-            // this.onNodeUpdate(node)
+            // "Metadata updated" in Z-Wave JS refers to an event or log entry that indicates the metadata associated with a
+            // value (such as a sensor reading or device property) has changed or been refreshed.
+            // This metadata can include information like value ranges, units, descriptions, or other attributes
+            // that describe how the value should be interpreted or displayed.
+
+            // Specifically:
+            // * device interview
+            // * dynamic device capability changes (firmware, config changes)
+            // * unit of measurement changes
+            //
+            // These are all reasons to update the TD. However:
+            // - It is called a lot during interview, so don't update the TD when interview is ongoing.
+            //
             // let newValue = node.getValue(args)
-            const newValue = getVidValue(node,args)
-            log.info(`ZWNode ${node.id} value metadata updated`,
-                "property=", args.property,
-                "propertyKeyName=", args.propertyKeyName,
-                "newValue=", newValue,
-            );
-            // FIXME: this causes duplicate events
-            // this.onValueUpdate(node, args, newValue)
+            const newValue = getVidValue(node, args)
+            let interviewStage = getEnumMemberName(InterviewStage, node.interviewStage)
+
+            if (node.interviewStage == InterviewStage.Complete) {
+                // log to identify changed properties
+                // FIXME: unfortunately this is also called when only a value is updated.
+                // unfortunately this happens too often without a known reason
+                hcLog.debug(`ZWNode ${node.id} value metadata updated (ignored)`,
+                    `property=${args.property}`,
+                    `"propertyKeyName=${args.propertyKeyName}`,
+                    `newValue=${newValue}`,
+                    `interviewStage=${interviewStage} (${node.interviewStage})`,
+                    // "metadata=", args.metadata
+                );
+                // this.onNodeUpdate(node)
+                // expect a 'value updated' event after this
+                // this.onValueUpdate(node,args,newValue)
+            }
+
         });
         // node.on("notification", (endpoint: Endpoint, cc: CommandClasses, args:any) => {
-        //     log.info(`Node ${endpoint.nodeId} Notification: CC=${cc}, args=${args}`)
-        //     // TODO: what/when is this notification providing?
-        // });
-        node.on("ready", (node2:any) => {
-            log.info("--- Node", node2.id, "is ready. Updated the node. status=",node2.status);
+        node.on("notification", (endpoint: Endpoint, cc: any, args:any) => {
+            hcLog.info(`Node ${endpoint.nodeId} Notification: CC=${cc}, args=${args}`)
+            // TODO: what/when is this notification providing?
+        });
+
+        node.on("ready", (node2: any) => {
+            hcLog.info("--- Node", node2.id, "is ready. Updated the node. status=", node2.status);
             // handle in interview completed
             // this.onNodeUpdate(node);
         });
 
         node.on("sleep", (node: ZWaveNode) => {
-            log.info(`ZWNode ${node.id}: is sleeping`);
+            hcLog.info(`ZWNode ${node.id}: is sleeping`);
             this.onStateUpdate(node, "sleeping")
         });
 
+        // statistics updated is called *a lot* so don't use it.
         // node.on("statistics updated", (node: ZWaveNode, args: NodeStatistics) => {
-        //     // log.info("Node ", node.id, " stats updated: args=", args);
+        //     // hcLog.info("Node ", node.id, " stats updated: args=", args);
         // });
 
         node.on("value added", (node: ZWaveNode, args: ZWaveNodeValueAddedArgs) => {
-            log.info(`ZWNode ${node.id}: value added: zw-property-name=${args.propertyName}, value=${args.newValue}`);
-            // FIXME: only update the node if the value is new
+            // just log changes for debugging. The TD is updated on 'interview completed' event.
+            let interviewStage = getEnumMemberName(InterviewStage, node.interviewStage)
+
             // refreshvalues triggers this a lot. we don't want to send a new TD for each value
-            // this.onNodeUpdate(node)
-            this.onValueUpdate(node, args, args.newValue)
+            if (node.interviewStage == InterviewStage.Complete) {
+                hcLog.info(`ZWNode ${node.id}: value added: zw-property-name=${args.propertyName}, value=${args.newValue}, interviewStage=${interviewStage} (${node.interviewStage})`);
+                // FIXME: this is also invoked when existing values are updated. Why?
+                this.onNodeUpdate(node)
+                // this.onValueUpdate(node, args, args.newValue)
+            }
         });
 
         node.on("value notification", (node: ZWaveNode, vid: ZWaveNodeValueNotificationArgs) => {
-            log.info(`ZWNode ${node.id}, value notification: propName=${vid.propertyName}, value=${vid.value}`);
+            // value notifications are momentary, stateless and not available in the value DB.
+            // https://zwave-js.github.io/zwave-js/#/api/node?id=quotvalue-notificationquot
+            // TODO: where are these used?
+            hcLog.info(`ZWNode ${node.id}, value notification: propName=${vid.propertyName}, value=${vid.value}`);
             this.onValueUpdate(node, vid, vid.value)
         });
 
         node.on("value removed", (node: ZWaveNode, args: ZWaveNodeValueRemovedArgs) => {
-            log.info("Node ", node.id, " value removed for ", args.propertyName, ":", args.prevValue);
-            this.onValueUpdate(node, args, undefined)
+            // value removed is called when device has been removed; firmware updated; node reset;
+            // or when device temporarily drops off the network.
+
+            // removing a device is handled in the 'node removed' handler. So this can only
+            // be an issue if a configuration change causes vid removal.
+            // Keep these properties for now. If use of properties fails then the TD needs to be updated.
+            // however hold that thought until it is deemed a problem (and check the logs)
+            hcLog.info(`ZWNode ${node.id}, value removed (ignored): propName=${args.propertyName};`, args.prevValue);
+            // This should update the TD if real changes have taken place. This doesn't seem to happen often.
+            // this.onNodeUpdate(node)
+            // this.onValueUpdate(node, args, undefined)
         });
 
         node.on("value updated", (node: ZWaveNode, args: ZWaveNodeValueUpdatedArgs) => {
-            // log.debug("Node ", node.id, " value updated: args=", args);
+            // this is the main method for handling changes to values
+            hcLog.info(`ZWNode ${node.id}, value updated: propName=${args.propertyName}, `,
+                `prevValue=${args.prevValue}, newValue=${args.newValue}`);
             // convert enums
-            const newVidValue = getVidValue(node,args)
+            const newVidValue = getVidValue(node, args)
             this.onValueUpdate(node, args, newVidValue)
-            // this.onValueUpdate(node, args, args.newValue)
         });
 
         node.on("wake up", (node: ZWaveNode) => {
-            log.info(`Node ${node.id}: wake up`);
+            hcLog.info(`Node ${node.id}: wake up`);
             this.onStateUpdate(node, "awake")
         });
     }
@@ -513,7 +557,7 @@ export function getEnumFromMemberName(enumeration: Record<number, string>, name:
 // otherwise return the native value.
 // Intended to transparently deal with enums.
 // See also SetValue which does the reverse
-export function getVidValue(node: ZWaveNode, vid:ValueID):any {
+export function getVidValue(node: ZWaveNode, vid: ValueID): any {
     const vidMeta = node.getValueMetadata(vid)
     let value = node.getValue(vid)
     if (vidMeta.type === "number") {

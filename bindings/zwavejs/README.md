@@ -4,22 +4,28 @@ This binding connects to a ZWave USB-Stick controller, and publishes events to t
 
 ## Status
 
-This binding is functional but only offers basic functionality. 
-Breaking changes are to be expected, especially in the way property/event/action keys are constructed.
-Installation requires node-v18.
+This binding is functional. 
+Building as a single binary is very challenging. This currently prevents upgrading zwave-js to the latest version.
 
-
-TODO:
+### TODO
+1. Upgrade to zwavejs-latest. Must support single binary. (pkg, deno or bun)
 2. Report heal network status/progress of a node
-1. ZWave stick reconnect support (Recover after serial port removal)
-1. Detect and track health of nodes; dropped messages, etc.
+3. API for reading device network layout
+1. ZWave stick reconnect support (Recover after serial port removal) [done]
+1. Track health of nodes; dropped messages, etc.
     * timeouts; dropped messages
-    * list of neighbours
+    * list of neighbours [done]
 1. Improve mapping of zwave-js VID names to hiveot property/event/action vocabulary. 
-   A. map of vid names to vocab names in the driver, and/or 
-   B. just publish native values and manage mapping on the Hub C. define proper handling of multi-value properties
 1. Dimming duration is currently not supported
 
+
+### Issues
+
+Some observed unexpected behavior
+1. no-one is sending a "notification" event
+2. AEON Labs ZW096 is sending "metadata updated" when only a value is changed
+3. AEON Labs ZW141 (nano shutter v2) has no events (CC Binary|Multilevel Sensor|Central Scene)
+4. EAON Labs DSB09 (home energy meter) sends value as 'metadata updated' and 'value added' instead of 'value updated'
 
 ## Mapping zwave VID to TD property, event and action affordances
 

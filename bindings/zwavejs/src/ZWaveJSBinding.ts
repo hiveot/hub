@@ -90,7 +90,7 @@ export class ZwaveJSBinding {
     // Handle discovery or update of a node attributes.
     // This publishes the TD and its property values
     handleNodeUpdate(node: ZWaveNode) {
-        log.info("handleNodeUpdate:node:", node.id);
+        log.info("handleNodeUpdate. node:", node.id);
 
         // don't process the node until all its info is gathered
         if (node.interviewStage != InterviewStage.Complete && node.interviewStage != InterviewStage.OverwriteConfig) {
@@ -117,7 +117,7 @@ export class ZwaveJSBinding {
         }
         this.hc.pubMultipleProperties(tdi.id, diffValues.values)
         this.lastValues.set(tdi.id, newValues);
-        console.info("handleNodeUpdate completed: " + node.id)
+        // console.info("handleNodeUpdate completed. node" + node.id)
     }
 
     // Handle update of a node's value.
@@ -132,8 +132,11 @@ export class ZwaveJSBinding {
         const va = getAffordanceFromVid(node, vid, this.config.maxNrScenes)
         if (!va) {
             // this is not a VID of interest so ignore it
-            log.info("handleValueUpdate: unused VID ignored: CC=" + vid.commandClass,
-                " vidProperty=", vid.property, "vidEndpoint=", vid.endpoint)
+            log.info("handleValueUpdate: unused VID ignored: ",
+                "ZWNode=", node.id,
+                "CC=" + vid.commandClass,
+                "vidProperty=", vid.property,
+                "vidEndpoint=", vid.endpoint)
             return
         }
         const lastValue = valueMap?.values[va.name]

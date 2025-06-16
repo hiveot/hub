@@ -185,8 +185,6 @@ function  handleNodeAction(
                         let resp = req.createResponse(msec)
                         log.info("ping '" + req.thingID + "': " + msec + " msec")
                         hc.sendResponse(resp)
-                        // persist action output as a property and notify subscribers
-                        hc.pubProperty(req.thingID, req.name, msec)
                     }).catch(err => {
                       let resp = req.createResponse(null, err)
                         hc.sendResponse(resp) // async

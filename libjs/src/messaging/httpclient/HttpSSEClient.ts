@@ -408,7 +408,7 @@ export default class HttpSSEClient implements IAgentConnection {
     //	@param payload: is the serialized event value, or nil if the event has no value
     pubEvent(thingID: string, name: string, data: any) {
 
-        hcLog.info("pubEvent. thingID:", thingID, ", name:", name)
+        hcLog.debug("pubEvent. thingID:", thingID, ", name:", name)
         const msg = new NotificationMessage(OpSubscribeEvent, thingID,name,data)
         this.sendNotification(msg)
 
