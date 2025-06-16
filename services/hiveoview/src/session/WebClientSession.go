@@ -416,6 +416,10 @@ func (sess *WebClientSession) WritePage(w http.ResponseWriter, buff *bytes.Buffe
 	if err != nil {
 		sess.WriteError(w, err, http.StatusInternalServerError)
 	} else {
+		// when writing fragments ensure it is not cached
+		// caching wouldn't be useful anyways as sensor data changes.
+		// https://github.com/bigskysoftware/htmx/issues/497
+		w.Header().Add("Cache-Control", "no-store, max-age=0")
 		_, _ = buff.WriteTo(w)
 	}
 }

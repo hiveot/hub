@@ -20,54 +20,72 @@
    hx-on::after-request="navigateTo(null,this.href)"
 >
 
-	{{if eq .Schema.Type "boolean"}}
-    {{/*	=== Boolean Value ===*/}}
-    {{/*    <h-switch name="value" off="Off" on="On" value="{{$iv}}"></h-switch>*/}}
-		<input name="output-{{.Name}}-switch"
-		       type="checkbox" role="switch" disabled
-           style="margin-top:0"
-            {{/*	Action output is updated through its property value */}}
+    {{if eq .Schema.Type "boolean"}}
+        {{/*	=== Boolean Value === switch or status indicator */}}
+        {{if .Schema.ReadOnly }}
+		        <iconify-icon icon="mdi:alert-circle" inline
+		          {{if .Value.Boolean}} class="alert-icon" {{else}} class="no-alert-icon" {{end}}
+              sse-swap="{{.AffordanceType}}/{{.ThingID}}/{{.Name}}"
+              hx-swap="none"
+              hx-on::sse-before-message="this.className=isChecked(event)?'alert-icon':'no-alert-icon'"
+		        >
+		        </iconify-icon>
+        {{else}}
+            {{/*    <h-switch name="value" off="Off" on="On" value="{{$iv}}"></h-switch>*/}}
+					<input name="output-{{.Name}}-switch"
+					       type="checkbox" role="switch" disabled
+					       style="margin-top:0"
+                  {{/*	Action output is updated through its property value */}}
+                  {{if eq .AffordanceType "action"}}
+										sse-swap="property/{{.ThingID}}/{{.Name}}"
+                  {{else}}
+										sse-swap="{{.AffordanceType}}/{{.ThingID}}/{{.Name}}"
+                  {{end}}
+                 hx-swap="none"
+                 hx-on::sse-before-message="this.checked=isChecked(event)"
+                  {{if .Value.Boolean}}checked{{end}}
+					/>
+        {{end}}
+    {{else}}
+
+        {{/* Dynamic refresh on event or property notification. Actions only update
+           if there is a corresponding property. */}}
+				<span
 		        {{if eq .AffordanceType "action"}}
 			        sse-swap="property/{{.ThingID}}/{{.Name}}"
-						{{else}}
-              sse-swap="{{.AffordanceType}}/{{.ThingID}}/{{.Name}}"
-		       {{end}}
-           hx-swap="none"
-           hx-on::sse-before-message="this.checked=isChecked(event)"
-           {{if .Value.Boolean}}checked{{end}}
-		/>
-	{{else}}
-
-      {{/* Dynamic refresh on event or property notification. Actions only update
-           if there is a corresponding property. */}}
-	    <span
-		        {{if eq .AffordanceType "action"}}
-					    sse-swap="property/{{.ThingID}}/{{.Name}}"
             {{else}}
 			        sse-swap="{{.AffordanceType}}/{{.ThingID}}/{{.Name}}"
             {{end}}
 				      hx-target="this"
-			>
+				>
 					{{.Value.Text}}
 			</span>
-     &nbsp;{{.UnitSymbol}}
-  {{end}}
+				&nbsp;{{.UnitSymbol}}
+    {{end}}
 </a>
 
 {{if eq .Schema.Type "boolean"}}
-<script>
-	function isChecked(ev) {
-        // console.log("RenderOutputValue. isChecked: '"+ev.detail.type+"'= "+ev.detail.data,ev)
-        if (ev.detail.data === "true") {
-            return true
-        }
-        return false
-	}
-</script>
+	<script>
+      function isChecked(ev) {
+          // console.log("RenderOutputValue. isChecked: '"+ev.detail.type+"'= "+ev.detail.data,ev)
+          if (ev.detail.data === "true") {
+              return true
+          }
+          return false
+      }
+	</script>
 {{end}}
 
 <style>
     input[type=checkbox][role=switch]:checked {
-        color:red;
+        color: red;
+    }
+    .no-alert-icon {
+        color: gray;
+        font-size: 1.5em;
+    }
+    .alert-icon {
+        color: red;
+		    font-size: 1.5em;
     }
 </style>

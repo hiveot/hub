@@ -14,10 +14,11 @@
 			<div>Name</div>
 			<div show="sm">Type</div>
 			<div show="lg">Description</div>
-			<div show="md" width="minmax(140px,max-content)">Properties</div>
-			<div show="md"  width="minmax(120px,max-content)">Events</div>
-			<div show="lg"  width="minmax(120px,max-content)">Actions</div>
-			<div show="xl">Thing ID</div>
+			<div show="md">Properties</div>
+			<div show="md">Events</div>
+			<div show="md">Actions</div>
+			<div show="xl">Updated</div>
+			<div show="lg">Thing ID</div>
 		</li>
 
 		<!--=== for TD in .Things ===-->
@@ -47,14 +48,16 @@
 					<div>{{.Description}}</div>
 
             {{/*Nr Properties*/}}
-					<div>{{len .Properties}} Properties</div>
+					<div>{{len .Properties}}</div>
 
             {{/*Nr Outputs*/}}
-					<div>{{len .Events}} events</div>
+					<div>{{len .Events}}</div>
 
             {{/*Nr Actions*/}}
-					<div>{{len .Actions}} actions</div>
+					<div>{{len .Actions}}</div>
 
+					{{/*Updated*/}}
+					<div>{{datetime .Modified "V"}}</div>
 
             {{/*Show ThingID on big screens */}}
 					<div>

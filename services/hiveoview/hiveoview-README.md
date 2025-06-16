@@ -29,6 +29,7 @@ This viewer has reached alpha status with Phase 1-3 completed. The information b
   * disable actions for non-authorized consumers
   * disable config for non-authorized consumers
 * Value presentation
+  * show readonly boolean value as an indicator instead a disable switch [done] 
   * briefly fade in/out a highlight of a changed value (css transition?)
   * option to color value based on age 
   * show value error status in tiles
