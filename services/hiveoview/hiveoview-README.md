@@ -11,7 +11,7 @@ This viewer has reached alpha status with Phase 1-3 completed. The information b
 ### Phase 3: Basic Dashboard (v1) [done]
 ### Phase 4: Request/Response Handling Improvements [in progress]
 * Show action progress using async response messages (ActionStatus) [done]
-* Indication of pending property writes (owserver updates can take 10 seconds) [done]
+* Indication of pending property writes (owserver updates can take 10 seconds) [partial]
 * redirect to login when SSE receives unauthorized error (after server restart)
 * Use cached values instead of reload when adding sources to a tile
 * Only view authorized sources
@@ -21,10 +21,6 @@ This viewer has reached alpha status with Phase 1-3 completed. The information b
 * Only show current dashboard tab on small screens
 * Manual sort of tile sources in edit tile [done]
 * dashboard configuration improvements [done]
-  * dashboard static background image from file [done]
-  * dashboard background image from URL [done]
-  * configure tile transparency, background and color [done]
-  * configure allowing tile placement anywhere  [done]
 * Permissions
   * disable actions for non-authorized consumers
   * disable config for non-authorized consumers
@@ -34,6 +30,11 @@ This viewer has reached alpha status with Phase 1-3 completed. The information b
   * option to color value based on age 
   * show value error status in tiles
   * show motion as alarm indicator - using hiveot @type vocab
+* Add gauge widget
+  * linear gauge and radial gauge
+  * simple presets for thermometer, barometer, hygrometer
+  * default gauge low-high range if thing has no min/max in TD
+  * editor for full gauge configuration settings
 * Distinguish between basic and advanced attr/config/events using @type
    (TD does not support this facility, so use a config with @type values for basic values)
 * Improve use of Thing vocabulary types in bindings

@@ -296,7 +296,7 @@ class HToast extends HTMLElement {
 
     constructor() {
         super();
-        console.info("new toast ")
+        // console.info("new toast ")
         this.innerHTML = template;
         this.duration = DEFAULT_DURATION; // default value when not set
         if (this.id) {
@@ -389,7 +389,7 @@ class HToast extends HTMLElement {
      * with an optional timeout.
      */
     showToast = (ttype, msgId, text, timeout) => {
-        console.info("showToast: type=",ttype, "; msgId=",msgId,"; text=", text, "; timeout=",timeout)
+        // console.info("showToast: type=",ttype, "; msgId=",msgId,"; text=", text, "; timeout=",timeout)
         if (!timeout) {
             // provide more time to read errors
             if (ttype === "error") {

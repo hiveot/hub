@@ -13,7 +13,6 @@
 
 {{else}}
 
-
     {{/*Show the dashboard. Reload when tiles are deleted*/}}
 		<main id="current-dashboard" class="dashboard"
           style="position:relative"
@@ -31,6 +30,7 @@
 
         {{/* Add a div to ensure filling the screen size*/}}
 			<div style="flex-grow:1">
+
           {{/* change event: When layout changes push the new layout to the server*/}}
 				<div class="grid-stack"
 				     hx-trigger="change"

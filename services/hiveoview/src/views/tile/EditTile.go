@@ -27,6 +27,10 @@ type EditTileTemplateData struct {
 	// human labels for each tile type
 	TileTypeLabels map[string]string
 
+	// when type is gauge this offers options for gauges
+	GaugeTypeLabels map[string]string
+	GaugeConfig     string
+
 	// navigation paths
 	RenderSelectTileSourcesPath string // dialog for tile sources selector
 	SubmitEditTilePath          string // submit the edited tile
@@ -118,15 +122,17 @@ func SubmitEditTile(w http.ResponseWriter, r *http.Request) {
 	// The edit tile form has a list of sources for the thingID/key and
 	// a list of titles of each source. This is the only way I knew on how
 	// to pass lists in Forms.
-	newTitle := r.FormValue("title")
-	tileType := r.FormValue("tileType")
 	bgEnabled := r.FormValue("bgEnabled") == "on"
 	bgTransparency := r.FormValue("bgTransparency")
 	bgColor := r.FormValue("bgColor")
+	newTitle := r.FormValue("title")
 	imageURL := r.FormValue("imageURL")
+	minValue := r.FormValue("minValue")
+	maxValue := r.FormValue("maxValue")
 	reloadInterval := r.FormValue("reloadInterval")
 	sources, _ := r.Form["sources"]
 	sourceTitles, _ := r.Form["sourceTitles"]
+	tileType := r.FormValue("tileType")
 
 	tile, found := cdc.dashboard.GetTile(cdc.tileID)
 	if !found {
@@ -141,6 +147,8 @@ func SubmitEditTile(w http.ResponseWriter, r *http.Request) {
 	tile.BackgroundColor = bgColor
 	tile.ImageURL = imageURL
 	tile.ImageReloadInterval, _ = strconv.Atoi(reloadInterval)
+	tile.MinValue = minValue
+	tile.MaxValue = maxValue
 	tile.Sources = make([]session.TileSource, 0)
 	// arbitrary limit to avoid too frequent reloads
 	if tile.ImageReloadInterval < 3 {

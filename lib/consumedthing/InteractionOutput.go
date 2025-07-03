@@ -76,7 +76,6 @@ func NewInteractionOutputFromValueList(ct *ConsumedThing, affType messaging.Affo
 	for _, tv := range values {
 		iout := NewInteractionOutput(ct, affType, tv.Name, tv.Data, tv.Timestamp)
 		ioMap[tv.Name] = iout
-
 	}
 	return ioMap
 }

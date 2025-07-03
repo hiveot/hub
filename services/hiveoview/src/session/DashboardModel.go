@@ -8,7 +8,7 @@ import (
 )
 
 // Tile types as used in rendering templates
-// The chart types must match the types in h-timechart.js
+// NOTE: The chart types must match the types in h-timechart.js and EditTile.gohtml
 const (
 	TileTypeCard         = "card" // table with multiple sources
 	TileTypeAreaChart    = "area"
@@ -16,7 +16,8 @@ const (
 	TileTypeLineChart    = "line"
 	TileTypeScatterChart = "scatter"
 	TileTypeImage        = "image"
-	TileTypeGauge        = "gauge"
+	TileTypeRadialGauge  = "radial-gauge"
+	TileTypeLinearGauge  = "linear-gauge"
 )
 
 var TileTypesLabels = map[string]string{
@@ -26,9 +27,11 @@ var TileTypesLabels = map[string]string{
 	TileTypeAreaChart:    "Area Chart",
 	TileTypeBarChart:     "Bar Chart",
 	TileTypeScatterChart: "Scatter Chart",
+	// gauges
+	TileTypeRadialGauge: "Radial Gauge",
+	TileTypeLinearGauge: "Linear Gauge",
 	// other
 	TileTypeImage: "Image",
-	TileTypeGauge: "Gauge",
 }
 
 // TileSource identifies the thing property/event to display
@@ -56,11 +59,14 @@ type DashboardTile struct {
 	// See TileTypeCard, TileType...
 	TileType string `json:"tileType"`
 	// tile background
-	BackgroundEnabled      bool   `json:"backgroundEnabled"`
-	BackgroundColor        string `json:"bgColor"`
-	ImageURL               string `json:"imageURL"`
-	ImageReloadInterval    int    `json:"imageReloadInterval"`
-	BackgroundTransparency string `json:"bgTransparency"`
+	BackgroundEnabled      bool   `json:"backgroundEnabled,omitempty"`
+	BackgroundColor        string `json:"bgColor,omitempty"`
+	BackgroundTransparency string `json:"bgTransparency,omitempty"`
+	ImageURL               string `json:"imageURL,omitempty"`
+	ImageReloadInterval    int    `json:"imageReloadInterval,omitempty"`
+	// gauges minimum and maximum value
+	MinValue string `json:"minValue,omitempty"`
+	MaxValue string `json:"maxValue,omitempty"`
 
 	// Tile sources
 	Sources []TileSource `json:"sources"`

@@ -5,31 +5,29 @@
 <!--After an initial load without data, auto-reload fragment when viewed. -->
 
 {{if not .Groups}}
-<div hx-trigger="intersect once"
-     hx-get=""
-     hx-swap="outerHTML"
->
-	<p>Reloading directory data...</p>
-	<h-loading ></h-loading>
-</div>
+	<div hx-trigger="intersect once"
+	     hx-get=""
+	     hx-swap="outerHTML"
+	>
+		<p>Reloading directory data...</p>
+		<h-loading></h-loading>
+	</div>
 
 {{else}}
-
-
-<main class="container-fluid"	>
+	<main class="container-fluid">
 
 		<!-- Header with a 'reload' button that triggers the htmx-get request above-->
 		<header class="directory-header h-row">
-				<h4 style="margin-top: 1rem; margin-bottom: 0; margin-right: 5px;">
-					Device & Service Directory
-				</h4>
+			<h4 style="margin-top: 1rem; margin-bottom: 0; margin-right: 5px;">
+				Device & Service Directory
+			</h4>
 		</header>
 
 		<!--=== for {.Publisher, .Things} in .Groups ===-->
 		<h-details-group id="directoryGroups" group-name="directoryGroup">
         {{range .Groups}}
-						<hr/>
-					  {{template "directoryGroup.gohtml" .}}
+					<hr/>
+          {{template "directoryGroup.gohtml" .}}
         {{end}}
 		</h-details-group>
 		<hr/>
@@ -37,57 +35,58 @@
 		<!-- TODO: add pager with first, prev, next, nr entries per page
 				or, use continuous scrolling.
 			-->
-  </main>
+	</main>
 
 
-<style>
 
-    @media (max-width: 576px) {
-        .directory-table {
-            /*xs, show column 2 (Title) */
-            grid-template-columns:
-			        minmax(150px, 1fr)  /* 2: name */
-        }
-    }
+	<style>
 
-    @media (min-width: 576px) {
-        .directory-table {
-            /*sm, show column 1,2,3 */
-            grid-template-columns:
+      @media (max-width: 576px) {
+          .directory-table {
+              /*xs, show column 2 (Title) */
+              grid-template-columns:
+			        minmax(150px, 1fr) /* 2: name */
+          }
+      }
+
+      @media (min-width: 576px) {
+          .directory-table {
+              /*sm, show column 1,2,3 */
+              grid-template-columns:
 				      60px                        /* 1: icon */
 			        minmax(150px, max-content)  /* 2: name */
-			        minmax(100px, 1fr)  /* 3: type */
-        }
-    }
+			        minmax(100px, 1fr) /* 3: type */
+          }
+      }
 
-    @media (min-width: 768px) {
-        .directory-table {
-            /*md,show column 1,2,3,4*/
-            grid-template-columns:
+      @media (min-width: 768px) {
+          .directory-table {
+              /*md,show column 1,2,3,4*/
+              grid-template-columns:
 				      60px                        /* 1: icon */
 			        minmax(150px, max-content)  /* 2: name */
 			        minmax(100px, 1fr)          /* 3: type */
-			        minmax(100px, 150px);       /* 6: nr events */
-        }
-    }
+			        minmax(100px, 150px); /* 6: nr events */
+          }
+      }
 
-    @media (min-width: 1024px) {
-        .directory-table {
-            /*lg, show 1,2,3,5,6,7 */
-            grid-template-columns:
+      @media (min-width: 1024px) {
+          .directory-table {
+              /*lg, show 1,2,3,5,6,7 */
+              grid-template-columns:
 				      60px                        /* 1: icon */
 			        minmax(150px, max-content)  /* 2: name */
 			        minmax(100px, 1fr)          /* 3: type */
 			        minmax(100px, 150px)        /* 5: nr properties */
 			        minmax(100px, 150px)        /* 6: nr events */
-			        minmax(100px, 150px);       /* 7: nr actions */
-        }
-    }
+			        minmax(100px, 150px); /* 7: nr actions */
+          }
+      }
 
-    @media (min-width: 1280px) {
-        .directory-table {
-            /*xl, show all but thingID*/
-            grid-template-columns:
+      @media (min-width: 1280px) {
+          .directory-table {
+              /*xl, show all but thingID*/
+              grid-template-columns:
 				      60px                 /* icon */
 			        minmax(150px, max-content)   /* name (title) */
 			        minmax(100px, max-content)   /* device type */
@@ -95,13 +94,13 @@
 			        minmax(100px, 150px) /* nr properties*/
 			        minmax(100px, 150px)
 			        minmax(100px, 150px)
-        }
-    }
+          }
+      }
 
-    @media (min-width: 1920px) {
-        .directory-table {
-            /*xxl, show all 8*/
-            grid-template-columns:
+      @media (min-width: 1920px) {
+          .directory-table {
+              /*xxl, show all 8*/
+              grid-template-columns:
 				      60px                 /* icon */
 			        minmax(150px, max-content)   /* name (title) */
 			        minmax(100px, max-content)   /* device type */
@@ -109,9 +108,9 @@
 			        minmax(100px, 150px) /* nr properties*/
 			        minmax(100px, 150px)
 			        minmax(100px, 150px)
-              minmax(150px, max-content);  /* ThingID */
-        }
-    }
-</style>
+              minmax(150px, max-content); /* ThingID */
+          }
+      }
+	</style>
 {{end}}
 

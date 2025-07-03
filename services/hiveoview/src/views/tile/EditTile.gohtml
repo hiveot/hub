@@ -25,7 +25,7 @@
 					<label>
 						Type:
 						<select id="tile-type" name="tileType" autofocus
-						        onchange="setSourceForImageType()">
+						        onchange="setSourceForTileType()">
 
                 {{ range $ttID, $ttLabel := .TileTypeLabels}}
 									<option value="{{$ttID}}"
@@ -37,6 +37,24 @@
 					</label>
 				</fieldset>
 
+          {{/*When type is gauge*/}}
+				<fieldset id="gauge-config-section">
+						<input hidden name="gauge-config">
+						<label>Preset
+							<select id="preset-type" name="presetType"
+							        onchange="setGaugePreset(event)">
+								<option value="">Manual</option>
+								<option value="thermometer">Thermometer</option>
+								<option value="barometer">Barometer</option>
+								<option value="hygrometer">Hygrometer</option>
+								<option value="compass">Compass</option>
+							</select>
+						</label>
+						<label>Edit
+							<input type="text" name="gaugeConfig">
+						</label>
+				</fieldset>
+
           {{/*When type is image*/}}
 				<fieldset id="image-source-section">
 					<label>Image URL
@@ -46,7 +64,7 @@
 					<label class="h-row" style="white-space: nowrap">
 						Reload Interval
 						<input name="reloadInterval"
-						       type="number" 
+						       type="number"
 						       placeholder="Nr of seconds to reload the image"
 						       value="{{.Tile.ImageReloadInterval}}">
 						Seconds
@@ -228,22 +246,38 @@
     //     el.value = ""
     // }
 
-    // if type is Image, show the URL otherwise the sources
-    function setSourceForImageType() {
-        let tileTypeEl = document.getElementById("tile-type")
+    // Show/hide the tile sub-section based on type of tile.
+    // for card and charts:  show a list of sources
+    // for image: show the URL and hide the sources
+    // for gauges: show gauge config and a single (first) source
+    function setSourceForTileType() {
         let backgroundSection = document.getElementById("background-section")
+        let tileTypeEl = document.getElementById("tile-type")
+        let gaugeConfigSection = document.getElementById("gauge-config-section")
         let sourcesSectionEl = document.getElementById("sources-section")
         let imageSourceSectionEl = document.getElementById("image-source-section")
         // todo: use the actual type ID
         if (tileTypeEl.value === "image") {
-            sourcesSectionEl.hidden = true
-            imageSourceSectionEl.hidden = false
             backgroundSection.hidden = true
+            gaugeConfigSection.hidden = true
+            imageSourceSectionEl.hidden = false
+            sourcesSectionEl.hidden = true
+        } else if (tileTypeEl.value === "linear-gauge" || tileTypeEl.value === "radial-gauge") {
+            gaugeConfigSection.hidden = false
+            sourcesSectionEl.hidden = false
+            imageSourceSectionEl.hidden = true
+            backgroundSection.hidden = false
         } else {
+            gaugeConfigSection.hidden = true
             sourcesSectionEl.hidden = false
             imageSourceSectionEl.hidden = true
             backgroundSection.hidden = false
         }
+    }
+
+    // Set a gauge preset
+    function setGaugePreset(ev) {
+
     }
 
     function setup() {
@@ -254,7 +288,7 @@
         } else {
             disableBackground()
         }
-        setSourceForImageType()
+        setSourceForTileType()
     }
 
 

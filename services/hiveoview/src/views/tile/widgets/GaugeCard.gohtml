@@ -1,6 +1,46 @@
-<!--LineChart Tile renderer-->
-
+<!--Gauge Tile renderer-->
 {{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/tile.RenderTileTemplateData*/ -}}
 
+{{range .Tile.Sources}}
+    {{$iout := $.GetOutputValue .}}
+		<h-gauge id="{{$.Tile.ID}}" class="gauge-card"
+		         type="{{$.Tile.TileType}}"
+		         value="{{$iout.Value.Number}}"
+		         min-value="{{$.Tile.MinValue}}"
+		         max-value="{{$.Tile.MaxValue}}"
+		         unit="{{$iout.UnitSymbol}}"
+		         sse-swap="{{.AffordanceType}}/{{.ThingID}}/{{.Name}}"
+		         hx-target="this"
+		         hx-swap="none"
+		         hx-on::sse-before-message="updateGauge(event, '{{$iout.UnitSymbol}}')"
+		>
+		</h-gauge>
 
-Gauge Card
+{{end}}
+
+<style>
+	.gauge-card {
+			display: inline-flex;
+			width: 100%;
+			height: 100%;
+	}
+</style>
+
+<script>
+		// how best to configure a gauge?
+		// option 1: presets based on unit type: eg temp, humidity, illumination, pressure
+		//           option to select the unit override.
+		//           use min/max from source, if set
+		//  pro: good presentation out of the box
+		// option 2: separate customizable details panel, based on preset of option 1
+
+
+    // updateGauge uses the SSE event to update the gauge value.
+    updateGauge = (event, unit) => {
+        // console.log("updateGauge",event)
+        let gaugeEl = event.currentTarget
+        // gaugeEl.setValue(event.detail.data)
+		    gaugeEl.setAttribute("value",event.detail.data)
+		    gaugeEl.title = event.detail.data + " " + unit
+    }
+</script>

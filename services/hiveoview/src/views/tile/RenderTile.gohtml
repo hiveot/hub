@@ -63,7 +63,9 @@
             {{template "Chart.gohtml" .}}
         {{else if eq .Tile.TileType "image"}}
             {{template "ImageCard.gohtml" .}}
-        {{else if eq .Tile.TileType "gauge"}}
+        {{else if eq .Tile.TileType "linear-gauge"}}
+            {{template "GaugeCard.gohtml" .}}
+        {{else if eq .Tile.TileType "radial-gauge"}}
             {{template "GaugeCard.gohtml" .}}
         {{else}}
             {{template "TextCard.gohtml" .}}
