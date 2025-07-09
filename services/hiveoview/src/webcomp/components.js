@@ -11,6 +11,7 @@ import "./h-img.js";
 import "./h-list.js";
 import "./h-loading.js";
 import "./h-modal.js";
+import "./h-select.js";
 import "./h-timechart.js";
 import "./h-toast.js"
 import "./h-utils.js";

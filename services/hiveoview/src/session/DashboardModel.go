@@ -58,15 +58,19 @@ type DashboardTile struct {
 	// ID of type of tile that controls how it its content is displayed
 	// See TileTypeCard, TileType...
 	TileType string `json:"tileType"`
+
+	// when type is gauge this offers presentation preset options (thermometer,... )
+	// The current gauge type name
+	GaugeType string
+	// Gauge override of the preset definition (json)
+	GaugeOverride string
+
 	// tile background
 	BackgroundEnabled      bool   `json:"backgroundEnabled,omitempty"`
 	BackgroundColor        string `json:"bgColor,omitempty"`
 	BackgroundTransparency string `json:"bgTransparency,omitempty"`
 	ImageURL               string `json:"imageURL,omitempty"`
 	ImageReloadInterval    int    `json:"imageReloadInterval,omitempty"`
-	// gauges minimum and maximum value
-	MinValue string `json:"minValue,omitempty"`
-	MaxValue string `json:"maxValue,omitempty"`
 
 	// Tile sources
 	Sources []TileSource `json:"sources"`

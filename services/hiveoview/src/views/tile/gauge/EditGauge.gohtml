@@ -1,0 +1,21 @@
+{{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/session.DashboardTile*/ -}}
+<input hidden name="gauge-config">
+<label>Preset
+	<select is="h-select" id="preset-type" name="presetType"
+	        value="{{.GaugeType}}"
+	        onchange="setGaugePreset()">
+		<option value="">Manual</option>
+		<option value="thermometer">Thermometer</option>
+		<option value="barometer">Barometer</option>
+		<option value="hygrometer">Hygrometer</option>
+		<option value="compass">Compass</option>
+	</select>
+</label>
+<label><span class="h-row">
+		Preset Override
+		<a target="_blank" href="https://canvas-gauges.com/documentation/user-guide/configuration">(JSON options)</a>
+	</span>
+	<textarea type="text" id="presetOverride" name="presetOverride"
+	          placeholder='{ "optionName": value, ... }'
+	>{{.GaugeOverride}}</textarea>
+</label>

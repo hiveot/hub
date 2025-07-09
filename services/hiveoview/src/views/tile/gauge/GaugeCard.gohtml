@@ -4,15 +4,18 @@
 {{range .Tile.Sources}}
     {{$iout := $.GetOutputValue .}}
 		<h-gauge id="{{$.Tile.ID}}" class="gauge-card"
-		         type="{{$.Tile.TileType}}"
+		         linear='{{eq $.Tile.TileType "linear-gauge"}}'
+		         gauge-type="{{$.Tile.GaugeType}}"
+		         override="{{$.Tile.GaugeOverride}}"
+		         units="{{$iout.UnitSymbol}}"
+		         max-value="{{$iout.Schema.Maximum}}"
+		         min-value="{{$iout.Schema.Minimum}}"
 		         value="{{$iout.Value.Number}}"
-		         min-value="{{$.Tile.MinValue}}"
-		         max-value="{{$.Tile.MaxValue}}"
-		         unit="{{$iout.UnitSymbol}}"
 		         sse-swap="{{.AffordanceType}}/{{.ThingID}}/{{.Name}}"
 		         hx-target="this"
 		         hx-swap="none"
 		         hx-on::sse-before-message="updateGauge(event, '{{$iout.UnitSymbol}}')"
+		         title="{{$iout.Value.Number}} {{$iout.UnitSymbol}}"
 		>
 		</h-gauge>
 

@@ -27,10 +27,6 @@ type EditTileTemplateData struct {
 	// human labels for each tile type
 	TileTypeLabels map[string]string
 
-	// when type is gauge this offers options for gauges
-	GaugeTypeLabels map[string]string
-	GaugeConfig     string
-
 	// navigation paths
 	RenderSelectTileSourcesPath string // dialog for tile sources selector
 	SubmitEditTilePath          string // submit the edited tile
@@ -125,10 +121,10 @@ func SubmitEditTile(w http.ResponseWriter, r *http.Request) {
 	bgEnabled := r.FormValue("bgEnabled") == "on"
 	bgTransparency := r.FormValue("bgTransparency")
 	bgColor := r.FormValue("bgColor")
+	presetType := r.FormValue("presetType")
+	presetOverride := r.FormValue("presetOverride")
 	newTitle := r.FormValue("title")
 	imageURL := r.FormValue("imageURL")
-	minValue := r.FormValue("minValue")
-	maxValue := r.FormValue("maxValue")
 	reloadInterval := r.FormValue("reloadInterval")
 	sources, _ := r.Form["sources"]
 	sourceTitles, _ := r.Form["sourceTitles"]
@@ -147,8 +143,8 @@ func SubmitEditTile(w http.ResponseWriter, r *http.Request) {
 	tile.BackgroundColor = bgColor
 	tile.ImageURL = imageURL
 	tile.ImageReloadInterval, _ = strconv.Atoi(reloadInterval)
-	tile.MinValue = minValue
-	tile.MaxValue = maxValue
+	tile.GaugeType = presetType
+	tile.GaugeOverride = presetOverride
 	tile.Sources = make([]session.TileSource, 0)
 	// arbitrary limit to avoid too frequent reloads
 	if tile.ImageReloadInterval < 3 {
