@@ -75,7 +75,12 @@ export default async function setValue(node: ZWaveNode, vid: ValueID, value: any
                 }
                 resolve(progress)
             })
+                .catch(reason=> {
+                    log.error(`Failed configuring value. Reason: ${reason}`)
+                    reject(reason)
+                })
         } catch (reason) {
+            //
             log.error(`Failed setting value. Reason: ${reason}`)
             reject(reason)
         }
