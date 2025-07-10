@@ -20,7 +20,11 @@
 
 	<section id="{{.Tile.ID}}" class="tile-panel"
           {{if .Tile.BackgroundEnabled}}
-						style="background-color: {{.Tile.GetRGBA}};"
+	          {{if eq .Tile.BackgroundTransparency "0"}}
+		          style="background-color: transparent;border:none"
+	          {{else}}
+							style="background-color: {{.Tile.GetRGBA}}"
+						{{end}}
           {{end}}
 					 hx-trigger="sse:{{.TileUpdatedEvent}}"
 					 hx-swap="outerHTML"
@@ -37,7 +41,13 @@
 		<nav class="tile-header drag-target"
 		>
 			<span></span>
-			<div style="cursor:move; flex-grow:1; text-align:center"
+			<div
+				{{if not $.Locked}}
+						style="cursor:move; flex-grow:1; text-align:center"
+							{{else}}
+					style="flex-grow:1; text-align:center"
+        {{end}}
+
 			     title="{{.Tile.ID}}">{{.Tile.Title}}</div>
         {{/* The menu works best within a pico css nav element*/}}
         {{/* Only show menu when dashboard not locked*/}}

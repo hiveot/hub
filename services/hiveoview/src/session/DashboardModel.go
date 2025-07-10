@@ -82,7 +82,7 @@ func (t DashboardTile) GetRGBA() string {
 	// rgba has the format rgba(aa,bb,cc, tp)
 	tp, _ := strconv.ParseFloat(t.BackgroundTransparency, 10)
 	tpInt := int(tp * 255) // to hex
-	rgba := fmt.Sprintf("%s%0X", t.BackgroundColor, tpInt)
+	rgba := fmt.Sprintf("%s%02X", t.BackgroundColor, tpInt)
 	return rgba
 }
 

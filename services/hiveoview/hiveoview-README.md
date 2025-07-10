@@ -30,11 +30,11 @@ This viewer has reached alpha status with Phase 1-3 completed. The information b
   * option to color value based on age 
   * show value error status in tiles
   * show motion as alarm indicator - using hiveot @type vocab
-* Add gauge widget
-  * linear gauge and radial gauge
-  * simple presets for thermometer, barometer, hygrometer
-  * default gauge low-high range if thing has no min/max in TD
-  * editor for full gauge configuration settings
+* Add gauge widget [done]
+  * linear gauge and radial gauge [done]
+  * simple presets for thermometer, barometer, hygrometer [done]
+  * default gauge low-high range if thing has no min/max in TD [done]
+  * support full canvas-gauge customization [done]
 * Distinguish between basic and advanced attr/config/events using @type
    (TD does not support this facility, so use a config with @type values for basic values)
 * Improve use of Thing vocabulary types in bindings

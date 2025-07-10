@@ -291,6 +291,8 @@
 
         /* tile-content is defined in dashboard page as it is shared amongst all tiles */
         .tile-content {
+            /*prevent larger canvas of child to affect the tile size*/
+            overflow: hidden;
             flex-grow: 1;
             background-color: var(--pico-card-background-color);
             border-bottom-left-radius: 8px;

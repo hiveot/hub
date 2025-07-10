@@ -33,16 +33,7 @@ export const GaugeTypeThermometer = "thermometer"
 
 // preset configurations
 const GaugePresetBarometer = {
-    colorTitle: 'rgba(95,98,104,0.72)',
-    colorUnits: 'rgba(95,98,104,0.72)',
-
-    colorMajorTicks: 'rgba(54,59,73,0.89)',
-    colorMinorTicks: 'rgba(73,74,77,0.8)',
     colorNeedle: 'rgb(103,74,46)',
-    colorPlate: 'rgb(170,168,167)',
-    colorPlateEnd: 'rgb(130,127,123)',
-    // fontNumbersWeight: "bold",
-    // fontNumbers: "Luminari, fantasy",
     fontNumbers: "Courier New",
     // TOOD: auto calc highlights from min/max
     highlights: [
@@ -53,47 +44,30 @@ const GaugePresetBarometer = {
     minValue: 950,   // standard at sea level is 1031 (depends on altitude)
     maxValue: 1040,  // highest ever recorded is 1084mb
     needleType: "arrow",
-    strokeTicks: true,
     title: "Barometer",
     units: "mbar",   // default unit when not overridden
 }
 
 const GaugePresetCompass = {
-    animationDuration: 1500,
-    animationRule: "linear",
-    borders: true,
-    borderInnerWidth: 0,
-    borderMiddleWidth: 0,
-    borderOuterWidth: 10,
-    borderShadowWidth: 0,
-    colorBorderOuter: "#ccc",
-    colorBorderOuterEnd: "#ccc",
-    colorCircleInner: "#fff",
-    colorNeedleCircleOuter: "#ccc",
     colorNeedleShadowDown: "#222",
-    colorPlate: "#222",
-    colorMajorTicks: "#f5f5f5",
-    colorMinorTicks: "#ddd",
-    colorNumbers: "#ccc",
     colorNeedle: "rgba(240, 128, 128, 1)",
     colorNeedleEnd: "rgba(255, 160, 122, .9)",
-    highlights: false,
+    // colorPlate: 'rgba(170,168,167,0.38)',
+    // colorPlateEnd: 'rgb(130,127,123)',
+
+
+    highlights: [
+        {"from": -1, "to": 1, "color": "rgba(245,204,93,0.93)"},
+        {"from": 89, "to": 91, "color": "rgba(245,204,93,0.93)"},
+        {"from": 179, "to": 181, "color": "rgba(245,204,93,0.93)"},
+        {"from": 269, "to": 271, "color": "rgba(245,204,93,0.93)"},
+    ],
 
     minValue: 0,
     maxValue: 360,
-    majorTicks: [
-        "N",
-        "NE",
-        "E",
-        "SE",
-        "S",
-        "SW",
-        "W",
-        "NW",
-        "N"
-    ],
+    majorTicks: ["N", "NE", "E", "SE", "S", "SW", "W", "NW", "N"],
     minorTicks: 22,
-    needleCircleSize: 15,
+    needleCircleSize: 0.1, // avoid 0 as it rotates the box
     needleCircleOuter: false,
     needleType: "line",
     needleStart: 75,
@@ -101,30 +75,31 @@ const GaugePresetCompass = {
     needleWidth: 3,
 
     startAngle: 180,
-    strokeTicks: false,
     ticksAngle: 360,
     title: "Heading",
+    units: "degrees"
     // valueBox: false,
-    valueTextShadow: false,
 }
 
 const GaugePresetHygrometer = {
-    colorTitle: 'rgba(95,98,104,0.72)',
-    colorUnits: 'rgba(95,98,104,0.72)',
+    borderMiddleWidth: 5,
+    borderOuterWidth: 1,
 
     colorValueBoxBackground: 'transparent',
     colorValueText: 'rgba(95,98,104,0.72)',
 
-    colorMajorTicks: 'rgba(54,59,73,0.89)',
-    colorMinorTicks: 'rgba(73,74,77,0.8)',
+    colorBorderMiddle: "#85816d",
+    colorBorderMiddleEnd: "#464432",
+    colorBorderOuter: "#262620",
+
     colorNeedle: 'rgb(46,60,103)',
     colorNeedleEnd: 'rgb(79,112,214)',
-    colorPlate: 'rgb(170,168,167)',
-    colorPlateEnd: 'rgb(130,127,123)',
 
     fontValueStyle: "italic",
-    highlights: [],
-
+    highlights: [
+        {"from": 0, "to": 30, "color": "rgba(201,191,171,0.93)"},
+        {"from": 80, "to": 100, "color": "rgba(113,150,242,0.8)"},
+    ],
     minValue: 0,
     maxValue: 100,
 
@@ -139,16 +114,14 @@ const GaugePresetHygrometer = {
     valueTextShadow: false,
 }
 const GaugePresetThermometer = {
-    colorTitle: 'rgba(104,95,95,0.72)',
-    colorUnits: 'rgba(104,95,95,0.72)',
-
-    // thermometer bar
     barWidth: 3,  // % progress bar width
     barBeginCircle: 11,  // bulb size
-    // colorBar: "grey",   // top part of the gauge bar
-    colorBarProgress: "rgb(202,63,63)",   // bottom part of gauge bar
-    colorMajorTicks: 'rgba(121,157,244,0.8)',
-    colorMinorTicks: 'white',
+
+    borderOuterWidth: 0,
+    borderMiddleWidth: 0,
+    borderInnerWidth: 0,
+
+    colorBarProgress: "rgba(178,66,66,0.91)",   // bottom part of gauge bar
     colorNeedle: "red",
     colorNumbers: 'green',
 
@@ -167,7 +140,7 @@ const GaugePresetThermometer = {
     minValue: -30,
     maxValue: 40,
 
-    strokeTicks: true,
+    title: "Thermometer",
     units: "C",  // default when not set
     // value box
     valueDec: 1,  // decimal temperature
@@ -194,23 +167,44 @@ const GaugePresets = {
 class HGauge extends HTMLElement {
     // base gauge config
     baseConfig = {
-        animationRule: 'elastic',
-        animationDuration: 500,
+        animation: true,
+        animationRule: "linear",
+        // animationRule: 'elastic',
+        animationDuration: 1500,
 
         // barWidth: 5,  // % of progress bar width
         // colorBar: "grey",   // top part of the gauge bar
         // colorBarProgress: "rgb(202,63,63)",   // bottom part of gauge bar
-        borders: false,
+        borders: true,
+        borderOuterWidth: 0,
+        borderMiddleWidth: 0,
+        borderInnerWidth: 0,
+        colorBorderShadow: "#989818",
+
+        // colorBorderMiddle: "#85816d",
+        // colorBorderMiddleEnd: "#464432",
+        // colorBorderMiddle: "#696052",
+        // colorBorderMiddleEnd: "#85816d",
+        // colorBorderOuter: "#464432",
+        // colorBorderOuterEnd: "#989818",
+
+        colorMajorTicks: 'rgba(54,59,73,0.89)',
+        colorMinorTicks: 'rgba(73,74,77,0.8)',
+
+        colorPlate: 'rgb(170,168,167)',
+        colorPlateEnd: 'rgb(130,127,123)',
+        colorTitle: 'rgba(104,95,95,0.72)',
+        colorUnits: 'rgba(104,95,95,0.72)',
 
         // colorNeedle: "red",
         // colorNumbers: 'var(--pico-color)',
         // colorNumbers: '#eee',
         // colorNumbers: 'green',
-        colorPlate: 'transparent',
 
         // fontNumbersSize: 30,
         // fontNumbersWeight: "bold",
         // fontUnitsSize: 24,
+        fontValueSize: 24,   // this is relative to the gauge size?
         //highlights: [],  // should be within min-max range
         highlightsWidth: 7,
 
@@ -231,7 +225,7 @@ class HGauge extends HTMLElement {
         // valueDec: 1,
         // valueInt: 1,
         // fontValue: // font family
-        fontValueSize: 24,   // this is relative to the gauge size?
+        valueBoxStroke: 0,
         // fontValueStyle: "normal",
 
         //--- radial gauge specific options
@@ -265,11 +259,9 @@ class HGauge extends HTMLElement {
         this.canvasEl.id = this.id + "-canvas"
         this.appendChild(this.canvasEl)
 
-        // this.canvasEl = this.getElementsByTagName("canvas")[0]
-        // this.canvasEl.style.width = "100%"
-        // this.canvasEl.style.height = "100%"
         this.style.width = "100%"
         this.style.height = "100%"
+        this.style.display = "block"
         this.gaugeType = GaugeTypeThermometer
         this.preset = GaugePresetThermometer
         this.override = ""
@@ -327,14 +319,32 @@ class HGauge extends HTMLElement {
 
         // calc majorTicks based on minValue and maxValue
         let majorTicks = []
-        let range = config.maxValue - config.minValue
+        // let range = config.maxValue - config.minValue
         for (let v = config.minValue; v <= config.maxValue; v += config.stepSize) {
             majorTicks.push(v)
         }
         this.gauge.update({majorTicks: majorTicks})
         this.render()
 
-        // TODO: resize handler
+        // Adjust canvas size when widget resizes
+        let debounceTimer = 0;
+        this.sizeObserver = new ResizeObserver(()=>{
+            clearTimeout(debounceTimer)
+            debounceTimer = setTimeout(_=>{
+                console.log("gauge resized. new width=",this.clientWidth, " height=",this.clientHeight)
+                config={width:this.parentElement.clientWidth-5, height:this.parentElement.clientHeight-5}
+                this.gauge.update(config)
+            },100)
+        });
+        this.sizeObserver.observe(this.parentElement)
+    }
+
+    disconnectedCallback() {
+        if (this.sizeObserver) {
+            this.sizeObserver.disconnect()
+            console.log("gauge disconnected")
+            this.sizeObserver=undefined
+        }
     }
 
     render() {
@@ -348,12 +358,7 @@ class HGauge extends HTMLElement {
         if (this.unit) {
             config.units = this.unit
         }
-        config.height = this.offsetHeight
-        config.width = this.offsetWidth
-
-        // if (this.gauge) {
-            this.gauge.update(config)
-        // }
+        this.gauge.update(config)
     }
 
     // setValue(newValue) {
