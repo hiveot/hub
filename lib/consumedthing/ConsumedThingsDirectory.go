@@ -96,7 +96,9 @@ func (cts *ConsumedThingsDirectory) OnNotification(notif *messaging.Notification
 		slog.String("name", notif.Name),
 		slog.String("clientID (me)", cts.co.GetClientID()),
 	)
+	cts.mux.RLock()
 	ct, _ := cts.consumedThings[notif.ThingID]
+	cts.mux.RUnlock()
 	if ct != nil {
 		ct.OnNotification(notif)
 	}
