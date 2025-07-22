@@ -30,7 +30,6 @@ var owsConfig config.OWServerConfig
 var owsSimulationFile string // simulation file
 var ts *testenv.TestServer
 
-const agentUsesWSS = false
 const agentID = "owserver"
 
 // const device1ID = "2A000003BB170B28" // <-- from the simulation file
@@ -54,7 +53,7 @@ func TestMain(m *testing.M) {
 	owsConfig.OWServerURL = owsSimulationFile
 	//
 	ts = testenv.StartTestServer(true)
-	if err != nil {
+	if ts == nil {
 		panic("unable to start test server: " + err.Error())
 	}
 	result := m.Run()
