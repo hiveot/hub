@@ -2,22 +2,24 @@ package service
 
 import (
 	"fmt"
+	"github.com/hiveot/hub/bindings/weather/providers"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
 	jsoniter "github.com/json-iterator/go"
 	"sync"
 )
 
+// LocationStore stores configured locationStore in a bucket store
 type LocationStore struct {
 	bucketStore     buckets.IBucketStore
 	locationsBucket buckets.IBucket
-	locations       []WeatherConfiguration
+	locations       []providers.WeatherLocationConfig
 	// lock location updates
 	mux sync.RWMutex
 }
 
 // Add a location to the store
-func (svc *LocationStore) Add(loc *WeatherConfiguration) error {
+func (svc *LocationStore) Add(loc *providers.WeatherLocationConfig) error {
 	svc.mux.Lock()
 	defer svc.mux.Unlock()
 	if loc.Latitude == "" || loc.Longitude == "" || loc.ID == "" {
@@ -53,12 +55,12 @@ func (svc *LocationStore) Close() {
 
 // ForEach invokes the callback for each enabled location
 // this is concurrent safe
-func (svc *LocationStore) ForEach(cb func(WeatherConfiguration)) {
+func (svc *LocationStore) ForEach(cb func(providers.WeatherLocationConfig)) {
 	svc.mux.RLock()
-	iter := append([]WeatherConfiguration{}, svc.locations...)
+	iter := append([]providers.WeatherLocationConfig{}, svc.locations...)
 	svc.mux.RUnlock()
 	for _, cfg := range iter {
-		if cfg.DailyForecast {
+		if cfg.ForecastEnabled {
 			cb(cfg)
 		}
 	}
@@ -68,19 +70,19 @@ func (svc *LocationStore) ForEach(cb func(WeatherConfiguration)) {
 func (svc *LocationStore) Open() error {
 	svc.mux.Lock()
 	defer svc.mux.Unlock()
-	// load locations
+	// load locationStore
 	err := svc.bucketStore.Open()
 	if err != nil {
 		return err
 	}
-	// load locations from store
+	// load locationStore from store
 	svc.locationsBucket = svc.bucketStore.GetBucket(weatherLocationsKey)
 	cursor, err := svc.locationsBucket.Cursor()
 	if err != nil {
 		return err
 	}
 	for _, v, valid := cursor.First(); valid; _, v, valid = cursor.Next() {
-		var weatherLocation WeatherConfiguration
+		var weatherLocation providers.WeatherLocationConfig
 		err = jsoniter.Unmarshal(v, &weatherLocation)
 		svc.locations = append(svc.locations, weatherLocation)
 	}
@@ -88,7 +90,7 @@ func (svc *LocationStore) Open() error {
 }
 
 // Remove a location from the store
-func (svc *LocationStore) Remove(loc *WeatherConfiguration) {
+func (svc *LocationStore) Remove(loc *providers.WeatherLocationConfig) {
 	svc.mux.Lock()
 	defer svc.mux.Unlock()
 	panic("remove not yet implemented")

@@ -1,8 +1,8 @@
-# Open-Meteo Integration
+# Weather Service Binding
 
 ## Objective
 
-Provide a 'weather station' for current weather using the Open-Meteo provider.
+Provide a 'weather station' for current weather using one of the available providers.
 
 ## Status
 
@@ -10,15 +10,24 @@ This integration is in development and breaking changes should be expected.
 
 ## Summary
 
-The open-meteo integration requests the current weather for configured locations and publishes events on changes to environmental data. 
+This integration requests the current weather for configured locations and publishes events on changes to environmental data. 
 
-This supports tracking the following parameters for select locations:
+This periodically reads the current and forecasted weather for configured locations and weather provider. 
+
+Supported providers:
+- Open-Meteo
+- Weather Underground [todo]
+- Environment Canada [todo]
+
+Current weather information includes:
 - temperature
 - relative humidity
 - atmospheric pressure at sea level for the locations 
 - wind direction
 - wind speed
 - alerts
+
+- Forcast weather information includes:
 - short term forecast
 
 Configurations for:

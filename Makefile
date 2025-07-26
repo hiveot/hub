@@ -44,7 +44,7 @@ hiveoview: .FORCE ## build the SSR web viewer binding
 
 # --- protocol bindings
 
-bindings:  ipnet isy99x owserver zwavejs   ## Build the protocol bindings
+bindings:  ipnet isy99x owserver weather zwavejs   ## Build the protocol bindings
 
 ipnet: .FORCE ## Build the ip network scanner protocol binding
 	go build -o $(PLUGINS_FOLDER)/$@  bindings/$@/cmd/main.go
@@ -55,6 +55,10 @@ isy99x: .FORCE ## Build the ISY99x INSTEON protocol binding
 	cp bindings/$@/config/*.yaml $(DIST_FOLDER)/config
 
 owserver: .FORCE ## Build the 1-wire owserver protocol binding
+	go build -o $(PLUGINS_FOLDER)/$@  bindings/$@/cmd/main.go
+	cp bindings/$@/config/*.yaml $(DIST_FOLDER)/config
+
+weather: .FORCE ## Build the weather service binding
 	go build -o $(PLUGINS_FOLDER)/$@  bindings/$@/cmd/main.go
 	cp bindings/$@/config/*.yaml $(DIST_FOLDER)/config
 

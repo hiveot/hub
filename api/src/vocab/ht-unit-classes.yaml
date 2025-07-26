@@ -106,11 +106,16 @@ UnitClasses:
       symbol: "mph"
       title: "Miles per hour"
       description: "Speed in miles per hour"
-    UnitMillibar:
+    UnitMilliBar:
       class: "hiveot:unit:millibar"
       symbol: "mbar"
       title: "millibar"
       description: "Metric unit of pressure. 1/1000th of a bar. Equal to 100 pascals. Amount of force it takes to move an object weighing a gram, one centimeter in one second."
+    UnitMilliMeter:
+      class: "hiveot:unit:millimeter"
+      symbol: "mm"
+      title: "Millimeter"
+      description: "Size in millimeter"
     UnitMilliSecond:
       class: "hiveot:unit:millisecond"
       symbol: "ms"
@@ -121,6 +126,11 @@ UnitClasses:
       symbol: "mol"
       title: "Mole"
       description: "SI unit of measurement for amount of substance. Eg, molecules."
+    UnitHectoPascal:
+      class: "hiveot:unit:hectopascal"
+      symbol: "hPa"
+      title: "Hecto-Pascal"
+      description: "SI unit of atmospheric pressure. Equal to 100 pascal and 1 millibar."
     UnitPascal:
       class: "hiveot:unit:pascal"
       symbol: "Pa"

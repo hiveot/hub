@@ -1,7 +1,7 @@
 # OWServer configuration
 
 # logging level debug, info, warn (default), error.
-logLevel: info
+#logLevel: info
 
 # hubUrl optional HiveOT hub address to connect to.
 # Default "" for auto discovery. For example to connect with websockets.

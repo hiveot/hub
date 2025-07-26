@@ -8,20 +8,28 @@ The Hub for the *Hive-of-Things* provides a secure [runtime](runtime/README-runt
 
 ## Project Status
 
-Status: The Hub core is currently being reworked to support the Web-of-things (WoT) Thing Description (TD) specification. (Jan 2025). 
+Status July 2025: The Hub runtime, services and bindings have been reworked to support the Web-of-things (WoT) Thing Description (TD) specification. It is currently in Alpha.  
 
-TODO before alpha:
-1. Support for Forms sections in TDD documents describing the protocols to interact with a Thing.
-1. Revisit the vocabulary to integrate or adopt existing vocabularies where possible
-1. Test/fix security; token expiry, bad agents or consumers, rate-limiting, role authz
-
-Roadmap:
-1. Add websockets sub-protocol binding [in progress]
+Medium term roadmap:
+1. Launcher support for distributed environment [todo]
+1. Support lets-encrypt CA and server certificate [todo]
+2. Support mqtt transport protocol. [tbd as client or server?]
+1. Websockets sub-protocol binding [functional but spec is in development]
+1. Support for TD Forms sections. [contentious, as it doesn't serve a purpose in this setup]
 1. Support for WoT discovery profile [done]
-2. Deployment in distributed environment 
-1. Support client certificate authentication
-1. Support mqtt transport protocol
-2. Rework internal TD document format to improve WoT TD compatibility
+1. Revisit the vocabulary to integrate or adopt existing vocabularies where possible
+1. improve/fix security;
+   2. detect/notify of bad agents or consumers
+   3. Manage token expiry
+   3. role based access to Things
+   4. rate limiting
+2. hiveoview dashboard improvements
+   3. notifications
+3. Various services and bindings
+   3. weather service integration: open-meteo [in progress]
+   3. weather service integration: environment canada  (better forecast)
+   2. ups binding (using [nut](https://networkupstools.org/))
+4. Android integration/location tracking
 
 Future:
 1. HiveOT inter-hub bridging service

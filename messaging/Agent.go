@@ -4,10 +4,21 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/wot"
+	"github.com/hiveot/hub/wot/td"
+	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"sync/atomic"
 	"time"
 )
+
+// ThingDirectoryDThingID is the Digitwin ThingID of the runtime Directory Service
+// This is duplicated from DirectoryConsumerAPI.go to avoid a compile-time dependency
+// on the runtime. (would be circular).
+// What would be better is to determine this from discovery but this is a lot
+// of work just for cleanliness's sake.
+// Used to update the directory with TD's using this agent.
+const ThingDirectoryDThingID = "dtw:digitwin:ThingDirectory"
+const ThingDirectoryUpdateTDMethod = "updateTD"
 
 // Agent provides the messaging functions needed by hub agents.
 // Agents are also consumers as they are able to invoke services.
@@ -104,31 +115,23 @@ func (ag *Agent) PubProperties(thingID string, propMap map[string]any) error {
 }
 
 // PubTD helper for agents to publish an update of a TD in the directory
+// Note that this depends on the runtime directory service.
 //
-// This sends the update-td operation over the connection. The consumer must handle
-// it accordingly.
-// This is likely to change to better fit the WoT directory specification but
-// the API should remain unchanged.
-//
-// FIXME: Specification:
+// TODO: change to follow the WoT Specification:
 // https://www.w3.org/TR/wot-discovery/#exploration-td-type-thingdirectory
 // > PUT /things/{id}   payload TD JSON; returns 201
 // > GET /things/{id}
-//func (ag *Agent) PubTD(td *td.TD) error {
-//	// TD is sent as JSON
-//	tdJson, _ := jsoniter.MarshalToString(td)
-//
-//	// send a request to the directory to update the TD. The protocol binding will convert
-//	// this requires a directory client
-//	// option 1: from discovery using HTTP  put /things/{id}
-//	// option 2: from protocol binding?
-//
-//	// this to the appropriate messaging.
-//	// * HTTP-Basic bindings uses PUT TD /things/{id}
-//	// * HiveOT WSS binding passes it as-is
-//	//
-//	return ag.Rpc(wot.HTOpUpdateTD, td.ID, "", tdJson, nil)
-//}
+func (ag *Agent) PubTD(tdoc *td.TD) error {
+	slog.Info("PubTD", slog.String("id", tdoc.ID))
+
+	// TD is sent as JSON
+	tdJson, _ := jsoniter.MarshalToString(tdoc)
+	//	return ag.Rpc(wot.HTOpUpdateTD, td.ID, "", tdJson, nil)
+	//
+	err := ag.Rpc("invokeaction", ThingDirectoryDThingID, ThingDirectoryUpdateTDMethod,
+		tdJson, nil)
+	return err
+}
 
 // SendResponse sends a response for a previous request
 func (ag *Agent) SendResponse(resp *ResponseMessage) error {

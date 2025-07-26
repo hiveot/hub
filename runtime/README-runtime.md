@@ -60,7 +60,7 @@ Detailed progress status below:
     * agent response flow [partial]
 
 
-## phase 3 - refactor service plugins 
+## phase 3 - refactor service plugins [complete] 
 
 Service plugins:
 - are extensions to the Hub and integral part of the runtime.
@@ -73,24 +73,22 @@ Service plugins:
 - publish a TD
 - include optional authorization 
 
-* hiveoview [partial]
-  * internal store for client state (remove state service)
+* hiveoview [complete]
+  * internal store for client state (remove state service) [complete]
   * publish a TD [partial]
   * manage configuration via digital twin [todo]
 
 * certs
-  * support for 3rd party certificate management
+  * support letsencrypt [todo]
   * publish a TD [todo]
   * manage configuration via digital twin [todo]
 
-* provisioning
-  * redetermine what to do here
-
 * launcher [complete]
-    * publish a TD [partial]
+    * publish a TD [complete]
     * manage configuration via digital twin [todo]
       * launching on startup
     * events for service start/stop/status [todo]
+    * 
 
 * history [partial]
   * store events [complete]

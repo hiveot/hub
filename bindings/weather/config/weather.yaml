@@ -1,0 +1,13 @@
+# Weather binding configuration
+
+# logging level debug, info, warn (default), error.
+#logLevel: info
+
+# Default weather provider (currently only 1 is implemented)
+#defaultProvider: OpenMeteo
+
+# Minimum polling interval for current weather
+# Default polling interval for current weather
+
+# Minimum polling interval for forecast
+# Default polling interval for forecast

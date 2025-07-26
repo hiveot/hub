@@ -101,7 +101,7 @@ var AttrConfig = map[string]AttrConversion{
 		Description: "Atmospheric pressure",
 		VocabType:   vocab.PropEnvBarometer,
 		DataType:    vocab.WoTDataTypeNumber, Precision: 0, ChangeNotify: 3.0,
-		Unit: vocab.UnitMillibar,
+		Unit: vocab.UnitMilliBar,
 	},
 	"BarometricPressureMbHighAlarmValue": {
 		IsProp: true, Ignore: false,
@@ -109,7 +109,7 @@ var AttrConfig = map[string]AttrConversion{
 		Description: "High atmospheric pressure alarm set value",
 		//VocabType: vocab.PropAlarmConfig,
 		DataType: vocab.WoTDataTypeNumber, ChangeNotify: 1,
-		Unit: vocab.UnitMillibar,
+		Unit: vocab.UnitMilliBar,
 	},
 	"BarometricPressureMbHighAlarmState": {
 		IsEvent: true, IsProp: true, Ignore: false,
@@ -124,7 +124,7 @@ var AttrConfig = map[string]AttrConversion{
 		Description: "Low atmospheric pressure alarm set value",
 		//VocabType: vocab.PropAlarmConfig,
 		DataType: vocab.WoTDataTypeNumber, ChangeNotify: 1,
-		Unit: vocab.UnitMillibar,
+		Unit: vocab.UnitMilliBar,
 	},
 	"BarometricPressureMbLowAlarmState": {
 		IsEvent: true, IsProp: true, Ignore: false,
@@ -440,7 +440,7 @@ var AttrConfig = map[string]AttrConversion{
 // UnitNameVocab maps OWServer unit names to IoT vocabulary
 var UnitNameVocab = map[string]string{
 	"PercentRelativeHumidity": vocab.UnitPercent,
-	"Millibars":               vocab.UnitMillibar,
+	"Millibars":               vocab.UnitMilliBar,
 	"Centigrade":              vocab.UnitCelcius,
 	"Fahrenheit":              vocab.UnitFahrenheit,
 	"InchesOfMercury":         vocab.UnitMercury,
