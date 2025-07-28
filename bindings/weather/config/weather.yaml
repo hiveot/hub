@@ -4,10 +4,54 @@
 #logLevel: info
 
 # Default weather provider (currently only 1 is implemented)
-#defaultProvider: OpenMeteo
+defaultProvider: "open-meteo"
 
 # Minimum polling interval for current weather
-# Default polling interval for current weather
-
+#minCurrentInterval: 300
 # Minimum polling interval for forecast
+#minForecastInterval: 600
+
+# Default polling interval for current weather
+#defaultCurrentInterval: 900
 # Default polling interval for forecast
+#defaultForecastInterval: 3600
+
+# weather providers
+providers:
+  open-meteo:
+    name: "Open-Meteo"
+    baseURL: "https://api.open-meteo.com/v1/forecast"
+    # api-key is only required for commercial use
+    #apiKey: 123-123-123
+  environment-canada:
+    name: "Environment Canada"
+    baseURL: "https://api.weather.gc.ca"
+    apiKey: "123-123-123"
+
+# weather locations
+#
+locations:
+  amsterdam-1:
+    name: "Amsterdam"
+    description: "Center of Amsterdam"
+    latitude: "52.375009"
+    longitude: "4.895107"
+    currentEnabled: true
+    forecastEnabled: false
+  berlin-1:
+    name: "Berlin"
+    description: "Berlin Panoramastraße 1A"
+    latitude: "52.5213804295239"
+    longitude: "13.410464247290507"
+    currentEnabled: true
+    forecastEnabled: false
+  vancouver-1:
+    name: "Vancouver"
+    description: "Center of Vancouver"
+    latitude: "49.286"
+    longitude: "-123.182"
+    currentEnabled: true
+    forecastEnabled: false
+    provider: "environment-canada"
+
+#

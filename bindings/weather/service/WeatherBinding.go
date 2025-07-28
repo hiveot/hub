@@ -46,7 +46,7 @@ func (svc *WeatherBinding) Poll() error {
 	var err error
 
 	// poll for the 'current' weather at the locations
-	svc.locationStore.ForEach(func(loc providers.WeatherLocationConfig) {
+	svc.locationStore.ForEach(func(loc config.WeatherLocation) {
 		// each location can have its own interval
 		currentPollCounter, found := svc.currentPoll[loc.ID]
 		currentInterval := loc.CurrentInterval
@@ -55,15 +55,17 @@ func (svc *WeatherBinding) Poll() error {
 		}
 		if !found || currentPollCounter >= currentInterval {
 			currentWeather, err2 := svc.defaultProvider.ReadCurrent(loc)
-			if err2 != nil {
-				err = err2
-			} else {
+			if err2 == nil {
 				svc.current[loc.ID] = currentWeather
 				slog.Info("Poll result",
 					slog.String("location", loc.ID),
 					slog.String("temp", currentWeather.Temperature),
 					slog.String("showers", currentWeather.Showers),
 				)
+				err2 = svc.ag.PubEvent(loc.ID, EventNameCurrentWeather, currentWeather)
+			}
+			if err2 != nil {
+				err = err2
 			}
 			currentPollCounter = 0
 		}
@@ -71,7 +73,7 @@ func (svc *WeatherBinding) Poll() error {
 		svc.currentPoll[loc.ID] = currentPollCounter
 	})
 	// poll for the 'forecast' weather at the locations
-	svc.locationStore.ForEach(func(loc providers.WeatherLocationConfig) {
+	svc.locationStore.ForEach(func(loc config.WeatherLocation) {
 		// each location can have its own interval
 		pollCounter, found := svc.forecastPoll[loc.ID]
 		forecastInterval := loc.ForecastInterval
@@ -102,16 +104,22 @@ func (svc *WeatherBinding) Poll() error {
 func (svc *WeatherBinding) Start(ag *messaging.Agent) error {
 	svc.ag = ag
 
+	// load the saved and add the pre-configured locations
 	err := svc.locationStore.Open()
-	if err != nil {
-		slog.Info("Starting heartBeat")
-		svc.stopFn = plugin.StartHeartbeat(time.Second*900, svc.heartBeat)
+	for id, loc := range svc.cfg.Locations {
+		loc.ID = id
+		_ = svc.locationStore.Add(loc)
 	}
+
 	if err == nil {
 		err = PublishBindingTD(ag)
 	}
 	if err == nil {
 		err = PublishLocationTDs(ag, svc.cfg, svc.locationStore)
+	}
+	if err == nil {
+		slog.Info("Starting heartBeat")
+		svc.stopFn = plugin.StartHeartbeat(time.Second*900, svc.heartBeat)
 	}
 	if err != nil {
 		svc.Stop()
@@ -120,7 +128,7 @@ func (svc *WeatherBinding) Start(ag *messaging.Agent) error {
 	return err
 }
 
-// heartbeat polls the EDS server every X seconds and publishes TD and value updates
+// heartbeat runs every second and publishes value updates at the right interval
 func (svc *WeatherBinding) heartBeat() {
 	err := svc.Poll()
 	if err != nil {

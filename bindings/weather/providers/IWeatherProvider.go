@@ -1,5 +1,7 @@
 package providers
 
+import "github.com/hiveot/hub/bindings/weather/config"
+
 // definitions to be implemented by weather service providers
 
 // CurrentWeather holds the weather provider response data
@@ -27,6 +29,6 @@ type ForecastWeather struct {
 
 type IWeatherProvider interface {
 	BaseURL() string
-	ReadCurrent(loc WeatherLocationConfig) (CurrentWeather, error)
-	ReadForecast(loc WeatherLocationConfig) (ForecastWeather, error)
+	ReadCurrent(loc config.WeatherLocation) (CurrentWeather, error)
+	ReadForecast(loc config.WeatherLocation) (ForecastWeather, error)
 }

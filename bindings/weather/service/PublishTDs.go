@@ -9,6 +9,9 @@ import (
 	"github.com/hiveot/hub/wot/td"
 )
 
+const EventNameCurrentWeather = "current"
+const EventNameForecastWeather = "forecast"
+
 // CreateBindingTD creates a Thing TD of this service
 // This binding exposes the TD of itself.
 func CreateBindingTD(serviceID string) *td.TD {
@@ -29,10 +32,10 @@ func CreateBindingTD(serviceID string) *td.TD {
 }
 
 // CreateTDOfLocation creates a Thing TD describing a weather location
-func CreateTDOfLocation(defaultCfg *config.WeatherConfig, cfg *providers.WeatherLocationConfig) *td.TD {
+func CreateTDOfLocation(defaultCfg *config.WeatherConfig, cfg *config.WeatherLocation) *td.TD {
 	thingID := cfg.ID
 	deviceType := vocab.ThingSensorEnvironment
-	title := cfg.LocationName
+	title := cfg.Name
 	tdoc := td.NewTD(thingID, title, deviceType)
 
 	prop := tdoc.AddProperty("currentEnabled", "Enable Current Weather",
@@ -90,8 +93,8 @@ func CreateTDOfLocation(defaultCfg *config.WeatherConfig, cfg *providers.Weather
 		vocab.WoTDataTypeString)
 	prop.Enum = []any{providers.OpenMeteoProviderID}
 
-	// this is what its about
-	ev := tdoc.AddEvent("current", "Current Weather", "Current weather",
+	// this event contains the weather forecast
+	ev := tdoc.AddEvent(EventNameCurrentWeather, "Current Weather", "Current weather",
 		&td.DataSchema{
 			Title:    "Weather Data",
 			Format:   "",
@@ -140,6 +143,53 @@ func CreateTDOfLocation(defaultCfg *config.WeatherConfig, cfg *providers.Weather
 				},
 			},
 		})
+
+	// this event contains the weather forecast
+	ev = tdoc.AddEvent(EventNameForecastWeather, "Weather Forecast", "7 Day Weather Forecast",
+		&td.DataSchema{
+			Title: "Forecast Data",
+			Type:  wot.DataTypeArray,
+			ArrayItems: &td.DataSchema{
+				Title: "Forecast",
+				// todo: only add properties whose forecast is included
+				Properties: map[string]*td.DataSchema{
+					"precipitation": {
+						Title: "Precipitation",
+						Unit:  vocab.UnitMilliMeter,
+						Type:  wot.DataTypeInteger,
+					},
+					"rain": {
+						Title: "Rain",
+						Unit:  vocab.UnitMilliMeter,
+						Type:  wot.DataTypeNumber,
+					},
+					"relativeHumidity": {
+						Title: "Relative Humidity",
+						Unit:  vocab.UnitPercent,
+						Type:  wot.DataTypeInteger,
+					},
+					"time": {
+						Title: "Forecast Time",
+						Type:  wot.DataTypeDateTime,
+					},
+					"temperature": {
+						Title: "Temperature",
+						Unit:  vocab.UnitCelcius,
+						Type:  wot.DataTypeNumber,
+					},
+					"windDirection": {
+						Title: "Wind Direction",
+						Unit:  vocab.UnitDegree,
+						Type:  wot.DataTypeInteger,
+					},
+					"windSpeed": {
+						Title: "Wind Speed",
+						Unit:  vocab.UnitMeterPerSecond,
+						Type:  wot.DataTypeNumber,
+					},
+				},
+			},
+		})
 	_ = ev
 
 	return tdoc
@@ -154,7 +204,7 @@ func PublishBindingTD(ag *messaging.Agent) error {
 
 // PublishLocationTDs publishes the TD of all locationStore
 func PublishLocationTDs(ag *messaging.Agent, defaultCfg *config.WeatherConfig, locationStore *LocationStore) (err error) {
-	locationStore.ForEach(func(loc providers.WeatherLocationConfig) {
+	locationStore.ForEach(func(loc config.WeatherLocation) {
 		err2 := PublishLocationTD(ag, defaultCfg, loc)
 		if err2 != nil {
 			err = err2
@@ -164,7 +214,7 @@ func PublishLocationTDs(ag *messaging.Agent, defaultCfg *config.WeatherConfig, l
 }
 
 // PublishLocationTD publishes the TD of the given location
-func PublishLocationTD(ag *messaging.Agent, defaultCfg *config.WeatherConfig, loc providers.WeatherLocationConfig) error {
+func PublishLocationTD(ag *messaging.Agent, defaultCfg *config.WeatherConfig, loc config.WeatherLocation) error {
 	tdoc := CreateTDOfLocation(defaultCfg, &loc)
 	err := ag.PubTD(tdoc)
 	return err

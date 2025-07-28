@@ -1,9 +1,10 @@
-package cmd
+package main
 
 import (
 	"github.com/hiveot/hub/bindings/weather/config"
 	"github.com/hiveot/hub/bindings/weather/service"
 	"github.com/hiveot/hub/lib/plugin"
+	"log/slog"
 	"path"
 )
 
@@ -11,7 +12,10 @@ import (
 func main() {
 	env := plugin.GetAppEnvironment("", true)
 	cfg := config.NewWeatherConfig()
-	_ = env.LoadConfig(&cfg)
+	err := env.LoadConfig(&cfg)
+	if err != nil {
+		slog.Error("Failed loading configuration", "err", err.Error())
+	}
 	storePath := path.Join(env.StoresDir, env.ClientID)
 
 	binding := service.NewWeatherBinding(storePath, cfg)

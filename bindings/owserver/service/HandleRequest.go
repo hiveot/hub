@@ -1,4 +1,3 @@
-// Package internal handles input set command
 package service
 
 import (

@@ -3,7 +3,7 @@ package weather_test
 import (
 	"fmt"
 	"github.com/hiveot/hub/bindings/weather/config"
-	providers2 "github.com/hiveot/hub/bindings/weather/providers"
+	"github.com/hiveot/hub/bindings/weather/providers"
 	"github.com/hiveot/hub/bindings/weather/service"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
@@ -16,17 +16,17 @@ import (
 	"time"
 )
 
-var testLocation1 = providers2.WeatherLocationConfig{
+var testLocation1 = config.WeatherLocation{
 	ID:              "Vancouver-1",
-	LocationName:    "Vancouver",
+	Name:            "Vancouver",
 	Latitude:        "49.286",
 	Longitude:       "-123.182",
 	CurrentEnabled:  true,
 	ForecastEnabled: true,
 }
-var testLocation2 = providers2.WeatherLocationConfig{
+var testLocation2 = config.WeatherLocation{
 	ID:              "Amsterdam-1",
-	LocationName:    "Amsterdam, NL",
+	Name:            "Amsterdam, NL",
 	Latitude:        "52.375009",
 	Longitude:       "4.895107",
 	CurrentEnabled:  true,
@@ -91,7 +91,7 @@ func TestPollDirect(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 
 	t1 := time.Now()
-	meteo := providers2.NewOpenMeteoProvider()
+	meteo := providers.NewOpenMeteoProvider()
 	current, err := meteo.ReadCurrent(testLocation1)
 	require.NoError(t, err)
 	t2 := time.Now()
@@ -113,8 +113,8 @@ func TestPollFromService(t *testing.T) {
 	svc := service.NewWeatherBinding(storePath, weatherConfig)
 	err := svc.Start(ag)
 	require.NoError(t, err)
-	err = svc.LocationStore().Add(&testLocation1)
-	err = svc.LocationStore().Add(&testLocation2)
+	err = svc.LocationStore().Add(testLocation1)
+	err = svc.LocationStore().Add(testLocation2)
 	require.NoError(t, err)
 
 	require.NoError(t, err)

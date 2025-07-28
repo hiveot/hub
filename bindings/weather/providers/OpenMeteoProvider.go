@@ -3,6 +3,7 @@ package providers
 import (
 	"errors"
 	"fmt"
+	"github.com/hiveot/hub/bindings/weather/config"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging/tputils"
 	jsoniter "github.com/json-iterator/go"
@@ -14,7 +15,7 @@ import (
 )
 
 // TODO: support reading simulation from file for testing
-const OpenMeteoProviderID = "OpenMeteo"
+const OpenMeteoProviderID = "open-meteo"
 const OpenMeteoBaseURL = "https://api.open-meteo.com/v1/forecast"
 
 // OpenMeteoProvider implementing IWeatherProvider
@@ -27,7 +28,7 @@ func (svc *OpenMeteoProvider) BaseURL() string {
 }
 
 // ReadCurrent requests the current weather from Open-Meteo provider
-func (svc *OpenMeteoProvider) ReadCurrent(config WeatherLocationConfig) (c CurrentWeather, err error) {
+func (svc *OpenMeteoProvider) ReadCurrent(config config.WeatherLocation) (c CurrentWeather, err error) {
 	var rawWeather []byte
 
 	// Simulation file
@@ -83,7 +84,7 @@ func (svc *OpenMeteoProvider) ReadCurrent(config WeatherLocationConfig) (c Curre
 	return c, err
 }
 
-func (svc *OpenMeteoProvider) ReadForecast(loc WeatherLocationConfig) (f ForecastWeather, err error) {
+func (svc *OpenMeteoProvider) ReadForecast(loc config.WeatherLocation) (f ForecastWeather, err error) {
 	return f, errors.New("not yet implemented")
 }
 

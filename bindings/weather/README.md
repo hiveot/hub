@@ -10,7 +10,7 @@ This integration is in development and breaking changes should be expected.
 
 ## Summary
 
-This integration requests the current weather for configured locations and publishes events on changes to environmental data. 
+This integration binding requests the current weather for configured locations and publishes events on changes to environmental data. 
 
 This periodically reads the current and forecasted weather for configured locations and weather provider. 
 
@@ -27,30 +27,33 @@ Current weather information includes:
 - wind speed
 - alerts
 
-- Forcast weather information includes:
-- short term forecast
+Forcast weather information includes:
+- 1 week forecast [todo]
 
-Configurations for:
-- locations
-- polling interval
+## Configuration
+
+Overrides for defaults are done in the weather.yaml configuration file. A default file is provided in the config folder.
+
+Locations can be managed through the actions 'add/remove location' and by setting their properties for name, latitude and longitude. [work in progress] 
 
 ## Dependencies
 
 This integration works with the [HiveOT Hub](https://github.com/hiveot/hub).
+This binding needs an internet connection to access the [Open-Meteo API](https://open-meteo.com/en/docs) server.
 
 
 ## Usage
 
-While this integration runs out of the box, some configuration is required:
-- This integration requires one or more locations whose weather information to capture. 
-- A 'Thing Definition' is generated for each valid location. The TD includes properties to enable/disable supported parameters.
+While this binding runs out of the box, some configuration is required:
+- The config/weather.yaml file can be used to change defaults and add weather locations
+- The binding actions can be used to add/remove locations 
+
+On startup a TD (Thing Description) document is published in the HiveOT directory for the binding and each of the locations. Events notify of weather updates and binding actions can be used to manage the locations. 
 
 Build and install with the hub plugins into the installation hiveot/plugins folder and start it using the launcher.
 
-Out of the box it will use the meteo api endpoint. An API-key is not needed for non-commercial usage.
-
-For commercial usage see open-meteo pricing at https://open-meteo.com/en/pricing
 
 ## Credits
 
-A big thank-you to [Open-Meteo](https://open-meteo.com/) for providing an easy to use API that is free for non-commercial usage.
+A big thank-you to [Open-Meteo](https://open-meteo.com/) for providing an easy to use API that is free for non-commercial usage. For commercial usage see open-meteo pricing at https://open-meteo.com/en/pricing
+
