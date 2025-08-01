@@ -11,6 +11,7 @@
  * @attr striped alternate background each row  (uses css)
  * @attr border include a border around the list
  * @attr gridClass the class to assign to the internal grid container element
+ * @attr noDataText optional row text to show when the table is empty
  *
  * Grid title row class:
  * @class title-row  to define the column headings and grid widths
@@ -32,6 +33,8 @@
  *  </h-grid-table>
  */
 const GRID_CLASS_ATTR = "gridClass"
+const GRID_NODATA_TEXT_ATTR = "nodata"
+
 const template = `
 <ul class="h-grid-table" >
     <slot>list empty slot content</slot>
@@ -122,7 +125,7 @@ class HGridTable extends HTMLElement {
 
     // striped and border work through css
     static get observedAttributes() {
-        return [GRID_CLASS_ATTR];
+        return [GRID_CLASS_ATTR, GRID_NODATA_TEXT_ATTR];
     }
 
     constructor() {
@@ -131,6 +134,7 @@ class HGridTable extends HTMLElement {
         this.dragEnterCounter = 0 // incr on enter, decr on leave
         this.titleRow = undefined
         this.gridContainer = undefined
+        this.noDataText = ""
     }
 
     // Create a stylesheet containing media queries for the grid-template-column.
@@ -299,6 +303,8 @@ class HGridTable extends HTMLElement {
     attributeChangedCallback(name, oldValue, newValue) {
         if (name === GRID_CLASS_ATTR) {
             // TODO
+        } else if (name === GRID_NODATA_TEXT_ATTR) {
+            this.noDataText = newValue
         }
     }
 
@@ -322,6 +328,7 @@ class HGridTable extends HTMLElement {
                 slot.replaceWith(...slotChildren);
             }
         }
+
         // finally assign the new template to this container element
         this.replaceChildren(templateEl.content);
         // this.replaceWith(templateEl.content)
@@ -342,7 +349,15 @@ class HGridTable extends HTMLElement {
             this.gridContainer.id = this.id + "-container"
         }
 
-            this.createStyleSheet();
+        // add a 'no data' if the table is empty (except for title)
+        let nrRows = this.gridContainer.children.length-1
+        if (nrRows <= 0 && this.noDataText) {
+            let noRowEl = document.createElement("li");
+            noRowEl.innerHTML = "<div style='grid-column:1/-1'>"+this.noDataText+"</div>"
+            this.gridContainer.appendChild(noRowEl)
+        }
+
+        this.createStyleSheet();
 
         const gridClassAttr = this.getAttribute(GRID_CLASS_ATTR)
         if (gridClassAttr) {
