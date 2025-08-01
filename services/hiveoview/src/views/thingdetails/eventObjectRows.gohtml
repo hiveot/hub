@@ -1,0 +1,42 @@
+<!-- display a row of an event object for each attribute-->
+{{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/history.HistoryTemplateData*/ -}}
+
+{{/*Objects have nested properties, return them as an array of individual interaction objects with history*/}}
+{{ $histTemplateData := . }}
+
+{{range $iout := .GetObjectValues}}
+
+	{{- /*auto reload row on event changes*/ -}}
+	<li>
+		{{/*	Icon*/}}
+		<div>{{/*icon*/}}</div>
+
+		{{/* Event Name*/}}
+		<div title="Name: {{.Name}}">
+			{{.Title}}
+		</div>
+
+		{{/*value*/}}
+		<div>
+		    {{/* Show the value itself. Render booleans as switches*/}}
+		    {{template "RenderOutputValue.gohtml" .}}
+		</div>
+
+		{{/*Description*/}}
+		<div>{{.Schema.Description}}</div>
+
+		{{/*	Timestamp*/}}
+		<div sse-swap="{{.ID}}/updated"
+		     hx-target="this"
+		     hx-swap="innerHTML"
+				  style="white-space:nowrap"
+			>{{datetime $histTemplateData.TimestampStr "S" }}
+		</div>
+
+		{{/*history chart */}}
+		<div>
+			n/a
+		</div>
+	</li>
+
+{{end}}

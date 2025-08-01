@@ -7,7 +7,7 @@
 
 		{{/* Auto-update chart when looking at today*/}}
     {{if eq .CompareToday 0}}
-	      sse-swap="{{.AffordanceType}}/{{.ThingID}}/{{.Name}}"
+	      sse-swap="{{.ID}}"
 	      hx-target="this"
 	      hx-swap="none"
         {{/*addValue uses the SSE event to add a value to the chart*/}}
@@ -16,8 +16,8 @@
 >
 	{{/* inject the json encoded array with data to show as {x:time,y:value} here */}}
 	<data key="{{.Name}}"
- 			 title="{{.DataSchema.Title}}"
-		    unit="{{.UnitSymbol}}"
+ 			 title="{{.Title}}"
+		    unit="{{.InteractionOutput.UnitSymbol}}"
 	      stepped="{{.Stepped}}">
 			{{ .AsJSON }}
 	</data>

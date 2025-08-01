@@ -210,10 +210,8 @@ func (ct *ConsumedThing) GetPropertyOutput(name string) (iout *InteractionOutput
 	return iout
 }
 
-// GetValue returns the interaction output of the latest event or property value.
-//
-// If name is an event it is returned first, otherwise it falls back to property.
-//
+// GetValue returns the interaction output of the latest received event or property value.
+// To refresh the value use ReadValue() instead
 // This returns an empty InteractionOutput if no value is found
 func (ct *ConsumedThing) GetValue(affType messaging.AffordanceType, name string) (iout *InteractionOutput) {
 	var found bool

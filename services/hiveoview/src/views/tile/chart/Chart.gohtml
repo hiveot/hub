@@ -10,31 +10,31 @@
     {{/* Each source is a line*/}}
     {{range .Tile.Sources}}
 
-    {{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/history.HistoryTemplateData*/ -}}
-    {{$hist := $.GetHistory .AffordanceType .ThingID .Name}}
+	    {{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/history.HistoryTemplateData*/ -}}
+	    {{$hist := $.GetHistory .AffordanceType .ThingID .Name}}
 
-    {{if $hist}}
-	    {{/* inject the json encoded array with data to show as {x:time,y:value} here */}}
-		  {{/* The chart type can be overridden per data set*/}}
-			<data title="{{.Title}}"
-			      unit="{{$hist.UnitSymbol}}"
-			      key="{{.Title}}"
-			      chart-type="{{$.Tile.TileType}}"
-			      stepped="{{$hist.Stepped}}"
-{{/*			      todo:support labels for y-axis*/}}
-{{/*			      enum="{{$hist.schema.enum}}"*/}}
+	    {{if $hist}}
+		    {{/* inject the json encoded array with data to show as {x:time,y:value} here */}}
+			  {{/* The chart type can be overridden per data set*/}}
+				<data title="{{.Title}}"
+				      unit="{{$hist.UnitSymbol}}"
+				      key="{{.Title}}"
+				      chart-type="{{$.Tile.TileType}}"
+				      stepped="{{$hist.Stepped}}"
+	{{/*			      todo:support labels for y-axis*/}}
+	{{/*			      enum="{{$hist.schema.enum}}"*/}}
 
-	          {{/* Auto-update chart when looking at today*/}}
-	          {{if eq $hist.CompareToday 0}}
-							sse-swap="{{.AffordanceType}}/{{.ThingID}}/{{.Name}}"
-							hx-target="this"
-							hx-swap="none"
-							hx-on::sse-before-message="updateChart(event, '{{.Title}}')"
-	          {{end}}
-			>
-	        {{ $hist.AsJSON }}
-			</data>
-	  {{end}}
+		          {{/* Auto-update chart when looking at today*/}}
+		          {{if eq $hist.CompareToday 0}}
+								sse-swap="{{.AffordanceType}}/{{.ThingID}}/{{.Name}}"
+								hx-target="this"
+								hx-swap="none"
+								hx-on::sse-before-message="updateChart(event, '{{.Title}}')"
+		          {{end}}
+				>
+		        {{ $hist.AsJSON }}
+				</data>
+		  {{end}}
 
 		{{end}}
 	</h-timechart>

@@ -102,39 +102,45 @@ func CreateTDOfLocation(defaultCfg *config.WeatherConfig, cfg *config.WeatherLoc
 			Type:     wot.DataTypeObject,
 			Properties: map[string]*td.DataSchema{
 				"pressureMsl": {
-					Title: "Sea Level Pressure",
-					Unit:  vocab.UnitHectoPascal, // default hpa (=mbar)
-					Type:  wot.DataTypeNumber,
+					Title:       "Sea Level Pressure",
+					Description: "Sea level equivalent pressure at " + tdoc.Title,
+					Unit:        vocab.UnitHectoPascal, // default hpa (=mbar)
+					Type:        wot.DataTypeNumber,
 				},
 				"pressureSurface": {
-					Title: "Surface Pressure",
-					Unit:  vocab.UnitHectoPascal,
-					Type:  wot.DataTypeNumber,
+					Title:       "Surface Pressure",
+					Description: "Surface pressure at " + tdoc.Title,
+					Unit:        vocab.UnitHectoPascal,
+					Type:        wot.DataTypeNumber,
 				},
 				"precipitation": {
-					Title: "Precipitation",
-					Unit:  vocab.UnitMilliMeter,
-					Type:  wot.DataTypeInteger,
+					Title:       "Precipitation",
+					Description: "Precipitation",
+					Unit:        vocab.UnitMilliMeter,
+					Type:        wot.DataTypeInteger,
 				},
 				"rain": {
-					Title: "Rain",
-					Unit:  vocab.UnitMilliMeter,
-					Type:  wot.DataTypeNumber,
+					Title:       "Rain",
+					Description: "Rain",
+					Unit:        vocab.UnitMilliMeter,
+					Type:        wot.DataTypeNumber,
 				},
-				"relativeHumidity": {
+				"humidity": {
 					Title: "Relative Humidity",
 					Unit:  vocab.UnitPercent,
 					Type:  wot.DataTypeInteger,
 				},
 				"temperature": {
-					Title: "Temperature",
-					Unit:  vocab.UnitCelcius,
-					Type:  wot.DataTypeNumber,
+					Title:       "Temperature",
+					Description: "Temperature at 10 meter",
+					Unit:        vocab.UnitCelcius,
+					Type:        wot.DataTypeNumber,
 				},
 				"windDirection": {
-					Title: "Wind Direction",
-					Unit:  vocab.UnitDegree,
-					Type:  wot.DataTypeInteger,
+					Title:       "Wind Direction",
+					Description: "Wind heading at 10 meter in 0-359 degree",
+					Unit:        vocab.UnitDegree,
+					Type:        wot.DataTypeInteger,
 				},
 				"windSpeed": {
 					Title: "Wind Speed",

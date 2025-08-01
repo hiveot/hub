@@ -6,6 +6,7 @@ import (
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/tputils"
+	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
@@ -39,14 +40,22 @@ type RenderTileTemplateData struct {
 // GetHistory returns the 24 hour history for the given thing affordance.
 // This truncates the result if there are too many values in the range.
 // The max amount of values is the limit set in historyapi.DefaultLimit (1000)
-func (dt RenderTileTemplateData) GetHistory(affType messaging.AffordanceType, thingID string, name string) *history.HistoryTemplateData {
+func (dt RenderTileTemplateData) GetHistory(
+	affType messaging.AffordanceType, thingID string, name string) *history.HistoryTemplateData {
+	
 	timestamp := time.Now().Local()
 	ct, err := dt.cts.Consume(thingID)
 	if err != nil {
 		return nil
 	}
 	duration, _ := time.ParseDuration("-24h")
-	hsd, err := history.NewHistoryTemplateData(ct, affType, name, timestamp, duration)
+	iout := ct.GetValue(affType, name)
+	hist := historyclient.NewReadHistoryClient(ct.GetConsumer())
+	values, itemsRemaining, err := hist.ReadHistory(
+		iout.ThingID, iout.Name, timestamp, duration, 500)
+	_ = itemsRemaining
+	_ = err // ignore for now
+	hsd, err := history.NewHistoryTemplateData(iout, values, timestamp, duration)
 	_ = err
 	return hsd
 }

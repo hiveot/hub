@@ -6,6 +6,7 @@ import (
 	"github.com/hiveot/hub/lib/consumedthing"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/tputils"
+	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
@@ -44,8 +45,15 @@ type ThingDetailsTemplateData struct {
 func (dt *ThingDetailsTemplateData) GetEventHistory(name string) *history.HistoryTemplateData {
 	timestamp := time.Now().Local()
 	duration := time.Hour * time.Duration(-24)
-	hsd, err := history.NewHistoryTemplateData(dt.CT,
-		messaging.AffordanceTypeEvent, name, timestamp, duration)
+	//iout := dt.CT.ReadEvent(name)
+	iout := dt.CT.GetValue(messaging.AffordanceTypeEvent, name)
+
+	hist := historyclient.NewReadHistoryClient(dt.CT.GetConsumer())
+	values, itemsRemaining, err := hist.ReadHistory(
+		iout.ThingID, iout.Name, timestamp, duration, 500)
+	_ = itemsRemaining
+	_ = err // ignore for now
+	hsd, err := history.NewHistoryTemplateData(iout, values, timestamp, duration)
 	_ = err
 	return hsd
 }

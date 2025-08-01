@@ -1,0 +1,35 @@
+<!-- a row in the event list grid-table-->
+{{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/history.HistoryTemplateData*/ -}}
+
+{{- /*TODO: auto reload row on event changes*/ -}}
+<li>
+	{{/*	Icon*/}}
+	<div>{{/*icon*/}}</div>
+
+	{{/* Event Name*/}}
+	<div title="Name: {{.Name}}">
+		{{.Title}}
+	</div>
+
+	{{/*value*/}}
+	<div>
+      {{/* Show the value itself. Render booleans as switches*/}}
+      {{template "RenderOutputValue.gohtml" . }}
+	</div>
+
+	{{/*Description*/}}
+	<div>{{.InteractionOutput.Schema.Description}}</div>
+
+  {{/*	Timestamp*/}}
+	<div sse-swap="{{.ID}}/updated"
+	     hx-target="this"
+	     hx-swap="innerHTML"
+			  style="white-space:nowrap"
+		>{{datetime .TimestampStr "S" }}
+	</div>
+
+  {{/*history chart */}}
+	<div style="height:200px">
+		{{template "historyChart.gohtml" . }}
+	</div>
+</li>

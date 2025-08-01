@@ -1,5 +1,4 @@
 <!--Thing event list-->
-<!--@param '.' object of type thing.DetailsTemplateData -->
 {{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/thingdetails.ThingDetailsTemplateData*/ -}}
 
 <h-grid-table id="event-list-id" striped border>
@@ -15,39 +14,11 @@
 
 	{{range $name := .EventNames}}
     {{$iout := $.CT.GetValue "event" $name}}
-
-		{{- /*auto reload row on event changes*/ -}}
-		<li>
-			{{/*	Icon*/}}
-			<div>{{/*icon*/}}</div>
-
-			{{/* Event Name*/}}
-			<div title="Name: {{$name}}">
-				{{$iout.Title}}
-			</div>
-
-			{{/*value*/}}
-			<div>
-          {{/* Show the value itself. Render booleans as switches*/}}
-          {{template "RenderOutputValue.gohtml" $iout}}
-			</div>
-
-			{{/*Description*/}}
-			<div>{{$iout.Schema.Description}}</div>
-
-      {{/*	Timestamp*/}}
-			<div sse-swap="{{$iout.AffordanceType}}/{{$.ThingID}}/{{$name}}/updated"
-			     hx-target="this"
-			     hx-swap="innerHTML"
-					  style="white-space:nowrap"
-				>{{datetime $iout.Timestamp "S" }}
-			</div>
-
-	    {{/*history chart */}}
-			<div style="height:200px">
-				{{template "historyChart.gohtml" $.GetEventHistory $name }}
-			</div>
-		</li>
+    {{if eq $iout.Schema.Type "object" }}
+      {{template "eventObjectRows.gohtml" $.GetEventHistory $name}}
+    {{else}}
+	    {{template "eventListRow.gohtml" $.GetEventHistory $name}}
+	  {{end}}
 	{{end}}
 
 	{{if not .CT.TD.Events}}

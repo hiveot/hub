@@ -5,6 +5,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"net/http"
@@ -54,8 +55,16 @@ func RenderHistoryPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	duration := time.Second * time.Duration(durationSec)
-	data, err := NewHistoryTemplateData(ct, messaging.AffordanceType(affType), name, timestamp, duration)
+	iout := ct.GetValue(messaging.AffordanceType(affType), name)
+	hist := historyclient.NewReadHistoryClient(ct.GetConsumer())
+	values, itemsRemaining, err := hist.ReadHistory(
+		iout.ThingID, iout.Name, timestamp, duration, 500)
+	_ = itemsRemaining
 
+	var data *HistoryTemplateData
+	if err == nil {
+		data, err = NewHistoryTemplateData(iout, values, timestamp, duration)
+	}
 	if err != nil {
 		sess.WriteError(w, err, 0)
 		return

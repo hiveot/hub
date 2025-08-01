@@ -7,20 +7,23 @@ import (
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/tputils"
-	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/hiveot/hub/services/hiveoview/src"
-	"github.com/hiveot/hub/wot/td"
+	"log/slog"
+	"sort"
 	"time"
 )
 
 // HistoryTemplateData holds the data for rendering a history table or graph
 type HistoryTemplateData struct {
-	AffordanceType messaging.AffordanceType
-	ThingID        string
-	Title          string // allow override to data description
-	Name           string
-	DataSchema     td.DataSchema // dataschema of event/property key
-	UnitSymbol     string        // unit of this data
+	// history of this interaction output
+	consumedthing.InteractionOutput
+
+	//AffordanceType messaging.AffordanceType
+	Title string // allow override to data description
+
+	// property or event id as published
+	//  {affordanceType}/{thingID}/{name}/
+	//ID string //
 
 	// history information
 	Timestamp      time.Time
@@ -50,7 +53,7 @@ func (ht HistoryTemplateData) AsJSON() string {
 
 	for _, m := range ht.Values {
 		yValue := m.Data
-		if ht.DataSchema.Type == vocab.WoTDataTypeBool {
+		if ht.Schema.Type == vocab.WoTDataTypeBool {
 			boolValue := tputils.DecodeAsBool(m.Data)
 			yValue = 0
 			if boolValue {
@@ -63,6 +66,45 @@ func (ht HistoryTemplateData) AsJSON() string {
 	}
 	dataJSON, _ := json.Marshal(dataList)
 	return string(dataJSON)
+}
+
+// GetObjectValues returns the history as an array of interaction objects
+// If this is an object then return an element for each object property, otherwise
+// return an array with 1 element.
+func (ht HistoryTemplateData) GetObjectValues() []consumedthing.InteractionOutput {
+	if ht.Schema.Type != "object" {
+		return []consumedthing.InteractionOutput{ht.InteractionOutput}
+	}
+
+	objectValues := map[string]any{}
+	objectAsJson, err := json.Marshal(ht.Value.Raw)
+	if err == nil {
+		err = json.Unmarshal(objectAsJson, &objectValues)
+	}
+	values := make([]consumedthing.InteractionOutput, 0, len(objectValues))
+
+	if err != nil {
+		slog.Error("failed decoding object", "err", err.Error())
+		return values
+	}
+	// each object property is a row in the list
+	// history of object values is currently not supported
+	for name, schema := range ht.Schema.Properties {
+		raw, found := objectValues[name]
+		_ = found
+		value := consumedthing.NewDataSchemaValue(raw)
+
+		iout := ht.InteractionOutput
+		iout.Title = ht.Title + " - " + schema.Title
+		iout.Name = name
+		iout.Schema = *schema
+		iout.Value = value
+		values = append(values, iout)
+	}
+	sort.Slice(values, func(i, j int) bool {
+		return values[i].Title < values[j].Title
+	})
+	return values
 }
 
 // NextDay return the time +1 day
@@ -92,46 +134,43 @@ func (ht HistoryTemplateData) CompareToday() int {
 
 // NewHistoryTemplateData reads the value history for the given time range
 //
-//	ct is the consumed thing to read the data from
-//	affType affordance type
-//	name of the event or property in the TD
+//	iout is the initeraction output to display
+//	values are the historical values to display
 //	timestamp of the end-time of the history range
 //	duration to read (negative for history)
-func NewHistoryTemplateData(ct *consumedthing.ConsumedThing,
-	affType messaging.AffordanceType, name string, timestamp time.Time, duration time.Duration) (
+func NewHistoryTemplateData(
+	iout *consumedthing.InteractionOutput,
+	values []*messaging.ThingValue,
+	timestamp time.Time, duration time.Duration) (
 	data *HistoryTemplateData, err error) {
 
 	hs := HistoryTemplateData{
-		AffordanceType: affType,
-		ThingID:        ct.ThingID,
-		Name:           name,
-		Title:          ct.Title,
-		Timestamp:      timestamp,
+		InteractionOutput: *iout,
+		//ID:                iout.ID,
+		Timestamp: timestamp,
 		// chart expects ISO timestamp: yyyy-mm-ddTHH:MM:SS.sss-07:00
 		TimestampStr:   utils.FormatUTCMilli(timestamp),
 		DurationSec:    int(duration.Seconds()),
 		Stepped:        false,
-		Values:         nil,
+		Values:         values,
 		ItemsRemaining: false,
 	}
 	// Get the current schema for the value to show
-	iout := ct.GetValue(affType, name)
+	//iout := ct.GetValue(affType, name)
 
-	hs.DataSchema = iout.Schema
-	hs.UnitSymbol = iout.UnitSymbol()
-	hs.Title = iout.Title + " of " + ct.Title
-	hs.DataSchema.Title = hs.Title
+	//hs.DataSchema = iout.Schema
+	//hs.UnitSymbol = iout.UnitSymbol()
+	hs.Title = iout.Title //+ " of " + ct.Title
+	//hs.DataSchema.Title = hs.Title
 	hs.Stepped = iout.Schema.Type == vocab.WoTDataTypeBool
 
 	// TODO: (if needed) if items remaining, get the rest in an additional call
-	//hs.Values, hs.ItemsRemaining, err = ct.ReadHistory(name, timestamp, duration)
-
-	hist := historyclient.NewReadHistoryClient(ct.GetConsumer())
-	hs.Values, hs.ItemsRemaining, err = hist.ReadHistory(
-		ct.ThingID, name, timestamp, duration, 500)
+	//hist := historyclient.NewReadHistoryClient(ct.GetConsumer())
+	//hs.Values, hs.ItemsRemaining, err = hist.ReadHistory(
+	//	iout.ThingID, iout.Name, timestamp, duration, 500)
 
 	// Add the URL paths for navigating around the history
-	pathParams := map[string]string{"affordanceType": string(affType), "thingID": ct.ThingID, "name": name}
+	pathParams := map[string]string{"affordanceType": string(iout.AffordanceType), "thingID": iout.ThingID, "name": iout.Name}
 	prevDayTime := hs.PrevDay().Format(time.RFC3339)
 	nextDayTime := hs.NextDay().Format(time.RFC3339)
 	todayTime := time.Now().Format(time.RFC3339)

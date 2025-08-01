@@ -1,6 +1,7 @@
 package consumedthing
 
 import (
+	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/tputils"
@@ -17,9 +18,14 @@ type InteractionOutputMap map[string]*InteractionOutput
 // might want to do some performance and resource benchmarking. What is the cost
 // and efficiency of using this io in an application vs getting raw data from a server?
 type InteractionOutput struct {
+	// ID of the interaction output in a format that is internally used to identify
+	// properties, events and actions: {affordanceType}/{ThingID}/{Name}
+	// (Also used by the hiveoview server to notify of updates using SSE)
+	ID string
+
 	// ID of the Thing whose output is exposed
 	ThingID string
-	// The property, event or action affordance name
+	// Name of the property, event or action affordance name
 	Name string
 	// Title with the human name provided by the interaction affordance
 	Title string
@@ -126,12 +132,13 @@ func NewInteractionOutputFromActionStatus(
 // NewInteractionOutput creates a new immutable interaction output from the
 // affordance type and raw value.
 //
-//	tdi TD instance whose output this is
+//	ct Consumed Thing instance whose output this belongs to
 //	affType is one of AffordanceTypeAction, event or property
 //	name is the interaction affordance name the output belongs to
 //	raw is the raw data
 //	updated is the timestamp the data is last updated
-func NewInteractionOutput(ct *ConsumedThing, affType messaging.AffordanceType, name string, raw any, updated string) *InteractionOutput {
+func NewInteractionOutput(ct *ConsumedThing,
+	affType messaging.AffordanceType, name string, raw any, updated string) *InteractionOutput {
 
 	var schema *td.DataSchema
 	var title string
@@ -173,6 +180,7 @@ func NewInteractionOutput(ct *ConsumedThing, affType messaging.AffordanceType, n
 		title = schema.Title
 	}
 	io := &InteractionOutput{
+		ID:             fmt.Sprintf("%s/%s/%s", affType, ct.ThingID, name),
 		AffordanceType: affType,
 		ThingID:        ct.ThingID,
 		Name:           name,
