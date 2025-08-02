@@ -1,7 +1,9 @@
 package service
 
 import (
+	"fmt"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/messaging/tputils/net"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/wot/td"
@@ -9,8 +11,8 @@ import (
 	"log/slog"
 )
 
-// CreateHiveoviewTD creates a new Thing TD document describing the service capability
-func (svc *HiveoviewService) CreateHiveoviewTD() *td.TD {
+// CreateServiceTD creates a new Thing TD document for this service
+func (svc *HiveoviewService) CreateServiceTD() *td.TD {
 	title := "Web Server"
 	deviceType := vocab.ThingService
 	tdi := td.NewTD(src.HiveoviewServiceID, title, deviceType)
@@ -22,9 +24,11 @@ func (svc *HiveoviewService) CreateHiveoviewTD() *td.TD {
 			//AtType: vocab.SessionCount,
 			Type: vocab.WoTDataTypeInteger,
 		})
-
-	tdi.AddProperty(vocab.PropNetPort, vocab.PropNetPort,
-		"UI Port", vocab.WoTDataTypeInteger)
+	myAddress := fmt.Sprintf("%s:%d", net.GetOutboundIP("").String(), svc.port)
+	prop := tdi.AddProperty(vocab.PropNetPort, "Server Listening Port",
+		fmt.Sprintf("Web server listening port (for example: %d in https://%s)", svc.port, myAddress),
+		vocab.WoTDataTypeInteger)
+	prop.AtType = vocab.PropNetPort
 
 	return tdi
 }
@@ -32,7 +36,7 @@ func (svc *HiveoviewService) CreateHiveoviewTD() *td.TD {
 // PublishServiceTD create and publish the TD of the hiveoview service
 func (svc *HiveoviewService) PublishServiceTD() error {
 
-	myTD := svc.CreateHiveoviewTD()
+	myTD := svc.CreateServiceTD()
 	tdJSON, _ := jsoniter.MarshalToString(myTD)
 	err := digitwin.ThingDirectoryUpdateTD(svc.ag.Consumer, tdJSON)
 	//err := svc.ag.PubTD(myTD)

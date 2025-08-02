@@ -95,6 +95,7 @@ type WebClientSession struct {
 }
 
 // Consume is short for consumedThingSession.Consume()
+// This returns nil with an error if the thing TD cannot be found
 func (sess *WebClientSession) Consume(
 	thingID string) (ct *consumedthing.ConsumedThing, err error) {
 	return sess.ctDir.Consume(thingID)

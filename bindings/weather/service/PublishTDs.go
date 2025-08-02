@@ -9,9 +9,6 @@ import (
 	"github.com/hiveot/hub/wot/td"
 )
 
-const EventNameCurrentWeather = "current"
-const EventNameForecastWeather = "forecast"
-
 // CreateBindingTD creates a Thing TD of this service
 // This binding exposes the TD of itself.
 func CreateBindingTD(serviceID string) *td.TD {
@@ -37,6 +34,7 @@ func CreateTDOfLocation(defaultCfg *config.WeatherConfig, cfg *config.WeatherLoc
 	deviceType := vocab.ThingSensorEnvironment
 	title := cfg.Name
 	tdoc := td.NewTD(thingID, title, deviceType)
+	tdoc.Description = "Current weather for " + cfg.Name
 
 	prop := tdoc.AddProperty("currentEnabled", "Enable Current Weather",
 		"Enable read the current weather",
@@ -93,109 +91,60 @@ func CreateTDOfLocation(defaultCfg *config.WeatherConfig, cfg *config.WeatherLoc
 		vocab.WoTDataTypeString)
 	prop.Enum = []any{providers.OpenMeteoProviderID}
 
-	// this event contains the weather forecast
-	ev := tdoc.AddEvent(EventNameCurrentWeather, "Current Weather", "Current weather",
+	// Events with the current weather
+
+	ev := tdoc.AddEvent("humidity", "Relative Humidity", "",
 		&td.DataSchema{
-			Title:    "Weather Data",
-			Format:   "",
-			ReadOnly: true,
-			Type:     wot.DataTypeObject,
-			Properties: map[string]*td.DataSchema{
-				"pressureMsl": {
-					Title:       "Sea Level Pressure",
-					Description: "Sea level equivalent pressure at " + tdoc.Title,
-					Unit:        vocab.UnitHectoPascal, // default hpa (=mbar)
-					Type:        wot.DataTypeNumber,
-				},
-				"pressureSurface": {
-					Title:       "Surface Pressure",
-					Description: "Surface pressure at " + tdoc.Title,
-					Unit:        vocab.UnitHectoPascal,
-					Type:        wot.DataTypeNumber,
-				},
-				"precipitation": {
-					Title:       "Precipitation",
-					Description: "Precipitation",
-					Unit:        vocab.UnitMilliMeter,
-					Type:        wot.DataTypeInteger,
-				},
-				"rain": {
-					Title:       "Rain",
-					Description: "Rain",
-					Unit:        vocab.UnitMilliMeter,
-					Type:        wot.DataTypeNumber,
-				},
-				"humidity": {
-					Title: "Relative Humidity",
-					Unit:  vocab.UnitPercent,
-					Type:  wot.DataTypeInteger,
-				},
-				"temperature": {
-					Title:       "Temperature",
-					Description: "Temperature at 10 meter",
-					Unit:        vocab.UnitCelcius,
-					Type:        wot.DataTypeNumber,
-				},
-				"windDirection": {
-					Title:       "Wind Direction",
-					Description: "Wind heading at 10 meter in 0-359 degree",
-					Unit:        vocab.UnitDegree,
-					Type:        wot.DataTypeInteger,
-				},
-				"windSpeed": {
-					Title: "Wind Speed",
-					Unit:  vocab.UnitMeterPerSecond,
-					Type:  wot.DataTypeNumber,
-				},
-			},
+			Unit: vocab.UnitPercent,
+			Type: wot.DataTypeInteger,
 		})
 
-	// this event contains the weather forecast
-	ev = tdoc.AddEvent(EventNameForecastWeather, "Weather Forecast", "7 Day Weather Forecast",
+	ev = tdoc.AddEvent("precipitation", "Precipitation",
+		"Rain or snow precipiation",
 		&td.DataSchema{
-			Title: "Forecast Data",
-			Type:  wot.DataTypeArray,
-			ArrayItems: &td.DataSchema{
-				Title: "Forecast",
-				// todo: only add properties whose forecast is included
-				Properties: map[string]*td.DataSchema{
-					"precipitation": {
-						Title: "Precipitation",
-						Unit:  vocab.UnitMilliMeter,
-						Type:  wot.DataTypeInteger,
-					},
-					"rain": {
-						Title: "Rain",
-						Unit:  vocab.UnitMilliMeter,
-						Type:  wot.DataTypeNumber,
-					},
-					"relativeHumidity": {
-						Title: "Relative Humidity",
-						Unit:  vocab.UnitPercent,
-						Type:  wot.DataTypeInteger,
-					},
-					"time": {
-						Title: "Forecast Time",
-						Type:  wot.DataTypeDateTime,
-					},
-					"temperature": {
-						Title: "Temperature",
-						Unit:  vocab.UnitCelcius,
-						Type:  wot.DataTypeNumber,
-					},
-					"windDirection": {
-						Title: "Wind Direction",
-						Unit:  vocab.UnitDegree,
-						Type:  wot.DataTypeInteger,
-					},
-					"windSpeed": {
-						Title: "Wind Speed",
-						Unit:  vocab.UnitMeterPerSecond,
-						Type:  wot.DataTypeNumber,
-					},
-				},
-			},
+			Unit: vocab.UnitMilliMeter,
+			Type: wot.DataTypeInteger,
 		})
+
+	ev = tdoc.AddEvent("pressureMsl", "Sea Level Pressure",
+		"Sea level equivalent pressure at "+tdoc.Title,
+		&td.DataSchema{
+			Unit: vocab.UnitHectoPascal, // default hpa (=mbar)
+			Type: wot.DataTypeNumber,
+		})
+	ev = tdoc.AddEvent("pressureSurface", "Surface Pressure",
+		"Surface pressure at "+tdoc.Title,
+		&td.DataSchema{
+			Unit: vocab.UnitHectoPascal,
+			Type: wot.DataTypeNumber,
+		})
+
+	ev = tdoc.AddEvent("rain", "Rain", "Rainfall amount",
+		&td.DataSchema{
+			Unit: vocab.UnitMilliMeter,
+			Type: wot.DataTypeNumber,
+		})
+
+	ev = tdoc.AddEvent("temperature", "Temperature",
+		"Temperature at 10 meter",
+		&td.DataSchema{
+			Unit: vocab.UnitCelcius,
+			Type: wot.DataTypeNumber,
+		})
+
+	ev = tdoc.AddEvent("windDirection", "Wind Direction",
+		"Wind heading at 10 meter in 0-359 degree",
+		&td.DataSchema{
+			Unit: vocab.UnitDegree,
+			Type: wot.DataTypeInteger,
+		})
+
+	ev = tdoc.AddEvent("windSpeed", "Wind Speed", "",
+		&td.DataSchema{
+			Unit: vocab.UnitMeterPerSecond,
+			Type: wot.DataTypeNumber,
+		})
+
 	_ = ev
 
 	return tdoc

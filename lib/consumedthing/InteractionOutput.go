@@ -11,7 +11,14 @@ import (
 
 type InteractionOutputMap map[string]*InteractionOutput
 
-// InteractionOutput to expose the data returned from WoT Interactions to applications.
+// NoValue contains the empty interaction output
+// Intended to use when an instance is needed but not known.
+// This should be treated as immutable and can be compared using pointers.
+var noValue = &InteractionOutput{Schema: td.NoSchema()}
+
+func NoValue() *InteractionOutput { return noValue }
+
+// InteractionOutput contains the schema and value returned from WoT Interactions.
 // Use NewInteractionOutput to initialize
 //
 // TODO: this seems like a whole lot of processing just to get a value...
@@ -32,7 +39,7 @@ type InteractionOutput struct {
 
 	// Schema describing the data from property, event or action affordance
 	// This is an empty schema without type, if none is known
-	Schema td.DataSchema
+	Schema *td.DataSchema
 
 	// decoded data in its native format as described by the schema
 	// eg string, int, array, object
@@ -62,6 +69,16 @@ type InteractionOutput struct {
 // Substr is a simple helper that returns a substring of the given input
 func (iout *InteractionOutput) Substr(data any, maxLen int) string {
 	text := tputils.DecodeAsString(data, maxLen)
+	return text
+}
+
+// ToString returns the value and unit as text for presentation purposes
+// This includes the unit symbol if schema has it defined.
+func (iout *InteractionOutput) ToString() string {
+	text := iout.Value.Text()
+	if iout.Schema.Unit != "" {
+		text = text + " " + iout.UnitSymbol()
+	}
 	return text
 }
 
@@ -186,7 +203,7 @@ func NewInteractionOutput(ct *ConsumedThing,
 		Name:           name,
 		Title:          title,
 		Timestamp:      updated,
-		Schema:         *schema,
+		Schema:         schema,
 		Value:          NewDataSchemaValue(raw),
 	}
 

@@ -211,8 +211,8 @@ func (ct *ConsumedThing) GetPropertyOutput(name string) (iout *InteractionOutput
 }
 
 // GetValue returns the interaction output of the latest received event or property value.
-// To refresh the value use ReadValue() instead
-// This returns an empty InteractionOutput if no value is found
+// To refresh the value use ReadValue() instead.
+// Note: This returns an NoValue() InteractionOutput if name is not known
 func (ct *ConsumedThing) GetValue(affType messaging.AffordanceType, name string) (iout *InteractionOutput) {
 	var found bool
 
@@ -228,12 +228,12 @@ func (ct *ConsumedThing) GetValue(affType messaging.AffordanceType, name string)
 
 	_ = found
 	if iout == nil {
-		// not a known value so create an empty io
-		// TODO: should this lookup a schema from the TD?
+		// not a known value so create an empty io with NoSchmea
 		iout = &InteractionOutput{
 			ThingID: ct.tdi.ID,
 			Name:    name,
 			Value:   DataSchemaValue{Raw: "ConsumedThing is missing data"},
+			Schema:  td.NoSchema(),
 		}
 	}
 	return iout

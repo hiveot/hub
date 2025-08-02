@@ -1,3 +1,4 @@
+
 {{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/tile.RenderSelectSourcesTemplateData*/}}
 <h-modal show showClose style="z-index:99">
 	<article>
@@ -30,6 +31,7 @@
 
 
 								<!--=== for EventAffordance in .TD ===-->
+								{{if .Events}}
 								<h-grid-table id="event-sources-id" striped border>
                     {{/* Header*/}}
 									<li>
@@ -37,57 +39,34 @@
 										<div width="1fr">Value</div>
 										<div class="h-show-md">Updated</div>
 									</li>
+										{{/*TODO: sort event by name*/}}
                     {{range $k,$aff := .Events}}
-                        {{- /*gotype: github.com/hiveot/hub/wot/tdd.EventAffordance*/ -}}
-												<li>
-													<div>
-                              {{/* hx-get the html of the source and inject (hx-target) it in the edit tile dialog*/}}
-														<a href="#"
-														   hx-swap="beforebegin"
-														   hx-trigger="click"
-														   hx-target="#insert-tile-sources-here"
-														   hx-get="/tile/event/{{$thing.ID}}/{{$k}}/sourceRow"
-														   onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
-														>
-                                {{.Title}}
-														</a>
-													</div>
-													<div>{{$data.GetEventValue $thing.ID $k}}</div>
-													<div>{{$data.GetEventUpdated  $thing.ID $k}}</div>
-												</li>
-                    {{end}}
+		                    {{$iout := $data.GetEventValue $thing.ID $k}}
+		                    {{template "selectSourcesRow.gohtml" $iout}}
+	                  {{end}}
 								</h-grid-table>
+								{{end}}
 
 								<!--=== for ActionAffordance in .TD ===-->
-								<h-grid-table id="action-sources-id" striped border>
+                {{if .Actions}}
+								<h-grid-table id="action-sources-id" striped border
+								              nodata="No Actions are defined for this thing">
                     {{/* Header*/}}
 									<li>
 										<div width="max-content">Action Name</div>
 										<div width="1fr">Value</div>
 										<div class="h-show-md">Updated</div>
 									</li>
+                    {{/*TODO: sort actions by name*/}}
                     {{range $k,$v := .Actions}}
-                        {{- /*gotype: github.com/hiveot/hub/wot/tdd.EventAffordance*/ -}}
-												<li>
-                            {{/* hx-get the html of the source and inject (hx-target) it in the edit tile dialog*/}}
-													<div>
-														<a href="#"
-														   hx-swap="beforebegin"
-														   hx-trigger="click"
-														   hx-target="#insert-tile-sources-here"
-														   hx-get="/tile/action/{{$thing.ID}}/{{$k}}/sourceRow"
-														   onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
-														>
-                                {{.Title}}
-														</a>
-													</div>
-													<div>{{$data.GetActionValue $thing.ID $k}}</div>
-													<div>{{$data.GetActionUpdated  $thing.ID $k}}</div>
-												</li>
+	                    {{$iout := $data.GetActionValue $thing.ID $k}}
+                      {{template "selectSourcesRow.gohtml" $iout}}
                     {{end}}
 								</h-grid-table>
+								{{end}}
 
 								<!--=== for PropertyAffordance in .TD ===-->
+                {{if .Properties}}
 								<h-grid-table id="property-sources-id" striped border>
                     {{/* Header*/}}
 									<li>
@@ -95,26 +74,13 @@
 										<div width="1fr">Value</div>
 										<div class="h-show-md">Updated</div>
 									</li>
+                    {{/*TODO: sort property by name*/}}
                     {{range $k,$aff := .Properties}}
-                        {{- /*gotype: github.com/hiveot/hub/wot/tdd.PropertyAffordance*/ -}}
-												<li>
-													<div>
-                              {{/* hx-get the html of the source and inject (hx-target) it in the edit tile dialog*/}}
-														<a href="#"
-														   hx-swap="beforebegin"
-														   hx-trigger="click"
-														   hx-target="#insert-tile-sources-here"
-														   hx-get="/tile/property/{{$thing.ID}}/{{$k}}/sourceRow"
-														   onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
-														>
-                                {{.Title}}
-														</a>
-													</div>
-													<div>{{$data.GetPropertyValue $thing.ID $k}}</div>
-													<div>{{$data.GetPropertyUpdated $thing.ID $k}}</div>
-												</li>
+                         {{$iout := $data.GetPropertyValue $thing.ID $k}}
+                         {{template "selectSourcesRow.gohtml" $iout}}
                     {{end}}
 								</h-grid-table>
+								{{end}}
 							</details>
 	            </li>
 

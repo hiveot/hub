@@ -31,7 +31,7 @@ type ConsumedThingsDirectory struct {
 //
 // If an instance already exists it is returned, otherwise one is created using
 // the ThingDescription. If the TD is unknown then request it from the directory
-// This returns an error if a valid Thing cannot be found.
+// This returns nil with an error if a valid Thing cannot be found.
 func (cts *ConsumedThingsDirectory) Consume(thingID string) (ct *ConsumedThing, err error) {
 	cts.mux.RLock()
 	ct, found := cts.consumedThings[thingID]

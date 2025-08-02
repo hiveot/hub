@@ -94,10 +94,10 @@ func (ht HistoryTemplateData) GetObjectValues() []consumedthing.InteractionOutpu
 		_ = found
 		value := consumedthing.NewDataSchemaValue(raw)
 
-		iout := ht.InteractionOutput
+		iout := ht.InteractionOutput // copy
 		iout.Title = ht.Title + " - " + schema.Title
 		iout.Name = name
-		iout.Schema = *schema
+		iout.Schema = schema
 		iout.Value = value
 		values = append(values, iout)
 	}

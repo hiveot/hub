@@ -22,48 +22,37 @@ type RenderSelectSourcesTemplateData struct {
 }
 
 // GetActionValue returns the action value of a tile source
-func (data RenderSelectSourcesTemplateData) GetActionValue(thingID, name string) string {
+func (data RenderSelectSourcesTemplateData) GetActionValue(thingID, name string) *consumedthing.InteractionOutput {
 	return data.GetValue(messaging.AffordanceTypeAction, thingID, name)
 }
 
-// GetActionUpdated returns the action timestamp of a tile source
-func (data RenderSelectSourcesTemplateData) GetActionUpdated(thingID, name string) string {
-	return data.GetUpdated(messaging.AffordanceTypeAction, thingID, name)
-}
+// TODO: use interactionoutput from consumed thing?
+//  this relates to the slow loading with lots of values. Is there a need to create
+//  all consumed things just to pick a value to add to the tile?
+//  or create dynamically?
+//  tbd
+//  alternatively, show only the schema and get the value on demand?
 
 // GetEventValue returns the property value of a tile source
-func (data RenderSelectSourcesTemplateData) GetEventValue(thingID, name string) string {
+func (data RenderSelectSourcesTemplateData) GetEventValue(thingID, name string) *consumedthing.InteractionOutput {
 	return data.GetValue(messaging.AffordanceTypeEvent, thingID, name)
 }
 
-// GetEventUpdated returns the property timestamp of a tile source
-func (data RenderSelectSourcesTemplateData) GetEventUpdated(thingID, name string) string {
-	return data.GetUpdated(messaging.AffordanceTypeEvent, thingID, name)
-}
-
 // GetPropertyValue returns the property value of a tile source
-func (data RenderSelectSourcesTemplateData) GetPropertyValue(thingID, name string) string {
+func (data RenderSelectSourcesTemplateData) GetPropertyValue(thingID, name string) *consumedthing.InteractionOutput {
 	return data.GetValue(messaging.AffordanceTypeProperty, thingID, name)
 }
 
-// GetPropertyUpdated returns the property timestamp of a tile source
-func (data RenderSelectSourcesTemplateData) GetPropertyUpdated(thingID, name string) string {
-	return data.GetUpdated(messaging.AffordanceTypeProperty, thingID, name)
-}
-
 // GetValue returns the value of a tile source
-func (data RenderSelectSourcesTemplateData) GetValue(affType messaging.AffordanceType, thingID, name string) string {
+func (data RenderSelectSourcesTemplateData) GetValue(
+	affType messaging.AffordanceType, thingID, name string) *consumedthing.InteractionOutput {
 	ct, err := data.ctDir.Consume(thingID)
 	if err != nil {
 		// should never happen, but just in case
-		return err.Error()
+		return consumedthing.NoValue()
 	}
 	iout := ct.GetValue(affType, name)
-	if iout != nil {
-		unitSymbol := iout.UnitSymbol()
-		return iout.Value.Text() + " " + unitSymbol
-	}
-	return ""
+	return iout
 }
 func (data RenderSelectSourcesTemplateData) GetUpdated(affType messaging.AffordanceType, thingID, name string) string {
 	ct, err := data.ctDir.Consume(thingID)

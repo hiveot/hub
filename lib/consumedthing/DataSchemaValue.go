@@ -27,16 +27,6 @@ func (v DataSchemaValue) Array() []interface{} {
 	return objArr
 }
 
-// Text returns the text representation of the value
-func (v DataSchemaValue) Text() string {
-	return tputils.DecodeAsString(v.Raw, 0)
-}
-
-// ToString returns the text representation of the value with a size limit
-func (v DataSchemaValue) ToString(maxlen int) string {
-	return tputils.DecodeAsString(v.Raw, maxlen)
-}
-
 func (v DataSchemaValue) Boolean() bool {
 	return tputils.DecodeAsBool(v.Raw)
 }
@@ -63,6 +53,16 @@ func (v DataSchemaValue) Number() float32 {
 // Object decodes the value to the given object.
 func (v DataSchemaValue) Object(output interface{}) error {
 	return tputils.DecodeAsObject(v.Raw, output)
+}
+
+// Text returns the text representation of the value
+func (v DataSchemaValue) Text() string {
+	return tputils.DecodeAsString(v.Raw, 0)
+}
+
+// ToString returns the text representation of the value with a size limit
+func (v DataSchemaValue) ToString(maxlen int) string {
+	return tputils.DecodeAsString(v.Raw, maxlen)
 }
 
 // NewDataSchemaValue implements a dataschema value

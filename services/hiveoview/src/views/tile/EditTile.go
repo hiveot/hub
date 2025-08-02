@@ -62,8 +62,7 @@ func (data EditTileTemplateData) GetValue(tileSource session.TileSource) string 
 	}
 	iout := ct.GetValue(tileSource.AffordanceType, tileSource.Name)
 	if iout != nil {
-		unitSymbol := iout.UnitSymbol()
-		return iout.Value.Text() + " " + unitSymbol
+		return iout.ToString()
 	}
 	return ""
 }

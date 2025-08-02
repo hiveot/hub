@@ -6,6 +6,11 @@ import (
 	"github.com/hiveot/hub/wot"
 )
 
+// NoSchema is a read-only schema to use when schema is unknown.
+var noSchema = &DataSchema{ReadOnly: true}
+
+func NoSchema() *DataSchema { return noSchema }
+
 // DataSchema with metadata  that describes the data format used. It can be used for validation.
 //
 // Golang doesn't support dynamic types or subclasses, so DataSchema merges all possible schemas

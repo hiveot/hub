@@ -69,7 +69,7 @@ func getConfigValue(
 		//TD:         &td,
 		ThingID:    thingID,
 		Name:       name,
-		DataSchema: &iout.Schema,
+		DataSchema: iout.Schema,
 		//Value:         iout.Value.Text(),
 		PropertyValue: *iout,
 		PropertyInput: *iin,
@@ -117,13 +117,20 @@ func SubmitProperty(w http.ResponseWriter, r *http.Request) {
 		slog.String("value", valueStr))
 
 	_, sess, err := session.GetSessionFromContext(r)
-	if err == nil {
-		ct, err = sess.Consume(thingID)
-		propAff = ct.GetPropertyAff(propName)
-		if propAff == nil {
-			err = fmt.Errorf("no such property '%s'", propName)
-		}
+	if err != nil {
+		// can't do anything without a session
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
+
+	ct, err = sess.Consume(thingID)
+	if err == nil {
+		propAff = ct.GetPropertyAff(propName)
+	}
+	if propAff == nil {
+		err = fmt.Errorf("no such property '%s'", propName)
+	}
+
 	// form values are strings. Convert to their native type before posting
 	if err == nil && propAff != nil {
 		newValue, err = td.ConvertToNative(valueStr, &propAff.DataSchema)

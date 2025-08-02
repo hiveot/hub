@@ -1,0 +1,17 @@
+{{- /*gotype: github.com/hiveot/hub/lib/consumedthing.InteractionOutput*/ -}}
+<li>
+	<div>
+      {{/* hx-get the html of the source and inject (hx-target) it in the edit tile dialog*/}}
+		<a href="#"
+		   hx-swap="beforebegin"
+		   hx-trigger="click"
+		   hx-target="#insert-tile-sources-here"
+		   hx-get="/tile/{{.ID}}/sourceRow"
+		   onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
+		>
+        {{.Title}}
+		</a>
+	</div>
+	<div>{{.Value.Text}}</div>
+	<div>{{.Timestamp}}</div>
+</li>
