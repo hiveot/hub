@@ -4,22 +4,28 @@ import (
 	"github.com/hiveot/hub/bindings/weather/config"
 	"github.com/hiveot/hub/bindings/weather/providers"
 	"log/slog"
+	"time"
 )
 
-// Poll for current and forecast weather updates and publish events
-// This iterates each location and polls at the configured interval
+// Poll for current and forecast weather updates and publish events.
+// The recommended interval to call poll at is 1 minute.
+//
+// This uses the timestamp of the last poll for each location adds the configured interval
+// and compares it with the current time.
 func (svc *WeatherBinding) Poll() error {
 	var err error
+	now := time.Now()
 
 	// poll for the 'current' weather at the locations
 	svc.locationStore.ForEach(func(loc config.WeatherLocation) {
 		// each location can have its own interval
-		currentPollCounter, found := svc.currentPoll[loc.ID]
+		lastPollTime, found := svc.lastCurrentPoll[loc.ID]
 		currentInterval := loc.CurrentInterval
 		if currentInterval <= svc.cfg.MinCurrentInterval {
 			currentInterval = svc.cfg.DefaultCurrentInterval
 		}
-		if !found || currentPollCounter >= currentInterval {
+		nextPoll := lastPollTime.Add(time.Second * time.Duration(currentInterval))
+		if !found || nextPoll.Before(now) {
 			currentWeather, err2 := svc.defaultProvider.ReadCurrent(loc)
 			if err2 == nil {
 				svc.current[loc.ID] = currentWeather
@@ -33,20 +39,19 @@ func (svc *WeatherBinding) Poll() error {
 			if err2 != nil {
 				err = err2
 			}
-			currentPollCounter = 0
+			svc.lastCurrentPoll[loc.ID] = now
 		}
-		currentPollCounter++
-		svc.currentPoll[loc.ID] = currentPollCounter
 	})
 	// poll for the 'forecast' weather at the locations
 	svc.locationStore.ForEach(func(loc config.WeatherLocation) {
 		// each location can have its own interval
-		pollCounter, found := svc.forecastPoll[loc.ID]
+		lastPollTime, found := svc.lastForecastPoll[loc.ID]
 		forecastInterval := loc.ForecastInterval
 		if forecastInterval <= svc.cfg.MinForecastInterval {
 			forecastInterval = svc.cfg.DefaultForecastInterval
 		}
-		if !found || pollCounter >= forecastInterval {
+		nextPoll := lastPollTime.Add(time.Second * time.Duration(forecastInterval))
+		if !found || nextPoll.Before(now) {
 			//weatherForecast, err2 := svc.defaultProvider.ReadForecast(loc)
 			//if err2 != nil {
 			//	err = err2
@@ -58,10 +63,8 @@ func (svc *WeatherBinding) Poll() error {
 			//		//slog.String("showers", weatherForecast.Showers),
 			//	)
 			//}
-			pollCounter = 0
+			svc.lastForecastPoll[loc.ID] = now
 		}
-		pollCounter++
-		svc.forecastPoll[loc.ID] = pollCounter
 	})
 	return err
 }

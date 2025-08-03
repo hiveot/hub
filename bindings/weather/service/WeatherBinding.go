@@ -25,11 +25,11 @@ type WeatherBinding struct {
 	defaultProvider providers.IWeatherProvider
 
 	// The configured locationStore
-	locationStore *LocationStore
-	current       map[string]providers.CurrentWeather
-	currentPoll   map[string]int // poll counter by location ID
-	forecasts     map[string]providers.ForecastWeather
-	forecastPoll  map[string]int // poll counter by location ID
+	locationStore    *LocationStore
+	current          map[string]providers.CurrentWeather
+	lastCurrentPoll  map[string]time.Time // poll timestamp by location ID
+	forecasts        map[string]providers.ForecastWeather
+	lastForecastPoll map[string]time.Time // poll timestamp by location ID
 
 	// stop the heartbeat
 	stopFn func()
@@ -59,7 +59,7 @@ func (svc *WeatherBinding) Start(ag *messaging.Agent) error {
 	}
 	if err == nil {
 		slog.Info("Starting heartBeat")
-		svc.stopFn = plugin.StartHeartbeat(time.Second*900, svc.heartBeat)
+		svc.stopFn = plugin.StartHeartbeat(time.Second*60, svc.heartBeat)
 	}
 	if err != nil {
 		svc.Stop()
@@ -89,15 +89,15 @@ func NewWeatherBinding(storePath string, cfg *config.WeatherConfig) *WeatherBind
 
 	// these are from hub configuration
 	svc := &WeatherBinding{
-		cfg:             cfg,
-		defaultProvider: providers.NewOpenMeteoProvider(),
-		ag:              nil,
-		locationStore:   NewLocationStore(storePath),
-		current:         make(map[string]providers.CurrentWeather),
-		currentPoll:     make(map[string]int),
-		forecasts:       make(map[string]providers.ForecastWeather),
-		forecastPoll:    make(map[string]int),
-		stopFn:          nil,
+		cfg:              cfg,
+		defaultProvider:  providers.NewOpenMeteoProvider(),
+		ag:               nil,
+		locationStore:    NewLocationStore(storePath),
+		current:          make(map[string]providers.CurrentWeather),
+		lastCurrentPoll:  make(map[string]time.Time),
+		forecasts:        make(map[string]providers.ForecastWeather),
+		lastForecastPoll: make(map[string]time.Time),
+		stopFn:           nil,
 	}
 	return svc
 }

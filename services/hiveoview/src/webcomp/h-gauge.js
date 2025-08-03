@@ -46,6 +46,8 @@ const GaugePresetBarometer = {
     needleType: "arrow",
     title: "Barometer",
     units: "mbar",   // default unit when not overridden
+    valueDec: 0,     // no decimals
+    // valueInt: 1,
 }
 
 const GaugePresetCompass = {
@@ -201,10 +203,10 @@ class HGauge extends HTMLElement {
         // colorNumbers: '#eee',
         // colorNumbers: 'green',
 
-        // fontNumbersSize: 30,
+        fontNumbersSize: 28,
         // fontNumbersWeight: "bold",
-        // fontUnitsSize: 24,
-        fontValueSize: 24,   // this is relative to the gauge size?
+        fontUnitsSize: 28,
+        fontValueSize: 32,   // box text
         //highlights: [],  // should be within min-max range
         highlightsWidth: 7,
 
