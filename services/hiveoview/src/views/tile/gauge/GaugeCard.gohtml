@@ -1,8 +1,19 @@
 <!--Gauge Tile renderer-->
 {{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/tile.RenderTileTemplateData*/ -}}
+{{/*If a gauge has a second source, the second is shown in the gauge box including its unit*/}}
 
-{{range .Tile.Sources}}
-    {{$iout := $.GetOutputValue .}}
+{{if .Tile.Sources }}
+		{{$nrSources := len .Tile.Sources}}
+  	{{$source1 := index .Tile.Sources 0 }}
+    {{$iout := $.GetOutputValue $source1}}
+
+    {{$value2 := ""}}
+	  {{if gt $nrSources 1}}
+        {{$source2 := index .Tile.Sources 1 }}
+        {{$iout2 := $.GetOutputValue $source2}}
+			  {{$value2 = $iout2.ToString}}
+    {{end}}
+
 		<h-gauge id="{{$.Tile.ID}}" class="gauge-card"
 		         linear='{{eq $.Tile.TileType "linear-gauge"}}'
 		         gauge-type="{{$.Tile.GaugeType}}"
@@ -11,7 +22,8 @@
 		         max-value="{{$iout.Schema.Maximum}}"
 		         min-value="{{$iout.Schema.Minimum}}"
 		         value="{{$iout.Value.Number}}"
-		         sse-swap="{{.AffordanceType}}/{{.ThingID}}/{{.Name}}"
+		         value2="{{$value2}}"
+		         sse-swap="{{$source1.AffordanceType}}/{{$source1.ThingID}}/{{$source1.Name}}"
 		         hx-target="this"
 		         hx-swap="none"
 		         hx-on::sse-before-message="updateGauge(event, '{{$iout.UnitSymbol}}')"

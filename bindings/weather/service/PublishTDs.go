@@ -3,7 +3,6 @@ package service
 import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/weather/config"
-	"github.com/hiveot/hub/bindings/weather/providers"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
@@ -36,7 +35,21 @@ func CreateTDOfLocation(defaultCfg *config.WeatherConfig, cfg *config.WeatherLoc
 	tdoc := td.NewTD(thingID, title, deviceType)
 	tdoc.Description = "Current weather for " + cfg.Name
 
-	prop := tdoc.AddProperty("currentEnabled", "Enable Current Weather",
+	// Attributes
+
+	prop := tdoc.AddProperty("currentUpdated", "Current Weather Updated",
+		"Time the current weather was last updated",
+		vocab.WoTDataTypeDateTime)
+	prop.ReadOnly = true
+
+	//prop = tdoc.AddProperty("provider", "Weather Provider",
+	//	"The weather provider for this location",
+	//	vocab.WoTDataTypeString)
+	//prop.Enum = []any{providers.OpenMeteoProviderID}
+
+	// Configuration
+
+	prop = tdoc.AddProperty("currentEnabled", "Enable Current Weather",
 		"Enable read the current weather",
 		vocab.WoTDataTypeBool)
 	prop.ReadOnly = false
@@ -48,11 +61,6 @@ func CreateTDOfLocation(defaultCfg *config.WeatherConfig, cfg *config.WeatherLoc
 	prop.Minimum = float64(defaultCfg.MinCurrentInterval)
 	prop.Default = defaultCfg.DefaultCurrentInterval
 	prop.ReadOnly = false
-
-	prop = tdoc.AddProperty("currentUpdated", "Current Weather Updated",
-		"Time the current weather was last updated",
-		vocab.WoTDataTypeDateTime)
-	prop.ReadOnly = true
 
 	prop = tdoc.AddProperty("forecastEnabled", "Enable Weather Forecast",
 		"Enable reading the weather forecast",
@@ -86,10 +94,12 @@ func CreateTDOfLocation(defaultCfg *config.WeatherConfig, cfg *config.WeatherLoc
 		vocab.WoTDataTypeString)
 	prop.ReadOnly = false
 
-	prop = tdoc.AddProperty("provider", "Weather Provider",
-		"Override the default weather provider",
+	prop = tdoc.AddProperty("units-wind-speed", "Wind Speed Units",
+		"The units for wind speed",
 		vocab.WoTDataTypeString)
-	prop.Enum = []any{providers.OpenMeteoProviderID}
+	prop.Default = vocab.UnitMeterPerSecond
+	prop.ReadOnly = false
+	prop.DataSchema.SetEnumAsStrings([]string{vocab.UnitMeterPerSecond, vocab.UnitKilometerPerHour, vocab.UnitMilesPerHour})
 
 	// Events with the current weather
 

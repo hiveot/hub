@@ -145,6 +145,14 @@ func (ds *DataSchema) GetAtTypeString() string {
 	return ""
 }
 
+// SetEnumAsStrings sets the enum values as type string.
+// This is one of the most common use of enums so warrants its own type method.
+func (ds *DataSchema) SetEnumAsStrings(e []string) {
+	for _, item := range e {
+		ds.Enum = append(ds.Enum, item)
+	}
+}
+
 // SetOneOfValues updates the data schema with restricted enum values.
 // This uses the 'oneOf' field to allow support title and description of enum values.
 // See also the discussion at: https://github.com/w3c/wot-thing-description/issues/997#issuecomment-1865902885

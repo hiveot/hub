@@ -14,6 +14,7 @@
  @param low-range: what is considered low value (min-value to min-value + low-range)
  @param high-range: what is considered high value (max-value - high-range to max-value
  @param value: value to display
+ @param value2: provide a secondary value to display in the box (if the dial has one)
  @param max-value: override the gauge maximum value (required when unit differs from default)
  @param min-value: override the gauge minimum value (required when unit differs from default)
  */
@@ -21,10 +22,12 @@
 export const PropGaugeType = "gauge-type"
 export const PropOverride = "override"
 export const PropValue = "value"
+export const PropValue2 = "value2"
 export const PropLinear = "linear"
 export const PropUnits = "units"
 export const PropMaxValue = "max-value"
 export const PropMinValue = "min-value"
+
 
 export const GaugeTypeBarometer = "barometer"
 export const GaugeTypeCompass = "compass"
@@ -250,7 +253,7 @@ class HGauge extends HTMLElement {
 
     static get observedAttributes() {
         // dynamically updatable
-        return [PropGaugeType, PropLinear, PropMaxValue, PropMinValue, PropOverride, PropUnits, PropValue,]
+        return [PropGaugeType, PropLinear, PropMaxValue, PropMinValue, PropOverride, PropUnits, PropValue,PropValue2]
     }
 
     constructor() {
@@ -272,6 +275,7 @@ class HGauge extends HTMLElement {
         this.minValue = 0
         this.unit = ""
         this.value = 0
+        this.value2 = ""
     }
 
     // dynamic update of gauge values
@@ -279,6 +283,8 @@ class HGauge extends HTMLElement {
         // console.log("attributeChanged, name=" + name + ", value=" + newValue)
         if (name === PropValue) {
             this.value = Number(newValue)
+        } else if (name === PropValue2) {
+            this.value2 = newValue
         } else if (name === PropMaxValue) {
             this.maxValue = Number(newValue)
         } else if (name === PropMinValue) {
@@ -357,6 +363,9 @@ class HGauge extends HTMLElement {
         //     ", parent height=", this.parentElement.offsetHeight)
         let config = Object.assign({}, this.baseConfig, this.preset, this.override)
         config.value = this.value
+        if (this.value2) {
+            config.valueText = this.value2
+        }
         if (this.unit) {
             config.units = this.unit
         }
