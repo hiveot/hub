@@ -93,6 +93,39 @@ func (svc *HttpTransportServer) AddOps(
 	r.Method(method, opURL, handler)
 }
 
+// AddSecurityScheme adds the security scheme that this http protocol supports.
+// This is also applicable to any sub-protocol such as websocket.
+//
+// http supports bearer tokens for request authentication, basic and digest authentication
+// for logging in.
+func (svc *HttpTransportServer) AddSecurityScheme(tdoc *td.TD) {
+
+	// FIXME: this should be set by the authenticator used
+
+	// bearer security scheme for authenticating WSS connections
+	format, alg := svc.authenticator.GetAlg()
+
+	tdoc.AddSecurityScheme("bearer_sc", td.SecurityScheme{
+		//AtType:        nil,
+		Description: "Bearer token authentication",
+		//Descriptions:  nil,
+		//Proxy:         "",
+		Scheme: "bearer", // nosec, basic, digest, bearer, psk, oauth2, apikey or auto
+		//Authorization: authServerURI,// n/a as the token is the authorization
+		Name:   "authorization",
+		Alg:    alg,
+		Format: format,   // jwe, cwt, jws, jwt, paseto
+		In:     "header", // query, body, cookie, uri, auto
+	})
+	// bearer security scheme for authenticating http digest connections
+	// tbd. clients should login and use bearer tokens.
+	//tdoc.AddSecurityScheme("digest_sc", td.SecurityScheme{
+	//	Description: "Digest authentication",
+	//	Scheme:      "digest", // nosec, basic, digest, bearer, psk, oauth2, apikey or auto
+	//	In:          "body",   // query, header, body, cookie, uri, auto
+	//})
+}
+
 // setupRouting creates the middleware chain for handling requests, including
 // recoverer, compression and token verification for protected routes.
 //

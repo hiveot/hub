@@ -51,7 +51,7 @@ The TD documents contains a set of attributes to describe a Thing. The attribute
 | Forms               | Top level operations on Things                        |
 | Links               | Definition of alternative result dataschemas          | 
 | Security            | Names of security definitions                         |
-| SecurityDefinitions | Security definitions for authenticationwith the hub   |
+| SecurityDefinitions | Security definitions for authentication with the hub  |
 
 * As HiveOT compatible IoT devices connect to the hub, they can simply use the 'nosec' security type when creating their TD and use a NoSecurityScheme as securityDefinition. The hub will modify this section.
 * Consumers, which access devices via 'Consumed Things', only need to know how connect to the Hub service. No knowledge of the IoT device protocol is needed. The TD Form sections are modified with operations to interact with a Thing's digital twin that resides on the Hub.

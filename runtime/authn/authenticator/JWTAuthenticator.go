@@ -29,6 +29,9 @@ type JWTAuthenticator struct {
 
 	// sessionmanager tracks session IDs
 	sm *sessions.SessionManager
+
+	// signing method used
+	signingMethod jwt.SigningMethod // default SigningMethodES256
 }
 
 // CreateSessionToken creates a new session token for the client
@@ -69,7 +72,7 @@ func (svc *JWTAuthenticator) CreateSessionToken(
 	}
 
 	// Declare the token with the algorithm used for signing, and the claims
-	claimsToken := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
+	claimsToken := jwt.NewWithClaims(svc.signingMethod, claims)
 	sessionToken, _ := claimsToken.SignedString(svc.signingKey.PrivateKey())
 
 	return sessionToken
@@ -115,6 +118,11 @@ func (svc *JWTAuthenticator) DecodeSessionToken(token string, signedNonce string
 			fmt.Errorf("ValidateToken: %w", err)
 	}
 	return clientID, sessionID, nil
+}
+
+// GetAlg returns the authentication scheme (jwt) and algorithm
+func (svc *JWTAuthenticator) GetAlg() (string, string) {
+	return "jwt", svc.signingMethod.Alg()
 }
 
 // Login with password and generate a session token
@@ -227,6 +235,7 @@ func NewJWTAuthenticator(authnStore authnstore.IAuthnStore, signingKey keys.IHiv
 		ConsumerTokenValidityDays: config.DefaultConsumerTokenValidityDays,
 		ServiceTokenValidityDays:  config.DefaultServiceTokenValidityDays,
 		sm:                        sessions.NewSessionmanager(),
+		signingMethod:             jwt.SigningMethodES256,
 	}
 	return &svc
 }

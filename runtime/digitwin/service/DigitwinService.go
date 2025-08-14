@@ -44,7 +44,7 @@ func (svc *DigitwinService) ReadAllTDs(
 //	return dtd, err
 //}
 
-// SetFormsHook sets the transport hook for adding forms to TDs
+// SetFormsHook sets the transport hook for adding forms and securityScheme entries to TDs
 func (svc *DigitwinService) SetFormsHook(addFormsHandler func(*td.TD) error) {
 	svc.DirSvc.addFormsHandler = addFormsHandler
 }

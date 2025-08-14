@@ -96,6 +96,11 @@ func (svc *PasetoAuthenticator) DecodeSessionToken(sessionKey string, signedNonc
 	return clientID, sessionID, err
 }
 
+// GetAlg returns the authentication scheme and algorithm
+func (svc *PasetoAuthenticator) GetAlg() (string, string) {
+	return "paseto", "public"
+}
+
 // Login with password and generate a session token
 // Intended for end-users that want to establish a session.
 //

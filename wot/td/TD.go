@@ -251,6 +251,32 @@ func (tdoc *TD) AddPropertyAsInt(
 	return tdoc.AddProperty(propName, title, description, wot.DataTypeInteger)
 }
 
+// AddSecurityScheme adds a security scheme to the TD
+func (tdoc *TD) AddSecurityScheme(name string, scheme SecurityScheme) {
+	tdoc.SecurityDefinitions[name] = scheme
+	// TD defines security as string or array
+	if tdoc.Security == nil {
+		tdoc.Security = name
+		return
+	}
+	// existing security scheme
+	secStr, valid := tdoc.Security.(string)
+	if valid {
+		secArr := []string{secStr, name}
+		tdoc.Security = secArr
+		return
+	}
+	// existing array of security schemes
+	secArr, valid := tdoc.Security.([]string)
+	if valid {
+		secArr = append(secArr, name)
+		tdoc.Security = secArr
+		return
+	}
+	slog.Error("AddSecurityScheme: security field has unknown content. Replacing it with: " + name)
+	tdoc.Security = name
+}
+
 // AsMap returns the TD document as a key-value map
 func (tdoc *TD) AsMap() map[string]interface{} {
 	//tdoc.updateMutex.RLock()
@@ -566,7 +592,7 @@ func NewTD(thingID string, title string, deviceType string) *TD {
 
 		// security schemas are optional for devices themselves but will be added by the Hub services
 		// that provide the TDD.
-		Security:            wot.WoTNoSecurityScheme,
+		Security:            nil,
 		SecurityDefinitions: make(map[string]SecurityScheme),
 		Title:               title,
 		//updateMutex:         sync.RWMutex{},

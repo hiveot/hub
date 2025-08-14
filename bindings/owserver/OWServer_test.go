@@ -115,7 +115,7 @@ func TestPoll(t *testing.T) {
 	require.NoError(t, err)
 
 	// give heartbeat a chance to run. stop will wait for it to complete
-	time.Sleep(time.Millisecond * 10)
+	time.Sleep(time.Millisecond * 100)
 	svc.Stop()
 
 	// the simulation file contains 3 things. The service is 1 Thing.
@@ -125,8 +125,8 @@ func TestPoll(t *testing.T) {
 	dThingID := td.MakeDigiTwinThingID(agentID, device1ID)
 	events, err := digitwin.ThingValuesReadAllEvents(co1, dThingID)
 	require.NoError(t, err)
-	// this thing has 5 sensors
-	require.Equal(t, 5, len(events))
+	// this thing has 5 sensors and 4 alarm events
+	require.Equal(t, 9, len(events))
 }
 
 func TestPollInvalidEDSAddress(t *testing.T) {

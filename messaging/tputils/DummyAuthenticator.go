@@ -39,6 +39,11 @@ func (d *DummyAuthenticator) CreateSessionToken(
 	return token
 }
 
+// GetAlg pretend to use jwt
+func (d *DummyAuthenticator) GetAlg() (string, string) {
+	return "jwt", "es256"
+}
+
 func (d *DummyAuthenticator) Login(
 	clientID string, password string) (token string, err error) {
 

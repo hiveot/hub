@@ -50,17 +50,22 @@ type TransportManager struct {
 }
 
 // AddTDForms adds forms for all active transports
-func (svc *TransportManager) AddTDForms(td *td.TD) (err error) {
+func (svc *TransportManager) AddTDForms(tdoc *td.TD) (err error) {
 
 	for _, srv := range svc.servers {
-		err = srv.AddTDForms(td)
+		err = srv.AddTDForms(tdoc)
 	}
 	// MQTT
 	//if svc.mqttTransport != nil {
-	//	err = svc.mqttTransport.AddTDForms(td)
+	//	err = svc.mqttTransport.AddTDForms(tdoc)
 	//}
 
 	// CoAP ?
+
+	// http security scheme includes subprotocols
+	if svc.httpsTransport != nil {
+		svc.httpsTransport.AddSecurityScheme(tdoc)
+	}
 	return err
 }
 
@@ -254,7 +259,7 @@ func (svc *TransportManager) Stop() {
 // StartTransportManager starts a new instance of the transport protocol manager.
 // This instantiates and starts enabled protocol bindings.
 //
-// The http-basic binding is provides the services for authentication and discovery.
+// The http-basic binding provides the services for authentication and discovery.
 //
 // Discovery has to be started separately with StartDiscovery, if desired, and must
 // be provided with the Directory TD document to serve.

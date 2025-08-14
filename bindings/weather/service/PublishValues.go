@@ -19,7 +19,9 @@ func (svc *WeatherBinding) Poll() error {
 	// poll for the 'current' weather at the locations
 	svc.locationStore.ForEach(func(loc config.WeatherLocation) {
 		// each location can have its own interval
+		svc.mux.RLock()
 		lastPollTime, found := svc.lastCurrentPoll[loc.ID]
+		svc.mux.RUnlock()
 		currentInterval := loc.CurrentInterval
 		if currentInterval <= svc.cfg.MinCurrentInterval {
 			currentInterval = svc.cfg.DefaultCurrentInterval
@@ -28,7 +30,9 @@ func (svc *WeatherBinding) Poll() error {
 		if !found || nextPoll.Before(now) {
 			currentWeather, err2 := svc.defaultProvider.ReadCurrent(loc)
 			if err2 == nil {
+				svc.mux.Lock()
 				svc.current[loc.ID] = currentWeather
+				svc.mux.Unlock()
 				slog.Info("Poll result",
 					slog.String("location", loc.ID),
 					slog.String("temp", currentWeather.Temperature),
@@ -39,13 +43,17 @@ func (svc *WeatherBinding) Poll() error {
 			if err2 != nil {
 				err = err2
 			}
+			svc.mux.Lock()
 			svc.lastCurrentPoll[loc.ID] = now
+			svc.mux.Unlock()
 		}
 	})
 	// poll for the 'forecast' weather at the locations
 	svc.locationStore.ForEach(func(loc config.WeatherLocation) {
 		// each location can have its own interval
+		svc.mux.RLock()
 		lastPollTime, found := svc.lastForecastPoll[loc.ID]
+		svc.mux.RUnlock()
 		forecastInterval := loc.ForecastInterval
 		if forecastInterval <= svc.cfg.MinForecastInterval {
 			forecastInterval = svc.cfg.DefaultForecastInterval
@@ -63,7 +71,9 @@ func (svc *WeatherBinding) Poll() error {
 			//		//slog.String("showers", weatherForecast.Showers),
 			//	)
 			//}
+			svc.mux.Lock()
 			svc.lastForecastPoll[loc.ID] = now
+			svc.mux.Unlock()
 		}
 	})
 	return err

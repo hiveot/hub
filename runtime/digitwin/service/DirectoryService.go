@@ -24,8 +24,8 @@ type DirectoryService struct {
 // MakeDigitalTwinTD returns the digital twin from an agent provided TD
 // This modifies the TD as follows:
 //  1. Change the ThingID to the digitwin thing ID:  dtw:{agentID}:{thingID}
-//  2. Change the forms to digitwin forms;
-//  3. Set the securitydefinitions to digitwin (work in progress)
+//  2. Change the forms to digitwin supported forms
+//  3. Set the securitydefinitions to digitwin supported auth (by forms handler)
 //  4. Add a writable 'title' property if it doesn't exist
 func (svc *DirectoryService) MakeDigitalTwinTD(
 	agentID string, tdJSON string) (thingTD *td.TD, dtwTD *td.TD, err error) {
@@ -42,7 +42,7 @@ func (svc *DirectoryService) MakeDigitalTwinTD(
 
 	// remove all existing forms and auth info
 	dtwTD.Forms = make([]td.Form, 0)
-	dtwTD.Security = ""
+	dtwTD.Security = nil
 	dtwTD.SecurityDefinitions = make(map[string]td.SecurityScheme)
 
 	for _, aff := range dtwTD.Properties {
@@ -54,7 +54,7 @@ func (svc *DirectoryService) MakeDigitalTwinTD(
 	for _, aff := range dtwTD.Actions {
 		aff.Forms = make([]td.Form, 0)
 	}
-
+	// the forms handler defines the protocols and security scheme for accessing the digital twin TD
 	if svc.addFormsHandler != nil {
 		err = svc.addFormsHandler(dtwTD)
 	}

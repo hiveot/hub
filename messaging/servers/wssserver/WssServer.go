@@ -63,7 +63,8 @@ type WssServer struct {
 }
 
 // AddTDForms adds forms for use of this protocol to the given TD
-func (svc *WssServer) AddTDForms(tdi *td.TD) error {
+func (svc *WssServer) AddTDForms(tdoc *td.TD) error {
+	// add form for this sub-protocol
 	subProtocol := SubprotocolWSS
 	// 1 form for all operations
 	form := td.Form{}
@@ -71,7 +72,8 @@ func (svc *WssServer) AddTDForms(tdi *td.TD) error {
 	form["subprotocol"] = subProtocol
 	form["contentType"] = "application/json"
 	form["href"] = svc.wssPath
-	tdi.Forms = append(tdi.Forms, form)
+	tdoc.Forms = append(tdoc.Forms, form)
+
 	return nil
 }
 

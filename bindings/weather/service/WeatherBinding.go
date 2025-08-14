@@ -6,6 +6,7 @@ import (
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/messaging"
 	"log/slog"
+	"sync"
 	"time"
 )
 
@@ -30,6 +31,9 @@ type WeatherBinding struct {
 	lastCurrentPoll  map[string]time.Time // poll timestamp by location ID
 	forecasts        map[string]providers.ForecastWeather
 	lastForecastPoll map[string]time.Time // poll timestamp by location ID
+
+	// protect r/w of current weather
+	mux sync.RWMutex
 
 	// stop the heartbeat
 	stopFn func()

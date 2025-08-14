@@ -5,6 +5,7 @@ import "time"
 // IAuthenticator is the interface of the authentication capability to obtain and
 // validate session tokens.
 type IAuthenticator interface {
+
 	// CreateSessionToken creates a signed session token for a client and adds the session
 	// sessionID is required. For persistent sessions use the clientID.
 	CreateSessionToken(clientID, sessionID string, validity time.Duration) (token string)
@@ -12,6 +13,12 @@ type IAuthenticator interface {
 	// DecodeSessionToken and return its claims
 	DecodeSessionToken(sessionToken string, signedNonce string, nonce string) (
 		clientID string, sessionID string, err error)
+
+	// GetAlg returns the supported security format and authentication algorithm.
+	// This uses the vocabulary as defined in the TD.
+	// JWT: "ES256", "ES512", "EdDSA"
+	// paseto: "local" (symmetric), "public" (asymmetric)
+	GetAlg() (string, string)
 
 	// Login with a password and obtain a new session token
 	Login(login string, password string) (token string, err error)
