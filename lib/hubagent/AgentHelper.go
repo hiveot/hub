@@ -8,7 +8,7 @@ import (
 // Deprecated: This is a reflection based request handler that invokes a service
 // native API with the request parameters. Intended to eliminate boilerplate code.
 // While clever it is hard to debug and trace and reflection isnt super fast.
-// Replaced with the td2go generator that generates easy to read boilerplate code.
+// Replaced with the tm2go generator that generates easy to read boilerplate code.
 // Services are expected to define a TD and generate their API from the TD.
 // This file is kept for a while to not lose the reflection magic.
 
@@ -23,7 +23,7 @@ import (
 //     2b. if the method doesn't have an argument
 //     2.4 invoke the method without an argument
 //
-// Replace with generated clients using td2go, that doesnt use reflection.
+// Replace with generated clients using tm2go, that doesn't use reflection.
 type AgentHandler struct {
 	// the thing this agent is a handler for
 	thingID string

@@ -8,26 +8,29 @@ The Hub for the *Hive-of-Things* provides a secure [runtime](runtime/README-runt
 
 ## Project Status
 
-Status July 2025: The Hub runtime, services and bindings have been reworked to support the Web-of-things (WoT) Thing Description (TD) specification. It is currently in Alpha.  
+Status Aug 2025: The Hub runtime, services and bindings have been reworked to support the Web-of-things (WoT) Thing Description (TD) specification. It is currently in Alpha.
+
+The generated TDs for use of digital-twins contain forms with security and communication as provided by the Hub. This is still incomplete.
 
 Medium term roadmap:
-1. Launcher support for distributed environment [todo]
+1. Launcher support for distributed environment. (multiple launcher instances) [todo]
 1. Support lets-encrypt CA and server certificate [todo]
 2. Support mqtt transport protocol. [tbd as client or server?]
 1. Websockets sub-protocol binding [functional but spec is in development]
-1. Support for TD Forms sections. [contentious, as it doesn't serve a purpose in this setup]
+1. Support for TD Security section. [it is not fully clear how to describe login for obtaining tokens]
+1. Support for TD Forms sections. [contentious, as they are hardly useful in this setup]
 1. Support for WoT discovery profile [done]
 1. Revisit the vocabulary to integrate or adopt existing vocabularies where possible
-1. improve/fix security;
+1. improve security;
    2. detect/notify of bad agents or consumers
    3. Manage token expiry
    3. role based access to Things
    4. rate limiting
 2. hiveoview dashboard improvements
-   3. notifications
+   3. support notifications
 3. Various services and bindings
-   3. weather service integration: open-meteo [in progress]
-   3. weather service integration: environment canada  (better forecast)
+   3. weather service integration: open-meteo [partly complete]
+   3. weather service integration: environment canada  (better for local forecast?)
    2. ups binding (using [nut](https://networkupstools.org/))
 4. Android integration/location tracking
 
@@ -71,16 +74,16 @@ See [docs/INSTALL.md](docs/INSTALL.md)
 
 ## Configuration
 
-All Hub services will run out of the box with their default configuration. Some services use an optional yaml based configuration file found in the config folder. 
+All Hub services will run out of the box with their default configuration. Some services, like the launcher, can be configured using a yaml configuration file found in the config/{pluginID}.yaml folder. 
 
 Most important configs:
 * launcher.yaml  section 'autostart' lists the services to run at startup
 
-A typical service or protocol binding publishes its configuration options with its TD to allow centralized configuration by administrators. This is up to each service to support.  
+A typical service or protocol binding publishes its configuration options with its TM to allow centralized configuration by administrators. This is up to each service to support.  
 
 ### CA certificate
 
-By default, the hub runtime generates a self-signed CA certificate and server certificate if none is found.
+By default, the hub runtime generates a self-signed CA certificate and server certificate if none is found. Support for letsencrypt is planned.
 
 To use an externally generated CA certificate, install it into hiveot/certs/caCert.pem and caKey.pem and restart the launcher/runtime.
 

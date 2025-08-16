@@ -1,13 +1,13 @@
-# td2go
+# tm2go
 
-Generate go types, agent service handler and consumer handler from a WoT TD document.
+Generate go types, agent service handler and consumer handler from a WoT TM/TD document. Any security and communication data in the source is ignored as those are provided by the hub messaging layer. 
 
-Usage: td2go generate all package/tdd/source.json [-o out] [-l lang]
+Usage: tm2go generate all package/tm/source.json [-o out] [-l lang]
 
 ```Arguments:
    generate  is the command to generate the go code and write it into the output directory
    all       generate the 'types', 'agent', and 'consumer' code
-   tdd.json  JSON file containing a Thing Description document in the package tdd directory.
+   tm.json   JSON file containing a Thing Model/Description document in the package tm directory.
 ```
 
 ```Options:
@@ -16,7 +16,7 @@ Usage: td2go generate all package/tdd/source.json [-o out] [-l lang]
  -f, --force
     Force generating new API code even if it is newer
  --outdir "../api"
-    Set the output directory to store the api code, relative to the TD sourcefile.
+    Set the output directory to store the api code, relative to the TM/TD sourcefile.
  ```
 
 This generates API source files in the output directory. The filenames consist of the
@@ -26,7 +26,7 @@ each type of API.
 ### Examples
 
 Generate the API of the Directory TD:
-> td2go go run cmd/td2go/main.go generate all ./runtime/digitwin/tdd/Directory.json 
+> tm2go go run cmd/tm2go/main.go generate all ./runtime/digitwin/tm/Directory.json 
 
 Output:
 > ./runtime/digitwin/api/AdminTypes.go
@@ -35,7 +35,7 @@ Output:
 ```
 
 ```
-Generate all API code and store them into the /tmp/td2go directory:
-> td2go go run cmd/td2go/main.go generate -outdir /tmp/td2go -r all ./ 
+Generate all API code and store them into the /tmp/tm2go directory:
+> tm2go go run cmd/tm2go/main.go generate -outdir /tmp/tm2go -r all ./ 
  
 ```

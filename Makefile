@@ -3,7 +3,7 @@ DIST_FOLDER=./dist
 BIN_FOLDER=./dist/bin
 PLUGINS_FOLDER=./dist/plugins
 INSTALL_HOME=~/bin/hiveot
-GENAPI=go run cmd/td2go/main.go
+GENAPI=go run cmd/tm2go/main.go
 .DEFAULT_GOAL := help
 
 .FORCE: 

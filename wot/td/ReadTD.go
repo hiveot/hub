@@ -54,9 +54,9 @@ func GetSourceFilesInDir(sourceDir string) ([]string, error) {
 	return sourceFiles, nil
 }
 
-// ReadTD returns the TD instance of a TD loaded from file
+// ReadTD returns the TD instance of a TM/TD loaded from file
 //
-//	sourceFile is the file containing the TD in JSON
+//	sourceFile is the file containing the TM/TD in JSON
 func ReadTD(sourceFile string) (*TD, error) {
 	tdi := TD{}
 	tdJSON, err := os.ReadFile(sourceFile)

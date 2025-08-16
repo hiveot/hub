@@ -1,34 +1,35 @@
-package listtds
+package listtms
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/wot/td"
 	"os"
 	"path/filepath"
+
+	"github.com/hiveot/hub/wot/td"
 )
 
-// HandleTDScan scan and display a list of TD documents
-func HandleTDScan(rootDir string) error {
+// HandleTMScan scan and display a list of TM (TD model) documents
+func HandleTMScan(rootDir string) error {
 
 	fmt.Printf("Filename                             Size (KB)  Title                                @Type                   #props  #events  #actions\n")
 	fmt.Printf("-----------------------------------  ---------  -----------------------------------  ---------------------      ---      ---       ---\n")
 
-	// recursively iterate all directories looking for tdd/*.json
+	// recursively iterate all directories looking for tm/*.json
 	err := filepath.WalkDir(rootDir, func(path string, d os.DirEntry, err error) error {
 		// look for tdd directories
-		if d.Name() == "tdd" {
-			HandleListTDs(path)
+		if d.Name() == "tm" {
+			HandleListTMs(path)
 		}
 		return nil
 	})
 	return err
 }
 
-// HandleListTDs displays a list of TD documents
-func HandleListTDs(tdDir string) {
+// HandleListTMs displays a list of TM documents
+func HandleListTMs(tmDir string) {
 
-	fmt.Printf("\n%s:\n", tdDir)
-	td.ForEachTD(tdDir, func(sourceFile string, tdi *td.TD) {
+	fmt.Printf("\n%s:\n", tmDir)
+	td.ForEachTD(tmDir, func(sourceFile string, tmDoc *td.TD) {
 		stat, err := os.Stat(sourceFile)
 		if err != nil {
 			return
@@ -38,15 +39,15 @@ func HandleListTDs(tdDir string) {
 			fmt.Printf("%-35.35s  %9d  ERROR: %s\n", stat.Name(), sizeKb, err.Error())
 		} else {
 			fmt.Printf("%-35.35s  %9d  %-35.35s  %-20.20s %9d %8d %9d\n", stat.Name(), sizeKb,
-				tdi.Title, tdi.AtType,
-				len(tdi.Properties), len(tdi.Events), len(tdi.Actions))
+				tmDoc.Title, tmDoc.AtType,
+				len(tmDoc.Properties), len(tmDoc.Events), len(tmDoc.Actions))
 		}
 	})
 
 	////fmt.Printf("Filename                             Size (KB)  Title                                @Type                   #props  #events  #actions\n")
 	////fmt.Printf("-----------------------------------  ---------  -----------------------------------  ---------------------      ---      ---       ---\n")
 	//for _, entry := range entries {
-	//	fullpath := filepath.Join(tdDir, entry.Name())
+	//	fullpath := filepath.Join(tmDir, entry.Name())
 	//	tdi, err := td.ReadTD(fullpath)
 	//	finfo, _ := entry.Info()
 	//	sizeKb := finfo.Size() / 1024

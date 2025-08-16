@@ -128,7 +128,7 @@ func (ag *Agent) PubTD(tdoc *td.TD) error {
 	tdJson, _ := jsoniter.MarshalToString(tdoc)
 	//	return ag.Rpc(wot.HTOpUpdateTD, td.ID, "", tdJson, nil)
 	//
-	err := ag.Rpc("invokeaction", ThingDirectoryDThingID, ThingDirectoryUpdateTDMethod,
+	err := ag.Rpc(wot.OpInvokeAction, ThingDirectoryDThingID, ThingDirectoryUpdateTDMethod,
 		tdJson, nil)
 	return err
 }

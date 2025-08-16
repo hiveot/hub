@@ -8,7 +8,7 @@
   "@type": "Service",
   "id": "admin",
   "title": "Administration of Plugins",
-  "description": "Starting and stopping of plugins",
+  "description": "Service for starting and stopping of plugins",
   "version": {
     "instance": "0.1.0"
   },

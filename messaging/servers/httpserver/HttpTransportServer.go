@@ -127,12 +127,6 @@ func (svc *HttpTransportServer) AddSecurityScheme(tdoc *td.TD) {
 	//})
 }
 
-// AddTDForms adds forms for use of the HTTP requests with the given TD
-// 'includeAffordances' adds forms to all affordances to be compliant with the specifications.
-// Warning this increases the TD size significantly.
-func (svc *HttpTransportServer) AddTDForms(tdoc *td.TD, includeAffordances bool) {
-}
-
 // setupRouting creates the middleware chain for handling requests, including
 // recoverer, compression and token verification for protected routes.
 //

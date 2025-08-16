@@ -2,18 +2,19 @@ package main
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/cmd/td2go/genagent"
-	"github.com/hiveot/hub/cmd/td2go/genconsumer"
-	"github.com/hiveot/hub/cmd/td2go/gentypes"
-	"github.com/hiveot/hub/cmd/td2go/listtds"
-	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/wot/td"
-	"github.com/urfave/cli/v2"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
+
+	"github.com/hiveot/hub/cmd/tm2go/genagent"
+	"github.com/hiveot/hub/cmd/tm2go/genconsumer"
+	"github.com/hiveot/hub/cmd/tm2go/gentypes"
+	"github.com/hiveot/hub/cmd/tm2go/listtms"
+	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot/td"
+	"github.com/urfave/cli/v2"
 )
 
 const TypesAPISuffix = "Types.go"
@@ -21,10 +22,10 @@ const AgentAPISuffix = "AgentAPI.go"
 const ConsumerAPISuffix = "ConsumerAPI.go"
 
 const Version = `0.3-alpha`
-const TDDir = "tdd"
+const TMDir = "tm"
 const APIDir = "api"
 
-// CLI for generating API's from Thing Description Documents (TD)
+// CLI for generating API's from Thing Model/Description Documents (TM)
 func main() {
 	logging.SetLogging("warning", "")
 	var recursive bool
@@ -34,7 +35,7 @@ func main() {
 
 	app := &cli.App{
 		EnableBashCompletion: true,
-		Name:                 "td2go",
+		Name:                 "tm2go",
 		Usage:                "HiveOT API code generator for golang from a TD document definitions",
 		Version:              Version,
 
@@ -47,7 +48,7 @@ func main() {
 				UsageText: "list [package-directory]",
 				Action: func(cCtx *cli.Context) error {
 					packageDir, _ := filepath.Abs(cCtx.Args().First())
-					return listtds.HandleTDScan(packageDir)
+					return listtms.HandleTMScan(packageDir)
 				},
 			},
 			&cli.Command{
@@ -130,13 +131,13 @@ func main() {
 	}
 }
 
-// LocateSources locates all tdd/file.json sources in the given directory or below
+// LocateSources locates all tm/file.json sources in the given directory or below
 func LocateSources(rootDir string, recursive bool) (sources []string) {
 	sources = make([]string, 0)
 
 	if recursive {
-		// recursively iterate all directories looking for tdd/*.json
-		filepath.Walk(rootDir, func(path string, finfo os.FileInfo, err error) error {
+		// recursively iterate all directories looking for tm/*.json
+		_ = filepath.Walk(rootDir, func(path string, finfo os.FileInfo, err error) error {
 			if err != nil {
 				fmt.Printf("Error: %s\n", err.Error())
 				return err
@@ -144,7 +145,7 @@ func LocateSources(rootDir string, recursive bool) (sources []string) {
 			// look for .json files in tdd directories
 			if !finfo.IsDir() {
 				sourceDir := filepath.Dir(path)
-				if strings.HasSuffix(sourceDir, TDDir) {
+				if strings.HasSuffix(sourceDir, TMDir) {
 					if strings.HasSuffix(finfo.Name(), "json") {
 						sources = append(sources, path)
 					}
@@ -165,7 +166,7 @@ func LocateSources(rootDir string, recursive bool) (sources []string) {
 				continue
 			}
 			name := finfo.Name()
-			if strings.HasSuffix(path.Ext(name), TDDir) {
+			if strings.HasSuffix(path.Ext(name), TMDir) {
 				fullPath := filepath.Join(rootDir, name)
 				sources = append(sources, fullPath)
 			}
@@ -199,7 +200,7 @@ func GenerateSources(gentype string, tdFiles []string, outDir string, force bool
 //	outDir is the directory to write the file in
 //	force generate file even when existing output is newer
 //
-// The package name is the parent directory name, for example: 'digitwin' in digitwin/tdd/directory.json
+// The package name is the parent directory name, for example: 'digitwin' in digitwin/tm/directory.json
 func GenerateSource(gentype string, agentID string, sourceFile string, outDir string, force bool) error {
 	var err error
 	var outfilePath string

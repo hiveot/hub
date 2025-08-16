@@ -1,7 +1,7 @@
 package genagent
 
 import (
-	"github.com/hiveot/hub/cmd/td2go/gentypes"
+	"github.com/hiveot/hub/cmd/tm2go/gentypes"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/wot/td"
 )
