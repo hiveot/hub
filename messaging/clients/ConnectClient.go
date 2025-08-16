@@ -3,6 +3,12 @@ package clients
 import (
 	"crypto/x509"
 	"fmt"
+	"net/url"
+	"os"
+	"path"
+	"strings"
+	"time"
+
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/clients/authenticator"
@@ -12,11 +18,6 @@ import (
 	"github.com/hiveot/hub/messaging/servers/discoserver"
 	"github.com/hiveot/hub/messaging/servers/hiveotsseserver"
 	"github.com/hiveot/hub/messaging/servers/wssserver"
-	"net/url"
-	"os"
-	"path"
-	"strings"
-	"time"
 )
 
 // TokenFileExt defines the filename extension under which client tokens are stored
@@ -258,7 +259,7 @@ func NewHiveotClient(
 		//		fullURL, clientID, nil, caCert, timeout)
 		err = fmt.Errorf("NewHiveotClient: mqtt client is not yet supported for '%s'", connectURL)
 	} else {
-		err = fmt.Errorf("NewHiveotClient: Server URL '%s' does not have a valid schema (https://, wss:// ...", connectURL)
+		err = fmt.Errorf("NewHiveotClient: Server URL '%s' does not have a valid schema (wss://.. or sse://...", connectURL)
 	}
 	return cc, err
 }

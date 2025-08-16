@@ -5,14 +5,15 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"log/slog"
+	"net/url"
+
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/servers/discoserver"
 	"github.com/hiveot/hub/messaging/servers/hiveotsseserver"
 	"github.com/hiveot/hub/messaging/servers/httpserver"
 	"github.com/hiveot/hub/messaging/servers/wssserver"
 	"github.com/hiveot/hub/wot/td"
-	"log/slog"
-	"net/url"
 )
 
 // TransportManager aggregates multiple transport protocol servers and manages
@@ -50,23 +51,23 @@ type TransportManager struct {
 }
 
 // AddTDForms adds forms for all active transports
-func (svc *TransportManager) AddTDForms(tdoc *td.TD) (err error) {
+func (svc *TransportManager) AddTDForms(tdoc *td.TD, includeAffordances bool) {
 
 	for _, srv := range svc.servers {
-		err = srv.AddTDForms(tdoc)
+		srv.AddTDForms(tdoc, includeAffordances)
 	}
 	// MQTT
 	//if svc.mqttTransport != nil {
-	//	err = svc.mqttTransport.AddTDForms(tdoc)
+	//	svc.mqttTransport.AddTDForms(tdoc,includeAffordances)
 	//}
 
 	// CoAP ?
 
-	// http security scheme includes subprotocols
+	// http protocol server including scheme includes subprotocols
 	if svc.httpsTransport != nil {
+		svc.httpsTransport.AddTDForms(tdoc, includeAffordances)
 		svc.httpsTransport.AddSecurityScheme(tdoc)
 	}
-	return err
 }
 
 // CloseAll closes all incoming connections

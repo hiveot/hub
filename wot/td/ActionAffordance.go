@@ -62,6 +62,13 @@ type ActionAffordance struct {
 	//Deny []string `json:"deny,omitempty"`
 }
 
+// AddForm adds an interaction form to the action affordance
+// this is not thread-safe.
+func (aff *ActionAffordance) AddForm(form Form) {
+	aff.Forms = append(aff.Forms, form)
+	return
+}
+
 // GetAtTypeString returns the @type field from the affordance as a single string.
 // If @type is an array then the first item is returned.
 func (aff *ActionAffordance) GetAtTypeString() string {

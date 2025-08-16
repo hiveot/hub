@@ -10,12 +10,13 @@ import "log/slog"
 type Form map[string]any
 
 // GetHRef returns the form's href field
-func (f Form) GetHRef() (href string, found bool) {
+// Since hrefs are mandatory, this returns an empty string if not present
+func (f Form) GetHRef() (href string) {
 	val, found := f["href"]
-	if val != nil {
-		return val.(string), found
+	if found && val != nil {
+		return val.(string)
 	}
-	return "", found
+	return ""
 }
 
 // GetOperation returns the form's operation name
@@ -47,20 +48,28 @@ func (f Form) GetSubprotocol() (subp string, found bool) {
 }
 
 // SetMethodName sets the form's HTTP "htv:methodName" field
-func (f Form) SetMethodName(method string) {
+func (f Form) SetMethodName(method string) Form {
 	f["htv:methodName"] = method
+	return f
 }
 
 // SetSubprotocol sets the form's subprotocol field
-func (f Form) SetSubprotocol(subp string) {
+func (f Form) SetSubprotocol(subp string) Form {
 	f["subprotocol"] = subp
+	return f
 }
 
-func NewForm(operation string, href string) Form {
-	return Form{
+// NewForm creates a new form instance
+// Optionally include a sub-protocol as the third parameter
+func NewForm(operation string, href string, args ...string) Form {
+	f := Form{
 		"op":   operation,
 		"href": href,
 	}
+	if len(args) > 0 {
+		f["subprotocol"] = args[0]
+	}
+	return f
 }
 
 //Href        string `json:"href"`

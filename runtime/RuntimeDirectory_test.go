@@ -1,7 +1,13 @@
 package runtime_test
 
 import (
+	"encoding/json"
 	"fmt"
+	"net/url"
+	"sync/atomic"
+	"testing"
+	"time"
+
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/tputils/tlsclient"
@@ -13,10 +19,6 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"net/url"
-	"sync/atomic"
-	"testing"
-	"time"
 )
 
 // FIXME: add tests to check that the runtime requests the TDs of newly connected agents
@@ -101,6 +103,32 @@ func TestReadTDs(t *testing.T) {
 	tdList2, err := digitwin.ThingDirectoryReadAllTDs(co1, 333, 02)
 	require.NoError(t, err)
 	require.True(t, len(tdList2) > 0)
+
+	// the TD must now have forms
+	tdi := td.TD{}
+	err = json.Unmarshal([]byte(tdList2[20]), &tdi)
+	require.NoError(t, err)
+	for name, aff := range tdi.Properties {
+		_ = name
+		require.True(t, len(aff.Forms) > 0)
+		form := aff.Forms[0]
+		assert.NotEmpty(t, form.GetOperation())
+		assert.NotEmpty(t, form.GetHRef())
+	}
+	for name, aff := range tdi.Actions {
+		_ = name
+		require.True(t, len(aff.Forms) > 0)
+		form := aff.Forms[0]
+		assert.NotEmpty(t, form.GetOperation())
+		assert.NotEmpty(t, form.GetHRef())
+	}
+	for name, aff := range tdi.Events {
+		_ = name
+		require.True(t, len(aff.Forms) > 0)
+		form := aff.Forms[0]
+		assert.NotEmpty(t, form.GetOperation())
+		assert.NotEmpty(t, form.GetHRef())
+	}
 }
 
 func TestReadTDsRest(t *testing.T) {

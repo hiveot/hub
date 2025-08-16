@@ -37,6 +37,12 @@ type PropertyAffordance struct {
 	Properties map[string]PropertyAffordance `json:"properties,omitempty"`
 }
 
+// AddForm adds an interaction form to the property affordance
+// this is not thread-safe.
+func (aff *PropertyAffordance) AddForm(form Form) {
+	aff.Forms = append(aff.Forms, form)
+}
+
 // SetAtType sets the property @type field from the HT vocabulary
 func (aff *PropertyAffordance) SetAtType(atType string) *PropertyAffordance {
 	aff.AtType = atType

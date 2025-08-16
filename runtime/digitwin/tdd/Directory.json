@@ -13,17 +13,6 @@
 	"modified": "2024-04-21T17:00:00.000Z",
 	"support": "https://www.github.com/hiveot/hub",
 	"base": "https://localhost/",
-	"security": ["bearer"],
-	"securityDefinitions": {
-		"bearer": {
-			"description": "HTTP protocol authentication",
-			"name": "authentication",
-			"alg": "es256",
-			"format": "jwt",
-			"scheme": "bearer",
-			"in": "header"
-		}
-	},
 	"deny": ["none"],
 	"properties": {
 	},

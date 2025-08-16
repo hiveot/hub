@@ -2,15 +2,16 @@ package wssserver
 
 import (
 	"fmt"
+	"log/slog"
+	"net/http"
+	"net/url"
+	"sync"
+
 	"github.com/gorilla/websocket"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/connections"
 	"github.com/hiveot/hub/messaging/servers/httpserver"
 	"github.com/hiveot/hub/wot/td"
-	"log/slog"
-	"net/http"
-	"net/url"
-	"sync"
 )
 
 const (
@@ -60,21 +61,6 @@ type WssServer struct {
 	protocol string
 
 	wssPath string
-}
-
-// AddTDForms adds forms for use of this protocol to the given TD
-func (svc *WssServer) AddTDForms(tdoc *td.TD) error {
-	// add form for this sub-protocol
-	subProtocol := SubprotocolWSS
-	// 1 form for all operations
-	form := td.Form{}
-	form["op"] = "*"
-	form["subprotocol"] = subProtocol
-	form["contentType"] = "application/json"
-	form["href"] = svc.wssPath
-	tdoc.Forms = append(tdoc.Forms, form)
-
-	return nil
 }
 
 func (svc *WssServer) CloseAll() {

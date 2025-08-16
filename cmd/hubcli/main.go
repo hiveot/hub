@@ -2,6 +2,9 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
+	"os"
+
 	"github.com/hiveot/hub/cmd/hubcli/authcli"
 	"github.com/hiveot/hub/cmd/hubcli/certs"
 	"github.com/hiveot/hub/cmd/hubcli/directorycli"
@@ -15,11 +18,9 @@ import (
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/clients"
 	"github.com/urfave/cli/v2"
-	"log/slog"
-	"os"
 )
 
-const Version = `0.5-alpha`
+const Version = `0.6-alpha`
 
 // var env utils.AppEnvironment
 var nowrap bool

@@ -2,9 +2,9 @@ package tests
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/wot/td"
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/hiveot/hub/wot/td"
 )
 
 // test TD messages and forms
@@ -77,8 +77,7 @@ func TestAddForms(t *testing.T) {
 	tdi := td.NewTD(thingID, "My gadget", DeviceTypeSensor)
 
 	// 3. add forms
-	err := transportServer.AddTDForms(tdi)
-	require.NoError(t, err)
+	transportServer.AddTDForms(tdi, true)
 
 	// 4. Check that at least 1 form are present
 	// TODO: add the hiveot endpoints

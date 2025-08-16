@@ -2,10 +2,11 @@
 package messaging
 
 import (
+	"time"
+
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/teris-io/shortid"
-	"time"
 )
 
 // RequestMessage defines the standardized message envelope for sending requests.
@@ -58,7 +59,7 @@ type RequestMessage struct {
 	// This field is optional and only required for specific operations.
 	Name string `json:"name,omitempty"`
 
-	// The operation for this message as defined in TD-1.1 or the hiveot extensions (HTOp...)
+	// The operation for this message as defined in TD-1.1 (WotOp...)
 	// This identifies the request and is a required field
 	Operation string `json:"operation"`
 

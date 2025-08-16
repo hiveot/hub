@@ -2,12 +2,13 @@ package hiveotsseserver
 
 import (
 	"fmt"
+	"net/url"
+	"sync"
+
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/connections"
 	"github.com/hiveot/hub/messaging/servers/httpserver"
 	"github.com/hiveot/hub/wot/td"
-	"net/url"
-	"sync"
 )
 
 const (
@@ -95,13 +96,12 @@ type HiveotSseServer struct {
 
 // AddTDForms for connecting to SSE, Subscribe, Observe, Send Requests, read and query
 // using hiveot RequestMessage and ResponseMessage envelopes.
-func (srv *HiveotSseServer) AddTDForms(tdi *td.TD) error {
+func (srv *HiveotSseServer) AddTDForms(tdi *td.TD, includeAffordances bool) {
 
 	// TODO: add the hiveot http endpoints
 	//srv.httpTransport.AddOps()
 	// forms are handled through the http binding
-	//return srv.httpTransport.AddTDForms(tdi)
-	return nil
+	//return srv.httpTransport.AddTDForms(tdi, includeAffordances)
 }
 
 func (srv *HiveotSseServer) CloseAll() {

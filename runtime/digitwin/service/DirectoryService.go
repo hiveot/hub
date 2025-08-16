@@ -1,13 +1,14 @@
 package service
 
 import (
+	"log/slog"
+
 	"github.com/hiveot/hub/messaging"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/runtime/digitwin/store"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
-	"log/slog"
 )
 
 // DirectoryService provides the digital twin directory service
@@ -16,9 +17,12 @@ import (
 type DirectoryService struct {
 	dtwStore *store.DigitwinStore
 
+	// include forms in each affordance when generating the digitwin TD
+	includeAffordanceForms bool
+
 	// notifications on directory changes
 	notifHandler    messaging.NotificationHandler
-	addFormsHandler func(*td.TD) error
+	addFormsHandler func(*td.TD, bool)
 }
 
 // MakeDigitalTwinTD returns the digital twin from an agent provided TD
@@ -56,7 +60,7 @@ func (svc *DirectoryService) MakeDigitalTwinTD(
 	}
 	// the forms handler defines the protocols and security scheme for accessing the digital twin TD
 	if svc.addFormsHandler != nil {
-		err = svc.addFormsHandler(dtwTD)
+		svc.addFormsHandler(dtwTD, svc.includeAffordanceForms)
 	}
 	return thingTD, dtwTD, err
 }
@@ -143,11 +147,13 @@ func (svc *DirectoryService) UpdateTD(agentID string, tdJson string) error {
 // Currently being revised to be compatible.
 // The transport binding can be supplied directly or set later by the parent service
 func NewDigitwinDirectoryService(
-	dtwStore *store.DigitwinStore, notifHandler messaging.NotificationHandler) *DirectoryService {
+	dtwStore *store.DigitwinStore, notifHandler messaging.NotificationHandler,
+	includeAffordanceForms bool) *DirectoryService {
 
 	dirSvc := &DirectoryService{
-		dtwStore:     dtwStore,
-		notifHandler: notifHandler,
+		dtwStore:               dtwStore,
+		notifHandler:           notifHandler,
+		includeAffordanceForms: includeAffordanceForms,
 	}
 
 	// verify service interface matches the TD generated interface

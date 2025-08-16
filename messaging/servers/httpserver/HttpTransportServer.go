@@ -5,6 +5,10 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"io"
+	"log/slog"
+	"net/http"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/hiveot/hub/messaging"
@@ -14,9 +18,6 @@ import (
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 	"golang.org/x/exp/slices"
-	"io"
-	"log/slog"
-	"net/http"
 )
 
 // HTTP protoocol headers constants
@@ -102,7 +103,7 @@ func (svc *HttpTransportServer) AddSecurityScheme(tdoc *td.TD) {
 
 	// FIXME: this should be set by the authenticator used
 
-	// bearer security scheme for authenticating WSS connections
+	// bearer security scheme for authenticating http and subprotocol connections
 	format, alg := svc.authenticator.GetAlg()
 
 	tdoc.AddSecurityScheme("bearer_sc", td.SecurityScheme{
@@ -124,6 +125,12 @@ func (svc *HttpTransportServer) AddSecurityScheme(tdoc *td.TD) {
 	//	Scheme:      "digest", // nosec, basic, digest, bearer, psk, oauth2, apikey or auto
 	//	In:          "body",   // query, header, body, cookie, uri, auto
 	//})
+}
+
+// AddTDForms adds forms for use of the HTTP requests with the given TD
+// 'includeAffordances' adds forms to all affordances to be compliant with the specifications.
+// Warning this increases the TD size significantly.
+func (svc *HttpTransportServer) AddTDForms(tdoc *td.TD, includeAffordances bool) {
 }
 
 // setupRouting creates the middleware chain for handling requests, including

@@ -1,15 +1,16 @@
 package service
 
 import (
+	"log/slog"
+	"os"
+	"path"
+	"sync"
+
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/runtime/digitwin/store"
 	"github.com/hiveot/hub/wot/td"
-	"log/slog"
-	"os"
-	"path"
-	"sync"
 )
 
 // The DigitwinService stores digital twin things, property values and provide
@@ -45,7 +46,7 @@ func (svc *DigitwinService) ReadAllTDs(
 //}
 
 // SetFormsHook sets the transport hook for adding forms and securityScheme entries to TDs
-func (svc *DigitwinService) SetFormsHook(addFormsHandler func(*td.TD) error) {
+func (svc *DigitwinService) SetFormsHook(addFormsHandler func(*td.TD, bool)) {
 	svc.DirSvc.addFormsHandler = addFormsHandler
 }
 
@@ -61,7 +62,9 @@ func (svc *DigitwinService) Stop() {
 //
 // storesDir is the directory where to create the digitwin storage
 // notifHandler is the handler to send responses to subscribes
-func StartDigitwinService(storesDir string, notifHandler messaging.NotificationHandler) (
+// includeAffordanceForms waste space in TDs
+func StartDigitwinService(
+	storesDir string, notifHandler messaging.NotificationHandler, includeAffordanceForms bool) (
 	svc *DigitwinService, digitwinStore *store.DigitwinStore, err error) {
 
 	sPath := path.Join(storesDir, "digitwin")
@@ -75,7 +78,7 @@ func StartDigitwinService(storesDir string, notifHandler messaging.NotificationH
 	if err == nil {
 		digitwinStore, err = store.OpenDigitwinStore(bucketStore, false)
 	}
-	dirSvc := NewDigitwinDirectoryService(digitwinStore, notifHandler)
+	dirSvc := NewDigitwinDirectoryService(digitwinStore, notifHandler, includeAffordanceForms)
 	valuesSvc := NewDigitwinValuesService(digitwinStore)
 	if err == nil {
 		svc = &DigitwinService{

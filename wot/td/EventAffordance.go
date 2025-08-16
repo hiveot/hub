@@ -38,6 +38,12 @@ type EventAffordance struct {
 	// cancellation is not applicable
 }
 
+// AddForm adds an interaction form to the event affordance
+// this is not thread-safe.
+func (aff *EventAffordance) AddForm(form Form) {
+	aff.Forms = append(aff.Forms, form)
+}
+
 // GetAtTypeString returns the @type field from the affordance as a single string.
 // If @type is an array then the first item is returned.
 func (aff *EventAffordance) GetAtTypeString() string {

@@ -2,13 +2,14 @@ package service
 
 import (
 	"fmt"
+	"log/slog"
+
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/messaging/tputils/net"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
-	"log/slog"
 )
 
 // CreateServiceTD creates a new Thing TD document for this service

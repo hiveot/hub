@@ -8,7 +8,9 @@ type ITransportServer interface {
 	// AddTDForms adds the Forms for using this protocol bindings to the provided TD.
 	// This adds the operations for reading/writing properties, events and actions
 	// Original forms must be removed first as they are no longer applicable.
-	AddTDForms(td *td.TD) error
+	//
+	// Use includeAffordances to add forms to every affordance, a massive waste of space.
+	AddTDForms(td *td.TD, includeAffordances bool)
 
 	// CloseAllClientConnections close all connections from the given client.
 	// Intended to close connections after a logout.

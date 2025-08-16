@@ -1,9 +1,10 @@
 package servers
 
 import (
+	"os"
+
 	"github.com/hiveot/hub/messaging/servers/discoserver"
 	"github.com/hiveot/hub/messaging/servers/httpserver"
-	"os"
 )
 
 const (
@@ -19,6 +20,13 @@ type ProtocolsConfig struct {
 	EnableHiveotSSE bool `yaml:"enableHiveotSSE"`
 	// Enable the HTTP/WSS sub protocol binding. Default is true.
 	EnableWSS bool `yaml:"enableWSS"`
+
+	// Include forms in each affordance to meet specifications.
+	// Note that this is not useful when talking to the Hub as all affordances of
+	// all digital twin TD have the same forms with the hub as endpoint.
+	// This results in massive duplication of TD content and increases the TD by a lot.
+	// Don't use forms unless you really need it.
+	IncludeForms bool `yaml:"includeForms,omitempty"`
 
 	// Enable the MQTT protocol binding, default is false.
 	//EnableMQTT bool `yaml:"enableMQTT"`
@@ -70,6 +78,7 @@ func NewProtocolsConfig() ProtocolsConfig {
 		EnableHiveotSSE:  true,
 		EnableWSS:        true,
 		EnableDiscovery:  true,
+		IncludeForms:     true, // for interoperability
 		InstanceName:     hostName,
 		HttpHost:         "",
 		HttpsPort:        httpserver.DefaultHttpsPort,

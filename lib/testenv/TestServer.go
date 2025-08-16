@@ -2,6 +2,12 @@ package testenv
 
 import (
 	"fmt"
+	"log/slog"
+	"math/rand"
+	"os"
+	"path"
+	"time"
+
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/plugin"
@@ -12,11 +18,6 @@ import (
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
-	"log/slog"
-	"math/rand"
-	"os"
-	"path"
-	"time"
 )
 
 // TestDir is the default test directory
@@ -37,7 +38,7 @@ var testTDs = []struct {
 	{ID: "thing-1", Title: "Environmental Sensor",
 		DeviceType: vocab.ThingSensorEnvironment, NrEvents: 1, NrProps: 1, NrActions: 3},
 	{ID: "thing-2", Title: "Light Switch",
-		DeviceType: vocab.ThingActuatorLight, NrEvents: 2, NrProps: 2, NrActions: 0},
+		DeviceType: vocab.ThingActuatorLight, NrEvents: 12, NrProps: 2, NrActions: 0},
 	{ID: "thing-3", Title: "Power meter",
 		DeviceType: vocab.ThingMeterElectric, NrEvents: 3, NrProps: 3, NrActions: 1},
 	{ID: "thing-4", Title: "Multisensor",

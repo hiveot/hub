@@ -2,13 +2,14 @@ package td
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/wot"
-	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"net/url"
 	"sort"
 	"strings"
+
+	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/wot"
+	jsoniter "github.com/json-iterator/go"
 )
 
 const WoTTDContext = "https://www.w3.org/2022/wot/td/v1.1"
@@ -421,9 +422,9 @@ func (tdoc *TD) GetForms(operation string, name string) []Form {
 // If the form uses a relative href then prepend it with the base defined
 // in the TD.
 func (tdoc *TD) GetFormHRef(form Form, uriVars map[string]string) (string, error) {
-	href, found := form.GetHRef()
-	if !found {
-		return "", fmt.Errorf("Form has no href field")
+	href := form.GetHRef()
+	if href == "" {
+		return "", fmt.Errorf("form has no valid href field")
 	}
 	uri, err := url.Parse(href)
 	if err != nil {

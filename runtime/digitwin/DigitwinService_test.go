@@ -3,6 +3,11 @@ package digitwin_test
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
+	"os"
+	"path"
+	"testing"
+
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging"
@@ -12,10 +17,6 @@ import (
 	"github.com/hiveot/hub/wot/td"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"log/slog"
-	"os"
-	"path"
-	"testing"
 )
 
 var testDirFolder = path.Join(os.TempDir(), "test-directory")
@@ -39,7 +40,7 @@ func startService(clean bool) (
 	notifHandler := func(notif *messaging.NotificationMessage) {
 		slog.Info("Received notification", "op", notif.Operation)
 	}
-	svc, dirStore, err := service.StartDigitwinService(dirStorePath, notifHandler)
+	svc, dirStore, err := service.StartDigitwinService(dirStorePath, notifHandler, true)
 	if err != nil {
 		panic("unable to start the digitwin service")
 	}
@@ -101,4 +102,5 @@ func TestStartStopService(t *testing.T) {
 	defer stopFunc()
 	tds2, err := svc.ReadAllTDs("", 0, 10)
 	assert.Equal(t, len(tds1), len(tds2))
+
 }

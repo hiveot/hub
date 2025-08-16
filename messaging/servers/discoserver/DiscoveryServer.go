@@ -27,7 +27,7 @@ type DiscoveryServer struct {
 }
 
 // AddTDForms does not apply to the discovery service
-//func (svc *DiscoveryServer) AddTDForms(*td.TD) {
+//func (svc *DiscoveryServer) AddTDForms(*td.TD, includeAffordances bool) {
 //	// nothing to do here
 //}
 

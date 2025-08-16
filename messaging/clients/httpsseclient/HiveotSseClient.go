@@ -6,6 +6,14 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"io"
+	"log/slog"
+	"net/http"
+	"net/url"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/servers/hiveotsseserver"
 	"github.com/hiveot/hub/messaging/servers/httpserver"
@@ -15,13 +23,6 @@ import (
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/teris-io/shortid"
-	"io"
-	"log/slog"
-	"net/http"
-	"net/url"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 // HiveotSseClient is the http/2 client for connecting a WoT client to a
@@ -415,7 +416,7 @@ func (cc *HiveotSseClient) SendRequest(req *messaging.RequestMessage) error {
 	f := cc.getForm(req.Operation, req.ThingID, req.Name)
 	if f != nil {
 		method, _ = f.GetMethodName()
-		href, _ = f.GetHRef()
+		href = f.GetHRef()
 		subprotocol, _ := f.GetSubprotocol()
 		// the SSE-Hiveot subprotocol sends the RequestMessage envelope as payload
 		useRequestEnvelope = subprotocol == hiveotsseserver.HiveotSSESchema

@@ -2,6 +2,12 @@ package runtime_test
 
 import (
 	"fmt"
+	"log/slog"
+	"os"
+	"sync/atomic"
+	"testing"
+	"time"
+
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
@@ -15,11 +21,6 @@ import (
 	"github.com/hiveot/hub/wot/td"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"log/slog"
-	"os"
-	"sync/atomic"
-	"testing"
-	"time"
 )
 
 var ts *testenv.TestServer

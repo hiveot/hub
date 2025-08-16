@@ -26,7 +26,7 @@ type MqttTransportServer struct {
 	op2Topic map[string]string
 }
 
-func (svc *MqttTransportServer) AddTDForms(td *td.TD) error {
+func (svc *MqttTransportServer) AddTDForms(td *td.TD, includeAffordances bool) error {
 	//svc.AddThingLevelForms(td)
 	//svc.AddPropertiesForms(td)
 	//svc.AddEventsForms(td)

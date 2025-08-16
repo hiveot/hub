@@ -1,6 +1,11 @@
 package runtime
 
 import (
+	"log/slog"
+	"os"
+	"path"
+	"time"
+
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/messaging"
@@ -14,10 +19,6 @@ import (
 	service4 "github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
-	"log/slog"
-	"os"
-	"path"
-	"time"
 )
 
 // Runtime is the Hub runtime. This is the bare-bone core of the hub that operates the
@@ -124,7 +125,8 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	// The digitwin service directs the message flow between agents and consumers
 	// It receives messages from the middleware and uses the transport manager
 	// to send messages to clients.
-	r.DigitwinSvc, _, err = service4.StartDigitwinService(env.StoresDir, r.SendNotification)
+	r.DigitwinSvc, _, err = service4.StartDigitwinService(
+		env.StoresDir, r.SendNotification, r.cfg.ProtocolsConfig.IncludeForms)
 	dtwAgent := service4.NewDigitwinAgent(r.DigitwinSvc)
 
 	// The digitwin router receives all incoming messages from the transport.
