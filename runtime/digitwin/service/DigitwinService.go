@@ -61,8 +61,8 @@ func (svc *DigitwinService) Stop() {
 // This creates a bucket store for the directory, inbox, and outbox.
 //
 // storesDir is the directory where to create the digitwin storage
-// notifHandler is the handler to send responses to subscribes
-// includeAffordanceForms waste space in TDs
+// notifHandler is notifies of changes to digital twin state.
+// includeAffordanceForms to include forms for affordances in digital twin TDs.
 func StartDigitwinService(
 	storesDir string, notifHandler messaging.NotificationHandler, includeAffordanceForms bool) (
 	svc *DigitwinService, digitwinStore *store.DigitwinStore, err error) {

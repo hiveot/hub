@@ -41,8 +41,10 @@ type TransportManager struct {
 	// http-basic server required for discovery and auth
 	httpBasicServer *httpbasic.HttpBasicServer
 
-	// all transport protocol bindings by protocol ID
-	servers map[string]messaging.ITransportServer
+	// transport protocol bindings in order of startup
+	servers []messaging.ITransportServer
+	// transport protocol bindings by protocol ID
+	serversByProtocol map[string]messaging.ITransportServer
 
 	// Registered handler for processing received notifications
 	notificationHandler messaging.NotificationHandler
@@ -77,7 +79,7 @@ func (svc *TransportManager) AddTDForms(tdoc *td.TD, includeAffordances bool) {
 	// CoAP ?
 }
 
-// CloseAll closes all incoming connections
+// CloseAll closes all client connections
 func (svc *TransportManager) CloseAll() {
 	for _, srv := range svc.servers {
 		srv.CloseAll()
@@ -97,7 +99,7 @@ func (svc *TransportManager) CloseAllClientConnections(clientID string) {
 // This returns an empty URL if the protocol is not supported.
 func (svc *TransportManager) GetConnectURL() (connectURL string) {
 	protocolType := svc.PreferredProtocolType
-	srv, found := svc.servers[protocolType]
+	srv, found := svc.serversByProtocol[protocolType]
 	if found {
 		return srv.GetConnectURL()
 	}
@@ -143,7 +145,7 @@ func (svc *TransportManager) GetHiveotEndpoints() map[string]string {
 // GetProtocolType returns the preferred protocol
 func (svc *TransportManager) GetProtocolType() string {
 	pref := svc.PreferredProtocolType
-	s := svc.servers[pref]
+	s := svc.serversByProtocol[pref]
 	if s == nil {
 		return ""
 	}
@@ -153,7 +155,7 @@ func (svc *TransportManager) GetProtocolType() string {
 // GetServer returns the server for the given protocol type
 // This returns nil if the protocol is not active.
 func (svc *TransportManager) GetServer(protocolType string) messaging.ITransportServer {
-	s := svc.servers[protocolType]
+	s := svc.serversByProtocol[protocolType]
 	return s
 }
 
@@ -170,7 +172,10 @@ func (svc *TransportManager) handleRequest(
 	if svc.requestHandler != nil {
 		return svc.requestHandler(req, c)
 	}
-	return req.CreateResponse(nil, errors.New("No request handler set"))
+	slog.Error("Received request but no request handler is set in the TransportManager",
+		"senderID", req.SenderID, "operation", req.Operation)
+	err := errors.New("no request handler set")
+	return req.CreateResponse(nil, err)
 }
 
 // Pass incoming responses from any of the transport protocols to the registered handler
@@ -189,16 +194,6 @@ func (svc *TransportManager) SendNotification(notification *messaging.Notificati
 	for _, srv := range svc.servers {
 		srv.SendNotification(notification)
 	}
-}
-
-func (svc *TransportManager) SetNotificationHandler(h messaging.NotificationHandler) {
-	svc.notificationHandler = h
-}
-func (svc *TransportManager) SetRequestHandler(h messaging.RequestHandler) {
-	svc.requestHandler = h
-}
-func (svc *TransportManager) SetResponseHandler(h messaging.ResponseHandler) {
-	svc.responseHandler = h
 }
 
 // StartDiscovery starts the introduction and exploration discovery of the directory
@@ -226,21 +221,19 @@ func (svc *TransportManager) StartDiscovery(instanceName string, tdPath string, 
 	return err
 }
 
-// Stop the protocol servers
+// Stop the protocol servers in reverse order
 func (svc *TransportManager) Stop() {
 	if svc.discoServer != nil {
 		svc.discoServer.Stop()
 		svc.discoServer = nil
 	}
-	for _, srv := range svc.servers {
+	for i := len(svc.servers) - 1; i >= 0; i-- {
+		srv := svc.servers[i]
 		srv.Stop()
 	}
-	if svc.httpServer != nil {
-		svc.httpServer.Stop()
-		svc.httpServer = nil
-	}
-	svc.servers = make(map[string]messaging.ITransportServer)
-
+	svc.servers = nil
+	svc.serversByProtocol = nil
+	svc.httpServer.Stop()
 	// mqtt
 	//if svc.mqttTransport != nil {
 	//	svc.mqttTransport.Stop()
@@ -252,25 +245,53 @@ func (svc *TransportManager) Stop() {
 
 }
 
-// StartTransportManager starts a new instance of the transport protocol manager.
-// This instantiates and starts enabled protocol bindings.
+// Start starts the transport protocol manager and listens for incoming connections and messages.
 //
-// The http-basic binding provides the services for authentication and discovery.
+// This returns an error if any server fails to start.
 //
 // Discovery has to be started separately with StartDiscovery, if desired, and must
 // be provided with the Directory TD document to serve.
 //
 // The transport manager implements the ITransportBinding API.
-// Use SetRequestHandler and SetResponseHandler to setup the receivers of incoming
-// requests and responses
-func StartTransportManager(cfg *ProtocolsConfig,
+func (svc *TransportManager) Start() (err error) {
+	slog.Info("Start listening for requests")
+
+	err = svc.httpServer.Start()
+	if err != nil {
+		return err
+	}
+
+	// TODO: on error stop all servers that were already started
+	for _, srv := range svc.servers {
+		err = srv.Start()
+		if err != nil {
+			return err
+		}
+	}
+
+	return err
+}
+
+// NewTransportManager creates a new instance of the transport protocol manager.
+// The transport manager implements the ITransportBinding API.
+func NewTransportManager(cfg *ProtocolsConfig,
 	serverCert *tls.Certificate,
 	caCert *x509.Certificate,
 	authenticator messaging.IAuthenticator,
-) (svc *TransportManager, err error) {
+	notifHandler messaging.NotificationHandler,
+	reqHandler messaging.RequestHandler,
+	respHandler messaging.ResponseHandler,
+) (svc *TransportManager) {
 
 	svc = &TransportManager{
-		servers: make(map[string]messaging.ITransportServer),
+		//serverCert:          serverCert,
+		//caCert:              caCert,
+		//authenticator:       authenticator,
+		servers:             make([]messaging.ITransportServer, 0),
+		serversByProtocol:   make(map[string]messaging.ITransportServer),
+		notificationHandler: notifHandler,
+		requestHandler:      reqHandler,
+		responseHandler:     respHandler,
 		//PreferredProtocolType: transports.ProtocolTypeHTTPBasic,
 		//dtwService: dtwService,
 	}
@@ -287,10 +308,6 @@ func StartTransportManager(cfg *ProtocolsConfig,
 		// if host is empty then listen on all interfaces
 		svc.httpServer, svc.httpRouter = tlsserver.NewTLSServer(
 			cfg.HttpHost, cfg.HttpsPort, serverCert, caCert)
-		err = svc.httpServer.Start()
-		if err != nil {
-			return nil, err
-		}
 
 		httpAddr := fmt.Sprintf("%s:%d", cfg.HttpHost, cfg.HttpsPort)
 		if cfg.HttpHost == "" {
@@ -298,29 +315,31 @@ func StartTransportManager(cfg *ProtocolsConfig,
 			httpAddr = fmt.Sprintf("%s:%d", connectIP.String(), cfg.HttpsPort)
 		}
 
-		httpBasicServer := httpbasic.StartHttpBasicServer(
+		svc.httpBasicServer = httpbasic.NewHttpBasicServer(
 			httpAddr, svc.httpRouter,
 			authenticator,
 			svc.handleNotification,
 			svc.handleRequest,
 			svc.handleResponse)
 
-		protectedRouter := httpBasicServer.GetProtectedRouter()
+		// FIXME: routes only available after start
+		protectedRouter := svc.httpBasicServer.GetProtectedRouter()
 
 		//err = err2
-		svc.httpBasicServer = httpBasicServer
-		svc.servers[messaging.ProtocolTypeHTTPBasic] = httpBasicServer
+		svc.serversByProtocol[messaging.ProtocolTypeHTTPBasic] = svc.httpBasicServer
+		svc.servers = append(svc.servers, svc.httpBasicServer)
 
 		// 2. HiveOT HTTP/SSE-SC sub-protocol
 		if cfg.EnableHiveotSSE {
 			ssePath := hiveotsseserver.DefaultHiveotSsePath
-			hiveotSseServer := hiveotsseserver.StartHiveotSseServer(
+			hiveotSseServer := hiveotsseserver.NewHiveotSseServer(
 				httpAddr, ssePath, protectedRouter,
 				nil,
 				svc.handleNotification,
 				svc.handleRequest,
 				svc.handleResponse)
-			svc.servers[messaging.ProtocolTypeHiveotSSE] = hiveotSseServer
+			svc.serversByProtocol[messaging.ProtocolTypeHiveotSSE] = hiveotSseServer
+			svc.servers = append(svc.servers, hiveotSseServer)
 			// sse is better than http-basic
 			svc.PreferredProtocolType = messaging.ProtocolTypeHiveotSSE
 		}
@@ -329,7 +348,7 @@ func StartTransportManager(cfg *ProtocolsConfig,
 		if cfg.EnableWSS {
 			converter := &wssserver.HiveotMessageConverter{}
 			wssPath := wssserver.DefaultWssPath
-			hiveotWssServer, err := wssserver.StartWssServer(
+			hiveotWssServer := wssserver.NewWssServer(
 				httpAddr, wssPath, protectedRouter, converter,
 				//svc.httpBasicServer,
 				nil,
@@ -337,9 +356,10 @@ func StartTransportManager(cfg *ProtocolsConfig,
 				svc.handleRequest,
 				svc.handleResponse,
 			)
-			if err == nil {
-				svc.servers[messaging.ProtocolTypeWSS] = hiveotWssServer
-			}
+
+			svc.serversByProtocol[messaging.ProtocolTypeWSS] = hiveotWssServer
+			svc.servers = append(svc.servers, hiveotWssServer)
+
 			// wss is better than http, sse or wot wss
 			svc.PreferredProtocolType = messaging.ProtocolTypeWSS
 		}
@@ -354,5 +374,5 @@ func StartTransportManager(cfg *ProtocolsConfig,
 	//)
 	//svc.servers = append(svc.servers, svc.mqttsTransport)
 	//}
-	return svc, err
+	return svc
 }

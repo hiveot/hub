@@ -2,6 +2,12 @@ package launcher_test
 
 import (
 	"fmt"
+	"log/slog"
+	"os"
+	"path"
+	"testing"
+	"time"
+
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/messaging"
 	authn "github.com/hiveot/hub/runtime/authn/api"
@@ -9,11 +15,6 @@ import (
 	launcher "github.com/hiveot/hub/services/launcher/api"
 	"github.com/hiveot/hub/services/launcher/config"
 	"github.com/hiveot/hub/services/launcher/service"
-	"log/slog"
-	"os"
-	"path"
-	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

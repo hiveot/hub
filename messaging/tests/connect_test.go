@@ -137,8 +137,9 @@ func StartTransportServer(
 
 	// http basic is required for http sub-protocols and authentication
 	connectAddr := fmt.Sprintf("%s:%d", certBundle.ServerAddr, testServerHttpPort)
-	httpBasicServer := httpbasic.StartHttpBasicServer(
+	httpBasicServer := httpbasic.NewHttpBasicServer(
 		connectAddr, httpRouter, dummyAuthenticator, notifHandler, reqHandler, respHandler)
+	err = httpBasicServer.Start()
 
 	switch defaultProtocol {
 	case messaging.ProtocolTypeHTTPBasic:
@@ -146,17 +147,19 @@ func StartTransportServer(
 		transportServer = httpBasicServer
 
 	case messaging.ProtocolTypeHiveotSSE:
-		transportServer = hiveotsseserver.StartHiveotSseServer(
+		transportServer = hiveotsseserver.NewHiveotSseServer(
 			connectAddr, hiveotsseserver.DefaultHiveotSsePath,
 			httpBasicServer.GetProtectedRouter(),
 			nil, notifHandler, reqHandler, respHandler)
+		err = transportServer.Start()
 
 	case messaging.ProtocolTypeWSS:
-		transportServer, err = wssserver.StartWssServer(
+		transportServer = wssserver.NewWssServer(
 			connectAddr, wssserver.DefaultWssPath,
 			httpBasicServer.GetProtectedRouter(),
 			&wssserver.HiveotMessageConverter{},
 			nil, notifHandler, reqHandler, respHandler)
+		err = transportServer.Start()
 
 	default:
 		err = errors.New("unknown protocol name: " + defaultProtocol)

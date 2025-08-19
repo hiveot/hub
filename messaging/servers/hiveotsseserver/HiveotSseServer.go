@@ -2,6 +2,7 @@ package hiveotsseserver
 
 import (
 	"fmt"
+	"log/slog"
 	"sync"
 
 	"github.com/go-chi/chi/v5"
@@ -84,12 +85,18 @@ type HiveotSseServer struct {
 	connectAddr string
 	connectURL  string
 
+	// The router to add to on start
+	router chi.Router
+
 	// registered handler of incoming requests (which return a reply)
 	serverNotificationHandler messaging.NotificationHandler
 	// registered handler of incoming requests (which return a reply)
 	serverRequestHandler messaging.RequestHandler
 	// registered handler of incoming responses (which sends a reply to the request sender)
 	serverResponseHandler messaging.ResponseHandler
+
+	// The SSE connection path
+	ssePath string
 }
 
 // AddRoutes adds routes to the HTTP server for connecting to SSE, (Un)Subscribe,
@@ -164,12 +171,25 @@ func (srv *HiveotSseServer) SendNotification(msg *messaging.NotificationMessage)
 	return
 }
 
+// Start listening for incoming SSE connections
+func (srv *HiveotSseServer) Start() error {
+	slog.Info("Starting SSE server, Listening on: " + srv.GetConnectURL())
+
+	// TODO: detect if already listening
+	// Add the routes used in SSE connection and subscription requests
+	srv.CreateRoutes(srv.ssePath, srv.router)
+
+	return nil
+}
+
+// Stop disconnects clients and remove connection listening
 func (srv *HiveotSseServer) Stop() {
 	//Close all incoming SSE cm
 	srv.cm.CloseAll()
+	srv.DeleteRoutes(srv.ssePath, srv.router)
 }
 
-// StartHiveotSseServer returns a new SSE-SC sub-protocol binding.
+// NewHiveotSseServer returns a new SSE-SC sub-protocol binding.
 // This is only a 1-way binding that adds an SSE based return channel to the http binding.
 //
 // This adds http methods for (un)subscribing to events and properties and
@@ -178,7 +198,7 @@ func (srv *HiveotSseServer) Stop() {
 // router is the protected route that serves sse connections on the ssePath
 //
 // This fails if no ssePath is provided
-func StartHiveotSseServer(
+func NewHiveotSseServer(
 	connectAddr string, ssePath string,
 	router chi.Router,
 	handleConnect messaging.ConnectionHandler,
@@ -191,6 +211,8 @@ func StartHiveotSseServer(
 	}
 	connectURL := fmt.Sprintf("%s://%s%s", HiveotSSESchema, connectAddr, ssePath)
 	srv := &HiveotSseServer{
+		ssePath:                   ssePath,
+		router:                    router,
 		cm:                        connections.NewConnectionManager(),
 		serverConnectHandler:      handleConnect,
 		serverNotificationHandler: handleNotification,
@@ -198,7 +220,5 @@ func StartHiveotSseServer(
 		serverResponseHandler:     handleResponse,
 		connectURL:                connectURL,
 	}
-	// Add the routes used in SSE connection and subscription requests
-	srv.CreateRoutes(ssePath, router)
 	return srv
 }

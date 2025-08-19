@@ -33,10 +33,17 @@ const (
 // Connections support event subscription and property observe requests, and sends
 // updates as Responses with the subscription correlationID.
 type WssServer struct {
+
+	// manage the incoming connections
+	cm *connections.ConnectionManager
+
 	// the connection URL for this websocket server
 	connectURL string
 
-	// registered handler of incoming cm
+	// The router to register with
+	router chi.Router
+
+	// registered handler to notify of incoming connections
 	serverConnectHandler messaging.ConnectionHandler
 
 	// registered handler of incoming notifications
@@ -52,8 +59,8 @@ type WssServer struct {
 	// mutex for updating cm
 	mux sync.RWMutex
 
-	// manage the incoming cm
-	cm *connections.ConnectionManager
+	// listening path for incoming connections
+	wssPath string
 }
 
 func (srv *WssServer) CloseAll() {
@@ -154,12 +161,21 @@ func (srv *WssServer) Serve(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Stop closes all cm
-func (srv *WssServer) Stop() {
-	srv.CloseAll()
+// Start listening for incoming SSE connections
+func (srv *WssServer) Start() error {
+	slog.Info("Starting websocket server, Listening on: " + srv.GetConnectURL())
+	// TODO: detect if already listening
+	srv.router.Get(srv.wssPath, srv.Serve)
+	return nil
 }
 
-// StartWssServer returns a new websocket protocol server
+// Stop disconnects clients and remove connection listening
+func (srv *WssServer) Stop() {
+	srv.CloseAll()
+	srv.router.Delete(srv.wssPath, srv.Serve)
+}
+
+// NewWssServer returns a new websocket protocol server. Use Start() to activate routes.
 //
 // The given message converter maps between the underlying websocket message and the
 // hiveot Request/ResponseMessage envelopes.
@@ -172,7 +188,7 @@ func (srv *WssServer) Stop() {
 // handleNotification optional callback to invoke when a notification message is received
 // handleRequesst optional callback to invoke when a request message is received
 // handleResponse optional callback to invoke when a response message is received
-func StartWssServer(
+func NewWssServer(
 	connectAddr string,
 	wssPath string,
 	router chi.Router,
@@ -181,7 +197,7 @@ func StartWssServer(
 	handleNotification messaging.NotificationHandler,
 	handleRequest messaging.RequestHandler,
 	handleResponse messaging.ResponseHandler,
-) (*WssServer, error) {
+) *WssServer {
 
 	connectURL := fmt.Sprintf("%s://%s%s", WssSchema, connectAddr, wssPath)
 	srv := &WssServer{
@@ -192,7 +208,8 @@ func StartWssServer(
 		serverResponseHandler:     handleResponse,
 		messageConverter:          converter,
 		cm:                        connections.NewConnectionManager(),
+		router:                    router,
+		wssPath:                   wssPath,
 	}
-	router.Get(wssPath, srv.Serve)
-	return srv, nil
+	return srv
 }

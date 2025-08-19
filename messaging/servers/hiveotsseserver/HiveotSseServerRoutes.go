@@ -50,6 +50,14 @@ func (srv *HiveotSseServer) CreateRoutes(ssePath string, r chi.Router) {
 	//	http.MethodPost, DefaultHiveotPostResponseHRef, srv.HandleResponseMessage)
 }
 
+// DeleteRoutes removes the routes used in SSE-SC sub-protocol
+func (srv *HiveotSseServer) DeleteRoutes(ssePath string, r chi.Router) {
+	r.Delete(ssePath, srv.Serve)
+	r.Delete(DefaultHiveotPostNotificationHRef, srv.HandleNotificationMessage)
+	r.Delete(DefaultHiveotPostRequestHRef, srv.HandleRequestMessage)
+	r.Delete(DefaultHiveotPostResponseHRef, srv.HandleResponseMessage)
+}
+
 // HandleNotificationMessage handles responses sent by agents.
 //
 // As WoT doesn't support reverse connections this is only used by hiveot agents

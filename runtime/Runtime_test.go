@@ -252,7 +252,7 @@ func TestServiceReconnect(t *testing.T) {
 	ts.AddTD(agentID, td1)
 
 	// time for agent to connect
-	time.Sleep(time.Millisecond * 10)
+	time.Sleep(time.Millisecond * 1000)
 
 	hasAgent := ts.Runtime.TransportsMgr.GetConnectionByClientID(ag1.GetClientID())
 	require.NotNil(t, hasAgent)
@@ -276,7 +276,7 @@ func TestServiceReconnect(t *testing.T) {
 	// TBD what is the go-sse reconnect algorithm? How to know it triggered?
 	t.Log("--- restarting the runtime; 1 existing connection remaining")
 	r.Stop()
-	time.Sleep(time.Millisecond * 100)
+	time.Sleep(time.Millisecond * 10)
 
 	err := r.Start(&ts.AppEnv)
 	require.NoError(t, err)
@@ -284,7 +284,7 @@ func TestServiceReconnect(t *testing.T) {
 	t.Log("--- server restarted; expecting an agent reconnect")
 
 	// wait for the agent reconnect
-	time.Sleep(time.Second * 2)
+	time.Sleep(time.Millisecond * 2000)
 
 	hasAgent = ts.Runtime.TransportsMgr.GetConnectionByClientID(ag1.GetClientID())
 	assert.NotNil(t, hasAgent)

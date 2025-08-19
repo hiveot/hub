@@ -2,6 +2,7 @@ package httpbasic
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/messaging"
@@ -44,7 +45,7 @@ type HttpBasicServer struct {
 	//operations []HttpOperation
 
 	// the root http router
-	//router *chi.Mux
+	router *chi.Mux
 
 	// The routes that require authentication. These can be used by sub-protocol bindings.
 	protectedRoutes chi.Router
@@ -118,10 +119,19 @@ func (srv *HttpBasicServer) GetPublicRouter() chi.Router {
 func (srv *HttpBasicServer) SendNotification(msg *messaging.NotificationMessage) {
 }
 
+// Start listening on the routes
+func (srv *HttpBasicServer) Start() error {
+	slog.Info("Starting http-basic server, Listening on: " + srv.GetConnectURL())
+
+	// Add the routes used in SSE connection and subscription requests
+	// hmm, needed by sub-protocols before starting
+	//srv.setupRouting(srv.router)
+	return nil
+}
 func (srv *HttpBasicServer) Stop() {
 }
 
-// StartHttpBasicServer starts a new http-basic protocol binding.
+// NewHttpBasicServer creates a new http-basic protocol binding.
 // Intended for use as server for sub-protocols such as sse and wss.
 //
 //	connectAddr is the host:port the server can be reached at.
@@ -129,7 +139,7 @@ func (srv *HttpBasicServer) Stop() {
 //
 // On startup this creates a public and protected route. Protected routes can be
 // registered by sub-protocols. This http-basic handles the connection authentication.
-func StartHttpBasicServer(
+func NewHttpBasicServer(
 	connectAddr string,
 	router *chi.Mux,
 	authenticator messaging.IAuthenticator,
@@ -145,9 +155,10 @@ func StartHttpBasicServer(
 		serverNotificationHandler: handleNotification,
 		serverRequestHandler:      handleRequest,
 		serverResponseHandler:     handleResponse,
-		//router:                    router,
+		router:                    router,
 	}
-	// Add the routes used in SSE connection and subscription requests
-	srv.setupRouting(router)
+	// TODO: I'd rather not setup routes until start
+	srv.setupRouting(srv.router)
+
 	return srv
 }

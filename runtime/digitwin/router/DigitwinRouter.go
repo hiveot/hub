@@ -1,11 +1,12 @@
 package router
 
 import (
+	"log/slog"
+	"sync"
+
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/runtime/digitwin/store"
-	"log/slog"
-	"sync"
 )
 
 // ActionHandler is the API for service action handling
@@ -60,9 +61,13 @@ func (r *DigitwinRouter) SetRequestLogger(logger *slog.Logger) {
 	r.requestLogger = logger
 }
 
+// SetTransportServer sets the transport server for routing outgoing messages
+func (r *DigitwinRouter) SetTransportServer(srv messaging.ITransportServer) {
+	r.transportServer = srv
+}
+
 // NewDigitwinRouter instantiates a new hub messaging router
-// Use SetTransport to link to a transport for forwarding messages to
-// agents and consumers.
+// Use SetTransportServer for forwarding messages to non-local agents and consumers.
 //
 //	dtwStore is used to update the digital twin status
 //	tb is the transport binding for forwarding service requests
@@ -72,7 +77,7 @@ func NewDigitwinRouter(
 	authnAgent messaging.RequestHandler,
 	authzAgent messaging.RequestHandler,
 	permissionHandler PermissionHandler,
-	//cm *connections.ConnectionManager,
+	// cm *connections.ConnectionManager,
 	transportServer messaging.ITransportServer,
 ) *DigitwinRouter {
 	ar := &DigitwinRouter{

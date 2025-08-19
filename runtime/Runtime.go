@@ -113,25 +113,35 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	_ = r.AuthnSvc.AuthnStore.Add(authz.AdminAgentID, prof)
 	_ = r.AuthnSvc.AuthnStore.SetRole(authz.AdminAgentID, string(authz.ClientRoleService))
 	r.AuthzAgent, err = service2.StartAuthzAgent(r.AuthzSvc)
+	if err != nil {
+		return err
+	}
 
-	// Start the transport servers.
-	r.TransportsMgr, err = servers.StartTransportManager(
-		&r.cfg.ProtocolsConfig,
-		r.cfg.ServerCert,
-		r.cfg.CaCert,
-		r.AuthnSvc.SessionAuth,
-	)
-
-	// The digitwin service directs the message flow between agents and consumers
-	// It receives messages from the middleware and uses the transport manager
-	// to send messages to clients.
+	// The digitwin service provides a directory for digital twin Things and notifies
+	// of changes to digital twin state.
+	prof = authn.ClientProfile{
+		ClientID:   digitwin.ThingDirectoryAgentID,
+		ClientType: authn.ClientTypeService,
+	}
+	_ = r.AuthnSvc.AuthnStore.Add(digitwin.ThingDirectoryAgentID, prof)
+	_ = r.AuthnSvc.AuthnStore.SetRole(digitwin.ThingDirectoryAgentID, string(authz.ClientRoleService))
 	r.DigitwinSvc, _, err = service4.StartDigitwinService(
 		env.StoresDir, r.SendNotification, r.cfg.ProtocolsConfig.IncludeForms)
+	if err != nil {
+		return err
+	}
 	dtwAgent := service4.NewDigitwinAgent(r.DigitwinSvc)
 
-	// The digitwin router receives all incoming messages from the transport.
-	// The router passes requests to internal and external services and things
-	// and returns responses to the request sender.
+	// The digitwin router receives all incoming requests, responses and notifications
+	// from agents and consumers.
+	//
+	//  Digital twin requests are forward to the digital twin service.
+	//  Authentication requests are forwarded to the authn service
+	//	Authorization requests are forwarded to the authz service
+	//
+	// Actions for remote Things are forwarded to the Things using the transport
+	// manager, if set. The transport manager can be set with 'SetTransportServer'.
+	//
 	// Internal services are authn,authz and the digital twin directory and value service.
 	r.DigitwinRouter = router.NewDigitwinRouter(
 		r.DigitwinSvc,
@@ -139,10 +149,20 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 		r.AuthnAgent.HandleRequest,
 		r.AuthzAgent.HandleAction,
 		r.AuthzAgent.HasPermission,
-		r.TransportsMgr)
-	r.TransportsMgr.SetNotificationHandler(r.DigitwinRouter.HandleNotification)
-	r.TransportsMgr.SetRequestHandler(r.DigitwinRouter.HandleRequest)
-	r.TransportsMgr.SetResponseHandler(r.DigitwinRouter.HandleResponse)
+		nil)
+
+	// create the transports but do not start yet.
+	r.TransportsMgr = servers.NewTransportManager(
+		&r.cfg.ProtocolsConfig,
+		r.cfg.ServerCert,
+		r.cfg.CaCert,
+		r.AuthnSvc.SessionAuth,
+		r.DigitwinRouter.HandleNotification,
+		r.DigitwinRouter.HandleRequest,
+		r.DigitwinRouter.HandleResponse,
+	)
+
+	r.DigitwinRouter.SetTransportServer(r.TransportsMgr)
 
 	// When generating digitwin TDs use the forms produced by transport protocols
 	r.DigitwinSvc.SetFormsHook(r.TransportsMgr.AddTDForms)
@@ -171,7 +191,32 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	_ = r.DigitwinSvc.DirSvc.UpdateTD(digitwin.ThingDirectoryAgentID, digitwin.ThingDirectoryTD)
 	_ = r.DigitwinSvc.DirSvc.UpdateTD(digitwin.ThingValuesAgentID, digitwin.ThingValuesTD)
 
-	// start discovery and exploration of the digital twin directory
+	// set agent permissions to update the directory
+	// agents can update to the directory
+	err = r.AuthzSvc.SetPermissions(digitwin.ThingDirectoryAgentID, authz.ThingPermissions{
+		AgentID: digitwin.ThingDirectoryAgentID,
+		ThingID: digitwin.ThingDirectoryServiceID,
+		Allow:   []authz.ClientRole{authz.ClientRoleAgent},
+	})
+	if err != nil {
+		slog.Error("failed SetPermissions. Continuing...", "err", err.Error())
+	}
+	// anyone else can read the directory, except those with no role
+	err = r.AuthzSvc.SetPermissions(digitwin.ThingDirectoryAgentID, authz.ThingPermissions{
+		AgentID: digitwin.ThingDirectoryAgentID,
+		ThingID: digitwin.ThingDirectoryServiceID,
+		Deny:    []authz.ClientRole{authz.ClientRoleNone},
+	})
+	if err != nil {
+		slog.Error("failed SetPermissions. Continuing...", "err", err.Error())
+	}
+	// with the router in place activate the transport server to receive and send messages
+	err = r.TransportsMgr.Start()
+	if err != nil {
+		return err
+	}
+
+	// last, start discovery and exploration of the digital twin directory
 	if r.cfg.ProtocolsConfig.EnableDiscovery {
 		dirTDJson, err := r.DigitwinSvc.DirSvc.ReadTD(digitwin.ThingDirectoryAgentID, digitwin.ThingDirectoryDThingID)
 		if err == nil {
@@ -180,22 +225,10 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 				r.cfg.ProtocolsConfig.InstanceName, protocolsCfg.DirectoryTDPath, dirTDJson,
 			)
 		}
+		if err != nil {
+			slog.Error("failed starting discovery. Continuing anyways...", "err", err.Error())
+		}
 	}
-
-	// set agent permissions to update the directory
-	// agents can update to the directory
-	_ = r.AuthzSvc.SetPermissions(authn.AdminServiceID, authz.ThingPermissions{
-		AgentID: digitwin.ThingDirectoryAgentID,
-		ThingID: digitwin.ThingDirectoryServiceID,
-		Allow:   []authz.ClientRole{authz.ClientRoleAgent},
-	})
-	// anyone else can read the directory, except those with no role
-	_ = r.AuthzSvc.SetPermissions(authn.AdminServiceID, authz.ThingPermissions{
-		AgentID: digitwin.ThingDirectoryAgentID,
-		ThingID: digitwin.ThingDirectoryServiceID,
-		Deny:    []authz.ClientRole{authz.ClientRoleNone},
-	})
-
 	return err
 }
 

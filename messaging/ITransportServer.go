@@ -46,6 +46,9 @@ type ITransportServer interface {
 	// CloseAll closes all connections but do not stop the server
 	CloseAll()
 
+	// Start the server and receive connections abd messages
+	Start() error
+
 	// Stop the server after force closing all connections
 	Stop()
 }

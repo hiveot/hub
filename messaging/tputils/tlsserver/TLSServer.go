@@ -149,6 +149,8 @@ func (srv *TLSServer) Stop() {
 // This returns the chi-go router which can be used to add routes and middleware.
 // This server supports the "message-id" header for received requests.
 //
+// Use Start() to start listening.
+//
 // The middleware handlers included with the server can be used for authentication.
 //
 //	address        server listening address
