@@ -4,10 +4,10 @@ import (
 	"os"
 
 	"github.com/hiveot/hub/messaging/servers/discoserver"
-	"github.com/hiveot/hub/messaging/servers/httpserver"
 )
 
 const (
+	DefaultHttpsPort   = 8444
 	DefaultMqttTcpPort = 8883
 	DefaultMqttWssPort = 8884
 )
@@ -18,6 +18,8 @@ type ProtocolsConfig struct {
 	EnableHiveotAuth bool `yaml:"enableHiveotAuth"`
 	// Enable the HiveOT HTTP/SSE (sse-sc) sub protocol binding. Default is true.
 	EnableHiveotSSE bool `yaml:"enableHiveotSSE"`
+	// EnableHttpBasic. Default is true.
+	EnableHttpBasic bool `yaml:"enableHttpBasic"`
 	// Enable the HTTP/WSS sub protocol binding. Default is true.
 	EnableWSS bool `yaml:"enableWSS"`
 
@@ -76,12 +78,13 @@ func NewProtocolsConfig() ProtocolsConfig {
 		DirectoryTDPath:  discoserver.DefaultHttpGetDirectoryTDPath,
 		EnableHiveotAuth: true,
 		EnableHiveotSSE:  true,
+		EnableHttpBasic:  true,
 		EnableWSS:        true,
 		EnableDiscovery:  true,
 		IncludeForms:     true, // for interoperability
 		InstanceName:     hostName,
 		HttpHost:         "",
-		HttpsPort:        httpserver.DefaultHttpsPort,
+		HttpsPort:        DefaultHttpsPort,
 		MqttHost:         hostName,
 		MqttTcpPort:      DefaultMqttTcpPort,
 		MqttWssPort:      DefaultMqttWssPort,

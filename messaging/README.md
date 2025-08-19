@@ -3,19 +3,19 @@
 ## Introduction
 
 The HiveOT messaging package has the following objectives:
-1. Support multiple protocols to exchange messages between consumers and Thing agents.
-2. Standardize the messaging format independent of the underlying protocol.
-3. Usable by the hiveot hub, its consumers and stand-alone Thing agents.
+1. Support multiple protocols to exchange messages between hub and consumers or Thing agents.
+2. Standardize the messaging format independent of the underlying protocol to keep clients protocol agnostic.
+3. Usable by the hiveot hub, its consumers and stand-alone Thing agents. 
 
-Note: the term 'messaging protocol' refers to any protocol that transport a request and response message between a client and server. In this context this means that http, sse, websocket, mqtt, etc are all different messaging protocols. 
+Note: the term 'messaging protocol' refers to any protocol that transports a request and response message between a client and server. In this context this means that http, sse, websocket, mqtt, etc are all different messaging protocols. 
 
-In HiveOT the Hub acts as the Thing agent for digital twins. Consumers connect to the Hub and can use all the Things available on the Hub just like any other Thing agent. The Hub includes build-in services such as a digital twin directory and routing and authentication services. 
+In HiveOT the Hub provides Digital Twins of Things that its agents connect to. Consumers connect to the Hub and can use the digital twin of the Things available on the Hub. The Hub includes build-in services such as a digital twin directory, routing, authentication and authorization services. The directory is discoverable through the WoT discovery protocol.
 
-The hub itself is also a consumer of Things which are used to create a digital twin on the Hub. The main difference between hub and hiveot protocol agents is that hiveot agents connect to the Hub instead of the other way around. The messaging however is still that of a consumer (hub) talking to an agent. 
+The hub itself is also a consumer of Things which are used to create a digital twin on the Hub. The Hub supports the use of 'Thing agents' that are connect to the Hub to provide Things instead of the other way around. The messaging however is still that of a consumer (hub) talking to an Thing agent. 
 
-A future plan is to include a protocol binding to discover and add WoT devices on the network, as long as they are WoT compatible and offer a TD or TDD.
+A future plan is to include a protocol binding to discover and add WoT devices on the network, as long as they are WoT compatible and offer a TD or TDD (TD directory). This will be added once WoT compatible Things are more commonplace. 
 
-This messaging package is designed such that it can also be used stand-alone without requiring the Hub. A WoT thing can use the server to implement a WoT compatible device by listening to requests and sending responses. 
+This messaging package is designed such that it can also be used stand-alone without requiring the Hub. A WoT Thing can use the server to implement a [WoT servient](https://w3c.github.io/wot-thing-description/#dfn-servient) by listening to requests and sending responses. 
 
 HiveOT standardizes the message envelope used by its messaging protocols. This envelope is mapped to the underlying WoT protocol for sending requests and receiving requests and responses. While HiveOT supports a number of WoT protocols, such as http-basic and websockets, it also includes endpoints that simply pass these envelopes as-is over http, websocket, sse and mqtt. 
 
@@ -52,7 +52,7 @@ The following operations are considered to be requests:
 * readproperty, readallproperties [WoT]
 * queryaction, queryallactions [WoT]
 * readevent, readallevents  (of a Thing)  [HiveOT extension]
-* readtd, readalltds  (of a directory or thing) [HiveOT extension]
+* readtd, readalltds  (of a directory or thing) [to be replace by WoT based discovery]
 * subscribe, unsubscribe
 * observe, unobserve
 

@@ -2,9 +2,10 @@ package session
 
 import (
 	"fmt"
+	"strconv"
+
 	"github.com/hiveot/hub/messaging"
 	"github.com/teris-io/shortid"
-	"strconv"
 )
 
 // Tile types as used in rendering templates

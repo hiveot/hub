@@ -2,15 +2,16 @@ package tlsserver_test
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/lib/certs"
-	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/messaging/tputils/tlsclient"
-	"github.com/hiveot/hub/messaging/tputils/tlsserver"
 	"log/slog"
 	"net/http"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/hiveot/hub/lib/certs"
+	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/hub/messaging/tputils/tlsclient"
+	"github.com/hiveot/hub/messaging/tputils/tlsserver"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

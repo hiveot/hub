@@ -1,6 +1,9 @@
 package service
 
 import (
+	"net/http"
+	"time"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/hiveot/hub/services/hiveoview/src"
@@ -15,8 +18,6 @@ import (
 	"github.com/hiveot/hub/services/hiveoview/src/views/thing"
 	"github.com/hiveot/hub/services/hiveoview/src/views/thingdetails"
 	"github.com/hiveot/hub/services/hiveoview/src/views/tile"
-	"net/http"
-	"time"
 )
 
 const WebSsePath = "/websse"

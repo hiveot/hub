@@ -8,10 +8,10 @@ import (
 // AddTDForms adds forms for use of this protocol to the given TD
 // 'includeAffordances' adds forms to all affordances to be compliant with the specifications.
 // This is a massive waste of space in the TD.
-func (svc *WssServer) AddTDForms(tdoc *td.TD, includeAffordances bool) {
+func (srv *WssServer) AddTDForms(tdoc *td.TD, includeAffordances bool) {
 
 	// 1 form for all operations
-	form := td.NewForm(wot.OpQueryAllActions, svc.GetConnectURL(), SubprotocolWSS)
+	form := td.NewForm(wot.OpQueryAllActions, srv.GetConnectURL(), SubprotocolWSS)
 	form["op"] = []string{
 		wot.OpQueryAllActions,
 		wot.OpObserveAllProperties, wot.OpUnobserveAllProperties,
@@ -25,13 +25,13 @@ func (svc *WssServer) AddTDForms(tdoc *td.TD, includeAffordances bool) {
 	// Add forms to all affordances to be compliant with the specifications.
 	// This is a massive waste of space in the TD.
 	if includeAffordances {
-		svc.AddAffordanceForms(tdoc)
+		srv.AddAffordanceForms(tdoc)
 	}
 }
 
 // AddAffordanceForms adds forms to affordances for interacting using the websocket protocol binding
-func (svc *WssServer) AddAffordanceForms(tdoc *td.TD) {
-	href := svc.GetConnectURL()
+func (srv *WssServer) AddAffordanceForms(tdoc *td.TD) {
+	href := srv.GetConnectURL()
 	for name, aff := range tdoc.Actions {
 		_ = name
 		aff.AddForm(td.NewForm(wot.OpInvokeAction, href, SubprotocolWSS))

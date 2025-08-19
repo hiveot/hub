@@ -5,18 +5,19 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
-	"github.com/hiveot/hub/lib/certs"
-	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/messaging/servers/httpserver"
-	"github.com/hiveot/hub/messaging/tputils/tlsclient"
-	authn "github.com/hiveot/hub/runtime/authn/api"
-	"github.com/stretchr/testify/require"
 	"io"
 	"log/slog"
 	"net/http"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/hiveot/hub/lib/certs"
+	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/hub/messaging/servers/httpbasic"
+	"github.com/hiveot/hub/messaging/tputils/tlsclient"
+	authn "github.com/hiveot/hub/runtime/authn/api"
+	"github.com/stretchr/testify/require"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
@@ -138,7 +139,9 @@ func TestAuthClientCert(t *testing.T) {
 		KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 	}
 	cert, err := x509.ParseCertificate(clientCert.Certificate[0])
-	_, err = cert.Verify(opts)
+	if err == nil {
+		_, err = cert.Verify(opts)
+	}
 	assert.NoError(t, err)
 
 	//
@@ -206,7 +209,7 @@ func TestCert404(t *testing.T) {
 }
 
 func TestAuthJWT(t *testing.T) {
-	pathLogin1 := httpserver.HttpPostLoginPath // this doesn't belong here
+	pathLogin1 := httpbasic.HttpPostLoginPath // this doesn't belong here
 	pathLogin2 := "/login2"
 	path3 := "/test3"
 	path3Hit := 0
@@ -271,7 +274,7 @@ func TestAuthJWT(t *testing.T) {
 	}
 	cl := tlsclient.NewTLSClient(testAddress, nil, authBundle.CaCert, 0)
 	jsonArgs, _ := json.Marshal(loginMessage)
-	resp, _, err := cl.Post(httpserver.HttpPostLoginPath, jsonArgs)
+	resp, _, err := cl.Post(httpbasic.HttpPostLoginPath, jsonArgs)
 	require.NoError(t, err)
 	reply := ""
 	err = json.Unmarshal(resp, &reply)

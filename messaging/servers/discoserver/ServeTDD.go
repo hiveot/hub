@@ -3,13 +3,14 @@ package discoserver
 
 import (
 	"fmt"
-	net2 "github.com/hiveot/hub/messaging/tputils/net"
 	"log/slog"
 	"net"
 	"net/url"
 	"os"
 	"strconv"
 	"strings"
+
+	net2 "github.com/hiveot/hub/messaging/tputils/net"
 
 	"github.com/grandcat/zeroconf"
 )
@@ -24,7 +25,8 @@ const AuthEndpoint = "login"
 const WSSEndpoint = "wss"
 const SSEEndpoint = "sse"
 
-// path to the digital twin directory TD document uses the 'well-known' path
+// DefaultHttpGetDirectoryTDPath contains the path to the digital twin directory
+// TD document uses the 'well-known' path
 const DefaultHttpGetDirectoryTDPath = "/.well-known/wot"
 
 // ServeTDDiscovery publishes a Thing Document Directory discovery record.

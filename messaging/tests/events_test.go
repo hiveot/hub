@@ -32,10 +32,10 @@ func TestSubscribeAll(t *testing.T) {
 	defer cancelFn()
 
 	// 2. connect as consumers
-	cconn1, cons1, _ := NewConsumer(testClientID1, srv.GetForm)
+	cconn1, cons1, _ := NewConsumer(testClientID1)
 	defer cconn1.Disconnect()
 
-	cconn2, cons2, _ := NewConsumer(testClientID1, srv.GetForm)
+	cconn2, cons2, _ := NewConsumer(testClientID1)
 	defer cconn2.Disconnect()
 
 	// ensure that agents can also subscribe (they cant use forms)

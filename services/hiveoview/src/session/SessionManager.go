@@ -3,17 +3,18 @@ package session
 import (
 	"crypto/ed25519"
 	"crypto/x509"
-	"github.com/hiveot/hub/lib/buckets"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/clients"
-	"github.com/hiveot/hub/messaging/clients/authenticator"
-	"github.com/hiveot/hub/messaging/servers/httpserver"
-	"github.com/hiveot/hub/services/hiveoview/src"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"sync"
 	"time"
+
+	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/clients"
+	"github.com/hiveot/hub/messaging/clients/authenticator"
+	"github.com/hiveot/hub/messaging/servers/httpbasic"
+	"github.com/hiveot/hub/services/hiveoview/src"
 )
 
 // WebSessionManager tracks client sessions using session cookies
@@ -299,7 +300,7 @@ func (sm *WebSessionManager) GetSessionFromCookie(r *http.Request) (
 	// The UI is supposed to supply a cid header in sse requests. However,
 	// sse-connect ignores the hx-header that contains the cid. As a workaround
 	// also check query parameters.
-	cid = r.Header.Get(httpserver.ConnectionIDHeader)
+	cid = r.Header.Get(httpbasic.ConnectionIDHeader)
 	if cid == "" {
 		//slog.Error("GetSessionFromCookie: Missing CID")
 		cid = r.URL.Query().Get("cid")

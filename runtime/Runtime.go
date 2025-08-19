@@ -50,13 +50,13 @@ type Runtime struct {
 // GetForm returns the form for an operation using a transport protocol binding
 // These forms point to the use of a digital twin via the hub runtime.
 // If the protocol is not found this returns a nil and might cause a panic
-func (r *Runtime) GetForm(op string, protocol string) (f *td.Form) {
-	srv := r.TransportsMgr.GetServer(protocol)
-	if srv != nil {
-		return srv.GetForm(op, "", "")
-	}
-	return nil
-}
+//func (r *Runtime) GetForm(op string, protocol string) (f *td.Form) {
+//	srv := r.TransportsMgr.GetServer(protocol)
+//	if srv != nil {
+//		return srv.GetForm(op, "", "")
+//	}
+//	return nil
+//}
 
 // GetConnectURL returns the URL for connecting with the given protocol type.
 // If the protocol is not available, the https fallback is returned.

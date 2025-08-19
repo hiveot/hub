@@ -7,6 +7,12 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"log/slog"
+	"net/http"
+	"os"
+	"path"
+	"time"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
@@ -16,11 +22,6 @@ import (
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views"
-	"log/slog"
-	"net/http"
-	"os"
-	"path"
-	"time"
 )
 
 const HiveoviewStoreName = "hiveoview.kvbtree"

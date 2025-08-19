@@ -101,6 +101,3 @@ WoTVocab:
 #    HTOpRefresh: "refresh"
 #    HTOpReadEvent: "readevent"  # not standard
 #    HTOpReadAllEvents: "readallevents" # not standard
-#    HTOpReadTD: "readtd"
-#    HTOpReadAllTDs: "readalltds"
-#    HTOpUpdateTD: "updatetd"   # by agent

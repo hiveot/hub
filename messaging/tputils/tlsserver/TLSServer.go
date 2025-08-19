@@ -7,13 +7,14 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"github.com/lmittmann/tint"
 	"log/slog"
 	"net"
 	"net/http"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/lmittmann/tint"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/rs/cors"
@@ -27,6 +28,12 @@ type TLSServer struct {
 	serverCert *tls.Certificate
 	httpServer *http.Server
 	router     *chi.Mux
+}
+
+// Router returns the router for this server.
+// This router has cors protection enabled.
+func (srv *TLSServer) Router() *chi.Mux {
+	return srv.router
 }
 
 // Start the TLS server using the provided CA and Server certificates.

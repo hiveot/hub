@@ -2,11 +2,14 @@ package hiveotsseserver
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/servers/httpserver"
-	"github.com/hiveot/hub/wot"
 	"log/slog"
 	"net/http"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/servers/httpbasic"
+	"github.com/hiveot/hub/messaging/tputils/tlsserver"
+	"github.com/hiveot/hub/wot"
 )
 
 // routes for handling http server requests
@@ -21,25 +24,30 @@ const HiveOTGetSseConnectHRef = "/hiveot/sse-sc"
 
 // CreateRoutes add the routes used in SSE-SC sub-protocol
 // This is simple, one endpoint to connect, and one to pass requests, using URI variables
-func (srv *HiveotSseServer) CreateRoutes() {
+func (srv *HiveotSseServer) CreateRoutes(ssePath string, r chi.Router) {
+	r.Get(ssePath, srv.Serve)
+	r.Post(DefaultHiveotPostNotificationHRef, srv.HandleNotificationMessage)
+	r.Post(DefaultHiveotPostRequestHRef, srv.HandleRequestMessage)
+	r.Post(DefaultHiveotPostResponseHRef, srv.HandleResponseMessage)
+
 	// Connect serves the SSE-SC protocol
-	srv.httpTransport.AddOps(nil, []string{SSEOpConnect},
-		http.MethodGet, srv.ssePath, srv.Serve)
-
-	// Handle notification messages from agents, containing a notification message envelope.
-	srv.httpTransport.AddOps(nil,
-		[]string{"*"},
-		http.MethodPost, DefaultHiveotPostNotificationHRef, srv.HandleNotificationMessage)
-
-	// Handle request messages using a single path with URI variables.
-	srv.httpTransport.AddOps(nil,
-		[]string{"*"},
-		http.MethodPost, DefaultHiveotPostRequestHRef, srv.HandleRequestMessage)
-
-	// Handle response messages from agents, containing a response message envelope.
-	srv.httpTransport.AddOps(nil,
-		[]string{"*"},
-		http.MethodPost, DefaultHiveotPostResponseHRef, srv.HandleResponseMessage)
+	//srv.httpBasicServer.AddOps(nil, []string{SSEOpConnect},
+	//	http.MethodGet, srv.ssePath, srv.Serve)
+	//
+	//// Handle notification messages from agents, containing a notification message envelope.
+	//srv.httpBasicServer.AddOps(nil,
+	//	[]string{"*"},
+	//	http.MethodPost, DefaultHiveotPostNotificationHRef, srv.HandleNotificationMessage)
+	//
+	//// Handle request messages using a single path with URI variables.
+	//srv.httpBasicServer.AddOps(nil,
+	//	[]string{"*"},
+	//	http.MethodPost, DefaultHiveotPostRequestHRef, srv.HandleRequestMessage)
+	//
+	//// Handle response messages from agents, containing a response message envelope.
+	//srv.httpBasicServer.AddOps(nil,
+	//	[]string{"*"},
+	//	http.MethodPost, DefaultHiveotPostResponseHRef, srv.HandleResponseMessage)
 }
 
 // HandleNotificationMessage handles responses sent by agents.
@@ -59,7 +67,7 @@ func (srv *HiveotSseServer) HandleNotificationMessage(w http.ResponseWriter, r *
 	notif.MessageType = messaging.MessageTypeNotification
 
 	// 1. Decode the message
-	rp, err := httpserver.GetRequestParams(r, &notif)
+	rp, err := httpbasic.GetRequestParams(r, &notif)
 	if err != nil {
 		slog.Error(err.Error())
 		w.WriteHeader(http.StatusBadRequest)
@@ -97,7 +105,7 @@ func (srv *HiveotSseServer) HandleNotificationMessage(w http.ResponseWriter, r *
 		}
 	}
 
-	srv.httpTransport.WriteReply(w, true, nil, err)
+	tlsserver.WriteReply(w, true, nil, err)
 }
 
 // HandleRequestMessage handles request messages sent by consumers or agents.
@@ -117,7 +125,7 @@ func (srv *HiveotSseServer) HandleRequestMessage(w http.ResponseWriter, r *http.
 	var req messaging.RequestMessage
 
 	// 1. Decode the request message
-	rp, err := httpserver.GetRequestParams(r, &req)
+	rp, err := httpbasic.GetRequestParams(r, &req)
 	if err != nil {
 		slog.Error(err.Error())
 		w.WriteHeader(http.StatusUnauthorized)
@@ -150,7 +158,7 @@ func (srv *HiveotSseServer) HandleRequestMessage(w http.ResponseWriter, r *http.
 		}
 	}
 	// 4. Return the response
-	srv.httpTransport.WriteReply(w, handled, output, err)
+	tlsserver.WriteReply(w, handled, output, err)
 }
 
 // HandleResponseMessage handles responses sent by agents.
@@ -170,7 +178,7 @@ func (srv *HiveotSseServer) HandleResponseMessage(w http.ResponseWriter, r *http
 	resp.MessageType = messaging.MessageTypeResponse
 
 	// 1. Decode the request message
-	rp, err := httpserver.GetRequestParams(r, &resp)
+	rp, err := httpbasic.GetRequestParams(r, &resp)
 	if err != nil {
 		slog.Error(err.Error())
 		w.WriteHeader(http.StatusBadRequest)
@@ -215,7 +223,7 @@ func (srv *HiveotSseServer) HandleResponseMessage(w http.ResponseWriter, r *http
 	//	}
 	//}
 	//
-	srv.httpTransport.WriteReply(w, true, nil, err)
+	tlsserver.WriteReply(w, true, nil, err)
 }
 
 // Serve a new incoming hiveot sse connection.
@@ -224,7 +232,7 @@ func (srv *HiveotSseServer) Serve(w http.ResponseWriter, r *http.Request) {
 
 	//An active session is required before accepting the request. This is created on
 	//authentication/login. Until then SSE cm are blocked.
-	rp, err := httpserver.GetRequestParams(r, nil)
+	rp, err := httpbasic.GetRequestParams(r, nil)
 
 	if err != nil {
 		slog.Warn("SSESC Serve. No session available yet, telling client to delay retry to 10 seconds",

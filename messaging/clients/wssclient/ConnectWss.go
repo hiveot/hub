@@ -5,14 +5,15 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"github.com/gorilla/websocket"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/servers/httpserver"
 	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
 	"sync/atomic"
+
+	"github.com/gorilla/websocket"
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/servers/httpbasic"
 )
 
 // ConnectWSS establishes a websocket session with the server
@@ -52,7 +53,7 @@ func ConnectWSS(
 
 	wssHeader := http.Header{}
 	wssHeader.Add("Authorization", "bearer "+bearerToken)
-	wssHeader.Add(httpserver.ConnectionIDHeader, cinfo.ConnectionID)
+	wssHeader.Add(httpbasic.ConnectionIDHeader, cinfo.ConnectionID)
 	//parts, _ := url.Parse(hostPort)
 	//origin := fmt.Sprintf("%s://%s", parts.Scheme, parts.Host)
 	//opts.HTTPHeader.Add("Origin", origin)

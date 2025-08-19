@@ -5,16 +5,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/servers/hiveotsseserver"
-	"github.com/hiveot/hub/messaging/servers/httpserver"
-	jsoniter "github.com/json-iterator/go"
-	"github.com/tmaxmax/go-sse"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"sync/atomic"
 	"time"
+
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/servers/hiveotsseserver"
+	"github.com/hiveot/hub/messaging/servers/httpbasic"
+	jsoniter "github.com/json-iterator/go"
+	"github.com/tmaxmax/go-sse"
 )
 
 // maxSSEMessageSize allow this maximum size of an SSE message
@@ -47,7 +48,7 @@ func ConnectSSE(cinfo messaging.ConnectionInfo,
 		sseCancelFn()
 		return nil, err
 	}
-	req.Header.Add(httpserver.ConnectionIDHeader, cinfo.ConnectionID)
+	req.Header.Add(httpbasic.ConnectionIDHeader, cinfo.ConnectionID)
 	req.Header.Add("Authorization", "bearer "+bearerToken)
 	origin := fmt.Sprintf("https://%s", parts.Host)
 	req.Header.Add("Origin", origin)

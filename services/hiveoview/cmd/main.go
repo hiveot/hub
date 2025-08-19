@@ -3,6 +3,11 @@ package main
 import (
 	"crypto/ed25519"
 	"flag"
+	"log/slog"
+	"os"
+	"path"
+	"time"
+
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/logging"
@@ -10,10 +15,6 @@ import (
 	"github.com/hiveot/hub/runtime"
 	"github.com/hiveot/hub/services/hiveoview/config"
 	"github.com/hiveot/hub/services/hiveoview/src/service"
-	"log/slog"
-	"os"
-	"path"
-	"time"
 )
 
 const defaultServerPort = 8443

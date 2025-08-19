@@ -8,10 +8,12 @@ import (
 // Supported transport protocol bindings types
 const (
 	// WoT http basic protocol without return channel
-	ProtocolTypeWotHTTPBasic = "wot-http-basic"
-	// WoT http SSE subprotocol return channel (not implemented)
-	//ProtocolTypeWotSSE = "wot-sse"
+	ProtocolTypeHTTPBasic = "http-basic"
 
+	// WoT http SSE subprotocol return channel (not implemented)
+	//ProtocolTypeWotSSE = "sse"
+
+	// websocket sub-protocol
 	ProtocolTypeWSS = "wss"
 
 	// WoT MQTT protocol over WSS
@@ -19,6 +21,7 @@ const (
 
 	// HiveOT http SSE subprotocol return channel with direct messaging
 	ProtocolTypeHiveotSSE = "hiveot-sse"
+
 	// Internal embedded direct call, for testing
 	ProtocolTypeHTEmbedded = "embedded" // for testing
 )

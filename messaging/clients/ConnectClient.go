@@ -162,9 +162,9 @@ func GetProtocolFromURL(fullURL string) string {
 
 	if parts.Scheme == "" {
 		// without a schema pick the basic
-		protocolType = messaging.ProtocolTypeWotHTTPBasic
+		protocolType = messaging.ProtocolTypeHTTPBasic
 	} else if parts.Scheme == "https" {
-		protocolType = messaging.ProtocolTypeWotHTTPBasic
+		protocolType = messaging.ProtocolTypeHTTPBasic
 	} else if parts.Scheme == wssserver.WssSchema {
 		// websocket protocol can use either WoT or hiveot message envelopes
 		protocolType = messaging.ProtocolTypeWSS
@@ -175,7 +175,7 @@ func GetProtocolFromURL(fullURL string) string {
 		protocolType = messaging.ProtocolTypeWotMQTTWSS
 	} else {
 		// fall back to use https basic
-		protocolType = messaging.ProtocolTypeWotHTTPBasic
+		protocolType = messaging.ProtocolTypeHTTPBasic
 	}
 	return protocolType
 }

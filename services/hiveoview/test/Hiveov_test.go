@@ -2,11 +2,19 @@ package test
 
 import (
 	"fmt"
+	"net/http"
+	"os"
+	"path"
+	"strings"
+	"sync/atomic"
+	"testing"
+	"time"
+
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/clients/httpsseclient"
-	"github.com/hiveot/hub/messaging/servers/httpserver"
+	"github.com/hiveot/hub/messaging/servers/httpbasic"
 	"github.com/hiveot/hub/messaging/tputils/tlsclient"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/hiveot/hub/services/hiveoview/src"
@@ -16,13 +24,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/teris-io/shortid"
-	"net/http"
-	"os"
-	"path"
-	"strings"
-	"sync/atomic"
-	"testing"
-	"time"
 )
 
 const serviceID = "hiveoview-test"
@@ -39,7 +40,7 @@ var testFolder = path.Join(os.TempDir(), "test-hiveoview")
 var ts *testenv.TestServer
 
 // return the form with href for login operations to the hiveoview server
-// these must match the paths in hiveoview CreateRoutes.
+// these must match the paths in hiveoview createRoutes.
 func getHiveoviewForm(op, thingID, name string) *td.Form {
 	var href string
 	var method string
@@ -189,7 +190,7 @@ func TestLogin(t *testing.T) {
 		hostPort, nil, ts.Certs.CaCert, time.Second*60)
 
 	// hiveot http requires a connection-id to link the return channel.
-	cl2.SetHeader(httpserver.ConnectionIDHeader, shortid.MustGenerate())
+	cl2.SetHeader(httpbasic.ConnectionIDHeader, shortid.MustGenerate())
 
 	// try login. The test user password is the clientID
 	// authenticate the connection with the hiveot http/sse service (not the hub server)

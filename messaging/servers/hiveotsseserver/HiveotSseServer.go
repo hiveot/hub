@@ -2,12 +2,11 @@ package hiveotsseserver
 
 import (
 	"fmt"
-	"net/url"
 	"sync"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/connections"
-	"github.com/hiveot/hub/messaging/servers/httpserver"
 	"github.com/hiveot/hub/wot/td"
 )
 
@@ -27,12 +26,16 @@ const (
 	HiveotSSESchema = "sse"
 )
 
-// HiveotSseServer is a protocol binding transport server of http for the SSE-SC
-// Single-Connection protocol. This protocol supports full asynchronous messaging
-// over http and SSE.
+// HiveotSseServer is a protocol binding transport server for both HTTP, and the
+// SSE-SC sub-protocol. SSE-SC is refers to a single-connection SSE protocol.
+// This protocol supports full asynchronous messaging using http/SSE but is not a WoT standard.
 //
-// This is not a WoT specified protocol but is arguably easier to use. It uses
-// the hiveot RequestMessage and ResponseMessage envelopes for all messaging, or
+// Note: The use of SSE is optional. This binding still serves an important role as the
+// HTTPp protocol binding, and provides login and token refresh endpoints.
+//
+// This SSE protocol implementation is not a WoT specified protocol. It is however
+// easier and more efficient to use, requiring only a single connection.
+// It uses the hiveot RequestMessage and ResponseMessage envelopes for all messaging, or
 // an alternative message converter can be provided to support a different message
 // envelope format.
 //
@@ -71,16 +74,15 @@ type HiveotSseServer struct {
 	// manage the incoming SSE cm
 	cm *connections.ConnectionManager
 
-	httpTransport *httpserver.HttpTransportServer
-
 	// mutex for updating cm
 	mux sync.RWMutex
 
 	// registered handler of incoming cm
 	serverConnectHandler messaging.ConnectionHandler
 
-	// The listening path
-	ssePath string
+	// The connection address for subscription and URL to connect using SSE
+	connectAddr string
+	connectURL  string
 
 	// registered handler of incoming requests (which return a reply)
 	serverNotificationHandler messaging.NotificationHandler
@@ -99,9 +101,9 @@ type HiveotSseServer struct {
 func (srv *HiveotSseServer) AddTDForms(tdi *td.TD, includeAffordances bool) {
 
 	// TODO: add the hiveot http endpoints
-	//srv.httpTransport.AddOps()
+	//srv.httpBasicServer.AddOps()
 	// forms are handled through the http binding
-	//return srv.httpTransport.AddTDForms(tdi, includeAffordances)
+	//return srv.httpBasicServer.AddTDForms(tdi, includeAffordances)
 }
 
 func (srv *HiveotSseServer) CloseAll() {
@@ -122,14 +124,9 @@ func (srv *HiveotSseServer) CloseAllClientConnections(clientID string) {
 // GetConnectURL returns SSE connection URL of the server
 // This uses the custom 'ssesc' schema which is non-wot compatible.
 func (srv *HiveotSseServer) GetConnectURL() string {
-	httpURL := srv.httpTransport.GetConnectURL()
-	parts, err := url.Parse(httpURL)
-	if err != nil {
-		return ""
-	}
-	ssePath := fmt.Sprintf("%s://%s%s", HiveotSSESchema, parts.Host, srv.ssePath)
-	return ssePath
+	return srv.connectURL
 }
+
 func (srv *HiveotSseServer) GetProtocolType() string {
 	return messaging.ProtocolTypeHiveotSSE
 }
@@ -142,13 +139,6 @@ func (srv *HiveotSseServer) GetConnectionByConnectionID(clientID, cid string) me
 // GetConnectionByClientID returns the connection with the given client ID
 func (srv *HiveotSseServer) GetConnectionByClientID(agentID string) messaging.IConnection {
 	return srv.cm.GetConnectionByClientID(agentID)
-}
-
-// GetForm returns a new SSE form for the given operation
-// this returns the http form
-func (srv *HiveotSseServer) GetForm(op, thingID, name string) *td.Form {
-	// forms are handled through the http binding
-	return srv.httpTransport.GetForm(op, thingID, name)
 }
 
 // GetSseConnection returns the SSE Connection with the given ID
@@ -185,10 +175,12 @@ func (srv *HiveotSseServer) Stop() {
 // This adds http methods for (un)subscribing to events and properties and
 // adds new cm to the connection manager for callbacks.
 //
+// router is the protected route that serves sse connections on the ssePath
+//
 // This fails if no ssePath is provided
 func StartHiveotSseServer(
-	ssePath string,
-	httpTransport *httpserver.HttpTransportServer,
+	connectAddr string, ssePath string,
+	router chi.Router,
 	handleConnect messaging.ConnectionHandler,
 	handleNotification messaging.NotificationHandler,
 	handleRequest messaging.RequestHandler,
@@ -197,16 +189,16 @@ func StartHiveotSseServer(
 	if ssePath == "" {
 		return nil
 	}
+	connectURL := fmt.Sprintf("%s://%s%s", HiveotSSESchema, connectAddr, ssePath)
 	srv := &HiveotSseServer{
 		cm:                        connections.NewConnectionManager(),
 		serverConnectHandler:      handleConnect,
 		serverNotificationHandler: handleNotification,
 		serverRequestHandler:      handleRequest,
 		serverResponseHandler:     handleResponse,
-		ssePath:                   ssePath,
-		httpTransport:             httpTransport,
+		connectURL:                connectURL,
 	}
 	// Add the routes used in SSE connection and subscription requests
-	srv.CreateRoutes()
+	srv.CreateRoutes(ssePath, router)
 	return srv
 }

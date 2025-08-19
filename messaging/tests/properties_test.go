@@ -4,13 +4,14 @@ package tests
 import (
 	"errors"
 	"fmt"
+	"sync/atomic"
+	"testing"
+	"time"
+
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/wot"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"sync/atomic"
-	"testing"
-	"time"
 )
 
 // test property messages between agent, server and client
@@ -32,9 +33,9 @@ func TestObservePropertyByConsumer(t *testing.T) {
 	defer cancelFn()
 
 	// 2. connect with two consumers
-	cc1, cl1, _ := NewConsumer(testClientID1, srv.GetForm)
+	cc1, cl1, _ := NewConsumer(testClientID1)
 	defer cc1.Disconnect()
-	cc2, cl2, _ := NewConsumer(testClientID1, srv.GetForm)
+	cc2, cl2, _ := NewConsumer(testClientID1)
 	defer cc2.Disconnect()
 
 	// set the handler for property updates and subscribe
@@ -149,7 +150,7 @@ func TestReadProperty(t *testing.T) {
 	defer cancelFn()
 
 	// 2. connect as a consumer
-	cc1, consumer1, _ := NewConsumer(testClientID1, srv.GetForm)
+	cc1, consumer1, _ := NewConsumer(testClientID1)
 	defer cc1.Disconnect()
 
 	rxVal, err := consumer1.ReadProperty(thingID, propKey)
@@ -186,7 +187,7 @@ func TestReadAllProperties(t *testing.T) {
 	defer cancelFn()
 
 	// 2. connect as a consumer
-	cc1, consumer1, _ := NewConsumer(testClientID1, srv.GetForm)
+	cc1, consumer1, _ := NewConsumer(testClientID1)
 	defer cc1.Disconnect()
 
 	propMap, err := consumer1.ReadAllProperties(thingID)

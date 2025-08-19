@@ -3,17 +3,18 @@ package session
 import (
 	"bytes"
 	"fmt"
+	"log/slog"
+	"net/http"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/consumedthing"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/wot"
-	"log/slog"
-	"net/http"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 type NotifyType string

@@ -3,7 +3,7 @@ package authenticator
 import (
 	"crypto/x509"
 	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/servers/httpserver"
+	"github.com/hiveot/hub/messaging/servers/httpbasic"
 	"github.com/hiveot/hub/messaging/tputils/tlsclient"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
@@ -86,7 +86,7 @@ func (cl *AuthClient) LoginWithPassword(loginID string, password string) (newTok
 		"password": password,
 	}
 
-	loginPath := httpserver.HttpPostLoginPath
+	loginPath := httpbasic.HttpPostLoginPath
 
 	// use a sacrificial client
 	dataJSON, _ := jsoniter.Marshal(loginMessage)
@@ -105,7 +105,7 @@ func (cl *AuthClient) LoginWithPassword(loginID string, password string) (newTok
 // tlsClient is a client with an existing authenticated connection
 // logoutPath is the http address to invoke. If a path is omitted, the default path
 func (cl *AuthClient) Logout() (err error) {
-	logoutPath := httpserver.HttpPostLogoutPath
+	logoutPath := httpbasic.HttpPostLogoutPath
 
 	_, _, err = cl.tlsClient.Post(logoutPath, nil)
 	cl.tlsClient.Close()
@@ -121,7 +121,7 @@ func (cl *AuthClient) Logout() (err error) {
 // This returns a new authentication token, or an error
 func (cl *AuthClient) RefreshToken(oldToken string) (newToken string, err error) {
 
-	refreshPath := httpserver.HttpPostRefreshPath
+	refreshPath := httpbasic.HttpPostRefreshPath
 	dataJSON, _ := jsoniter.Marshal(oldToken)
 	cl.tlsClient.SetAuthToken(oldToken)
 	outputRaw, status, err := cl.tlsClient.Post(refreshPath, dataJSON)
@@ -155,7 +155,7 @@ func NewAuthClient(hostPort string, caCert *x509.Certificate, cid string, timeou
 
 	tlsClient := tlsclient.NewTLSClient(hostPort, nil, caCert, timeout)
 	if cid != "" {
-		tlsClient.SetHeader(httpserver.ConnectionIDHeader, cid)
+		tlsClient.SetHeader(httpbasic.ConnectionIDHeader, cid)
 	}
 	ac := &AuthClient{
 		tlsClient: tlsClient,

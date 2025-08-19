@@ -105,7 +105,7 @@ func (cl *TLSClient) Send(
 	// Caution! a double // in the path causes a 301 and changes post to get
 	req, err = NewRequest(method, requrl, cl.bearerToken, body)
 	// optional query parameters
-	if qParams != nil {
+	if err == nil && qParams != nil {
 		qValues := req.URL.Query()
 		for k, v := range qParams {
 			qValues.Add(k, v)

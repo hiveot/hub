@@ -4,15 +4,17 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
+	"log/slog"
+	"time"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/hiveot/hub/lib/keys"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	"github.com/hiveot/hub/runtime/authn/authnstore"
 	"github.com/hiveot/hub/runtime/authn/config"
 	"github.com/hiveot/hub/runtime/authn/sessions"
+	"github.com/hiveot/hub/wot/td"
 	"github.com/teris-io/shortid"
-	"log/slog"
-	"time"
 )
 
 // JWTAuthenticator for generating and validating session tokens.
@@ -32,6 +34,35 @@ type JWTAuthenticator struct {
 
 	// signing method used
 	signingMethod jwt.SigningMethod // default SigningMethodES256
+}
+
+// AddSecurityScheme adds the security scheme that this authenticator supports.
+// http supports bearer tokens for request authentication, basic and digest authentication
+// for logging in.
+func (srv *JWTAuthenticator) AddSecurityScheme(tdoc *td.TD) {
+
+	// bearer security scheme for authenticating http and subprotocol connections
+	format, alg := srv.GetAlg()
+
+	tdoc.AddSecurityScheme("bearer_jwt", td.SecurityScheme{
+		//AtType:        nil,
+		Description: "Bearer token authentication",
+		//Descriptions:  nil,
+		//Proxy:         "",
+		Scheme: "bearer", // nosec, basic, digest, bearer, psk, oauth2, apikey or auto
+		//Authorization: authServerURI,// n/a as the token is the authorization
+		Name:   "authorization",
+		Alg:    alg,
+		Format: format,   // jwe, cwt, jws, jwt, paseto
+		In:     "header", // query, body, cookie, uri, auto
+	})
+	// bearer security scheme for authenticating http digest connections
+	// tbd. clients should login and use bearer tokens.
+	//tdoc.AddSecurityScheme("digest_sc", td.SecurityScheme{
+	//	Description: "Digest authentication",
+	//	Scheme:      "digest", // nosec, basic, digest, bearer, psk, oauth2, apikey or auto
+	//	In:          "body",   // query, header, body, cookie, uri, auto
+	//})
 }
 
 // CreateSessionToken creates a new session token for the client

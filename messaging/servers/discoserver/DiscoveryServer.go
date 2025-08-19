@@ -1,11 +1,12 @@
 package discoserver
 
 import (
-	"github.com/grandcat/zeroconf"
-	"github.com/hiveot/hub/messaging/servers/httpserver"
 	"log/slog"
 	"net/http"
 	"net/url"
+
+	"github.com/grandcat/zeroconf"
+	"github.com/hiveot/hub/messaging/servers/httpbasic"
 )
 
 // DiscoveryServer supports the WoT discovery introduction and exploration
@@ -23,7 +24,7 @@ type DiscoveryServer struct {
 	// service discovery using mDNS
 	dnssdServer *zeroconf.Server
 	// the http server that servers the exploration endpoint
-	httpTransport *httpserver.HttpTransportServer
+	httpTransport *httpbasic.HttpBasicServer
 }
 
 // AddTDForms does not apply to the discovery service
@@ -47,9 +48,10 @@ func (svc *DiscoveryServer) Stop() {
 func (svc *DiscoveryServer) ServeDirectoryTD(tdPath string, tdJSON string) {
 
 	svc.dirTDJSON = tdJSON
-	svc.httpTransport.AddOps(nil, []string{}, http.MethodGet,
-		tdPath, svc.HandleGetDirTD)
-
+	//svc.httpTransport.AddOps(nil, []string{}, http.MethodGet,
+	//	tdPath, svc.HandleGetDirTD)
+	r := svc.httpTransport.GetPublicRouter()
+	r.Get(tdPath, svc.HandleGetDirTD)
 }
 
 // StartDiscoveryServer starts a DNS-SD server for serving a Thing Directory over https.
@@ -69,7 +71,7 @@ func (svc *DiscoveryServer) ServeDirectoryTD(tdPath string, tdJSON string) {
 //	httpServer is the server to use for serving the TD
 //	endpoints with hiveot protocol connection scheme:URL endpoints
 func StartDiscoveryServer(instanceName string, serviceName string,
-	dirTDJSON string, tdPath string, httpTransport *httpserver.HttpTransportServer,
+	dirTDJSON string, tdPath string, httpTransport *httpbasic.HttpBasicServer,
 	endpoints map[string]string) (
 	*DiscoveryServer, error) {
 

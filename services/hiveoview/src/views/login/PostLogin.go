@@ -3,13 +3,14 @@ package login
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/hiveot/hub/messaging/servers/httpserver"
-	"github.com/hiveot/hub/services/hiveoview/src"
-	"github.com/hiveot/hub/services/hiveoview/src/session"
-	jsoniter "github.com/json-iterator/go"
 	"io"
 	"log/slog"
 	"net/http"
+
+	"github.com/hiveot/hub/messaging/servers/httpbasic"
+	"github.com/hiveot/hub/services/hiveoview/src"
+	"github.com/hiveot/hub/services/hiveoview/src/session"
+	jsoniter "github.com/json-iterator/go"
 )
 
 // keep session auth for 7 days
@@ -34,9 +35,9 @@ func PostLoginFormHandler(sm *session.WebSessionManager) http.HandlerFunc {
 			return
 		}
 		// hx-headers doesnt work on posting a form so use query instead to pass a CID
-		cid := r.Header.Get(httpserver.ConnectionIDHeader)
+		cid := r.Header.Get(httpbasic.ConnectionIDHeader)
 		if cid == "" {
-			cid = r.URL.Query().Get(httpserver.ConnectionIDHeader)
+			cid = r.URL.Query().Get(httpbasic.ConnectionIDHeader)
 		}
 		if cid == "" {
 			slog.Error("PostLoginFormHandler: Missing CID for client. Disconnecting", "loginID", loginID)
@@ -74,10 +75,10 @@ func PostLoginFormHandler(sm *session.WebSessionManager) http.HandlerFunc {
 		// prevent the browser from re-posting on back button or refresh (POST-Redirect-GET) pattern
 
 		// A redirect apparently cannot include the custom CID header.
-		header.Add(httpserver.ConnectionIDHeader, cid) // this doesn't work
+		header.Add(httpbasic.ConnectionIDHeader, cid) // this doesn't work
 		// fall back to query params
 		redirPath := fmt.Sprintf("%s?%s=%s",
-			src.RenderDashboardRootPath, httpserver.ConnectionIDHeader, cid)
+			src.RenderDashboardRootPath, httpbasic.ConnectionIDHeader, cid)
 		http.Redirect(w, r, redirPath, http.StatusSeeOther)
 	}
 }
@@ -106,7 +107,7 @@ func PostLoginHandler(sm *session.WebSessionManager) http.HandlerFunc {
 			http.Redirect(w, r, src.RenderLoginPath, http.StatusBadRequest)
 			return
 		}
-		cid := r.Header.Get(httpserver.ConnectionIDHeader)
+		cid := r.Header.Get(httpbasic.ConnectionIDHeader)
 		if cid == "" {
 			slog.Error("PostLoginHandler: Missing CID for client. Disconnecting", "loginID", loginID)
 			http.Error(w, "missing CID", http.StatusBadRequest)
@@ -119,7 +120,7 @@ func PostLoginHandler(sm *session.WebSessionManager) http.HandlerFunc {
 
 		// this will prevent a redirect from working
 		newTokenJSON, _ := jsoniter.Marshal(newToken)
-		w.Write(newTokenJSON)
+		_, _ = w.Write(newTokenJSON)
 
 	}
 }

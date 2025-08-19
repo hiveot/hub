@@ -1,10 +1,16 @@
 package messaging
 
-import "time"
+import (
+	"time"
+
+	"github.com/hiveot/hub/wot/td"
+)
 
 // IAuthenticator is the interface of the authentication capability to obtain and
 // validate session tokens.
 type IAuthenticator interface {
+	// AddSecurityScheme adds the wot securityscheme to the given TD
+	AddSecurityScheme(tdoc *td.TD)
 
 	// CreateSessionToken creates a signed session token for a client and adds the session
 	// sessionID is required. For persistent sessions use the clientID.

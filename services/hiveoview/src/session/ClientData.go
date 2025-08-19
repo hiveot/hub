@@ -3,11 +3,12 @@ package session
 import (
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/lib/buckets"
-	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"slices"
 	"sync"
+
+	"github.com/hiveot/hub/lib/buckets"
+	jsoniter "github.com/json-iterator/go"
 )
 
 // SessionData containing the persisted client data, UI preferences, and

@@ -2,10 +2,11 @@ package service
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/messaging/servers/hiveotsseserver"
-	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"log/slog"
 	"net/http"
+
+	"github.com/hiveot/hub/messaging/servers/hiveotsseserver"
+	"github.com/hiveot/hub/services/hiveoview/src/session"
 )
 
 // SseServe serves incoming SSE connections, eg. one per browser tab.

@@ -1,15 +1,15 @@
-package hiveotsseserver
+package httpbasic
 
 // message types defined in the http basic profile
 // https://w3c.github.io/wot-profile/#http-basic-profile-protocol-binding
 
-// status values used in the HttpActionStatus response
-const (
-	HttpActionStatusPending   = "pending"
-	HttpActionStatusRunning   = "running"
-	HttpActionStatusCompleted = "completed"
-	HttpActionStatusFailed    = "failed"
-)
+//// status values used in the HttpActionStatus response
+//const (
+//	HttpActionStatusPending   = "pending"
+//	HttpActionStatusRunning   = "running"
+//	HttpActionStatusCompleted = "completed"
+//	HttpActionStatusFailed    = "failed"
+//)
 
 // HttpActionStatusMessage the status of an asynchronous action invocation request
 type HttpActionStatusMessage struct {

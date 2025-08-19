@@ -3,9 +3,11 @@ package tputils
 import (
 	"errors"
 	"fmt"
-	"github.com/teris-io/shortid"
 	"strings"
 	"time"
+
+	"github.com/hiveot/hub/wot/td"
+	"github.com/teris-io/shortid"
 )
 
 // DummyAuthenticator for testing the transport protocol bindings
@@ -21,6 +23,26 @@ func (d *DummyAuthenticator) AddClient(clientID string, password string) string 
 	token := d.CreateSessionToken(clientID, sessionID, 0)
 	d.tokens[clientID] = token
 	return token
+}
+
+// AddSecurityScheme adds the security scheme that this authenticator supports.
+func (srv *DummyAuthenticator) AddSecurityScheme(tdoc *td.TD) {
+
+	// bearer security scheme for authenticating http and subprotocol connections
+	format, alg := srv.GetAlg()
+
+	tdoc.AddSecurityScheme("bearer", td.SecurityScheme{
+		//AtType:        nil,
+		Description: "JWT dummy token authentication",
+		//Descriptions:  nil,
+		//Proxy:         "",
+		Scheme: "bearer", // nosec, basic, digest, bearer, psk, oauth2, apikey or auto
+		//Authorization: authServerURI,// n/a as the token is the authorization
+		Name:   "authorization",
+		Alg:    alg,
+		Format: format,   // jwe, cwt, jws, jwt, paseto
+		In:     "header", // query, body, cookie, uri, auto
+	})
 }
 
 //func (d *DummyAuthenticator) AddToken(clientID string, token string) {

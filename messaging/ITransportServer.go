@@ -29,7 +29,7 @@ type ITransportServer interface {
 	//	{op} for operation
 	// 	{thingID} the ID of the thing
 	//	{name} the name of the property, event or action affordance
-	GetForm(op string, thingID string, name string) *td.Form
+	//GetForm(op string, thingID string, name string) *td.Form
 
 	// GetConnectURL returns the full URL to connect to this server .
 	GetConnectURL() string

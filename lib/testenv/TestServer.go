@@ -262,12 +262,12 @@ func (test *TestServer) GetConsumerConnection(clientID string, protocolType stri
 }
 
 // GetForm returns the form for the given operation and transport protocol binding
-func (test *TestServer) GetForm(op string, thingID string, name string) *td.Form {
-
-	// test default test server consumer protocol (only consumers need forms)
-	srv := test.Runtime.TransportsMgr.GetServer(test.ConsumerProtocol)
-	return srv.GetForm(op, thingID, name)
-}
+//func (test *TestServer) GetForm(op string, thingID string, name string) *td.Form {
+//
+//	// test default test server consumer protocol (only consumers need forms)
+//	srv := test.Runtime.TransportsMgr.GetServer(test.ConsumerProtocol)
+//	return srv.GetForm(op, thingID, name)
+//}
 
 // GetServerURL returns the connection URL to use for the given client type
 func (test *TestServer) GetServerURL(clientType authn.ClientType) (serverURL string) {
@@ -334,7 +334,7 @@ func NewTestServer() *TestServer {
 		Config:  runtime.NewRuntimeConfig(),
 		// change these for running all tests with different protocols
 		AgentProtocol: messaging.ProtocolTypeWSS,
-		//AgentProtocol: messaging.ProtocolTypeHiveotSSE,
+		//AgentProtocol:   messaging.ProtocolTypeHiveotSSE,
 		ServiceProtocol: messaging.ProtocolTypeWSS,
 		//ServiceProtocol: messaging.ProtocolTypeHiveotSSE,
 		ConsumerProtocol: messaging.ProtocolTypeWSS,

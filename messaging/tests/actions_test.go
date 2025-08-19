@@ -4,16 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
+	"sync/atomic"
+	"testing"
+	"time"
+
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/wot"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/teris-io/shortid"
-	"log/slog"
-	"sync/atomic"
-	"testing"
-	"time"
 )
 
 // TestInvokeActionFromConsumerToServer: classic 'consumer talks to the server'
@@ -40,10 +41,11 @@ func TestInvokeActionFromConsumerToServer(t *testing.T) {
 	}
 	// 1. start the servers
 	srv, cancelFn := StartTransportServer(nil, requestHandler, nil)
+	_ = srv
 	defer cancelFn()
 
 	// 2. connect a client
-	cc1, cl1, token := NewConsumer(testClientID1, srv.GetForm)
+	cc1, cl1, token := NewConsumer(testClientID1)
 	defer cc1.Disconnect()
 	require.NotEmpty(t, token)
 	ctx1, release1 := context.WithTimeout(context.Background(), time.Minute)
@@ -218,10 +220,11 @@ func TestQueryActions(t *testing.T) {
 
 	// 1. start the servers
 	srv, cancelFn := StartTransportServer(nil, requestHandler, nil)
+	_ = srv
 	defer cancelFn()
 
 	// 2. connect as a consumer
-	cc1, cl1, _ := NewConsumer(testClientID1, srv.GetForm)
+	cc1, cl1, _ := NewConsumer(testClientID1)
 	defer cc1.Disconnect()
 
 	// 3. Query action status

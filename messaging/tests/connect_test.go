@@ -4,25 +4,27 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/lib/certs"
-	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/clients"
-	"github.com/hiveot/hub/messaging/clients/authenticator"
-	"github.com/hiveot/hub/messaging/servers/hiveotsseserver"
-	"github.com/hiveot/hub/messaging/servers/httpserver"
-	"github.com/hiveot/hub/messaging/servers/wssserver"
-	"github.com/hiveot/hub/messaging/tputils"
-	"github.com/hiveot/hub/wot"
-	"github.com/hiveot/hub/wot/td"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"log/slog"
 	"net/url"
 	"os"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/hiveot/hub/lib/certs"
+	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/clients"
+	"github.com/hiveot/hub/messaging/clients/authenticator"
+	"github.com/hiveot/hub/messaging/servers/hiveotsseserver"
+	"github.com/hiveot/hub/messaging/servers/httpbasic"
+	"github.com/hiveot/hub/messaging/servers/wssserver"
+	"github.com/hiveot/hub/messaging/tputils"
+	"github.com/hiveot/hub/messaging/tputils/tlsserver"
+	"github.com/hiveot/hub/wot"
+	"github.com/hiveot/hub/wot/td"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const testTimeout = time.Second * 300
@@ -62,7 +64,7 @@ func NewTestClient(clientID string) (messaging.IClientConnection, string) {
 	case messaging.ProtocolTypeWSS:
 		fullURL = testServerHiveotWssURL
 
-	case messaging.ProtocolTypeWotHTTPBasic:
+	case messaging.ProtocolTypeHTTPBasic:
 		fullURL = testServerHttpURL
 
 		//case messaging.ProtocolTypeWotMQTTWSS:
@@ -93,7 +95,7 @@ func NewAgent(clientID string) (messaging.IClientConnection, *messaging.Agent, s
 //
 // This uses the clientID as password
 // This panics if a client cannot be created
-func NewConsumer(clientID string, getForm messaging.GetFormHandler) (
+func NewConsumer(clientID string) (
 	messaging.IClientConnection, *messaging.Consumer, string) {
 
 	cc, token := NewTestClient(clientID)
@@ -102,11 +104,14 @@ func NewConsumer(clientID string, getForm messaging.GetFormHandler) (
 }
 
 // Create a new form for the given operation
-// This uses the default protocol binding server to generate the Form
-func NewForm(op, thingID, name string) *td.Form {
-	form := transportServer.GetForm(op, thingID, name)
-	return form
-}
+// This uses the default protocol to generate the Form
+//func NewForm(op, thingID, name string) *td.Form {
+//	switch defaultProtocol {
+//
+//	}
+//	form := transportServer.GetForm(op, thingID, name)
+//	return form
+//}
 
 // start the default transport server
 // This panics if the server cannot be created
@@ -125,28 +130,33 @@ func StartTransportServer(
 	if respHandler == nil {
 		respHandler = DummyResponseHandler
 	}
-	// test cert uses localhost
-	httpTransportServer, err := httpserver.StartHttpTransportServer(
-		certBundle.ServerAddr, testServerHttpPort, serverCert, caCert, dummyAuthenticator)
+	// cert uses localhost
+	httpServer, httpRouter := tlsserver.NewTLSServer(
+		certBundle.ServerAddr, testServerHttpPort, serverCert, caCert)
+	err := httpServer.Start()
+
+	// http basic is required for http sub-protocols and authentication
+	connectAddr := fmt.Sprintf("%s:%d", certBundle.ServerAddr, testServerHttpPort)
+	httpBasicServer := httpbasic.StartHttpBasicServer(
+		connectAddr, httpRouter, dummyAuthenticator, notifHandler, reqHandler, respHandler)
 
 	switch defaultProtocol {
-	case messaging.ProtocolTypeWotHTTPBasic:
+	case messaging.ProtocolTypeHTTPBasic:
 		// http only, no subprotocol bindings
-		//httpTransportServer, err = httpserver.StartHttpTransportServer(
-		//	"localhost", testServerHttpPort, serverCert, caCert, dummyAuthenticator, cm,
-		//	notifHandler, reqHandler, respHandler)
-		panic("https is broken")
+		transportServer = httpBasicServer
 
 	case messaging.ProtocolTypeHiveotSSE:
 		transportServer = hiveotsseserver.StartHiveotSseServer(
-			hiveotsseserver.DefaultHiveotSsePath,
-			httpTransportServer, nil, notifHandler, reqHandler, respHandler)
+			connectAddr, hiveotsseserver.DefaultHiveotSsePath,
+			httpBasicServer.GetProtectedRouter(),
+			nil, notifHandler, reqHandler, respHandler)
 
 	case messaging.ProtocolTypeWSS:
 		transportServer, err = wssserver.StartWssServer(
-			wssserver.DefaultWssPath,
-			&wssserver.HiveotMessageConverter{}, messaging.ProtocolTypeWSS,
-			httpTransportServer, nil, notifHandler, reqHandler, respHandler)
+			connectAddr, wssserver.DefaultWssPath,
+			httpBasicServer.GetProtectedRouter(),
+			&wssserver.HiveotMessageConverter{},
+			nil, notifHandler, reqHandler, respHandler)
 
 	default:
 		err = errors.New("unknown protocol name: " + defaultProtocol)
@@ -162,8 +172,8 @@ func StartTransportServer(
 		if transportServer != nil {
 			transportServer.Stop()
 		}
-		if httpTransportServer != nil {
-			httpTransportServer.Stop()
+		if httpServer != nil {
+			httpServer.Stop()
 		}
 	}
 }
@@ -177,7 +187,7 @@ func DummyRequestHandler(req *messaging.RequestMessage,
 	c messaging.IConnection) (resp *messaging.ResponseMessage) {
 	var output any
 	var err error
-
+	_ = c
 	slog.Info("DummyRequestHandler: Received request", "op", req.Operation)
 	//if req.Operation == wot.HTOpRefresh {
 	//	oldToken := req.ToString(0)
@@ -198,7 +208,6 @@ func DummyResponseHandler(response *messaging.ResponseMessage) error {
 // TestMain sets logging
 func TestMain(m *testing.M) {
 	logging.SetLogging("info", "")
-	defaultProtocol = defaultProtocol
 	result := m.Run()
 	os.Exit(result)
 }
@@ -208,8 +217,9 @@ func TestStartStop(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 
 	srv, cancelFn := StartTransportServer(nil, nil, nil)
+	_ = srv
 	defer cancelFn()
-	cc1, co1, _ := NewConsumer(testClientID1, srv.GetForm)
+	cc1, co1, _ := NewConsumer(testClientID1)
 	defer cc1.Disconnect()
 	assert.NotNil(t, co1)
 
@@ -219,11 +229,10 @@ func TestStartStop(t *testing.T) {
 
 func TestLoginRefresh(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
-	const thingID1 = "thing1"
 
 	srv, cancelFn := StartTransportServer(nil, nil, nil)
 	defer cancelFn()
-	cc1, co1, token1 := NewConsumer(testClientID1, srv.GetForm)
+	cc1, co1, token1 := NewConsumer(testClientID1)
 	_ = co1
 
 	isConnected := cc1.IsConnected()
@@ -248,7 +257,8 @@ func TestLoginRefresh(t *testing.T) {
 	isConnected = cc1.IsConnected()
 	assert.True(t, isConnected)
 
-	parts, _ := url.Parse(srv.GetConnectURL())
+	parts, err := url.Parse(srv.GetConnectURL())
+	require.NoError(t, err)
 	authCl := authenticator.NewAuthClient(parts.Host, certBundle.CaCert, "cid1", testTimeout)
 	token2, err := authCl.RefreshToken(token1)
 
@@ -280,10 +290,11 @@ func TestLogout(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 
 	srv, cancelFn := StartTransportServer(nil, nil, nil)
+	_ = srv
 	defer cancelFn()
 
 	// check if this test still works with a valid login
-	cc1, co1, token1 := NewConsumer(testClientID1, srv.GetForm)
+	cc1, co1, token1 := NewConsumer(testClientID1)
 	_ = cc1
 	_ = co1
 	defer co1.Disconnect()
@@ -319,7 +330,7 @@ func TestLogout(t *testing.T) {
 //
 //	// failed logins
 //	t.Log("Expecting ConnectWithPassword to fail")
-//	token2, err := cc1.ConnectWithPassword("badpass")
+//	token2, err := cc1.ConnectWithPassword("bad-pass")
 //	assert.Error(t, err)
 //	assert.Empty(t, token2)
 //
@@ -344,17 +355,17 @@ func TestBadRefresh(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 	srv, cancelFn := StartTransportServer(nil, nil, nil)
 	defer cancelFn()
-	cc1, co1, token1 := NewConsumer(testClientID1, srv.GetForm)
+	cc1, co1, token1 := NewConsumer(testClientID1)
 	_ = co1
 	_ = token1
 	defer cc1.Disconnect()
 
 	// set the token
-	t.Log("Expecting SetBearerToken('badtoken') to fail")
-	err := cc1.ConnectWithToken("badtoken")
+	t.Log("Expecting SetBearerToken('bad-token') to fail")
+	err := cc1.ConnectWithToken("bad-token")
 	require.Error(t, err)
 
-	// reconnect with a valid token and connect with a bad clientid
+	// reconnect with a valid token and connect with a bad client-id
 	err = cc1.ConnectWithToken(token1)
 	assert.NoError(t, err)
 	parts, _ := url.Parse(srv.GetConnectURL())
@@ -387,7 +398,7 @@ func TestReconnect(t *testing.T) {
 		// prove that the return channel is connected
 		if req.Operation == wot.OpInvokeAction {
 			go func() {
-				// send a asynchronous result after a short time
+				// send an asynchronous result after a short time
 				time.Sleep(time.Millisecond * 10)
 				require.NotNil(t, c, "client doesnt have a SSE connection")
 				output := req.Input
@@ -401,7 +412,7 @@ func TestReconnect(t *testing.T) {
 			// nothing to return yet
 			return nil
 		}
-		err = errors.New("Unexpected request")
+		err = errors.New("unexpected request")
 		return req.CreateResponse("", err)
 	}
 	// start the servers and connect as a client
@@ -409,7 +420,7 @@ func TestReconnect(t *testing.T) {
 	defer cancelFn()
 
 	// connect as client
-	cc1, co1, _ := NewConsumer(testClientID1, srv.GetForm)
+	cc1, co1, _ := NewConsumer(testClientID1)
 	//token := dummyAuthenticator.CreateSessionToken(testClientID1, "", 0)
 	//err := cc1.ConnectWithToken(token)
 	//require.NoError(t, err)
@@ -435,7 +446,7 @@ func TestReconnect(t *testing.T) {
 
 	// 4. invoke an action which should return a value
 	// An RPC call is the ultimate test
-	var rpcArgs string = "rpc test"
+	var rpcArgs = "rpc test"
 	var rpcResp string
 	time.Sleep(time.Millisecond * 1000)
 	err := co1.Rpc(wot.OpInvokeAction, dThingID, actionKey, &rpcArgs, &rpcResp)
@@ -450,8 +461,9 @@ func TestPing(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 
 	srv, cancelFn := StartTransportServer(nil, nil, nil)
+	_ = srv
 	defer cancelFn()
-	cc1, co1, _ := NewConsumer(testClientID1, srv.GetForm)
+	cc1, co1, _ := NewConsumer(testClientID1)
 	defer cc1.Disconnect()
 
 	//_, err := cc1.ConnectWithPassword(testClientID1)
@@ -469,15 +481,15 @@ func TestPing(t *testing.T) {
 }
 
 // Test getting form for unknown operation
-func TestBadForm(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
-
-	_, cancelFn := StartTransportServer(nil, nil, nil)
-	defer cancelFn()
-
-	form := NewForm("badoperation", "", "")
-	assert.Nil(t, form)
-}
+//func TestBadForm(t *testing.T) {
+//	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+//
+//	_, cancelFn := StartTransportServer(nil, nil, nil)
+//	defer cancelFn()
+//
+//	form := NewForm("bad-operation", "", "")
+//	assert.Nil(t, form)
+//}
 
 // Test getting server URL
 func TestServerURL(t *testing.T) {

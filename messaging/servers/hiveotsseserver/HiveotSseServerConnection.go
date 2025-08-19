@@ -3,24 +3,25 @@ package hiveotsseserver
 import (
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/connections"
-	"github.com/hiveot/hub/wot"
-	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/connections"
+	"github.com/hiveot/hub/wot"
+	jsoniter "github.com/json-iterator/go"
 )
 
 type SSEEvent struct {
-	EventType string // type of message, eg event, action or other
+	EventType string // type of message, e.g. event, action or other
 	Payload   string // message content
 }
 
 // SSEPingEvent can be used by the server to ping the client that the connection is ready
-const SSEPingEvent = "sseping"
+const SSEPingEvent = "sse-ping"
 
 // HiveotSseServerConnection handles the SSE connection by remote client
 //
@@ -136,7 +137,7 @@ func (c *HiveotSseServerConnection) IsConnected() bool {
 //
 // A response is only expected if the request is handled, otherwise nil is returned
 // and a response is received asynchronously.
-// In case of invokeaction, the response is always an ActionStatus object.
+// In case of invoke-action, the response is always an ActionStatus object.
 //
 // This returns one of 3 options:
 // 1. on completion, return handled=true, an optional output
@@ -218,7 +219,7 @@ func (c *HiveotSseServerConnection) SendNotification(
 		}
 	} else if notif.Operation == wot.OpInvokeAction {
 		// action progress update
-		slog.Info("SendNotification (action stastus)",
+		slog.Info("SendNotification (action status)",
 			slog.String("clientID", c.cinfo.ClientID),
 			slog.String("thingID", notif.ThingID),
 			slog.String("name", notif.Name),
@@ -314,7 +315,7 @@ func (c *HiveotSseServerConnection) Serve(w http.ResponseWriter, r *http.Request
 			//	sseMsg.EventType, sseMsg.ID, sseMsg.Payload)
 			if err != nil {
 				// the connection might be closing.
-				// don't exit the loop until the receive channel is closed.
+				// don't exit the loop until the receive-channel is closed.
 				// just keep processing the message until that happens
 				// closed go channels panic when written to. So keep reading.
 				slog.Error("SseConnection: Error writing SSE event",
@@ -356,7 +357,7 @@ func (c *HiveotSseServerConnection) SetConnectHandler(cb messaging.ConnectionHan
 // connection using the clientID and connectionID and passes the message to the
 // registered notification handler on this connection.
 //
-// By default the server registers itself as the notification handler when the connection
+// By default, the server registers itself as the notification handler when the connection
 // is created. It is safe to set a different handler for applications that
 // handle each connection separately, for example a server side consumer instance.
 func (c *HiveotSseServerConnection) SetNotificationHandler(cb messaging.NotificationHandler) {
@@ -378,7 +379,7 @@ func (c *HiveotSseServerConnection) SetNotificationHandler(cb messaging.Notifica
 // using the clientID and connectionID and passes the message to the registered
 // request handler on this connection.
 //
-// By default the server registers itself as the request handler when the connection
+// By default, the server registers itself as the request handler when the connection
 // is created. It is safe to set a different request handler for applications that
 // handle each connection separately, for example an 'Agent' instance.
 func (c *HiveotSseServerConnection) SetRequestHandler(cb messaging.RequestHandler) {
@@ -400,7 +401,7 @@ func (c *HiveotSseServerConnection) SetRequestHandler(cb messaging.RequestHandle
 // connection using the clientID and connectionID and passes the message to the
 // registered response handler on this connection.
 //
-// By default the server registers itself as the response handler when the connection
+// By default, the server registers itself as the response handler when the connection
 // is created. It is safe to set a different response handler for applications that
 // handle each connection separately, for example a server side consumer instance.
 func (c *HiveotSseServerConnection) SetResponseHandler(cb messaging.ResponseHandler) {

@@ -2,12 +2,13 @@ package login
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/messaging/servers/httpserver"
+	"log/slog"
+	"net/http"
+
+	"github.com/hiveot/hub/messaging/servers/httpbasic"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/views"
 	"github.com/teris-io/shortid"
-	"log/slog"
-	"net/http"
 )
 
 const LoginTemplateFile = "login.gohtml"
@@ -24,7 +25,7 @@ func RenderLogin(w http.ResponseWriter, r *http.Request) {
 
 	// hx-headers doesnt work on posting a form, so use query instead to pass a CID
 	cid := "login-" + shortid.MustGenerate()
-	postLoginPath := fmt.Sprintf("%s?%s=%s", src.UIPostFormLoginPath, httpserver.ConnectionIDHeader, cid)
+	postLoginPath := fmt.Sprintf("%s?%s=%s", src.UIPostFormLoginPath, httpbasic.ConnectionIDHeader, cid)
 	data := LoginTemplateData{
 		LoginID:       "",
 		LoginError:    "",

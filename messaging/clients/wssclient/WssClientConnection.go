@@ -5,16 +5,17 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"github.com/gorilla/websocket"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/servers/httpserver"
-	"github.com/teris-io/shortid"
 	"log/slog"
 	"math/rand/v2"
 	"net/url"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/gorilla/websocket"
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/servers"
+	"github.com/teris-io/shortid"
 )
 
 // WssClient manages the connection to a websocket server.
@@ -373,7 +374,7 @@ func NewHiveotWssClient(
 	// ensure the URL has port as 443 is not valid for this
 	parts, _ := url.Parse(wssURL)
 	if parts.Port() == "" {
-		parts.Host = fmt.Sprintf("%s:%d", parts.Hostname(), httpserver.DefaultHttpsPort)
+		parts.Host = fmt.Sprintf("%s:%d", parts.Hostname(), servers.DefaultHttpsPort)
 		wssURL = parts.String()
 	}
 

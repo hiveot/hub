@@ -3,10 +3,11 @@ package session
 import (
 	"context"
 	"errors"
-	"github.com/teris-io/shortid"
 	"log/slog"
 	"net/http"
 	"time"
+
+	"github.com/teris-io/shortid"
 )
 
 const ClientSessionContextID = "session"

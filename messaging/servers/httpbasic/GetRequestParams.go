@@ -1,13 +1,14 @@
-package httpserver
+package httpbasic
 
 import (
 	"errors"
 	"fmt"
-	"github.com/go-chi/chi/v5"
-	jsoniter "github.com/json-iterator/go"
 	"io"
 	"log/slog"
 	"net/http"
+
+	"github.com/go-chi/chi/v5"
+	jsoniter "github.com/json-iterator/go"
 )
 
 const SessionContextID = "session"

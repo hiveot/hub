@@ -5,13 +5,14 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/publicsuffix"
 	"log/slog"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"time"
+
+	"golang.org/x/net/http2"
+	"golang.org/x/net/publicsuffix"
 )
 
 // NewHttp2TLSClient creates a http client setup for http/2

@@ -1,11 +1,12 @@
-package httpserver
+package httpbasic
 
 import (
 	"context"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/tputils/tlsserver"
 	"log/slog"
 	"net/http"
+
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/tputils/tlsserver"
 )
 
 // AddSessionFromToken middleware decodes the bearer session token in the authorization header.

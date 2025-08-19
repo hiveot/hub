@@ -1,17 +1,19 @@
 package authenticator
 
 import (
-	"aidanwoods.dev/go-paseto"
 	"crypto/ed25519"
 	"fmt"
+	"log/slog"
+	"time"
+
+	"aidanwoods.dev/go-paseto"
 	"github.com/hiveot/hub/lib/keys"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	"github.com/hiveot/hub/runtime/authn/authnstore"
 	"github.com/hiveot/hub/runtime/authn/config"
 	"github.com/hiveot/hub/runtime/authn/sessions"
+	"github.com/hiveot/hub/wot/td"
 	"github.com/teris-io/shortid"
-	"log/slog"
-	"time"
 )
 
 // PasetoAuthenticator for generating and validating session tokens.
@@ -28,6 +30,28 @@ type PasetoAuthenticator struct {
 
 	// sessionmanager tracks session IDs
 	sm *sessions.SessionManager
+}
+
+// AddSecurityScheme adds the security scheme that this authenticator supports.
+// http supports bearer tokens for request authentication, basic and digest authentication
+// for logging in.
+func (srv *PasetoAuthenticator) AddSecurityScheme(tdoc *td.TD) {
+
+	// bearer security scheme for authenticating http and subprotocol connections
+	format, alg := srv.GetAlg()
+
+	tdoc.AddSecurityScheme("bearer_paseto", td.SecurityScheme{
+		//AtType:        nil,
+		Description: "Bearer token authentication",
+		//Descriptions:  nil,
+		//Proxy:         "",
+		Scheme: "bearer", // nosec, basic, digest, bearer, psk, oauth2, apikey or auto
+		//Authorization: authServerURI,// n/a as the token is the authorization
+		Name:   "authorization",
+		Alg:    alg,
+		Format: format,   // jwe, cwt, jws, jwt, paseto
+		In:     "header", // query, body, cookie, uri, auto
+	})
 }
 
 // CreateSessionToken creates a new session token for the client

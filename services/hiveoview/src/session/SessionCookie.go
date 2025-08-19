@@ -1,12 +1,13 @@
 package session
 
 import (
-	"aidanwoods.dev/go-paseto"
 	"crypto/ed25519"
 	"errors"
 	"log/slog"
 	"net/http"
 	"time"
+
+	"aidanwoods.dev/go-paseto"
 )
 
 // SessionCookieID defines the ID of the cookie containing the user sessionID

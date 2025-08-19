@@ -16,7 +16,7 @@ import (
 
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/servers/hiveotsseserver"
-	"github.com/hiveot/hub/messaging/servers/httpserver"
+	"github.com/hiveot/hub/messaging/servers/httpbasic"
 	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/messaging/tputils/tlsclient"
 	"github.com/hiveot/hub/wot"
@@ -137,7 +137,7 @@ func (cc *HiveotSseClient) Send(
 
 	// set other headers
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set(httpserver.ConnectionIDHeader, cc.cinfo.ConnectionID)
+	req.Header.Set(httpbasic.ConnectionIDHeader, cc.cinfo.ConnectionID)
 	//if correlationID != "" {
 	//	req.Header.Set(httpserver.CorrelationIDHeader, correlationID)
 	//}
@@ -242,7 +242,7 @@ func (cc *HiveotSseClient) GetConnectionInfo() messaging.ConnectionInfo {
 func (cc *HiveotSseClient) GetDefaultForm(op, thingID, name string) (f *td.Form) {
 	// login has its own URL as it is unauthenticated
 	if op == wot.HTOpPing {
-		href := httpserver.HttpGetPingPath
+		href := httpbasic.HttpGetPingPath
 		nf := td.NewForm(op, href)
 		nf.SetMethodName(http.MethodGet)
 		f = &nf
@@ -493,7 +493,7 @@ func (cc *HiveotSseClient) SendRequest(req *messaging.RequestMessage) error {
 			err = jsoniter.Unmarshal(outputRaw, &notif)
 		} else {
 			// output is http basic actionstatus
-			tmp := hiveotsseserver.HttpActionStatusMessage{}
+			tmp := httpbasic.HttpActionStatusMessage{}
 			err = jsoniter.Unmarshal(outputRaw, &tmp)
 			notif.Data = tmp
 		}
