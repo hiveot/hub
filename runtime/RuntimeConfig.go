@@ -5,6 +5,10 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"log/slog"
+	"os"
+	"path"
+
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/plugin"
@@ -13,9 +17,6 @@ import (
 	service2 "github.com/hiveot/hub/runtime/authn/config"
 	"github.com/hiveot/hub/runtime/authz/service"
 	"gopkg.in/yaml.v3"
-	"log/slog"
-	"os"
-	"path"
 )
 
 const DefaultServerCertFile = "hubCert.pem"

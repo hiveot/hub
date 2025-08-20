@@ -60,7 +60,11 @@ func (f Form) SetSubprotocol(subp string) Form {
 }
 
 // NewForm creates a new form instance
-// Optionally include a sub-protocol as the third parameter
+//
+//	operation is required
+//	href can be a relative path is base is set.
+//
+// args is an optional sub-protocol as the third parameter
 func NewForm(operation string, href string, args ...string) Form {
 	f := Form{
 		"op":   operation,

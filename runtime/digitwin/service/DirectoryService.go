@@ -131,6 +131,7 @@ func (svc *DirectoryService) UpdateTD(agentID string, tdJson string) error {
 	// notify subscribers of TD updates
 	if svc.notifHandler != nil {
 		dtdJSON, _ := jsoniter.MarshalToString(digitalTwinTD)
+		
 		// todo: only send notification on changes
 		// publish an event that the directory TD has updated with a new TD
 		notif := messaging.NewNotificationMessage(wot.OpSubscribeEvent,

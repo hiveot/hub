@@ -64,7 +64,9 @@ protocols:
   # Defaults to "/.well-known/wot" as per spec
   #directoryTDPath: "/.well-known/wot"
 
-
+  # includeForms includes forms for each of the affordances. HiveOT doesn't need
+  # them but 3rd party clients might. Default is true.
+  # includeForms: false
 
 # runtime logging
 #loglevel: info               # default warn

@@ -5,20 +5,23 @@ import (
 	"github.com/hiveot/hub/wot/td"
 )
 
-// AddTDForms adds forms for use of this protocol to the given TD
+// AddTDForms adds forms for use of this protocol to the given TD.
+//
+// Since the contentType is the default application/json it is omitted
+//
 // 'includeAffordances' adds forms to all affordances to be compliant with the specifications.
 // This is a massive waste of space in the TD.
 func (srv *WssServer) AddTDForms(tdoc *td.TD, includeAffordances bool) {
 
 	// 1 form for all operations
-	form := td.NewForm(wot.OpQueryAllActions, srv.GetConnectURL(), SubprotocolWSS)
+	form := td.NewForm("", srv.GetConnectURL(), SubprotocolWSS)
 	form["op"] = []string{
 		wot.OpQueryAllActions,
 		wot.OpObserveAllProperties, wot.OpUnobserveAllProperties,
 		wot.OpReadAllProperties, // wot.OpWriteMultipleProperties,
 		wot.OpSubscribeAllEvents, wot.OpUnsubscribeAllEvents,
 	}
-	form["contentType"] = "application/json"
+	//form["contentType"] = "application/json"
 
 	tdoc.Forms = append(tdoc.Forms, form)
 
@@ -34,25 +37,30 @@ func (srv *WssServer) AddAffordanceForms(tdoc *td.TD) {
 	href := srv.GetConnectURL()
 	for name, aff := range tdoc.Actions {
 		_ = name
-		aff.AddForm(td.NewForm(wot.OpInvokeAction, href, SubprotocolWSS))
-		aff.AddForm(td.NewForm(wot.OpQueryAction, href, SubprotocolWSS))
+		form := td.NewForm("", href, SubprotocolWSS)
+		form["op"] = []string{wot.OpInvokeAction, wot.OpQueryAction}
+		aff.AddForm(form)
 		// cancel action is currently not supported
-		//aff.AddForm(td.NewForm(wot.OpCancelAction, href))
 	}
 	for name, aff := range tdoc.Events {
 		_ = name
-		aff.AddForm(td.NewForm(wot.OpSubscribeEvent, href, SubprotocolWSS))
-		aff.AddForm(td.NewForm(wot.OpUnsubscribeEvent, href, SubprotocolWSS))
+		form := td.NewForm("", href, SubprotocolWSS)
+		form["op"] = []string{wot.OpSubscribeEvent, wot.OpUnsubscribeEvent}
+		aff.AddForm(form)
 	}
 	for name, aff := range tdoc.Properties {
 		_ = name
-		aff.AddForm(td.NewForm(wot.OpObserveProperty, href, SubprotocolWSS))
-		aff.AddForm(td.NewForm(wot.OpUnobserveProperty, href, SubprotocolWSS))
+		form := td.NewForm("", href, SubprotocolWSS)
+		ops := []string{}
 		if !aff.WriteOnly {
-			aff.AddForm(td.NewForm(wot.OpReadProperty, href, SubprotocolWSS))
+			ops = append(ops, wot.OpReadProperty, wot.OpObserveProperty, wot.OpUnobserveProperty)
 		}
 		if !aff.ReadOnly {
-			aff.AddForm(td.NewForm(wot.OpWriteProperty, href, SubprotocolWSS))
+			ops = append(ops, wot.OpWriteProperty)
 		}
+
+		form["op"] = ops
+		aff.AddForm(form)
+
 	}
 }
