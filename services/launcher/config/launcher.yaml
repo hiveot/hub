@@ -19,6 +19,15 @@ logLevel: info
 # comment out if a runtime is already running elsewhere.
 runtime: runtime
 
+# runtimeWait adds extra wait-time for starting the runtime. On slow systems this might
+# be needed to ensure it is ready to receive connections.
+# This will be deprecated in the future after proper signalling is added.
+#runtimeWait: 1000
+
+# startWait contains the time in msec to wait after starting a plugin.
+#startWait: 100
+
+
 # write plugin stdout and stderr to logfile at logs/{pluginname}.log (default is true)
 #logPlugins: true
 

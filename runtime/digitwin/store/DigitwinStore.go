@@ -2,6 +2,9 @@ package store
 
 import (
 	"fmt"
+	"log/slog"
+	"sync"
+
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging"
@@ -9,8 +12,6 @@ import (
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
-	"log/slog"
-	"sync"
 )
 
 // DTWBucketName contains the name of the digital twin instances storage bucket
@@ -623,6 +624,7 @@ func OpenDigitwinStore(bucketStore buckets.IBucketStore, strict bool) (*Digitwin
 	// fill the in-memory cache
 	err := svc.LoadCacheFromStore()
 	if err != nil {
+		slog.Error("OpenDigitwinStore failed", "err", err.Error())
 		return svc, err
 	}
 	return svc, nil

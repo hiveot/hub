@@ -2,6 +2,15 @@ package service
 
 import (
 	"fmt"
+	"log/slog"
+	"os"
+	"os/exec"
+	"path"
+	"sort"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/fsnotify/fsnotify"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging"
@@ -11,14 +20,6 @@ import (
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	launcher "github.com/hiveot/hub/services/launcher/api"
 	"github.com/hiveot/hub/services/launcher/config"
-	"log/slog"
-	"os"
-	"os/exec"
-	"path"
-	"sort"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 // Use this default path instead of discovery when running locally and no server is configured
@@ -197,12 +198,21 @@ func (svc *LauncherService) Start() error {
 	svc.mux.Unlock()
 	if foundRuntime {
 		// runtime is added and starts first
-		_, err = svc._startPlugin(runtimeBin)
+		pi, err := svc._startPlugin(runtimeBin)
 		if err != nil {
 			slog.Error("Starting runtime failed", "runtimeBin", runtimeBin, "err", err)
 			return err
 		} else {
 			slog.Warn("Runtime started successfully", "runtimeBin", runtimeBin)
+
+			// a bit of a stopgap for slow systems
+			// FIXME: runtime should signal readiness
+			time.Sleep(time.Millisecond * time.Duration(svc.cfg.RuntimeWait))
+
+			// some extra time if its still busy
+			if pi.Cpu >= 99 {
+				time.Sleep(time.Second)
+			}
 		}
 		// since the runtime is launched locally a local connection is the most efficient
 		// unless a server address is already configured.

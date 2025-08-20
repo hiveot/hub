@@ -18,6 +18,10 @@ type LauncherConfig struct {
 	// Default is not to launch a runtime.
 	RuntimeBin string `yaml:"runtime"`
 
+	// RuntimeWait is extra wait time in msec after launching the runtime before starting plugins
+	// Default is 100msec but this might need to be increased on slow systems.
+	RuntimeWait int `yaml:"runtimeWait"`
+
 	// CreatePluginCred creates per-plugin key and token credential files if they don't exist
 	// Default is true
 	CreatePluginCred bool `yaml:"createPluginCred"`
@@ -41,6 +45,9 @@ type LauncherConfig struct {
 	// provide plugins with the connection URL of the server, as used by the launcher itself.
 	// this uses the '--serverURL' commandline parameter. Default is true.
 	ProvideServerURL bool `yaml:"provideServerURL"`
+
+	// Wait-time in msec after starting plugins to give the time to become ready. Default is 100msec
+	StartWait int `yaml:"startWait"`
 }
 
 // NewLauncherConfig returns a new launcher configuration with defaults
@@ -57,6 +64,8 @@ func NewLauncherConfig() LauncherConfig {
 		LogPlugins:          true,
 		ProvideDirectoryURL: true,
 		ProvideServerURL:    true,
+		StartWait:           100,
+		RuntimeWait:         100,
 	}
 	return lc
 }

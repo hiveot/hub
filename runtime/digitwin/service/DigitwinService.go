@@ -75,8 +75,15 @@ func StartDigitwinService(
 
 	bucketStore := kvbtree.NewKVStore(storePath)
 	err = bucketStore.Open()
-	if err == nil {
-		digitwinStore, err = store.OpenDigitwinStore(bucketStore, false)
+	if err != nil {
+		slog.Error("Unable to open digital twin storage bucket", "err", err.Error())
+		return nil, nil, err
+	}
+
+	digitwinStore, err = store.OpenDigitwinStore(bucketStore, false)
+	if err != nil {
+		slog.Error("Unable to open digital twin store itself", "err", err.Error())
+		return nil, nil, err
 	}
 	dirSvc := NewDigitwinDirectoryService(digitwinStore, notifHandler, includeAffordanceForms)
 	valuesSvc := NewDigitwinValuesService(digitwinStore)

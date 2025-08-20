@@ -3,11 +3,6 @@ package service
 import (
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/lib/plugin"
-	"github.com/hiveot/hub/lib/utils"
-	authn "github.com/hiveot/hub/runtime/authn/api"
-	launcher "github.com/hiveot/hub/services/launcher/api"
-	"github.com/struCoder/pidusage"
 	"io"
 	"log/slog"
 	"os"
@@ -16,6 +11,12 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/hiveot/hub/lib/plugin"
+	"github.com/hiveot/hub/lib/utils"
+	authn "github.com/hiveot/hub/runtime/authn/api"
+	launcher "github.com/hiveot/hub/services/launcher/api"
+	"github.com/struCoder/pidusage"
 
 	"github.com/samber/lo"
 )
@@ -183,10 +184,10 @@ func (svc *LauncherService) _startPlugin(pluginID string) (pi launcher.PluginInf
 		svc.cmds = append(svc.cmds[:i], svc.cmds[i+1:]...) // this is so daft!
 	}()
 
-	// Give it some time to get up and running in case this service is needed as a dependency of another
-	time.Sleep(time.Millisecond * 100)
+	// Give it some minimal time to get up and running in case this service is needed as a dependency of another
+	time.Sleep(time.Millisecond * time.Duration(svc.cfg.StartWait))
 
-	// check if its still running
+	// check if it is still running
 	if exitError != nil {
 		// something went wrong
 		err = exitError
@@ -198,6 +199,8 @@ func (svc *LauncherService) _startPlugin(pluginID string) (pi launcher.PluginInf
 	svc.updateStatus(&pluginInfo)
 	if err != nil {
 		slog.Error("Plugin startup failed", "pluginID", pluginID, "err", err, "status", pluginInfo.Status)
+	} else {
+		slog.Info("Plugin '"+pluginID+"' startup succeeded", "cpu", pluginInfo.Cpu)
 	}
 	svc.plugins[pluginID] = pluginInfo
 	return pluginInfo, err

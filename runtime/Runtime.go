@@ -79,7 +79,7 @@ func (r *Runtime) GetTD(dThingID string) (td *td.TD) {
 // Start the Hub runtime.
 // This starts the runtime authn, authz, digitwin and transport services.
 func (r *Runtime) Start(env *plugin.AppEnvironment) error {
-	slog.Info("Starting HiveOT runtime")
+	slog.Warn("Starting HiveOT runtime")
 	err := r.cfg.Setup(env)
 	if err != nil {
 		return err
@@ -239,6 +239,7 @@ func (r *Runtime) SendNotification(notif *messaging.NotificationMessage) {
 }
 
 func (r *Runtime) Stop() {
+	slog.Warn("Stopping the HiveOT runtime")
 	// wait a little to allow ongoing connection closure to complete
 	time.Sleep(time.Millisecond * 10)
 	//nrConnections, _ := r.CM.GetNrConnections()
