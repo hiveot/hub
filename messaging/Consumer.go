@@ -303,10 +303,10 @@ func (co *Consumer) ReadProperty(thingID, name string) (
 	return value, err
 }
 
-// ReadTD sends a request to read the latest Thing TD
+// RetrieveThing sends a request to read the latest Thing TD
 // This returns the TD in JSON format.
 // This is not a WoT operation (but maybe it should be)
-//func (co *Consumer) ReadTD(thingID string) (tdJSON string, err error) {
+//func (co *Consumer) RetrieveThing(thingID string) (tdJSON string, err error) {
 //	err = co.Rpc(wot.HTOpReadTD, thingID, "", nil, &tdJSON)
 //	return tdJSON, err
 //}

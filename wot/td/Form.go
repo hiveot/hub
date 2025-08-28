@@ -1,7 +1,10 @@
 // Package things with API interface definitions for forms
 package td
 
-import "log/slog"
+import (
+	"fmt"
+	"log/slog"
+)
 
 // Form can be viewed as a statement of "To perform an operation type operation on form context, make a
 // request method request to submission target" where the optional form fields may further describe the required
@@ -19,14 +22,42 @@ func (f Form) GetHRef() (href string) {
 	return ""
 }
 
-// GetOperation returns the form's operation name
+// GetOperation returns the first of a form's operation
 func (f Form) GetOperation() string {
+	ops := f.GetOperations()
+	if len(ops) > 0 {
+		return ops[0]
+	}
+	return ""
+}
+
+// GetOperations returns the list of form's operations or nil if the form has no operations
+// The form operation can be stored as a single string, or an array of strings
+func (f Form) GetOperations() []string {
 	val, _ := f["op"]
 	if val == nil {
 		slog.Error("Form operation is not set")
-		return ""
+		return nil
 	}
-	return val.(string)
+	if valStr, ok := val.(string); ok {
+		return []string{valStr}
+	}
+	if valList, ok := val.([]string); ok {
+		if len(valList) == 0 {
+			return nil
+		}
+		return valList
+	}
+	// unmarshalling a TD can translate as array of interface{}
+	if ifList, ok := val.([]interface{}); ok {
+		strList := make([]string, len(ifList)) //
+		for i, v := range ifList {
+			strList[i], _ = v.(string)
+		}
+		return strList
+	}
+	// not sure what this is, return it to allow for debugging
+	return []string{fmt.Sprintf("%v", val)}
 }
 
 // GetMethodName returns the form's HTTP "htv:methodName" field

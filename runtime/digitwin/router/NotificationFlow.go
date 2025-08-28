@@ -130,7 +130,7 @@ func (svc *DigitwinRouter) HandleNotification(notif *messaging.NotificationMessa
 //func (svc *DigitwinRouter) HandleUpdateTD(msg transports.NotificationMessage) {
 //
 //	msg.ThingID = digitwin.DirectoryDThingID
-//	msg.Name = digitwin.DirectoryUpdateTDMethod
+//	msg.Name = digitwin.DirectoryUpdateThingMethod
 //	output, err = svc.digitwinAction(&dirMsg)
 //	return true, output, err
 //}

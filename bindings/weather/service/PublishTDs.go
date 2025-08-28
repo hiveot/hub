@@ -163,7 +163,7 @@ func CreateTDOfLocation(defaultCfg *config.WeatherConfig, cfg *config.WeatherLoc
 // PublishBindingTD publishes the TD of the binding itself
 func PublishBindingTD(ag *messaging.Agent) error {
 	tdoc := CreateBindingTD(ag.GetClientID())
-	err := ag.PubTD(tdoc)
+	err := ag.UpdateThing(tdoc)
 	return err
 }
 
@@ -181,6 +181,6 @@ func PublishLocationTDs(ag *messaging.Agent, defaultCfg *config.WeatherConfig, l
 // PublishLocationTD publishes the TD of the given location
 func PublishLocationTD(ag *messaging.Agent, defaultCfg *config.WeatherConfig, loc config.WeatherLocation) error {
 	tdoc := CreateTDOfLocation(defaultCfg, &loc)
-	err := ag.PubTD(tdoc)
+	err := ag.UpdateThing(tdoc)
 	return err
 }

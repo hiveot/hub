@@ -2,6 +2,11 @@ package weather_test
 
 import (
 	"fmt"
+	"os"
+	"path"
+	"testing"
+	"time"
+
 	"github.com/hiveot/hub/bindings/weather/config"
 	"github.com/hiveot/hub/bindings/weather/providers"
 	"github.com/hiveot/hub/bindings/weather/service"
@@ -10,10 +15,6 @@ import (
 	"github.com/hiveot/hub/messaging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"os"
-	"path"
-	"testing"
-	"time"
 )
 
 var testLocation1 = config.WeatherLocation{

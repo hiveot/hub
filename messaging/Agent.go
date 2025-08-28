@@ -2,13 +2,14 @@ package messaging
 
 import (
 	"fmt"
+	"log/slog"
+	"sync/atomic"
+	"time"
+
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
-	"log/slog"
-	"sync/atomic"
-	"time"
 )
 
 // ThingDirectoryDThingID is the Digitwin ThingID of the runtime Directory Service
@@ -18,7 +19,7 @@ import (
 // of work just for cleanliness's sake.
 // Used to update the directory with TD's using this agent.
 const ThingDirectoryDThingID = "dtw:digitwin:ThingDirectory"
-const ThingDirectoryUpdateTDMethod = "updateTD"
+const ThingDirectoryUpdateThingMethod = "updateThing"
 
 // Agent provides the messaging functions needed by hub agents.
 // Agents are also consumers as they are able to invoke services.
@@ -114,25 +115,6 @@ func (ag *Agent) PubProperties(thingID string, propMap map[string]any) error {
 	return ag.cc.SendNotification(notif)
 }
 
-// PubTD helper for agents to publish an update of a TD in the directory
-// Note that this depends on the runtime directory service.
-//
-// TODO: change to follow the WoT Specification:
-// https://www.w3.org/TR/wot-discovery/#exploration-td-type-thingdirectory
-// > PUT /things/{id}   payload TD JSON; returns 201
-// > GET /things/{id}
-func (ag *Agent) PubTD(tdoc *td.TD) error {
-	slog.Info("PubTD", slog.String("id", tdoc.ID))
-
-	// TD is sent as JSON
-	tdJson, _ := jsoniter.MarshalToString(tdoc)
-	//	return ag.Rpc(wot.HTOpUpdateTD, td.ID, "", tdJson, nil)
-	//
-	err := ag.Rpc(wot.OpInvokeAction, ThingDirectoryDThingID, ThingDirectoryUpdateTDMethod,
-		tdJson, nil)
-	return err
-}
-
 // SendResponse sends a response for a previous request
 func (ag *Agent) SendResponse(resp *ResponseMessage) error {
 	return ag.cc.SendResponse(resp)
@@ -145,6 +127,22 @@ func (ag *Agent) SetRequestHandler(cb RequestHandler) {
 	} else {
 		ag.appRequestHandlerPtr.Store(&cb)
 	}
+}
+
+// UpdateThing helper for agents to publish an update of a TD in the directory
+// Note that this depends on the runtime directory service.
+//
+// TODO: change to use directory forms
+func (ag *Agent) UpdateThing(tdoc *td.TD) error {
+	slog.Info("UpdateThing", slog.String("id", tdoc.ID))
+
+	// TD is sent as JSON
+	tdJson, _ := jsoniter.MarshalToString(tdoc)
+	//	return ag.Rpc(wot.HTOpUpdateTD, td.ID, "", tdJson, nil)
+	//
+	err := ag.Rpc(wot.OpInvokeAction, ThingDirectoryDThingID, ThingDirectoryUpdateThingMethod,
+		tdJson, nil)
+	return err
 }
 
 // NewAgent creates a new agent instance for serving requests and sending responses.

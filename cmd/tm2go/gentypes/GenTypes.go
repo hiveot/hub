@@ -2,9 +2,10 @@ package gentypes
 
 import (
 	"encoding/json"
+	"time"
+
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/wot/td"
-	"time"
 )
 
 // GenTypes is the main function to generate the types API based on a TD

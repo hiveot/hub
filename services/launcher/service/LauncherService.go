@@ -237,7 +237,7 @@ func (svc *LauncherService) Start() error {
 	}
 
 	// publish this service TD
-	err = digitwin.ThingDirectoryUpdateTD(svc.ag.Consumer, launcher.AdminTD)
+	err = digitwin.ThingDirectoryUpdateThing(svc.ag.Consumer, launcher.AdminTD)
 	if err != nil {
 		slog.Error("failed to publish the launcher service TD", "err", err.Error())
 	}

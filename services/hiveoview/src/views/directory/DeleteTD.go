@@ -2,6 +2,9 @@ package directory
 
 import (
 	"fmt"
+	"log/slog"
+	"net/http"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/messaging/tputils"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
@@ -10,8 +13,6 @@ import (
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
-	"log/slog"
-	"net/http"
 )
 
 const RenderConfirmDeleteTDTemplate = "DeleteTD.gohtml"
@@ -35,7 +36,7 @@ func RenderConfirmDeleteTD(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tdJson, err = digitwin.ThingDirectoryReadTD(sess.GetConsumer(), thingID)
+	tdJson, err = digitwin.ThingDirectoryRetrieveThing(sess.GetConsumer(), thingID)
 	if err == nil {
 		err = jsoniter.UnmarshalFromString(tdJson, &td)
 	}
@@ -67,7 +68,7 @@ func SubmitDeleteTD(w http.ResponseWriter, r *http.Request) {
 	}
 
 	slog.Info("Deleting TD", slog.String("thingID", thingID))
-	err = digitwin.ThingDirectoryRemoveTD(sess.GetConsumer(), thingID)
+	err = digitwin.ThingDirectoryDeleteThing(sess.GetConsumer(), thingID)
 
 	// reload the cached directory
 	cts := sess.GetConsumedThingsDirectory()

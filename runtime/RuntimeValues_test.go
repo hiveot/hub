@@ -2,6 +2,11 @@ package runtime_test
 
 import (
 	"fmt"
+	"log/slog"
+	"sync/atomic"
+	"testing"
+	"time"
+
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/messaging"
 	authz "github.com/hiveot/hub/runtime/authz/api"
@@ -11,10 +16,6 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"log/slog"
-	"sync/atomic"
-	"testing"
-	"time"
 )
 
 func TestQueryActions(t *testing.T) {
@@ -53,9 +54,9 @@ func TestQueryActions(t *testing.T) {
 	err := co1.Subscribe("", "")
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond)
-	//err = ag1.PubTD(td1)
+	//err = ag1.UpdateThing(td1)
 	td1JSON, _ := jsoniter.MarshalToString(td1)
-	err = digitwin.ThingDirectoryUpdateTD(ag1.Consumer, td1JSON)
+	err = digitwin.ThingDirectoryUpdateThing(ag1.Consumer, td1JSON)
 
 	// step 2: consumer publish an action to the agent it should return as
 	// a notification.
@@ -97,9 +98,9 @@ func TestReadEvents(t *testing.T) {
 	// step 1: agent publishes a TD first: dtw:agent1:thing-1
 	// is requested. hiveot uses it to determine if a response is required.
 	td1 := ts.CreateTestTD(0)
-	//err := ag1.PubTD(td1)
+	//err := ag1.UpdateThing(td1)
 	td1JSON, _ := jsoniter.MarshalToString(td1)
-	err := digitwin.ThingDirectoryUpdateTD(ag1.Consumer, td1JSON)
+	err := digitwin.ThingDirectoryUpdateThing(ag1.Consumer, td1JSON)
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond * 10)
 
@@ -145,7 +146,7 @@ func TestHttpsGetProps(t *testing.T) {
 	// step 1: agent publishes a TD first: dtw:agent1:thing-1
 	td1 := ts.CreateTestTD(0)
 	td1JSON, _ := jsoniter.MarshalToString(td1)
-	err := digitwin.ThingDirectoryUpdateTD(ag1.Consumer, td1JSON)
+	err := digitwin.ThingDirectoryUpdateThing(ag1.Consumer, td1JSON)
 	time.Sleep(time.Millisecond * 10)
 	require.NoError(t, err)
 
@@ -196,9 +197,9 @@ func TestSubscribeValues(t *testing.T) {
 	td1 := ts.CreateTestTD(0)
 
 	// 3: agent publishes notification
-	//err = ag1.PubTD(td1)
+	//err = ag1.UpdateThing(td1)
 	td1JSON, _ := jsoniter.MarshalToString(td1)
-	err = digitwin.ThingDirectoryUpdateTD(ag1.Consumer, td1JSON)
+	err = digitwin.ThingDirectoryUpdateThing(ag1.Consumer, td1JSON)
 
 	time.Sleep(time.Millisecond * 100)
 
@@ -232,9 +233,9 @@ func TestWriteProperties(t *testing.T) {
 
 	// step 1: agent publishes a TD first: dtw:agent1:thing-1
 	td1 := ts.CreateTestTD(0)
-	//err := ag1.PubTD(td1)
+	//err := ag1.UpdateThing(td1)
 	td1JSON, _ := jsoniter.MarshalToString(td1)
-	err := digitwin.ThingDirectoryUpdateTD(ag1.Consumer, td1JSON)
+	err := digitwin.ThingDirectoryUpdateThing(ag1.Consumer, td1JSON)
 
 	// agents listen for property write requests
 	ag1.SetRequestHandler(func(msg *messaging.RequestMessage,

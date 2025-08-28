@@ -26,8 +26,14 @@ type ActionAffordance struct {
 	// Provides a multi-language human-readable titles
 	Titles []string `json:"titles,omitempty"`
 	// Define URI template variables according to [RFC6570] as collection based on DataSchema declarations.
-	// ... right
+	// HiveOT supports linking uri variable to input
 	UriVariables map[string]DataSchema `json:"uriVariables,omitempty"`
+	// If this is a dataschema of a URIvariable, then:
+	//  Hiveot:input links this as a URI variable schema to the affordance input
+	//  If empty or '.', the matching URI variable will be pass as the default input
+	//  Otherwise the content is a field name in the input dataschema.
+	HiveotInput string `json:"hiveot:input,omitempty"`
+
 	//--- InteractionAffordance ends ---
 
 	//--- Action Affordance fields ---

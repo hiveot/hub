@@ -15,8 +15,8 @@ func (svc *IsyBinding) PublishTDs() (err error) {
 
 	tdi := svc.MakeBindingTD()
 	tdJSON, _ := jsoniter.MarshalToString(tdi)
-	err = digitwin.ThingDirectoryUpdateTD(svc.ag.Consumer, tdJSON)
-	//err = svc.ag.PubTD(tdi)
+	err = digitwin.ThingDirectoryUpdateThing(svc.ag.Consumer, tdJSON)
+	//err = svc.ag.UpdateThing(tdi)
 	if err != nil {
 		err = fmt.Errorf("failed publishing binding TD: %w", err)
 		slog.Error(err.Error())
@@ -40,7 +40,7 @@ func (svc *IsyBinding) PublishTDs() (err error) {
 		for _, thing := range svc.IsyGW.GetIsyThings() {
 			tdi = thing.MakeTD()
 			tdJSON, _ = jsoniter.MarshalToString(tdi)
-			err = digitwin.ThingDirectoryUpdateTD(svc.ag.Consumer, tdJSON)
+			err = digitwin.ThingDirectoryUpdateThing(svc.ag.Consumer, tdJSON)
 			if err != nil {
 				slog.Error("failed publishing Thing TD",
 					"thingID", tdi.ID, "err", err.Error())

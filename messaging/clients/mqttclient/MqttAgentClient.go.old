@@ -54,9 +54,9 @@ func (cl *MqttAgentClient) PubProperties(thingID string, propMap map[string]any)
 	return err
 }
 
-// PubTD helper for agents to publish a TD update
+// UpdateThing helper for agents to publish a TD update
 // This is short for SendNotification( ... wot.HTOpTD ...)
-func (cl *MqttAgentClient) PubTD(td *td.TD) error {
+func (cl *MqttAgentClient) UpdateThing(td *td.TD) error {
 	tdJson, _ := jsoniter.MarshalToJSON(td)
 	notif := transports.NewNotificationResponse(wot.HTOpUpdateTD, td.ID, "", tdJson)
 	return cl.SendNotification(notif)

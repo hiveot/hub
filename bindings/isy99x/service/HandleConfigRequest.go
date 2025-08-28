@@ -48,8 +48,8 @@ func (svc *IsyBinding) handleConfigRequest(req *messaging.RequestMessage) (resp 
 		if req.Name == wot.WoTTitle {
 			tdi := isyThing.MakeTD()
 			tdJSON, _ := jsoniter.MarshalToString(tdi)
-			_ = digitwin.ThingDirectoryUpdateTD(svc.ag.Consumer, tdJSON)
-			//_ = svc.ag.PubTD(tdi)
+			_ = digitwin.ThingDirectoryUpdateThing(svc.ag.Consumer, tdJSON)
+			//_ = svc.ag.UpdateThing(tdi)
 		}
 	}()
 	return resp

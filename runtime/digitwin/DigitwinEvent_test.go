@@ -30,7 +30,7 @@ func TestAddReadEvent(t *testing.T) {
 			Type:  vocab.WoTDataTypeInteger,
 		})
 	tdDoc1Json, _ := json.Marshal(tdDoc1)
-	err := svc.DirSvc.UpdateTD(agent1ID, string(tdDoc1Json))
+	err := svc.DirSvc.UpdateThing(agent1ID, string(tdDoc1Json))
 
 	// provide an event value
 	evVal := digitwin.ThingValue{Data: eventValue, Name: eventName, ThingID: dThing1ID}
@@ -62,7 +62,7 @@ func TestEventReadFail(t *testing.T) {
 
 	tdDoc1 := createTDDoc(thingID, 4, 2, 1)
 	tdDoc1Json, _ := json.Marshal(tdDoc1)
-	err := svc.DirSvc.UpdateTD(agentID, string(tdDoc1Json))
+	err := svc.DirSvc.UpdateThing(agentID, string(tdDoc1Json))
 	require.NoError(t, err)
 
 	_, err = svc.ValuesSvc.ReadEvent("itsme", digitwin.ThingValuesReadEventArgs{
@@ -98,7 +98,7 @@ func TestEventUpdateFail(t *testing.T) {
 			Type:  vocab.WoTDataTypeInteger,
 		})
 	tdDoc1Json, _ := json.Marshal(tdDoc1)
-	err := svc.DirSvc.UpdateTD(agentID, string(tdDoc1Json))
+	err := svc.DirSvc.UpdateThing(agentID, string(tdDoc1Json))
 	require.NoError(t, err)
 
 	evVal := digitwin.ThingValue{Data: 123, Name: EventName, ThingID: "notathing"}

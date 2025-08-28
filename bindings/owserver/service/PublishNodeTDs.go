@@ -129,8 +129,8 @@ func (svc *OWServerBinding) PublishNodeTD(node *eds.OneWireNode) (err error) {
 	tdi := svc.CreateTDFromNode(node)
 	svc.things[tdi.ID] = tdi
 	tdJSON, _ := jsoniter.MarshalToString(tdi)
-	err = digitwin.ThingDirectoryUpdateTD(svc.ag.Consumer, tdJSON)
-	//err = svc.ag.PubTD(td)
+	err = digitwin.ThingDirectoryUpdateThing(svc.ag.Consumer, tdJSON)
+	//err = svc.ag.UpdateThing(td)
 	return err
 }
 

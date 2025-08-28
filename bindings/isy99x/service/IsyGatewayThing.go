@@ -370,8 +370,8 @@ func (igw *IsyGatewayThing) MakeTD() *td.TD {
 func (svc *IsyGatewayThing) PubTD(ag *messaging.Agent) (err error) {
 	tdi := svc.MakeTD()
 	tdJSON, _ := jsoniter.MarshalToString(tdi)
-	err = digitwin.ThingDirectoryUpdateTD(ag.Consumer, tdJSON)
-	//err = ag.PubTD(tdi)
+	err = digitwin.ThingDirectoryUpdateThing(ag.Consumer, tdJSON)
+	//err = ag.UpdateThing(tdi)
 	if err != nil {
 		err = fmt.Errorf("failed publishing ISY gateway TD: %w", err)
 		slog.Error(err.Error())

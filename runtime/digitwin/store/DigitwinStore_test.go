@@ -2,6 +2,7 @@ package store_test
 
 import (
 	"fmt"
+
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/utils"
@@ -9,14 +10,15 @@ import (
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/runtime/digitwin/store"
 
-	"github.com/hiveot/hub/wot/td"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"math/rand"
 	"os"
 	"path"
 	"testing"
 	"time"
+
+	"github.com/hiveot/hub/wot/td"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var testValueFolder = path.Join(os.TempDir(), "test-values")

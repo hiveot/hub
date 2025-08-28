@@ -3,6 +3,9 @@ package router
 
 import (
 	"fmt"
+	"log/slog"
+	"time"
+
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging"
@@ -11,8 +14,6 @@ import (
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/wot/td"
-	"log/slog"
-	"time"
 )
 
 // ActiveRequestRecord holds active requests
@@ -313,7 +314,7 @@ func (svc *DigitwinRouter) HandleReadTD(
 	req2 := *req
 	req2.Input = req.ThingID
 	req2.ThingID = digitwin.ThingDirectoryDThingID
-	req2.Name = digitwin.ThingDirectoryReadTDMethod
+	req2.Name = digitwin.ThingDirectoryRetrieveThingMethod
 	resp := svc.digitwinAction(&req2, c)
 	return resp
 }
@@ -325,7 +326,7 @@ func (svc *DigitwinRouter) HandleReadAllTDs(
 
 	req2 := *req
 	req2.ThingID = digitwin.ThingDirectoryDThingID
-	req2.Name = digitwin.ThingDirectoryReadAllTDsMethod
+	req2.Name = digitwin.ThingDirectoryRetrieveAllThingsMethod
 	resp := svc.digitwinAction(&req2, c)
 	return resp
 }
@@ -340,7 +341,7 @@ func (svc *DigitwinRouter) HandleUpdateTD(
 	req2 := *req
 	req2.Input = req.Input
 	req2.ThingID = digitwin.ThingDirectoryDThingID
-	req2.Name = digitwin.ThingDirectoryUpdateTDMethod
+	req2.Name = digitwin.ThingDirectoryUpdateThingMethod
 	resp := svc.digitwinAction(&req2, c)
 	return resp
 }

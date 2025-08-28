@@ -2,6 +2,9 @@ package tile
 
 import (
 	"fmt"
+	"net/http"
+	"time"
+
 	"github.com/hiveot/hub/lib/consumedthing"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging"
@@ -11,8 +14,7 @@ import (
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"github.com/hiveot/hub/services/hiveoview/src/views/history"
-	"net/http"
-	"time"
+	"github.com/hiveot/hub/wot/td"
 )
 
 const RenderTileTemplate = "RenderTile.gohtml"
@@ -42,7 +44,7 @@ type RenderTileTemplateData struct {
 // The max amount of values is the limit set in historyapi.DefaultLimit (1000)
 func (dt RenderTileTemplateData) GetHistory(
 	affType messaging.AffordanceType, thingID string, name string) *history.HistoryTemplateData {
-	
+
 	timestamp := time.Now().Local()
 	ct, err := dt.cts.Consume(thingID)
 	if err != nil {
@@ -71,9 +73,14 @@ func (d RenderTileTemplateData) GetOutputValue(tileSource session.TileSource) (i
 	if ct == nil {
 		// Thing not found. return a dummy interaction output with a non-schema
 		dummy := consumedthing.InteractionOutput{}
+		dummy.AffordanceType = "unknown"
 		dummy.ThingID = tileSource.ThingID
 		dummy.Name = tileSource.Name
 		dummy.Value = consumedthing.NewDataSchemaValue("n/a")
+		dummy.Schema = &td.DataSchema{
+			Title: "NewInteractionOutput: unknown thing",
+		}
+
 		return &dummy
 	}
 

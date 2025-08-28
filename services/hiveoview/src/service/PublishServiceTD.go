@@ -39,8 +39,8 @@ func (svc *HiveoviewService) PublishServiceTD() error {
 
 	myTD := svc.CreateServiceTD()
 	tdJSON, _ := jsoniter.MarshalToString(myTD)
-	err := digitwin.ThingDirectoryUpdateTD(svc.ag.Consumer, tdJSON)
-	//err := svc.ag.PubTD(myTD)
+	err := digitwin.ThingDirectoryUpdateThing(svc.ag.Consumer, tdJSON)
+	//err := svc.ag.UpdateThing(myTD)
 
 	if err != nil {
 		slog.Error("failed to publish the hiveoview service TD", "err", err.Error())

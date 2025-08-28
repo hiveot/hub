@@ -1,12 +1,13 @@
 package consumedthing
 
 import (
+	"log/slog"
+	"sync"
+
 	"github.com/hiveot/hub/messaging"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
-	"log/slog"
-	"sync"
 )
 
 // ReadDirLimit is the maximum amount of TDs to read in one call
@@ -43,7 +44,7 @@ func (cts *ConsumedThingsDirectory) Consume(thingID string) (ct *ConsumedThing, 
 		cts.mux.RUnlock()
 		if !found2 {
 			// request the TD from the Hub
-			tdi, err = cts.ReadTD(thingID)
+			tdi, err = cts.RetrieveThing(thingID)
 			if err != nil {
 				return nil, err
 			}
@@ -125,7 +126,7 @@ func (cts *ConsumedThingsDirectory) ReadDirectory(force bool) (map[string]*td.TD
 
 	// TODO: support for reading in pages
 	// TODO: use a WoT discovery/directory API instead of a digitwin api
-	thingsList, err := digitwin.ThingDirectoryReadAllTDs(cts.co, ReadDirLimit, 0)
+	thingsList, err := digitwin.ThingDirectoryRetrieveAllThings(cts.co, ReadDirLimit, 0)
 	if err != nil {
 		return newDir, err
 	}
@@ -143,11 +144,11 @@ func (cts *ConsumedThingsDirectory) ReadDirectory(force bool) (map[string]*td.TD
 	return newDir, nil
 }
 
-// GetTD returns the cached TD of a thing
-func (cts *ConsumedThingsDirectory) ReadTD(thingID string) (*td.TD, error) {
+// RetrieveThing requests the TD from the remote directory
+func (cts *ConsumedThingsDirectory) RetrieveThing(thingID string) (*td.TD, error) {
 	// request the TD from the Hub
 	tdi := &td.TD{}
-	tdJson, err := digitwin.ThingDirectoryReadTD(cts.co, thingID)
+	tdJson, err := digitwin.ThingDirectoryRetrieveThing(cts.co, thingID)
 	if err == nil {
 		err = jsoniter.UnmarshalFromString(tdJson, &tdi)
 	}
@@ -170,7 +171,7 @@ func (cts *ConsumedThingsDirectory) ReadTD(thingID string) (*td.TD, error) {
 // UpdateTD updates the TD document of a consumed thing
 // This returns the new consumed thing
 // If the consumed thing doesn't exist then ignore this and return nil as
-// it looks like it isn't used. ReadTD will read it if requested.
+// it looks like it isn't used. RetrieveThing will read it if requested.
 //
 //	tdjson is the TD document in JSON format
 func (cts *ConsumedThingsDirectory) UpdateTD(tdJSON string) *ConsumedThing {

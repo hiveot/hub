@@ -37,7 +37,7 @@ const RequestFailed = "failed"
 
 // TODO: use directory service
 const ThingDirectoryDThingID = "dtw:digitwin:ThingDirectory"
-const ThingDirectoryUpdateTDMethod = "updateTD"
+const ThingDirectoryUpdateThingMethod = "updateTD"
 
 
 // HTTP Paths for auth.
@@ -446,7 +446,7 @@ export default class HttpSSEClient implements IAgentConnection {
 
         // Invoke action to update the directory service
         // TODO: convert to use the discovered directory
-        this.invokeAction(ThingDirectoryDThingID, ThingDirectoryUpdateTDMethod,tdJSON)
+        this.invokeAction(ThingDirectoryDThingID, ThingDirectoryUpdateThingMethod,tdJSON)
             .then((resp: ResponseMessage) => {
                 // complete the request if the result is returned, otherwise wait for
                 // the callback from _correlData

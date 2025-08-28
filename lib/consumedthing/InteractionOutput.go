@@ -2,6 +2,7 @@ package consumedthing
 
 import (
 	"fmt"
+
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/tputils"
@@ -94,58 +95,6 @@ func (iout *InteractionOutput) UnitSymbol() string {
 	return unit.Symbol
 }
 
-func NewInteractionOutputFromValueList(ct *ConsumedThing, affType messaging.AffordanceType, values []digitwin.ThingValue) InteractionOutputMap {
-	ioMap := make(map[string]*InteractionOutput)
-	for _, tv := range values {
-		iout := NewInteractionOutput(ct, affType, tv.Name, tv.Data, tv.Timestamp)
-		ioMap[tv.Name] = iout
-	}
-	return ioMap
-}
-
-func NewInteractionOutputFromValue(ct *ConsumedThing, affType messaging.AffordanceType, tv digitwin.ThingValue) *InteractionOutput {
-	iout := NewInteractionOutput(ct, affType, tv.Name, tv.Data, tv.Timestamp)
-	return iout
-}
-
-// NewInteractionOutputFromNotification creates a new immutable interaction output from
-// a NotificationMessage (event,property) and optionally its associated TD.
-//
-// If no td is available, this value conversion will still be usable but it won't
-// contain any schema information.
-//
-// Intended for use when a property, or event value update is received from
-// a subscription.
-//
-// See also the digitwin Values Service, which provides a ThingValue result that
-// includes metadata such as a timestamp when it was last updated and who updated it.
-//
-//	tm contains the received ThingMessage data
-//	tdi is the associated thing description
-func NewInteractionOutputFromNotification(
-	ct *ConsumedThing, affType messaging.AffordanceType, notif *messaging.NotificationMessage) *InteractionOutput {
-
-	iout := NewInteractionOutput(ct, affType, notif.Name, notif.Data, notif.Timestamp)
-	iout.SenderID = notif.SenderID
-	return iout
-}
-
-// NewInteractionOutputFromActionStatus creates a new immutable interaction output from
-// an action status and optionally its associated TD.
-//
-// If no td is available, this value conversion will still be usable but it won't
-// contain any schema information.
-//
-//	tm contains the received ThingMessage data
-//	tdi is the associated thing description
-func NewInteractionOutputFromActionStatus(
-	ct *ConsumedThing, as messaging.ActionStatus) *InteractionOutput {
-
-	iout := NewInteractionOutput(ct, messaging.AffordanceTypeAction, as.Name, as.Output, as.Updated)
-	iout.SenderID = as.SenderID
-	return iout
-}
-
 // NewInteractionOutput creates a new immutable interaction output from the
 // affordance type and raw value.
 //
@@ -208,4 +157,56 @@ func NewInteractionOutput(ct *ConsumedThing,
 	}
 
 	return io
+}
+
+func NewInteractionOutputFromValueList(ct *ConsumedThing, affType messaging.AffordanceType, values []digitwin.ThingValue) InteractionOutputMap {
+	ioMap := make(map[string]*InteractionOutput)
+	for _, tv := range values {
+		iout := NewInteractionOutput(ct, affType, tv.Name, tv.Data, tv.Timestamp)
+		ioMap[tv.Name] = iout
+	}
+	return ioMap
+}
+
+func NewInteractionOutputFromValue(ct *ConsumedThing, affType messaging.AffordanceType, tv digitwin.ThingValue) *InteractionOutput {
+	iout := NewInteractionOutput(ct, affType, tv.Name, tv.Data, tv.Timestamp)
+	return iout
+}
+
+// NewInteractionOutputFromNotification creates a new immutable interaction output from
+// a NotificationMessage (event,property) and optionally its associated TD.
+//
+// If no td is available, this value conversion will still be usable but it won't
+// contain any schema information.
+//
+// Intended for use when a property, or event value update is received from
+// a subscription.
+//
+// See also the digitwin Values Service, which provides a ThingValue result that
+// includes metadata such as a timestamp when it was last updated and who updated it.
+//
+//	tm contains the received ThingMessage data
+//	tdi is the associated thing description
+func NewInteractionOutputFromNotification(
+	ct *ConsumedThing, affType messaging.AffordanceType, notif *messaging.NotificationMessage) *InteractionOutput {
+
+	iout := NewInteractionOutput(ct, affType, notif.Name, notif.Data, notif.Timestamp)
+	iout.SenderID = notif.SenderID
+	return iout
+}
+
+// NewInteractionOutputFromActionStatus creates a new immutable interaction output from
+// an action status and optionally its associated TD.
+//
+// If no td is available, this value conversion will still be usable but it won't
+// contain any schema information.
+//
+//	tm contains the received ThingMessage data
+//	tdi is the associated thing description
+func NewInteractionOutputFromActionStatus(
+	ct *ConsumedThing, as messaging.ActionStatus) *InteractionOutput {
+
+	iout := NewInteractionOutput(ct, messaging.AffordanceTypeAction, as.Name, as.Output, as.Updated)
+	iout.SenderID = as.SenderID
+	return iout
 }

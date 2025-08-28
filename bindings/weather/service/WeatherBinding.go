@@ -1,13 +1,14 @@
 package service
 
 import (
+	"log/slog"
+	"sync"
+	"time"
+
 	"github.com/hiveot/hub/bindings/weather/config"
 	"github.com/hiveot/hub/bindings/weather/providers"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/messaging"
-	"log/slog"
-	"sync"
-	"time"
 )
 
 // the key under which custom Thing titles are stored in the state service
@@ -37,6 +38,14 @@ type WeatherBinding struct {
 
 	// stop the heartbeat
 	stopFn func()
+}
+
+// heartbeat runs every second and publishes value updates at the right interval
+func (svc *WeatherBinding) heartBeat() {
+	err := svc.Poll()
+	if err != nil {
+		slog.Error("heartBeat error", "err", err.Error())
+	}
 }
 
 // LocationStore access intended for testing
@@ -70,14 +79,6 @@ func (svc *WeatherBinding) Start(ag *messaging.Agent) error {
 	}
 
 	return err
-}
-
-// heartbeat runs every second and publishes value updates at the right interval
-func (svc *WeatherBinding) heartBeat() {
-	err := svc.Poll()
-	if err != nil {
-		slog.Error("heartBeat error", "err", err.Error())
-	}
 }
 
 // Stop the service and heartbeat

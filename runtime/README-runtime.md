@@ -11,7 +11,7 @@ Detailed progress status below:
 * hiveot messaging can be used separate from digital twin runtime [complete]
 * protocols use the request/response messaging API [complete]
   * WoT http-basic [complete]
-  * WoT websocket [spec in developement]
+  * WoT websocket [spec in development]
   * HiveOT websocket [complete]
   * HiveOT SSE [complete]
 * client and server for supported protocols [complete]

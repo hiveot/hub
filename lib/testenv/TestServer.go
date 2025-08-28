@@ -173,7 +173,7 @@ func (test *TestServer) AddTD(agentID string, td *td.TD) *td.TD {
 		td = test.CreateTestTD(i)
 	}
 	tdJSON, _ := jsoniter.MarshalToString(td)
-	err := test.Runtime.DigitwinSvc.DirSvc.UpdateTD(agentID, tdJSON)
+	err := test.Runtime.DigitwinSvc.DirSvc.UpdateThing(agentID, tdJSON)
 	//ag := test.Runtime.TransportsMgr.GetEmbedded().NewClient(agentID)
 	//err := ag.PubEvent(td.ID, vocab.EventNameTD, string(tdJSON))
 	if err != nil {

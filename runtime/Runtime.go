@@ -68,7 +68,7 @@ func (r *Runtime) GetConnectURL() string {
 // This passes the request to the digitwin directory store.
 // Intended for testing to get a TD.
 func (r *Runtime) GetTD(dThingID string) (td *td.TD) {
-	tdJSON, err := r.DigitwinSvc.DirSvc.ReadTD("", dThingID)
+	tdJSON, err := r.DigitwinSvc.DirSvc.RetrieveThing("", dThingID)
 	if err != nil {
 		return nil
 	}
@@ -185,11 +185,11 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	}
 
 	// Add the TDs of the built-in services (authn,authz,directory,values) to the directory
-	_ = r.DigitwinSvc.DirSvc.UpdateTD(authn.AdminAgentID, authn.AdminTD)
-	_ = r.DigitwinSvc.DirSvc.UpdateTD(authn.UserAgentID, authn.UserTD)
-	_ = r.DigitwinSvc.DirSvc.UpdateTD(authz.AdminAgentID, authz.AdminTD)
-	_ = r.DigitwinSvc.DirSvc.UpdateTD(digitwin.ThingDirectoryAgentID, digitwin.ThingDirectoryTD)
-	_ = r.DigitwinSvc.DirSvc.UpdateTD(digitwin.ThingValuesAgentID, digitwin.ThingValuesTD)
+	_ = r.DigitwinSvc.DirSvc.UpdateThing(authn.AdminAgentID, authn.AdminTD)
+	_ = r.DigitwinSvc.DirSvc.UpdateThing(authn.UserAgentID, authn.UserTD)
+	_ = r.DigitwinSvc.DirSvc.UpdateThing(authz.AdminAgentID, authz.AdminTD)
+	_ = r.DigitwinSvc.DirSvc.UpdateThing(digitwin.ThingDirectoryAgentID, digitwin.ThingDirectoryTD)
+	_ = r.DigitwinSvc.DirSvc.UpdateThing(digitwin.ThingValuesAgentID, digitwin.ThingValuesTD)
 
 	// set agent permissions to update the directory
 	// agents can update to the directory
@@ -218,7 +218,7 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 
 	// last, start discovery and exploration of the digital twin directory
 	if r.cfg.ProtocolsConfig.EnableDiscovery {
-		dirTDJson, err := r.DigitwinSvc.DirSvc.ReadTD(digitwin.ThingDirectoryAgentID, digitwin.ThingDirectoryDThingID)
+		dirTDJson, err := r.DigitwinSvc.DirSvc.RetrieveThing(digitwin.ThingDirectoryAgentID, digitwin.ThingDirectoryDThingID)
 		if err == nil {
 			protocolsCfg := r.cfg.ProtocolsConfig
 			err = r.TransportsMgr.StartDiscovery(

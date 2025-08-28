@@ -1,13 +1,14 @@
 package td_test
 
 import (
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	"github.com/stretchr/testify/require"
-	"strings"
-	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 )

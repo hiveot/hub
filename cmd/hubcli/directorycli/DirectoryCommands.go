@@ -4,13 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log/slog"
+
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/tputils"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/wot/td"
 	"github.com/urfave/cli/v2"
-	"log/slog"
 )
 
 func DirectoryListCommand(co **messaging.Consumer) *cli.Command {
@@ -47,7 +48,7 @@ func DirectoryListCommand(co **messaging.Consumer) *cli.Command {
 // HandleListDirectory lists the directory content
 func HandleListDirectory(co *messaging.Consumer) (err error) {
 	// todo: iterate with offset and limit
-	tdListJson, err := digitwin.ThingDirectoryReadAllTDs(co, 300, 0)
+	tdListJson, err := digitwin.ThingDirectoryRetrieveAllThings(co, 300, 0)
 	tdList, err2 := td.UnmarshalTDList(tdListJson)
 
 	if err != nil || err2 != nil {
@@ -84,7 +85,7 @@ func HandleListDirectory(co *messaging.Consumer) (err error) {
 // HandleListThing lists details of a Thing in the directory
 func HandleListThing(co *messaging.Consumer, thingID string) error {
 
-	tdDocJson, err := digitwin.ThingDirectoryReadTD(co, thingID)
+	tdDocJson, err := digitwin.ThingDirectoryRetrieveThing(co, thingID)
 	tdDoc, err2 := td.UnmarshalTD(tdDocJson)
 	if err != nil || err2 != nil {
 		return err
@@ -171,7 +172,7 @@ func HandleListThing(co *messaging.Consumer, thingID string) error {
 
 // HandleListThingVerbose lists a Thing full TD
 func HandleListThingVerbose(co *messaging.Consumer, thingID string) error {
-	tdJSON, err := digitwin.ThingDirectoryReadTD(co, thingID)
+	tdJSON, err := digitwin.ThingDirectoryRetrieveThing(co, thingID)
 
 	if err != nil {
 		return err

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path"
 	"path/filepath"
@@ -116,6 +117,9 @@ func main() {
 					} else {
 						err = GenerateSources(genType, sourceFiles, outDir, force)
 					}
+					if err != nil {
+						slog.Error("generate error", "err", err.Error())
+					}
 					return err
 				},
 			},
@@ -187,6 +191,9 @@ func GenerateSources(gentype string, tdFiles []string, outDir string, force bool
 			outDirAbs = filepath.Join(sourceDir, outDir)
 		}
 		err = GenerateSource(gentype, agentID, tdFile, outDirAbs, force)
+		if err != nil {
+			return err
+		}
 	}
 	return err
 }
@@ -205,8 +212,9 @@ func GenerateSource(gentype string, agentID string, sourceFile string, outDir st
 	var err error
 	var outfilePath string
 
-	tdi, err := td.ReadTD(sourceFile)
+	tdi, err := td.ReadTDFromFile(sourceFile)
 	if err != nil {
+		err = fmt.Errorf("GenerateSource failed: %w", err)
 		return err
 	}
 	err = os.MkdirAll(outDir, 0755)

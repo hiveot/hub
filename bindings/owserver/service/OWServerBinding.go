@@ -126,8 +126,8 @@ func (svc *OWServerBinding) Start(ag *messaging.Agent) (err error) {
 	tdi := svc.CreateBindingTD()
 	svc.things[tdi.ID] = tdi
 	tdJSON, _ := jsoniter.MarshalToString(tdi)
-	err = digitwin.ThingDirectoryUpdateTD(svc.ag.Consumer, tdJSON)
-	//err = svc.ag.PubTD(tdi)
+	err = digitwin.ThingDirectoryUpdateThing(svc.ag.Consumer, tdJSON)
+	//err = svc.ag.UpdateThing(tdi)
 	if err != nil {
 		slog.Error("failed publishing service TD. Continuing...",
 			slog.String("err", err.Error()))

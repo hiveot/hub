@@ -3,6 +3,8 @@ package digitwin_test
 import (
 	"encoding/json"
 	"fmt"
+	"testing"
+
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/tputils"
@@ -12,7 +14,6 @@ import (
 	"github.com/hiveot/hub/wot/td"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestActionFlow(t *testing.T) {
@@ -34,7 +35,7 @@ func TestActionFlow(t *testing.T) {
 	actionSchema := &td.DataSchema{Type: vocab.WoTDataTypeInteger, Title: "Position"}
 	tdDoc1.AddAction(actionName, "action 1", "", actionSchema)
 	tddjson, _ := json.Marshal(tdDoc1)
-	err := svc.DirSvc.UpdateTD(agentID, string(tddjson))
+	err := svc.DirSvc.UpdateThing(agentID, string(tddjson))
 	require.NoError(t, err)
 
 	// create the action
@@ -90,7 +91,7 @@ func TestActionReadFail(t *testing.T) {
 	// add a TD with an action
 	tdDoc1 := createTDDoc(thingID, 4, 2, 1)
 	tdDoc1Json, _ := json.Marshal(tdDoc1)
-	err := svc.DirSvc.UpdateTD(agentID, string(tdDoc1Json))
+	err := svc.DirSvc.UpdateThing(agentID, string(tdDoc1Json))
 	require.NoError(t, err)
 
 	_, err = svc.ValuesSvc.QueryAction("itsme", digitwin.ThingValuesQueryActionArgs{
@@ -126,7 +127,7 @@ func TestInvokeActionErrors(t *testing.T) {
 	actionSchema := &td.DataSchema{Type: vocab.WoTDataTypeInteger, Title: "Position"}
 	tdDoc1.AddAction(actionName, "action 1", "", actionSchema)
 	tddjson, _ := json.Marshal(tdDoc1)
-	err := svc.DirSvc.UpdateTD(agentID, string(tddjson))
+	err := svc.DirSvc.UpdateThing(agentID, string(tddjson))
 	require.NoError(t, err)
 
 	// invoke the action with the wrong thing
@@ -180,18 +181,18 @@ func TestDigitwinAgentAction(t *testing.T) {
 	actionSchema := &td.DataSchema{Type: vocab.WoTDataTypeInteger, Title: "Position"}
 	tdDoc1.AddAction(actionName, "action 1", "", actionSchema)
 	tddJSON1, _ := json.Marshal(tdDoc1)
-	err := svc.DirSvc.UpdateTD(agentID, string(tddJSON1))
+	err := svc.DirSvc.UpdateThing(agentID, string(tddJSON1))
 	require.NoError(t, err)
 
 	// read back should succeed
-	tddJson2, err := svc.DirSvc.ReadTD(consumerID, dThingID)
+	tddJson2, err := svc.DirSvc.RetrieveThing(consumerID, dThingID)
 	require.NoError(t, err)
 	require.NotEmpty(t, tddJson2)
 
 	// next, invoke the action to read the thing from the directory.
 	ag := service.NewDigitwinAgent(svc)
 	req := messaging.NewRequestMessage(vocab.OpInvokeAction,
-		digitwin.ThingDirectoryDThingID, digitwin.ThingDirectoryReadTDMethod, dThingID, consumerID)
+		digitwin.ThingDirectoryDThingID, digitwin.ThingDirectoryRetrieveThingMethod, dThingID, consumerID)
 	req.CorrelationID = correlationID
 	resp := ag.HandleRequest(req, nil)
 
@@ -200,7 +201,7 @@ func TestDigitwinAgentAction(t *testing.T) {
 
 	// a non-existing TD should fail
 	req = messaging.NewRequestMessage(vocab.OpInvokeAction,
-		digitwin.ThingDirectoryDThingID, digitwin.ThingDirectoryReadTDMethod, "badid", consumerID)
+		digitwin.ThingDirectoryDThingID, digitwin.ThingDirectoryRetrieveThingMethod, "badid", consumerID)
 	req.CorrelationID = correlationID
 	resp = ag.HandleRequest(req, nil)
 	require.NotEmpty(t, resp.Error)
@@ -214,7 +215,7 @@ func TestDigitwinAgentAction(t *testing.T) {
 
 	// a non-existing serviceID should fail
 	req = messaging.NewRequestMessage(vocab.OpInvokeAction,
-		"badservicename", digitwin.ThingDirectoryReadTDMethod, dThingID, consumerID)
+		"badservicename", digitwin.ThingDirectoryRetrieveThingMethod, dThingID, consumerID)
 	req.CorrelationID = correlationID
 	resp = ag.HandleRequest(req, nil)
 	require.NotEmpty(t, resp.Error)

@@ -2,11 +2,12 @@ package thing
 
 import (
 	"encoding/json"
+	"net/http"
+
 	"github.com/go-chi/chi/v5"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	jsoniter "github.com/json-iterator/go"
-	"net/http"
 )
 
 // Write the raw TD
@@ -17,7 +18,7 @@ func RenderThingRaw(w http.ResponseWriter, r *http.Request) {
 	// Read the TD being displayed and its latest values
 	_, sess, err := session.GetSessionFromContext(r)
 	if err == nil {
-		tdJSON, err = digitwin.ThingDirectoryReadTD(sess.GetConsumer(), thingID)
+		tdJSON, err = digitwin.ThingDirectoryRetrieveThing(sess.GetConsumer(), thingID)
 	}
 	if err == nil {
 		// re-marshal with pretty-print JSON

@@ -120,7 +120,7 @@ func TestAddForms(t *testing.T) {
 //	defer cc1.Disconnect()
 //
 //	// Agent publishes the TD
-//	err := ag1.PubTD(td1)
+//	err := ag1.UpdateThing(td1)
 //	require.NoError(t, err)
 //	time.Sleep(time.Millisecond * 10)
 //

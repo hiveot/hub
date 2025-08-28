@@ -48,7 +48,7 @@ func HandleListTMs(tmDir string) {
 	////fmt.Printf("-----------------------------------  ---------  -----------------------------------  ---------------------      ---      ---       ---\n")
 	//for _, entry := range entries {
 	//	fullpath := filepath.Join(tmDir, entry.Name())
-	//	tdi, err := td.ReadTD(fullpath)
+	//	tdi, err := td.RetrieveThing(fullpath)
 	//	finfo, _ := entry.Info()
 	//	sizeKb := finfo.Size() / 1024
 	//	if err != nil {

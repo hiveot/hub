@@ -25,6 +25,25 @@ type DirectoryService struct {
 	addFormsHandler func(*td.TD, bool)
 }
 
+// CreateThing uses updateThing
+func (svc *DirectoryService) CreateThing(agentID string, tdJson string) error {
+	return svc.UpdateThing(agentID, tdJson)
+}
+
+// DeleteThing removes a Thing TD document from the digital twin directory
+func (svc *DirectoryService) DeleteThing(senderID string, dThingID string) error {
+	err := svc.dtwStore.RemoveDTW(dThingID, senderID)
+	if err == nil && svc.notifHandler != nil {
+		// Publish an event notifying subscribers that the Thing was removed from the directory
+		// Those subscribing to directory event will be notified
+		notif := messaging.NewNotificationMessage(wot.OpSubscribeEvent,
+			digitwin.ThingDirectoryDThingID, digitwin.ThingDirectoryEventThingDeleted,
+			dThingID)
+		go svc.notifHandler(notif)
+	}
+	return err
+}
+
 // MakeDigitalTwinTD returns the digital twin from an agent provided TD
 // This modifies the TD as follows:
 //  1. Change the ThingID to the digitwin thing ID:  dtw:{agentID}:{thingID}
@@ -71,8 +90,8 @@ func (svc *DirectoryService) MakeDigitalTwinTD(
 //	return nil, fmt.Errorf("Not yet implemented")
 //}
 
-// ReadTD returns a JSON encoded TD document
-func (svc *DirectoryService) ReadTD(senderID string, dThingID string) (tdJSON string, err error) {
+// RetrieveThing returns a JSON encoded TD document
+func (svc *DirectoryService) RetrieveThing(senderID string, dThingID string) (tdJSON string, err error) {
 	dtd, err := svc.dtwStore.ReadDThing(dThingID)
 	if err == nil {
 		tdJSON, err = jsoniter.MarshalToString(dtd)
@@ -80,10 +99,10 @@ func (svc *DirectoryService) ReadTD(senderID string, dThingID string) (tdJSON st
 	return tdJSON, err
 }
 
-// ReadAllTDs returns a batch of TD documents
+// RetrieveAllThings returns a batch of TD documents
 // This returns a list of JSON encoded digital twin TD documents
-func (svc *DirectoryService) ReadAllTDs(
-	senderID string, args digitwin.ThingDirectoryReadAllTDsArgs) (tdList []string, err error) {
+func (svc *DirectoryService) RetrieveAllThings(
+	senderID string, args digitwin.ThingDirectoryRetrieveAllThingsArgs) (tdList []string, err error) {
 
 	dtdList, err := svc.dtwStore.ReadTDs(args.Offset, args.Limit)
 	if err == nil {
@@ -98,25 +117,11 @@ func (svc *DirectoryService) ReadAllTDs(
 	return tdList, err
 }
 
-// RemoveTD removes a Thing TD document from the digital twin directory
-func (svc *DirectoryService) RemoveTD(senderID string, dThingID string) error {
-	err := svc.dtwStore.RemoveDTW(dThingID, senderID)
-	if err == nil && svc.notifHandler != nil {
-		// Publish an event notifying subscribers that the Thing was removed from the directory
-		// Those subscribing to directory event will be notified
-		notif := messaging.NewNotificationMessage(wot.OpSubscribeEvent,
-			digitwin.ThingDirectoryDThingID, digitwin.ThingDirectoryEventThingRemoved,
-			dThingID)
-		go svc.notifHandler(notif)
-	}
-	return err
-}
-
-// UpdateTD updates the digitwin TD from an agent supplied TD
+// UpdateThing updates the digitwin TD from an agent supplied TD
 // This transforms the given TD into the digital twin instance, stores it in the directory
 // store and sends a thing-updated event as described in the TD.
 // This returns true when the TD has changed or an error
-func (svc *DirectoryService) UpdateTD(agentID string, tdJson string) error {
+func (svc *DirectoryService) UpdateThing(agentID string, tdJson string) error {
 
 	// transform the agent provided TD into a digital twin's TD
 	thingTD, digitalTwinTD, err := svc.MakeDigitalTwinTD(agentID, tdJson)
@@ -131,7 +136,7 @@ func (svc *DirectoryService) UpdateTD(agentID string, tdJson string) error {
 	// notify subscribers of TD updates
 	if svc.notifHandler != nil {
 		dtdJSON, _ := jsoniter.MarshalToString(digitalTwinTD)
-		
+
 		// todo: only send notification on changes
 		// publish an event that the directory TD has updated with a new TD
 		notif := messaging.NewNotificationMessage(wot.OpSubscribeEvent,

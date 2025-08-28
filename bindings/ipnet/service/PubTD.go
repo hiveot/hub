@@ -54,8 +54,8 @@ func (svc *IPNetBinding) MakeDeviceTD(deviceInfo *IPDeviceInfo) *td.TD {
 func (svc *IPNetBinding) PubBindingTD() error {
 	tdi := svc.MakeBindingTD()
 	tdJSON, _ := jsoniter.MarshalToString(tdi)
-	err := digitwin.ThingDirectoryUpdateTD(svc.ag.Consumer, tdJSON)
-	//err := svc.ag.PubTD(tdi)
+	err := digitwin.ThingDirectoryUpdateThing(svc.ag.Consumer, tdJSON)
+	//err := svc.ag.UpdateThing(tdi)
 	if err != nil {
 		slog.Error("failed publishing service TD. Continuing...",
 			slog.String("err", err.Error()))
@@ -66,8 +66,8 @@ func (svc *IPNetBinding) PubBindingTD() error {
 func (svc *IPNetBinding) PubDeviceTD(deviceInfo *IPDeviceInfo) error {
 	tdi := svc.MakeDeviceTD(deviceInfo)
 	tdJSON, _ := jsoniter.MarshalToString(tdi)
-	err := digitwin.ThingDirectoryUpdateTD(svc.ag.Consumer, tdJSON)
-	//err := svc.ag.PubTD(tdi)
+	err := digitwin.ThingDirectoryUpdateThing(svc.ag.Consumer, tdJSON)
+	//err := svc.ag.UpdateThing(tdi)
 	if err != nil {
 		slog.Error("failed publishing device TD. Continuing...",
 			slog.String("deviceID", deviceInfo.IP4),

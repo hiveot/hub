@@ -3,11 +3,12 @@ package digitwin_test
 import (
 	"encoding/json"
 	"fmt"
+	"testing"
+
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/wot/td"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestAddRemoveTD(t *testing.T) {
@@ -26,24 +27,24 @@ func TestAddRemoveTD(t *testing.T) {
 	// the digital twin ID using the given agent that owns the TD.
 	tdd1 := createTDDoc(thing1ID, 5, 4, 3)
 	tdd1JSON, _ := json.Marshal(tdd1)
-	err := dirSvc.UpdateTD(agentID, string(tdd1JSON))
+	err := dirSvc.UpdateThing(agentID, string(tdd1JSON))
 	require.NoError(t, err)
 
 	dThingID := td.MakeDigiTwinThingID(agentID, thing1ID)
-	tdd2JSON, err := dirSvc.ReadTD(consumerID, dThingID)
+	tdd2JSON, err := dirSvc.RetrieveThing(consumerID, dThingID)
 	require.NoError(t, err)
 	require.NotEmpty(t, tdd2JSON)
 
-	dtdList, err := dirSvc.ReadAllTDs(consumerID,
-		digitwin.ThingDirectoryReadAllTDsArgs{Limit: 10})
+	dtdList, err := dirSvc.RetrieveAllThings(consumerID,
+		digitwin.ThingDirectoryRetrieveAllThingsArgs{Limit: 10})
 	assert.NoError(t, err)
 	assert.NotEmpty(t, dtdList)
 
 	// after removal, getTD should return nil
-	err = dirSvc.RemoveTD("senderID", dThing1ID)
+	err = dirSvc.DeleteThing("senderID", dThing1ID)
 	assert.NoError(t, err)
 
-	td1c, err := dirSvc.ReadTD(consumerID, dThingID)
+	td1c, err := dirSvc.RetrieveThing(consumerID, dThingID)
 	assert.Error(t, err)
 	assert.Empty(t, td1c)
 
@@ -58,7 +59,7 @@ func TestGetTDsFail(t *testing.T) {
 	dirSvc := svc.DirSvc
 
 	// bad clientID
-	td1, err := dirSvc.ReadTD("", "badid")
+	td1, err := dirSvc.RetrieveThing("", "badid")
 	require.Error(t, err)
 	require.Empty(t, td1)
 

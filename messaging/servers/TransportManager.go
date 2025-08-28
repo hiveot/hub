@@ -34,6 +34,10 @@ type TransportManager struct {
 	// The embedded binding can be used directly with embedded services
 	//discoveryTransport *discotransport.DiscoveryTransport
 
+	// currently a single authenticator is used.
+	// Maybe this should be dependent on the server?
+	authenticator messaging.IAuthenticator
+
 	//http server
 	httpServer *tlsserver.TLSServer
 	httpRouter *chi.Mux
@@ -62,12 +66,7 @@ type TransportManager struct {
 // AddTDForms adds forms to the given TD for all available transports
 func (svc *TransportManager) AddTDForms(tdoc *td.TD, includeAffordances bool) {
 
-	//// http protocol server including scheme includes subprotocols
-	//if svc.httpBasicServer != nil {
-	//	svc.httpBasicServer.AddTDForms(tdoc, includeAffordances)
-	//	svc.httpBasicServer.AddSecurityScheme(tdoc)
-	//}
-	//
+	svc.authenticator.AddSecurityScheme(tdoc)
 	for _, srv := range svc.servers {
 		srv.AddTDForms(tdoc, includeAffordances)
 	}
@@ -286,7 +285,7 @@ func NewTransportManager(cfg *ProtocolsConfig,
 	svc = &TransportManager{
 		//serverCert:          serverCert,
 		//caCert:              caCert,
-		//authenticator:       authenticator,
+		authenticator:       authenticator,
 		servers:             make([]messaging.ITransportServer, 0),
 		serversByProtocol:   make(map[string]messaging.ITransportServer),
 		notificationHandler: notifHandler,
