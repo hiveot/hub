@@ -168,8 +168,8 @@ func (cts *ConsumedThingsDirectory) RetrieveThing(thingID string) (*td.TD, error
 //	cts.responseHandler = handler
 //}
 
-// UpdateTD updates the TD document of a consumed thing
-// This returns the new consumed thing
+// UpdateTD updates the TD document of a consumed thing.
+// This returns the new consumed thing.
 // If the consumed thing doesn't exist then ignore this and return nil as
 // it looks like it isn't used. RetrieveThing will read it if requested.
 //

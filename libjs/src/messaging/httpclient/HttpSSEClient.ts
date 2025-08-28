@@ -37,11 +37,11 @@ const RequestFailed = "failed"
 
 // TODO: use directory service
 const ThingDirectoryDThingID = "dtw:digitwin:ThingDirectory"
-const ThingDirectoryUpdateThingMethod = "updateTD"
+const ThingDirectoryUpdateThingMethod = "updateThing"
 
 
 // HTTP Paths for auth.
-// THIS WILL BE REMOVED AFTER THE PROTOCOL BINDING PUBLISHES THESE IN THE TDD.
+// FIXME: THIS WILL BE REMOVED AFTER THE PROTOCOL BINDING PUBLISHES THESE IN THE TDD.
 // The hub client will need the TD (ConsumedThing) to determine the paths.
 const HttpPostLoginPath   = "/authn/login"
 const HttpPostLogoutPath  = "/authn/logout"
@@ -439,7 +439,7 @@ export default class HttpSSEClient implements IAgentConnection {
     }
 
     // PubTD publishes a req with a Thing TD document.
-    // This serializes the TD into JSON as per WoT specification
+    // This serializes the TD into JSON as per WoT specification and updates it in the directory.
     pubTD(td: TD) {
         hcLog.info("pubTD. thingID:", td.id)
         const tdJSON = JSON.stringify(td, null, ' ');
@@ -455,12 +455,6 @@ export default class HttpSSEClient implements IAgentConnection {
             .catch((e) => {
                 console.error("pubTD failed", e);
             })
-        // let msg = new RequestMessage({
-        //     operation:HTOpUpdateTD,
-        //     thingID: td.id,
-        //     input: tdJSON,
-        // })
-        // return this.sendRequest(msg)
     }
 
     // obtain a new token

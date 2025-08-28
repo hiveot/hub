@@ -132,14 +132,12 @@ func (ag *Agent) SetRequestHandler(cb RequestHandler) {
 // UpdateThing helper for agents to publish an update of a TD in the directory
 // Note that this depends on the runtime directory service.
 //
-// TODO: change to use directory forms
+// FIXME: change to use directory forms
 func (ag *Agent) UpdateThing(tdoc *td.TD) error {
 	slog.Info("UpdateThing", slog.String("id", tdoc.ID))
 
 	// TD is sent as JSON
 	tdJson, _ := jsoniter.MarshalToString(tdoc)
-	//	return ag.Rpc(wot.HTOpUpdateTD, td.ID, "", tdJson, nil)
-	//
 	err := ag.Rpc(wot.OpInvokeAction, ThingDirectoryDThingID, ThingDirectoryUpdateThingMethod,
 		tdJson, nil)
 	return err

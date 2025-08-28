@@ -148,32 +148,14 @@ func (svc *DigitwinRouter) HandleRequest(
 	case vocab.OpWriteProperty:
 		resp = svc.HandleWriteProperty(req, c)
 
-	// authentication requests are handled immediately and return a response
-	//case vocab.HTOpLogin:
-	//	resp = svc.HandleLogin(req, c)
-	//case vocab.HTOpLogout:
-	//	resp = svc.HandleLogout(req, c)
-	//case vocab.HTOpRefresh:
-	//	resp = svc.HandleLoginRefresh(req, c)
-	//
-	//	// digital twin requests are handled immediately and return a response
+	// digital twin requests are handled immediately and return a response
 	//	// FIXME: why not pass the request to the digitwin service agent?
 	case vocab.OpQueryAction, vocab.OpQueryAllActions:
 		resp = svc.HandleQueryAction(req, c)
-	//case vocab.HTOpReadEvent:
-	//	resp = svc.HandleReadEvent(req, c)
-	//case vocab.HTOpReadAllEvents:
-	//	resp = svc.HandleReadAllEvents(req, c)
 	case vocab.OpReadProperty:
 		resp = svc.HandleReadProperty(req, c)
 	case vocab.OpReadAllProperties:
 		resp = svc.HandleReadAllProperties(req, c)
-	//case vocab.HTOpReadTD:
-	//	resp = svc.HandleReadTD(req, c)
-	//case vocab.HTOpReadAllTDs:
-	//	resp = svc.HandleReadAllTDs(req, c)
-	//case vocab.HTOpUpdateTD:
-	//	resp = svc.HandleUpdateTD(req, c)
 
 	default:
 		err := fmt.Errorf("unknown request operation '%s' from client '%s'",
@@ -307,44 +289,44 @@ func (svc *DigitwinRouter) HandleReadAllProperties(
 
 // HandleReadTD consumer reads a TD
 // This converts the operation in an action for the directory service.
-func (svc *DigitwinRouter) HandleReadTD(
-	req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
-
-	// the thingID in the request becomes the argument for the directory service, if any
-	req2 := *req
-	req2.Input = req.ThingID
-	req2.ThingID = digitwin.ThingDirectoryDThingID
-	req2.Name = digitwin.ThingDirectoryRetrieveThingMethod
-	resp := svc.digitwinAction(&req2, c)
-	return resp
-}
+//func (svc *DigitwinRouter) HandleReadTD(
+//	req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
+//
+//	// the thingID in the request becomes the argument for the directory service, if any
+//	req2 := *req
+//	req2.Input = req.ThingID
+//	req2.ThingID = digitwin.ThingDirectoryDThingID
+//	req2.Name = digitwin.ThingDirectoryRetrieveThingMethod
+//	resp := svc.digitwinAction(&req2, c)
+//	return resp
+//}
 
 // HandleReadAllTDs consumer reads all TDs
 // This converts the operation in an action for the directory service.
-func (svc *DigitwinRouter) HandleReadAllTDs(
-	req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
-
-	req2 := *req
-	req2.ThingID = digitwin.ThingDirectoryDThingID
-	req2.Name = digitwin.ThingDirectoryRetrieveAllThingsMethod
-	resp := svc.digitwinAction(&req2, c)
-	return resp
-}
+//func (svc *DigitwinRouter) HandleReadAllTDs(
+//	req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
+//
+//	req2 := *req
+//	req2.ThingID = digitwin.ThingDirectoryDThingID
+//	req2.Name = digitwin.ThingDirectoryRetrieveAllThingsMethod
+//	resp := svc.digitwinAction(&req2, c)
+//	return resp
+//}
 
 // HandleUpdateTD agent updates a TD
 // This converts the operation in an action for the directory service.
-func (svc *DigitwinRouter) HandleUpdateTD(
-	req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
-
-	// the thingID in the request becomes the argument for the directory service, if any
-	//rework the request
-	req2 := *req
-	req2.Input = req.Input
-	req2.ThingID = digitwin.ThingDirectoryDThingID
-	req2.Name = digitwin.ThingDirectoryUpdateThingMethod
-	resp := svc.digitwinAction(&req2, c)
-	return resp
-}
+//func (svc *DigitwinRouter) HandleUpdateTD(
+//	req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
+//
+//	// the thingID in the request becomes the argument for the directory service, if any
+//	//rework the request
+//	req2 := *req
+//	req2.Input = req.Input
+//	req2.ThingID = digitwin.ThingDirectoryDThingID
+//	req2.Name = digitwin.ThingDirectoryUpdateThingMethod
+//	resp := svc.digitwinAction(&req2, c)
+//	return resp
+//}
 
 // HandleWriteProperty A consumer requests to write a new value to a property.
 //

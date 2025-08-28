@@ -124,13 +124,3 @@ func (svc *DigitwinRouter) HandleNotification(notif *messaging.NotificationMessa
 		//svc.cm.PublishNotification(notif)
 	}
 }
-
-//// HandleUpdateTD agent notifies of a TD refresh.
-//// This converts the operation in an action for the directory service.
-//func (svc *DigitwinRouter) HandleUpdateTD(msg transports.NotificationMessage) {
-//
-//	msg.ThingID = digitwin.DirectoryDThingID
-//	msg.Name = digitwin.DirectoryUpdateThingMethod
-//	output, err = svc.digitwinAction(&dirMsg)
-//	return true, output, err
-//}

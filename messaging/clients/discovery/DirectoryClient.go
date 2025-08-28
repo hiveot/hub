@@ -152,15 +152,16 @@ func (cl *DirectoryClient) ReadTD(thingID string) (*td.TD, error) {
 	return tdi, err
 }
 
-// UpdateTD updates the TD document in the remote directory.
+// UpdateThing updates the TD document in the remote directory.
 // This does not update the local directory.
 // Intended for use by Thing agents to publish their TD. Regular consumers
 // are not allowed to do this.
 //
 //	tdjson is the TD document in JSON format
-func (cl *DirectoryClient) UpdateTD(tdi *td.TD) error {
+func (cl *DirectoryClient) UpdateThing(tdi *td.TD) error {
 
 	tdJSON, _ := jsoniter.Marshal(&tdi)
+	// FIXME: use the directory forms
 	updatePath := fmt.Sprintf("/things/%s", tdi.ID)
 	data, status, err := cl.tlsClient.Put(updatePath, tdJSON)
 	_ = status

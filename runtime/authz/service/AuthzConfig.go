@@ -82,7 +82,6 @@ var readPermissions = []string{
 var agentPermissions = RolePermission{
 	Operations: append(authPermissions,
 		wot.OpInvokeAction,
-		//wot.HTOpUpdateTD,
 	),
 }
 
@@ -92,7 +91,6 @@ var servicePermissions = RolePermission{
 		append(authPermissions, readPermissions...),
 		wot.OpQueryAction, wot.OpQueryAllActions,
 		wot.OpInvokeAction, wot.OpWriteProperty,
-		//wot.HTOpUpdateTD,
 	),
 }
 
