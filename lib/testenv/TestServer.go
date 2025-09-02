@@ -334,7 +334,7 @@ func NewTestServer() *TestServer {
 		Config:  runtime.NewRuntimeConfig(),
 		// change these for running all tests with different protocols
 		AgentProtocol: messaging.ProtocolTypeWSS,
-		//AgentProtocol:   messaging.ProtocolTypeHiveotSSE,
+		//AgentProtocol: messaging.ProtocolTypeHiveotSSE,
 		ServiceProtocol: messaging.ProtocolTypeWSS,
 		//ServiceProtocol: messaging.ProtocolTypeHiveotSSE,
 		ConsumerProtocol: messaging.ProtocolTypeWSS,

@@ -61,7 +61,7 @@ func (srv *HttpBasicServer) handleThingOperation(w http.ResponseWriter, r *http.
 	srv.handleAffordanceOperation(w, r)
 }
 
-// HandleLogin handles a login request, posted by a consumer.
+// HandleLogin handles a login request and returns an auth token.
 //
 // Body contains {"login":name, "password":pass} format
 // This is the only unprotected route supported.

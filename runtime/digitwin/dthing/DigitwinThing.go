@@ -6,7 +6,7 @@ import (
 )
 
 // DigitwinThing This is the digital twin Thing
-// This contains its own TD and the TD of the device it represents.
+// This contains the digital twin TD and the TD of the device it represents.
 // It handles incoming requests and is a consumer of the actual device.
 //
 // In development. This will take over from the router.

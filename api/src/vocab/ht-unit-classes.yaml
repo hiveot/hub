@@ -6,6 +6,8 @@
 #
 # The units vocabulary contains classes for defining SI standard unit names.
 #
+# These will eventually be replaced by a standards schema such as schema.org
+#
 UnitClasses:
   version: "0.1"
   link: "github.com/hiveot/hub/api/vocab/ht-unit-classes.yaml"

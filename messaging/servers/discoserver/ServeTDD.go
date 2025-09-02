@@ -42,15 +42,6 @@ const DefaultHttpGetDirectoryTDPath = "/.well-known/wot"
 // identifies the protocol.
 // Intended for simplify use when all affordances use the same protocol.
 //
-// Rant: WoT allows forms to defines separate URLs for each Thing affordance,
-// even if they are all on the same device. This IMHO is totally unnecesary and
-// complicates clients that now have to support different connection endpoints
-// for the same device, just in case the minute chance they differ.
-//
-// hiveot uses the form base to identify the connection endpoint and uses forms for
-// determining the relative path wrt the base endpoint.
-// this means
-//
 //	instanceName is the name of the server instance. "hiveot" for the hub.
 //	serviceName is the discover name. Default is 'wot'. This can be changed for testing.
 //	tddURL is the URL the directory TD is served at.

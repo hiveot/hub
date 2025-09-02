@@ -93,15 +93,13 @@
 
   "actions": {
     "createThing": {
-      "@type": "hiveot:function",
       "title": "Create Thing TD",
-      "description": "Update the Thing TD in the directory. For use by agents only.",
+      "description": "Update the Thing TD in the directory. For use by Thing agents only.",
       "idempotent": true,
       "allow": [
         "agent",
         "admin"
       ],
-      "comment": "Only agents can update their TD",
       "input": {
         "title": "TD JSON",
         "description": "Device TD document in JSON format",
@@ -134,7 +132,6 @@
     },
 
     "deleteThing": {
-      "@type": "hiveot:function",
       "title": "Delete Thing",
       "description": "Remove a digital twin TD from the directory",
       "safe": false,
@@ -174,7 +171,6 @@
     },
 
     "retrieveThing": {
-      "@type": "hiveot:function",
       "title": "Retrieve a TD",
       "description": "Return a JSON encoded TD document",
       "safe": true,
@@ -212,7 +208,6 @@
     },
 
     "retrieveAllThings": {
-      "@type": "hiveot:function",
       "title": "Read all TDs",
       "description": "Read a batch of TD documents",
       "safe": true,
@@ -277,7 +272,6 @@
     },
 
     "updateThing": {
-      "@type": "hiveot:function",
       "title": "Update Thing TD",
       "description": "Update the Thing TD in the directory. For use by agents only.",
       "idempotent": true,

@@ -57,6 +57,39 @@ func (svc *DigitwinService) Stop() {
 	svc.bucketStore.Close()
 }
 
+// Start starts the digitwin services.
+// This creates a bucket store for the directory, inbox, and outbox.
+//
+// storesDir is the directory where to create the digitwin storage
+// notifHandler is notifies of changes to digital twin state.
+// includeAffordanceForms to include forms for affordances in digital twin TDs.
+func (svc *DigitwinService) Start(
+	storesDir string, notifHandler messaging.NotificationHandler, includeAffordanceForms bool) (
+	digitwinStore *store.DigitwinStore, err error) {
+
+	sPath := path.Join(storesDir, "digitwin")
+	err = os.MkdirAll(sPath, 0700)
+	storePath := path.Join(sPath, "digitwinStore")
+
+	bucketStore := kvbtree.NewKVStore(storePath)
+	err = bucketStore.Open()
+	if err != nil {
+		slog.Error("Unable to open digital twin storage bucket", "err", err.Error())
+		return nil, err
+	}
+
+	digitwinStore, err = store.OpenDigitwinStore(bucketStore, false)
+	if err != nil {
+		slog.Error("Unable to open digital twin store itself", "err", err.Error())
+		return nil, err
+	}
+	svc.bucketStore = bucketStore
+	svc.DtwStore = digitwinStore
+	svc.DirSvc = NewDigitwinDirectoryService(digitwinStore, notifHandler, includeAffordanceForms)
+	svc.ValuesSvc = NewDigitwinValuesService(digitwinStore)
+	return digitwinStore, err
+}
+
 // StartDigitwinService creates and start the digitwin services.
 // This creates a bucket store for the directory, inbox, and outbox.
 //
@@ -67,35 +100,7 @@ func StartDigitwinService(
 	storesDir string, notifHandler messaging.NotificationHandler, includeAffordanceForms bool) (
 	svc *DigitwinService, digitwinStore *store.DigitwinStore, err error) {
 
-	sPath := path.Join(storesDir, "digitwin")
-	err = os.MkdirAll(sPath, 0700)
-	storePath := path.Join(sPath, "digitwinStore")
-
-	// TODO: periodically write changes to the store. Not just at start/stop.
-
-	bucketStore := kvbtree.NewKVStore(storePath)
-	err = bucketStore.Open()
-	if err != nil {
-		slog.Error("Unable to open digital twin storage bucket", "err", err.Error())
-		return nil, nil, err
-	}
-
-	digitwinStore, err = store.OpenDigitwinStore(bucketStore, false)
-	if err != nil {
-		slog.Error("Unable to open digital twin store itself", "err", err.Error())
-		return nil, nil, err
-	}
-	dirSvc := NewDigitwinDirectoryService(digitwinStore, notifHandler, includeAffordanceForms)
-	valuesSvc := NewDigitwinValuesService(digitwinStore)
-	if err == nil {
-		svc = &DigitwinService{
-			bucketStore: bucketStore,
-			DtwStore:    digitwinStore,
-			mux:         sync.RWMutex{},
-			DirSvc:      dirSvc,
-			ValuesSvc:   valuesSvc,
-		}
-		slog.Info("Started DigitwinService")
-	}
+	svc = &DigitwinService{}
+	digitwinStore, err = svc.Start(storesDir, notifHandler, includeAffordanceForms)
 	return svc, digitwinStore, err
 }

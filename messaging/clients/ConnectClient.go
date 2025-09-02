@@ -13,7 +13,8 @@ import (
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/clients/authenticator"
 	"github.com/hiveot/hub/messaging/clients/discovery"
-	"github.com/hiveot/hub/messaging/clients/httpsseclient"
+	"github.com/hiveot/hub/messaging/clients/hiveotsseclient"
+	"github.com/hiveot/hub/messaging/clients/httpclient"
 	"github.com/hiveot/hub/messaging/clients/wssclient"
 	"github.com/hiveot/hub/messaging/servers/discoserver"
 	"github.com/hiveot/hub/messaging/servers/hiveotsseserver"
@@ -252,7 +253,10 @@ func NewHiveotClient(
 		cc = wssclient.NewHiveotWssClient(connectURL, clientID, caCert,
 			msgConverter, timeout)
 	} else if parts.Scheme == "sse" {
-		cc = httpsseclient.NewHiveotSseClient(
+		cc = hiveotsseclient.NewHiveotSseClient(
+			connectURL, clientID, nil, caCert, nil, timeout)
+	} else if parts.Scheme == "https" {
+		cc = httpclient.NewHttpBasicClient(
 			connectURL, clientID, nil, caCert, nil, timeout)
 	} else if parts.Scheme == "mqtts" {
 		//	bc = mqttclient.NewMqttAgentClient(

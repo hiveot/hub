@@ -1,4 +1,4 @@
-package httpsseclient
+package hiveotsseclient
 
 import (
 	"bytes"

@@ -1,4 +1,4 @@
-package httpsseclient
+package hiveotsseclient
 
 import (
 	"bytes"
@@ -173,22 +173,6 @@ func (cc *HiveotSseClient) Send(
 	return respBody, httpResp.Header, httpStatus, err
 }
 
-// ConnectWithClientCert creates a connection with the server using a client certificate for mutual authentication.
-// The provided certificate must be signed by the server's CA.
-//
-//	kp is the key-pair used to the certificate validation
-//	clientCert client tls certificate containing x509 cert and private key
-//
-// Returns nil if successful, or an error if connection failed
-//
-//	func (cl *HiveotSseClient) ConnectWithClientCert(kp keys.IHiveKey, clientCert *tls.Certificate) (err error) {
-//		cl.mux.RLock()
-//		defer cl.mux.RUnlock()
-//		_ = kp
-//		cl.tlsClient = tlsclient.NewTLSClient(cl.hostPort, clientCert, cl.caCert, cl.timeout)
-//		return err
-//	}
-
 // ConnectWithToken sets the bearer token to use with requests and establishes
 // an SSE connection.
 // If a connection exists it is closed first.
@@ -239,6 +223,7 @@ func (cc *HiveotSseClient) GetConnectionInfo() messaging.ConnectionInfo {
 
 // GetDefaultForm return the default http form for the operation
 // This simply returns nil for anything else than login, logout, ping or refresh.
+// FIXME: use auth profile???
 func (cc *HiveotSseClient) GetDefaultForm(op, thingID, name string) (f *td.Form) {
 	// login has its own URL as it is unauthenticated
 	if op == wot.HTOpPing {
@@ -276,104 +261,6 @@ func (cc *HiveotSseClient) GetTlsClient() *http.Client {
 func (cc *HiveotSseClient) IsConnected() bool {
 	return cc.isConnected.Load()
 }
-
-// LoginWithForm invokes login using a form - temporary helper
-// intended for testing a connection to a web server.
-//
-// This sets the bearer token for further requests. It requires the server
-// to set a session cookie in response to the login.
-//func (cl *HiveotSseClient) LoginWithForm(
-//	password string) (newToken string, err error) {
-//
-//	// FIXME: does this client need a cookie jar???
-//	formMock := url.Values{}
-//	formMock.Add("loginID", cl.GetClientID())
-//	formMock.Add("password", password)
-//
-//	var loginHRef string
-//	f := cl.getForm(wot.HTOpLoginWithForm, "", "")
-//	if f != nil {
-//		loginHRef, _ = f.GetHRef()
-//	}
-//	loginURL, err := url.Parse(loginHRef)
-//	if err != nil {
-//		return "", err
-//	}
-//	if loginURL.Host == "" {
-//		loginHRef = cl.fullURL + loginHRef
-//	}
-//
-//	//PostForm should return a cookie that should be used in the http connection
-//	if loginHRef == "" {
-//		return "", errors.New("Login path not found in getForm")
-//	}
-//	resp, err := cl.httpClient.PostForm(loginHRef, formMock)
-//	if err != nil {
-//		return "", err
-//	}
-//
-//	// get the session token from the cookie
-//	//cookie := resp.Request.Header.Get("cookie")
-//	cookie := resp.Header.Get("cookie")
-//	kvList := strings.Split(cookie, ",")
-//
-//	for _, kv := range kvList {
-//		kvParts := strings.SplitN(kv, "=", 2)
-//		if kvParts[0] == "session" {
-//			cl.bearerToken = kvParts[1]
-//			break
-//		}
-//	}
-//	if cl.bearerToken == "" {
-//		slog.Error("No session cookie was received on login")
-//	}
-//	return cl.bearerToken, err
-//}
-
-// LoginWithPassword posts a login request to the TLS server using a login ID and
-// password and obtain an auth token for use with SetBearerToken.
-//
-// FIXME: use a WoT standardized auth method
-//
-// If the connection fails then any existing connection is cancelled.
-//func (cl *HiveotSseClient) LoginWithPassword(password string) (newToken string, err error) {
-//
-//	slog.Info("ConnectWithPassword",
-//		"clientID", cl.GetClientID(), "connectionID", cl.GetConnectionID())
-//
-//	// FIXME: figure out how a standard login method is used to obtain an auth token
-//	loginMessage := map[string]string{
-//		"login":    cl.GetClientID(),
-//		"password": password,
-//	}
-//	f := cl.getForm(wot.HTOpLogin, "", "")
-//	if f == nil {
-//		err = fmt.Errorf("missing form for login operation")
-//		slog.Error(err.Error())
-//		return "", err
-//	}
-//	method, _ := f.GetMethodName()
-//	href, _ := f.GetHRef()
-//
-//	dataJSON, _ := jsoniter.Marshal(loginMessage)
-//	outputRaw, _, _, err := cl.Send(method, href, dataJSON)
-//
-//	if err == nil {
-//		err = jsoniter.Unmarshal(outputRaw, &newToken)
-//	}
-//	// store the bearer token further requests
-//	// when login fails this clears the existing token. Someone else
-//	// logging in cannot continue on a previously valid token.
-//	cl.mux.Lock()
-//	cl.bearerToken = newToken
-//	cl.mux.Unlock()
-//	//cl.BaseIsConnected.Store(true)
-//	if err != nil {
-//		slog.Warn("connectWithPassword failed: " + err.Error())
-//	}
-//
-//	return newToken, err
-//}
 
 // SendRequest sends a request message and passes the result as a response
 // to the registered response handler.
@@ -608,7 +495,7 @@ func (cc *HiveotSseClient) SetResponseHandler(cb messaging.ResponseHandler) {
 }
 
 // NewHiveotSseClient creates a new instance of the http-basic protocol binding client.
-//
+// FIXME: use http-basic client
 // This uses TD forms to perform an operation.
 //
 //	sseURL of the http and sse server to connect to, including the schema

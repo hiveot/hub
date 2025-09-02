@@ -3,6 +3,7 @@ package runtime_test
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/url"
 	"sync/atomic"
 	"testing"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/servers/discoserver"
 	"github.com/hiveot/hub/messaging/tputils/tlsclient"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	authz "github.com/hiveot/hub/runtime/authz/api"
@@ -208,4 +210,31 @@ func TestTDEvent(t *testing.T) {
 	ts.AddTDs(agentID, 1)
 	time.Sleep(time.Millisecond * 1000)
 	assert.Equal(t, int32(1), tdCount.Load())
+}
+
+// Discover the directory on the well-known endpoint
+func TestDiscoverDirectory(t *testing.T) {
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	const userID = "user1"
+	var dirTD *td.TD
+
+	r := startRuntime()
+	defer r.Stop()
+	cl1, _, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
+	defer cl1.Disconnect()
+
+	httpSrv := r.TransportsMgr.GetServer(messaging.ProtocolTypeHTTPBasic)
+	httpSrv.GetConnectURL()
+
+	tdURL := fmt.Sprintf("%s%s", httpSrv.GetConnectURL(), discoserver.DefaultHttpGetDirectoryTDPath)
+
+	http2Cl := tlsclient.NewHttp2TLSClient(ts.Certs.CaCert, nil, time.Second)
+	resp, err := http2Cl.Get(tdURL)
+	require.NoError(t, err)
+	respBody, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	err = json.Unmarshal(respBody, &dirTD)
+	require.NoError(t, err)
+
 }

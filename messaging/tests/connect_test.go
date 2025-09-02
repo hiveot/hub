@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"net/url"
 	"os"
 	"sync/atomic"
@@ -16,6 +17,7 @@ import (
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/clients"
 	"github.com/hiveot/hub/messaging/clients/authenticator"
+	"github.com/hiveot/hub/messaging/clients/httpclient"
 	"github.com/hiveot/hub/messaging/servers/hiveotsseserver"
 	"github.com/hiveot/hub/messaging/servers/httpbasic"
 	"github.com/hiveot/hub/messaging/servers/wssserver"
@@ -113,7 +115,8 @@ func NewConsumer(clientID string) (
 //	return form
 //}
 
-// start the default transport server
+// start the 'defaultProtocol' transport server. This is one of http-basic,
+// http-sse or websocket.
 // This panics if the server cannot be created
 func StartTransportServer(
 	notifHandler messaging.NotificationHandler,
@@ -230,11 +233,13 @@ func TestStartStop(t *testing.T) {
 	assert.True(t, isConnected)
 }
 
+// login/refresh use the http-basic or http-sse binding
 func TestLoginRefresh(t *testing.T) {
 	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
 
 	srv, cancelFn := StartTransportServer(nil, nil, nil)
 	defer cancelFn()
+	// ensure the client exists
 	cc1, co1, token1 := NewConsumer(testClientID1)
 	_ = co1
 
@@ -503,4 +508,50 @@ func TestServerURL(t *testing.T) {
 	serverURL := srv.GetConnectURL()
 	_, err := url.Parse(serverURL)
 	require.NoError(t, err)
+}
+
+// Test ping/login/refresh using http-basic
+func TestHttpBasic(t *testing.T) {
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	const testPass = "password-test"
+
+	// all transport servers use http-basic
+	// this also creates a dummy authenticator
+	srv, cancelFn := StartTransportServer(nil, nil, nil)
+	_ = srv
+	defer cancelFn()
+	token1 := dummyAuthenticator.AddClient(testClientID1, testPass)
+	_ = token1
+
+	// connect using http-basic
+	serverURL := srv.GetConnectURL()
+
+	htb := httpclient.NewHttpBasicClient(serverURL, testClientID1,
+		nil, certBundle.CaCert, nil, time.Second)
+	//err := htb.ConnectWithToken(token)
+	//require.NoError(t, err)
+
+	// 1: Ping
+	_, _, code, err := htb.Send(http.MethodGet, httpbasic.HttpGetPingPath, nil)
+	require.NoError(t, err)
+	require.Equal(t, 200, code)
+
+	// 2: Login
+	loginBody := fmt.Sprintf(`{"login":"%s", "password":"%s"}`, testClientID1, testPass)
+	body, headers, code, err := htb.Send(http.MethodPost, httpbasic.HttpPostLoginPath, []byte(loginBody))
+	require.NoError(t, err)
+	require.Equal(t, 200, code)
+	require.NotEmpty(t, body)
+	require.NotEmpty(t, headers)
+	token2 := string(body)
+
+	// 3: Refresh using auth token
+	err = htb.SetBearerToken(token2)
+	assert.NoError(t, err)
+	body, headers, code, err = htb.Send(http.MethodPost, httpbasic.HttpPostRefreshPath, []byte(token2))
+	require.NoError(t, err)
+	require.Equal(t, 200, code)
+	require.NotEmpty(t, body)
+	require.NotEmpty(t, headers)
+
 }

@@ -13,7 +13,7 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/clients/httpsseclient"
+	"github.com/hiveot/hub/messaging/clients/hiveotsseclient"
 	"github.com/hiveot/hub/messaging/servers/httpbasic"
 	"github.com/hiveot/hub/messaging/tputils/tlsclient"
 	authz "github.com/hiveot/hub/runtime/authz/api"
@@ -89,7 +89,7 @@ func WebLogin(sseURL string, clientID string,
 	// htmx sse triggers rely on this format. (for now)
 	// FIXME: can htmx sse trigger using additional fields (type=notification, thingID/name=blah?)
 	// or is this too painful in htmx.
-	sseCl := httpsseclient.NewHiveotSseClient(sseURL,
+	sseCl := hiveotsseclient.NewHiveotSseClient(sseURL,
 		clientID, nil, ts.Certs.CaCert,
 		getHiveoviewForm, time.Minute)
 
