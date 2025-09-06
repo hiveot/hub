@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -267,7 +268,7 @@ func TestLoginRefresh(t *testing.T) {
 
 	parts, err := url.Parse(srv.GetConnectURL())
 	require.NoError(t, err)
-	authCl := authenticator.NewAuthClient(parts.Host, certBundle.CaCert, "cid1", testTimeout)
+	authCl := authenticator.NewAuthClient(parts.Host, certBundle.CaCert, testTimeout)
 	token2, err := authCl.RefreshToken(token1)
 
 	// refresh should succeed
@@ -378,7 +379,7 @@ func TestBadRefresh(t *testing.T) {
 	assert.NoError(t, err)
 	parts, _ := url.Parse(srv.GetConnectURL())
 	authCl := authenticator.NewAuthClient(
-		parts.Host, certBundle.CaCert, "cid1", testTimeout)
+		parts.Host, certBundle.CaCert, testTimeout)
 	validToken, err := authCl.RefreshToken(token1)
 	//validToken, err := co1.RefreshToken(token1)
 	assert.NoError(t, err)
@@ -543,12 +544,15 @@ func TestHttpBasic(t *testing.T) {
 	require.Equal(t, 200, code)
 	require.NotEmpty(t, body)
 	require.NotEmpty(t, headers)
-	token2 := string(body)
+	var token2 string
+	err = json.Unmarshal(body, &token2)
+	require.NoError(t, err)
 
 	// 3: Refresh using auth token
 	err = htb.SetBearerToken(token2)
 	assert.NoError(t, err)
-	body, headers, code, err = htb.Send(http.MethodPost, httpbasic.HttpPostRefreshPath, []byte(token2))
+	refreshBody, _ := json.Marshal(token2)
+	body, headers, code, err = htb.Send(http.MethodPost, httpbasic.HttpPostRefreshPath, refreshBody)
 	require.NoError(t, err)
 	require.Equal(t, 200, code)
 	require.NotEmpty(t, body)

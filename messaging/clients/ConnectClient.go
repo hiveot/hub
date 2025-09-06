@@ -81,7 +81,7 @@ func ConnectWithPassword(
 	// 3. authenticate. A cid is required to link the authenticated session with
 	// the connections using it.
 	parts, _ := url.Parse(authURL)
-	authCl := authenticator.NewAuthClient(parts.Host, caCert, "auth-cid", timeout)
+	authCl := authenticator.NewAuthClient(parts.Host, caCert, timeout)
 	//cl := tlsclient.NewTLSClient(parts.Host, nil, caCert, timeout)
 	//token, err = authenticator.LoginWithPassword(
 	//	cl, "", loginID, password)

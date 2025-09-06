@@ -20,7 +20,7 @@ import (
 // even if it hasn't yet expired. Sessions are currently only stored in memory so a service
 // restart also invalidates all session tokens.
 //
-// # Non-session tokens, are used by services and device agents. These tokens are generated
+// Non-session tokens, are used by services and device agents. These tokens are generated
 // on provisioning or token renewal and last until their expiry.
 //
 // The session can be retrieved from the request context using GetSessionFromContext()

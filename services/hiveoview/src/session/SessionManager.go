@@ -198,7 +198,7 @@ func (sm *WebSessionManager) HandleConnectWithPassword(
 
 	// Authentication uses its own client that knows the auth protocol
 	parts, _ := url.Parse(sm.hubURL)
-	authCl := authenticator.NewAuthClient(parts.Host, sm.caCert, cid, sm.timeout)
+	authCl := authenticator.NewAuthClient(parts.Host, sm.caCert, sm.timeout)
 
 	// attempt to login
 	newToken, err = authCl.LoginWithPassword(loginID, password)

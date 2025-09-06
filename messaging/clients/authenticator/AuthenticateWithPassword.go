@@ -2,14 +2,15 @@ package authenticator
 
 import (
 	"crypto/x509"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/servers/httpbasic"
-	"github.com/hiveot/hub/messaging/tputils/tlsclient"
-	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/servers/httpbasic"
+	"github.com/hiveot/hub/messaging/tputils/tlsclient"
+	jsoniter "github.com/json-iterator/go"
 )
 
 // AuthenticateWithPassword invokes the hub's password authenticator.
@@ -80,7 +81,7 @@ type AuthClient struct {
 // This returns an authentication token for connecting with any of the protocols, or an error
 func (cl *AuthClient) LoginWithPassword(loginID string, password string) (newToken string, err error) {
 
-	// FIXME: use digest auth
+	// FIXME: support for http digest auth?
 	loginMessage := map[string]string{
 		"login":    loginID,
 		"password": password,
@@ -88,7 +89,6 @@ func (cl *AuthClient) LoginWithPassword(loginID string, password string) (newTok
 
 	loginPath := httpbasic.HttpPostLoginPath
 
-	// use a sacrificial client
 	dataJSON, _ := jsoniter.Marshal(loginMessage)
 	outputRaw, status, err := cl.tlsClient.Post(loginPath, dataJSON)
 
@@ -149,14 +149,10 @@ func (cl *AuthClient) Close() {
 //
 //	hostPort is the address of the authentication server
 //	caCert is the CA of the server
-//	cid is the connectionID to use
 //	timeout of requests. 0 for default.
-func NewAuthClient(hostPort string, caCert *x509.Certificate, cid string, timeout time.Duration) *AuthClient {
+func NewAuthClient(hostPort string, caCert *x509.Certificate, timeout time.Duration) *AuthClient {
 
 	tlsClient := tlsclient.NewTLSClient(hostPort, nil, caCert, timeout)
-	if cid != "" {
-		tlsClient.SetHeader(httpbasic.ConnectionIDHeader, cid)
-	}
 	ac := &AuthClient{
 		tlsClient: tlsClient,
 	}

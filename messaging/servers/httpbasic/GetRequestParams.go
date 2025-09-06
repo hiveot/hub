@@ -33,7 +33,7 @@ type RequestParams struct {
 // that requires a session.
 //
 // This protocol binding determines three variables, {thingID}, {name} and {op} from the path.
-// It unmarshals the request body into 'data', if given.
+// It unmarshal's the request body into 'data', if given.
 //
 //	{operation} is the operation
 //	{thingID} is the agent or digital twin thing ID
@@ -48,23 +48,27 @@ func GetRequestParams(r *http.Request, data any) (reqParam RequestParams, err er
 		slog.Error(err.Error())
 		return reqParam, err
 	}
-	// the connection ID distinguishes between different connections from the same client.
-	// this is needed to correlate http requests with the sub-protocol connection.
-	// this is intended to solve for unidirectional SSE connections from multiple devices.
-	// if no connectionID is provided then only a single device connection is allowed.
+
+	// A connection ID distinguishes between different connections from the same client.
+	// This is used to correlate http requests with out-of-band responses like a SSE
+	// return channel.
+	// If a 'cid' header exists, use it as the connection ID.
 	headerCID := r.Header.Get(ConnectionIDHeader)
 	if headerCID == "" {
+		// FIXME: this is only an issue with hiveot-sse. Maybe time to retire it?
+		// alt: use a connectionid from the auth token - two browser connections would
+		// share this however.
+
+		// http-basic isn't be bothered. Each WoT sse connection is the subscription
+		//  (only a single subscription per sse connection which is nearly useless)
 		slog.Info("GetRequestParams: missing connection-id, only a single " +
 			"connection is supported")
 	}
 
-	// the connection ID is the clientID + provided clcid
 	reqParam.ConnectionID = headerCID
-	//reqParam.CorrelationID = r.Header.Get(CorrelationIDHeader)
 
-	// build a message from the URL and payload
-	// URLParam names are defined by the path variables set in the router.
-	reqParam.ThingID = chi.URLParam(r, "thingID")
+	// URLParam names must match the  path variables set in the router.
+	reqParam.ThingID = chi.URLParam(r, "thingID") // todo: use constants from the router
 	reqParam.Name = chi.URLParam(r, "name")
 	reqParam.Op = chi.URLParam(r, "operation")
 	if r.Body != nil {

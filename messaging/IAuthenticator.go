@@ -26,13 +26,15 @@ type IAuthenticator interface {
 	// paseto: "local" (symmetric), "public" (asymmetric)
 	GetAlg() (string, string)
 
-	// Login with a password and obtain a new session token
+	// Login with a password and obtain a new session token with limited duration
+	// This creates a new session. The token must be refreshed to keep the session alive.
 	Login(login string, password string) (token string, err error)
 
 	// Logout removes the session
 	Logout(clientID string)
 
-	// RefreshToken the session token and retain its session ID
+	// RefreshToken issues a new session token with an updated expiry time.
+	// This extends the life of the session.
 	//
 	//	clientID Client whose token to refresh
 	//	oldToken must be valid

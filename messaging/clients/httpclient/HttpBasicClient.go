@@ -425,7 +425,7 @@ func (cc *HttpBasicClient) SendRequest(req *messaging.RequestMessage) error {
 	// substitute URI variables in the path, if any
 	// intended for use with http-basic forms.
 	vars := map[string]string{
-		"thingID":   thingID,
+		"thingID":   thingID, // TODO: use share constants
 		"name":      name,
 		"operation": req.Operation}
 	reqPath := tputils.Substitute(href, vars)
