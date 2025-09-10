@@ -15,9 +15,9 @@ import (
 
 // HandleNotification handles receiving a notification from an agent (event, property, action)
 // This updates the digital twin property or event value
-func (svc *DigitwinRouter) HandleNotification(notif *messaging.NotificationMessage) {
+func (r *DigitwinRouter) HandleNotification(notif *messaging.NotificationMessage) {
 	var err error
-	svc.notifLogger.Info("<- NOTIF: HandleNotification",
+	r.notifLogger.Info("<- NOTIF: HandleNotification",
 		slog.String("senderID", notif.SenderID),
 		slog.String("operation", notif.Operation),
 		slog.String("thingID", notif.ThingID),
@@ -42,10 +42,10 @@ func (svc *DigitwinRouter) HandleNotification(notif *messaging.NotificationMessa
 			Timestamp:      notifCpy.Timestamp,
 			AffordanceType: string(messaging.AffordanceTypeEvent),
 		}
-		err = svc.dtwStore.UpdateEventValue(tv)
+		err = r.dtwStore.UpdateEventValue(tv)
 		if err == nil {
 			// broadcast the event to subscribers of the digital twin
-			svc.transportServer.SendNotification(&notifCpy)
+			r.transportServer.SendNotification(&notifCpy)
 		}
 	} else if notifCpy.Operation == wot.OpObserveProperty {
 		tv := digitwin.ThingValue{
@@ -55,11 +55,11 @@ func (svc *DigitwinRouter) HandleNotification(notif *messaging.NotificationMessa
 			Timestamp:      notifCpy.Timestamp,
 			AffordanceType: string(messaging.AffordanceTypeProperty),
 		}
-		changed, _ := svc.dtwStore.UpdatePropertyValue(tv)
+		changed, _ := r.dtwStore.UpdatePropertyValue(tv)
 		// unchanged values are still updated in the store but not published
 		// should this be configurable?
 		if changed {
-			svc.transportServer.SendNotification(&notifCpy)
+			r.transportServer.SendNotification(&notifCpy)
 		}
 	} else if notifCpy.Operation == wot.OpObserveAllProperties {
 		// output is a key-value map
@@ -74,7 +74,7 @@ func (svc *DigitwinRouter) HandleNotification(notif *messaging.NotificationMessa
 					ThingID:        notifCpy.ThingID,
 					Timestamp:      notifCpy.Timestamp,
 				}
-				changed, _ := svc.dtwStore.UpdatePropertyValue(tv)
+				changed, _ := r.dtwStore.UpdatePropertyValue(tv)
 				// unchanged values are still updated in the store but not published
 				// should this be configurable?
 				if changed {
@@ -84,16 +84,16 @@ func (svc *DigitwinRouter) HandleNotification(notif *messaging.NotificationMessa
 					notifCpy2.Operation = wot.OpObserveProperty
 					notifCpy2.Name = k
 					notifCpy2.Data = v
-					svc.transportServer.SendNotification(&notifCpy2)
+					r.transportServer.SendNotification(&notifCpy2)
 				}
 			}
 		}
 	} else if notifCpy.Operation == wot.OpInvokeAction {
 		// action progress update. Forward to sender of the request
 		var cc messaging.IConnection
-		svc.mux.Lock()
-		actRec, found := svc.activeCache[notifCpy.CorrelationID]
-		svc.mux.Unlock()
+		r.mux.Lock()
+		actRec, found := r.activeCache[notifCpy.CorrelationID]
+		r.mux.Unlock()
 		if !found {
 			// no associated action for this notification
 			return
@@ -108,10 +108,10 @@ func (svc *DigitwinRouter) HandleNotification(notif *messaging.NotificationMessa
 			return
 		}
 		// update the action status
-		svc.dtwStore.UpdateActionWithNotification(&notifCpy)
+		r.dtwStore.UpdateActionWithNotification(&notifCpy)
 
 		// forward the notification to the sender of the request only
-		cc = svc.transportServer.GetConnectionByConnectionID(actRec.SenderID, actRec.ReplyTo)
+		cc = r.transportServer.GetConnectionByConnectionID(actRec.SenderID, actRec.ReplyTo)
 		if cc != nil {
 			_ = cc.SendNotification(&notifCpy)
 		}

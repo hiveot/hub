@@ -3,10 +3,11 @@ package router
 
 import (
 	"fmt"
+	"log/slog"
+
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/wot/td"
-	"log/slog"
 )
 
 // HandleActionResponse handles receiving a response to an action
@@ -17,10 +18,10 @@ import (
 // 2: Updates the status fields of the current digital twin action record to completed.
 // 3: Forwards the update to the sender of the request.
 // 4: Remove the active request from the cache.
-func (svc *DigitwinRouter) HandleActionResponse(resp *messaging.ResponseMessage) (err error) {
+func (r *DigitwinRouter) HandleActionResponse(resp *messaging.ResponseMessage) (err error) {
 
 	// Action response
-	svc.requestLogger.Info("<- RESP",
+	r.requestLogger.Info("<- RESP",
 		slog.String("correlationID", resp.CorrelationID),
 		slog.String("operation", resp.Operation),
 		slog.String("dThingID", resp.ThingID),
@@ -32,16 +33,16 @@ func (svc *DigitwinRouter) HandleActionResponse(resp *messaging.ResponseMessage)
 
 	// 1: The response must be an active request
 	// Note that event and property subscriptions are active
-	svc.mux.Lock()
-	as, found := svc.activeCache[resp.CorrelationID]
-	svc.mux.Unlock()
+	r.mux.Lock()
+	as, found := r.activeCache[resp.CorrelationID]
+	r.mux.Unlock()
 	if !found {
 		err = fmt.Errorf(
 			// FIXME: this happens with writeproperty operations. These should also be in the activeCache
 			"HandleResponse: Message '%s' from agent '%s' not in action cache. It is ignored",
 			resp.CorrelationID, resp.SenderID)
 
-		svc.requestLogger.Error("Response Failed - correlationID not in action cache",
+		r.requestLogger.Error("Response Failed - correlationID not in action cache",
 			slog.String("correlationID", resp.CorrelationID),
 		)
 		return nil
@@ -52,16 +53,16 @@ func (svc *DigitwinRouter) HandleActionResponse(resp *messaging.ResponseMessage)
 		err = fmt.Errorf("HandleActionResponse: response ID '%s' of thing '%s' "+
 			"does not come from agent '%s' but from '%s'. Response ignored",
 			resp.CorrelationID, resp.ThingID, as.AgentID, resp.SenderID)
-		svc.requestLogger.Warn(err.Error())
+		r.requestLogger.Warn(err.Error())
 		return nil
 	}
 
 	// 2: Update the response status in the digital twin action record and log errors
 	// not all requests are tracked.
-	_, _ = svc.dtwStore.UpdateActionWithResponse(resp)
+	_, _ = r.dtwStore.UpdateActionWithResponse(resp)
 
 	// 3: Forward the response to the sender of the request
-	c := svc.transportServer.GetConnectionByConnectionID(as.SenderID, as.ReplyTo)
+	c := r.transportServer.GetConnectionByConnectionID(as.SenderID, as.ReplyTo)
 	if c != nil {
 		err = c.SendResponse(resp)
 	} else {
@@ -71,7 +72,7 @@ func (svc *DigitwinRouter) HandleActionResponse(resp *messaging.ResponseMessage)
 	}
 
 	if err != nil {
-		svc.requestLogger.Error("Response Failed - Forwarding to sender failed",
+		r.requestLogger.Error("Response Failed - Forwarding to sender failed",
 			slog.String("correlationID", resp.CorrelationID),
 			slog.String("operation", resp.Operation),
 			slog.String("dThingID", resp.ThingID),
@@ -84,9 +85,9 @@ func (svc *DigitwinRouter) HandleActionResponse(resp *messaging.ResponseMessage)
 
 	// 4: Remove the action when the response is received
 	//  (notifications can provide intermediate status updates)
-	svc.mux.Lock()
-	defer svc.mux.Unlock()
-	delete(svc.activeCache, as.CorrelationID)
+	r.mux.Lock()
+	defer r.mux.Unlock()
+	delete(r.activeCache, as.CorrelationID)
 	return err
 }
 
@@ -97,7 +98,7 @@ func (svc *DigitwinRouter) HandleActionResponse(resp *messaging.ResponseMessage)
 // that requested the action on the digital twin.
 //
 // If the message is no longer in the active cache then it is ignored.
-func (svc *DigitwinRouter) HandleResponse(resp *messaging.ResponseMessage) error {
+func (r *DigitwinRouter) HandleResponse(resp *messaging.ResponseMessage) error {
 	var err error
 
 	// Convert the agent ThingID to that of the digital twin
@@ -110,6 +111,6 @@ func (svc *DigitwinRouter) HandleResponse(resp *messaging.ResponseMessage) error
 
 	// for now the only external response message is an action response
 	// (how about write property?)
-	err = svc.HandleActionResponse(resp)
+	err = r.HandleActionResponse(resp)
 	return err
 }

@@ -56,7 +56,7 @@ func (ag *Agent) onRequest(
 // This sends an ActionStatus message with status of running.
 func (ag *Agent) PubActionProgress(req RequestMessage, value any) error {
 	status := ActionStatus{
-		AgentID:   ag.GetClientID(),
+		//AgentID:   ag.GetClientID(),
 		ActionID:  req.CorrelationID,
 		Input:     req.Input,
 		Name:      req.Name,

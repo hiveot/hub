@@ -326,15 +326,6 @@ func TestAccess(t *testing.T) {
 	require.Error(t, err, "regular users should not have access to authn.Admin")
 	require.Empty(t, clientProfiles)
 	//time.Sleep(time.Millisecond * 100)
-	// fixme: deadlock in client when two responses are received,
-	// first one being unauthorized. [6]
-	// second onewith actionstatus=getclientrole output=viewer
-	// A: why 2 responses
-	// B: why would it deadlock => no-one is reading, no buffer
-	// action 1a: Set RPC buffer to 1 so that it can be closed while receiving a followup response
-	//              can the second write cause a panic => no, deadlock with 0 buf though
-	//              buf of 1 causes response to be lost. should go on as notification.!!
-	// action 1b: auto-lock and remove on receive so followup response is a notification.
 	role, err := authz.AdminGetClientRole(hc, clientID)
 	require.Error(t, err, "regular users should not have access to authz.Admin")
 	require.Empty(t, role)

@@ -1,4 +1,4 @@
-// Package service with digital twin action flow handling functions
+// Package router with digital twin action flow handling functions
 package router
 
 import (
@@ -9,7 +9,6 @@ import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/runtime/api"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
@@ -26,7 +25,7 @@ type ActiveRequestRecord struct {
 	SenderID      string    // action sender that will receive progress messages
 	Progress      string    // current progress of the action:
 	Updated       time.Time // timestamp to handle expiry
-	ReplyTo       string    // Action reply address. Typically the sender's connection-id
+	ReplyTo       string    // Action reply address. Typically, the sender's connection-id
 }
 
 // ForwardRequestToRemoteAgent forwards the request to an external agent.
@@ -41,7 +40,7 @@ type ActiveRequestRecord struct {
 // sc is the server connection endpoint of the client sending the request
 //
 // If the agent is not connected status is failed.
-func (svc *DigitwinRouter) ForwardRequestToRemoteAgent(
+func (r *DigitwinRouter) ForwardRequestToRemoteAgent(
 	req *messaging.RequestMessage, sc messaging.IConnection) (
 	resp *messaging.ResponseMessage) {
 
@@ -49,7 +48,7 @@ func (svc *DigitwinRouter) ForwardRequestToRemoteAgent(
 
 	// Determine the agent to forward the request to.
 	// Agents only have a single connection instance so the agentID can be used.
-	agentConn := svc.transportServer.GetConnectionByClientID(agentID)
+	agentConn := r.transportServer.GetConnectionByClientID(agentID)
 
 	if agentConn == nil {
 		// The request cannot be delivered as the agent is not reachable
@@ -75,9 +74,9 @@ func (svc *DigitwinRouter) ForwardRequestToRemoteAgent(
 		SenderID:      req.SenderID,
 		ThingID:       agThingID,
 	}
-	svc.mux.Lock()
-	svc.activeCache[requestRecord.CorrelationID] = requestRecord
-	svc.mux.Unlock()
+	r.mux.Lock()
+	r.activeCache[requestRecord.CorrelationID] = requestRecord
+	r.mux.Unlock()
 
 	// forward the request to the agent using the ThingID of the agent, not the
 	// digital twin agThingID.
@@ -95,9 +94,9 @@ func (svc *DigitwinRouter) ForwardRequestToRemoteAgent(
 			slog.String("err", err.Error()))
 
 		// cleanup as the record is no longer needed
-		svc.mux.Lock()
-		delete(svc.activeCache, req.CorrelationID)
-		svc.mux.Unlock()
+		r.mux.Lock()
+		delete(r.activeCache, req.CorrelationID)
+		r.mux.Unlock()
 
 		resp = req.CreateResponse(nil, err)
 		//if stored {
@@ -117,14 +116,14 @@ func (svc *DigitwinRouter) ForwardRequestToRemoteAgent(
 //
 // This returns a response if available. replyTo is used to store the sender's
 // reply-to address for handling responses to pending requests.
-func (svc *DigitwinRouter) HandleRequest(
+func (r *DigitwinRouter) HandleRequest(
 	req *messaging.RequestMessage, c messaging.IConnection) (resp *messaging.ResponseMessage) {
 
 	if req.Created == "" {
 		req.Created = utils.FormatNowUTCMilli()
 	}
 
-	svc.requestLogger.Info("-> REQ:",
+	r.requestLogger.Info("-> REQ:",
 		slog.String("correlationID", req.CorrelationID),
 		slog.String("operation", req.Operation),
 		slog.String("dThingID", req.ThingID),
@@ -134,28 +133,27 @@ func (svc *DigitwinRouter) HandleRequest(
 	)
 
 	// middleware: authorize the request. (TODO: use a middleware chain)
-	if !svc.hasPermission(req.SenderID, req.Operation, req.ThingID) {
+	if !r.hasPermission(req.SenderID, req.Operation, req.ThingID) {
 		err := fmt.Errorf("unauthorized. client '%s' does not have permission"+
 			" to invoke operation '%s' on Thing '%s'", req.SenderID, req.Operation, req.ThingID)
-		svc.requestLogger.Warn(err.Error())
+		r.requestLogger.Warn(err.Error())
 		return req.CreateResponse(nil, err)
 	}
 	switch req.Operation {
 	// Thing actions status are tracked and stored.
 	// Responses are send asynchronously to the replyTo address.
 	case vocab.OpInvokeAction:
-		resp = svc.HandleInvokeAction(req, c)
+		resp = r.HandleInvokeAction(req, c)
 	case vocab.OpWriteProperty:
-		resp = svc.HandleWriteProperty(req, c)
+		resp = r.HandleWriteProperty(req, c)
 
 	// digital twin requests are handled immediately and return a response
-	//	// FIXME: why not pass the request to the digitwin service agent?
 	case vocab.OpQueryAction, vocab.OpQueryAllActions:
-		resp = svc.HandleQueryAction(req, c)
+		resp = r.HandleQueryAction(req, c)
 	case vocab.OpReadProperty:
-		resp = svc.HandleReadProperty(req, c)
+		resp = r.HandleReadProperty(req, c)
 	case vocab.OpReadAllProperties:
-		resp = svc.HandleReadAllProperties(req, c)
+		resp = r.HandleReadAllProperties(req, c)
 
 	default:
 		err := fmt.Errorf("unknown request operation '%s' from client '%s'",
@@ -165,7 +163,7 @@ func (svc *DigitwinRouter) HandleRequest(
 	}
 	// direct responses are optional
 	if resp != nil {
-		svc.requestLogger.Info("<- RESP",
+		r.requestLogger.Info("<- RESP",
 			slog.String("correlationID", resp.CorrelationID),
 			slog.String("operation", resp.Operation),
 			slog.String("dThingID", resp.ThingID),
@@ -196,7 +194,7 @@ func (svc *DigitwinRouter) HandleRequest(
 // even thought it uses a uni-directional channel for sending the request.
 // SSE, WS, MQTT bindings must use a correlation-id to match request-response messages.
 // this is not well-defined in the WoT specs and up to the protocol binding implementation.
-func (svc *DigitwinRouter) HandleInvokeAction(
+func (r *DigitwinRouter) HandleInvokeAction(
 	req *messaging.RequestMessage, c messaging.IConnection) (resp *messaging.ResponseMessage) {
 
 	// Forward the action to the built-in services
@@ -207,18 +205,16 @@ func (svc *DigitwinRouter) HandleInvokeAction(
 	// There is no good use-case to record these actions.
 	switch agentID {
 	case digitwin.ThingDirectoryAgentID:
-		resp = svc.digitwinAction(req, c)
+		resp = r.digitwinAction(req, c)
 	case authn.AdminAgentID:
-		resp = svc.authnAction(req, c)
+		resp = r.authnAction(req, c)
 	case authz.AdminAgentID:
-		resp = svc.authzAction(req, c)
-	case api.DigitwinServiceID:
-		resp = svc.digitwinAction(req, c)
+		resp = r.authzAction(req, c)
 	default:
 		// forward action to external service
 		// Store the request progress to be able to respond to queryAction. Only
 		// unsafe (stateful) actions are stored.
-		actionStatus, stored, err := svc.dtwStore.NewActionStart(req)
+		actionStatus, stored, err := r.dtwStore.NewActionStart(req)
 		_ = stored
 		if err != nil {
 			return req.CreateResponse(nil, err)
@@ -227,14 +223,14 @@ func (svc *DigitwinRouter) HandleInvokeAction(
 		// Forward the action to external agents
 		// Depending on how the agent is connection this can provide an immediate response
 		// or no immediate response, in which case a notification is returned.
-		resp = svc.ForwardRequestToRemoteAgent(req, c)
+		resp = r.ForwardRequestToRemoteAgent(req, c)
 
 		// the request has been sent successfully
 		// actions return a response or a notification with ActionStatus record with status pending.
 		// other requests simply don't return anything until an async response is received.
 		if stored && resp != nil {
 			// in case of immediately available response and the action was stored.
-			_, _ = svc.dtwStore.UpdateActionWithResponse(resp)
+			_, _ = r.dtwStore.UpdateActionWithResponse(resp)
 		} else if resp == nil && c != nil {
 			// send an async notification if no response is available yet
 			notif := req.CreateNotification()
@@ -246,44 +242,44 @@ func (svc *DigitwinRouter) HandleInvokeAction(
 }
 
 // HandleQueryAction returns the action status
-func (svc *DigitwinRouter) HandleQueryAction(
+func (r *DigitwinRouter) HandleQueryAction(
 	req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
-	av, err := svc.dtwService.ValuesSvc.QueryAction(req.SenderID,
+	av, err := r.dtwService.ValuesSvc.QueryAction(req.SenderID,
 		digitwin.ThingValuesQueryActionArgs{ThingID: req.ThingID, Name: req.Name})
 	return req.CreateResponse(av, err)
 }
 
 // HandleReadEvent consumer requests a digital twin thing's event value
-func (svc *DigitwinRouter) HandleReadEvent(
+func (r *DigitwinRouter) HandleReadEvent(
 	req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
 
-	output, err := svc.dtwService.ValuesSvc.ReadEvent(req.SenderID,
+	output, err := r.dtwService.ValuesSvc.ReadEvent(req.SenderID,
 		digitwin.ThingValuesReadEventArgs{ThingID: req.ThingID, Name: req.Name})
 	return req.CreateResponse(output, err)
 }
 
 // HandleReadAllEvents consumer requests all digital twin thing event values
-func (svc *DigitwinRouter) HandleReadAllEvents(
+func (r *DigitwinRouter) HandleReadAllEvents(
 	req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
 
-	output, err := svc.dtwService.ValuesSvc.ReadAllEvents(req.SenderID, req.ThingID)
+	output, err := r.dtwService.ValuesSvc.ReadAllEvents(req.SenderID, req.ThingID)
 	return req.CreateResponse(output, err)
 }
 
 // HandleReadProperty consumer requests a digital twin thing's property value
-func (svc *DigitwinRouter) HandleReadProperty(
+func (r *DigitwinRouter) HandleReadProperty(
 	req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
 
-	output, err := svc.dtwService.ValuesSvc.ReadProperty(req.SenderID,
+	output, err := r.dtwService.ValuesSvc.ReadProperty(req.SenderID,
 		digitwin.ThingValuesReadPropertyArgs{ThingID: req.ThingID, Name: req.Name})
 	return req.CreateResponse(output, err)
 }
 
 // HandleReadAllProperties consumer requests reading all digital twin's property values
-func (svc *DigitwinRouter) HandleReadAllProperties(
+func (r *DigitwinRouter) HandleReadAllProperties(
 	req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
 
-	output, err := svc.dtwService.ValuesSvc.ReadAllProperties(req.SenderID, req.ThingID)
+	output, err := r.dtwService.ValuesSvc.ReadAllProperties(req.SenderID, req.ThingID)
 	return req.CreateResponse(output, err)
 }
 
@@ -332,11 +328,11 @@ func (svc *DigitwinRouter) HandleReadAllProperties(
 //
 // This follows the same process as invoking an action but without tracking progress.
 // The request is forwarded to the agent which is expected to send a response.
-func (svc *DigitwinRouter) HandleWriteProperty(
+func (r *DigitwinRouter) HandleWriteProperty(
 	req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
 
 	// Note: if internal services have writable properties (currently they don't)
 	// then add forwarding it here similar to invoking actions.
 
-	return svc.ForwardRequestToRemoteAgent(req, c)
+	return r.ForwardRequestToRemoteAgent(req, c)
 }

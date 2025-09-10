@@ -7,36 +7,36 @@ import (
 )
 
 // HandleLogin passes the request as an action to the authn service
-func (svc *DigitwinRouter) HandleLogin(
+func (r *DigitwinRouter) HandleLogin(
 	req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
 
 	// Data {login,password}
 	req.ThingID = authn.UserDThingID
 	req.Name = authn.UserLoginMethod
-	resp := svc.authnAction(req, c)
+	resp := r.authnAction(req, c)
 	return resp
 }
 
 // HandleLoginRefresh passes the request as an action to the authn service
-func (svc *DigitwinRouter) HandleLoginRefresh(
+func (r *DigitwinRouter) HandleLoginRefresh(
 	req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
 
 	// Data {oldToken}
 	req.ThingID = authn.UserDThingID
 	req.Name = authn.UserRefreshTokenMethod
 
-	resp := svc.authnAction(req, c)
+	resp := r.authnAction(req, c)
 	return resp
 }
 
 // HandleLogout converts the logout operation into an authn service action
 // and closes all connections from the sender.
-func (svc *DigitwinRouter) HandleLogout(
+func (r *DigitwinRouter) HandleLogout(
 	req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
 
 	req.ThingID = authn.UserDThingID
 	req.Name = authn.UserLogoutMethod
-	resp := svc.authnAction(req, c)
-	svc.transportServer.CloseAllClientConnections(req.SenderID)
+	resp := r.authnAction(req, c)
+	r.transportServer.CloseAllClientConnections(req.SenderID)
 	return resp
 }

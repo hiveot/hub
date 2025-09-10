@@ -69,18 +69,21 @@ func (r *DigitwinRouter) SetTransportServer(srv messaging.ITransportServer) {
 // NewDigitwinRouter instantiates a new hub messaging router
 // Use SetTransportServer for forwarding messages to non-local agents and consumers.
 //
-//	dtwStore is used to update the digital twin status
-//	tb is the transport binding for forwarding service requests
+//	dtwService is used to update the digital twin status
+//	digitwinAction build-in handler for digital twin directory and value requests
+//	authnAgent built-in handler for authentication service requests
+//	authzAgent built-in handler for authorization service requests
+//	permissionHandler built-in handler for authorizing requests
+//	transportServer is the transport binding for forwarding service requests
 func NewDigitwinRouter(
 	dtwService *service.DigitwinService,
 	digitwinAction messaging.RequestHandler,
 	authnAgent messaging.RequestHandler,
 	authzAgent messaging.RequestHandler,
 	permissionHandler PermissionHandler,
-	// cm *connections.ConnectionManager,
 	transportServer messaging.ITransportServer,
 ) *DigitwinRouter {
-	ar := &DigitwinRouter{
+	r := &DigitwinRouter{
 		dtwStore: dtwService.DtwStore,
 		//cm:             cm,
 		transportServer: transportServer,
@@ -93,5 +96,5 @@ func NewDigitwinRouter(
 		requestLogger:   slog.Default(),
 		notifLogger:     slog.Default(),
 	}
-	return ar
+	return r
 }

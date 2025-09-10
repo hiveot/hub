@@ -1,11 +1,12 @@
-// Package transports with the 3 flow messages: requests, response and  notifications
+// Package messaging with the 3 flow messages: requests, response and  notifications
 package messaging
 
 import (
+	"time"
+
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/teris-io/shortid"
-	"time"
 )
 
 // ResponseMessage, ActionStatus and ThingValue define the standardized messaging
@@ -34,35 +35,22 @@ const (
 	StatusFailed = "failed"
 )
 
-// ActionStatus is used in the response message payload for invokeaction and queryaction
+// ActionStatus is used in the response message payload for 'invokeaction' and 'queryaction'
 // responses.
 // Note: keep this in sync with the digital twin ActionStatus in the TD.
 type ActionStatus struct {
 
-	// ID that uniquely identifies the action
+	// ActionID that uniquely identifies the action instance.
 	// This can be an identifier or a URL.
-	//
-	// The action request identifier
 	ActionID string `json:"actionID,omitempty"`
 
-	// AgentID with Agent ID
-	//
-	// The agent handling the action
-	AgentID string `json:"agentID,omitempty"`
-
-	// Error with Error
-	//
-	// Action error info when failed
+	// Error with info when action failed
 	Error string `json:"error,omitempty"`
 
-	// Input with Action input
-	//
-	// Action input value
+	// Input of action
 	Input any `json:"input,omitempty"`
 
-	// Name with Action name
-	//
-	// name of the action or property
+	// Name of action
 	Name string `json:"name,omitempty"`
 
 	// Output with Action output
@@ -71,24 +59,16 @@ type ActionStatus struct {
 	// SenderID of the client requesting the action
 	SenderID string `json:"senderID,omitempty"`
 
-	// Status with Action status
-	//
-	// Status of the action's progress: pending, running, completed, failed
+	// Status of action with progress: pending, running, completed, failed
 	Status string `json:"status,omitempty"`
 
-	// ThingID with Action Thing
-	//
-	// Digital twin ThingID the action applies to
+	// ThingID digital-twin ThingID the action applies to
 	ThingID string `json:"thingID,omitempty"`
 
 	// Requested time the action request was received
-	//
-	// Time the action was initially requested
 	Requested string `json:"requested,omitempty"`
 
 	// Updated time the action status was last updated
-	//
-	// Time the action status was last updated
 	Updated string `json:"updated,omitempty"`
 }
 
