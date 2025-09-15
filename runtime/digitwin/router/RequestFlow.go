@@ -148,8 +148,10 @@ func (r *DigitwinRouter) HandleRequest(
 		resp = r.HandleWriteProperty(req, c)
 
 	// digital twin requests are handled immediately and return a response
-	case vocab.OpQueryAction, vocab.OpQueryAllActions:
+	case vocab.OpQueryAction:
 		resp = r.HandleQueryAction(req, c)
+	case vocab.OpQueryAllActions:
+		resp = r.HandleQueryAllActions(req, c)
 	case vocab.OpReadProperty:
 		resp = r.HandleReadProperty(req, c)
 	case vocab.OpReadAllProperties:
@@ -246,6 +248,11 @@ func (r *DigitwinRouter) HandleQueryAction(
 	req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
 	av, err := r.dtwService.ValuesSvc.QueryAction(req.SenderID,
 		digitwin.ThingValuesQueryActionArgs{ThingID: req.ThingID, Name: req.Name})
+	return req.CreateResponse(av, err)
+}
+func (r *DigitwinRouter) HandleQueryAllActions(
+	req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
+	av, err := r.dtwService.ValuesSvc.QueryAllActions(req.SenderID, req.ThingID)
 	return req.CreateResponse(av, err)
 }
 
