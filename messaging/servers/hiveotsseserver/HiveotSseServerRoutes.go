@@ -14,13 +14,10 @@ import (
 
 // routes for handling http server requests
 
-// HTTP endpoint that accepts HiveOT RequestMessage envelopes
-//const HiveOTPostRequestHRef = "/hiveot/request"
-
-// HTTP endpoint that accepts HiveOT ResponseMessage envelopes
+// HiveOTPostResponseHRef is the HTTP path that accepts HiveOT ResponseMessage envelopes
+// intended for agents that post responses.
 //const HiveOTPostResponseHRef = "/hiveot/response"
-
-const HiveOTGetSseConnectHRef = "/hiveot/sse-sc"
+//const HiveOTGetSseConnectHRef = "/hiveot/sse-sc"
 
 // CreateRoutes add the routes used in SSE-SC sub-protocol
 // This is simple, one endpoint to connect, and one to pass requests, using URI variables
@@ -118,7 +115,8 @@ func (srv *HiveotSseServer) HandleNotificationMessage(w http.ResponseWriter, r *
 
 // HandleRequestMessage handles request messages sent by consumers or agents.
 //
-// This endpoint only handles requests when an SSE connection is already established.
+// This endpoint only handles requests for the SSE subprotocol.
+// An SSE connection must already be established.
 //
 // This locates the corresponding connection and passes the request to the connection
 // to make it seem like the connection received the request message itself.
@@ -128,7 +126,7 @@ func (srv *HiveotSseServer) HandleNotificationMessage(w http.ResponseWriter, r *
 // Note: If the result status isn't completed or failed then a separate response
 // message will be sent asynchronously by the agent, containing an ActionStatus message payload.
 func (srv *HiveotSseServer) HandleRequestMessage(w http.ResponseWriter, r *http.Request) {
-	var output any
+	var output *messaging.ResponseMessage
 	var handled bool
 	var req messaging.RequestMessage
 
@@ -143,13 +141,13 @@ func (srv *HiveotSseServer) HandleRequestMessage(w http.ResponseWriter, r *http.
 	req.SenderID = rp.ClientID
 	connectionID := rp.ConnectionID
 
-	// FIXME: handle ping in http basic
-	// 1. handle ping internally??
+	// 1. handle ping operation internally
 	if req.Operation == wot.HTOpPing {
 		//resp := req.CreateResponse("pong", nil)
-		output = "pong"
+		output = req.CreateResponse("pong", nil)
 		handled = true
 		err = nil
+		// debugger bug not stopping on WriteReply when at the bottom?
 	} else {
 		// 2. locate the connection that handles the request.
 		c := srv.GetSseConnection(req.SenderID, connectionID)

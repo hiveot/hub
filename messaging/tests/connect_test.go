@@ -42,9 +42,9 @@ const testServerHiveotWssURL = "wss://localhost:9445" + wssserver.DefaultWssPath
 
 //const testServerMqttWssURL = "mqtts://localhost:9447"
 
-//var defaultProtocol = messaging.ProtocolTypeHiveotSSE
+var defaultProtocol = messaging.ProtocolTypeHiveotSSE
 
-var defaultProtocol = messaging.ProtocolTypeWSS
+//var defaultProtocol = messaging.ProtocolTypeWSS
 
 var transportServer messaging.ITransportServer
 var dummyAuthenticator *tputils.DummyAuthenticator
@@ -409,7 +409,7 @@ func TestReconnect(t *testing.T) {
 			go func() {
 				// send an asynchronous result after a short time
 				time.Sleep(time.Millisecond * 10)
-				require.NotNil(t, c, "client doesnt have a SSE connection")
+				require.NotNil(t, c, "client doesnt have a connection")
 				output := req.Input
 				cinfo := c.GetConnectionInfo()
 				c2 := srv.GetConnectionByConnectionID(cinfo.ClientID, cinfo.ConnectionID)

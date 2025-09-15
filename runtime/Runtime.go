@@ -117,7 +117,7 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 		return err
 	}
 
-	// The digitwin service provides a directory for digital twin Things and notifies
+	// 3: The digitwin service provides a directory for digital twin Things and notifies
 	// of changes to digital twin state.
 	prof = authn.ClientProfile{
 		ClientID:   digitwin.ThingDirectoryAgentID,
@@ -132,7 +132,7 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	}
 	dtwAgent := service4.NewDigitwinAgent(r.DigitwinSvc)
 
-	// The digitwin router receives all incoming requests, responses and notifications
+	// 4: The digitwin router receives all incoming requests, responses and notifications
 	// from agents and consumers.
 	//
 	//  Digital twin requests are forward to the digital twin service.
@@ -151,7 +151,7 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 		r.AuthzAgent.HasPermission,
 		nil)
 
-	// create the transports but do not start yet.
+	// 5: Create the transports but do not start yet.
 	r.TransportsMgr = servers.NewTransportManager(
 		&r.cfg.ProtocolsConfig,
 		r.cfg.ServerCert,
@@ -184,7 +184,7 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 		return err
 	}
 
-	// Add the TDs of the built-in services (authn,authz,directory,values) to the directory
+	// 6: Add the TDs of the built-in services (authn,authz,directory,values) to the directory
 	_ = r.DigitwinSvc.DirSvc.UpdateThing(authn.AdminAgentID, authn.AdminTD)
 	_ = r.DigitwinSvc.DirSvc.UpdateThing(authn.UserAgentID, authn.UserTD)
 	_ = r.DigitwinSvc.DirSvc.UpdateThing(authz.AdminAgentID, authz.AdminTD)
@@ -216,13 +216,13 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 		return err
 	}
 
-	// last, start discovery and exploration of the digital twin directory
+	// 7: last, start discovery and exploration of the digital twin directory
 	if r.cfg.ProtocolsConfig.EnableDiscovery {
 		dirTDJson, err := r.DigitwinSvc.DirSvc.RetrieveThing(digitwin.ThingDirectoryAgentID, digitwin.ThingDirectoryDThingID)
 		if err == nil {
 			protocolsCfg := r.cfg.ProtocolsConfig
 			err = r.TransportsMgr.StartDiscovery(
-				r.cfg.ProtocolsConfig.InstanceName, protocolsCfg.DirectoryTDPath, dirTDJson,
+				r.cfg.ProtocolsConfig.DiscoveryInstanceName, protocolsCfg.DirectoryTDPath, dirTDJson,
 			)
 		}
 		if err != nil {

@@ -35,6 +35,6 @@ type IMessageConverter interface {
 	EncodeResponse(resp *ResponseMessage) (any, error)
 
 	// GetProtocolType provides the protocol type for these messages,
-	// eg ProtocolTypeWotWSS or ProtocolTypeHiveotWSS
+	// eg ProtocolTypeWSS
 	GetProtocolType() string
 }

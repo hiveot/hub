@@ -320,6 +320,9 @@ func NewTransportManager(cfg *ProtocolsConfig,
 			svc.handleNotification,
 			svc.handleRequest,
 			svc.handleResponse)
+		if cfg.EnableHttpStatic {
+			svc.httpBasicServer.EnableStatic(cfg.HttpStaticBase, cfg.HttpStaticDirectory)
+		}
 
 		// FIXME: routes only available after start
 		protectedRouter := svc.httpBasicServer.GetProtectedRouter()
@@ -331,6 +334,9 @@ func NewTransportManager(cfg *ProtocolsConfig,
 		// 2. HiveOT HTTP/SSE-SC sub-protocol
 		if cfg.EnableHiveotSSE {
 			ssePath := hiveotsseserver.DefaultHiveotSsePath
+			if cfg.HiveotSSEPath != "" {
+				ssePath = cfg.HiveotSSEPath
+			}
 			hiveotSseServer := hiveotsseserver.NewHiveotSseServer(
 				httpAddr, ssePath, protectedRouter,
 				nil,
@@ -347,6 +353,9 @@ func NewTransportManager(cfg *ProtocolsConfig,
 		if cfg.EnableWSS {
 			converter := &wssserver.HiveotMessageConverter{}
 			wssPath := wssserver.DefaultWssPath
+			if cfg.WSSPath != "" {
+				wssPath = cfg.WSSPath
+			}
 			hiveotWssServer := wssserver.NewWssServer(
 				httpAddr, wssPath, protectedRouter, converter,
 				//svc.httpBasicServer,

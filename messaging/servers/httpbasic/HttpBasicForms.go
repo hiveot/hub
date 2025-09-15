@@ -8,7 +8,7 @@ import (
 	"github.com/hiveot/hub/wot/td"
 )
 
-var validOperations = []string{
+var HttpKnownOperations = []string{
 	wot.OpQueryAllActions, wot.OpReadAllProperties, wot.OpWriteMultipleProperties,
 	wot.OpReadProperty, wot.OpWriteProperty, wot.OpInvokeAction, wot.OpQueryAction}
 

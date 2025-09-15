@@ -383,8 +383,8 @@ func NewHiveotWssClient(
 		ClientID:     clientID,
 		ConnectionID: "wss-" + shortid.MustGenerate(),
 		ConnectURL:   wssURL,
-		ProtocolType: converter.GetProtocolType(),
-		Timeout:      timeout,
+		//ProtocolType: converter.GetProtocolType(),
+		Timeout: timeout,
 	}
 	cl := WssClient{
 		cinfo:                cinfo,

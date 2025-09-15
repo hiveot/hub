@@ -54,7 +54,7 @@ type ConnectionInfo struct {
 
 	// GetProtocolType returns the name of the protocol of this connection
 	// See ProtocolType... constants above for valid values.
-	ProtocolType string
+	//ProtocolType string
 
 	// Connection timeout settings (clients only)
 	Timeout time.Duration

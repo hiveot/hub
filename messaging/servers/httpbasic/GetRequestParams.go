@@ -2,7 +2,6 @@ package httpbasic
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -16,13 +15,13 @@ const ContextClientID = "clientID"
 
 // RequestParams contains the parameters read from the HTTP request
 type RequestParams struct {
-	ClientID string
-	ThingID  string // the thing ID if defined in the URL as {thingID}
-	//CorrelationID string
-	Name         string // the affordance name if defined in the URL as {name}
-	Data         any
-	ConnectionID string // connectionID as provided by the client
-	Op           string // the operation if defined in the URL as {op}
+	ClientID      string // authenticated client ID
+	ThingID       string // the thing ID if defined in the URL as {thingID}
+	CorrelationID string // tentative as it isn't in the spec
+	Name          string // the affordance name if defined in the URL as {name}
+	Data          any
+	ConnectionID  string // connectionID as provided by the client
+	Op            string // the operation if defined in the URL as {op}
 }
 
 // GetRequestParams reads the client session, URL parameters and body payload from the
@@ -48,6 +47,8 @@ func GetRequestParams(r *http.Request, data any) (reqParam RequestParams, err er
 		slog.Error(err.Error())
 		return reqParam, err
 	}
+	correlationID := r.Header.Get(CorrelationIDHeader)
+	reqParam.CorrelationID = correlationID
 
 	// A connection ID distinguishes between different connections from the same client.
 	// This is used to correlate http requests with out-of-band responses like a SSE
@@ -56,7 +57,7 @@ func GetRequestParams(r *http.Request, data any) (reqParam RequestParams, err er
 	headerCID := r.Header.Get(ConnectionIDHeader)
 	if headerCID == "" {
 		// FIXME: this is only an issue with hiveot-sse. Maybe time to retire it?
-		// alt: use a connectionid from the auth token - two browser connections would
+		// alt: use a session-id from the auth token - two browser connections would
 		// share this however.
 
 		// http-basic isn't be bothered. Each WoT sse connection is the subscription
@@ -68,9 +69,9 @@ func GetRequestParams(r *http.Request, data any) (reqParam RequestParams, err er
 	reqParam.ConnectionID = headerCID
 
 	// URLParam names must match the  path variables set in the router.
-	reqParam.ThingID = chi.URLParam(r, "thingID") // todo: use constants from the router
-	reqParam.Name = chi.URLParam(r, "name")
-	reqParam.Op = chi.URLParam(r, "operation")
+	reqParam.ThingID = chi.URLParam(r, HttpBasicThingIDURIVar)
+	reqParam.Name = chi.URLParam(r, HttpBasicNameURIVar)
+	reqParam.Op = chi.URLParam(r, HttpBasicOperationURIVar)
 	if r.Body != nil {
 		payload, _ := io.ReadAll(r.Body)
 		if payload != nil && len(payload) > 0 {
@@ -87,43 +88,44 @@ func GetRequestParams(r *http.Request, data any) (reqParam RequestParams, err er
 	return reqParam, err
 }
 
-// GetHiveotParams reads the client session, URL parameters and body payload from the
-// http request context for use in the hiveot protocol.
 //
-// The session context is set by the http middleware. If the session is not available then
-// this returns an error. Note that the session middleware handler will block any request
-// that requires a session.
-func GetHiveotParams(r *http.Request) (clientID, connID string, payload []byte, err error) {
+//// GetHiveotParams reads the client session, URL parameters and body payload from the
+//// http request context for use in the hiveot protocol.
+////
+//// The session context is set by the http middleware. If the session is not available then
+//// this returns an error. Note that the session middleware handler will block any request
+//// that requires a session.
+//func GetHiveotParams(r *http.Request) (clientID, connID string, payload []byte, err error) {
+//
+//	// get the required client session of this agent
+//	clientID, err = GetClientIdFromContext(r)
+//	if err != nil {
+//		// This is an internal error. The middleware session handler would have blocked
+//		// a request that required a session before getting here.
+//		slog.Error(err.Error())
+//		return
+//	}
+//	// the connection ID distinguishes between different connections from the same client.
+//	// this is needed to correlate http requests with the sub-protocol connection.
+//	// this is intended to solve for unidirectional SSE connections from multiple devices.
+//	// if no connectionID is provided then only single device connection is allowed.
+//	headerCID := r.Header.Get(ConnectionIDHeader)
+//	if headerCID == "" {
+//		err = fmt.Errorf("Missing the 'cid' header with the connection ID")
+//		slog.Error(err.Error())
+//		return
+//	}
+//
+//	// build a message from the URL and payload
+//	// URLParam names are defined by the path variables set in the router.
+//	if r.Body != nil {
+//		payload, _ = io.ReadAll(r.Body)
+//	}
+//
+//	return clientID, headerCID, payload, err
+//}
 
-	// get the required client session of this agent
-	clientID, err = GetClientIdFromContext(r)
-	if err != nil {
-		// This is an internal error. The middleware session handler would have blocked
-		// a request that required a session before getting here.
-		slog.Error(err.Error())
-		return
-	}
-	// the connection ID distinguishes between different connections from the same client.
-	// this is needed to correlate http requests with the sub-protocol connection.
-	// this is intended to solve for unidirectional SSE connections from multiple devices.
-	// if no connectionID is provided then only single device connection is allowed.
-	headerCID := r.Header.Get(ConnectionIDHeader)
-	if headerCID == "" {
-		err = fmt.Errorf("Missing the 'cid' header with the connection ID")
-		slog.Error(err.Error())
-		return
-	}
-
-	// build a message from the URL and payload
-	// URLParam names are defined by the path variables set in the router.
-	if r.Body != nil {
-		payload, _ = io.ReadAll(r.Body)
-	}
-
-	return clientID, headerCID, payload, err
-}
-
-// GetClientIdFromContext returns the clientID for the given request
+// GetClientIdFromContext returns the authenticated clientID for the given request
 func GetClientIdFromContext(r *http.Request) (clientID string, err error) {
 	ctxClientID := r.Context().Value(ContextClientID)
 	if ctxClientID == nil {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -14,7 +15,6 @@ import (
 	"time"
 
 	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/servers/hiveotsseserver"
 	"github.com/hiveot/hub/messaging/servers/httpbasic"
 	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/messaging/tputils/tlsclient"
@@ -57,8 +57,9 @@ type HttpBasicClient struct {
 	// This client's connection ID
 	//cid string
 
-	// The full server's base URL sse://host:port/path
+	// The full server's base URL https://host:port/path
 	//fullURL string
+
 	// The server host:port
 	hostPort string
 
@@ -80,90 +81,7 @@ type HttpBasicClient struct {
 	// custom headers to include in each request
 	headers map[string]string
 
-	lastError atomic.Pointer[error]
-}
-
-// Send a HTTPS method and return the http response.
-//
-// If token authentication is enabled then add the bearer token to the header
-//
-//	method: GET, PUT, POST, ...
-//	reqPath: path to invoke
-//	contentType of the payload or "" for default (application/json)
-//	thingID optional path URI variable
-//	name optional path URI variable containing affordance name
-//	body contains the serialized payload
-//	correlationID: optional correlationID header value
-//
-// This returns the raw serialized response data, a response message ID, return status code or an error
-func (cc *HttpBasicClient) Send(
-	method string, methodPath string, body []byte) (
-	resp []byte, headers http.Header, code int, err error) {
-
-	if cc.httpClient == nil {
-		err = fmt.Errorf("Send: '%s'. Client is not started", methodPath)
-		return nil, nil, 0, err
-	}
-	// Caution! a double // in the path causes a 301 and changes post to get
-	bodyReader := bytes.NewReader(body)
-	serverURL := cc.cinfo.ConnectURL
-	parts, _ := url.Parse(serverURL)
-	parts.Scheme = "https"
-	parts.Path = methodPath
-	fullURL := parts.String()
-	//fullURL := parts.cc.GetServerURL() + reqPath
-	req, err := http.NewRequest(method, fullURL, bodyReader)
-	if err != nil {
-		err = fmt.Errorf("Send %s %s failed: %w", method, fullURL, err)
-		return nil, nil, 0, err
-	}
-
-	// set the origin header to the intended destination without the path
-	//parts, err := url.Parse(fullURL)
-	origin := fmt.Sprintf("https://%s", parts.Host)
-	req.Header.Set("Origin", origin)
-
-	// set the authorization header
-	if cc.bearerToken != "" {
-		req.Header.Add("Authorization", "bearer "+cc.bearerToken)
-	}
-
-	// set other headers
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set(httpbasic.ConnectionIDHeader, cc.cinfo.ConnectionID)
-	//if correlationID != "" {
-	//	req.Header.Set(httpserver.CorrelationIDHeader, correlationID)
-	//}
-	for k, v := range cc.headers {
-		req.Header.Set(k, v)
-	}
-
-	httpResp, err := cc.httpClient.Do(req)
-	if err != nil {
-		slog.Error(err.Error())
-		return nil, nil, 0, err
-	}
-
-	respBody, err := io.ReadAll(httpResp.Body)
-	// response body MUST be closed
-	_ = httpResp.Body.Close()
-	httpStatus := httpResp.StatusCode
-
-	if httpStatus == 401 {
-		err = fmt.Errorf("%s", httpResp.Status)
-	} else if httpStatus >= 400 && httpStatus < 500 {
-		if respBody != nil {
-			err = fmt.Errorf("%d (%s): %s", httpResp.StatusCode, httpResp.Status, respBody)
-		} else {
-			err = fmt.Errorf("%d (%s): Request failed", httpResp.StatusCode, httpResp.Status)
-		}
-	} else if httpStatus >= 500 {
-		err = fmt.Errorf("Error %d (%s): %s", httpStatus, httpResp.Status, respBody)
-		slog.Error("Send returned internal server error", "reqPath", methodPath, "err", err.Error())
-	} else if err != nil {
-		err = fmt.Errorf("Send: Error %s %s: %w", method, methodPath, err)
-	}
-	return respBody, httpResp.Header, httpStatus, err
+	//lastError atomic.Pointer[error]
 }
 
 // ConnectWithClientCert creates a connection with the server using a client certificate for mutual authentication.
@@ -207,6 +125,38 @@ func (cc *HttpBasicClient) Disconnect() {
 	if cc.isConnected.Load() {
 		cc.httpClient.CloseIdleConnections()
 	}
+}
+
+// GetAppConnectHandler returns the application handler for connection status updates
+func (cc *HttpBasicClient) GetAppConnectHandler() messaging.ConnectionHandler {
+	cc.mux.RLock()
+	handler := cc.appConnectHandler
+	cc.mux.RUnlock()
+	return handler
+}
+
+// GetAppNotificationHandler returns the application handler for received notifications
+func (cc *HttpBasicClient) GetAppNotificationHandler() messaging.NotificationHandler {
+	cc.mux.RLock()
+	handler := cc.appNotificationHandler
+	cc.mux.RUnlock()
+	return handler
+}
+
+// GetAppRequestHandler returns the application handler for incoming requests
+func (cc *HttpBasicClient) GetAppRequestHandler() messaging.RequestHandler {
+	cc.mux.RLock()
+	handler := cc.appRequestHandler
+	cc.mux.RUnlock()
+	return handler
+}
+
+// GetAppResponseHandler set the application handler for received responses
+func (cc *HttpBasicClient) GetAppResponseHandler() messaging.ResponseHandler {
+	cc.mux.RLock()
+	handler := cc.appResponseHandler
+	cc.mux.RUnlock()
+	return handler
 }
 
 // GetConnectionInfo returns the client's connection details
@@ -352,8 +302,97 @@ func (cc *HttpBasicClient) IsConnected() bool {
 //	return newToken, err
 //}
 
-// SendRequest sends a request message and passes the result as a response
-// to the registered response handler.
+// Send a HTTPS method and return the http response.
+//
+// If token authentication is enabled then add the bearer token to the header
+//
+//	method: GET, PUT, POST, ...
+//	reqPath: path to invoke
+//	contentType of the payload or "" for default (application/json)
+//	thingID optional path URI variable
+//	name optional path URI variable containing affordance name
+//	body contains the serialized payload
+//	correlationID: optional correlationID header value
+//
+// This returns the raw serialized response data, a response message ID, return status code or an error
+func (cc *HttpBasicClient) Send(
+	method string, methodPath string, body []byte) (
+	resp []byte, headers http.Header, code int, err error) {
+
+	if cc.httpClient == nil {
+		err = fmt.Errorf("Send: '%s'. Client is not started", methodPath)
+		return nil, nil, 0, err
+	}
+	// Caution! a double // in the path causes a 301 and changes post to get
+	bodyReader := bytes.NewReader(body)
+	serverURL := cc.cinfo.ConnectURL
+	parts, _ := url.Parse(serverURL)
+	parts.Scheme = "https"
+	parts.Path = methodPath
+	fullURL := parts.String()
+	//fullURL := parts.cc.GetServerURL() + reqPath
+	req, err := http.NewRequest(method, fullURL, bodyReader)
+	if err != nil {
+		err = fmt.Errorf("Send %s %s failed: %w", method, fullURL, err)
+		return nil, nil, 0, err
+	}
+
+	// set the origin header to the intended destination without the path
+	//parts, err := url.Parse(fullURL)
+	origin := fmt.Sprintf("https://%s", parts.Host)
+	req.Header.Set("Origin", origin)
+
+	// set the authorization header
+	if cc.bearerToken != "" {
+		req.Header.Add("Authorization", "bearer "+cc.bearerToken)
+	}
+
+	// set other headers
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set(httpbasic.ConnectionIDHeader, cc.cinfo.ConnectionID)
+	//if correlationID != "" {
+	//	req.Header.Set(httpserver.CorrelationIDHeader, correlationID)
+	//}
+	for k, v := range cc.headers {
+		req.Header.Set(k, v)
+	}
+
+	httpResp, err := cc.httpClient.Do(req)
+	if err != nil {
+		slog.Error(err.Error())
+		return nil, nil, 0, err
+	}
+
+	respBody, err := io.ReadAll(httpResp.Body)
+	// response body MUST be closed
+	_ = httpResp.Body.Close()
+	httpStatus := httpResp.StatusCode
+
+	if httpStatus == 401 {
+		err = fmt.Errorf("%s", httpResp.Status)
+	} else if httpStatus >= 400 && httpStatus < 500 {
+		if respBody != nil {
+			err = fmt.Errorf("%d (%s): %s", httpResp.StatusCode, httpResp.Status, respBody)
+		} else {
+			err = fmt.Errorf("%d (%s): Request failed", httpResp.StatusCode, httpResp.Status)
+		}
+	} else if httpStatus >= 500 {
+		err = fmt.Errorf("Error %d (%s): %s", httpStatus, httpResp.Status, respBody)
+		slog.Error("Send returned internal server error", "reqPath", methodPath, "err", err.Error())
+	} else if err != nil {
+		err = fmt.Errorf("Send: Error %s %s: %w", method, methodPath, err)
+	}
+	return respBody, httpResp.Header, httpStatus, err
+}
+
+// pass the result of a http request to the registered response handler in the
+// ResponseMessage envelope.
+func (cc *HttpBasicClient) handleRequestResult() {
+
+}
+
+// SendRequest sends a request over http message using the form based path and passes
+// the result as a response to the registered response handler.
 //
 // This locates the form for the operation using 'getForm' and uses the result
 // to determine the URL to publish the request to and if the hiveot RequestMessage
@@ -378,7 +417,6 @@ func (cc *HttpBasicClient) SendRequest(req *messaging.RequestMessage) error {
 	var href string
 	var thingID = req.ThingID
 	var name = req.Name
-	var useRequestEnvelope = true
 
 	if req.Operation == "" && req.CorrelationID == "" {
 		err := fmt.Errorf("SendMessage: missing both operation and correlationID")
@@ -394,41 +432,36 @@ func (cc *HttpBasicClient) SendRequest(req *messaging.RequestMessage) error {
 	if f != nil {
 		method, _ = f.GetMethodName()
 		href = f.GetHRef()
-		subprotocol, _ := f.GetSubprotocol()
-		// the SSE-Hiveot subprotocol sends the RequestMessage envelope as payload
-		useRequestEnvelope = subprotocol == hiveotsseserver.HiveotSSESchema
 	}
 
 	if f == nil {
-		// fall back to the 'well known' hiveot request URL
+		// fall back to the 'well known' hiveot request URL using uri variables
+		// eg: /things/{operation}/{thingID}/{name} or /hiveot/request
 		method = http.MethodPost
-		href = hiveotsseserver.DefaultHiveotPostRequestHRef
-	}
-	// hiveot uses the requestmessage itself as payload on hiveot subprotocol
-	if useRequestEnvelope {
-		inputJSON, _ = jsoniter.MarshalToString(req)
-	} else if req.Input != nil {
-		// while http-basic uses the input as payload
+		href = httpbasic.HttpBasicAffordanceOperationPath
 		inputJSON, _ = jsoniter.MarshalToString(req.Input)
 	}
-	// use + as wildcard for thingID to avoid a 404
-	// while not recommended, it is allowed to subscribe/observe all things
+
+	// Inject URI variables for hrefs that use them:
+	//  use + as wildcard for thingID to avoid a 404
+	//  while not recommended, it is allowed to subscribe/observe all things
 	if thingID == "" {
 		thingID = "+"
 	}
-	// use + as wildcard for affordance name to avoid a 404
-	// this should not happen very often but it is allowed
+	//  use + as wildcard for affordance name to avoid a 404
+	//  this should not happen very often but it is allowed
 	if name == "" {
 		name = "+"
 	}
-
-	// substitute URI variables in the path, if any
+	// substitute URI variables in the path, if any.
 	// intended for use with http-basic forms.
 	vars := map[string]string{
-		"thingID":   thingID, // TODO: use share constants
-		"name":      name,
-		"operation": req.Operation}
+		httpbasic.HttpBasicThingIDURIVar:   thingID,
+		httpbasic.HttpBasicNameURIVar:      name,
+		httpbasic.HttpBasicOperationURIVar: req.Operation}
 	reqPath := tputils.Substitute(href, vars)
+
+	// send the request
 	outputRaw, headers, code, err := cc.Send(method, reqPath, []byte(inputJSON))
 	_ = headers
 
@@ -442,8 +475,6 @@ func (cc *HttpBasicClient) SendRequest(req *messaging.RequestMessage) error {
 		// unmarshal output. This is either the json encoded output or the ResponseMessage envelope
 		if outputRaw == nil || len(outputRaw) == 0 {
 			// nothing to unmarshal
-		} else if useRequestEnvelope {
-			err = jsoniter.UnmarshalFromString(string(outputRaw), &resp)
 		} else {
 			err = jsoniter.UnmarshalFromString(string(outputRaw), &resp.Value)
 		}
@@ -452,37 +483,28 @@ func (cc *HttpBasicClient) SendRequest(req *messaging.RequestMessage) error {
 		}
 
 		// pass a direct response to the application handler
-		cc.mux.RLock()
-		h := cc.appResponseHandler
-		cc.mux.RUnlock()
+		h := cc.GetAppResponseHandler()
 		go func() {
 			_ = h(resp)
 		}()
 	} else if code > 200 && code < 300 {
 		// httpbasic servers/things might respond with 201 for pending as per spec
-		// this is a notification.
-		var notif *messaging.NotificationMessage
+		// this is a response message.
+		var resp *messaging.ResponseMessage
 		if outputRaw == nil || len(outputRaw) == 0 {
 			// no response yet. do not send process a notification
-		} else if useRequestEnvelope {
-			// hiveot uses NotificationMessage envelopes
-			notif = req.CreateNotification()
-			err = jsoniter.Unmarshal(outputRaw, &notif)
 		} else {
-			// output is http basic actionstatus
-			tmp := httpbasic.HttpActionStatusMessage{}
+			// standard http response payload
+			var tmp any
 			err = jsoniter.Unmarshal(outputRaw, &tmp)
-			notif = req.CreateNotification()
-			notif.Data = tmp
+			resp = req.CreateResponse(tmp, err)
 		}
 
 		// pass a direct response to the application handler
-		if notif != nil {
-			cc.mux.RLock()
-			h := cc.appNotificationHandler
-			cc.mux.RUnlock()
+		if resp != nil {
+			h := cc.GetAppResponseHandler()
 			go func() {
-				h(notif)
+				_ = h(resp)
 			}()
 		}
 	} else {
@@ -491,8 +513,6 @@ func (cc *HttpBasicClient) SendRequest(req *messaging.RequestMessage) error {
 		// unmarshal output. This is either the json encoded output or the ResponseMessage envelope
 		if outputRaw == nil {
 			// nothing to unmarshal
-		} else if useRequestEnvelope {
-			err = jsoniter.UnmarshalFromString(string(outputRaw), &resp)
 		} else {
 			err = jsoniter.UnmarshalFromString(string(outputRaw), &resp.Value)
 		}
@@ -506,9 +526,7 @@ func (cc *HttpBasicClient) SendRequest(req *messaging.RequestMessage) error {
 		}
 
 		// pass a direct response to the application handler
-		cc.mux.RLock()
-		h := cc.appResponseHandler
-		cc.mux.RUnlock()
+		h := cc.GetAppResponseHandler()
 		go func() {
 			_ = h(resp)
 		}()
@@ -516,37 +534,14 @@ func (cc *HttpBasicClient) SendRequest(req *messaging.RequestMessage) error {
 	return err
 }
 
-// SendResponse Agent posts a response using the hiveot protocol.
-// This passes the response as-is as a payload.
-//
-// This posts the JSON-encoded ResponseMessage on the well-known hiveot response href.
-// In WoT Agents are typically a server, not a client, so this is intended for
-// agents that use connection-reversal.
+// SendResponse is not supported in http-basic
 func (cc *HttpBasicClient) SendResponse(resp *messaging.ResponseMessage) error {
-	outputJSON, _ := jsoniter.MarshalToString(resp)
-	_, _, _, err := cc.Send(http.MethodPost,
-		hiveotsseserver.DefaultHiveotPostResponseHRef, []byte(outputJSON))
-	return err
+	return errors.New("HttpBasic doesn't support sending async responses")
 }
 
-// SendNotification Agent posts a notification using the hiveot protocol.
-// This passes the notification as-is as a payload.
-//
-// This posts the JSON-encoded NotificationMessage on the well-known hiveot notification href.
-// In WoT Agents are typically a server, not a client, so this is intended for
-// agents that use connection-reversal.
-//
-// This returns an error if the notification could not be delivered to the server
+// SendNotification is not supported in http-basic
 func (cc *HttpBasicClient) SendNotification(msg *messaging.NotificationMessage) error {
-	outputJSON, _ := jsoniter.MarshalToString(msg)
-	_, _, _, err := cc.Send(http.MethodPost,
-		hiveotsseserver.DefaultHiveotPostNotificationHRef, []byte(outputJSON))
-	if err != nil {
-		slog.Warn("SendNotification failed",
-			"clientID", cc.cinfo.ClientID,
-			"err", err.Error())
-	}
-	return err
+	return errors.New("HttpBasic doesn't support sending notifications")
 }
 
 // SetBearerToken sets the authentication bearer token to authenticate http requests.
@@ -555,6 +550,11 @@ func (cc *HttpBasicClient) SetBearerToken(token string) error {
 	cc.bearerToken = token
 	cc.mux.Unlock()
 	return nil
+}
+
+// SetConnected sets the sub-protocol connection status
+func (cc *HttpBasicClient) SetConnected(isConnected bool) {
+	cc.isConnected.Store(isConnected)
 }
 
 // SetConnectHandler set the application handler for connection status updates
@@ -611,8 +611,8 @@ func NewHttpBasicClient(
 		ClientID:     clientID,
 		ConnectionID: "http-" + shortid.MustGenerate(),
 		ConnectURL:   baseURL,
-		ProtocolType: messaging.ProtocolTypeHiveotSSE,
-		Timeout:      timeout,
+		//ProtocolType: messaging.ProtocolTypeHTTPBasic,
+		Timeout: timeout,
 	}
 	cl := HttpBasicClient{
 		cinfo: cinfo,

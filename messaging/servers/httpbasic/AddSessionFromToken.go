@@ -25,7 +25,7 @@ import (
 //
 // The session can be retrieved from the request context using GetSessionFromContext()
 //
-// The client session contains the caller's ID, and stats for the current session.
+// The client session contains the client ID, and stats for the current session.
 // If no valid session is found this will reply with an unauthorized status code.
 //
 // pubKey is the public key from the keypair used in creating the session token.
@@ -35,6 +35,8 @@ func AddSessionFromToken(userAuthn messaging.IAuthenticator) func(next http.Hand
 
 			bearerToken, err := tlsserver.GetBearerToken(r)
 			if err != nil {
+				// see https://w3c.github.io/wot-discovery/#exploration-secboot
+				// response with unauthorized and point to using the bearer token method
 				errMsg := "AddSessionFromToken: " + err.Error()
 				w.Header().Add("WWW-Authenticate", "Bearer")
 				http.Error(w, errMsg, http.StatusUnauthorized)

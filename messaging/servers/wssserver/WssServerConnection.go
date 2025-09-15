@@ -3,18 +3,19 @@ package wssserver
 import (
 	"context"
 	"fmt"
-	"github.com/gorilla/websocket"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/connections"
-	"github.com/hiveot/hub/wot"
-	jsoniter "github.com/json-iterator/go"
-	"github.com/teris-io/shortid"
 	"log/slog"
 	"net/http"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/gorilla/websocket"
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/connections"
+	"github.com/hiveot/hub/wot"
+	jsoniter "github.com/json-iterator/go"
+	"github.com/teris-io/shortid"
 )
 
 type WSSMessage map[string]any
@@ -356,8 +357,8 @@ func NewWSSServerConnection(
 		ClientID:     clientID,
 		ConnectionID: cid,
 		ConnectURL:   r.URL.String(),
-		ProtocolType: messageConverter.GetProtocolType(),
-		Timeout:      0,
+		//ProtocolType: messageConverter.GetProtocolType(),
+		Timeout: 0,
 	}
 	c := &WssServerConnection{
 		wssConn: wssConn,

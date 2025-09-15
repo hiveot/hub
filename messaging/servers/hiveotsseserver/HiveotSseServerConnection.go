@@ -144,7 +144,7 @@ func (c *HiveotSseServerConnection) IsConnected() bool {
 // 2. on error, return handled=true, output optional error details and error the error message
 // 3. on async status, return handled=false, output optional, error nil
 func (c *HiveotSseServerConnection) onRequestMessage(
-	req *messaging.RequestMessage) (handled bool, output any, err error) {
+	req *messaging.RequestMessage) (handled bool, output *messaging.ResponseMessage, err error) {
 
 	// handle subscriptions
 	handled = true
@@ -422,8 +422,8 @@ func NewHiveotSseConnection(clientID string, cid string, remoteAddr string,
 		ClientID:     clientID,
 		ConnectionID: cid,
 		ConnectURL:   httpReq.URL.String(),
-		ProtocolType: messaging.ProtocolTypeHiveotSSE,
-		Timeout:      0,
+		//ProtocolType: messaging.ProtocolTypeHiveotSSE,
+		Timeout: 0,
 	}
 	c := &HiveotSseServerConnection{
 		cinfo:         cinfo,

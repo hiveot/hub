@@ -3,33 +3,49 @@ package httpbasic
 import (
 	"fmt"
 	"log/slog"
+	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/wot/td"
 )
 
-// HTTP-basic protocol headers constants
+// HTTP-basic profile constants
 const (
-	ConnectionIDHeader  = "cid"
+	// ConnectionIDHeader is intended for linking return channels to requests.
+	// intended for separated return channel like sse.
+	ConnectionIDHeader = "cid"
+	// CorrelationIDHeader is the header to be able to link requests to out of band responses
+	// tentative as it isn't part of the wot spec
+	CorrelationIDHeader = "correlationID"
+
+	// HttpPostLoginPath is the fixed authentication endpoint of the hub
 	HttpPostLoginPath   = "/authn/login"
 	HttpPostLogoutPath  = "/authn/logout"
 	HttpPostRefreshPath = "/authn/refresh"
 	HttpGetPingPath     = "/ping"
 
-	HttpBasicAffordanceOperationPath = "/things/{op}/{thingID}/{name}"
-	HttpBasicThingOperationPath      = "/things/{op}/{thingID}"
+	// The generic path for thing operations over http using URI variables
+	HttpBasicAffordanceOperationPath = "/things/{operation}/{thingID}/{name}"
+	HttpBasicThingOperationPath      = "/things/{operation}/{thingID}"
+	HttpBasicOperationURIVar         = "operation"
+	HttpBasicThingIDURIVar           = "thingID"
+	HttpBasicNameURIVar              = "name"
 
-	// HttpBasicRequestHRef is the generic HTTP path for sending requests to the server.
-	// this can be used with http-basic profile when building forms
-	//HttpBasicRequestHRef = "/httpbasic/{operation}/{thingID}/{name}"
+	// static file server routes
+	DefaultHttpStaticBase      = "/static"
+	DefaultHttpStaticDirectory = "stores/httpstatic" // relative to home
 )
 
 // HttpBasicServer provides the http-basic protocol binding using the provided http server.
 // This is the simplest protocol binding supported by hiveot.
 // Features:
-// - login to obtain a bearer token:  POST {base}/authn/login
-// - refresh bearer token:            POST {base}/authn/refresh
+// - security bootstrapping as per https://w3c.github.io/wot-discovery/#exploration-secboot
+//   - login to obtain a bearer token:  POST {base}/authn/login
+//   - refresh bearer token:            POST {base}/authn/refresh
+//
 // - post/get thing operations:       POST {base}/things/{op}/{thingID}
 // - post/get affordance operations:  POST {base}/things/{op}/{thingID}/{name}
 //
@@ -72,6 +88,30 @@ func (srv *HttpBasicServer) CloseAll() {
 // CloseAllClientConnections does nothing as http is connectionless.
 func (srv *HttpBasicServer) CloseAllClientConnections(clientID string) {
 	_ = clientID
+}
+
+// EnableStatic adds a path to read files from the static directory. Auth required.
+//
+//	base is the base path on which to serve the static files, eg: "/static"
+//	staticRoot is the root directory where static files are kept. This must be a full path.
+func (srv *HttpBasicServer) EnableStatic(base string, staticRoot string) error {
+	if srv.protectedRoutes == nil || base == "" {
+		return fmt.Errorf("no protected route or invalid parameters")
+	}
+	var staticFileServer http.Handler
+	if staticRoot == "" {
+		staticFileServer = http.FileServer(
+			&StaticFSWrapper{
+				FileSystem:   http.FS(src.EmbeddedStatic),
+				FixedModTime: time.Now(),
+			})
+	} else {
+		// during development when run from the 'hub' project directory
+		staticFileServer = http.FileServer(http.Dir(staticRoot))
+	}
+	staticPath := base + "/*"
+	srv.protectedRoutes.Get(staticPath, staticFileServer.ServeHTTP)
+	return nil
 }
 
 // GetConnectionByConnectionID returns nil as http-basic is connectionless
@@ -123,8 +163,6 @@ func (srv *HttpBasicServer) SendNotification(msg *messaging.NotificationMessage)
 func (srv *HttpBasicServer) Start() error {
 	slog.Info("Starting http-basic server, Listening on: " + srv.GetConnectURL())
 
-	// Add the routes used in SSE connection and subscription requests
-	// hmm, needed by sub-protocols before starting
 	//srv.setupRouting(srv.router)
 	return nil
 }

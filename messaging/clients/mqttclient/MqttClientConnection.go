@@ -6,12 +6,6 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"github.com/eclipse/paho.golang/autopaho"
-	"github.com/eclipse/paho.golang/paho"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/wot/td"
-	jsoniter "github.com/json-iterator/go"
-	"github.com/teris-io/shortid"
 	"log"
 	"log/slog"
 	"net/url"
@@ -20,6 +14,13 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/eclipse/paho.golang/autopaho"
+	"github.com/eclipse/paho.golang/paho"
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/wot/td"
+	jsoniter "github.com/json-iterator/go"
+	"github.com/teris-io/shortid"
 )
 
 // Connecting with UDS for local services. Might not work with autopaho
@@ -693,7 +694,6 @@ func NewMqttConsumerClient(fullURL string, clientID string,
 	cl.cinfo.ClientID = clientID
 	cl.connectionID = "mqtt-" + shortid.MustGenerate()
 	cl.timeout = timeout
-	cl.cinfo.ProtocolType = messaging.ProtocolTypeWotMQTTWSS
 	//cl.rnrChan = NewRnRChan()
 
 	// max delay 3 seconds before a response is expected

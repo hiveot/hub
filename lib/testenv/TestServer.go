@@ -333,16 +333,16 @@ func NewTestServer() *TestServer {
 		Certs:   certs.CreateTestCertBundle(),
 		Config:  runtime.NewRuntimeConfig(),
 		// change these for running all tests with different protocols
-		//AgentProtocol: messaging.ProtocolTypeWSS,
-		AgentProtocol: messaging.ProtocolTypeHiveotSSE,
-		//ServiceProtocol: messaging.ProtocolTypeWSS,
-		ServiceProtocol: messaging.ProtocolTypeHiveotSSE,
-		//ConsumerProtocol: messaging.ProtocolTypeWSS,
-		ConsumerProtocol: messaging.ProtocolTypeHiveotSSE,
-		ConnectTimeout:   time.Second * 120, // testing extra long
+		AgentProtocol: messaging.ProtocolTypeWSS,
+		//AgentProtocol: messaging.ProtocolTypeHiveotSSE,
+		ServiceProtocol: messaging.ProtocolTypeWSS,
+		//ServiceProtocol: messaging.ProtocolTypeHiveotSSE,
+		ConsumerProtocol: messaging.ProtocolTypeWSS,
+		//ConsumerProtocol: messaging.ProtocolTypeHiveotSSE,
+		ConnectTimeout: time.Second * 120, // testing extra long
 	}
 	// the test server uses the test instance to differentiate from hiveot
-	srv.Config.ProtocolsConfig.InstanceName = "test"
+	srv.Config.ProtocolsConfig.DiscoveryInstanceName = "test"
 	return &srv
 }
 

@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/hiveot/hub/messaging/servers/httpbasic"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/about"
@@ -29,7 +30,7 @@ func (svc *HiveoviewService) CreateRoutes(router *chi.Mux, rootPath string) http
 
 	if rootPath == "" {
 		staticFileServer = http.FileServer(
-			&StaticFSWrapper{
+			&httpbasic.StaticFSWrapper{
 				FileSystem:   http.FS(src.EmbeddedStatic),
 				FixedModTime: time.Now(),
 			})

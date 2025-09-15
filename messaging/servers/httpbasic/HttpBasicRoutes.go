@@ -21,22 +21,24 @@ import (
 func (srv *HttpBasicServer) handleAffordanceOperation(w http.ResponseWriter, r *http.Request) {
 	var output any
 	var handled bool
-	var req messaging.RequestMessage
 
 	// 1. Decode the request message
-	rp, err := GetRequestParams(r, &req)
+	rp, err := GetRequestParams(r, nil)
 	if err != nil {
 		slog.Error(err.Error())
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 	// Use the authenticated clientID as the sender
+	req := messaging.NewRequestMessage(rp.Op, rp.ThingID, rp.Name, rp.Data, "")
 	req.SenderID = rp.ClientID
+	req.CorrelationID = rp.CorrelationID
 
 	// filter on allowed operations
-	if !slices.Contains(validOperations, req.Operation) {
+	if !slices.Contains(HttpKnownOperations, req.Operation) {
 		slog.Warn("Unsupported operation for http-basic",
-			"op", req.Operation, "clientID", req.SenderID)
+			"method", r.Method, "URL", r.URL.String(),
+			"operation", req.Operation, "thingID", req.ThingID, "name", req.Name, "clientID", req.SenderID)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -45,10 +47,14 @@ func (srv *HttpBasicServer) handleAffordanceOperation(w http.ResponseWriter, r *
 	//connectionID := rp.ConnectionID
 
 	// pass request it on to the application
-	resp := srv.serverRequestHandler(&req, nil)
-	output = resp.Value
-	if resp.Error != "" {
-		err = errors.New(resp.Error)
+	resp := srv.serverRequestHandler(req, nil)
+	if resp == nil {
+		// no response available
+	} else {
+		output = resp.Value
+		if resp.Error != "" {
+			err = errors.New(resp.Error)
+		}
 	}
 
 	// 4. Return the response
@@ -140,20 +146,6 @@ func (srv *HttpBasicServer) HandlePing(w http.ResponseWriter, r *http.Request) {
 // Routes are added by (sub)protocols such as http-basic, sse and wss.
 func (srv *HttpBasicServer) setupRouting(router chi.Router) http.Handler {
 
-	// 1. setup route for static file server
-	// TODO: is there a use for a static file server?
-	//var staticFileServer http.Handler
-	//if rootPath == "" {
-	//	staticFileServer = http.FileServer(
-	//		&StaticFSWrapper{
-	//			FileSystem:   http.FS(src.EmbeddedStatic),
-	//			FixedModTime: time.Now(),
-	//		})
-	//} else {
-	//	// during development when run from the 'hub' project directory
-	//	staticFileServer = http.FileServer(http.Dir(rootPath))
-	//}
-
 	// TODO: add csrf support in posts
 	//csrfMiddleware := csrf.Protect(
 	//	[]byte("32-byte-long-auth-key"),
@@ -163,14 +155,12 @@ func (srv *HttpBasicServer) setupRouting(router chi.Router) http.Handler {
 	router.Use(middleware.Recoverer)
 	//router.Use(middleware.Logger) // todo: proper logging strategy
 	//router.Use(csrfMiddleware)
-	//router.Use(middleware.Compress(5,
-	//	"text/html", "text/css", "text/javascript", "image/svg+xml"))
+	router.Use(middleware.Compress(5,
+		"text/html", "text/css", "text/javascript", "image/svg+xml"))
 
 	//--- public routes do not require an authenticated session
 	router.Group(func(r chi.Router) {
-		r.Use(middleware.Compress(5,
-			"text/html", "text/css", "text/javascript", "image/svg+xml"))
-
+		// sub-protocols can add public routes
 		srv.publicRoutes = r
 
 		//r.Get("/static/*", staticFileServer.ServeHTTP)
@@ -184,22 +174,19 @@ func (srv *HttpBasicServer) setupRouting(router chi.Router) http.Handler {
 
 	//--- private routes that requires authentication (as published in the TD)
 	router.Group(func(r chi.Router) {
-		r.Use(middleware.Compress(5,
-			"text/html", "text/css", "text/javascript", "image/svg+xml"))
 
 		// client sessions authenticate the sender
 		r.Use(AddSessionFromToken(srv.authenticator))
 
-		// Using AddOps without provider router will add paths to this route.
+		// sub-protocols can add protected routes
 		srv.protectedRoutes = r
 
-		// register handlers for thing and affordance level operations
-		// these endpoints are published in the forms of each TD
+		// register generic handlers for operations on Thing and affordance level
+		// these endpoints are published in the forms of each TD. See also AddTDForms.
 		r.HandleFunc(HttpBasicAffordanceOperationPath, srv.handleAffordanceOperation)
 		r.HandleFunc(HttpBasicThingOperationPath, srv.handleThingOperation)
 
-		// register authentication endpoints
-		// FIXME: determine how WoT wants auth endpoints to be published
+		// http supported authentication endpoints
 		r.Post(HttpPostRefreshPath, srv.HandleAuthRefresh)
 		r.Post(HttpPostLogoutPath, srv.HandleLogout)
 	})

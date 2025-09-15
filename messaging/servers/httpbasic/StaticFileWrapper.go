@@ -1,4 +1,4 @@
-package service
+package httpbasic
 
 import (
 	"net/http"

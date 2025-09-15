@@ -146,7 +146,9 @@ func TestGetEvents(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, values)
 	d0 := time.Now().Sub(t0)
-
+	// warmup
+	_, _ = svc.ReadAllEvents(dThingID1)
+	
 	// 2nd time from cache should be faster
 	t1 := time.Now()
 	values2, err := svc.ReadAllEvents(dThingID1)

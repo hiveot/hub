@@ -137,8 +137,8 @@ func (cc *HiveotSseClient) ConnectSSE(token string) (err error) {
 	}
 	// establish the SSE connection for the return channel
 	//sseURL := fmt.Sprintf("https://%s%s", cc.hostPort, cc.ssePath)
-
-	cc.sseCancelFn, err = ConnectSSE(cc.cinfo, token,
+	cinfo := cc.GetConnectionInfo()
+	cc.sseCancelFn, err = ConnectSSE(cinfo, token,
 		// use the same http client for both http requests and sse connection
 		cc.GetTlsClient(),
 		cc.handleSSEConnect,
@@ -151,30 +151,29 @@ func (cc *HiveotSseClient) ConnectSSE(token string) (err error) {
 // This invokes the connectHandler callback if provided.
 func (cc *HiveotSseClient) handleSSEConnect(connected bool, err error) {
 	errMsg := ""
+	cinfo := cc.GetConnectionInfo()
 
 	// if the context is cancelled this is not an error
 	if err != nil {
 		errMsg = err.Error()
 	}
 	slog.Info("handleSSEConnect",
-		slog.String("clientID", cc.cinfo.ClientID),
-		slog.String("connectionID", cc.cinfo.ConnectionID),
+		slog.String("clientID", cinfo.ClientID),
+		slog.String("connectionID", cinfo.ConnectionID),
 		slog.Bool("connected", connected),
 		slog.String("err", errMsg))
 
 	var connectionChanged bool = false
-	if cc.isConnected.Load() != connected {
+	if cc.IsConnected() != connected {
 		connectionChanged = true
 	}
-	cc.isConnected.Store(connected)
+	cc.SetConnected(connected)
 	if err != nil {
 		cc.mux.Lock()
 		cc.lastError.Store(&err)
 		cc.mux.Unlock()
 	}
-	cc.mux.RLock()
-	handler := cc.appConnectHandler
-	cc.mux.RUnlock()
+	handler := cc.GetAppConnectHandler()
 
 	// Note: this callback can send notifications to the client,
 	// so prevent deadlock by running in the background.
@@ -205,9 +204,7 @@ func (cc *HiveotSseClient) handleSseEvent(event sse.Event) {
 		_ = jsoniter.UnmarshalFromString(event.Data, &notif)
 		// don't block the receiver flow
 		go func() {
-			cc.mux.RLock()
-			h := cc.appNotificationHandler
-			cc.mux.RUnlock()
+			h := cc.GetAppNotificationHandler()
 			if h == nil {
 				slog.Error("appNotificationHandler is nil")
 			} else {
@@ -218,14 +215,14 @@ func (cc *HiveotSseClient) handleSseEvent(event sse.Event) {
 		req := messaging.RequestMessage{}
 		_ = jsoniter.UnmarshalFromString(event.Data, &req)
 		go func() {
-			cc.mux.RLock()
-			h := cc.appRequestHandler
-			cc.mux.RUnlock()
+			h := cc.GetAppRequestHandler()
 			if h == nil {
 				slog.Error("appRequestHandler is nil")
 			} else {
 				resp := h(&req, cc)
-				_ = cc.SendResponse(resp)
+				if resp != nil {
+					_ = cc.SendResponse(resp)
+				}
 			}
 		}()
 	} else if event.Type == messaging.MessageTypeResponse {
@@ -234,9 +231,7 @@ func (cc *HiveotSseClient) handleSseEvent(event sse.Event) {
 		_ = jsoniter.UnmarshalFromString(event.Data, &resp)
 		// don't block the receiver flow
 		go func() {
-			cc.mux.RLock()
-			h := cc.appResponseHandler
-			cc.mux.RUnlock()
+			h := cc.GetAppResponseHandler()
 			if h == nil {
 				slog.Error("appResponseHandler is nil")
 			} else {
@@ -253,9 +248,7 @@ func (cc *HiveotSseClient) handleSseEvent(event sse.Event) {
 		notif.Operation = event.Type
 		// don't block the receiver flow
 		go func() {
-			cc.mux.RLock()
-			h := cc.appNotificationHandler
-			cc.mux.RUnlock()
+			h := cc.GetAppNotificationHandler()
 			if h == nil {
 				slog.Error("appNotificationHandler is nil")
 			} else {
