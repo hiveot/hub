@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	DefaultWssPath = "/hiveot/wss"
+	DefaultWssPath = "/wot/wss"
 	SubprotocolWSS = "websocket"
 	WssSchema      = "wss"
 )

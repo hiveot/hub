@@ -31,7 +31,7 @@ type DigitwinService struct {
 	mux sync.RWMutex
 }
 
-// ReadAllTDs returns a list digitwin TDs
+// ReadAllTDs returns a list of digital twin TDs in the store
 func (svc *DigitwinService) ReadAllTDs(
 	clientID string, offset int64, limit int64) ([]*td.TD, error) {
 	dtlist, err := svc.DtwStore.ReadTDs(offset, limit)

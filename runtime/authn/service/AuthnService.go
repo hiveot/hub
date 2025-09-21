@@ -54,6 +54,9 @@ func NewAuthnService(
 // StartAuthnService creates and start the authn administration service
 // with the given config.
 // This creates a password store and authenticator.
+//
+// authServerURI is the endpoint the service can be reached at to obtain authentication token
+// This is provided by the protocol that gives access to the login method.
 func StartAuthnService(cfg *config.AuthnConfig) (*AuthnService, error) {
 
 	authnStore := authnstore.NewAuthnFileStore(cfg.PasswordFile, cfg.Encryption)

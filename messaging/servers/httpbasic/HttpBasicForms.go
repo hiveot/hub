@@ -24,8 +24,8 @@ var HttpKnownOperations = []string{
 //
 // includeAffordances adds forms for all affordances to be compliant with the specifications.
 func (srv *HttpBasicServer) AddTDForms(tdoc *td.TD, includeAffordances bool) {
-	// defaults to https://host:port/things
-	tdoc.Base = fmt.Sprintf("%s/things", srv.GetConnectURL())
+	// defaults to https://host:port/
+	tdoc.Base = fmt.Sprintf("%s", srv.GetConnectURL())
 
 	// add thing level forms that apply to all things. http-basic only supports read/write
 	tdoc.Forms = append(tdoc.Forms,
@@ -79,7 +79,7 @@ func (srv *HttpBasicServer) AddAffordanceForms(tdoc *td.TD) {
 func (srv *HttpBasicServer) createAffordanceForm(op string, httpMethod string,
 	thingID string, name string) td.Form {
 
-	href := fmt.Sprintf("/%s/%s/%s", op, thingID, name)
+	href := fmt.Sprintf("%s/%s/%s/%s", HttpBaseFormOp, op, thingID, name)
 	form := td.NewForm(op, href)
 	if httpMethod != "" && httpMethod != http.MethodGet {
 		form.SetMethodName(httpMethod)
@@ -93,7 +93,7 @@ func (srv *HttpBasicServer) createAffordanceForm(op string, httpMethod string,
 // the href in the form has the format "https://host:port/things/{op}/{thingID}
 func (srv *HttpBasicServer) createThingLevelForm(op string, httpMethod string, thingID string) td.Form {
 	// href is relative to base
-	href := fmt.Sprintf("/%s/%s", op, thingID)
+	href := fmt.Sprintf("%s/%s/%s", HttpBaseFormOp, op, thingID)
 	form := td.NewForm(op, href)
 	form.SetMethodName(httpMethod)
 	//form["contentType"] = "application/json"

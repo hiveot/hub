@@ -1,14 +1,15 @@
 package authn_test
 
 import (
-	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/runtime/authn/config"
-	"github.com/hiveot/hub/runtime/authn/service"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"path"
 	"testing"
 	"time"
+
+	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/hub/runtime/authn/config"
+	"github.com/hiveot/hub/runtime/authn/service"
+	"github.com/stretchr/testify/assert"
 )
 
 var testDir = path.Join(os.TempDir(), "test-authn")

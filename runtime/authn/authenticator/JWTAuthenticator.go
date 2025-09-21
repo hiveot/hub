@@ -25,6 +25,8 @@ type JWTAuthenticator struct {
 	// authentication store for login verification
 	authnStore authnstore.IAuthnStore
 	//
+	authServerURI string
+	//
 	AgentTokenValidityDays    int
 	ConsumerTokenValidityDays int
 	ServiceTokenValidityDays  int
@@ -49,12 +51,12 @@ func (srv *JWTAuthenticator) AddSecurityScheme(tdoc *td.TD) {
 		Description: "Bearer token authentication",
 		//Descriptions:  nil,
 		//Proxy:         "",
-		Scheme: "bearer", // nosec, basic, digest, bearer, psk, oauth2, apikey or auto
-		//Authorization: authServerURI,// n/a as the token is the authorization
-		Name:   "authorization",
-		Alg:    alg,
-		Format: format,   // jwe, cwt, jws, jwt, paseto
-		In:     "header", // query, body, cookie, uri, auto
+		Scheme:        "bearer",          // nosec, basic, digest, bearer, psk, oauth2, apikey or auto
+		Authorization: srv.authServerURI, // authentication service URI
+		Name:          "authorization",
+		Alg:           alg,
+		Format:        format,   // jwe, cwt, jws, jwt, paseto
+		In:            "header", // query, body, cookie, uri, auto
 	})
 	// bearer security scheme for authenticating http digest connections
 	// tbd. clients should login and use bearer tokens.
@@ -223,6 +225,11 @@ func (svc *JWTAuthenticator) RefreshToken(
 	return newToken, err
 }
 
+// SetAuthServerURI this sets the server endpoint needed to login.
+// This is included when adding the TD security scheme in AddSecurityScheme()
+func (svc *JWTAuthenticator) SetAuthServerURI(serverURI string) {
+	svc.authServerURI = serverURI
+}
 func (svc *JWTAuthenticator) ValidatePassword(clientID, password string) (err error) {
 	clientProfile, err := svc.authnStore.VerifyPassword(clientID, password)
 	_ = clientProfile
@@ -257,10 +264,11 @@ func (svc *JWTAuthenticator) ValidateToken(token string) (clientID string, sessi
 }
 
 // NewJWTAuthenticator returns a new instance of a JWT token authenticator
-func NewJWTAuthenticator(authnStore authnstore.IAuthnStore, signingKey keys.IHiveKey) *JWTAuthenticator {
+func NewJWTAuthenticator(authnStore authnstore.IAuthnStore, signingKey keys.IHiveKey, authServerURI string) *JWTAuthenticator {
 	svc := JWTAuthenticator{
-		signingKey: signingKey,
-		authnStore: authnStore,
+		signingKey:    signingKey,
+		authnStore:    authnStore,
+		authServerURI: authServerURI,
 		// validity can be changed by user of this service
 		AgentTokenValidityDays:    config.DefaultAgentTokenValidityDays,
 		ConsumerTokenValidityDays: config.DefaultConsumerTokenValidityDays,

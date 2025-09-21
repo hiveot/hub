@@ -12,8 +12,9 @@ import (
 
 // DummyAuthenticator for testing the transport protocol bindings
 type DummyAuthenticator struct {
-	passwords map[string]string
-	tokens    map[string]string
+	passwords     map[string]string
+	tokens        map[string]string
+	authServerURI string
 }
 
 // AddClient adds a test client and return an auth token
@@ -36,12 +37,12 @@ func (srv *DummyAuthenticator) AddSecurityScheme(tdoc *td.TD) {
 		Description: "JWT dummy token authentication",
 		//Descriptions:  nil,
 		//Proxy:         "",
-		Scheme: "bearer", // nosec, basic, digest, bearer, psk, oauth2, apikey or auto
-		//Authorization: authServerURI,// n/a as the token is the authorization
-		Name:   "authorization",
-		Alg:    alg,
-		Format: format,   // jwe, cwt, jws, jwt, paseto
-		In:     "header", // query, body, cookie, uri, auto
+		Scheme:        "bearer", // nosec, basic, digest, bearer, psk, oauth2, apikey or auto
+		Authorization: srv.authServerURI,
+		Name:          "authorization",
+		Alg:           alg,
+		Format:        format,   // jwe, cwt, jws, jwt, paseto
+		In:            "header", // query, body, cookie, uri, auto
 	})
 }
 
@@ -105,6 +106,10 @@ func (d *DummyAuthenticator) RefreshToken(
 }
 func (d *DummyAuthenticator) DecodeSessionToken(token string, signedNonce string, nonce string) (clientID string, sessionID string, err error) {
 	return d.ValidateToken(token)
+}
+
+func (d *DummyAuthenticator) SetAuthServerURI(authServerURI string) {
+	d.authServerURI = authServerURI
 }
 
 func (d *DummyAuthenticator) ValidateToken(token string) (clientID string, sessionID string, err error) {

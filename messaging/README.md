@@ -225,10 +225,10 @@ Example TXT record:
   "scheme": "https"
   "type": "Directory"
   
-  "login": "/path/to/hiveot/login"
-  "wss": "/path/to/hiveot/wss"
-  "sse": "/path/to/hiveot/sse"
-  "mqtts": "/path/to/hiveot/mqtt"
+  "login": "/path/to/hub/login"
+  "wss": "/path/to/hub/wss"
+  "sse": "/path/to/hub/sse"
+  "mqtts": "/path/to/hub/mqtt"
 }
 ```
 Except for login, all connection based protocols requires a valid authentication token.

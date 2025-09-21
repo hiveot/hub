@@ -2,10 +2,11 @@ package connections
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/messaging"
 	"log/slog"
 	"slices"
 	"sync"
+
+	"github.com/hiveot/hub/messaging"
 )
 
 // ConnectionManager tracks existing connections through their connection IDs.

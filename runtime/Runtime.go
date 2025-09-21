@@ -84,7 +84,6 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	if err != nil {
 		return err
 	}
-
 	// setup logging sinks
 	if r.cfg.RuntimeLog != "" {
 		runtimeLogfileName := path.Join(env.LogsDir, r.cfg.RuntimeLog)
@@ -94,6 +93,8 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	// startup
 
 	// 1: setup the Authentication service
+	// This creates an authenticator for authenticating connections and adding security scheme to TD.
+	// The transport manager calls SetAuthServerURI() to set the authentication endpoint for including in the TD.
 	r.AuthnSvc, err = service.StartAuthnService(&r.cfg.Authn)
 	if err != nil {
 		return err
@@ -152,6 +153,18 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 		nil)
 
 	// 5: Create the transports but do not start yet.
+	//
+	// The authenticator provided by the authn service (authnSvc.SessionAuth) is used to
+	// both authenticate connections and to add the securityScheme to TDs in TransportManager.AddTDForms.
+	//
+	// Note if you're trying to find out where the digital twin TDs get their forms and
+	// security fields then the answer is in TransportManager.AddTDForms.
+	// On startup the TransportManager is given the AuthnSvc.SessionAuth authenticator and
+	// it updates it with the login URI. In AddTDForms it uses the authenticator to set the
+	// security scheme and uses each of the protocols to set the forms for affordances.
+	// Look for AddTDForms in each protocol. This is a rather roundabout way of getting
+	// the security scheme in the TD but necessary as it is pluggable.
+	// See AuthnSvc above
 	r.TransportsMgr = servers.NewTransportManager(
 		&r.cfg.ProtocolsConfig,
 		r.cfg.ServerCert,
@@ -161,13 +174,13 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 		r.DigitwinRouter.HandleRequest,
 		r.DigitwinRouter.HandleResponse,
 	)
-
+	// the router needs the transport to forward requests and send responses
 	r.DigitwinRouter.SetTransportServer(r.TransportsMgr)
 
-	// When generating digitwin TDs use the forms produced by transport protocols
+	// generated digitwin TDs include forms produced by transport protocols
 	r.DigitwinSvc.SetFormsHook(r.TransportsMgr.AddTDForms)
 
-	// Setup  logging of requests and notifications
+	// 6. Setup logging of requests and notifications
 	if r.cfg.RequestLog != "" {
 		requestLogfileName := path.Join(env.LogsDir, r.cfg.RequestLog)
 		r.requestLogger, r.requestLogFile = logging.NewFileLogger(
@@ -184,15 +197,17 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 		return err
 	}
 
-	// 6: Add the TDs of the built-in services (authn,authz,directory,values) to the directory
+	// 7: Setup the directory with TDs and permissions for agents and consumers
+	// Add the TDs of the built-in services (authn,authz,directory,values) to the directory
 	_ = r.DigitwinSvc.DirSvc.UpdateThing(authn.AdminAgentID, authn.AdminTD)
 	_ = r.DigitwinSvc.DirSvc.UpdateThing(authn.UserAgentID, authn.UserTD)
 	_ = r.DigitwinSvc.DirSvc.UpdateThing(authz.AdminAgentID, authz.AdminTD)
+	// The digital twin of the directoryTD will be used by discovery (below) to publish the .well-know/wot
 	_ = r.DigitwinSvc.DirSvc.UpdateThing(digitwin.ThingDirectoryAgentID, digitwin.ThingDirectoryTD)
 	_ = r.DigitwinSvc.DirSvc.UpdateThing(digitwin.ThingValuesAgentID, digitwin.ThingValuesTD)
 
 	// set agent permissions to update the directory
-	// agents can update to the directory
+	// agents can update the directory with their TDs
 	err = r.AuthzSvc.SetPermissions(digitwin.ThingDirectoryAgentID, authz.ThingPermissions{
 		AgentID: digitwin.ThingDirectoryAgentID,
 		ThingID: digitwin.ThingDirectoryServiceID,
@@ -216,8 +231,9 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 		return err
 	}
 
-	// 7: last, start discovery and exploration of the digital twin directory
+	// 8: last, start discovery and exploration of the digital twin directory
 	if r.cfg.ProtocolsConfig.EnableDiscovery {
+		// the directory TD was added above (r.DigitwinSvc.DirSvc.UpdateThing)
 		dirTDJson, err := r.DigitwinSvc.DirSvc.RetrieveThing(digitwin.ThingDirectoryAgentID, digitwin.ThingDirectoryDThingID)
 		if err == nil {
 			protocolsCfg := r.cfg.ProtocolsConfig

@@ -46,10 +46,12 @@ func (svc *DirectoryService) DeleteThing(senderID string, dThingID string) error
 
 // MakeDigitalTwinTD returns the digital twin from an agent provided TD
 // This modifies the TD as follows:
-//  1. Change the ThingID to the digitwin thing ID:  dtw:{agentID}:{thingID}
-//  2. Change the forms to digitwin supported forms
-//  3. Set the securitydefinitions to digitwin supported auth (by forms handler)
-//  4. Add a writable 'title' property if it doesn't exist
+//  1. Make a deep copy of the original TD
+//  2. Change the ThingID to the digitwin thing ID:  dtw:{agentID}:{thingID}
+//  3. Reset forms and security definitions
+//  4. Use the AddForms hook to populate the digitin TD instance with the forms and security
+//     definitions available through the enabled protocols.
+//  5. Add a writable 'title' property if it doesn't exist
 func (svc *DirectoryService) MakeDigitalTwinTD(
 	agentID string, tdJSON string) (thingTD *td.TD, dtwTD *td.TD, err error) {
 
@@ -58,12 +60,13 @@ func (svc *DirectoryService) MakeDigitalTwinTD(
 		slog.Error("MakeDigitalTwinTD. Bad TD", "err", err.Error())
 		return thingTD, dtwTD, err
 	}
-	// make a deep copy for the digital twin
+	// 1. make a deep copy for the digital twin
 	_ = jsoniter.UnmarshalFromString(tdJSON, &dtwTD)
 
+	// 2. Change the ThingID to the digital twins ID by prefixing the agent ID
 	dtwTD.ID = td.MakeDigiTwinThingID(agentID, thingTD.ID)
 
-	// remove all existing forms and auth info
+	// 3. reset all existing forms and auth info
 	dtwTD.Forms = make([]td.Form, 0)
 	dtwTD.Security = nil
 	dtwTD.SecurityDefinitions = make(map[string]td.SecurityScheme)
@@ -77,7 +80,9 @@ func (svc *DirectoryService) MakeDigitalTwinTD(
 	for _, aff := range dtwTD.Actions {
 		aff.Forms = make([]td.Form, 0)
 	}
-	// the forms handler defines the protocols and security scheme for accessing the digital twin TD
+
+	// 4. populate the TD with forms and security definitions of the available protocols
+	// See messaging.servers.TransportManager.AddTDForms() for more details
 	if svc.addFormsHandler != nil {
 		svc.addFormsHandler(dtwTD, svc.includeAffordanceForms)
 	}
@@ -123,14 +128,15 @@ func (svc *DirectoryService) RetrieveAllThings(
 // This returns true when the TD has changed or an error
 func (svc *DirectoryService) UpdateThing(agentID string, tdJson string) error {
 
-	// transform the agent provided TD into a digital twin's TD
+	// Transform the original TD into a digital twin's TD. This replaces forms and
+	// adds the security info for accessing the digital twin Thing.
 	thingTD, digitalTwinTD, err := svc.MakeDigitalTwinTD(agentID, tdJson)
 	if err != nil {
 		return err
 	}
 	slog.Info("UpdateDTD",
 		slog.String("agentID", agentID), slog.String("thingID", thingTD.ID))
-	// store both the original and digitwin TD documents
+	// Store both the original and digitwin TD documents
 	svc.dtwStore.UpdateTD(agentID, thingTD, digitalTwinTD)
 
 	// notify subscribers of TD updates

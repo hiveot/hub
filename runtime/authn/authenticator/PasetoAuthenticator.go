@@ -23,7 +23,8 @@ type PasetoAuthenticator struct {
 	signingKey ed25519.PrivateKey
 	// authentication store for login verification
 	authnStore authnstore.IAuthnStore
-	//
+	// The URI of the authentication service that provides paseto tokens
+	authServerURI             string
 	AgentTokenValidityDays    int
 	ConsumerTokenValidityDays int
 	ServiceTokenValidityDays  int
@@ -32,9 +33,9 @@ type PasetoAuthenticator struct {
 	sm *sessions.SessionManager
 }
 
-// AddSecurityScheme adds the security scheme that this authenticator supports.
-// http supports bearer tokens for request authentication, basic and digest authentication
-// for logging in.
+// AddSecurityScheme adds this authenticator's security scheme to the given TD.
+// This authenticator uses paseto tokens as bearer tokens that can be obtained from
+// the login authentication service.
 func (srv *PasetoAuthenticator) AddSecurityScheme(tdoc *td.TD) {
 
 	// bearer security scheme for authenticating http and subprotocol connections
@@ -45,12 +46,12 @@ func (srv *PasetoAuthenticator) AddSecurityScheme(tdoc *td.TD) {
 		Description: "Bearer token authentication",
 		//Descriptions:  nil,
 		//Proxy:         "",
-		Scheme: "bearer", // nosec, basic, digest, bearer, psk, oauth2, apikey or auto
-		//Authorization: authServerURI,// n/a as the token is the authorization
-		Name:   "authorization",
-		Alg:    alg,
-		Format: format,   // jwe, cwt, jws, jwt, paseto
-		In:     "header", // query, body, cookie, uri, auto
+		Scheme:        "bearer",          // nosec, basic, digest, bearer, psk, oauth2, apikey or auto
+		Authorization: srv.authServerURI, // service to obtain a token
+		Name:          "authorization",
+		Alg:           alg,
+		Format:        format,   // jwe, cwt, jws, jwt, paseto
+		In:            "header", // query, body, cookie, uri, auto
 	})
 }
 
@@ -194,6 +195,12 @@ func (svc *PasetoAuthenticator) RefreshToken(
 	return newToken, err
 }
 
+// SetAuthServerURI this sets the server endpoint starting the authorization flow.
+// This is included when adding the TD security scheme in AddSecurityScheme()
+func (svc *PasetoAuthenticator) SetAuthServerURI(serverURI string) {
+	svc.authServerURI = serverURI
+}
+
 func (svc *PasetoAuthenticator) ValidatePassword(clientID, password string) (err error) {
 	clientProfile, err := svc.authnStore.VerifyPassword(clientID, password)
 	_ = clientProfile
@@ -228,6 +235,7 @@ func (svc *PasetoAuthenticator) ValidateToken(token string) (clientID string, se
 }
 
 // NewPasetoAuthenticator returns a new instance of a Paseto token authenticator using the given signing key
+// the session manager is used
 func NewPasetoAuthenticator(
 	authnStore authnstore.IAuthnStore,
 	signingKey ed25519.PrivateKey,
@@ -238,6 +246,7 @@ func NewPasetoAuthenticator(
 	svc := PasetoAuthenticator{
 		signingKey: signingKey,
 		authnStore: authnStore,
+		//authServerURI: authServerURI, use SetAuthServerURI
 		// validity can be changed by user of this service
 		AgentTokenValidityDays:    config.DefaultAgentTokenValidityDays,
 		ConsumerTokenValidityDays: config.DefaultConsumerTokenValidityDays,
@@ -250,6 +259,9 @@ func NewPasetoAuthenticator(
 // NewPasetoAuthenticatorFromFile returns a new instance of a Paseto token authenticator
 // loading a keypair from file or creating one if it doesn't exist.
 // This returns nil if no signing key can be loaded or created
+//
+// The authServerURI is included the TD security scheme to point consumers to the
+// endpoint to obtain tokens for this authenticator.
 func NewPasetoAuthenticatorFromFile(
 	authnStore authnstore.IAuthnStore,
 	keysDir string,
@@ -259,9 +271,9 @@ func NewPasetoAuthenticatorFromFile(
 	authKey, err := keys.LoadCreateKeyPair(clientID, keysDir, keys.KeyTypeEd25519)
 
 	if err != nil {
-		slog.Error("NewPasetoAuthenticatorFromFile failed creating key pair for client",
+		slog.Error("NewPasetoAuthenticatorFromFile failed loading or creating a Paseto key pair",
 			"err", err.Error(), "clientID", clientID)
-		return nil
+		panic("failed loading or creating Paseto key pair")
 	}
 	signingKey := authKey.PrivateKey().(ed25519.PrivateKey)
 	_ = err

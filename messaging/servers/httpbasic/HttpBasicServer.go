@@ -28,6 +28,7 @@ const (
 	HttpGetPingPath     = "/ping"
 
 	// The generic path for thing operations over http using URI variables
+	HttpBaseFormOp                   = "/things"
 	HttpBasicAffordanceOperationPath = "/things/{operation}/{thingID}/{name}"
 	HttpBasicThingOperationPath      = "/things/{operation}/{thingID}"
 	HttpBasicOperationURIVar         = "operation"
@@ -112,6 +113,19 @@ func (srv *HttpBasicServer) EnableStatic(base string, staticRoot string) error {
 	staticPath := base + "/*"
 	srv.protectedRoutes.Get(staticPath, staticFileServer.ServeHTTP)
 	return nil
+}
+
+// GetAuthServerURI returns the URI of the authentication server to include in the TD security scheme
+// FIXME: Should this be some kind of authorization flow with a web page?
+// This is currently just the login endpoint (post /authn/login).
+// The http server might need to include a web page where users can enter their login
+// name and password, although that won't work for machines... tbd
+//
+// Note that web browsers do not directly access the runtime endpoints.
+// Instead a web server (hiveoview or other) provides the user interface.
+// Including the auth endpoint here is currently just a hint. How to integrate this?
+func (srv *HttpBasicServer) GetAuthServerURI() string {
+	return HttpPostLoginPath
 }
 
 // GetConnectionByConnectionID returns nil as http-basic is connectionless

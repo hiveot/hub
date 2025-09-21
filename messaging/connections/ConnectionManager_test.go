@@ -2,14 +2,15 @@ package connections_test
 
 import (
 	"errors"
+	"testing"
+	"time"
+
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/connections"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
 func TestAddRemoveConnection(t *testing.T) {

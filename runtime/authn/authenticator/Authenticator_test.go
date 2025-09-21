@@ -2,6 +2,11 @@ package authenticator_test
 
 import (
 	"crypto/ed25519"
+	"os"
+	"path"
+	"testing"
+	"time"
+
 	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/messaging"
 	authn "github.com/hiveot/hub/runtime/authn/api"
@@ -11,10 +16,6 @@ import (
 	"github.com/hiveot/hub/runtime/authn/sessions"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"os"
-	"path"
-	"testing"
-	"time"
 )
 
 var authnStore authnstore.IAuthnStore
@@ -29,6 +30,7 @@ func NewAuthenticator() (messaging.IAuthenticator, *sessions.SessionManager) {
 	signingKey := keys.NewEd25519Key().PrivateKey().(ed25519.PrivateKey)
 	sm := sessions.NewSessionmanager()
 	svc := authenticator.NewPasetoAuthenticator(authnStore, signingKey, sm)
+	svc.SetAuthServerURI("/fake/server/endpoint")
 	return svc, sm
 }
 

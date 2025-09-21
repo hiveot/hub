@@ -43,6 +43,9 @@ type IAuthenticator interface {
 	// This returns a new token or an error if the old token isn't valid or doesn't match clientID
 	RefreshToken(senderID string, oldToken string) (newToken string, err error)
 
+	// Set the method to
+	SetAuthServerURI(authServiceURI string)
+
 	// ValidatePassword checks if the given password is valid for the client
 	ValidatePassword(clientID string, password string) (err error)
 

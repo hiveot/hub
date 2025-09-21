@@ -11,6 +11,12 @@ import (
 
 // DiscoveryServer supports the WoT discovery introduction and exploration
 // mechanisms for obtaining TD's for use by consumers.
+// This:
+//   - publishes a DNS-SD record of the directory with the service name "_directory._sub._wot._tcp".
+//     containing a TXT record for 'td', 'type', 'scheme' as described in
+//     https://w3c.github.io/wot-discovery/#introduction-dns-sd-sec
+//   - serves the directory TD on the .well-known/wot http endpoint.
+//   - the directory TD includes the security scheme with link to the authn endpoint.
 type DiscoveryServer struct {
 
 	//connectURL to publish with the default connection endpoint
@@ -69,7 +75,7 @@ func (svc *DiscoveryServer) ServeDirectoryTD(tdPath string, tdJSON string) {
 //	dirTD is the directory TD in json (required)
 //	tdPath is the path on which to server the directory TD (Default is /.well-known/wot)
 //	httpServer is the server to use for serving the TD
-//	endpoints with hiveot protocol connection scheme:URL endpoints
+//	endpoints with additional hiveot protocol connection scheme:URL endpoints
 func StartDiscoveryServer(instanceName string, serviceName string,
 	dirTDJSON string, tdPath string, httpTransport *httpbasic.HttpBasicServer,
 	endpoints map[string]string) (

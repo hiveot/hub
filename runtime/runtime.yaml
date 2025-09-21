@@ -44,12 +44,11 @@ protocols:
 
   # Enable the HiveOT HTTP/SSE-SC sub protocol server.
   #enableHiveotSSE: true    # Default is true
-  #hiveotSsePath: "/hiveot/sse"
+  #hiveotSsePath: "/hiveot/sse"  # HiveOT sse protocol
 
   # Enable the HTTP/WSS sub protocol server.
-  #enableWSS: true                # Default is true.
-  #hiveotWssPath: "/hiveot/wss"   # Hiveot websocket endpoint path
-  #wotWssPath: "/wot/wss"         # WoT websocket endpoint path
+  #enableWSS: true            # Default is true.
+  #wssPath: "/wot/wss"       # WoT websocket endpoint path
 
   # Enable the MQTT protocol server. (NOT YET IMPLEMENTED)
   #enableMQTT: true         # Default is true.

@@ -2,6 +2,7 @@ package connections_test
 
 import (
 	"fmt"
+
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/connections"
 )

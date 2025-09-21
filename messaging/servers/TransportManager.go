@@ -34,6 +34,7 @@ type TransportManager struct {
 	// The embedded binding can be used directly with embedded services
 	//discoveryTransport *discotransport.DiscoveryTransport
 
+	// authenticator for validating incoming connections and to set the security scheme in TDs.
 	// currently a single authenticator is used.
 	// Maybe this should be dependent on the server?
 	authenticator messaging.IAuthenticator
@@ -64,6 +65,7 @@ type TransportManager struct {
 }
 
 // AddTDForms adds forms to the given TD for all available transports
+// This also adds the security scheme as supported by the authenticator.
 func (svc *TransportManager) AddTDForms(tdoc *td.TD, includeAffordances bool) {
 
 	svc.authenticator.AddSecurityScheme(tdoc)
@@ -273,6 +275,8 @@ func (svc *TransportManager) Start() (err error) {
 
 // NewTransportManager creates a new instance of the transport protocol manager.
 // The transport manager implements the ITransportBinding API.
+//
+// The authenticator is used to validate connections and set security scheme in AddTDForms.
 func NewTransportManager(cfg *ProtocolsConfig,
 	serverCert *tls.Certificate,
 	caCert *x509.Certificate,
@@ -323,6 +327,9 @@ func NewTransportManager(cfg *ProtocolsConfig,
 		if cfg.EnableHttpStatic {
 			svc.httpBasicServer.EnableStatic(cfg.HttpStaticBase, cfg.HttpStaticDirectory)
 		}
+
+		// http-basic provides the login method
+		svc.authenticator.SetAuthServerURI(svc.httpBasicServer.GetAuthServerURI())
 
 		// FIXME: routes only available after start
 		protectedRouter := svc.httpBasicServer.GetProtectedRouter()
