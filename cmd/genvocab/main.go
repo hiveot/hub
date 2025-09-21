@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/cmd/genvocab/vocab"
-	"github.com/urfave/cli/v2"
 	"os"
 	"path"
 	"time"
+
+	"github.com/hiveot/hub/cmd/genvocab/vocab"
+	"github.com/urfave/cli/v2"
 )
 
 const Version = `0.1-alpha`
@@ -42,13 +43,14 @@ func main() {
 	}
 	if err := app.Run(os.Args); err != nil {
 		println("ERROR: ", err.Error())
+		os.Exit(1)
 	}
 }
 
 func GenVocab(vocabDir string, force bool) error {
 	classes, constants, modTime, err := vocab.LoadVocab(vocabDir)
 	if err != nil {
-		println("Error:" + err.Error())
+		//println("Error:" + err.Error())
 		return err
 	}
 	// force using updated timestamp
@@ -57,15 +59,18 @@ func GenVocab(vocabDir string, force bool) error {
 	}
 	err = vocab.GenVocabGo(classes, constants, modTime)
 	if err != nil {
-		fmt.Println("Gen GO ERROR: " + err.Error())
+		err = fmt.Errorf("generate GO ERROR: %w", err)
+		return err
 	}
 	err = vocab.GenVocabJS(classes, constants, modTime)
 	if err != nil {
-		fmt.Println("Gen JS ERROR: " + err.Error())
+		err = fmt.Errorf("generate JS ERROR: %w", err)
+		return err
 	}
 	err = vocab.GenVocabPy(classes, constants, modTime)
 	if err != nil {
-		fmt.Println("Gen PY ERROR: " + err.Error())
+		err = fmt.Errorf("generate PY ERROR: %w", err)
+		return err
 	}
 	return err
 }

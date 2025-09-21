@@ -3,12 +3,13 @@ package vocab
 
 import (
 	"fmt"
-	"gopkg.in/yaml.v3"
 	"log/slog"
 	"os"
 	"path"
 	"strings"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 const ActionClassFile = "ht-action-classes.yaml"
@@ -44,6 +45,7 @@ type VocabConstantsMap struct {
 func LoadVocab(dir string) (
 	map[string]VocabClassMap, map[string]VocabConstantsMap, time.Time, error) {
 	var modTime time.Time
+	var data []byte
 
 	vocabClasses := make(map[string]VocabClassMap)
 	vocabConstants := make(map[string]VocabConstantsMap)
@@ -55,7 +57,7 @@ func LoadVocab(dir string) (
 	for _, entry := range files {
 		vocabFile := path.Join(dir, entry.Name())
 
-		data, err := os.ReadFile(vocabFile)
+		data, err = os.ReadFile(vocabFile)
 		if err == nil {
 			// track the latest modification time of any of the sources
 			infileStat, _ := os.Stat(vocabFile)
@@ -72,8 +74,14 @@ func LoadVocab(dir string) (
 			} else {
 				slog.Error("Ignored non-yaml file: " + vocabFile)
 			}
+			if err != nil {
+				err = fmt.Errorf("failed parsing vocab source. File=%s, Error=%w",
+					vocabFile, err)
+				// stop to report the error
+				break
+			}
 		} else {
-			slog.Error("Error reading " + vocabFile + ": " + err.Error())
+			err = fmt.Errorf("failed reading %s: %w", vocabFile, err)
 		}
 	}
 	return vocabClasses, vocabConstants, modTime, err
