@@ -27,11 +27,11 @@ type WeatherBinding struct {
 	defaultProvider providers.IWeatherProvider
 
 	// The configured locationStore
-	locationStore    *LocationStore
-	current          map[string]providers.CurrentWeather
-	lastCurrentPoll  map[string]time.Time // poll timestamp by location ID
-	forecasts        map[string]providers.ForecastWeather
-	lastForecastPoll map[string]time.Time // poll timestamp by location ID
+	locationStore          *LocationStore
+	current                map[string]providers.CurrentWeather
+	lastCurrentPoll        map[string]time.Time // poll timestamp by location ID
+	hourlyForecasts        map[string]providers.ForecastWeather
+	lastHourlyForecastPoll map[string]time.Time // poll timestamp by location ID
 
 	// protect r/w of current weather
 	mux sync.RWMutex
@@ -94,15 +94,15 @@ func NewWeatherBinding(storePath string, cfg *config.WeatherConfig) *WeatherBind
 
 	// these are from hub configuration
 	svc := &WeatherBinding{
-		cfg:              cfg,
-		defaultProvider:  providers.NewOpenMeteoProvider(),
-		ag:               nil,
-		locationStore:    NewLocationStore(storePath),
-		current:          make(map[string]providers.CurrentWeather),
-		lastCurrentPoll:  make(map[string]time.Time),
-		forecasts:        make(map[string]providers.ForecastWeather),
-		lastForecastPoll: make(map[string]time.Time),
-		stopFn:           nil,
+		cfg:                    cfg,
+		defaultProvider:        providers.NewOpenMeteoProvider(),
+		ag:                     nil,
+		locationStore:          NewLocationStore(storePath),
+		current:                make(map[string]providers.CurrentWeather),
+		lastCurrentPoll:        make(map[string]time.Time),
+		hourlyForecasts:        make(map[string]providers.ForecastWeather),
+		lastHourlyForecastPoll: make(map[string]time.Time),
+		stopFn:                 nil,
 	}
 	return svc
 }

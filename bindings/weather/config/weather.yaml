@@ -37,21 +37,21 @@ locations:
     latitude: "52.375009"
     longitude: "4.895107"
     currentEnabled: true
-    forecastEnabled: false
+    hourlyEnabled: false
   berlin-1:
     name: "Berlin"
     description: "Berlin Panoramastraße 1A"
     latitude: "52.5213804295239"
     longitude: "13.410464247290507"
     currentEnabled: true
-    forecastEnabled: false
+    hourlyEnabled: false
   vancouver-1:
     name: "Vancouver"
     description: "Center of Vancouver"
     latitude: "49.286"
     longitude: "-123.182"
     currentEnabled: true
-    forecastEnabled: false
+    hourlyEnabled: false
     provider: "environment-canada"
 
 #

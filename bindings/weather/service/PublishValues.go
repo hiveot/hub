@@ -1,10 +1,13 @@
 package service
 
 import (
-	"github.com/hiveot/hub/bindings/weather/config"
-	"github.com/hiveot/hub/bindings/weather/providers"
 	"log/slog"
 	"time"
+
+	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/bindings/weather/config"
+	"github.com/hiveot/hub/bindings/weather/providers"
+	"github.com/hiveot/hub/messaging/tputils"
 )
 
 // Poll for current and forecast weather updates and publish events.
@@ -48,17 +51,17 @@ func (svc *WeatherBinding) Poll() error {
 			svc.mux.Unlock()
 		}
 	})
-	// poll for the 'forecast' weather at the locations
+	// poll for the 'hourly forecast' weather at the locations
 	svc.locationStore.ForEach(func(loc config.WeatherLocation) {
 		// each location can have its own interval
 		svc.mux.RLock()
-		lastPollTime, found := svc.lastForecastPoll[loc.ID]
+		lastPollTime, found := svc.lastHourlyForecastPoll[loc.ID]
 		svc.mux.RUnlock()
-		forecastInterval := loc.ForecastInterval
-		if forecastInterval <= svc.cfg.MinForecastInterval {
-			forecastInterval = svc.cfg.DefaultForecastInterval
+		hourlyInterval := loc.HourlyInterval
+		if hourlyInterval <= svc.cfg.MinForecastInterval {
+			hourlyInterval = svc.cfg.DefaultHourlyForecastInterval
 		}
-		nextPoll := lastPollTime.Add(time.Second * time.Duration(forecastInterval))
+		nextPoll := lastPollTime.Add(time.Second * time.Duration(hourlyInterval))
 		if !found || nextPoll.Before(now) {
 			//weatherForecast, err2 := svc.defaultProvider.ReadForecast(loc)
 			//if err2 != nil {
@@ -72,7 +75,7 @@ func (svc *WeatherBinding) Poll() error {
 			//	)
 			//}
 			svc.mux.Lock()
-			svc.lastForecastPoll[loc.ID] = now
+			svc.lastHourlyForecastPoll[loc.ID] = now
 			svc.mux.Unlock()
 		}
 	})
@@ -81,15 +84,24 @@ func (svc *WeatherBinding) Poll() error {
 
 // PublishCurrent publish events with the current weather
 func (svc *WeatherBinding) PublishCurrent(thingID string, current providers.CurrentWeather) error {
+	// convert wind speed to configured units
+	windSpeed := tputils.DecodeAsNumber(current.WindSpeed)
 
-	err := svc.ag.PubEvent(thingID, "humidity", current.Humidity)
-	err = svc.ag.PubEvent(thingID, "precipitation", current.Precipitation)
-	err = svc.ag.PubEvent(thingID, "pressureMsl", current.AtmoPressureMsl)
-	err = svc.ag.PubEvent(thingID, "pressureSurface", current.AtmoPressureSurface)
-	err = svc.ag.PubEvent(thingID, "rain", current.Rain)
-	err = svc.ag.PubEvent(thingID, "temperature", current.Temperature)
-	err = svc.ag.PubEvent(thingID, "windDirection", current.WindDirection)
-	err = svc.ag.PubEvent(thingID, "windSpeed", current.WindSpeed)
+	// convert wind gusts to configured units
+	windGusts := tputils.DecodeAsNumber(current.WindGusts)
+
+	err := svc.ag.PubEvent(thingID, vocab.PropEnvHumidity, current.Humidity)
+	err = svc.ag.PubEvent(thingID, vocab.PropEnvPrecipitation, current.Precipitation)
+	err = svc.ag.PubEvent(thingID, vocab.PropEnvPressureSeaLevel, current.AtmoPressureMsl)
+	err = svc.ag.PubEvent(thingID, vocab.PropEnvPressureSurface, current.AtmoPressureSurface)
+	err = svc.ag.PubEvent(thingID, vocab.PropEnvPrecipitationRain, current.Rain)
+	err = svc.ag.PubEvent(thingID, vocab.PropEnvPrecipitationSnow, current.Snowfall)
+	err = svc.ag.PubEvent(thingID, vocab.PropEnvPrecipitation, current.Precipitation)
+	err = svc.ag.PubEvent(thingID, vocab.PropEnvTemperature, current.Temperature)
+	err = svc.ag.PubEvent(thingID, vocab.PropEnvWindHeading, current.WindHeading)
+	// todo: configure unit
+	err = svc.ag.PubEvent(thingID, vocab.PropEnvWindGusts, windGusts*3.6) // m/s -> km/h
+	err = svc.ag.PubEvent(thingID, vocab.PropEnvWindSpeed, windSpeed*3.6) // m/s -> km/h
 
 	return err
 }

@@ -8,6 +8,16 @@ import (
 	"github.com/hiveot/hub/wot/td"
 )
 
+// read-only properties
+const PropNameCurrentUpdated = "currentUpdated"
+const PropNameHourlyUpdated = "hourlyUpdated"
+
+// configuration properties
+const PropNameCurrentEnabled = "currentEnabled"
+const PropNameCurrentInterval = "currentInterval"
+const PropNameDefaultProvider = "defaultProvider"
+const PropNameHourlyEnabled = "hourlyEnabled"
+
 // CreateBindingTD creates a Thing TD of this service
 // This binding exposes the TD of itself.
 func CreateBindingTD(serviceID string) *td.TD {
@@ -16,7 +26,7 @@ func CreateBindingTD(serviceID string) *td.TD {
 	tdoc.Description = "Binding for the weather service"
 
 	// The defaults are defined in the WeatherConfig object.
-	prop := tdoc.AddProperty("defaultProvider", "Default Provider",
+	prop := tdoc.AddProperty(PropNameDefaultProvider, "Default Provider",
 		"Name of the current default weather provider used",
 		vocab.WoTDataTypeString)
 
@@ -27,7 +37,9 @@ func CreateBindingTD(serviceID string) *td.TD {
 	return tdoc
 }
 
-// CreateTDOfLocation creates a Thing TD describing a weather location
+// CreateTDOfLocation creates a Thing TD describing a weather location.
+//
+// TODO: should this be done by the provider? Different providers have different capabilities
 func CreateTDOfLocation(defaultCfg *config.WeatherConfig, cfg *config.WeatherLocation) *td.TD {
 	thingID := cfg.ID
 	deviceType := vocab.ThingSensorEnvironment
@@ -37,7 +49,7 @@ func CreateTDOfLocation(defaultCfg *config.WeatherConfig, cfg *config.WeatherLoc
 
 	// Attributes
 
-	prop := tdoc.AddProperty("currentUpdated", "Current Weather Updated",
+	prop := tdoc.AddProperty(PropNameCurrentUpdated, "Current Weather Updated",
 		"Time the current weather was last updated",
 		vocab.WoTDataTypeDateTime)
 	prop.ReadOnly = true
@@ -49,12 +61,12 @@ func CreateTDOfLocation(defaultCfg *config.WeatherConfig, cfg *config.WeatherLoc
 
 	// Configuration
 
-	prop = tdoc.AddProperty("currentEnabled", "Enable Current Weather",
+	prop = tdoc.AddProperty(PropNameCurrentEnabled, "Enable Current Weather",
 		"Enable read the current weather",
 		vocab.WoTDataTypeBool)
 	prop.ReadOnly = false
 
-	prop = tdoc.AddProperty("currentInterval", "Current Weather Updates",
+	prop = tdoc.AddProperty(PropNameCurrentInterval, "Current Weather Updates",
 		"Interval in seconds the current weather is updated",
 		vocab.WoTDataTypeInteger)
 	prop.Unit = vocab.UnitSecond
@@ -62,34 +74,28 @@ func CreateTDOfLocation(defaultCfg *config.WeatherConfig, cfg *config.WeatherLoc
 	prop.Default = defaultCfg.DefaultCurrentInterval
 	prop.ReadOnly = false
 
-	prop = tdoc.AddProperty("forecastEnabled", "Enable Weather Forecast",
+	prop = tdoc.AddProperty(PropNameHourlyEnabled, "Enable Hourly Forecast",
 		"Enable reading the weather forecast",
 		vocab.WoTDataTypeBool)
 	prop.ReadOnly = false
 
-	prop = tdoc.AddProperty("forecastInterval", "Weather Forecast Updates",
-		"Interval in seconds the weather forecast is updated",
-		vocab.WoTDataTypeInteger)
-	prop.Unit = vocab.UnitSecond
-	prop.Minimum = float64(defaultCfg.MinForecastInterval)
-	prop.Default = defaultCfg.DefaultForecastInterval
-	prop.ReadOnly = false
-
-	prop = tdoc.AddProperty("forecastUpdated", "Weather Forecast Updated",
-		"Time the weather forecast was last updated",
+	prop = tdoc.AddProperty(PropNameHourlyUpdated, "Hourly Forecast Updated time",
+		"Time the hourly weather forecast was last updated",
 		vocab.WoTDataTypeDateTime)
 	prop.ReadOnly = true
 
-	prop = tdoc.AddProperty("latitude", "Latitude",
+	prop = tdoc.AddProperty(vocab.PropLocationLatitude, "Latitude",
 		"Location latitude",
 		vocab.WoTDataTypeNumber)
 	prop.ReadOnly = false
-	prop = tdoc.AddProperty("longitude", "Longitude",
+	prop.AtType = vocab.PropLocationLatitude
+	prop = tdoc.AddProperty(vocab.PropLocationLongitude, "Longitude",
 		"Location longitude",
 		vocab.WoTDataTypeNumber)
 	prop.ReadOnly = false
+	prop.AtType = vocab.PropLocationLongitude
 
-	prop = tdoc.AddProperty("locationName", "Name",
+	prop = tdoc.AddProperty(vocab.PropLocationName, "Name",
 		"Location Name",
 		vocab.WoTDataTypeString)
 	prop.ReadOnly = false
@@ -98,61 +104,85 @@ func CreateTDOfLocation(defaultCfg *config.WeatherConfig, cfg *config.WeatherLoc
 		"The units for wind speed",
 		vocab.WoTDataTypeString)
 	prop.Default = vocab.UnitMeterPerSecond
-	prop.ReadOnly = false
+	prop.ReadOnly = true
 	prop.DataSchema.SetEnumAsStrings([]string{vocab.UnitMeterPerSecond, vocab.UnitKilometerPerHour, vocab.UnitMilesPerHour})
 
 	// Events with the current weather
 
-	ev := tdoc.AddEvent("humidity", "Relative Humidity", "",
+	ev := tdoc.AddEvent(vocab.PropEnvHumidity, "Relative Humidity", "",
 		&td.DataSchema{
-			Unit: vocab.UnitPercent,
-			Type: wot.DataTypeInteger,
+			Unit:   vocab.UnitPercent,
+			Type:   wot.DataTypeInteger,
+			AtType: vocab.PropEnvHumidity,
 		})
 
-	ev = tdoc.AddEvent("precipitation", "Precipitation",
+	ev = tdoc.AddEvent(vocab.PropEnvPrecipitation, "Precipitation",
 		"Rain or snow precipiation",
 		&td.DataSchema{
-			Unit: vocab.UnitMilliMeter,
-			Type: wot.DataTypeInteger,
+			Unit:   vocab.UnitMilliMeter,
+			Type:   wot.DataTypeInteger,
+			AtType: vocab.PropEnvPrecipitation,
 		})
 
-	ev = tdoc.AddEvent("pressureMsl", "Sea Level Pressure",
+	ev = tdoc.AddEvent(vocab.PropEnvPressureSeaLevel, "Sea Level Pressure",
 		"Sea level equivalent pressure at "+tdoc.Title,
 		&td.DataSchema{
-			Unit: vocab.UnitHectoPascal, // default hpa (=mbar)
-			Type: wot.DataTypeNumber,
+			Unit:   vocab.UnitHectoPascal, // default hpa (=mbar)
+			Type:   wot.DataTypeNumber,
+			AtType: vocab.PropEnvPressureSeaLevel,
 		})
-	ev = tdoc.AddEvent("pressureSurface", "Surface Pressure",
+	ev = tdoc.AddEvent(vocab.PropEnvPressureSurface, "Surface Pressure",
 		"Surface pressure at "+tdoc.Title,
 		&td.DataSchema{
-			Unit: vocab.UnitHectoPascal,
-			Type: wot.DataTypeNumber,
+			Unit:   vocab.UnitHectoPascal,
+			Type:   wot.DataTypeNumber,
+			AtType: vocab.PropEnvPressureSurface,
 		})
 
-	ev = tdoc.AddEvent("rain", "Rain", "Rainfall amount",
+	ev = tdoc.AddEvent(vocab.PropEnvPrecipitationRain, "Rain", "Rainfall amount last hour",
 		&td.DataSchema{
-			Unit: vocab.UnitMilliMeter,
-			Type: wot.DataTypeNumber,
+			Unit:   vocab.UnitMilliMeter,
+			Type:   wot.DataTypeNumber,
+			AtType: vocab.PropEnvPrecipitationRain,
 		})
 
-	ev = tdoc.AddEvent("temperature", "Temperature",
+	ev = tdoc.AddEvent(vocab.PropEnvPrecipitationSnow, "Snow", "Snowfall amount last hour",
+		&td.DataSchema{
+			Unit:   vocab.UnitMilliMeter,
+			Type:   wot.DataTypeNumber,
+			AtType: vocab.PropEnvPrecipitationSnow,
+		})
+
+	ev = tdoc.AddEvent(vocab.PropEnvTemperature, "Temperature",
 		"Temperature at 10 meter",
 		&td.DataSchema{
-			Unit: vocab.UnitCelcius,
-			Type: wot.DataTypeNumber,
+			Unit:   vocab.UnitCelcius,
+			Type:   wot.DataTypeNumber,
+			AtType: vocab.PropEnvTemperature,
 		})
 
-	ev = tdoc.AddEvent("windDirection", "Wind Direction",
+	ev = tdoc.AddEvent(vocab.PropEnvWindHeading, "Wind Direction",
 		"Wind heading at 10 meter in 0-359 degree",
 		&td.DataSchema{
-			Unit: vocab.UnitDegree,
-			Type: wot.DataTypeInteger,
+			Unit:   vocab.UnitDegree,
+			Type:   wot.DataTypeInteger,
+			AtType: vocab.PropEnvWindHeading,
 		})
 
-	ev = tdoc.AddEvent("windSpeed", "Wind Speed", "",
+	ev = tdoc.AddEvent(vocab.PropEnvWindGusts, "Wind Gusts", "",
 		&td.DataSchema{
-			Unit: vocab.UnitMeterPerSecond,
-			Type: wot.DataTypeNumber,
+			//Unit: vocab.UnitMeterPerSecond,
+			Unit:   vocab.UnitKilometerPerHour, // TODO: configurable
+			Type:   wot.DataTypeNumber,
+			AtType: vocab.PropEnvWindGusts,
+		})
+
+	ev = tdoc.AddEvent(vocab.PropEnvWindSpeed, "Wind Speed", "",
+		&td.DataSchema{
+			//Unit: vocab.UnitMeterPerSecond,
+			Unit:   vocab.UnitKilometerPerHour, // TODO: configurable
+			Type:   wot.DataTypeNumber,
+			AtType: vocab.PropEnvWindSpeed,
 		})
 
 	_ = ev

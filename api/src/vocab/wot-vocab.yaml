@@ -83,8 +83,12 @@ WoTVocab:
     # Actions
     OpCancelAction : "cancelaction"
     OpInvokeAction : "invokeaction"
+    OpObserveAction : "observeaction"           # future operation?
+    OpObserveAllActions : "observeallactions"   # future operation?
     OpQueryAllActions : "queryallactions"
     OpQueryAction : "queryaction"
+    OpUnobserveAction : "unobserveaction"         # future operation?
+    OpUnobserveAllActions : "unobserveallactions" # future operation?
 
     # Request statuses
 #    StatusCompleted: "completed"

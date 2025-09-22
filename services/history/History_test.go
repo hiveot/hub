@@ -2,6 +2,13 @@ package history_test
 
 import (
 	"fmt"
+	"log/slog"
+	"math/rand"
+	"os"
+	"strconv"
+	"testing"
+	"time"
+
 	"github.com/araddon/dateparse"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
@@ -16,12 +23,6 @@ import (
 	"github.com/hiveot/hub/services/history/service"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
-	"log/slog"
-	"math/rand"
-	"os"
-	"strconv"
-	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -382,7 +383,7 @@ func TestAddProperties(t *testing.T) {
 			//require.NoError(t, err)
 		} else if msg.Name == vocab.PropEnvTemperature {
 			dataInt := tputils.DecodeAsInt(msg.Data)
-			require.Equal(t, int64(temp1), dataInt)
+			require.Equal(t, temp1, dataInt)
 		}
 		msg, valid, err = c.Next()
 	}

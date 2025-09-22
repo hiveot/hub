@@ -129,10 +129,6 @@ PropertyClasses:
       class: "hiveot:prop:env:airquality"
       title: "Air quality"
       description: "Air quality level"
-    PropEnvBarometer:
-      class: "hiveot:prop:env:barometer"
-      title: "Atmospheric pressure"
-      description: "Barometric pressure of the atmosphere"
     PropEnvCO:
       class: "hiveot:prop:env:co"
       title: "Carbon monoxide level"
@@ -169,10 +165,30 @@ PropertyClasses:
       class: "hiveot:prop:env:luminance"
       title: "Luminance"
       description: ""
+    PropEnvPrecipitation:
+      class: "hiveot:prop:env:precipitation"
+      title: "Precipitation"
+      description: "Total precipitation of rain and snow"
+    PropEnvPrecipitationRain:
+      class: "hiveot:prop:env:precipitation:rain"
+      title: "Rain precipitation"
+      description: "Precipitation as rain"
+    PropEnvPrecipitationSnow:
+      class: "hiveot:prop:env:precipitation:snow"
+      title: "Snow precipitation"
+      description: "Precipitation as snow"
     PropEnvPressure:
       class: "hiveot:prop:env:pressure"
       title: "Pressure"
       description: ""
+    PropEnvPressureSurface:
+      class: "hiveot:prop:env:barometer:surface"
+      title: "Surface level pressure"
+      description: "Surface level atmospheric pressure"
+    PropEnvPressureSeaLevel:
+      class: "hiveot:prop:env:barometer:msl"
+      title: "Sea level pressure"
+      description: "Sea level equivalent atmospheric pressure"
     PropEnvTemperature:
       class: "hiveot:prop:env:temperature"
       title: "Temperature"
@@ -201,14 +217,18 @@ PropertyClasses:
       class: "hiveot:prop:env:water:level"
       title: "Water level"
       description: ""
+    PropEnvWindGusts:
+      class: "hiveot:prop:env:wind:gusts"
+      title: "Wind gusts"
+      description: "Speed of wind gusts"
     PropEnvWindHeading:
       class: "hiveot:prop:env:wind:heading"
       title: "Wind heading"
-      description: ""
+      description: "Direction wind is heading"
     PropEnvWindSpeed:
       class: "hiveot:prop:env:wind:speed"
       title: "Wind speed"
-      description: ""
+      description: "Average speed of wind"
 
     # hiveot:prop:location with location related properties
     PropLocation:

@@ -1,14 +1,14 @@
 package config
 
-// WeatherConfig holds the configuration of the weather binding
+// WeatherConfig holds the configuration of the weather binding service
 type WeatherConfig struct {
 
 	// The default weather provider if not specified in the location
 	DefaultProvider string `yaml:"defaultProvider"`
 
 	// Default polling interval for current weather in seconds
-	DefaultCurrentInterval  int `yaml:"defaultCurrentInterval,omitempty"`
-	DefaultForecastInterval int `yaml:"defaultForecastInterval,omitempty"`
+	DefaultCurrentInterval        int `yaml:"defaultCurrentInterval,omitempty"`
+	DefaultHourlyForecastInterval int `yaml:"defaultForecastInterval,omitempty"`
 
 	// Minimum allowable polling interval for current weather in seconds
 	MinCurrentInterval  int `yaml:"minCurrentInterval,omitempty"`
@@ -16,17 +16,18 @@ type WeatherConfig struct {
 
 	Providers map[string]WeatherProvider `yaml:"providers"`
 
+	// locations by thingID
 	Locations map[string]WeatherLocation `yaml:"locations"`
 }
 
 // NewWeatherConfig creates a new default weather binding configuration
 func NewWeatherConfig() *WeatherConfig {
 	cfg := WeatherConfig{
-		DefaultProvider:         "open-meteo",
-		DefaultCurrentInterval:  15 * 60,
-		DefaultForecastInterval: 60 * 60,
-		MinCurrentInterval:      5 * 60,
-		MinForecastInterval:     10 * 60,
+		DefaultProvider:               "open-meteo",
+		DefaultCurrentInterval:        15 * 60,
+		DefaultHourlyForecastInterval: 60 * 60,
+		MinCurrentInterval:            5 * 60,
+		MinForecastInterval:           10 * 60,
 	}
 	return &cfg
 }
@@ -47,9 +48,9 @@ type WeatherLocation struct {
 	CurrentInterval int `yaml:"currentInterval,omitempty"`
 
 	// Enable/disable current weather lookup for this location
-	ForecastEnabled bool `yaml:"forecastEnabled,omitempty"`
-	// override nr of seconds interval to poll forecast (optional)
-	ForecastInterval int `yaml:"forecastInterval,omitempty"`
+	HourlyEnabled bool `yaml:"forecastEnabled,omitempty"`
+	// HourlyInterval interval to obtain the next hourly forecast. Default 3600
+	HourlyInterval int `yaml:"hourlyInterval,omitempty"`
 
 	// Provider optionally overrides the default provider
 	Provider string `yaml:"provider,omitempty"`

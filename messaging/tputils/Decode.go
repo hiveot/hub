@@ -2,10 +2,11 @@ package tputils
 
 import (
 	"fmt"
-	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"strconv"
 	"strings"
+
+	jsoniter "github.com/json-iterator/go"
 )
 
 // Decode converts the any-type to the given interface type.
@@ -25,7 +26,7 @@ func Decode(value any, arg interface{}) error {
 
 // DecodeAsString converts the value to a string
 // if value is already a string then it is returned as-is
-// if maxlen is provided then limit the resulting length and add ... if exceeded
+// if maxlen is provided then limit the resulting length and add ... if exceeded. Use 0 for all.
 func DecodeAsString(value any, maxlen int) string {
 	if value == nil {
 		return ""
@@ -70,8 +71,9 @@ func DecodeAsBool(value any) bool {
 // DecodeAsInt converts the value to an integer.
 // This accepts int, int64, *int, bool, uint, float32/64
 // If value is already an integer then it is returned as-is.
-func DecodeAsInt(value any) int64 {
-	var i int64 = 0
+// If value > int (eg int64) then the result is unpredicable
+func DecodeAsInt(value any) int {
+	var i int = 0
 	switch value.(type) {
 	case bool:
 		if value.(bool) {
@@ -79,17 +81,19 @@ func DecodeAsInt(value any) int64 {
 		}
 	case string:
 		i64, _ := strconv.ParseInt(value.(string), 10, 64)
-		i = i64
+		i = int(i64)
 	case *int:
-		i = int64(*value.(*int))
-	case int, int64:
-		i = int64(value.(int))
+		i = *value.(*int)
+	case int:
+		i = value.(int)
+	case int64:
+		i = int(value.(int64))
 	case uint:
-		i = int64(value.(uint))
+		i = int(value.(uint))
 	case float32:
-		i = int64(value.(float32))
+		i = int(value.(float32))
 	case float64:
-		i = int64(value.(float64))
+		i = int(value.(float64))
 	default:
 		slog.Warn("Can't convert value to a integer", "value", value)
 	}

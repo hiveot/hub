@@ -2,11 +2,12 @@ package service
 
 import (
 	"fmt"
+	"log/slog"
+
 	"github.com/hiveot/hub/messaging"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/wot"
 	jsoniter "github.com/json-iterator/go"
-	"log/slog"
 )
 
 // handleConfigRequest for handling device configuration changes
@@ -33,7 +34,7 @@ func (svc *IsyBinding) handleConfigRequest(req *messaging.RequestMessage) (resp 
 	// pass request to the Thing
 	isyThing := svc.IsyGW.GetIsyThing(req.ThingID)
 	if isyThing == nil {
-		resp = req.CreateResponse(nil, fmt.Errorf("handleActionRequest: thing '%s' not found", req.ThingID))
+		resp = req.CreateResponse(nil, fmt.Errorf("handleConfigRequest: thing '%s' not found", req.ThingID))
 		slog.Warn(resp.Error)
 		return
 	}

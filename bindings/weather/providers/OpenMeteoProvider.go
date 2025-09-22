@@ -3,15 +3,16 @@ package providers
 import (
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/bindings/weather/config"
-	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/messaging/tputils"
-	jsoniter "github.com/json-iterator/go"
 	"io"
 	"log/slog"
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/hiveot/hub/bindings/weather/config"
+	"github.com/hiveot/hub/lib/utils"
+	"github.com/hiveot/hub/messaging/tputils"
+	jsoniter "github.com/json-iterator/go"
 )
 
 // TODO: support reading simulation from file for testing
@@ -85,12 +86,12 @@ func (svc *OpenMeteoProvider) ReadCurrent(config config.WeatherLocation) (c Curr
 	c.Precipitation = tputils.DecodeAsString(currentWeather["precipitation"], 0)
 	c.Rain = tputils.DecodeAsString(currentWeather["rain"], 0)
 	//c.Showers = tputils.DecodeAsString(currentWeather["showers"], 0)
-	c.Snow = tputils.DecodeAsString(currentWeather["snowfall"], 0)
+	c.Snowfall = tputils.DecodeAsString(currentWeather["snowfall"], 0)
 	c.Temperature = tputils.DecodeAsString(currentWeather["temperature_2m"], 0)
 	c.WindSpeed = tputils.DecodeAsString(currentWeather["wind_speed_10m"], 0)
-	c.WindDirection = tputils.DecodeAsString(currentWeather["wind_direction_10m"], 0)
+	c.WindHeading = tputils.DecodeAsString(currentWeather["wind_direction_10m"], 0)
 	c.WindGusts = tputils.DecodeAsString(currentWeather["wind_gusts_10m"], 0)
-	c.WeatherCode = int(tputils.DecodeAsInt(currentWeather["weather_code"]))
+	c.WeatherCode = tputils.DecodeAsInt(currentWeather["weather_code"])
 
 	return c, err
 }

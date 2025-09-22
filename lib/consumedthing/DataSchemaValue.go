@@ -1,8 +1,9 @@
 package consumedthing
 
 import (
-	"github.com/hiveot/hub/messaging/tputils"
 	"log/slog"
+
+	"github.com/hiveot/hub/messaging/tputils"
 )
 
 // DataSchemaValue represents a value provided by an InteractionOutput.
@@ -30,7 +31,7 @@ func (v DataSchemaValue) Array() []interface{} {
 func (v DataSchemaValue) Boolean() bool {
 	return tputils.DecodeAsBool(v.Raw)
 }
-func (v DataSchemaValue) Integer() int64 {
+func (v DataSchemaValue) Integer() int {
 	return tputils.DecodeAsInt(v.Raw)
 }
 

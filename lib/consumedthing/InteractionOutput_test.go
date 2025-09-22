@@ -1,12 +1,13 @@
 package consumedthing
 
 import (
+	"log/slog"
+	"testing"
+
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
-	"log/slog"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -55,7 +56,7 @@ func TestBool(t *testing.T) {
 	asString := io.Value.Text()
 	assert.Equal(t, "true", asString)
 	asInt := io.Value.Integer()
-	assert.Equal(t, int64(1), asInt)
+	assert.Equal(t, 1, asInt)
 }
 
 func TestInt(t *testing.T) {
@@ -65,7 +66,7 @@ func TestInt(t *testing.T) {
 	ct := NewConsumedThing(tdi, nil)
 	io := NewInteractionOutputFromNotification(ct, messaging.AffordanceTypeProperty, tv)
 	asInt := io.Value.Integer()
-	assert.Equal(t, int64(42), asInt)
+	assert.Equal(t, 42, asInt)
 	asString := io.Value.Text()
 	assert.Equal(t, "42", asString)
 }

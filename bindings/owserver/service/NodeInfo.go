@@ -99,7 +99,7 @@ var AttrConfig = map[string]AttrConversion{
 		IsEvent: true, IsProp: true,
 		Title:       "Pressure",
 		Description: "Atmospheric pressure",
-		VocabType:   vocab.PropEnvBarometer,
+		VocabType:   vocab.PropEnvPressureSurface,
 		DataType:    vocab.WoTDataTypeNumber, Precision: 0, ChangeNotify: 3.0,
 		Unit: vocab.UnitMilliBar,
 	},

@@ -18,20 +18,20 @@ import (
 )
 
 var testLocation1 = config.WeatherLocation{
-	ID:              "Vancouver-1",
-	Name:            "Vancouver",
-	Latitude:        "49.286",
-	Longitude:       "-123.182",
-	CurrentEnabled:  true,
-	ForecastEnabled: true,
+	ID:             "Vancouver-1",
+	Name:           "Vancouver",
+	Latitude:       "49.286",
+	Longitude:      "-123.182",
+	CurrentEnabled: true,
+	HourlyEnabled:  true,
 }
 var testLocation2 = config.WeatherLocation{
-	ID:              "Amsterdam-1",
-	Name:            "Amsterdam, NL",
-	Latitude:        "52.375009",
-	Longitude:       "4.895107",
-	CurrentEnabled:  true,
-	ForecastEnabled: true,
+	ID:             "Amsterdam-1",
+	Name:           "Amsterdam, NL",
+	Latitude:       "52.375009",
+	Longitude:      "4.895107",
+	CurrentEnabled: true,
+	HourlyEnabled:  true,
 }
 
 const agentID = "weather"
@@ -102,7 +102,8 @@ func TestPollDirect(t *testing.T) {
 	assert.NotEmpty(t, current.Humidity)
 	assert.NotEmpty(t, current.Rain)
 	assert.NotEmpty(t, current.Temperature)
-	assert.NotEmpty(t, current.WindDirection)
+	assert.NotEmpty(t, current.WindHeading)
+	assert.NotEmpty(t, current.WindGusts)
 	assert.NotEmpty(t, current.WindSpeed)
 }
 

@@ -52,7 +52,7 @@ func TestActionFlow(t *testing.T) {
 		Name:    actionName})
 	require.NoError(t, err)
 	inputVal := tputils.DecodeAsInt(as.Input)
-	require.Equal(t, int64(actionValue), inputVal)
+	require.Equal(t, actionValue, inputVal)
 	require.Equal(t, correlationID, as.ActionID)
 	require.Equal(t, messaging.StatusPending, as.Status)
 
@@ -70,7 +70,7 @@ func TestActionFlow(t *testing.T) {
 
 	require.NoError(t, err)
 	outputInt := tputils.DecodeAsInt(as.Output)
-	require.Equal(t, int64(actionValue), outputInt)
+	require.Equal(t, actionValue, outputInt)
 	require.Equal(t, messaging.StatusCompleted, as.Status)
 
 	// read all actions
