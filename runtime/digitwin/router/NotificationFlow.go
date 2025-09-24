@@ -3,14 +3,15 @@ package router
 
 import (
 	"fmt"
+	"log/slog"
+	"time"
+
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/tputils"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
-	"log/slog"
-	"time"
 )
 
 // HandleNotification handles receiving a notification from an agent (event, property, action)
@@ -25,54 +26,54 @@ func (r *DigitwinRouter) HandleNotification(notif *messaging.NotificationMessage
 		slog.String("value", tputils.DecodeAsString(notif.Data, 30)),
 	)
 	// Convert the agent ThingID to that of the digital twin
-	notifCpy := *notif
+	dtwNotif := *notif
 	dThingID := td.MakeDigiTwinThingID(notif.SenderID, notif.ThingID)
-	notifCpy.ThingID = dThingID
-	if notifCpy.Timestamp == "" {
-		notifCpy.Timestamp = utils.FormatUTCMilli(time.Now())
+	dtwNotif.ThingID = dThingID
+	if dtwNotif.Timestamp == "" {
+		dtwNotif.Timestamp = utils.FormatUTCMilli(time.Now())
 	}
 
 	// Update the digital twin with this event or property value
-	if notifCpy.Operation == wot.OpSubscribeEvent ||
-		notifCpy.Operation == wot.OpSubscribeAllEvents {
+	if dtwNotif.Operation == wot.OpSubscribeEvent ||
+		dtwNotif.Operation == wot.OpSubscribeAllEvents {
 		tv := digitwin.ThingValue{
-			Name:           notifCpy.Name,
-			Data:           notifCpy.Data,
-			ThingID:        notifCpy.ThingID,
-			Timestamp:      notifCpy.Timestamp,
+			Name:           dtwNotif.Name,
+			Data:           dtwNotif.Data,
+			ThingID:        dtwNotif.ThingID,
+			Timestamp:      dtwNotif.Timestamp,
 			AffordanceType: string(messaging.AffordanceTypeEvent),
 		}
 		err = r.dtwStore.UpdateEventValue(tv)
 		if err == nil {
 			// broadcast the event to subscribers of the digital twin
-			r.transportServer.SendNotification(&notifCpy)
+			r.transportServer.SendNotification(&dtwNotif)
 		}
-	} else if notifCpy.Operation == wot.OpObserveProperty {
+	} else if dtwNotif.Operation == wot.OpObserveProperty {
 		tv := digitwin.ThingValue{
-			Name:           notifCpy.Name,
-			Data:           notifCpy.Data,
-			ThingID:        notifCpy.ThingID,
-			Timestamp:      notifCpy.Timestamp,
+			Name:           dtwNotif.Name,
+			Data:           dtwNotif.Data,
+			ThingID:        dtwNotif.ThingID,
+			Timestamp:      dtwNotif.Timestamp,
 			AffordanceType: string(messaging.AffordanceTypeProperty),
 		}
 		changed, _ := r.dtwStore.UpdatePropertyValue(tv)
 		// unchanged values are still updated in the store but not published
 		// should this be configurable?
 		if changed {
-			r.transportServer.SendNotification(&notifCpy)
+			r.transportServer.SendNotification(&dtwNotif)
 		}
-	} else if notifCpy.Operation == wot.OpObserveAllProperties {
+	} else if dtwNotif.Operation == wot.OpObserveAllProperties {
 		// output is a key-value map
 		var propMap map[string]any
-		err := tputils.DecodeAsObject(notifCpy.Data, &propMap)
+		err := tputils.DecodeAsObject(dtwNotif.Data, &propMap)
 		if err == nil {
 			for k, v := range propMap {
 				tv := digitwin.ThingValue{
 					AffordanceType: string(messaging.AffordanceTypeProperty),
 					Name:           k,
 					Data:           v,
-					ThingID:        notifCpy.ThingID,
-					Timestamp:      notifCpy.Timestamp,
+					ThingID:        dtwNotif.ThingID,
+					Timestamp:      dtwNotif.Timestamp,
 				}
 				changed, _ := r.dtwStore.UpdatePropertyValue(tv)
 				// unchanged values are still updated in the store but not published
@@ -80,7 +81,7 @@ func (r *DigitwinRouter) HandleNotification(notif *messaging.NotificationMessage
 				if changed {
 					// notify the consumer with individual updates instead of a map
 					// this seems more correct than sending a map.
-					notifCpy2 := notifCpy
+					notifCpy2 := dtwNotif
 					notifCpy2.Operation = wot.OpObserveProperty
 					notifCpy2.Name = k
 					notifCpy2.Data = v
@@ -88,35 +89,35 @@ func (r *DigitwinRouter) HandleNotification(notif *messaging.NotificationMessage
 				}
 			}
 		}
-	} else if notifCpy.Operation == wot.OpInvokeAction {
+	} else if dtwNotif.Operation == wot.OpInvokeAction {
 		// action progress update. Forward to sender of the request
 		var cc messaging.IConnection
 		r.mux.Lock()
-		actRec, found := r.activeCache[notifCpy.CorrelationID]
+		actRec, found := r.activeCache[dtwNotif.CorrelationID]
 		r.mux.Unlock()
 		if !found {
 			// no associated action for this notification
 			return
 		}
 		// the sender (agents) must be the agent hat handled the action
-		if notifCpy.SenderID != actRec.AgentID {
+		if dtwNotif.SenderID != actRec.AgentID {
 			// notification wasn't sent by the correct sender
 			slog.Warn("Notification with correlationID '%s' from sender '%s' is "+
 				"not sent by agent '%s' for action '%s'",
-				notifCpy.CorrelationID, notifCpy.SenderID, actRec.AgentID, notifCpy.Operation,
+				dtwNotif.CorrelationID, dtwNotif.SenderID, actRec.AgentID, dtwNotif.Operation,
 			)
 			return
 		}
 		// update the action status
-		r.dtwStore.UpdateActionWithNotification(&notifCpy)
+		r.dtwStore.UpdateActionWithNotification(&dtwNotif)
 
 		// forward the notification to the sender of the request only
 		cc = r.transportServer.GetConnectionByConnectionID(actRec.SenderID, actRec.ReplyTo)
 		if cc != nil {
-			_ = cc.SendNotification(&notifCpy)
+			_ = cc.SendNotification(&dtwNotif)
 		}
 	} else {
-		err = fmt.Errorf("Unknown notification '%s'", notifCpy.Operation)
+		err = fmt.Errorf("Unknown notification '%s'", dtwNotif.Operation)
 	}
 	if err != nil {
 		slog.Warn(err.Error())

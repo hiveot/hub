@@ -7,8 +7,12 @@ type WeatherConfig struct {
 	DefaultProvider string `yaml:"defaultProvider"`
 
 	// Default polling interval for current weather in seconds
-	DefaultCurrentInterval        int `yaml:"defaultCurrentInterval,omitempty"`
-	DefaultHourlyForecastInterval int `yaml:"defaultForecastInterval,omitempty"`
+	DefaultCurrentEnabled         bool `yaml:"defaultCurrentEnabled,omitempty"`
+	DefaultCurrentInterval        int  `yaml:"defaultCurrentInterval,omitempty"`
+	DefaultHourlyEnabled          bool `yaml:"defaultHourlyEnabled,omitempty"`
+	DefaultHourlyForecastInterval int  `yaml:"defaultHourlyForecastInterval,omitempty"`
+
+	WindSpeedUnits string `yaml:"windSpeedUnits,omitempty"`
 
 	// Minimum allowable polling interval for current weather in seconds
 	MinCurrentInterval  int `yaml:"minCurrentInterval,omitempty"`
@@ -16,18 +20,23 @@ type WeatherConfig struct {
 
 	Providers map[string]WeatherProvider `yaml:"providers"`
 
-	// locations by thingID
+	// pre-configured locations by thingID
+	// these do not accept modification
 	Locations map[string]WeatherLocation `yaml:"locations"`
 }
 
 // NewWeatherConfig creates a new default weather binding configuration
 func NewWeatherConfig() *WeatherConfig {
 	cfg := WeatherConfig{
-		DefaultProvider:               "open-meteo",
+		DefaultProvider:               "open-meteo", // must match providers.OpenMeteoProviderID
 		DefaultCurrentInterval:        15 * 60,
 		DefaultHourlyForecastInterval: 60 * 60,
+		DefaultCurrentEnabled:         true,
+		DefaultHourlyEnabled:          false,
 		MinCurrentInterval:            5 * 60,
 		MinForecastInterval:           10 * 60,
+		//
+		WindSpeedUnits: "ms", // meters per second
 	}
 	return &cfg
 }
@@ -36,6 +45,7 @@ func NewWeatherConfig() *WeatherConfig {
 // A location can be added through the binding config.
 // (future plan is to allow managing locations using actions)
 type WeatherLocation struct {
+	// ThingID and description of the location
 	ID          string `yaml:"ID,omitempty"`
 	Description string `yaml:"description,omitempty"`
 	Latitude    string `yaml:"latitude"`
@@ -52,8 +62,8 @@ type WeatherLocation struct {
 	// HourlyInterval interval to obtain the next hourly forecast. Default 3600
 	HourlyInterval int `yaml:"hourlyInterval,omitempty"`
 
-	// Provider optionally overrides the default provider
-	Provider string `yaml:"provider,omitempty"`
+	// WeatherProvider optionally overrides the default provider
+	WeatherProvider string `yaml:"provider,omitempty"`
 }
 
 // WeatherProvider defined access to a weather service

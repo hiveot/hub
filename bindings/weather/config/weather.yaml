@@ -3,7 +3,7 @@
 # logging level debug, info, warn (default), error.
 #logLevel: info
 
-# Default weather provider (currently only 1 is implemented)
+# Default weather provider. Can be changed per location.
 defaultProvider: "open-meteo"
 
 # Minimum polling interval for current weather
@@ -13,8 +13,11 @@ defaultProvider: "open-meteo"
 
 # Default polling interval for current weather
 #defaultCurrentInterval: 900
-# Default polling interval for forecast
-#defaultForecastInterval: 3600
+# Default polling interval for hourly forecast
+#defaultHourlyForecastInterval: 3600
+
+# units
+#windSpeedUnits: "ms"
 
 # weather providers
 providers:
@@ -33,6 +36,7 @@ providers:
 locations:
   amsterdam-1:
     name: "Amsterdam"
+    #provider: "alt-provider"
     description: "Center of Amsterdam"
     latitude: "52.375009"
     longitude: "4.895107"
@@ -48,6 +52,7 @@ locations:
   vancouver-1:
     name: "Vancouver"
     description: "Center of Vancouver"
+    #provider: "environment-canada"
     latitude: "49.286"
     longitude: "-123.182"
     currentEnabled: true

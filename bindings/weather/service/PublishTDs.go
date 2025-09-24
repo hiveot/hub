@@ -3,6 +3,7 @@ package service
 import (
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/weather/config"
+	"github.com/hiveot/hub/bindings/weather/providers"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
@@ -15,8 +16,14 @@ const PropNameHourlyUpdated = "hourlyUpdated"
 // configuration properties
 const PropNameCurrentEnabled = "currentEnabled"
 const PropNameCurrentInterval = "currentInterval"
-const PropNameDefaultProvider = "defaultProvider"
+const PropNameWeatherProvider = "weatherProvider"
 const PropNameHourlyEnabled = "hourlyEnabled"
+const PropNameHourlyInterval = "hourlyInterval"
+const PropNameUnitsWindSpeed = "windSpeedUnits"
+
+// actions
+const ActionNameAddLocation = "addLocation"
+const ActionNameRemoveLocation = "removedLocation"
 
 // CreateBindingTD creates a Thing TD of this service
 // This binding exposes the TD of itself.
@@ -25,15 +32,35 @@ func CreateBindingTD(serviceID string) *td.TD {
 	tdoc := td.NewTD(serviceID, "Weather binding", vocab.ThingService)
 	tdoc.Description = "Binding for the weather service"
 
-	// The defaults are defined in the WeatherConfig object.
-	prop := tdoc.AddProperty(PropNameDefaultProvider, "Default Provider",
+	// The defaults are defined in the config yaml.
+	prop := tdoc.AddProperty(PropNameWeatherProvider, "Default Provider",
 		"Name of the current default weather provider used",
 		vocab.WoTDataTypeString)
+	prop.ReadOnly = true
+	prop.Enum = []any{providers.OpenMeteoProviderID}
 
-	//prop = tdoc.AddProperty("publishChanges", "Only Publish Changes",
-	//	"Only publish changes of the weather since previous poll",
-	//	vocab.WoTDataTypeAnyURI)
-	_ = prop
+	prop = tdoc.AddProperty(PropNameUnitsWindSpeed, "Wind Speed Units",
+		"The units for wind speed",
+		vocab.WoTDataTypeString)
+	prop.Default = vocab.UnitMeterPerSecond
+	prop.ReadOnly = true
+	prop.DataSchema.SetEnumAsStrings([]string{vocab.UnitMeterPerSecond, vocab.UnitKilometerPerHour, vocab.UnitMilesPerHour})
+
+	action := tdoc.AddAction(ActionNameAddLocation, "Add Location", "Add a new location", &td.DataSchema{
+		Title:  "Location configuration",
+		Type:   wot.DataTypeObject,
+		Schema: "WeatherLocation",
+	})
+	action.Safe = false
+	action.Idempotent = true
+
+	action = tdoc.AddAction(ActionNameRemoveLocation, "Remove Location", "Remove a location", &td.DataSchema{
+		Title: "Location ID",
+		Type:  wot.DataTypeString,
+	})
+	action.Safe = false
+	action.Idempotent = true
+
 	return tdoc
 }
 
@@ -54,10 +81,11 @@ func CreateTDOfLocation(defaultCfg *config.WeatherConfig, cfg *config.WeatherLoc
 		vocab.WoTDataTypeDateTime)
 	prop.ReadOnly = true
 
-	//prop = tdoc.AddProperty("provider", "Weather Provider",
-	//	"The weather provider for this location",
-	//	vocab.WoTDataTypeString)
-	//prop.Enum = []any{providers.OpenMeteoProviderID}
+	prop = tdoc.AddProperty(PropNameWeatherProvider, "Weather Provider",
+		"The weather provider for this location",
+		vocab.WoTDataTypeString)
+	prop.Enum = []any{providers.OpenMeteoProviderID}
+	prop.Default = defaultCfg.DefaultProvider
 
 	// Configuration
 
@@ -65,6 +93,7 @@ func CreateTDOfLocation(defaultCfg *config.WeatherConfig, cfg *config.WeatherLoc
 		"Enable read the current weather",
 		vocab.WoTDataTypeBool)
 	prop.ReadOnly = false
+	prop.Default = defaultCfg.DefaultCurrentEnabled
 
 	prop = tdoc.AddProperty(PropNameCurrentInterval, "Current Weather Updates",
 		"Interval in seconds the current weather is updated",
@@ -77,7 +106,15 @@ func CreateTDOfLocation(defaultCfg *config.WeatherConfig, cfg *config.WeatherLoc
 	prop = tdoc.AddProperty(PropNameHourlyEnabled, "Enable Hourly Forecast",
 		"Enable reading the weather forecast",
 		vocab.WoTDataTypeBool)
+	prop.Default = defaultCfg.DefaultHourlyEnabled
 	prop.ReadOnly = false
+
+	prop = tdoc.AddProperty(PropNameHourlyInterval, "Hourly Forecast Interval",
+		"Interval to update the hourly forecast",
+		vocab.WoTDataTypeInteger)
+	prop.ReadOnly = false
+	prop.Default = defaultCfg.DefaultHourlyForecastInterval
+	prop.Unit = vocab.UnitSecond
 
 	prop = tdoc.AddProperty(PropNameHourlyUpdated, "Hourly Forecast Updated time",
 		"Time the hourly weather forecast was last updated",
@@ -99,13 +136,6 @@ func CreateTDOfLocation(defaultCfg *config.WeatherConfig, cfg *config.WeatherLoc
 		"Location Name",
 		vocab.WoTDataTypeString)
 	prop.ReadOnly = false
-
-	prop = tdoc.AddProperty("units-wind-speed", "Wind Speed Units",
-		"The units for wind speed",
-		vocab.WoTDataTypeString)
-	prop.Default = vocab.UnitMeterPerSecond
-	prop.ReadOnly = true
-	prop.DataSchema.SetEnumAsStrings([]string{vocab.UnitMeterPerSecond, vocab.UnitKilometerPerHour, vocab.UnitMilesPerHour})
 
 	// Events with the current weather
 
@@ -191,13 +221,17 @@ func CreateTDOfLocation(defaultCfg *config.WeatherConfig, cfg *config.WeatherLoc
 }
 
 // PublishBindingTD publishes the TD of the binding itself
-func PublishBindingTD(ag *messaging.Agent) error {
-	tdoc := CreateBindingTD(ag.GetClientID())
+func PublishBindingTD(ag *messaging.Agent, cfg *config.WeatherConfig) error {
+	thingID := ag.GetClientID()
+	tdoc := CreateBindingTD(thingID)
 	err := ag.UpdateThing(tdoc)
+	if err == nil {
+		err = PublishBindingProperties(ag, thingID, cfg)
+	}
 	return err
 }
 
-// PublishLocationTDs publishes the TD of all locationStore
+// PublishLocationTDs publishes the TD of all locationStore and current properties
 func PublishLocationTDs(ag *messaging.Agent, defaultCfg *config.WeatherConfig, locationStore *LocationStore) (err error) {
 	locationStore.ForEach(func(loc config.WeatherLocation) {
 		err2 := PublishLocationTD(ag, defaultCfg, loc)
@@ -208,9 +242,12 @@ func PublishLocationTDs(ag *messaging.Agent, defaultCfg *config.WeatherConfig, l
 	return err
 }
 
-// PublishLocationTD publishes the TD of the given location
+// PublishLocationTD publishes the TD of the given location and its current values
 func PublishLocationTD(ag *messaging.Agent, defaultCfg *config.WeatherConfig, loc config.WeatherLocation) error {
 	tdoc := CreateTDOfLocation(defaultCfg, &loc)
 	err := ag.UpdateThing(tdoc)
+	if err == nil {
+		err = PublishLocationProperties(ag, loc.ID, loc)
+	}
 	return err
 }

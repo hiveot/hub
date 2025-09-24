@@ -52,6 +52,7 @@ func (svc *OpenMeteoProvider) ReadCurrent(config config.WeatherLocation) (c Curr
 				"&minutely_15=lightning_potential"
 
 		reqURL := fmt.Sprintf("%s?timezone=%s&latitude=%s&longitude=%s"+
+			"&wind_speed_unit=ms&temperature_unit=celsius&precipitation_unit=mm"+
 			"&models=gem_seamless"+
 			"&current=%s",
 			svc.baseURL, timezone, config.Latitude, config.Longitude, current)
@@ -79,6 +80,9 @@ func (svc *OpenMeteoProvider) ReadCurrent(config config.WeatherLocation) (c Curr
 	}
 	c.Updated = utils.FormatNowUTCMilli()
 	currentWeather := weatherJson["current"].(map[string]interface{})
+	c.Updated = tputils.DecodeAsString(currentWeather["time"], 0)
+	//updated,_ := dateparse.ParseAny(timeStamp)
+	//c.Updated = utils.FormatNowUTCMilli()
 	c.AtmoPressureMsl = tputils.DecodeAsString(currentWeather["pressure_msl"], 0)
 	c.AtmoPressureSurface = tputils.DecodeAsString(currentWeather["surface_pressure"], 0)
 	c.CloudCover = tputils.DecodeAsString(currentWeather["cloud_cover"], 0)
@@ -96,7 +100,7 @@ func (svc *OpenMeteoProvider) ReadCurrent(config config.WeatherLocation) (c Curr
 	return c, err
 }
 
-func (svc *OpenMeteoProvider) ReadForecast(loc config.WeatherLocation) (f ForecastWeather, err error) {
+func (svc *OpenMeteoProvider) ReadHourlyForecast(loc config.WeatherLocation) (f HourlyWeatherForecast, err error) {
 	return f, errors.New("not yet implemented")
 }
 

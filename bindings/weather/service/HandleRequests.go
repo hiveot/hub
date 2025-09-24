@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/bindings/weather/config"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/tputils"
 )
@@ -12,6 +13,7 @@ import (
 // HandleRequest passes the action and config request to the associated Thing.
 func (svc *WeatherBinding) handleRequest(req *messaging.RequestMessage,
 	c messaging.IConnection) (resp *messaging.ResponseMessage) {
+	var err error
 
 	if req.Operation == vocab.OpWriteProperty {
 		return svc.handleConfigRequest(req, c)
@@ -22,7 +24,19 @@ func (svc *WeatherBinding) handleRequest(req *messaging.RequestMessage,
 		slog.String("name", req.Name),
 		slog.String("senderID", req.SenderID))
 
-	err := fmt.Errorf("handleActionRequest: unknown operation '%s' for thing '%s'", req.Operation, req.ThingID)
+	if req.Name == ActionNameAddLocation {
+		err = fmt.Errorf("add location '%s' is not yet supported", req.ThingID)
+		locInfo := config.WeatherLocation{}
+		err = tputils.DecodeAsObject(req.Input, &locInfo)
+		if err == nil {
+			err = svc.AddLocation(locInfo)
+		}
+	} else if req.Name == ActionNameRemoveLocation {
+		err = fmt.Errorf("remove location '%s' is not yet supported", req.ThingID)
+		svc.RemoveLocation(req.ThingID)
+	} else {
+		err = fmt.Errorf("handleActionRequest: unknown operation '%s' for thing '%s'", req.Operation, req.ThingID)
+	}
 	resp = req.CreateResponse(nil, err)
 	slog.Warn(resp.Error)
 	return resp
@@ -31,50 +45,70 @@ func (svc *WeatherBinding) handleRequest(req *messaging.RequestMessage,
 func (svc *WeatherBinding) handleConfigRequest(req *messaging.RequestMessage,
 	_ messaging.IConnection) (resp *messaging.ResponseMessage) {
 	var err error
+	var newValue any // if newValue is set the property is published
+
 	slog.Info("handleConfigRequest",
 		slog.String("thingID", req.ThingID),
 		slog.String("name", req.Name),
 		slog.String("senderID", req.SenderID))
 
-	config, found := svc.cfg.Locations[req.ThingID]
+	// If this is a preconfigured location it cannot be modified
+	loc, found := svc.locationStore.Get(req.ThingID)
 	if !found {
 		resp = req.CreateResponse(nil, fmt.Errorf("handleConfigRequest: Location '%s' not found", req.ThingID))
 		slog.Warn(resp.Error)
-		return
+		return resp
 	}
 
 	switch req.Name {
 	case PropNameCurrentEnabled:
-		config.CurrentEnabled = tputils.DecodeAsBool(req.Input)
+		loc.CurrentEnabled = tputils.DecodeAsBool(req.Input)
+		newValue = loc.CurrentEnabled
 	case PropNameCurrentInterval:
 		newInterval := tputils.DecodeAsInt(req.Input)
-		if newInterval < svc.cfg.MinCurrentInterval {
+		if newInterval < 0 {
+			newInterval = svc.cfg.DefaultCurrentInterval
+		} else if newInterval < svc.cfg.MinCurrentInterval {
 			err = fmt.Errorf("invalid interval '%d seconds' for obtaining current weather", newInterval)
 			break
 		}
-		config.CurrentInterval = newInterval
-	case PropNameDefaultProvider:
+		loc.CurrentInterval = newInterval
+		newValue = newInterval
+	case PropNameWeatherProvider:
 		newProvider := tputils.DecodeAsString(req.Input, 0)
 		_, isProvider := svc.cfg.Providers[newProvider]
 		if !isProvider {
 			err = fmt.Errorf("unknown weather provider: %s", newProvider)
 			break
 		}
-		svc.cfg.DefaultProvider = newProvider
+		loc.WeatherProvider = newProvider
+		newValue = newProvider
 	case PropNameHourlyEnabled:
-		config.HourlyEnabled = tputils.DecodeAsBool(req.Input)
+		loc.HourlyEnabled = tputils.DecodeAsBool(req.Input)
+		newValue = loc.HourlyEnabled
 	case vocab.PropLocationLatitude:
-		config.Latitude = tputils.DecodeAsString(req.Input, 0)
+		loc.Latitude = tputils.DecodeAsString(req.Input, 0)
+		newValue = loc.Latitude
 	case vocab.PropLocationLongitude:
-		config.Longitude = tputils.DecodeAsString(req.Input, 0)
+		loc.Longitude = tputils.DecodeAsString(req.Input, 0)
+		newValue = loc.Longitude
 	case vocab.PropLocationName:
-		config.Name = tputils.DecodeAsString(req.Input, 0)
+		loc.Name = tputils.DecodeAsString(req.Input, 0)
+		newValue = loc.Name
 	default:
 		err = fmt.Errorf("handleConfigRequest: '%s' is not a configuration", req.Name)
 	}
 	if err != nil {
-		resp = req.CreateResponse(nil, err)
-		slog.Warn(resp.Error)
+		slog.Warn(err.Error())
+	}
+	resp = req.CreateResponse(req.Input, err)
+
+	// If a new value is set, update the location and publish the result
+	if err == nil && newValue != nil {
+		svc.locationStore.Update(loc)
+		go func() {
+			_ = svc.ag.PubProperty(req.ThingID, req.Name, newValue)
+		}()
 	}
 	return resp
 }

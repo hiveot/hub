@@ -77,11 +77,17 @@ func (ag *Agent) PubActionProgress(req RequestMessage, value any) error {
 // The underlying transport protocol binding handles the subscription mechanism
 // as the agent itself doesn't track subscriptions.
 func (ag *Agent) PubEvent(thingID string, name string, value any) error {
+
 	// This is a response to subscription request.
 	// for now assume this is a hub connection and the hub wants all events
-	resp := NewNotificationMessage(wot.OpSubscribeEvent, thingID, name, value)
+	notif := NewNotificationMessage(wot.OpSubscribeEvent, thingID, name, value)
+	slog.Info("PubEvent",
+		"thingID", thingID,
+		"name", name,
+		"value", notif.ToString(50),
+	)
 
-	return ag.cc.SendNotification(resp)
+	return ag.cc.SendNotification(notif)
 }
 
 // PubProperty helper for agents to publish a property value notification to observers.
@@ -91,7 +97,7 @@ func (ag *Agent) PubProperty(thingID string, name string, value any) error {
 	// This is a response to an observation request.
 	// send the property update as a response to the observe request
 	notif := NewNotificationMessage(wot.OpObserveProperty, thingID, name, value)
-	slog.Info("PubProperty (async)",
+	slog.Info("PubProperty",
 		"thingID", thingID,
 		"name", notif.Name,
 		"value", notif.ToString(50),
@@ -107,7 +113,7 @@ func (ag *Agent) PubProperties(thingID string, propMap map[string]any) error {
 	// the transport adds the correlationID of the subscription.
 	notif := NewNotificationMessage(wot.OpObserveAllProperties, thingID, "", propMap)
 
-	slog.Info("PubProperties (async)",
+	slog.Info("PubProperties",
 		"thingID", thingID,
 		"nrProps", len(propMap),
 		"value", notif.ToString(50),

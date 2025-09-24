@@ -13,6 +13,8 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/messaging"
+	authz "github.com/hiveot/hub/runtime/authz/api"
+	"github.com/hiveot/hub/wot/td"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -58,9 +60,10 @@ func Setup() (ts *testenv.TestServer, ag *messaging.Agent, stopFn func()) {
 // TestMain run test server and use the project test folder as the home folder.
 // All tests are run using the simulation file.
 func TestMain(m *testing.M) {
-	// setup environment
+	// setup a clean environment
 	tempFolder = path.Join(os.TempDir(), "test-openmeteo")
 	storePath = path.Join(tempFolder, "openmeteo-config")
+	_ = os.RemoveAll(storePath)
 
 	logging.SetLogging("info", "")
 	//ts = testenv.StartTestServer(true)
@@ -132,6 +135,42 @@ func TestPollFromService(t *testing.T) {
 	t2 := time.Now()
 	duration := t2.Sub(t1)
 	fmt.Printf("Duration: %d msec\n", duration.Milliseconds())
+
+	svc.Stop()
+}
+
+func TestDisableCurrent(t *testing.T) {
+	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	client1ID := "client1"
+
+	ts, ag, stopFn := Setup()
+	defer stopFn()
+
+	svc := service.NewWeatherBinding(storePath, weatherConfig)
+	err := svc.Start(ag)
+	require.NoError(t, err)
+	err = svc.AddLocation(testLocation1)
+	err = svc.AddLocation(testLocation2)
+	require.NoError(t, err)
+
+	require.NoError(t, err)
+	// give heartbeat time to run
+	time.Sleep(time.Millisecond * 1)
+
+	co1, _, _ := ts.AddConnectConsumer(client1ID, authz.ClientRoleAdmin)
+	defer co1.Disconnect()
+
+	thingID := td.MakeDigiTwinThingID(ag.GetClientID(), testLocation1.ID)
+	err = co1.WriteProperty(thingID, service.PropNameCurrentEnabled, false, true)
+	require.NoError(t, err)
+
+	loc1, found := svc.LocationStore().Get(testLocation1.ID)
+	require.True(t, found)
+	require.Equal(t, testLocation1.ID, loc1.ID)
+	require.Equal(t, false, loc1.CurrentEnabled)
+
+	err = svc.Poll()
+	assert.NoError(t, err)
 
 	svc.Stop()
 }

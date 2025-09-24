@@ -22,13 +22,13 @@ type CurrentWeather struct {
 	WindSpeed           string `json:"windSpeed"`   // m/s
 }
 
-// ForecastWeather holds the provided forecast
-type ForecastWeather struct {
-	Updated string `json:"updated"` // time the forecast was updated
+// HourlyWeatherForecast holds the hourly forecast
+type HourlyWeatherForecast struct {
+	Updated string `json:"updated"` // time the forecast was last updated
 }
 
 type IWeatherProvider interface {
 	BaseURL() string
 	ReadCurrent(loc config.WeatherLocation) (CurrentWeather, error)
-	ReadForecast(loc config.WeatherLocation) (ForecastWeather, error)
+	ReadHourlyForecast(loc config.WeatherLocation) (HourlyWeatherForecast, error)
 }

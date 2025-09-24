@@ -2,11 +2,12 @@ package service
 
 import (
 	"fmt"
+	"sync"
+
 	"github.com/hiveot/hub/bindings/weather/config"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
 	jsoniter "github.com/json-iterator/go"
-	"sync"
 )
 
 // LocationStore stores configured locationStore in a bucket store
@@ -19,6 +20,7 @@ type LocationStore struct {
 }
 
 // Add a location to the store
+// If the location exists then it is updated.
 func (svc *LocationStore) Add(loc config.WeatherLocation) error {
 	svc.mux.Lock()
 	defer svc.mux.Unlock()
@@ -51,6 +53,16 @@ func (svc *LocationStore) Close() {
 		_ = svc.locationsBucket.Close()
 		_ = svc.bucketStore.Close()
 	}
+}
+
+// Get returns the configuration of a location
+func (svc *LocationStore) Get(id string) (loc config.WeatherLocation, found bool) {
+	for _, loc = range svc.locations {
+		if loc.ID == id {
+			return loc, true
+		}
+	}
+	return loc, false
 }
 
 // ForEach invokes the callback for each enabled location
@@ -88,11 +100,17 @@ func (svc *LocationStore) Open() error {
 }
 
 // Remove a location from the store
-func (svc *LocationStore) Remove(loc *config.WeatherLocation) {
+func (svc *LocationStore) Remove(id string) {
 	svc.mux.Lock()
 	defer svc.mux.Unlock()
 	panic("remove not yet implemented")
 }
+
+// Update a location in the store
+func (svc *LocationStore) Update(loc config.WeatherLocation) {
+	_ = svc.Add(loc)
+}
+
 func NewLocationStore(storePath string) *LocationStore {
 	bucketStore := kvbtree.NewKVStore(storePath)
 
