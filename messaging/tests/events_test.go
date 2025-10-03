@@ -2,15 +2,15 @@ package tests
 
 import (
 	"context"
-	"fmt"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/wot"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"log/slog"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/wot"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // test event messages between agent, server and client
@@ -18,12 +18,12 @@ import (
 
 // Test subscribing and receiving all events by consumer
 func TestSubscribeAll(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	var rxVal atomic.Value
 	var testMsg1 = "hello world 1"
 	var testMsg2 = "hello world 2"
 	var agentID = "agent1"
-	var thingID = "thing1"
+	var thingID = "dtw:thing1"
 	var eventKey = "event11"
 	var agentRxEvent atomic.Bool
 
@@ -51,7 +51,7 @@ func TestSubscribeAll(t *testing.T) {
 	cons1.SetNotificationHandler(func(ev *messaging.NotificationMessage) {
 		slog.Info("client 1 receives event")
 		// receive event
-		rxVal.Store(ev.Data)
+		rxVal.Store(ev.Value)
 		//cancelFn()
 	})
 	cons2.SetNotificationHandler(func(ev *messaging.NotificationMessage) {
@@ -111,7 +111,7 @@ func TestSubscribeAll(t *testing.T) {
 // run a server itself.
 // FIXME: server should subscribe to agent as a consumer
 func TestPublishEventsByAgent(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	var evVal atomic.Value
 	var testMsg = "hello world"
 	var thingID = "thing1"
@@ -120,7 +120,7 @@ func TestPublishEventsByAgent(t *testing.T) {
 	// 1. start the transport
 	// handler of event notification on the server
 	notificationHandler := func(msg *messaging.NotificationMessage) {
-		evVal.Store(msg.Data)
+		evVal.Store(msg.Value)
 	}
 	srv, cancelFn := StartTransportServer(notificationHandler, nil, nil)
 	_ = srv
@@ -143,7 +143,7 @@ func TestPublishEventsByAgent(t *testing.T) {
 
 //// Consumer reads events from agent
 //func TestReadEvent(t *testing.T) {
-//	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+//	t.Logf("---%s---\n", t.Name())
 //	var thingID = "thing1"
 //	var eventKey = "event11"
 //	var eventValue = "value11"
@@ -182,7 +182,7 @@ func TestPublishEventsByAgent(t *testing.T) {
 
 // Consumer reads events from agent
 //func TestReadAllEvents(t *testing.T) {
-//	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+//	t.Logf("---%s---\n", t.Name())
 //	var thingID = "thing1"
 //	var event1Name = "event1"
 //	var event2Name = "event2"

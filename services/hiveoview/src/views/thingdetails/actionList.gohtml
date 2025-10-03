@@ -43,10 +43,10 @@
 					<div>{{$aff.Description}}</div>
 
             {{/*4: Progress*/}}
-					<div>{{$actionStatus.Status}}</div>
+					<div>{{$actionStatus.State}}</div>
 
             {{/*5: Timestamp*/}}
-					<div>{{datetime $actionStatus.Requested "S"}}</div>
+					<div>{{datetime $actionStatus.TimeRequested "S"}}</div>
 
             {{/*6: By*/}}
 					<div>{{$actionStatus.SenderID}}</div>

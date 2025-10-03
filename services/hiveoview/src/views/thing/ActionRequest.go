@@ -115,7 +115,7 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 	if err == nil && actionVal.Name != "" {
 		data.LastActionRecord = &actionVal
 		//data.PrevValue = &lastActionRecord
-		updatedTime, _ := dateparse.ParseAny(data.LastActionRecord.Updated)
+		updatedTime, _ := dateparse.ParseAny(data.LastActionRecord.TimeUpdated)
 		data.LastActionTime = updatedTime.Format(time.RFC1123)
 		data.LastActionAge = tputils.Age(updatedTime)
 		data.InputValue.Value.Raw = data.LastActionRecord.Input

@@ -1,7 +1,6 @@
 package httpbasic
 
 import (
-	"errors"
 	"slices"
 
 	"github.com/go-chi/chi/v5"
@@ -23,14 +22,16 @@ func (srv *HttpBasicServer) handleAffordanceOperation(w http.ResponseWriter, r *
 	var handled bool
 
 	// 1. Decode the request message
-	rp, err := GetRequestParams(r, nil)
+	rp, err := GetRequestParams(r)
 	if err != nil {
 		slog.Error(err.Error())
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 	// Use the authenticated clientID as the sender
-	req := messaging.NewRequestMessage(rp.Op, rp.ThingID, rp.Name, rp.Data, "")
+	var input any
+	err = rp.Unmarshal(&input)
+	req := messaging.NewRequestMessage(rp.Op, rp.ThingID, rp.Name, input, "")
 	req.SenderID = rp.ClientID
 	req.CorrelationID = rp.CorrelationID
 
@@ -52,8 +53,8 @@ func (srv *HttpBasicServer) handleAffordanceOperation(w http.ResponseWriter, r *
 		// no response available
 	} else {
 		output = resp.Value
-		if resp.Error != "" {
-			err = errors.New(resp.Error)
+		if resp.Error != nil {
+			err = resp.Error.AsError()
 		}
 	}
 
@@ -105,9 +106,10 @@ func (srv *HttpBasicServer) HandleLogin(w http.ResponseWriter, r *http.Request) 
 func (srv *HttpBasicServer) HandleAuthRefresh(w http.ResponseWriter, r *http.Request) {
 	var newToken string
 	var oldToken string
-	rp, err := GetRequestParams(r, &oldToken)
+	rp, err := GetRequestParams(r)
 
 	if err == nil {
+		jsoniter.Unmarshal(rp.Payload, &oldToken)
 		slog.Info("HandleAuthRefresh", "clientID", rp.ClientID)
 		newToken, err = srv.authenticator.RefreshToken(rp.ClientID, oldToken)
 	}
@@ -122,7 +124,7 @@ func (srv *HttpBasicServer) HandleAuthRefresh(w http.ResponseWriter, r *http.Req
 // HandleLogout ends the session and closes all client connections
 func (srv *HttpBasicServer) HandleLogout(w http.ResponseWriter, r *http.Request) {
 	// use the authenticator
-	rp, err := GetRequestParams(r, nil)
+	rp, err := GetRequestParams(r)
 	if err == nil {
 		slog.Info("HandleLogout", "clientID", rp.ClientID)
 		srv.authenticator.Logout(rp.ClientID)

@@ -2,8 +2,9 @@ package utils
 
 import (
 	"fmt"
-	"github.com/araddon/dateparse"
 	"time"
+
+	"github.com/araddon/dateparse"
 )
 
 // each of these formats can be updated
@@ -47,7 +48,8 @@ func FormatAge(dateStr string) (age string) {
 	parsedTime, _ := dateparse.ParseAny(dateStr)
 	localTime := parsedTime.Local()
 
-	dur := int(time.Now().Sub(localTime).Round(time.Second).Seconds())
+	// dur := int(time.Now().Sub(localTime).Round(time.Second).Seconds())
+	dur := int(time.Since(localTime).Round(time.Second).Seconds())
 	days := dur / (24 * 3600)
 	if days >= 1 {
 		dur -= days * (24 * 3600)
@@ -84,19 +86,20 @@ func FormatDateTime(dateStr string, format ...string) string {
 	createdLocal := createdTime.Local()
 	formattedTime := ""
 
-	if format != nil && len(format) == 1 {
+	if len(format) == 1 {
 		// short format depending on age
-		if format[0] == "S" {
+		switch format[0] {
+		case "S":
 			// Format weekday, time if less than a week old
-			age := time.Now().Sub(createdTime)
+			age := time.Since(createdTime)
 			if age < time.Hour*24*7 {
 				formattedTime = createdLocal.Format(WeekTimeFormat)
 			} else {
 				formattedTime = createdLocal.Format(YearTimeFormat)
 			}
-		} else if format[0] == "V" {
+		case "V":
 			formattedTime = createdLocal.Format(VerboseTimeFormat)
-		} else {
+		default:
 			formattedTime = createdLocal.Format(format[0])
 		}
 	} else {

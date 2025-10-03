@@ -44,7 +44,7 @@ const testServerHiveotWssURL = "wss://localhost:9445" + wssserver.DefaultWssPath
 
 var defaultProtocol = messaging.ProtocolTypeHiveotSSE
 
-//var defaultProtocol = messaging.ProtocolTypeWSS
+// var defaultProtocol = messaging.ProtocolTypeWSS
 
 var transportServer messaging.ITransportServer
 var dummyAuthenticator *tputils.DummyAuthenticator
@@ -161,7 +161,6 @@ func StartTransportServer(
 		transportServer = wssserver.NewWssServer(
 			connectAddr, wssserver.DefaultWssPath,
 			httpBasicServer.GetProtectedRouter(),
-			&wssserver.HiveotMessageConverter{},
 			nil, notifHandler, reqHandler, respHandler)
 		err = transportServer.Start()
 
@@ -221,7 +220,7 @@ func TestMain(m *testing.M) {
 
 // test create a server and connect a client
 func TestStartStop(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 
 	srv, cancelFn := StartTransportServer(nil, nil, nil)
 	_ = srv
@@ -236,7 +235,7 @@ func TestStartStop(t *testing.T) {
 
 // login/refresh use the http-basic or http-sse binding
 func TestLoginRefresh(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 
 	srv, cancelFn := StartTransportServer(nil, nil, nil)
 	defer cancelFn()
@@ -296,7 +295,7 @@ func TestLoginRefresh(t *testing.T) {
 }
 
 func TestLogout(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 
 	srv, cancelFn := StartTransportServer(nil, nil, nil)
 	_ = srv
@@ -326,7 +325,7 @@ func TestLogout(t *testing.T) {
 }
 
 //func TestBadLogin(t *testing.T) {
-//	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+//	t.Logf("---%s---\n", t.Name())
 //
 //	srv, cancelFn := StartTransportServer(nil, nil)
 //	defer cancelFn()
@@ -361,7 +360,7 @@ func TestLogout(t *testing.T) {
 //}
 
 func TestBadRefresh(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	srv, cancelFn := StartTransportServer(nil, nil, nil)
 	defer cancelFn()
 	cc1, co1, token1 := NewConsumer(testClientID1)
@@ -389,7 +388,7 @@ func TestBadRefresh(t *testing.T) {
 
 // Auto-reconnect using hub client and server
 func TestReconnect(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 
 	const thingID = "thing1"
 	const actionKey = "action1"
@@ -467,7 +466,7 @@ func TestReconnect(t *testing.T) {
 }
 
 func TestPing(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 
 	srv, cancelFn := StartTransportServer(nil, nil, nil)
 	_ = srv
@@ -491,7 +490,7 @@ func TestPing(t *testing.T) {
 
 // Test getting form for unknown operation
 //func TestBadForm(t *testing.T) {
-//	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+//	t.Logf("---%s---\n", t.Name())
 //
 //	_, cancelFn := StartTransportServer(nil, nil, nil)
 //	defer cancelFn()
@@ -502,7 +501,7 @@ func TestPing(t *testing.T) {
 
 // Test getting server URL
 func TestServerURL(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 
 	srv, cancelFn := StartTransportServer(nil, nil, nil)
 	defer cancelFn()
@@ -513,7 +512,7 @@ func TestServerURL(t *testing.T) {
 
 // Test ping/login/refresh using http-basic
 func TestHttpBasic(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	const testPass = "password-test"
 
 	// all transport servers use http-basic

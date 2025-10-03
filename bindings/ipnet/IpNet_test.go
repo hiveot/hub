@@ -1,16 +1,16 @@
 package ipnet
 
 import (
-	"fmt"
+	"os"
+	"path"
+	"testing"
+	"time"
+
 	"github.com/hiveot/hub/bindings/ipnet/config"
 	"github.com/hiveot/hub/bindings/ipnet/service"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/stretchr/testify/require"
-	"os"
-	"path"
-	"testing"
-	"time"
 )
 
 var tempFolder string
@@ -39,7 +39,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestStartStop(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	const device1ID = "device1"
 	cfg := config.NewIPNetConfig()
 	cfg.PortScan = false

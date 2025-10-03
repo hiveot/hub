@@ -165,12 +165,16 @@ func (r *DigitwinRouter) HandleRequest(
 	}
 	// direct responses are optional
 	if resp != nil {
+		errMsg := ""
+		if resp.Error != nil {
+			errMsg = resp.Error.String()
+		}
 		r.requestLogger.Info("<- RESP",
 			slog.String("correlationID", resp.CorrelationID),
 			slog.String("operation", resp.Operation),
 			slog.String("dThingID", resp.ThingID),
 			slog.String("name", resp.Name),
-			slog.String("err", resp.Error),
+			slog.String("err", errMsg),
 		)
 	}
 	return resp
@@ -236,7 +240,7 @@ func (r *DigitwinRouter) HandleInvokeAction(
 		} else if resp == nil && c != nil {
 			// send an async notification if no response is available yet
 			notif := req.CreateNotification()
-			notif.Data = actionStatus
+			notif.Value = actionStatus
 			_ = c.SendNotification(notif)
 		}
 	}

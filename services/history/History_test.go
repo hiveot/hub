@@ -168,7 +168,7 @@ func TestMain(m *testing.M) {
 // Test creating and deleting the history database
 // This requires a local unsecured MongoDB instance
 func TestStartStop(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 
 	store, readHist, stopFn := startHistoryService(true)
 	defer stopFn()
@@ -177,7 +177,7 @@ func TestStartStop(t *testing.T) {
 }
 
 func TestAddGetEvent(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	const id1 = "thing1"
 	const id2 = "thing2"
 	const agent1ID = "agent1"
@@ -199,7 +199,7 @@ func TestAddGetEvent(t *testing.T) {
 	ev1_1 := &messaging.NotificationMessage{
 		Operation: wot.OpSubscribeEvent,
 		SenderID:  agent1ID, ThingID: dThing1ID, Name: evTemperature,
-		Data: "12.5", Timestamp: utils.FormatUTCMilli(fivemago),
+		Value: "12.5", Timestamp: utils.FormatUTCMilli(fivemago),
 	}
 	err := addHist.AddMessage(ev1_1)
 	assert.NoError(t, err)
@@ -207,7 +207,7 @@ func TestAddGetEvent(t *testing.T) {
 	ev1_2 := &messaging.NotificationMessage{
 		Operation: vocab.OpSubscribeEvent,
 		SenderID:  agent1ID, ThingID: dThing1ID, Name: evHumidity,
-		Data: "70", Timestamp: utils.FormatUTCMilli(fiftyfivemago),
+		Value: "70", Timestamp: utils.FormatUTCMilli(fiftyfivemago),
 	}
 	err = addHist.AddMessage(ev1_2)
 	assert.NoError(t, err)
@@ -217,7 +217,7 @@ func TestAddGetEvent(t *testing.T) {
 	ev2_1 := &messaging.NotificationMessage{
 		Operation: vocab.OpSubscribeEvent,
 		SenderID:  agent1ID, ThingID: dThing2ID, Name: evHumidity,
-		Data: "50", Timestamp: utils.FormatUTCMilli(fivemago),
+		Value: "50", Timestamp: utils.FormatUTCMilli(fivemago),
 	}
 	err = addHist.AddMessage(ev2_1)
 	assert.NoError(t, err)
@@ -226,7 +226,7 @@ func TestAddGetEvent(t *testing.T) {
 	ev2_2 := &messaging.NotificationMessage{
 		Operation: vocab.OpSubscribeEvent,
 		SenderID:  agent1ID, ThingID: dThing2ID, Name: evTemperature,
-		Data: "17.5", Timestamp: utils.FormatUTCMilli(fiftyfivemago),
+		Value: "17.5", Timestamp: utils.FormatUTCMilli(fiftyfivemago),
 	}
 	err = addHist.AddMessage(ev2_2)
 	assert.NoError(t, err)
@@ -280,7 +280,7 @@ func TestAddGetEvent(t *testing.T) {
 }
 
 func TestAddProperties(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	//const clientID = "device0"
 	const thing1ID = thingIDPrefix + "0" // matches a percentage of the random things
 	const agent1 = "device1"
@@ -295,14 +295,14 @@ func TestAddProperties(t *testing.T) {
 		SenderID:  agent1,
 		ThingID:   dThing1ID,
 		Name:      vocab.ActionSwitchOnOff,
-		Data:      "on",
+		Value:     "on",
 		Operation: vocab.OpInvokeAction,
 	}
 	event1 := &messaging.NotificationMessage{
 		SenderID:  agent1,
 		ThingID:   dThing1ID,
 		Name:      vocab.PropEnvTemperature,
-		Data:      temp1,
+		Value:     temp1,
 		Operation: vocab.OpSubscribeEvent,
 	}
 	badEvent1 := &messaging.NotificationMessage{
@@ -338,7 +338,7 @@ func TestAddProperties(t *testing.T) {
 		SenderID:  agent1,
 		ThingID:   dThing1ID,
 		Name:      "", // property list
-		Data:      propsList,
+		Value:     propsList,
 		Operation: wot.OpObserveAllProperties,
 	}
 
@@ -392,7 +392,7 @@ func TestAddProperties(t *testing.T) {
 }
 
 func TestGetInfo(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	const agentID = "agent1"
 	//const thing0ID = thingIDPrefix + "0"
 	//var dThing0ID = things.MakeDigiTwinThingID(agentID, thing0ID)
@@ -413,7 +413,7 @@ func TestGetInfo(t *testing.T) {
 }
 
 func TestPrevNext(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	const count = 1000
 	const agentID = "agent1"
 	const thing0ID = thingIDPrefix + "0" // matches a percentage of the random things
@@ -472,7 +472,7 @@ func TestPrevNext(t *testing.T) {
 
 // filter on property name
 func TestPrevNextFiltered(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	const count = 1000
 	const agentID = "agent1"
 	const thing0ID = thingIDPrefix + "0" // matches a percentage of the random things
@@ -540,7 +540,7 @@ func TestPrevNextFiltered(t *testing.T) {
 }
 
 func TestNextPrevUntil(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	const count = 1000
 	const agentID = "agent1"
 	const thing0ID = thingIDPrefix + "0" // matches a percentage of the random things
@@ -580,7 +580,7 @@ func TestNextPrevUntil(t *testing.T) {
 }
 
 func TestReadHistory(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	const count = 1000
 	const agentID = "device1"
 	const thing0ID = thingIDPrefix + "0" // matches a percentage of the random things
@@ -615,7 +615,7 @@ func TestReadHistory(t *testing.T) {
 func TestPubEvents(t *testing.T) {
 	const agent1ID = "device1"
 
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 
 	_, readHist, stopFn := startHistoryService(true)
 	defer stopFn()
@@ -668,7 +668,7 @@ func TestPubEvents(t *testing.T) {
 }
 
 func TestManageRetention(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	const client1ID = "admin"
 	const agentID = "agent1" // should not match existing test devices
 	const event1Name = "event1"

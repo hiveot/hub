@@ -505,7 +505,7 @@ export default class HttpSSEClient implements IAgentConnection {
                     .then((reply: string) => {
                         const value = JSON.parse(reply)
                         const resp = new ResponseMessage(
-                            req.operation, req.thingID, req.name, value, "", "")
+                            req.operation, req.thingID, req.name, value, undefined, "")
                         resolve(resp)
                     })
             } else {

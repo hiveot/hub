@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/connections"
+	"github.com/hiveot/hub/messaging/converters"
 	"github.com/hiveot/hub/wot/td"
 )
 
@@ -74,6 +75,9 @@ type HiveotSseServer struct {
 
 	// manage the incoming SSE cm
 	cm *connections.ConnectionManager
+
+	// SSE protocol message converter
+	converter messaging.IMessageConverter
 
 	// mutex for updating cm
 	mux sync.RWMutex
@@ -213,6 +217,7 @@ func NewHiveotSseServer(
 	srv := &HiveotSseServer{
 		ssePath:                   ssePath,
 		router:                    router,
+		converter:                 converters.NewPassthroughMessageConverter(),
 		cm:                        connections.NewConnectionManager(),
 		serverConnectHandler:      handleConnect,
 		serverNotificationHandler: handleNotification,

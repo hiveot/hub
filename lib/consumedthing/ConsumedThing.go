@@ -94,7 +94,7 @@ func (ct *ConsumedThing) GetActionInputFromStatus(as messaging.ActionStatus) *In
 // This returns nil if as.name is not a known action
 func (ct *ConsumedThing) GetActionOutputFromStatus(as messaging.ActionStatus) (iout *InteractionOutput) {
 
-	iout = NewInteractionOutput(ct, messaging.AffordanceTypeAction, as.Name, as.Output, as.Updated)
+	iout = NewInteractionOutput(ct, messaging.AffordanceTypeAction, as.Name, as.Output, as.TimeUpdated)
 
 	// graceful fallback.
 	// If no output schema use property or event with the same name

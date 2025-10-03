@@ -9,23 +9,28 @@ const (
 
 // WoT operations
 const (
-	OpCancelAction         = "cancelaction"
-	OpInvokeAction         = "invokeaction"
-	OpObserveAllProperties = "observeallproperties"
-	OpObserveProperty      = "observeproperty"
-	OpQueryAction          = "queryaction"
-	OpQueryAllActions      = "queryallactions"
-	OpReadAllProperties    = "readallproperties"
-	//OpReadMultipleProperties  = "readmultipleproperties"
-	OpReadProperty            = "readproperty"
-	OpSubscribeAllEvents      = "subscribeallevents"
-	OpSubscribeEvent          = "subscribeevent"
-	OpUnobserveAllProperties  = "unobserveallproperties"
-	OpUnobserveProperty       = "unobserveproperty"
-	OpUnsubscribeAllEvents    = "unsubscribeallevents"
-	OpUnsubscribeEvent        = "unsubscribeevent"
-	OpWriteMultipleProperties = "writemultipleproperties"
-	OpWriteProperty           = "writeproperty"
+	// actions
+	OpCancelAction    = "cancelaction"
+	OpInvokeAction    = "invokeaction"
+	OpQueryAction     = "queryaction"
+	OpQueryAllActions = "queryallactions"
+	// events
+	OpSubscribeAllEvents   = "subscribeallevents"
+	OpSubscribeEvent       = "subscribeevent"
+	OpUnsubscribeAllEvents = "unsubscribeallevents"
+	OpUnsubscribeEvent     = "unsubscribeevent"
+	// properties
+	OpObserveAllProperties        = "observeallproperties"
+	OpObserveMultipleProperties   = "observemultipleproperties"
+	OpObserveProperty             = "observeproperty"
+	OpReadAllProperties           = "readallproperties"
+	OpReadMultipleProperties      = "readmultipleproperties"
+	OpReadProperty                = "readproperty"
+	OpUnobserveAllProperties      = "unobserveallproperties"
+	OpUnobserveMultipleProperties = "unobservemultipleproperties"
+	OpUnobserveProperty           = "unobserveproperty"
+	OpWriteMultipleProperties     = "writemultipleproperties"
+	OpWriteProperty               = "writeproperty"
 )
 
 // WoT data types

@@ -13,6 +13,7 @@ import (
 
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/clients/httpclient"
+	"github.com/hiveot/hub/messaging/converters"
 	"github.com/hiveot/hub/messaging/servers/hiveotsseserver"
 	jsoniter "github.com/json-iterator/go"
 )
@@ -30,6 +31,9 @@ import (
 // then use the default hiveot endpoints that are defined with this protocol binding.
 type HiveotSseClient struct {
 	httpclient.HttpBasicClient
+
+	// converter between sse messages and hiveot envelopes
+	converter messaging.IMessageConverter
 
 	// The full server's base URL sse://host:port/path
 	//fullURL string
@@ -144,13 +148,14 @@ func (cc *HiveotSseClient) SendRequest(req *messaging.RequestMessage) error {
 	if code == http.StatusOK {
 		resp := req.CreateResponse(nil, nil)
 		// unmarshal output. This is either the json encoded output or the ResponseMessage envelope
-		if outputRaw == nil || len(outputRaw) == 0 {
+		if len(outputRaw) == 0 {
 			// nothing to unmarshal
 		} else {
 			err = jsoniter.UnmarshalFromString(string(outputRaw), resp)
 		}
 		if err != nil {
-			resp.Error = err.Error()
+			resp.Error = messaging.ErrorValueFromError(err)
+			resp.Error.Status = 500 // internal error
 		}
 		// pass a direct response to the application handler
 		h := cc.GetAppResponseHandler()
@@ -165,7 +170,7 @@ func (cc *HiveotSseClient) SendRequest(req *messaging.RequestMessage) error {
 		// http servers/things might respond with 201 for pending as per spec
 		// pending results are passed as a notification.
 		var notif *messaging.NotificationMessage
-		if outputRaw == nil || len(outputRaw) == 0 {
+		if len(outputRaw) == 0 {
 			// no response yet. do not send process a notification
 		} else {
 			// pass the notification to the application handler
@@ -184,12 +189,18 @@ func (cc *HiveotSseClient) SendRequest(req *messaging.RequestMessage) error {
 		// error response
 		resp := req.CreateResponse(nil, nil)
 		httpProblemDetail := map[string]string{}
-		if outputRaw != nil && len(outputRaw) > 0 {
+		if len(outputRaw) > 0 {
 			err = jsoniter.Unmarshal(outputRaw, &httpProblemDetail)
-			resp.Error = httpProblemDetail["title"]
-			resp.Value = httpProblemDetail["detail"]
+			resp.Error = &messaging.ErrorValue{
+				Status: code,
+				Title:  httpProblemDetail["title"],
+				Detail: httpProblemDetail["detail"],
+			}
 		} else {
-			resp.Error = "request failed"
+			resp.Error = &messaging.ErrorValue{
+				Status: code,
+				Title:  "request failed",
+			}
 		}
 		// pass a direct response to the application handler
 		h := cc.GetAppResponseHandler()
@@ -233,7 +244,8 @@ func (cc *HiveotSseClient) SendResponse(resp *messaging.ResponseMessage) error {
 //	timeout for waiting for response. 0 to use the default.
 func NewHiveotSseClient(
 	sseURL string, clientID string, clientCert *tls.Certificate, caCert *x509.Certificate,
-	getForm messaging.GetFormHandler, timeout time.Duration) *HiveotSseClient {
+	getForm messaging.GetFormHandler,
+	timeout time.Duration) *HiveotSseClient {
 
 	urlParts, err := url.Parse(sseURL)
 	if err != nil {
@@ -254,6 +266,7 @@ func NewHiveotSseClient(
 	cl := HiveotSseClient{
 		HttpBasicClient: *httpclient.NewHttpBasicClient(
 			sseURL, clientID, clientCert, caCert, getForm, timeout),
+		converter: converters.NewPassthroughMessageConverter(),
 		//cinfo: cinfo,
 		//clientID: clientID,
 		//caCert:   caCert,

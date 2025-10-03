@@ -249,9 +249,7 @@ func NewHiveotClient(
 
 	// Create the client for the protocol
 	if parts.Scheme == "wss" {
-		msgConverter := &wssserver.HiveotMessageConverter{}
-		cc = wssclient.NewHiveotWssClient(connectURL, clientID, caCert,
-			msgConverter, timeout)
+		cc = wssclient.NewHiveotWssClient(connectURL, clientID, caCert, timeout)
 	} else if parts.Scheme == "sse" {
 		cc = hiveotsseclient.NewHiveotSseClient(
 			connectURL, clientID, nil, caCert, nil, timeout)

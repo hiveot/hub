@@ -77,7 +77,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestStartStop(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	_, ag, stopFn := Setup()
 	defer stopFn()
 
@@ -92,7 +92,7 @@ func TestStartStop(t *testing.T) {
 }
 
 func TestPollDirect(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 
 	t1 := time.Now()
 	meteo := providers.NewOpenMeteoProvider()
@@ -111,7 +111,7 @@ func TestPollDirect(t *testing.T) {
 }
 
 func TestPollFromService(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	_, ag, stopFn := Setup()
 	defer stopFn()
 
@@ -140,7 +140,7 @@ func TestPollFromService(t *testing.T) {
 }
 
 func TestDisableCurrent(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	client1ID := "client1"
 
 	ts, ag, stopFn := Setup()

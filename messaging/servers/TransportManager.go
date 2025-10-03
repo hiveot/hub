@@ -318,6 +318,7 @@ func NewTransportManager(cfg *ProtocolsConfig,
 			httpAddr = fmt.Sprintf("%s:%d", connectIP.String(), cfg.HttpsPort)
 		}
 
+		// message converter is baked into the http basic protocol
 		svc.httpBasicServer = httpbasic.NewHttpBasicServer(
 			httpAddr, svc.httpRouter,
 			authenticator,
@@ -358,13 +359,12 @@ func NewTransportManager(cfg *ProtocolsConfig,
 
 		// 3. WSS protocol
 		if cfg.EnableWSS {
-			converter := &wssserver.HiveotMessageConverter{}
 			wssPath := wssserver.DefaultWssPath
 			if cfg.WSSPath != "" {
 				wssPath = cfg.WSSPath
 			}
 			hiveotWssServer := wssserver.NewWssServer(
-				httpAddr, wssPath, protectedRouter, converter,
+				httpAddr, wssPath, protectedRouter,
 				//svc.httpBasicServer,
 				nil,
 				svc.handleNotification,
@@ -380,10 +380,11 @@ func NewTransportManager(cfg *ProtocolsConfig,
 		}
 	}
 	//if cfg.EnableMQTT {
+	// converter := &converters.MqttMessageConverter{}
 	//svc.mqttsTransport, err = mqttserver.StartMqttTransportServer(
 	//	cfg.MqttHost, cfg.MqttTcpPort, cfg.MqttWssPort,
 	//	serverCert, caCert,
-	//	authenticator, cm,
+	//	authenticator, cm, converter,
 	//	handleRequest,
 	//	handleResponse,
 	//)

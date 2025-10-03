@@ -91,9 +91,9 @@ async function test3() {
         await hc.subscribe("", "")
 
         // publish an action request
-        const stat = await hc.invokeAction(thingID, "action1", "1")
-        if (stat.error != "") {
-            throw ("pubAction failed: " + stat.error)
+        const resp = await hc.invokeAction(thingID, "action1", "1")
+        if (resp.error) {
+            throw ("pubAction failed: " + resp.error.title)
         }
 
         // publish a config request

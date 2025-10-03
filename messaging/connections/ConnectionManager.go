@@ -166,7 +166,7 @@ func (cm *ConnectionManager) SendNotification(notif *messaging.NotificationMessa
 		slog.String("Operation", notif.Operation),
 		slog.String("dThingID", notif.ThingID),
 		slog.String("name", notif.Name),
-		slog.Any("output", notif.Data),
+		slog.Any("output", notif.Value),
 	)
 	// is determined by the server (like MQTT)
 	cm.ForEachConnection(func(c messaging.IServerConnection) {

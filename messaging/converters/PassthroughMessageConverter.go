@@ -1,19 +1,19 @@
-package wssserver
+package converters
 
 import (
 	"github.com/hiveot/hub/messaging"
 	jsoniter "github.com/json-iterator/go"
 )
 
-// Hiveot Native message converter is just a pass-through
+// Passthrough message converter simply passes request, response and notification
+// messages as-is. Intended to be used when no WoT exists.
 // This implements the IMessageConverter interface
-
-type HiveotMessageConverter struct {
+type PassthroughMessageConverter struct {
 }
 
-// DecodeNotification converts a native protocol received message to a hiveot notification message.
+// DecodeNotification passes the notification message as-is
 // Raw is the json serialized encoded message
-func (svc *HiveotMessageConverter) DecodeNotification(raw []byte) *messaging.NotificationMessage {
+func (svc *PassthroughMessageConverter) DecodeNotification(raw []byte) *messaging.NotificationMessage {
 
 	var notif messaging.NotificationMessage
 	err := jsoniter.Unmarshal(raw, &notif)
@@ -24,9 +24,9 @@ func (svc *HiveotMessageConverter) DecodeNotification(raw []byte) *messaging.Not
 	return &notif
 }
 
-// DecodeRequest converts a native protocol received message to a hiveot request message.
+// DecodeRequest passes the request message as-is
 // Raw is the json serialized encoded message
-func (svc *HiveotMessageConverter) DecodeRequest(raw []byte) *messaging.RequestMessage {
+func (svc *PassthroughMessageConverter) DecodeRequest(raw []byte) *messaging.RequestMessage {
 
 	var req messaging.RequestMessage
 	err := jsoniter.Unmarshal(raw, &req)
@@ -37,9 +37,9 @@ func (svc *HiveotMessageConverter) DecodeRequest(raw []byte) *messaging.RequestM
 	return &req
 }
 
-// DecodeResponse converts a native protocol received message to a hiveot response message.
+// DecodeResponse passes the response message as-is
 // Raw is the json serialized encoded message
-func (svc *HiveotMessageConverter) DecodeResponse(
+func (svc *PassthroughMessageConverter) DecodeResponse(
 	raw []byte) *messaging.ResponseMessage {
 
 	var resp messaging.ResponseMessage
@@ -50,28 +50,33 @@ func (svc *HiveotMessageConverter) DecodeResponse(
 	return &resp
 }
 
-// EncodeNotification converts a hiveot RequestMessage to protocol equivalent message
-func (svc *HiveotMessageConverter) EncodeNotification(req *messaging.NotificationMessage) (any, error) {
+// EncodeNotification passes the notification message as-is
+func (svc *PassthroughMessageConverter) EncodeNotification(req *messaging.NotificationMessage) (any, error) {
 	// ensure this field is present as it is needed for decoding
 	req.MessageType = messaging.MessageTypeNotification
 	return req, nil
 }
 
-// EncodeRequest converts a hiveot RequestMessage to protocol equivalent message
-func (svc *HiveotMessageConverter) EncodeRequest(req *messaging.RequestMessage) (any, error) {
+// EncodeRequest passes the request message as-is
+func (svc *PassthroughMessageConverter) EncodeRequest(req *messaging.RequestMessage) (any, error) {
 	// ensure this field is present as it is needed for decoding
 	req.MessageType = messaging.MessageTypeRequest
 	return req, nil
 }
 
-// EncodeResponse converts a hiveot ResponseMessage to protocol equivalent message
-func (svc *HiveotMessageConverter) EncodeResponse(resp *messaging.ResponseMessage) (any, error) {
+// EncodeResponse passes the response message as-is
+func (svc *PassthroughMessageConverter) EncodeResponse(resp *messaging.ResponseMessage) any {
 	// ensure this field is present as it is needed for decoding
 	resp.MessageType = messaging.MessageTypeResponse
-	return resp, nil
+	return resp
 }
 
 // GetProtocolType returns the hiveot WSS protocol type identifier
-func (svc *HiveotMessageConverter) GetProtocolType() string {
+func (svc *PassthroughMessageConverter) GetProtocolType() string {
 	return messaging.ProtocolTypeWSS
+}
+
+// Create a new instance of the hiveot passthrough message converter
+func NewPassthroughMessageConverter() *PassthroughMessageConverter {
+	return &PassthroughMessageConverter{}
 }

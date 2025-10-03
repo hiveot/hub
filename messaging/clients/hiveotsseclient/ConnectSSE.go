@@ -14,8 +14,7 @@ import (
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/servers/hiveotsseserver"
 	"github.com/hiveot/hub/messaging/servers/httpbasic"
-	jsoniter "github.com/json-iterator/go"
-	"github.com/tmaxmax/go-sse"
+	sse "github.com/tmaxmax/go-sse"
 )
 
 // maxSSEMessageSize allow this maximum size of an SSE message
@@ -198,53 +197,58 @@ func (cc *HiveotSseClient) handleSseEvent(event sse.Event) {
 	}
 
 	// Use the hiveot message envelopes for request, response and notification
-	if event.Type == messaging.MessageTypeNotification {
-		notif := messaging.NotificationMessage{}
-		notif.MessageType = messaging.MessageTypeNotification
-		_ = jsoniter.UnmarshalFromString(event.Data, &notif)
+	switch event.Type {
+	case messaging.MessageTypeNotification:
+		notif := cc.converter.DecodeNotification([]byte(event.Data))
+		if notif == nil {
+			return
+		}
 		// don't block the receiver flow
 		go func() {
 			h := cc.GetAppNotificationHandler()
 			if h == nil {
 				slog.Error("appNotificationHandler is nil")
 			} else {
-				h(&notif)
+				h(notif)
 			}
 		}()
-	} else if event.Type == messaging.MessageTypeRequest {
-		req := messaging.RequestMessage{}
-		_ = jsoniter.UnmarshalFromString(event.Data, &req)
+	case messaging.MessageTypeRequest:
+		req := cc.converter.DecodeRequest([]byte(event.Data))
+		if req == nil {
+			return
+		}
 		go func() {
 			h := cc.GetAppRequestHandler()
 			if h == nil {
 				slog.Error("appRequestHandler is nil")
 			} else {
-				resp := h(&req, cc)
+				resp := h(req, cc)
 				if resp != nil {
 					_ = cc.SendResponse(resp)
 				}
 			}
 		}()
-	} else if event.Type == messaging.MessageTypeResponse {
-		resp := messaging.ResponseMessage{}
-		resp.MessageType = messaging.MessageTypeResponse
-		_ = jsoniter.UnmarshalFromString(event.Data, &resp)
+	case messaging.MessageTypeResponse:
+		resp := cc.converter.DecodeResponse([]byte(event.Data))
+		if resp == nil {
+			return
+		}
 		// don't block the receiver flow
 		go func() {
 			h := cc.GetAppResponseHandler()
 			if h == nil {
 				slog.Error("appResponseHandler is nil")
 			} else {
-				_ = h(&resp)
+				_ = h(resp)
 			}
 		}()
-	} else {
+	default:
 		// all other events are intended for other use-cases such as the UI,
 		// and can have a formats of event/{dThingID}/{name}
 		// Attempt to deliver this for compatibility with other protocols (such has hiveoview test client)
 		notif := messaging.NotificationMessage{}
 		notif.MessageType = messaging.MessageTypeNotification
-		notif.Data = event.Data
+		notif.Value = event.Data
 		notif.Operation = event.Type
 		// don't block the receiver flow
 		go func() {

@@ -1,7 +1,6 @@
 package hiveotsseserver
 
 import (
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -180,8 +179,8 @@ func (c *HiveotSseServerConnection) onRequestMessage(
 		output = resp
 		handled = true
 		err = nil
-		if resp.Error != "" {
-			err = errors.New(resp.Error)
+		if resp.Error != nil {
+			err = resp.Error.AsError()
 			handled = true
 		}
 	} else {

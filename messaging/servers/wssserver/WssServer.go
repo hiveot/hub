@@ -10,6 +10,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/connections"
+	"github.com/hiveot/hub/messaging/converters"
 	"github.com/hiveot/hub/messaging/servers/httpbasic"
 )
 
@@ -53,7 +54,7 @@ type WssServer struct {
 	// registered handler of incoming responses (which sends a reply to the request sender)
 	serverResponseHandler messaging.ResponseHandler
 
-	// Conversion between request/response messages and protocol messages.
+	// Conversion between websocket messages and the standard hiveot message envelope.
 	messageConverter messaging.IMessageConverter
 
 	// mutex for updating cm
@@ -183,7 +184,6 @@ func (srv *WssServer) Stop() {
 // connectAddr is the host:port of the webserver
 // wsspath is the path of the websocket endpoint that will listen on the server
 // router is the protected route that serves websocket on the wssPath
-// converter converts between the internal message format and the webscoket message protocol
 // handleConnect optional callback for each websocket connection
 // handleNotification optional callback to invoke when a notification message is received
 // handleRequesst optional callback to invoke when a request message is received
@@ -192,7 +192,6 @@ func NewWssServer(
 	connectAddr string,
 	wssPath string,
 	router chi.Router,
-	converter messaging.IMessageConverter,
 	handleConnect messaging.ConnectionHandler,
 	handleNotification messaging.NotificationHandler,
 	handleRequest messaging.RequestHandler,
@@ -206,7 +205,7 @@ func NewWssServer(
 		serverNotificationHandler: handleNotification,
 		serverRequestHandler:      handleRequest,
 		serverResponseHandler:     handleResponse,
-		messageConverter:          converter,
+		messageConverter:          converters.NewWssMessageConverter(),
 		cm:                        connections.NewConnectionManager(),
 		router:                    router,
 		wssPath:                   wssPath,

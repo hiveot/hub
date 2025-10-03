@@ -14,6 +14,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/converters"
 	"github.com/hiveot/hub/messaging/servers"
 	"github.com/teris-io/shortid"
 )
@@ -296,25 +297,22 @@ func (cc *WssClient) SendRequest(req *messaging.RequestMessage) error {
 // This transforms the response to the protocol message and sends it to the server.
 // Responses without correlationID are subscription notifications.
 func (cc *WssClient) SendResponse(resp *messaging.ResponseMessage) error {
-
+	errMsg := ""
+	if resp.Error != nil {
+		errMsg = resp.Error.String()
+	}
 	slog.Debug("SendResponse",
 		slog.String("operation", resp.Operation),
 		slog.String("clientID", cc.cinfo.ClientID),
 		slog.String("thingID", resp.ThingID),
 		slog.String("name", resp.Name),
-		slog.String("error", resp.Error),
+		slog.String("error", errMsg),
 		slog.String("correlationID", resp.CorrelationID),
 	)
 
 	// convert the operation into a protocol message
-	wssMsg, err := cc.messageConverter.EncodeResponse(resp)
-	if err != nil {
-		slog.Error("SendResponse: cant convert response",
-			"op", resp.Operation,
-			"err", err)
-		return err
-	}
-	err = cc._send(wssMsg)
+	wssMsg := cc.messageConverter.EncodeResponse(resp)
+	err := cc._send(wssMsg)
 	return err
 }
 
@@ -363,12 +361,10 @@ func (cc *WssClient) SetResponseHandler(cb messaging.ResponseHandler) {
 //	wssURL is the full websocket connection URL
 //	clientID is the authentication ID of the consumer or agent
 //	caCert is the server CA for TLS connection validation
-//	converter is the message format converter
 //	protocol is the protocol ID of the websocket messages
 //	timeout is the maximum connection wait time
 func NewHiveotWssClient(
 	wssURL string, clientID string, caCert *x509.Certificate,
-	converter messaging.IMessageConverter,
 	timeout time.Duration) *WssClient {
 
 	// ensure the URL has port as 443 is not valid for this
@@ -389,7 +385,7 @@ func NewHiveotWssClient(
 	cl := WssClient{
 		cinfo:                cinfo,
 		maxReconnectAttempts: 0,
-		messageConverter:     converter,
+		messageConverter:     converters.NewWssMessageConverter(),
 	}
 	//cl.Init(fullURL, clientID, clientCert, caCert, getForm, timeout)
 	return &cl

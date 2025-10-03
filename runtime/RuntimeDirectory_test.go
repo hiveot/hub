@@ -26,7 +26,7 @@ import (
 // FIXME: add tests to check that the runtime requests the TDs of newly connected agents
 
 func TestAddRemoveTD(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 
 	const agentID = "agent1"
 	const userID = "user1"
@@ -72,7 +72,7 @@ func TestAddRemoveTD(t *testing.T) {
 }
 
 func TestReadTDs(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 
 	const agentID = "agent1"
 	const userID = "user1"
@@ -135,7 +135,7 @@ func TestReadTDs(t *testing.T) {
 }
 
 func TestReadTDsRest(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 
 	const agentID = "agent1"
 	const userID = "user1"
@@ -171,7 +171,7 @@ func TestReadTDsRest(t *testing.T) {
 }
 
 func TestTDEvent(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 
 	const agentID = "agent1"
 	const userID = "user1"
@@ -214,7 +214,7 @@ func TestTDEvent(t *testing.T) {
 
 // Discover the directory on the well-known endpoint
 func TestDiscoverDirectory(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	const userID = "user1"
 	var dirTD *td.TD
 

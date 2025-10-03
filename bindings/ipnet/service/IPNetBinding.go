@@ -25,7 +25,7 @@ func (svc *IPNetBinding) ActionHandler(req *messaging.RequestMessage,
 	_ messaging.IConnection) (resp *messaging.ResponseMessage) {
 
 	resp = req.CreateResponse(nil, fmt.Errorf("unknown action '%s'", req.Name))
-	slog.Warn(resp.Error)
+	slog.Warn(resp.Error.String())
 	return resp
 }
 

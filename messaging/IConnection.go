@@ -10,9 +10,6 @@ const (
 	// WoT http basic protocol without return channel
 	ProtocolTypeHTTPBasic = "http-basic"
 
-	// WoT http SSE subprotocol return channel (not implemented)
-	//ProtocolTypeWotSSE = "sse"
-
 	// websocket sub-protocol
 	ProtocolTypeWSS = "wss"
 
@@ -22,8 +19,8 @@ const (
 	// HiveOT http SSE subprotocol return channel with direct messaging
 	ProtocolTypeHiveotSSE = "hiveot-sse"
 
-	// Internal embedded direct call, for testing
-	ProtocolTypeHTEmbedded = "embedded" // for testing
+	// HiveOT message envelope passthrough
+	ProtocolTypePassthrough = "passthrough"
 )
 
 var UnauthorizedError error = unauthorizedError{}

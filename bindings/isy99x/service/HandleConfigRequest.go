@@ -27,7 +27,7 @@ func (svc *IsyBinding) handleConfigRequest(req *messaging.RequestMessage) (resp 
 	if !svc.isyAPI.IsConnected() {
 		// this is a delivery failure
 		resp = req.CreateResponse(nil, fmt.Errorf("no connection with the gateway"))
-		slog.Warn(resp.Error)
+		slog.Warn(resp.Error.String())
 		return resp
 	}
 
@@ -35,7 +35,7 @@ func (svc *IsyBinding) handleConfigRequest(req *messaging.RequestMessage) (resp 
 	isyThing := svc.IsyGW.GetIsyThing(req.ThingID)
 	if isyThing == nil {
 		resp = req.CreateResponse(nil, fmt.Errorf("handleConfigRequest: thing '%s' not found", req.ThingID))
-		slog.Warn(resp.Error)
+		slog.Warn(resp.Error.String())
 		return
 	}
 	resp = isyThing.HandleConfigRequest(req)

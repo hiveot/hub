@@ -284,7 +284,6 @@ function  handleVidAction(
                 if (progress === StatusCompleted) {
                     const newValue = getVidValue(node, propVid)
                     let resp = req.createResponse(newValue)
-                    // FIXME: this should return an ActionStatus value!
                     hc.sendResponse(resp)
                     // no longer needed
                     // zwapi.onValueUpdate(node, propVid, newValue)

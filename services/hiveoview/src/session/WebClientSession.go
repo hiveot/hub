@@ -311,7 +311,7 @@ func (sess *WebClientSession) onNotification(notif *messaging.NotificationMessag
 		// TODO: can htmx work with the ResponseMessage or InteractionOutput object?
 		propID := fmt.Sprintf("%s/%s/%s",
 			messaging.AffordanceTypeProperty, notif.ThingID, notif.Name)
-		propVal := tputils.DecodeAsString(notif.Data, 0)
+		propVal := tputils.DecodeAsString(notif.Value, 0)
 		sess.SendSSE(propID, propVal)
 		// also notify of a change to updated timestamp
 		propID = fmt.Sprintf("%s/%s/%s/updated",

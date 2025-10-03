@@ -23,7 +23,7 @@ func (r *DigitwinRouter) HandleNotification(notif *messaging.NotificationMessage
 		slog.String("operation", notif.Operation),
 		slog.String("thingID", notif.ThingID),
 		slog.String("name", notif.Name),
-		slog.String("value", tputils.DecodeAsString(notif.Data, 30)),
+		slog.String("value", tputils.DecodeAsString(notif.Value, 30)),
 	)
 	// Convert the agent ThingID to that of the digital twin
 	dtwNotif := *notif
@@ -38,7 +38,7 @@ func (r *DigitwinRouter) HandleNotification(notif *messaging.NotificationMessage
 		dtwNotif.Operation == wot.OpSubscribeAllEvents {
 		tv := digitwin.ThingValue{
 			Name:           dtwNotif.Name,
-			Data:           dtwNotif.Data,
+			Data:           dtwNotif.Value,
 			ThingID:        dtwNotif.ThingID,
 			Timestamp:      dtwNotif.Timestamp,
 			AffordanceType: string(messaging.AffordanceTypeEvent),
@@ -51,7 +51,7 @@ func (r *DigitwinRouter) HandleNotification(notif *messaging.NotificationMessage
 	} else if dtwNotif.Operation == wot.OpObserveProperty {
 		tv := digitwin.ThingValue{
 			Name:           dtwNotif.Name,
-			Data:           dtwNotif.Data,
+			Data:           dtwNotif.Value,
 			ThingID:        dtwNotif.ThingID,
 			Timestamp:      dtwNotif.Timestamp,
 			AffordanceType: string(messaging.AffordanceTypeProperty),
@@ -65,7 +65,7 @@ func (r *DigitwinRouter) HandleNotification(notif *messaging.NotificationMessage
 	} else if dtwNotif.Operation == wot.OpObserveAllProperties {
 		// output is a key-value map
 		var propMap map[string]any
-		err := tputils.DecodeAsObject(dtwNotif.Data, &propMap)
+		err := tputils.DecodeAsObject(dtwNotif.Value, &propMap)
 		if err == nil {
 			for k, v := range propMap {
 				tv := digitwin.ThingValue{
@@ -84,7 +84,7 @@ func (r *DigitwinRouter) HandleNotification(notif *messaging.NotificationMessage
 					notifCpy2 := dtwNotif
 					notifCpy2.Operation = wot.OpObserveProperty
 					notifCpy2.Name = k
-					notifCpy2.Data = v
+					notifCpy2.Value = v
 					r.transportServer.SendNotification(&notifCpy2)
 				}
 			}

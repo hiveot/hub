@@ -1,7 +1,6 @@
 package runtime_test
 
 import (
-	"fmt"
 	"log/slog"
 	"sync/atomic"
 	"testing"
@@ -9,6 +8,7 @@ import (
 
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/hub/messaging/tputils"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/wot"
@@ -19,7 +19,7 @@ import (
 )
 
 func TestQueryActions(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	const agentID = "agent1"
 	const userID = "user1"
 	const data = "Hello world"
@@ -69,17 +69,21 @@ func TestQueryActions(t *testing.T) {
 
 	// get the latest action values from the thing
 	// use the API generated from the digitwin TD document using tdd2api
-	valueMap, err := digitwin.ThingValuesQueryAllActions(co1, dThing1ID)
+	apiActionStatusMap, err := digitwin.ThingValuesQueryAllActions(co1, dThing1ID)
+	require.NoError(t, err)
+	// this should be convertable to the messaging.ActionStatus map
+	var msgActionStatusMap map[string]messaging.ActionStatus
+	err = tputils.Decode(apiActionStatusMap, &msgActionStatusMap)
 	require.NoError(t, err)
 
 	// value must match that of the action in step 1 and match its correlationID
-	actVal := valueMap[actionID]
+	actVal := msgActionStatusMap[actionID]
 	assert.Equal(t, data, actVal.Input)
 }
 
 // Get events from the outbox using the experimental http REST api
 func TestReadEvents(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	const agentID = "agent1"
 	const key1 = "key1"
 	const userID = "user1"
@@ -125,7 +129,7 @@ func TestReadEvents(t *testing.T) {
 }
 
 func TestHttpsGetProps(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	const agentID = "agent1"
 	const key1 = "key1"
 	const key2 = "key2"
@@ -170,7 +174,7 @@ func TestHttpsGetProps(t *testing.T) {
 }
 
 func TestSubscribeValues(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	const agentID = "agent1"
 	const userID = "user1"
 	const key1 = "key1"
@@ -217,7 +221,7 @@ func TestSubscribeValues(t *testing.T) {
 }
 
 func TestWriteProperties(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	const agentID = "agent1"
 	const userID = "user1"
 	const key1 = "key1"

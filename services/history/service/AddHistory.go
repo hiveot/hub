@@ -100,7 +100,7 @@ func (svc *AddHistory) AddMessage(msg *messaging.NotificationMessage) error {
 	tv := messaging.ThingValue{
 		//ID:      msg.CorrelationID,
 		Name:      msg.Name,
-		Data:      msg.Data,
+		Data:      msg.Value,
 		ThingID:   msg.ThingID,
 		Timestamp: msg.Timestamp,
 	}
@@ -115,7 +115,7 @@ func (svc *AddHistory) AddMessage(msg *messaging.NotificationMessage) error {
 		// output is a key:value map
 		tv.AffordanceType = messaging.AffordanceTypeProperty
 		propMap := make(map[string]any)
-		err := tputils.DecodeAsObject(msg.Data, &propMap)
+		err := tputils.DecodeAsObject(msg.Value, &propMap)
 		if err != nil {
 			return err
 		}

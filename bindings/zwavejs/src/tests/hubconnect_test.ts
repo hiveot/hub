@@ -2,9 +2,9 @@
 
 import process from "node:process";
 import {connect} from 'node:http2';
-import {HttpSSEClient} from "@hivelib/messaging/httpclient/HttpSSEClient.js";
-import {ConnectToHub} from "@hivelib/messaging/ConnectToHub";
-import {getlogger} from "@zwavejs/getLogger";
+import HttpSSEClient from "hivelib/messaging/httpclient/HttpSSEClient.ts";
+import ConnectToHub from "hivelib/messaging/ConnectToHub.ts";
+import getLogger from "src/getLogger.ts";
 
 process.on("uncaughtException", (err: Error) => {
     log.error("uncaughtException", err)
@@ -16,7 +16,7 @@ const testClient = "test"
 const testPass = "test22"
 let caCertPEM = ""
 
-const log = getlogger()
+const log = getLogger()
 
 // test connect with password and refresh token
 async function test1() {

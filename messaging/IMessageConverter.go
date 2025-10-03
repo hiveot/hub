@@ -1,7 +1,9 @@
 package messaging
 
-// IMessageConverter converts between the standardized hiveot request and response
-// messages and the underlying protocol encoded message format, ready for delivery.
+// IMessageConverter converts between the standardized hiveot request, response
+// and notification messages, and the underlying protocol specific message format.
+//
+// Its purpose is to assist in decoupling the consumer from the messaging protocol used.
 //
 // This is used for the WoT websocket protocol, HttpBasic/SSE-SC protocol, MQTT
 // protocol, the native Hiveot transfer and others.
@@ -31,8 +33,8 @@ type IMessageConverter interface {
 	EncodeRequest(req *RequestMessage) (any, error)
 
 	// EncodeResponse converts a hiveot ResponseMessage to a native protocol message
-	// returns an error if the message cannot be converted
-	EncodeResponse(resp *ResponseMessage) (any, error)
+	// This returns an error response if the message cannot be converted
+	EncodeResponse(resp *ResponseMessage) any
 
 	// GetProtocolType provides the protocol type for these messages,
 	// eg ProtocolTypeWSS

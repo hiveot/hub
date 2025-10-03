@@ -2,14 +2,15 @@ package digitwin_test
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/hiveot/hub/lib/logging"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func BenchmarkUpdateDTW(b *testing.B) {
-	b.Log(fmt.Sprintf("---%s---\n", b.Name()))
+	b.Logf("---%s---\n", b.Name())
 	const agent1ID = "agent1"
 	const thing1ID = "thing1"
 	const title1 = "title1"
@@ -32,7 +33,7 @@ func BenchmarkUpdateDTW(b *testing.B) {
 	var err error
 
 	// 140 msec to update 1000 things
-	b.Run(fmt.Sprintf("update DTW"),
+	b.Run("update DTW",
 		func(b *testing.B) {
 			for n := 0; n < b.N; n++ {
 				for m := range 1000 {
@@ -44,7 +45,7 @@ func BenchmarkUpdateDTW(b *testing.B) {
 		})
 
 	// 78 msec to reload a cache with 1000 things (using json-iterator)
-	b.Run(fmt.Sprintf("LoadCacheFromStore"),
+	b.Run("LoadCacheFromStore",
 		func(b *testing.B) {
 			for n := 0; n < b.N; n++ {
 				err = store2.LoadCacheFromStore()

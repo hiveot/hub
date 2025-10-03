@@ -68,17 +68,17 @@ func (srv *HiveotSseServer) DeleteRoutes(ssePath string, r chi.Router) {
 //
 // The message body is unmarshalled and included as the response.
 func (srv *HiveotSseServer) HandleNotificationMessage(w http.ResponseWriter, r *http.Request) {
-	notif := messaging.NotificationMessage{}
-	notif.MessageType = messaging.MessageTypeNotification
 
 	// 1. Decode the message
-	rp, err := httpbasic.GetRequestParams(r, &notif)
+	rp, err := httpbasic.GetRequestParams(r)
 	if err != nil {
 		slog.Error(err.Error())
 		w.WriteHeader(http.StatusBadRequest)
 		return
-	} else if notif.Operation == "" {
-		err = fmt.Errorf("HandleResponseMessage: missing ResponseMessage in payload")
+	}
+	notif := srv.converter.DecodeNotification(rp.Payload)
+	if notif == nil || notif.Operation == "" {
+		err = fmt.Errorf("HandleResponseMessage: missing notification in payload")
 		slog.Error(err.Error())
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -106,7 +106,7 @@ func (srv *HiveotSseServer) HandleNotificationMessage(w http.ResponseWriter, r *
 		// pass it on to the server notification flow handler
 		h := c.notificationHandlerPtr.Load()
 		if h != nil {
-			(*h)(&notif)
+			(*h)(notif)
 		}
 	}
 
@@ -128,15 +128,22 @@ func (srv *HiveotSseServer) HandleNotificationMessage(w http.ResponseWriter, r *
 func (srv *HiveotSseServer) HandleRequestMessage(w http.ResponseWriter, r *http.Request) {
 	var output *messaging.ResponseMessage
 	var handled bool
-	var req messaging.RequestMessage
 
 	// 1. Decode the request message
-	rp, err := httpbasic.GetRequestParams(r, &req)
+	rp, err := httpbasic.GetRequestParams(r)
 	if err != nil {
 		slog.Error(err.Error())
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
+	req := srv.converter.DecodeRequest(rp.Payload)
+	if req == nil || req.Operation == "" {
+		err = fmt.Errorf("HandleRequestMessage: missing request in payload")
+		slog.Error(err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	// Use the authenticated clientID as the sender
 	req.SenderID = rp.ClientID
 	connectionID := rp.ConnectionID
@@ -160,7 +167,7 @@ func (srv *HiveotSseServer) HandleRequestMessage(w http.ResponseWriter, r *http.
 				"correlationID", req.CorrelationID)
 		} else {
 			// 3. pass it on to the application
-			handled, output, err = c.onRequestMessage(&req)
+			handled, output, err = c.onRequestMessage(req)
 		}
 	}
 	// 4. Return the response
@@ -180,17 +187,17 @@ func (srv *HiveotSseServer) HandleRequestMessage(w http.ResponseWriter, r *http.
 //
 // The message body is unmarshalled and included as the response.
 func (srv *HiveotSseServer) HandleResponseMessage(w http.ResponseWriter, r *http.Request) {
-	resp := messaging.ResponseMessage{}
-	resp.MessageType = messaging.MessageTypeResponse
 
 	// 1. Decode the request message
-	rp, err := httpbasic.GetRequestParams(r, &resp)
+	rp, err := httpbasic.GetRequestParams(r)
 	if err != nil {
 		slog.Error(err.Error())
 		w.WriteHeader(http.StatusBadRequest)
 		return
-	} else if resp.Operation == "" {
-		err = fmt.Errorf("HandleResponseMessage: missing ResponseMessage in payload")
+	}
+	resp := srv.converter.DecodeResponse(rp.Payload)
+	if resp == nil || resp.Operation == "" {
+		err = fmt.Errorf("HandleResponseMessage: missing response in payload")
 		slog.Error(err.Error())
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -214,7 +221,7 @@ func (srv *HiveotSseServer) HandleResponseMessage(w http.ResponseWriter, r *http
 	} else {
 		h := c.responseHandlerPtr.Load()
 		if h != nil {
-			err = (*h)(&resp)
+			err = (*h)(resp)
 		}
 	}
 	//if srv.serverResponseHandler == nil {
@@ -238,7 +245,7 @@ func (srv *HiveotSseServer) Serve(w http.ResponseWriter, r *http.Request) {
 
 	//An active session is required before accepting the request. This is created on
 	//authentication/login. Until then SSE cm are blocked.
-	rp, err := httpbasic.GetRequestParams(r, nil)
+	rp, err := httpbasic.GetRequestParams(r)
 
 	if err != nil {
 		slog.Warn("SSESC Serve. No session available yet, telling client to delay retry to 10 seconds",

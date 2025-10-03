@@ -3,12 +3,12 @@ package tests
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/wot"
@@ -21,9 +21,10 @@ import (
 // as if it is a Thing. In this test the server replies.
 // (routing is not part of this package)
 func TestInvokeActionFromConsumerToServer(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	//var outputVal atomic.Value
 	var testOutput string
+	var testActionStatus messaging.ActionStatus
 
 	var inputVal atomic.Value
 	var testMsg1 = "hello world 1"
@@ -34,6 +35,7 @@ func TestInvokeActionFromConsumerToServer(t *testing.T) {
 	requestHandler := func(req *messaging.RequestMessage, replyTo messaging.IConnection) *messaging.ResponseMessage {
 		if req.Operation == wot.OpInvokeAction {
 			inputVal.Store(req.Input)
+			// CreateResponse returns ActionStatus
 			return req.CreateResponse(req.Input, nil)
 		}
 		assert.Fail(t, "Not expecting this")
@@ -55,8 +57,12 @@ func TestInvokeActionFromConsumerToServer(t *testing.T) {
 	// client should receive an action/request response via the response callback
 	cl1.SetResponseHandler(func(resp *messaging.ResponseMessage) error {
 		slog.Info("testOutput was updated asynchronously via the message handler")
-		err2 := tputils.Decode(resp.Value, &testOutput)
-		assert.NoError(t, err2)
+		// response should be an ActionStatus object
+		err2 := tputils.Decode(resp.Value, &testActionStatus)
+		if assert.NoError(t, err2) {
+			err2 = tputils.DecodeAsObject(testActionStatus.Output, &testOutput)
+			assert.NoError(t, err2)
+		}
 		release1()
 		return err2
 	})
@@ -90,7 +96,7 @@ func TestInvokeActionFromConsumerToServer(t *testing.T) {
 // This test uses a Thing agent as a client and have it reply to a request from the server.
 // The server in this case passes on a message received from a consumer, which is also a client.
 func TestInvokeActionFromServerToAgent(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	var reqVal atomic.Value
 	var replyVal atomic.Value
 	var testMsg1 = "hello world 1"
@@ -117,10 +123,10 @@ func TestInvokeActionFromServerToAgent(t *testing.T) {
 			"op", resp.Operation,
 			"output", resp.Value,
 		)
-		err := tputils.Decode(resp.Value, &responseData)
+		err := resp.Decode(&responseData)
 		assert.NoError(t, err)
 
-		replyVal.Store(resp.Value)
+		replyVal.Store(responseData)
 		cancelFn1()
 		return nil
 	}
@@ -172,9 +178,9 @@ func TestInvokeActionFromServerToAgent(t *testing.T) {
 // TestQueryActions consumer queries the server for actions
 // The server receives a QueryAction request and sends a response
 func TestQueryActions(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	var testMsg1 = "hello world 1"
-	var thingID = "thing1"
+	var thingID = "dtw:thing1"
 	var actionKey = "action1"
 	var actionID = "correlationID-123"
 
@@ -185,32 +191,39 @@ func TestQueryActions(t *testing.T) {
 
 		assert.NotNil(t, replyTo)
 		assert.NotNil(t, req.CorrelationID)
-		if req.Operation == wot.OpQueryAction {
+		switch req.Operation {
+		case wot.OpQueryAction:
 			// reply a response carrying the queried action status
-			actStat := []messaging.ActionStatus{{
-				ThingID:  req.ThingID,
-				Name:     req.Name,
-				ActionID: actionID,
-				Output:   testMsg1,
-				Status:   messaging.StatusCompleted,
-			}}
+			actStat := messaging.ActionStatus{
+				ThingID:       req.ThingID,
+				Name:          req.Name,
+				ActionID:      actionID,
+				Output:        testMsg1,
+				State:         messaging.StatusCompleted,
+				TimeRequested: req.Created,
+				TimeUpdated:   utils.FormatNowUTCMilli(),
+			}
 
 			return req.CreateResponse(actStat, nil)
 
 			//replyTo.SendResponse(msg.ThingID, msg.Name, output, msg.CorrelationID)
-		} else if req.Operation == wot.OpQueryAllActions {
+		case wot.OpQueryAllActions:
 			actStat := []messaging.ActionStatus{{
-				ThingID:  req.ThingID,
-				Name:     actionKey,
-				ActionID: actionID,
-				Output:   testMsg1,
-				Status:   messaging.StatusCompleted,
+				ThingID:       req.ThingID,
+				Name:          actionKey,
+				ActionID:      actionID,
+				Output:        testMsg1,
+				State:         messaging.StatusCompleted,
+				TimeRequested: req.Created,
+				TimeUpdated:   utils.FormatNowUTCMilli(),
 			}, {
-				ThingID:  req.ThingID,
-				Name:     actionKey,
-				ActionID: actionID,
-				Output:   "other output",
-				Status:   messaging.StatusCompleted,
+				ThingID:       req.ThingID,
+				Name:          actionKey,
+				ActionID:      actionID,
+				Output:        "other output",
+				State:         messaging.StatusCompleted,
+				TimeRequested: utils.FormatNowUTCMilli(),
+				TimeUpdated:   utils.FormatNowUTCMilli(),
 			}}
 			resp := req.CreateResponse(actStat, nil)
 			return resp
@@ -228,16 +241,15 @@ func TestQueryActions(t *testing.T) {
 	defer cc1.Disconnect()
 
 	// 3. Query action status
-	var output []messaging.ResponseMessage
-	err := cl1.Rpc(wot.OpQueryAction, thingID, actionKey, nil, &output)
+	var status messaging.ActionStatus
+	err := cl1.Rpc(wot.OpQueryAction, thingID, actionKey, nil, &status)
 	require.NoError(t, err)
-	require.Equal(t, 1, len(output))
-	require.Equal(t, thingID, output[0].ThingID)
-	require.Equal(t, actionKey, output[0].Name)
+	require.Equal(t, thingID, status.ThingID)
+	require.Equal(t, actionKey, status.Name)
 
 	// 4. Query all actions
-	var output2 []messaging.ResponseMessage
-	err = cl1.Rpc(wot.OpQueryAllActions, thingID, actionKey, nil, &output2)
+	var statusList []messaging.ActionStatus
+	err = cl1.Rpc(wot.OpQueryAllActions, thingID, actionKey, nil, &statusList)
 	require.NoError(t, err)
-	require.Equal(t, 2, len(output2))
+	require.Equal(t, 2, len(statusList))
 }

@@ -2,7 +2,6 @@ package digitwin_test
 
 import (
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"os"
 	"path"
@@ -80,7 +79,7 @@ func createTDDoc(thingID string, nrProps, nrEvents, nrActions int) *td.TD {
 }
 
 func TestStartStopService(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	var thingIDs = []string{"thing1", "thing2", "thing3", "thing4"}
 	svc, hc, stopFunc := startService(true)
 	_ = hc

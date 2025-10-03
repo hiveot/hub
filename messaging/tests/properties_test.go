@@ -3,7 +3,6 @@ package tests
 
 import (
 	"errors"
-	"fmt"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -19,10 +18,10 @@ import (
 
 // Test observing and receiving all properties by consumer
 func TestObservePropertyByConsumer(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	var rxVal1 atomic.Value
 	var rxVal2 atomic.Value
-	var thingID = "thing1"
+	var thingID = "dtw:thing1"
 	var propertyKey1 = "property1"
 	var propertyKey2 = "property2"
 	var propValue1 = "value1"
@@ -40,10 +39,10 @@ func TestObservePropertyByConsumer(t *testing.T) {
 
 	// set the handler for property updates and subscribe
 	cl1.SetNotificationHandler(func(ev *messaging.NotificationMessage) {
-		rxVal1.Store(ev.Data)
+		rxVal1.Store(ev.Value)
 	})
 	cl2.SetNotificationHandler(func(ev *messaging.NotificationMessage) {
-		rxVal2.Store(ev.Data)
+		rxVal2.Store(ev.Value)
 	})
 
 	// Client1 subscribes to one, client 2 to all property updates
@@ -94,7 +93,7 @@ func TestObservePropertyByConsumer(t *testing.T) {
 
 // Agent publishes property updates to subscribers
 func TestPublishPropertyByAgent(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	var evVal atomic.Value
 	var thingID = "thing1"
 	var propKey1 = "property1"
@@ -102,7 +101,7 @@ func TestPublishPropertyByAgent(t *testing.T) {
 
 	// handler of property updates on the server
 	notificationHandler := func(msg *messaging.NotificationMessage) {
-		evVal.Store(msg.Data)
+		evVal.Store(msg.Value)
 	}
 
 	// 1. start the transport
@@ -127,8 +126,8 @@ func TestPublishPropertyByAgent(t *testing.T) {
 
 // Consumer reads property from agent
 func TestReadProperty(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
-	var thingID = "thing1"
+	t.Logf("---%s---\n", t.Name())
+	var thingID = "dtw:thing1"
 	var propKey = "propKey1"
 	var propValue = "value11"
 	var timestamp = "mytime"
@@ -161,8 +160,8 @@ func TestReadProperty(t *testing.T) {
 
 // Consumer reads events from agent
 func TestReadAllProperties(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
-	var thingID = "thing1"
+	t.Logf("---%s---\n", t.Name())
+	var thingID = "dtw:thing1"
 	var name1 = "prop1"
 	var name2 = "prop2"
 	var value1 = "value1"

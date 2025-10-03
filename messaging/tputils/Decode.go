@@ -14,7 +14,7 @@ import (
 // methods as these are likely more performant.
 // This returns an error if conversion fails.
 func Decode(value any, arg interface{}) error {
-	if value == nil {
+	if value == nil || arg == nil {
 		arg = nil
 		return nil
 	}

@@ -1,15 +1,15 @@
 package isy99x_test
 
 import (
-	"fmt"
-	"github.com/hiveot/hub/bindings/isy99x/config"
-	"github.com/hiveot/hub/bindings/isy99x/service"
-	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/lib/testenv"
 	"os"
 	"path"
 	"testing"
 	"time"
+
+	"github.com/hiveot/hub/bindings/isy99x/config"
+	"github.com/hiveot/hub/bindings/isy99x/service"
+	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/hub/lib/testenv"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -57,7 +57,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestStartStop(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	_ = os.Remove(nodesFile)
 
 	// appconfig, read from test/isy99.yaml, contains simulated gateway file
@@ -80,7 +80,7 @@ func TestStartStop(t *testing.T) {
 }
 
 func TestBadAddress(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	_ = os.Remove(nodesFile)
 
 	hc, _ := ts.AddConnectService(agentID)
@@ -100,7 +100,7 @@ func TestBadAddress(t *testing.T) {
 }
 
 func TestIsyAppPoll(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	_ = os.Remove(nodesFile)
 	// appconfig, read from test/isy99.yaml, contains simulated gateway file
 	hc, _ := ts.AddConnectService(agentID)
@@ -118,7 +118,7 @@ func TestIsyAppPoll(t *testing.T) {
 
 // This simulates the switch
 func TestSwitch(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	const deckThingLightsID = "13 57 73 1" // from simulation file
 	const name = "value"
 

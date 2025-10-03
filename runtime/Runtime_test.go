@@ -1,7 +1,6 @@
 package runtime_test
 
 import (
-	"fmt"
 	"log/slog"
 	"os"
 	"sync/atomic"
@@ -40,7 +39,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestStartStop(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	r := startRuntime()
 	r.Stop()
 	//time.Sleep(time.Millisecond * 100)
@@ -48,7 +47,7 @@ func TestStartStop(t *testing.T) {
 
 func TestLoginAsAgent(t *testing.T) {
 	const agentID = "agent1"
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 
 	r := startRuntime()
 	agent, cc, token := ts.AddConnectAgent(agentID)
@@ -68,7 +67,7 @@ func TestLoginAsAgent(t *testing.T) {
 }
 func TestLoginAsConsumer(t *testing.T) {
 	const clientID = "user1"
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 
 	r := startRuntime()
 	consumer, cc, token := ts.AddConnectConsumer(clientID, authz.ClientRoleManager)
@@ -90,7 +89,7 @@ func TestLoginAsConsumer(t *testing.T) {
 
 // test many connections from a single consumer and confirm they open close and receive messages properly.
 func TestMultiConnectSingleClient(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	const clientID1 = "user1"
 	const agentID = "agent1"
 	const testConnections = int32(100)
@@ -175,7 +174,7 @@ func TestMultiConnectSingleClient(t *testing.T) {
 }
 
 func TestActionWithDeliveryConfirmation(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	const agentID = "agent1"
 	const userID = "user1"
 	const actionID = "action-1" // match the test TD action
@@ -229,7 +228,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 
 // Services and agents should auto-reconnect when server is restarted
 func TestServiceReconnect(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	const agentID = "agent1"
 	const userID = "user1"
 	var rxMsg atomic.Pointer[messaging.RequestMessage]
@@ -308,7 +307,7 @@ func TestServiceReconnect(t *testing.T) {
 
 // test that regular users don't have admin access to authn, authz
 func TestAccess(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	const clientID = "user1"
 
 	r := startRuntime()

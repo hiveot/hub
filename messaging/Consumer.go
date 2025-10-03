@@ -3,13 +3,13 @@ package messaging
 import (
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/messaging/tputils"
-	"github.com/hiveot/hub/wot"
-	"github.com/teris-io/shortid"
 	"log/slog"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/hiveot/hub/wot"
+	"github.com/teris-io/shortid"
 )
 
 const DefaultRpcTimeout = time.Second * 60 // 60 for testing; 3 seconds
@@ -42,8 +42,6 @@ type Consumer struct {
 // Do not use this consumer after disconnect.
 func (co *Consumer) Disconnect() {
 	co.cc.Disconnect()
-	co.mux.Lock()
-	co.mux.Unlock()
 	// the connect callback is still needed to notify the client of a disconnect
 }
 
@@ -63,18 +61,15 @@ func (co *Consumer) GetConnection() IConnection {
 func (co *Consumer) InvokeAction(
 	dThingID, name string, input any, output any) error {
 
-	req := NewRequestMessage(
-		wot.OpInvokeAction, dThingID, name, input, "")
+	req := NewRequestMessage(wot.OpInvokeAction, dThingID, name, input, "")
 	resp, err := co.SendRequest(req, true)
 
 	if err != nil {
 		return err
-	} else if resp.Error != "" {
-		return errors.New(resp.Error)
+	} else if resp.Error != nil {
+		return resp.Error.AsError()
 	}
-	if output != nil && resp.Value != nil {
-		err = tputils.Decode(resp.Value, output)
-	}
+	err = resp.Decode(output)
 	return err
 }
 
@@ -211,7 +206,7 @@ func (co *Consumer) Ping() error {
 //
 //	a single action in QueryAction. This is inconsistent.
 //
-// The underlying protocol binding constructs the ActionStatus array from the
+// The underlying protocol binding constructs the ActionStatus from the
 // protocol specific messages.
 // The hiveot protocol passes this as-is as the output.
 func (co *Consumer) QueryAction(thingID, name string) (
@@ -219,8 +214,8 @@ func (co *Consumer) QueryAction(thingID, name string) (
 
 	err = co.Rpc(wot.OpQueryAction, thingID, name, nil, &value)
 	// action has not run before
-	if err == nil && value.Status == "" {
-		value.ThingID = value.ThingID
+	if err == nil && value.State == "" {
+		value.ThingID = thingID
 		value.Name = name
 	}
 	return value, err
@@ -337,15 +332,10 @@ func (co *Consumer) Rpc(operation, thingID, name string, input any, output any) 
 	req := NewRequestMessage(operation, thingID, name, input, correlationID)
 	resp, err := co.SendRequest(req, true)
 	if err == nil {
-		if resp.Error != "" {
-			detail := fmt.Sprintf("%v", resp.Value)
-			errTxt := resp.Error
-			if detail != "" {
-				errTxt += "\n" + detail
-			}
-			err = errors.New(errTxt)
-		} else if resp.Value != nil && output != nil {
-			err = tputils.Decode(resp.Value, output)
+		if resp.Error != nil {
+			err = resp.Error.AsError()
+		} else {
+			err = resp.Decode(output)
 		}
 	}
 	return err
@@ -410,11 +400,15 @@ func (co *Consumer) SendRequest(req *RequestMessage, waitForCompletion bool) (
 			slog.String("correlationID", req.CorrelationID),
 			slog.String("error", err.Error()))
 	} else {
+		errMsg := ""
+		if resp.Error != nil {
+			errMsg = resp.Error.String()
+		}
 		slog.Info("SendRequest: <-",
 			slog.String("op", req.Operation),
 			slog.Float64("duration msec", float64(duration.Microseconds())/1000),
 			slog.String("correlationID", req.CorrelationID),
-			slog.String("err", resp.Error),
+			slog.String("err", errMsg),
 			slog.String("output", resp.ToString(30)),
 		)
 	}
@@ -544,9 +538,9 @@ func (co *Consumer) WaitForCompletion(
 		slog.Warn("WaitForCompletion failed", "err", err.Error())
 	} else if resp == nil {
 		err = fmt.Errorf("no response received on request '%s'", operation)
-	} else if resp.Error != "" {
+	} else if resp.Error != nil {
 		// if response data holds an error type then return that as the error
-		err = errors.New(resp.Error)
+		err = resp.Error.AsError()
 	}
 	return resp, err
 }

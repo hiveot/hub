@@ -141,8 +141,8 @@ func (svc *DigitwinStore) NewActionStart(req *messaging.RequestMessage) (
 	actionStatus.ThingID = req.ThingID
 	actionStatus.SenderID = req.SenderID
 	actionStatus.Input = req.Input
-	actionStatus.Status = messaging.StatusPending
-	actionStatus.Requested = req.Created
+	actionStatus.State = messaging.StatusPending
+	actionStatus.TimeRequested = req.Created
 	actionStatus.ActionID = req.CorrelationID
 	dtw.ActionStatuses[req.Name] = actionStatus
 	svc.changedThings[req.ThingID] = true
@@ -439,8 +439,8 @@ func (svc *DigitwinStore) UpdateActionWithNotification(notif *messaging.Notifica
 	var actionStatus digitwin.ActionStatus
 	var rxStatus digitwin.ActionStatus
 
-	err := tputils.DecodeAsObject(notif.Data, &rxStatus)
-	if err != nil || rxStatus.Status == "" {
+	err := tputils.DecodeAsObject(notif.Value, &rxStatus)
+	if err != nil || rxStatus.State == "" {
 		slog.Warn("UpdateActionWithNotification: Notification does not contain an ActionStatus")
 		return
 	}
@@ -465,7 +465,7 @@ func (svc *DigitwinStore) UpdateActionWithNotification(notif *messaging.Notifica
 		)
 		return
 	}
-	if actionStatus.Status == messaging.StatusCompleted {
+	if actionStatus.State == messaging.StatusCompleted {
 		slog.Warn("UpdateActionWithNotification: Action is already completed",
 			"actionID", rxStatus.ActionID,
 			"thingID", notif.ThingID,
@@ -473,8 +473,8 @@ func (svc *DigitwinStore) UpdateActionWithNotification(notif *messaging.Notifica
 		)
 		return
 	}
-	actionStatus.Updated = rxStatus.Updated
-	actionStatus.Status = rxStatus.Status
+	actionStatus.TimeUpdated = rxStatus.TimeUpdated
+	actionStatus.State = rxStatus.State
 	dtw.ActionStatuses[actionStatus.Name] = actionStatus
 	svc.changedThings[actionStatus.ThingID] = true
 }
@@ -504,15 +504,15 @@ func (svc *DigitwinStore) UpdateActionWithResponse(
 		if !found {
 			actionStatus = digitwin.ActionStatus{}
 		}
-		actionStatus.Updated = utils.FormatNowUTCMilli()
-		if resp.Error != "" {
+		actionStatus.TimeUpdated = utils.FormatNowUTCMilli()
+		if resp.Error != nil {
 			actionStatus.Error = resp.Error
-			actionStatus.Status = messaging.StatusFailed
+			actionStatus.State = messaging.StatusFailed
 		} else {
-			actionStatus.Error = ""
+			actionStatus.Error = nil
 			actionStatus.Output = resp.Value
-			actionStatus.Updated = resp.Timestamp
-			actionStatus.Status = messaging.StatusCompleted
+			actionStatus.TimeUpdated = resp.Timestamp
+			actionStatus.State = messaging.StatusCompleted
 		}
 		dtw.ActionStatuses[resp.Name] = actionStatus
 		svc.changedThings[resp.ThingID] = true

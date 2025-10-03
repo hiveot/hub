@@ -22,14 +22,14 @@ func (svc *IsyBinding) handleRequest(req *messaging.RequestMessage,
 
 	if !svc.isyAPI.IsConnected() {
 		resp = req.CreateResponse(nil, fmt.Errorf("No connection with the gateway"))
-		slog.Warn(resp.Error)
+		slog.Warn(resp.Error.String())
 		return
 	}
 	isyThing := svc.IsyGW.GetIsyThing(req.ThingID)
 	if isyThing == nil {
 		err := fmt.Errorf("handleActionRequest: thing '%s' not found", req.ThingID)
 		resp = req.CreateResponse(nil, err)
-		slog.Warn(resp.Error)
+		slog.Warn(resp.Error.String())
 		return
 	}
 	// FIXME-1: how to determine the output of an action with ISY?

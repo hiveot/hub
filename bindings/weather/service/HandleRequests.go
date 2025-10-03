@@ -38,7 +38,7 @@ func (svc *WeatherBinding) handleRequest(req *messaging.RequestMessage,
 		err = fmt.Errorf("handleActionRequest: unknown operation '%s' for thing '%s'", req.Operation, req.ThingID)
 	}
 	resp = req.CreateResponse(nil, err)
-	slog.Warn(resp.Error)
+	slog.Warn(resp.Error.String())
 	return resp
 }
 
@@ -56,7 +56,7 @@ func (svc *WeatherBinding) handleConfigRequest(req *messaging.RequestMessage,
 	loc, found := svc.locationStore.Get(req.ThingID)
 	if !found {
 		resp = req.CreateResponse(nil, fmt.Errorf("handleConfigRequest: Location '%s' not found", req.ThingID))
-		slog.Warn(resp.Error)
+		slog.Warn(resp.Error.String())
 		return resp
 	}
 

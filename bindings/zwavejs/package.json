@@ -13,7 +13,7 @@
     "pkg": "./build.sh",
     "distinstall": "cp dist/zwavejs ~/bin/hiveot/plugins",
     "testtsx": "tsx --preserve-symlinks src/tests/hubconnect_test.ts",
-    "testtsx2": "tsx --preserve-symlinks hivelib/hubclient/hubclient.test.ts",
+    "testtsx2": "tsx --preserve-symlinks hivelib/messaging/hubclient.test.ts",
     "version": "node --version"
   },
   "scriptComments": {

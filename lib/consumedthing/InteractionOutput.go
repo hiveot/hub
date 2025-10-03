@@ -190,7 +190,7 @@ func NewInteractionOutputFromValue(ct *ConsumedThing, affType messaging.Affordan
 func NewInteractionOutputFromNotification(
 	ct *ConsumedThing, affType messaging.AffordanceType, notif *messaging.NotificationMessage) *InteractionOutput {
 
-	iout := NewInteractionOutput(ct, affType, notif.Name, notif.Data, notif.Timestamp)
+	iout := NewInteractionOutput(ct, affType, notif.Name, notif.Value, notif.Timestamp)
 	iout.SenderID = notif.SenderID
 	return iout
 }
@@ -206,7 +206,7 @@ func NewInteractionOutputFromNotification(
 func NewInteractionOutputFromActionStatus(
 	ct *ConsumedThing, as messaging.ActionStatus) *InteractionOutput {
 
-	iout := NewInteractionOutput(ct, messaging.AffordanceTypeAction, as.Name, as.Output, as.Updated)
+	iout := NewInteractionOutput(ct, messaging.AffordanceTypeAction, as.Name, as.Output, as.TimeUpdated)
 	iout.SenderID = as.SenderID
 	return iout
 }

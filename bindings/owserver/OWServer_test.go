@@ -1,7 +1,13 @@
 package owserver_test
 
 import (
-	"fmt"
+	"log/slog"
+	"os"
+	"path"
+	"sync/atomic"
+	"testing"
+	"time"
+
 	"github.com/hiveot/hub/bindings/owserver/config"
 	"github.com/hiveot/hub/bindings/owserver/service"
 	"github.com/hiveot/hub/lib/testenv"
@@ -10,12 +16,6 @@ import (
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/wot/td"
-	"log/slog"
-	"os"
-	"path"
-	"sync/atomic"
-	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -69,7 +69,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestStartStop(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 
 	svc := service.NewOWServerBinding(storePath, &owsConfig)
 
@@ -89,7 +89,7 @@ func TestPoll(t *testing.T) {
 	var tdCount atomic.Int32
 	const userID = "user1"
 
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	ag1, _, _ := ts.AddConnectAgent(agentID)
 	defer ag1.Disconnect()
 	co1, _, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
@@ -103,7 +103,7 @@ func TestPoll(t *testing.T) {
 	co1.SetNotificationHandler(func(msg *messaging.NotificationMessage) {
 		slog.Info("received notification", "operation", msg.Operation, "id", msg.Name)
 		var value interface{}
-		err2 := tputils.DecodeAsObject(msg.Data, &value)
+		err2 := tputils.DecodeAsObject(msg.Value, &value)
 		assert.NoError(t, err2)
 
 		tdCount.Add(1)
@@ -130,7 +130,7 @@ func TestPoll(t *testing.T) {
 }
 
 func TestPollInvalidEDSAddress(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 
 	hc, _, _ := ts.AddConnectAgent(agentID)
 	defer hc.Disconnect()
@@ -150,7 +150,7 @@ func TestPollInvalidEDSAddress(t *testing.T) {
 }
 
 func TestAction(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	const user1ID = "operator1"
 	// node in test data
 	var dThingID = td.MakeDigiTwinThingID(agentID, device1ID)
@@ -182,7 +182,7 @@ func TestAction(t *testing.T) {
 }
 
 func TestConfig(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	const user1ID = "manager1"
 	var configName = "LEDState"
 	var configValue = "1"

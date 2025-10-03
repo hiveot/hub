@@ -2,7 +2,6 @@ package digitwin_test
 
 import (
 	"encoding/json"
-	"fmt"
 	"testing"
 
 	"github.com/hiveot/hub/api/go/vocab"
@@ -17,7 +16,7 @@ import (
 )
 
 func TestActionFlow(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	const agentID = "agent1"
 	const thingID = "thing1"
 	const title1 = "title1"
@@ -44,7 +43,7 @@ func TestActionFlow(t *testing.T) {
 	as, stored, err := dtwStore.NewActionStart(req)
 	require.NoError(t, err)
 	require.True(t, stored)
-	require.Equal(t, messaging.StatusPending, as.Status)
+	require.Equal(t, messaging.StatusPending, as.State)
 
 	// check progress
 	as, err = svc.ValuesSvc.QueryAction(consumerID, digitwin.ThingValuesQueryActionArgs{
@@ -54,7 +53,7 @@ func TestActionFlow(t *testing.T) {
 	inputVal := tputils.DecodeAsInt(as.Input)
 	require.Equal(t, actionValue, inputVal)
 	require.Equal(t, correlationID, as.ActionID)
-	require.Equal(t, messaging.StatusPending, as.Status)
+	require.Equal(t, messaging.StatusPending, as.State)
 
 	// complete the action
 	resp := messaging.NewResponseMessage(
@@ -71,7 +70,7 @@ func TestActionFlow(t *testing.T) {
 	require.NoError(t, err)
 	outputInt := tputils.DecodeAsInt(as.Output)
 	require.Equal(t, actionValue, outputInt)
-	require.Equal(t, messaging.StatusCompleted, as.Status)
+	require.Equal(t, messaging.StatusCompleted, as.State)
 
 	// read all actions
 	//actList, err := svc.ValuesSvc.QueryAllActions(consumerID, dThingID)
@@ -80,7 +79,7 @@ func TestActionFlow(t *testing.T) {
 }
 
 func TestActionReadFail(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	const agentID = "agent1"
 	const thingID = "thing1"
 	var dThingID = td.MakeDigiTwinThingID(agentID, thingID)
@@ -109,7 +108,7 @@ func TestActionReadFail(t *testing.T) {
 }
 
 func TestInvokeActionErrors(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	const agentID = "agent1"
 	const thingID = "thing1"
 	const title1 = "title1"
@@ -162,7 +161,7 @@ func TestInvokeActionErrors(t *testing.T) {
 }
 
 func TestDigitwinAgentAction(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	const agentID = "agent1"
 	const thingID = "thing1"
 	const title1 = "title1"

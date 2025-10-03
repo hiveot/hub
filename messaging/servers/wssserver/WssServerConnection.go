@@ -234,10 +234,12 @@ func (sc *WssServerConnection) SendNotification(
 
 	if !strings.HasPrefix(notif.ThingID, "dtw") {
 		//panic("missing dtw prefix") // for testing
+		// normally notifications are from digital twins with an ID containing the dtw: prefix
 		slog.Error("SendNotification: ThingID has no dtw: prefix",
 			"thingID", notif.ThingID, "senderID", notif.SenderID)
 	}
-	if notif.Operation == wot.OpSubscribeEvent || notif.Operation == wot.OpSubscribeAllEvents {
+	switch notif.Operation {
+	case wot.OpSubscribeEvent, wot.OpSubscribeAllEvents:
 		correlationID := sc.subscriptions.GetSubscription(notif.ThingID, notif.Name)
 		if correlationID != "" {
 			slog.Info("SendNotification (event subscription)",
@@ -248,10 +250,10 @@ func (sc *WssServerConnection) SendNotification(
 			msg, _ := sc.messageConverter.EncodeNotification(notif)
 			err = sc._send(msg)
 		}
-	} else if notif.Operation == wot.OpObserveProperty || notif.Operation == wot.OpObserveAllProperties {
+	case wot.OpObserveProperty, wot.OpObserveMultipleProperties, wot.OpObserveAllProperties:
 		correlationID := sc.observations.GetSubscription(notif.ThingID, notif.Name)
 		if correlationID != "" {
-			slog.Info("SendNotification (observed property)",
+			slog.Info("SendNotification (observed property(ies))",
 				slog.String("clientID", sc.cinfo.ClientID),
 				slog.String("thingID", notif.ThingID),
 				slog.String("name", notif.Name),
@@ -259,7 +261,7 @@ func (sc *WssServerConnection) SendNotification(
 			msg, _ := sc.messageConverter.EncodeNotification(notif)
 			err = sc._send(msg)
 		}
-	} else if notif.Operation == wot.OpInvokeAction {
+	case wot.OpInvokeAction:
 		// action progress update, for original sender only
 		slog.Info("SendNotification (action status)",
 			slog.String("clientID", sc.cinfo.ClientID),
@@ -268,7 +270,7 @@ func (sc *WssServerConnection) SendNotification(
 		)
 		msg, _ := sc.messageConverter.EncodeNotification(notif)
 		err = sc._send(msg)
-	} else {
+	default:
 		slog.Warn("Unknown notification: " + notif.Operation)
 	}
 	return err
@@ -303,10 +305,8 @@ func (sc *WssServerConnection) SendResponse(resp *messaging.ResponseMessage) (er
 	//	slog.String("senderID", resp.SenderID),
 	//)
 
-	msg, err := sc.messageConverter.EncodeResponse(resp)
-	if err == nil {
-		err = sc._send(msg)
-	}
+	msg := sc.messageConverter.EncodeResponse(resp)
+	err = sc._send(msg)
 	return err
 }
 

@@ -2,7 +2,7 @@
 
 HiveOT stands for the "Hive of Things". It consists of one or more 'Hubs' to collect and share IoT data with its users.
 
-The Hub for the *Hive-of-Things* provides a secure [runtime](runtime/README-runtime.md) to view and control IoT devices. The Hub securely mediates between IoT device 'Things', services, and users using a hub-and-spokes architecture. Users interact with Things via the Hub's digital twin, without connecting directly to the IoT devices or services. The Hub is based on the [W3C WoT TD 1.1 specification](https://www.w3.org/TR/wot-thing-description11/). Multiple communication protocols are supported for IoT devices and users.
+The Hub for the _Hive-of-Things_ provides a secure [runtime](runtime/README-runtime.md) to view and control IoT devices. The Hub securely mediates between IoT device 'Things', services, and users using a hub-and-spokes architecture. Users interact with Things via the Hub's digital twin, without connecting directly to the IoT devices or services. The Hub is based on the [W3C WoT TD 1.1 specification](https://www.w3.org/TR/wot-thing-description11/). Multiple communication protocols are supported for IoT devices and users.
 
 ![System Overview](docs/hub-overview.jpg)
 
@@ -13,38 +13,32 @@ Status Aug 2025: The Hub runtime, services and bindings have been reworked to su
 The generated TDs for use of digital-twins contain forms with security and communication as provided by the Hub. This is still incomplete.
 
 Medium term roadmap:
+
 1. Launcher support for distributed environment. (multiple launcher instances) [todo]
 1. Support lets-encrypt CA and server certificate [todo]
-2. Support mqtt transport protocol. [tbd as client or server?]
+1. Support mqtt transport protocol. [tbd as client or server?]
 1. Websockets sub-protocol binding [functional but spec is in development]
 1. Support for TD Security section. [it is not fully clear how to describe login for obtaining tokens]
 1. Support for TD Forms sections. [contentious, as they are hardly useful in this setup]
 1. Support for WoT discovery profile [done]
 1. Revisit the vocabulary to integrate or adopt existing vocabularies where possible
-1. improve security;
-   2. detect/notify of bad agents or consumers
-   3. Manage token expiry
-   3. role based access to Things
-   4. rate limiting
-2. hiveoview dashboard improvements
-   3. support notifications
-3. Various services and bindings
-   3. weather service integration: open-meteo [partly complete]
-   3. weather service integration: environment canada  (better for local forecast?)
-   2. ups binding (using [nut](https://networkupstools.org/))
-4. Android integration/location tracking
+1. improve security; 2. detect/notify of bad agents or consumers 3. Manage token expiry 3. role based access to Things 4. rate limiting
+1. hiveoview dashboard improvements 3. support notifications
+1. Various services and bindings 3. weather service integration: open-meteo [partly complete] 3. weather service integration: environment canada (better for local forecast?) 2. ups binding (using [nut](https://networkupstools.org/))
+1. Android integration/location tracking
 
 Future:
+
 1. HiveOT inter-hub bridging service
 2. OAuth2 support
-
 
 Integrations
 
 It is a bit early to look at integrations, but some interesting candidates are:
-* interoperability with WoT clients
-* plc4go (https://plc4x.apache.org/users/getting-started/plc4go.html)
-* home assistant (https://www.home-assistant.io/)
+
+- interoperability with WoT clients
+- plc4go (https://plc4x.apache.org/users/getting-started/plc4go.html)
+- home assistant (https://www.home-assistant.io/)
 
 ## Audience
 
@@ -74,12 +68,13 @@ See [docs/INSTALL.md](docs/INSTALL.md)
 
 ## Configuration
 
-All Hub services will run out of the box with their default configuration. Some services, like the launcher, can be configured using a yaml configuration file found in the config/{pluginID}.yaml folder. 
+All Hub services will run out of the box with their default configuration. Some services, like the launcher, can be configured using a yaml configuration file found in the config/{pluginID}.yaml folder.
 
 Most important configs:
-* launcher.yaml  section 'autostart' lists the services to run at startup
 
-A typical service or protocol binding publishes its configuration options with its TM to allow centralized configuration by administrators. This is up to each service to support.  
+- launcher.yaml section 'autostart' lists the services to run at startup
+
+A typical service or protocol binding publishes its configuration options with its TM to allow centralized configuration by administrators. This is up to each service to support.
 
 ### CA certificate
 
@@ -91,7 +86,7 @@ The CLI can be used to view the currently used CA and server certificate:
 
 ```sh
 cd ~/bin/hiveot        # when installed locally
-bin/hubcli vca    
+bin/hubcli vca
 ```
 
 To force generating a new self-signed CA certificate using the CLI:
@@ -107,12 +102,11 @@ A self-signed CA should be imported in the browser to avoid an error when openin
 
 On first use the runtime generates a self-signed server certificate from the CA and installs it in hiveot/certs/hubCert.pem and hiveot/certs/hubKey.pem. This certificate is used with the runtime protocol servers and the hiveoview UI server.
 
-To use a 3rd party server certificate, replace the hubCert.pem and hubKey.pem and restart the runtime. Also replace caCert.pem with the one used to create the server certificate. 
+To use a 3rd party server certificate, replace the hubCert.pem and hubKey.pem and restart the runtime. Also replace caCert.pem with the one used to create the server certificate.
 
-This is shared with Things during provisioning and used by services to secure the server connection.  
+This is shared with Things during provisioning and used by services to secure the server connection.
 
 Note that use of letsEncrypt is planned for the future which will automate this. This does require an internet connect to work though.
-
 
 # Contributing
 
@@ -124,4 +118,4 @@ This project builds on the Web of Things (WoT) standardization by the W3C.org st
 
 This project is inspired by the Mozilla Thing draft API [published here](https://iot.mozilla.org/wot/#web-thing-description). However, the Mozilla API is intended to be implemented by Things and is not intended for Things to register themselves. The HiveOT Hub will therefore deviate where necessary.
 
-Many thanks go to JetBrains for sponsoring the HiveOT open source project with development tools.  
+Many thanks go to Visual Studio Code for providing a free golang IDE.

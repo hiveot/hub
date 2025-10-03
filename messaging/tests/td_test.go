@@ -1,7 +1,6 @@
 package tests
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/hiveot/hub/wot/td"
@@ -14,7 +13,7 @@ const DeviceTypeSensor = "hiveot:sensor"
 
 //// Test consumer reads a TD from agent via the server
 //func TestReadTDFromAgent(t *testing.T) {
-//	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+//	t.Logf("---%s---\n", t.Name())
 //	var thingID = "thing1"
 //
 //	// 1. start the transport
@@ -65,7 +64,7 @@ const DeviceTypeSensor = "hiveot:sensor"
 
 // Test if forms are indeed added to a TD, describing the transport protocol binding operations
 func TestAddForms(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	var thingID = "thing1"
 
 	// handler of TDs on the server
@@ -86,7 +85,7 @@ func TestAddForms(t *testing.T) {
 
 //// Agent Publishes TD to the directory
 //func TestPublishTD(t *testing.T) {
-//	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+//	t.Logf("---%s---\n", t.Name())
 //	var thingID = "thing1"
 //	var rxTD atomic.Value
 //

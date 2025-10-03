@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"log/slog"
+	"math"
 	"time"
 
 	"github.com/hiveot/hub/api/go/vocab"
@@ -147,8 +148,10 @@ func PublishCurrent(ag *messaging.Agent, thingID string, current providers.Curre
 	_ = ag.PubEvent(thingID, vocab.PropEnvWindHeading, current.WindHeading)
 
 	// todo: configure unit
-	_ = ag.PubEvent(thingID, vocab.PropEnvWindGusts, windGusts*3.6) // m/s -> km/h
-	_ = ag.PubEvent(thingID, vocab.PropEnvWindSpeed, windSpeed*3.6) // m/s -> km/h
+	windGustsKph := math.Round(float64(windGusts) * 3.6)
+	windSpeedKph := math.Round(float64(windSpeed) * 3.6)
+	_ = ag.PubEvent(thingID, vocab.PropEnvWindGusts, windGustsKph) // m/s -> km/h
+	_ = ag.PubEvent(thingID, vocab.PropEnvWindSpeed, windSpeedKph) // m/s -> km/h
 
 	return err
 }

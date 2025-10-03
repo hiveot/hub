@@ -2,13 +2,13 @@ package pubsubcli
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/tputils"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
-	"time"
 
 	"github.com/araddon/dateparse"
 	"github.com/urfave/cli/v2"
@@ -59,21 +59,21 @@ func HandleSubTD(hc *messaging.Consumer) error {
 	if err != nil {
 		return err
 	}
-	hc.SetResponseHandler(func(msg *messaging.ResponseMessage) error {
+	hc.SetResponseHandler(func(resp *messaging.ResponseMessage) error {
 		// only look for TD events, ignore directed events
-		if msg.Name != digitwin.ThingDirectoryEventThingUpdated {
+		if resp.Name != digitwin.ThingDirectoryEventThingUpdated {
 			return nil
 		}
 
 		var tdi td.TD
 		//fmt.Printf("%s\n", event.ValueJSON)
-		err := tputils.DecodeAsObject(msg.Value, &tdi)
+		err := resp.Decode(&tdi)
 
 		if err == nil {
 			modifiedTime, _ := dateparse.ParseAny(tdi.Modified) // can be in any TZ
 			timeStr := utils.FormatMSE(modifiedTime.UnixMilli(), false)
 			fmt.Printf("%-20.20s %-35.35s %-30.30s %-30.30s %-30.30s\n",
-				"", msg.ThingID, tdi.Title, tdi.AtType, timeStr)
+				"", resp.ThingID, tdi.Title, tdi.AtType, timeStr)
 		}
 		return nil
 	})

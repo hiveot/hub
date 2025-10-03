@@ -57,15 +57,15 @@ func (ag *Agent) onRequest(
 func (ag *Agent) PubActionProgress(req RequestMessage, value any) error {
 	status := ActionStatus{
 		//AgentID:   ag.GetClientID(),
-		ActionID:  req.CorrelationID,
-		Input:     req.Input,
-		Name:      req.Name,
-		Output:    value,
-		SenderID:  ag.GetClientID(),
-		Status:    StatusRunning,
-		ThingID:   req.ThingID,
-		Requested: req.Created,
-		Updated:   utils.FormatNowUTCMilli(),
+		ActionID:      req.CorrelationID,
+		Input:         req.Input,
+		Name:          req.Name,
+		Output:        value,
+		SenderID:      ag.GetClientID(),
+		State:         StatusRunning,
+		ThingID:       req.ThingID,
+		TimeRequested: req.Created,
+		TimeUpdated:   utils.FormatNowUTCMilli(),
 	}
 
 	resp := NewNotificationMessage(wot.OpInvokeAction, req.ThingID, req.Name, status)

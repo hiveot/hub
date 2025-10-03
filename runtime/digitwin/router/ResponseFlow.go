@@ -21,12 +21,17 @@ import (
 func (r *DigitwinRouter) HandleActionResponse(resp *messaging.ResponseMessage) (err error) {
 
 	// Action response
+	errMsg := ""
+	if resp.Error != nil {
+		errMsg = resp.Error.String()
+	}
+	// log the response
 	r.requestLogger.Info("<- RESP",
 		slog.String("correlationID", resp.CorrelationID),
 		slog.String("operation", resp.Operation),
 		slog.String("dThingID", resp.ThingID),
 		slog.String("name", resp.Name),
-		slog.String("error", resp.Error),
+		slog.String("error", errMsg),
 		slog.String("Value", resp.ToString(20)),
 		slog.String("senderID", resp.SenderID),
 	)

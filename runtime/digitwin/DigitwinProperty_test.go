@@ -2,16 +2,16 @@ package digitwin_test
 
 import (
 	"encoding/json"
-	"fmt"
+	"testing"
+
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/wot/td"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestUpdateReadProperty(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	const agent1ID = "agent1"
 	const user1ID = "user1"
 	const thing1ID = "thing1"
@@ -63,7 +63,7 @@ func TestUpdateReadProperty(t *testing.T) {
 }
 
 func TestPropertyReadFail(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	const agentID = "agent1"
 	const thingID = "thing1"
 
@@ -86,7 +86,7 @@ func TestPropertyReadFail(t *testing.T) {
 }
 
 func TestPropertyUpdateFail(t *testing.T) {
-	t.Log(fmt.Sprintf("---%s---\n", t.Name()))
+	t.Logf("---%s---\n", t.Name())
 	const agentID = "agent1"
 	const thingID = "thing1"
 	const propName = "prop1"

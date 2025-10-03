@@ -473,13 +473,14 @@ func (cc *HttpBasicClient) SendRequest(req *messaging.RequestMessage) error {
 	if code == http.StatusOK {
 		resp := req.CreateResponse(nil, nil)
 		// unmarshal output. This is either the json encoded output or the ResponseMessage envelope
-		if outputRaw == nil || len(outputRaw) == 0 {
+		if len(outputRaw) == 0 {
 			// nothing to unmarshal
 		} else {
 			err = jsoniter.UnmarshalFromString(string(outputRaw), &resp.Value)
 		}
 		if err != nil {
-			resp.Error = err.Error()
+			resp.Error = messaging.ErrorValueFromError(err)
+			resp.Error.Status = 500 // decode error
 		}
 
 		// pass a direct response to the application handler
@@ -491,7 +492,7 @@ func (cc *HttpBasicClient) SendRequest(req *messaging.RequestMessage) error {
 		// httpbasic servers/things might respond with 201 for pending as per spec
 		// this is a response message.
 		var resp *messaging.ResponseMessage
-		if outputRaw == nil || len(outputRaw) == 0 {
+		if len(outputRaw) == 0 {
 			// no response yet. do not send process a notification
 		} else {
 			// standard http response payload
@@ -517,12 +518,22 @@ func (cc *HttpBasicClient) SendRequest(req *messaging.RequestMessage) error {
 			err = jsoniter.UnmarshalFromString(string(outputRaw), &resp.Value)
 		}
 		httpProblemDetail := map[string]string{}
-		if outputRaw != nil && len(outputRaw) > 0 {
+		if len(outputRaw) > 0 {
 			err = jsoniter.Unmarshal(outputRaw, &httpProblemDetail)
-			resp.Error = httpProblemDetail["title"]
-			resp.Value = httpProblemDetail["detail"]
+			statusCode := tputils.DecodeAsInt(httpProblemDetail["status"])
+			resp.Error = &messaging.ErrorValue{
+				Status: statusCode,
+				Title:  httpProblemDetail["title"],
+				Detail: httpProblemDetail["detail"],
+			}
+		} else if err != nil {
+			resp.Error = messaging.ErrorValueFromError(err)
 		} else {
-			resp.Error = "request failed"
+			resp.Error = &messaging.ErrorValue{
+				Status: code,
+				Title:  "request failed",
+			}
+
 		}
 
 		// pass a direct response to the application handler
