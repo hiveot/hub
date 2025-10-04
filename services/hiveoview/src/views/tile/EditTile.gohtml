@@ -12,101 +12,100 @@
 			<form id="edit-tile-form" style="overflow:auto"
 			>
 
-          {{/*Title and Type*/}}
-				<fieldset>
+            {{/*Title and Type*/}}
+			<fieldset>
+				<label title="Tile ID: {{.Tile.ID}}">
+    				Title:
+					<input autofocus id="tile-title" name="title" required
+					       value="{{.Tile.Title}}" placeholder="{{.Tile.Title}}"
+					/>
+				</label>
 
-					<label title="Tile ID: {{.Tile.ID}}">
-						Title:
-						<input autofocus id="tile-title" name="title" required
-						       value="{{.Tile.Title}}" placeholder="{{.Tile.Title}}"
-						/>
-					</label>
+				<label>
+					Type:
+					<select is="h-select" id="tile-type" name="tileType" autofocus
+					          value="{{.Tile.TileType}}"
+					        onchange="setSourceForTileType()">
 
-					<label>
-						Type:
-						<select is="h-select" id="tile-type" name="tileType" autofocus
-						          value="{{.Tile.TileType}}"
-						        onchange="setSourceForTileType()">
-
-                {{ range $ttID, $ttLabel := .TileTypeLabels}}
-									<option value="{{$ttID}}"
-                          {{if eq $ttID $.Tile.TileType}} selected {{end}}>
-                      {{$ttLabel}}
-									</option>
-                {{end}}
-						</select>
-					</label>
-				</fieldset>
+                        {{ range $ttID, $ttLabel := .TileTypeLabels}}
+							<option value="{{$ttID}}"
+                                {{if eq $ttID $.Tile.TileType}} selected {{end}}>
+                                {{$ttLabel}}
+							</option>
+                        {{end}}
+					</select>
+				</label>
+			</fieldset>
 
           {{/*When type is gauge*/}}
-				<fieldset id="gauge-config-section">
-					{{template "EditGauge.gohtml" .Tile}}
-				</fieldset>
+			<fieldset id="gauge-config-section">
+				{{template "EditGauge.gohtml" .Tile}}
+			</fieldset>
 
           {{/*When type is image*/}}
-				<fieldset id="image-source-section">
-					<label>Image URL
-						<input id="image-url" type="url" name="imageURL" placeholder="Enter a background image URL"
-						       value="{{.Tile.ImageURL}}">
-					</label>
-					<label class="h-row" style="white-space: nowrap">
-						Reload Interval
-						<input name="reloadInterval"
-						       type="number"
-						       placeholder="Nr of seconds to reload the image"
-						       value="{{.Tile.ImageReloadInterval}}">
-						Seconds
-					</label>
-				</fieldset>
+			<fieldset id="image-source-section">
+				<label>Image URL
+					<input id="image-url" type="url" name="imageURL" placeholder="Enter a background image URL"
+					       value="{{.Tile.ImageURL}}">
+				</label>
+				<label class="h-row" style="white-space: nowrap">
+					Reload Interval
+					<input name="reloadInterval"
+					       type="number"
+					       placeholder="Nr of seconds to reload the image"
+					       value="{{.Tile.ImageReloadInterval}}">
+					Seconds
+				</label>
+			</fieldset>
 
-				<fieldset id="sources-section">
+			<fieldset id="sources-section">
             {{/* Sources if type is not image*/}}
-					<label class="h-row">
-						Sources:
-						<button type="button" class="outline h-icon-button"
-						        title="Add Source"
-						        hx-target="#modalLevel2"
-						        hx-get="{{.RenderSelectTileSourcesPath}}"
-						        hx-swap="innerHTML"
-						>
-							<iconify-icon icon='mdi:playlist-plus'></iconify-icon>
-						</button>
-					</label>
+                <label class="h-row">
+                    Sources:
+                    <button type="button" class="outline h-icon-button"
+                            title="Add Source"
+                            hx-target="#modalLevel2"
+                            hx-get="{{.RenderSelectTileSourcesPath}}"
+                            hx-swap="innerHTML"
+                    >
+                        <iconify-icon icon='mdi:playlist-plus'></iconify-icon>
+                    </button>
+                </label>
 
-            {{/* NOTE!: RenderSelectSources uses this ID 'edit-tile-sources-id' to add sources in this list */}}
-					<h-grid-table id="edit-tile-sources-id" gridClass="edit-tile-sources" title="{{.Tile.ID}}" striped border>
-              {{/* Header*/}}
-						<li class="title-row">
-							<div></div>
-							<div width="minmax(100px, max-content)">Thing Source</div>
-							<div width="minmax(60px, max-content)">Value</div>
-							<div width="minmax(100px,max-content)">Updated</div>
-							<div>remove</div>
-						</li>
-              {{range $k,$v := .Tile.Sources}}
-								<li id="{{$k}}-source" draggable="true">
+                {{/* NOTE!: RenderSelectSources uses this ID 'edit-tile-sources-id' to add sources in this list */}}
+			    <h-grid-table id="edit-tile-sources-id" gridClass="edit-tile-sources" title="{{.Tile.ID}}" striped border>
+                {{/* Header*/}}
+					<li class="title-row">
+						<div></div>
+						<div width="minmax(100px, max-content)">Thing Source</div>
+						<div width="minmax(60px, max-content)">Value</div>
+						<div width="minmax(100px,max-content)">Updated</div>
+						<div>remove</div>
+					</li>
+                    {{range $k,$v := .Tile.Sources}}
+						<li id="{{$k}}-source" draggable="true">
                     {{/*drag handle to re-order the list*/}}
-									<div class="h-row-centered drag-handle">
-										<iconify-icon style="font-size:1.4em" icon='mdi:drag'></iconify-icon>
-									</div>
+							<div class="h-row-centered drag-handle">
+								<iconify-icon style="font-size:1.4em" icon='mdi:drag'></iconify-icon>
+							</div>
                     {{/*Editable title of the source*/}}
-									<input name="sourceTitles" value="{{$v.Title}}"
-									       style="margin:0"
-									       title="Edit the label here. ThingID: {{$v.ThingID}}/{{$v.Name}}"/>
+							<input name="sourceTitles" value="{{$v.Title}}"
+							       style="margin:0"
+							       title="Edit the label here. ThingID: {{$v.ThingID}}/{{$v.Name}}"/>
                     {{/*Lasted known value and timestamp */}}
-									<div>{{$.GetValue $v}}</div>
-									<div>{{$.GetUpdated $v}}</div>
+							<div>{{$.GetValue $v}}</div>
+							<div>{{$.GetUpdated $v}}</div>
                     {{/*button to delete this source*/}}
-									<button type="button" class="h-row-centered outline h-icon-button"
-									        style="border:none"
-									        onclick="deleteRow(this.parentNode)"
-									>
-										<iconify-icon icon="mdi:delete"></iconify-icon>
-									</button>
+							<button type="button" class="h-row-centered outline h-icon-button"
+							        style="border:none"
+							        onclick="deleteRow(this.parentNode)"
+							>
+								<iconify-icon icon="mdi:delete"></iconify-icon>
+							</button>
                     {{/* The hidden input is used to submit list of sources with the form*/}}
-									<input type="hidden" name="sources"
-									       value="{{$v.AffordanceType}}/{{$v.ThingID}}/{{$v.Name}}"/>
-								</li>
+							<input type="hidden" name="sources"
+							       value="{{$v.AffordanceType}}/{{$v.ThingID}}/{{$v.Name}}"/>
+						</li>
               {{end}}
               {{/*	Insertion point for adding rows. Used in 'SelectSources.gohtml' */}}
 						<li id="insert-tile-sources-here" style="display:none"></li>

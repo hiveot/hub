@@ -2,14 +2,15 @@ package consumedthing
 
 import (
 	"fmt"
+	"log/slog"
+	"sync"
+
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/messaging"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/wot"
 	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
-	"log/slog"
-	"sync"
 )
 
 // InteractionListener is the handler that receives updates to interaction
@@ -94,7 +95,8 @@ func (ct *ConsumedThing) GetActionInputFromStatus(as messaging.ActionStatus) *In
 // This returns nil if as.name is not a known action
 func (ct *ConsumedThing) GetActionOutputFromStatus(as messaging.ActionStatus) (iout *InteractionOutput) {
 
-	iout = NewInteractionOutput(ct, messaging.AffordanceTypeAction, as.Name, as.Output, as.TimeUpdated)
+	iout = NewInteractionOutput(ct,
+		messaging.AffordanceTypeAction, as.Name, as.Output, as.TimeUpdated)
 
 	// graceful fallback.
 	// If no output schema use property or event with the same name

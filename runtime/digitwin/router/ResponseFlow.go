@@ -63,7 +63,7 @@ func (r *DigitwinRouter) HandleActionResponse(resp *messaging.ResponseMessage) (
 	}
 
 	// 2: Update the response status in the digital twin action record and log errors
-	// not all requests are tracked.
+	// only action requests are tracked.
 	_, _ = r.dtwStore.UpdateActionWithResponse(resp)
 
 	// 3: Forward the response to the sender of the request

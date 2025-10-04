@@ -20,12 +20,12 @@
 	{{/*Description*/}}
 	<div>{{.InteractionOutput.Schema.Description}}</div>
 
-  {{/*	Timestamp*/}}
+  	{{/*Timestamp  (iout Timestamp is a ISO string*/}}
 	<div sse-swap="{{.ID}}/updated"
 	     hx-target="this"
 	     hx-swap="innerHTML"
-			  style="white-space:nowrap"
-		>{{datetime .TimestampStr "S" }}
+		 style="white-space:nowrap"
+		>{{datetime .Timestamp "S" }}
 	</div>
 
   {{/*history chart */}}

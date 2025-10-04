@@ -3,7 +3,7 @@
 {{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/history.HistoryTemplateData*/ -}}
 <h-timechart id="historyChart" no-legend
              style="flex-grow:1; height:inherit"
-    timestamp="{{.TimestampStr}}"
+    timestamp="{{.EndTimeStr}}"
 
 		{{/* Auto-update chart when looking at today*/}}
     {{if eq .CompareToday 0}}

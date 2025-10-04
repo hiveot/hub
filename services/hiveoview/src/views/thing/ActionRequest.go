@@ -3,6 +3,10 @@ package thing
 import (
 	"errors"
 	"fmt"
+	"log/slog"
+	"net/http"
+	"time"
+
 	"github.com/araddon/dateparse"
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/api/go/vocab"
@@ -13,9 +17,6 @@ import (
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"github.com/hiveot/hub/wot/td"
-	"log/slog"
-	"net/http"
-	"time"
 )
 
 const RenderActionRequestTemplate = "ActionRequest.gohtml"
@@ -187,7 +188,10 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 
 			// Receiving a response means it isn't received by the async response handler,
 			// so we need to let the UI know ourselves.
-			thingAddr := fmt.Sprintf("%s/%s", thingID, actionName)
+			// The browser is update with action updates using the
+			//   property/thingID/propertyName SSE endpoint
+			// See also the sse-swap attribute in gohtml templates
+			thingAddr := fmt.Sprintf("property/%s/%s", thingID, actionName)
 			propVal := tputils.DecodeAsString(reply, 0)
 			sess.SendSSE(thingAddr, propVal)
 		}
@@ -218,7 +222,7 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 	// TODO: map delivery status to language
 
 	// the async reply will contain status update
-	//sess.SendNotify(session.NotifyInfo, "Delivery Status for '"+actionName+"': "+stat.Status)
+	//sess.SendNotify(session.NotifyInfo, "Delivery Status for '"+actionName+"': "+stat.State)
 	unitSymbol := ""
 	if actionAff.Output != nil {
 		unit := actionAff.Output.Unit

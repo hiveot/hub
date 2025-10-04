@@ -16,41 +16,41 @@
         {{$aff := $.CT.TD.GetAction $name}}
         {{$actionStatus := $.CT.QueryAction $name}}
         {{$actionOutput := $.CT.GetActionOutput $name}}
-				<li>
+		<li>
 
             {{/* Action Name with link to action dialog */}}
-					<div title="name: {{$name}}">
-						<button class="outline" style="border:none;
+			<div title="name: {{$name}}">
+				<button class="outline" style="border:none;
 										display:inline-flex; gap: 5px;
 										text-align: left; padding:0"
-						        hx-trigger="click"
-						        hx-get="{{$.GetRenderActionPath $name}}"
-						        hx-target="#modalLevel1"
-						>
+						hx-trigger="click"
+						hx-get="{{$.GetRenderActionPath $name}}"
+						hx-target="#modalLevel1"
+				>
                 {{$aff.Title}}
-						</button>
-					</div>
+				</button>
+			</div>
 
             {{/* 2: Status: last known value*/}}
             {{/*FIXME: refresh this with action response*/}}
-					<div>
+			<div>
               {{if and $actionOutput $actionOutput.Schema}}
                   {{template "RenderOutputValue.gohtml" $actionOutput }}
               {{end}}
-					</div>
+			</div>
 
             {{/*3: Description*/}}
-					<div>{{$aff.Description}}</div>
+			<div>{{$aff.Description}}</div>
 
             {{/*4: Progress*/}}
-					<div>{{$actionStatus.State}}</div>
+			<div>{{$actionStatus.State}}</div>
 
             {{/*5: Timestamp*/}}
-					<div>{{datetime $actionStatus.TimeRequested "S"}}</div>
+			<div>{{datetime $actionStatus.TimeRequested "S"}}</div>
 
             {{/*6: By*/}}
-					<div>{{$actionStatus.SenderID}}</div>
-				</li>
+			<div>{{$actionStatus.SenderID}}</div>
+		</li>
     {{end}}
     {{if not .CT.TD.Actions}}
 			<li>

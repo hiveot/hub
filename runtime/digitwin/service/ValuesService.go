@@ -13,7 +13,7 @@ type ValuesService struct {
 	dtwStore *store.DigitwinStore
 }
 
-// QueryAction returns the current status of the action
+// QueryAction returns the current ActionValue status of the action
 func (svc *ValuesService) QueryAction(clientID string,
 	args digitwin.ThingValuesQueryActionArgs) (av digitwin.ActionStatus, err error) {
 	//convert action status to action value, because ... need generated agent code

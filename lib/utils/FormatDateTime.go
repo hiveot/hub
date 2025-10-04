@@ -73,9 +73,10 @@ func FormatAge(dateStr string) (age string) {
 // value is an iso timestamp
 // Format:
 //
-//	"" default is the year time format: YYYY-MM-DD, HH:MM:SS TZ
-//	"S" is the shortest possible format depending on agent
-//	"V" is the verbose format
+//		"" default is the year time format: YYYY-MM-DD, HH:MM:SS TZ
+//		"S" is the shortest possible format depending on agent
+//		"V" is the verbose format
+//	 "AGE" is the age format like "5m 30s ago"
 //
 // format is default RFC822, or use "S" for a short format "weekday, time" if less than a week old
 func FormatDateTime(dateStr string, format ...string) string {
@@ -89,6 +90,8 @@ func FormatDateTime(dateStr string, format ...string) string {
 	if len(format) == 1 {
 		// short format depending on age
 		switch format[0] {
+		case "AGE":
+			formattedTime = FormatAge(dateStr)
 		case "S":
 			// Format weekday, time if less than a week old
 			age := time.Since(createdTime)

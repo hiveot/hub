@@ -1,6 +1,12 @@
 package thingdetails
 
 import (
+	"log/slog"
+	"net/http"
+	"sort"
+	"strings"
+	"time"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/consumedthing"
@@ -13,11 +19,6 @@ import (
 	"github.com/hiveot/hub/services/hiveoview/src/views/history"
 	"github.com/hiveot/hub/wot/td"
 	"golang.org/x/exp/maps"
-	"log/slog"
-	"net/http"
-	"sort"
-	"strings"
-	"time"
 )
 
 const RenderThingDetailsPageTemplate = "ThingDetailsPage.gohtml"
@@ -42,6 +43,7 @@ type ThingDetailsTemplateData struct {
 }
 
 // GetEventHistory returns the previous 24 hour for the given event name
+// HistoryTemplateData is also the InteractionAffordance of the latest value
 func (dt *ThingDetailsTemplateData) GetEventHistory(name string) *history.HistoryTemplateData {
 	timestamp := time.Now().Local()
 	duration := time.Hour * time.Duration(-24)
@@ -53,6 +55,8 @@ func (dt *ThingDetailsTemplateData) GetEventHistory(name string) *history.Histor
 		iout.ThingID, iout.Name, timestamp, duration, 500)
 	_ = itemsRemaining
 	_ = err // ignore for now
+	// iout holds the latest value
+	// values contain historical values from range timestamp-duration to timestamp
 	hsd, err := history.NewHistoryTemplateData(iout, values, timestamp, duration)
 	_ = err
 	return hsd

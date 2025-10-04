@@ -174,6 +174,7 @@ func (r *DigitwinRouter) HandleRequest(
 			slog.String("operation", resp.Operation),
 			slog.String("dThingID", resp.ThingID),
 			slog.String("name", resp.Name),
+			// slog.String("value", resp.ValueAsString(20)),
 			slog.String("err", errMsg),
 		)
 	}

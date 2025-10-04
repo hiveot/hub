@@ -2,15 +2,16 @@ package history
 
 import (
 	"encoding/json"
+	"log/slog"
+	"sort"
+	"time"
+
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/consumedthing"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/services/hiveoview/src"
-	"log/slog"
-	"sort"
-	"time"
 )
 
 // HistoryTemplateData holds the data for rendering a history table or graph
@@ -26,8 +27,8 @@ type HistoryTemplateData struct {
 	//ID string //
 
 	// history information
-	Timestamp      time.Time
-	TimestampStr   string
+	EndTime        time.Time
+	EndTimeStr     string
 	DurationSec    int
 	Values         []*messaging.ThingValue
 	ItemsRemaining bool // for paging, if supported
@@ -109,12 +110,12 @@ func (ht HistoryTemplateData) GetObjectValues() []consumedthing.InteractionOutpu
 
 // NextDay return the time +1 day
 func (ht HistoryTemplateData) NextDay() time.Time {
-	return ht.Timestamp.Add(time.Hour * 24)
+	return ht.EndTime.Add(time.Hour * 24)
 }
 
 // PrevDay return the time -1 day
 func (ht HistoryTemplateData) PrevDay() time.Time {
-	return ht.Timestamp.Add(-time.Hour * 24)
+	return ht.EndTime.Add(-time.Hour * 24)
 }
 
 // CompareToday returns 0 if the timestamp is that of local time somewhere today
@@ -124,32 +125,32 @@ func (ht HistoryTemplateData) PrevDay() time.Time {
 func (ht HistoryTemplateData) CompareToday() int {
 	// 'today' accepts any time in the current local day
 	yy, mm, dd := time.Now().Date()
-	tsYY, tsmm, tsdd := ht.Timestamp.Date()
+	tsYY, tsmm, tsdd := ht.EndTime.Date()
 	if yy == tsYY && mm == tsmm && dd == tsdd {
 		return 0
 	}
-	diff := ht.Timestamp.Compare(time.Now())
+	diff := ht.EndTime.Compare(time.Now())
 	return diff
 }
 
 // NewHistoryTemplateData reads the value history for the given time range
 //
-//	iout is the initeraction output to display
+//	iout is the interaction output to display
 //	values are the historical values to display
-//	timestamp of the end-time of the history range
+//	endTime of the end-time of the history range
 //	duration to read (negative for history)
 func NewHistoryTemplateData(
 	iout *consumedthing.InteractionOutput,
 	values []*messaging.ThingValue,
-	timestamp time.Time, duration time.Duration) (
+	endTime time.Time, duration time.Duration) (
 	data *HistoryTemplateData, err error) {
 
 	hs := HistoryTemplateData{
 		InteractionOutput: *iout,
 		//ID:                iout.ID,
-		Timestamp: timestamp,
+		EndTime: endTime,
 		// chart expects ISO timestamp: yyyy-mm-ddTHH:MM:SS.sss-07:00
-		TimestampStr:   utils.FormatUTCMilli(timestamp),
+		EndTimeStr:     utils.FormatUTCMilli(endTime),
 		DurationSec:    int(duration.Seconds()),
 		Stepped:        false,
 		Values:         values,

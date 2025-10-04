@@ -61,6 +61,7 @@ func TestActionFlow(t *testing.T) {
 	as, err = dtwStore.UpdateActionWithResponse(resp)
 	require.NoError(t, err)
 	require.Equal(t, correlationID, as.ActionID)
+	assert.Equal(t, "completed", as.State)
 
 	// read action status
 	as, err = svc.ValuesSvc.QueryAction(consumerID, digitwin.ThingValuesQueryActionArgs{
@@ -102,9 +103,7 @@ func TestActionReadFail(t *testing.T) {
 	_, err = svc.ValuesSvc.QueryAction("itsme", digitwin.ThingValuesQueryActionArgs{
 		ThingID: dThingID,
 		Name:    "badeventname"})
-	assert.NoError(t, err)
-	//_, err = svc.ValuesSvc.QueryAllActions("itsme", "badthingid")
-	//assert.Error(t, err)
+	require.NoError(t, err)
 }
 
 func TestInvokeActionErrors(t *testing.T) {

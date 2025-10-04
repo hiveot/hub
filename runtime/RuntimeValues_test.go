@@ -79,6 +79,7 @@ func TestQueryActions(t *testing.T) {
 	// value must match that of the action in step 1 and match its correlationID
 	actVal := msgActionStatusMap[actionID]
 	assert.Equal(t, data, actVal.Input)
+	assert.Equal(t, messaging.StatusCompleted, actVal.State)
 }
 
 // Get events from the outbox using the experimental http REST api

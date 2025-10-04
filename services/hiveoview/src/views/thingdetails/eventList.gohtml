@@ -13,12 +13,12 @@
 	</li>
 
 	{{range $name := .EventNames}}
-    {{$iout := $.CT.GetValue "event" $name}}
-    {{if eq $iout.Schema.Type "object" }}
-      {{template "eventObjectRows.gohtml" $.GetEventHistory $name}}
-    {{else}}
-	    {{template "eventListRow.gohtml" $.GetEventHistory $name}}
-	  {{end}}
+    	{{$iout := $.CT.GetValue "event" $name}}
+	    {{if eq $iout.Schema.Type "object" }}
+    		{{template "eventObjectRows.gohtml" $.GetEventHistory $name}}
+    	{{else}}
+	    	{{template "eventListRow.gohtml" $.GetEventHistory $name}}
+	  	{{end}}
 	{{end}}
 
 	{{if not .CT.TD.Events}}

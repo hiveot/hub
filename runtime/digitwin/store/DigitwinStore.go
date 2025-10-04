@@ -483,7 +483,7 @@ func (svc *DigitwinStore) UpdateActionWithNotification(notif *messaging.Notifica
 //
 // Note that a response means that the action is completed.
 //
-// resp is a response with a ThingID of the digital twin
+// resp is a response from invokeaction containing an ActionStatus as value
 func (svc *DigitwinStore) UpdateActionWithResponse(
 	resp *messaging.ResponseMessage) (actionStatus digitwin.ActionStatus, err error) {
 
@@ -495,36 +495,56 @@ func (svc *DigitwinStore) UpdateActionWithResponse(
 		err := fmt.Errorf("dThing with ID '%s' not found", resp.ThingID)
 		return actionStatus, err
 	}
-	// action affordance or property affordance must exist
+	// action affordance must exist
 	_, found = dtw.DigitwinTD.Actions[resp.Name]
-	if found {
-		// this is a progress update; update only the status fields.
-		// action value should exist. recover if it doesn't
-		actionStatus, found = dtw.ActionStatuses[resp.Name]
-		if !found {
-			actionStatus = digitwin.ActionStatus{}
-		}
-		actionStatus.TimeUpdated = utils.FormatNowUTCMilli()
-		if resp.Error != nil {
-			actionStatus.Error = resp.Error
-			actionStatus.State = messaging.StatusFailed
-		} else {
-			actionStatus.Error = nil
-			actionStatus.Output = resp.Value
-			actionStatus.TimeUpdated = resp.Timestamp
-			actionStatus.State = messaging.StatusCompleted
-		}
-		dtw.ActionStatuses[resp.Name] = actionStatus
-		svc.changedThings[resp.ThingID] = true
-
-		return actionStatus, nil
-	} else {
-		// property write progress is ignored as the thing should simply update
-		//the property value after applying the write.
+	if !found {
+		return actionStatus, fmt.Errorf(
+			"UpdateActionWithResponse: Action '%s' not found in digital twin '%s'",
+			resp.Name, resp.ThingID)
 	}
-	return actionStatus, fmt.Errorf(
-		"UpdateActionWithResponse: Action '%s' not found in digital twin '%s'",
-		resp.Name, resp.ThingID)
+
+	// action response contains a messaging.ActionStatus object
+	var respStatus messaging.ActionStatus
+	err = tputils.DecodeAsObject(resp.Value, &respStatus)
+
+	if err != nil {
+		// these are the fields used below for updating the stored action status
+		respStatus.Output = resp.Value
+		respStatus.TimeUpdated = resp.Timestamp
+		respStatus.State = messaging.StatusCompleted
+		respStatus.Error = resp.Error
+		// respStatus.ActionID=resp.CorrelationID
+
+		// this isnt right so log a warning
+		slog.Warn("UpdateActionWithResponse: Invalid ActionStatus in response. Recover by using the value as the output",
+			"thingID", resp.ThingID,
+			"actionName", resp.Name,
+			"value", resp.ToString(20),
+			"err", err.Error(),
+		)
+	}
+
+	// this is a progress update; update only the status fields.
+	// action value should exist. recover if it doesn't
+	actionStatus, found = dtw.ActionStatuses[resp.Name]
+	if !found {
+		// convert messaging.ActionStatus to api.ActionStatus
+		tputils.Decode(respStatus, &actionStatus)
+	}
+	actionStatus.TimeUpdated = utils.FormatNowUTCMilli()
+	if resp.Error != nil {
+		actionStatus.Error = resp.Error
+		actionStatus.State = messaging.StatusFailed
+	} else {
+		actionStatus.Error = respStatus.Error
+		actionStatus.Output = respStatus.Output
+		actionStatus.TimeUpdated = respStatus.TimeUpdated
+		actionStatus.State = respStatus.State
+	}
+	dtw.ActionStatuses[resp.Name] = actionStatus
+	svc.changedThings[resp.ThingID] = true
+
+	return actionStatus, nil
 
 }
 

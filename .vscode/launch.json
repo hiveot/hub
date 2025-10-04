@@ -13,8 +13,8 @@
                 "/home/henk/bin/hiveot",
                 "--clientID",
                 "hiveoview",
-                "--serverURL",
-                "wss://localhost:8444/wot/wss"
+                // "--serverURL",
+                // "wss://localhost:8444/wot/wss"
             ],
         },
         {
