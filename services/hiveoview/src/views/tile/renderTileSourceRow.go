@@ -101,5 +101,4 @@ func RenderTileSourceRow(w http.ResponseWriter, r *http.Request) {
 		html.EscapeString(latestUpdated))
 
 	_, _ = w.Write([]byte(htmlToAdd))
-	return
 }

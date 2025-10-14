@@ -218,7 +218,7 @@ func (ct *ConsumedThing) GetPropertyOutput(name string) (iout *InteractionOutput
 func (ct *ConsumedThing) GetValue(affType messaging.AffordanceType, name string) (iout *InteractionOutput) {
 	var found bool
 
-	//should name be matched against the affordances TD instead of cached values?
+	// FIXME: should name be matched against the affordances TD instead of cached values?
 	if affType == "action" {
 		iout = ct.GetActionOutput(name)
 	} else if affType == "event" {
@@ -230,7 +230,7 @@ func (ct *ConsumedThing) GetValue(affType messaging.AffordanceType, name string)
 
 	_ = found
 	if iout == nil {
-		// not a known value so create an empty io with NoSchmea
+		// not a known value so create an empty io with NoSchema
 		iout = &InteractionOutput{
 			ThingID: ct.tdi.ID,
 			Name:    name,
@@ -398,8 +398,8 @@ func (ct *ConsumedThing) ReadProperty(name string) *InteractionOutput {
 	return iout
 }
 
-// Refresh reloads all property and event values from the Hub and updates the
-// cache.
+// Refresh reloads all property, event and action values from the Hub and updates
+// the cache.
 // This also updates the Thing title and description if they have corresponding
 // properties.
 func (ct *ConsumedThing) Refresh() error {
@@ -445,16 +445,20 @@ func (ct *ConsumedThing) Refresh() error {
 	if err != nil {
 		return err
 	}
+	// update the ActionStatus for each of the Thing's actions
 	for name, _ := range ct.tdi.Actions {
 		as, found := actionStatusMap[name]
-		if found {
-			// if the TD doesn't have this action then ignore it
-			actionAff := ct.tdi.GetAction(name)
-			if actionAff != nil {
-				iout := NewInteractionOutputFromActionStatus(ct, as)
-				ct.actionOutputs[name] = iout
+		if !found {
+			// the server doesn't have a status, create an empty
+			// TODO: server should always return a status
+			as = messaging.ActionStatus{
+				Name:    name,
+				State:   "n/a",
+				ThingID: ct.ThingID,
 			}
 		}
+		iout := NewInteractionOutputFromActionStatus(ct, as)
+		ct.actionOutputs[name] = iout
 	}
 	return nil
 }

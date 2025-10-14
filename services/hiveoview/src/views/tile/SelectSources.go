@@ -21,7 +21,7 @@ type RenderSelectSourcesTemplateData struct {
 	//IOValues map[string]consumedthing.InteractionOutputMap
 }
 
-// GetActionValue returns the action value of a tile source
+// GetActionValue returns the action value of a source
 func (data RenderSelectSourcesTemplateData) GetActionValue(thingID, name string) *consumedthing.InteractionOutput {
 	return data.GetValue(messaging.AffordanceTypeAction, thingID, name)
 }

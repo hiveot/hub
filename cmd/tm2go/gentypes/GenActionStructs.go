@@ -2,6 +2,7 @@ package gentypes
 
 import (
 	"fmt"
+
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/wot/td"
 )
@@ -44,7 +45,7 @@ func GenActionArgs(l *utils.SL, serviceTitle string, key string, action *td.Acti
 	l.Add("// %s%sArgs defines the arguments of the %s function", serviceTitle, typeName, key)
 	l.Add("// %s - %s", action.Title, action.Description)
 	GenDescription(l, action.Input.Description, action.Input.Comments)
-	if action.Input.Schema != "" {
+	if action.Input.Schema != "" && action.Output != nil {
 		// use ref type as arg type
 		titleType := ToTitle(action.Output.Schema)
 		l.Add("type %s%sArgs %s", serviceTitle, typeName, titleType)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"net/http"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -208,23 +209,40 @@ func TestQueryActions(t *testing.T) {
 
 			//replyTo.SendResponse(msg.ThingID, msg.Name, output, msg.CorrelationID)
 		case wot.OpQueryAllActions:
-			actStat := []messaging.ActionStatus{{
-				ThingID:       req.ThingID,
-				Name:          actionKey,
-				ActionID:      actionID,
-				Output:        testMsg1,
-				State:         messaging.StatusCompleted,
-				TimeRequested: req.Created,
-				TimeUpdated:   utils.FormatNowUTCMilli(),
-			}, {
-				ThingID:       req.ThingID,
-				Name:          actionKey,
-				ActionID:      actionID,
-				Output:        "other output",
-				State:         messaging.StatusCompleted,
-				TimeRequested: utils.FormatNowUTCMilli(),
-				TimeUpdated:   utils.FormatNowUTCMilli(),
-			}}
+			// include an error status to ensure encode/decode of an error status works
+			actStat := map[string]messaging.ActionStatus{
+				actionKey: {
+					ThingID:       req.ThingID,
+					Name:          actionKey,
+					ActionID:      actionID,
+					Output:        testMsg1,
+					State:         messaging.StatusCompleted,
+					TimeRequested: req.Created,
+					TimeUpdated:   utils.FormatNowUTCMilli(),
+				},
+				"action-2": {
+					ThingID:  req.ThingID,
+					Name:     "action-2",
+					ActionID: actionID,
+					Error: &messaging.ErrorValue{
+						Status: http.StatusBadRequest,
+						Type:   "http://testerror/",
+						Title:  "Testing error",
+						Detail: "test error detail",
+					},
+					State:         messaging.StatusFailed,
+					TimeRequested: utils.FormatNowUTCMilli(),
+					TimeUpdated:   utils.FormatNowUTCMilli(),
+				},
+				"action-3": {
+					ThingID:       req.ThingID,
+					Name:          "action-3",
+					ActionID:      actionID,
+					Output:        "other output",
+					State:         messaging.StatusCompleted,
+					TimeRequested: utils.FormatNowUTCMilli(),
+					TimeUpdated:   utils.FormatNowUTCMilli(),
+				}}
 			resp := req.CreateResponse(actStat, nil)
 			return resp
 		}
@@ -248,8 +266,8 @@ func TestQueryActions(t *testing.T) {
 	require.Equal(t, actionKey, status.Name)
 
 	// 4. Query all actions
-	var statusList []messaging.ActionStatus
-	err = cl1.Rpc(wot.OpQueryAllActions, thingID, actionKey, nil, &statusList)
+	var statusMap map[string]messaging.ActionStatus
+	err = cl1.Rpc(wot.OpQueryAllActions, thingID, actionKey, nil, &statusMap)
 	require.NoError(t, err)
-	require.Equal(t, 2, len(statusList))
+	require.Equal(t, 3, len(statusMap))
 }

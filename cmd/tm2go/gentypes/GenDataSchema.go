@@ -2,6 +2,7 @@ package gentypes
 
 import (
 	"fmt"
+
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/wot/td"
 	"golang.org/x/exp/slices"
@@ -139,24 +140,30 @@ func GenSchemaAttr(l *utils.SL, attrMap map[string]*td.DataSchema) (err error) {
 		if attr.Properties != nil {
 			// nested struct
 			err = GenSchemaAttr(l, attr.Properties)
-		} else if attr.Schema != "" {
+			// } else if attr.Schema != "" {
 			// field is a reference to a dataschema
-			typeName := ToTitle(attr.Schema)
-			l.Add("%s %s", keyTitle, typeName)
+			// typeName := ToTitle(attr.Schema)
+			// l.Add("%s %s", keyTitle, typeName)
 		} else if len(attr.AdditionalProperties) > 0 {
 			// field is a map of dataschema
 			//GenSchemaAttr(l, attr.AdditionalProperties)
 		} else {
-			omitEmpty := ""
 			isRequired := false
 			if attr.Required != nil {
 				isRequired = slices.Contains(attr.Required, key)
 			}
-
 			if !isRequired {
-				omitEmpty = ",omitempty"
+				// optional struct field is a pointer
+				if attr.Schema != "" || goType == "struct" {
+					l.Add("%s *%s `json:\"%s,omitempty\"`", keyTitle, goType, key)
+				} else {
+					l.Add("%s %s `json:\"%s,omitempty\"`", keyTitle, goType, key)
+				}
+			} else {
+				// required field must be non-nil
+				l.Add("%s %s `json:\"%s\"`", keyTitle, goType, key)
 			}
-			l.Add("%s %s `json:\"%s%s\"`", keyTitle, goType, key, omitEmpty)
+
 		}
 	}
 	return err

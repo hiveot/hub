@@ -508,15 +508,17 @@ func (svc *DigitwinStore) UpdateActionWithResponse(
 	err = tputils.DecodeAsObject(resp.Value, &respStatus)
 
 	if err != nil {
-		// these are the fields used below for updating the stored action status
+		// the response does not hold an ActionStatus object,
+		// assume it is completed and contains the output directly.
 		respStatus.Output = resp.Value
 		respStatus.TimeUpdated = resp.Timestamp
 		respStatus.State = messaging.StatusCompleted
 		respStatus.Error = resp.Error
 		// respStatus.ActionID=resp.CorrelationID
 
-		// this isnt right so log a warning
-		slog.Warn("UpdateActionWithResponse: Invalid ActionStatus in response. Recover by using the value as the output",
+		// The protocol binding didn't decode the action response correctly
+		// because in hiveot all responses should hold the action status
+		slog.Error("UpdateActionWithResponse: Invalid ActionStatus in response. Recover by using the value as the output",
 			"thingID", resp.ThingID,
 			"actionName", resp.Name,
 			"value", resp.ToString(20),
@@ -528,15 +530,40 @@ func (svc *DigitwinStore) UpdateActionWithResponse(
 	// action value should exist. recover if it doesn't
 	actionStatus, found = dtw.ActionStatuses[resp.Name]
 	if !found {
+		// an existing action status is expected. Recover by creating a new one.
 		// convert messaging.ActionStatus to api.ActionStatus
-		tputils.Decode(respStatus, &actionStatus)
+		err = tputils.Decode(respStatus, &actionStatus)
+		if err != nil {
+			slog.Error("UpdateActionWithResponse: Cannot decode ActionStatus from response",
+				"thingID", resp.ThingID,
+				"actionName", resp.Name,
+				"err", err.Error(),
+			)
+			return actionStatus, err
+		}
+		actionStatus.Input = nil // input is not in the response
 	}
 	actionStatus.TimeUpdated = utils.FormatNowUTCMilli()
 	if resp.Error != nil {
-		actionStatus.Error = resp.Error
+		// if the response itself holds an error
+		actionStatus.Error = &digitwin.ErrorValue{
+			Detail: resp.Error.Detail,
+			Status: int64(resp.Error.Status),
+			Title:  resp.Error.Title,
+			Type:   resp.Error.Type,
+		}
 		actionStatus.State = messaging.StatusFailed
+	} else if respStatus.Error != nil {
+		// if the response actionStatus holds the error
+		actionStatus.Error = &digitwin.ErrorValue{
+			Detail: respStatus.Error.Detail,
+			Status: int64(respStatus.Error.Status),
+			Title:  respStatus.Error.Title,
+			Type:   respStatus.Error.Type,
+		}
+		actionStatus.State = respStatus.State
 	} else {
-		actionStatus.Error = respStatus.Error
+		// no error
 		actionStatus.Output = respStatus.Output
 		actionStatus.TimeUpdated = respStatus.TimeUpdated
 		actionStatus.State = respStatus.State

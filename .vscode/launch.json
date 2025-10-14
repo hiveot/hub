@@ -10,7 +10,7 @@
             "args": [
                 "--extfs",
                 "--home",
-                "/home/henk/bin/hiveot",
+                "${env:HOME}/bin/hiveot",
                 "--clientID",
                 "hiveoview",
                 // "--serverURL",
@@ -25,7 +25,7 @@
             "program": "${workspaceFolder}/runtime/cmd/main.go",
             "args": [
                 "--home",
-                "/home/henk/bin/hiveot",
+                "${env:HOME}/bin/hiveot",
                 "--clientID",
                 "runtime"
             ],

@@ -84,8 +84,7 @@ func GenRequestMethodHandler(l *utils.SL, serviceTitle string, name string, acti
 	l.Add("if err == nil {")
 	l.Add("  %s = svc.%s(%s)", resultString, methodName, argsString)
 	l.Add("} else {")
-	l.Add("  err = errors.New(\"bad function argument: \"+err.Error())")
+	l.Add("  err = errors.New(\"bad function argument: \" + err.Error())")
 	l.Add("}")
-	l.Add("break")
 	l.Indent--
 }

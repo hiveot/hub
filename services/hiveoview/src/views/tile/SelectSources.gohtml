@@ -1,5 +1,7 @@
 
 {{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/tile.RenderSelectSourcesTemplateData*/}}
+{{/* Display a list of sources and their values */}}
+{{/* FIXME: Only load the ConsumedThing when it is opened */}}
 <h-modal show showClose style="z-index:99">
 	<article>
 		<header class="h-row-centered" style="height: 60px">
@@ -9,86 +11,86 @@
 
 		<main style="overflow-y:auto;  max-height:80vh; padding: 5px;">
 
-				{{/* Each agent has a grouped list of things*/}}
+		{{/* Each agent has a grouped list of things*/}}
         {{range .AgentThings}}
-				<hr/>
+			<hr/>
 
-				{{/* use name attribute to auto-close sections when a new one is selected*/}}
-				<details name="agentgroup" style="min-width:50vw">
-						<summary>
-							<span>{{.AgentID}} ({{len .Things}} Things)</span>
-						</summary>
-							<!--=== for TD in .Things ===-->
-						<ul>
-            {{range .Things}}
-	            {{$thing := .}}
-	            <li>
-							<details id="thingDetails">
-								<summary>
-									<span>{{.Title}}</span>
-									<span> ({{len .Events}} events, {{len .Actions}} actions, {{len .Properties}} properties)</span>
-								</summary>
+			{{/* use name attribute to auto-close sections when a new one is selected*/}}
+			<details name="agentgroup" style="min-width:50vw">
+				<summary>
+					<span>{{.AgentID}} ({{len .Things}} Things)</span>
+				</summary>
+				<!--=== for TD in .Things ===-->
+				<ul>
+		            {{range .Things}}
+	    	        {{$thing := .}}
+	        	    <li>
+						<details id="thingDetails">
+							<summary>
+								<span>{{.Title}}</span>
+								<span> ({{len .Events}} events, {{len .Actions}} actions, {{len .Properties}} properties)</span>
+							</summary>
 
 
-								<!--=== for EventAffordance in .TD ===-->
-								{{if .Events}}
+							<!--=== for EventAffordance in .TD ===-->
+							{{if .Events}}
 								<h-grid-table id="event-sources-id" striped border>
-                    {{/* Header*/}}
+									{{/* Header*/}}
 									<li>
 										<div width="auto">Event Name</div>
 										<div width="1fr">Value</div>
 										<div class="h-show-md">Updated</div>
 									</li>
-										{{/*TODO: sort event by name*/}}
-                    {{range $k,$aff := .Events}}
-		                    {{$iout := $data.GetEventValue $thing.ID $k}}
-		                    {{template "selectSourcesRow.gohtml" $iout}}
-	                  {{end}}
+									{{/*TODO: sort event by name*/}}
+									{{range $k,$aff := .Events}}
+										{{$iout := $data.GetEventValue $thing.ID $k}}
+										{{template "selectSourcesRow.gohtml" $iout}}
+									{{end}}
 								</h-grid-table>
-								{{end}}
+							{{end}}
 
-								<!--=== for ActionAffordance in .TD ===-->
-                {{if .Actions}}
+							<!--=== for ActionAffordance in .TD ===-->
+			                {{if .Actions}}
 								<h-grid-table id="action-sources-id" striped border
 								              nodata="No Actions are defined for this thing">
-                    {{/* Header*/}}
+            				        {{/* Header*/}}
 									<li>
 										<div width="max-content">Action Name</div>
 										<div width="1fr">Value</div>
 										<div class="h-show-md">Updated</div>
 									</li>
-                    {{/*TODO: sort actions by name*/}}
-                    {{range $k,$v := .Actions}}
-	                    {{$iout := $data.GetActionValue $thing.ID $k}}
-                      {{template "selectSourcesRow.gohtml" $iout}}
-                    {{end}}
+									{{/*TODO: sort actions by name*/}}
+									{{range $k,$v := .Actions}}
+										{{$iout := $data.GetActionValue $thing.ID $k}}
+										{{template "selectSourcesRow.gohtml" $iout}}
+									{{end}}
 								</h-grid-table>
-								{{end}}
+							{{end}}
 
-								<!--=== for PropertyAffordance in .TD ===-->
-                {{if .Properties}}
+							<!--=== for PropertyAffordance in .TD ===-->
+			                {{if .Properties}}
 								<h-grid-table id="property-sources-id" striped border>
-                    {{/* Header*/}}
+            				        {{/* Header*/}}
 									<li>
 										<div width="auto">Property Name</div>
 										<div width="1fr">Value</div>
 										<div class="h-show-md">Updated</div>
 									</li>
-                    {{/*TODO: sort property by name*/}}
-                    {{range $k,$aff := .Properties}}
-                         {{$iout := $data.GetPropertyValue $thing.ID $k}}
-                         {{template "selectSourcesRow.gohtml" $iout}}
-                    {{end}}
+									{{/*TODO: sort property by name*/}}
+									{{range $k,$aff := .Properties}}
+										{{$iout := $data.GetPropertyValue $thing.ID $k}}
+										{{template "selectSourcesRow.gohtml" $iout}}
+									{{end}}
 								</h-grid-table>
-								{{end}}
-							</details>
-	            </li>
+							{{end}}
+						</details>
+		            </li>
 
-            {{/* end range .Things*/}}
-						{{end}}
-						</ul>
-				</details>
-      {{/* end range .AgentThings*/}}
+            		{{/* end range .Things*/}}
+					{{end}}
+				</ul>
+			</details>
+			{{/* end range .AgentThings*/}}
 			{{end}}
 		</main>
 

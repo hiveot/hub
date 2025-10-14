@@ -57,9 +57,12 @@ type ActionStatus struct {
 // Error response payload
 type ErrorValue struct {
 	// Status code: https://w3c.github.io/wot-profile/#error-responses
-	Status int    `json:"status"`
-	Type   string `json:"type"`
-	Title  string `json:"title"`
+	Status int `json:"status"`
+	// Type is a URI reference [RFC3986] that identifies the problem type.
+	Type string `json:"type"`
+	// Title contains a short, human-readable summary of the problem type
+	Title string `json:"title"`
+	// Detail a human-readable explanation
 	Detail string `json:"detail,omitempty"`
 }
 

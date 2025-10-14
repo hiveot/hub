@@ -3,6 +3,9 @@ package thing
 import (
 	"errors"
 	"fmt"
+	"log/slog"
+	"net/http"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/lib/consumedthing"
 	"github.com/hiveot/hub/messaging/tputils"
@@ -10,8 +13,6 @@ import (
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"github.com/hiveot/hub/wot/td"
-	"log/slog"
-	"net/http"
 )
 
 const RenderEditPropertyTemplate = "EditProperty.gohtml"

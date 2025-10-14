@@ -50,10 +50,14 @@ func (cts *ConsumedThingsDirectory) Consume(thingID string) (ct *ConsumedThing, 
 			}
 		}
 		ct = NewConsumedThing(tdi, cts.co)
-		_ = ct.Refresh()
-		cts.mux.Lock()
-		cts.consumedThings[thingID] = ct
-		cts.mux.Unlock()
+		err = ct.Refresh()
+		if err != nil {
+			slog.Error("Consume failed", "ThingID", thingID, "err", err.Error())
+		} else {
+			cts.mux.Lock()
+			cts.consumedThings[thingID] = ct
+			cts.mux.Unlock()
+		}
 	}
 	return ct, nil
 }

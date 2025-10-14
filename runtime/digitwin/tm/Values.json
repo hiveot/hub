@@ -36,7 +36,8 @@
         "error": {
           "title": "Error",
           "description": "Object with error value when failed",
-          "type": "any"
+          "type": "object",
+          "schema": "ErrorValue"
         },
         "input": {
           "title": "Action input",
@@ -79,6 +80,17 @@
           "description": "Time the action status was last updated",
           "type": "string"
         }
+      }
+    },
+    "ErrorValue": {
+      "title": "Error Value",
+      "description": "Error response value",
+      "type": "object",
+      "properties": {
+        "status": { "title": "Http code", "type": "integer" },
+        "type": { "title": "Type", "type": "string" },
+        "title": { "title": "Title", "type": "string" },
+        "detail": { "title": "Details", "type": "string" }
       }
     },
     "ThingValue": {
@@ -161,8 +173,7 @@
       },
       "output": {
         "title": "Action value",
-        "description": "Map of action statuses",
-        "comment": "defined in schemadefinitions",
+        "description": "Map of ActionStatus objects by action name",
         "type": "object",
         "properties": {
           "": {

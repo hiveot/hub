@@ -6,6 +6,7 @@
     "baseUrl": ".",
     "declaration": true,
     "esModuleInterop": true,
+    "noEmit": true,
     "outDir": "./build",
     "preserveSymlinks": true,
     "rootDir": ".",

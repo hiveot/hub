@@ -80,6 +80,11 @@ func TestQueryActions(t *testing.T) {
 	actVal := msgActionStatusMap[actionID]
 	assert.Equal(t, data, actVal.Input)
 	assert.Equal(t, messaging.StatusCompleted, actVal.State)
+
+	// last, use consumer to query actions
+	actionMap2, err := co1.QueryAllActions(dThing1ID)
+	require.NoError(t, err)
+	assert.Equal(t, len(msgActionStatusMap), len(actionMap2))
 }
 
 // Get events from the outbox using the experimental http REST api

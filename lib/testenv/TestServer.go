@@ -27,6 +27,18 @@ const TestHttpsPort = 9444
 const TestMqttTcpPort = 9883
 const TestMqttWssPort = 9884
 
+const defaultAgentProtocol = messaging.ProtocolTypeWSS
+
+// const defaultAgentProtocol = messaging.ProtocolTypeHiveotSSE
+
+const defaultConsumerProtocol = messaging.ProtocolTypeWSS
+
+// const defaultConsumerProtocol = messaging.ProtocolTypeHiveotSSE
+
+const defaultServiceProtocol = messaging.ProtocolTypeWSS
+
+// const defaultServiceProtocol = messaging.ProtocolTypeHiveotSSE
+
 var testTDs = []struct {
 	ID         string
 	Title      string
@@ -333,13 +345,10 @@ func NewTestServer() *TestServer {
 		Certs:   certs.CreateTestCertBundle(),
 		Config:  runtime.NewRuntimeConfig(),
 		// change these for running all tests with different protocols
-		AgentProtocol: messaging.ProtocolTypeWSS,
-		// AgentProtocol: messaging.ProtocolTypeHiveotSSE,
-		ServiceProtocol: messaging.ProtocolTypeWSS,
-		// ServiceProtocol: messaging.ProtocolTypeHiveotSSE,
-		ConsumerProtocol: messaging.ProtocolTypeWSS,
-		// ConsumerProtocol: messaging.ProtocolTypeHiveotSSE,
-		ConnectTimeout: time.Second * 120, // testing extra long
+		AgentProtocol:    defaultAgentProtocol,
+		ServiceProtocol:  defaultServiceProtocol,
+		ConsumerProtocol: defaultConsumerProtocol,
+		ConnectTimeout:   time.Second * 120, // testing extra long
 	}
 	// the test server uses the test instance to differentiate from hiveot
 	srv.Config.ProtocolsConfig.DiscoveryInstanceName = "test"

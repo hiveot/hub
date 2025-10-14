@@ -41,7 +41,7 @@ type WssResponseMessage struct {
 	Status *WssActionStatus `json:"status,omitempty"`
 
 	// queryallactions response:
-	Statuses []WssActionStatus `json:"statuses,omitempty"`
+	Statuses map[string]WssActionStatus `json:"statuses,omitempty"`
 
 	// readallproperties,readmultipleproperties,
 	// writeallproperties, writemultipleproperties:
@@ -115,7 +115,14 @@ func (svc *WssMessageConverter) DecodeResponse(
 	if err != nil || wssResp.MessageType != messaging.MessageTypeResponse {
 		return nil
 	}
+
 	respMsg := &wssResp.ResponseMessage
+
+	// if the response is an error response then no need to decode any further
+	if respMsg.Error != nil {
+		return respMsg
+	}
+
 	switch wssResp.Operation {
 
 	case vocab.OpCancelAction:
@@ -162,14 +169,14 @@ func (svc *WssMessageConverter) DecodeResponse(
 
 	case vocab.OpQueryAllActions:
 		// ResponseMessage should contain ActionStatus list
-		var wssStatusList []WssActionStatus
-		var actionStatusList []messaging.ActionStatus
-		err = tputils.Decode(wssResp.Statuses, &wssStatusList)
+		var wssStatusMap map[string]WssActionStatus
+		actionStatusMap := make(map[string]messaging.ActionStatus)
+		err = tputils.Decode(wssResp.Statuses, &wssStatusMap)
 		if err != nil {
 			return nil
 		}
-		for _, wssStatus := range wssStatusList {
-			actionStatusList = append(actionStatusList, messaging.ActionStatus{
+		for _, wssStatus := range wssStatusMap {
+			actionStatusMap[wssResp.Name] = messaging.ActionStatus{
 				ThingID:       wssResp.ThingID,
 				Name:          wssResp.Name,
 				ActionID:      wssStatus.ActionID,
@@ -177,9 +184,9 @@ func (svc *WssMessageConverter) DecodeResponse(
 				TimeRequested: wssStatus.TimeRequested,
 				TimeUpdated:   wssStatus.TimeEnded,
 				Output:        wssStatus.Output,
-			})
+			}
 		}
-		respMsg.Value = actionStatusList
+		respMsg.Value = actionStatusMap
 
 	case vocab.OpReadAllProperties, vocab.OpReadMultipleProperties,
 		vocab.OpWriteMultipleProperties:
@@ -243,6 +250,12 @@ func (svc *WssMessageConverter) EncodeResponse(resp *messaging.ResponseMessage) 
 		ResponseMessage: *resp,
 	}
 
+	// when the response contains an error instead of a reply
+	// then there is no data to encode
+	if resp.Error != nil {
+		return wssResp
+	}
+
 	// ensure this field is present as it is needed for decoding
 	wssResp.MessageType = messaging.MessageTypeResponse
 	switch resp.Operation {
@@ -289,23 +302,25 @@ func (svc *WssMessageConverter) EncodeResponse(resp *messaging.ResponseMessage) 
 		var actionStatusMap map[string]messaging.ActionStatus
 		err := tputils.Decode(resp.Value, &actionStatusMap)
 		if err != nil {
-			err = fmt.Errorf("Can't convert ActionStatus map response to websocket type. Response does not contain ActionStatus map. "+
-				"thingID='%s'; name='%s'; operation='%s'; Received '%s' instead. Error='%s'",
-				resp.ThingID, resp.Name, resp.Operation, tputils.DecodeAsString(resp.Value, 50), err.Error())
+			err = fmt.Errorf("Can't convert ActionStatus map response to websocket type. "+
+				"Response does not contain ActionStatus map. "+
+				"thingID='%s'; name='%s'; operation='%s'; Received '%s'; Error='%s'",
+				resp.ThingID, resp.Name, resp.Operation,
+				tputils.DecodeAsString(resp.Value, 200), err.Error())
 			wssResp.Error = messaging.ErrorValueFromError(err)
 		}
-		wssStatusList := make([]WssActionStatus, 0, len(actionStatusMap))
+		wssStatusMap := make(map[string]WssActionStatus)
 		for _, actionStatus := range actionStatusMap {
-			wssStatusList = append(wssStatusList, WssActionStatus{
+			wssStatusMap[actionStatus.Name] = WssActionStatus{
 				ActionID:      actionStatus.ActionID,
 				Error:         actionStatus.Error, // error fields are identical
 				State:         actionStatus.State,
 				TimeRequested: actionStatus.TimeRequested,
 				TimeEnded:     actionStatus.TimeUpdated,
 				Output:        actionStatus.Output,
-			})
+			}
 		}
-		wssResp.Statuses = wssStatusList
+		wssResp.Statuses = wssStatusMap
 	case vocab.OpReadAllProperties, vocab.OpReadMultipleProperties:
 		// convert ThingValue map to map of name-value pairs
 		// the last updated timestamp is lost.
