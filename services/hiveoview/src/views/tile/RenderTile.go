@@ -23,6 +23,10 @@ type RenderTileTemplateData struct {
 	// Tile Title to display
 	Tile session.DashboardTile
 
+	// export tile as json
+	CopyTileSourcePath string
+	// import with the provided definition from clipboard
+	PasteTileSourcePath string
 	// path for re-rendering the tile
 	ReRenderTilePath string
 	// path to rendering edit-tile dialog for menu
@@ -150,6 +154,8 @@ func RenderTile(w http.ResponseWriter, r *http.Request) {
 	pathArgs := map[string]string{"dashboardID": ctc.dashboardID, "tileID": ctc.tileID}
 	data := RenderTileTemplateData{
 		Tile:                        ctc.tile,
+		CopyTileSourcePath:          getTilePath(src.GetCopyTilePath, ctc),
+		PasteTileSourcePath:         getTilePath(src.PostPasteTilePath, ctc),
 		RenderEditTilePath:          tputils.Substitute(src.RenderTileEditPath, pathArgs),
 		RenderConfirmDeleteTilePath: tputils.Substitute(src.RenderTileConfirmDeletePath, pathArgs),
 		ReRenderTilePath:            tputils.Substitute(src.RenderTilePath, pathArgs),

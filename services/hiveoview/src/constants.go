@@ -53,6 +53,8 @@ const (
 	RenderTileSelectSourcesPath = "/tile/{dashboardID}/{tileID}/selectSources"
 	PostTileEditPath            = "/tile/{dashboardID}/{tileID}"
 	PostTileDeletePath          = "/tile/{dashboardID}/{tileID}"
+	GetCopyTilePath             = "/tile/{dashboardID}/{tileID}/copy"
+	PostPasteTilePath           = "/tile/{dashboardID}/{tileID}/paste"
 
 	// directory and related paths
 	RenderThingDirectoryPath     = "/directory"

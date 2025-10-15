@@ -220,6 +220,66 @@
             grid.update();
         }
 
+        // invoked by dashboard tile menus to copy the tile to the clipboard
+        function onCopyTileResponse(event) {
+            {{/* console.log("DashboardPage.gohtml: Copy tile response", event); */}}
+            if (event.detail.xhr.status === 200) {
+                navigator.clipboard.writeText(event.detail.xhr.responseText);
+            } else {
+                console.error("DashboardPage.gohtml: Failed to copy tile to clipboard, status=", event.detail.xhr.status);
+            }
+            // close the menu by setting focus to the parent
+            event.target.parentElement.parentElement.focus();
+        }
+
+        // post the clipboard data to the server
+        // htmx doesn't support async functions so we have to do this manually
+        // see: https://htmx.org/faq/#how-can-i-make-an-htmx-request-after-an-async-operation
+        function onPasteClipboardConfigRequest(evt,postURL) {
+            {{/* console.log("DashboardPage.gohtml: onPasteClipboardConfigRequest"); */}}
+            // cancel htmx request to delay until the clipboard is read
+            evt.stopImmediatePropagation()
+            navigator.clipboard.readText().then(clip=>{
+                htmx.ajax('POST', postURL, {
+                    values: {tile: clip},
+                    swap: "none"
+                })
+            })
+                // close the menu by setting focus to the parent
+                let parentEl  = evt.target.parentElement.parentElement.parentElement
+                parentEl.focus();
+                console.log("onPasteClipboardConfigRequest");
+            
+        }
+
+        // when the tilemenu opens, enable the paste menu option when it contains a valid tile
+        function enablePasteTile(dropdown, menuID) {
+            console.log("handleTileMenuOpen. menuID="+menuID)
+            let btnEl = dropdown.querySelector("#"+menuID).querySelector("button");
+            let liEl = dropdown.querySelector("#"+menuID);
+            let hasTile = false;
+            let tileObj = undefined
+
+            navigator.clipboard.readText().then(clip=>{
+                try {
+                    tileObj = JSON.parse(clip)
+                    if (tileObj && tileObj.ID && tileObj.title) {
+                        hasTile = true
+                    }
+                } catch (e) {
+                }
+                if (hasTile) {
+                    console.log("enablePasteTile: valid tile in clipboard")
+                    btnEl.disabled = false;
+                    liEl.title = "";
+                } else {
+                    console.log("enablePasteTile: no valid tile in clipboard")
+                    btnEl.disabled = true;
+                    liEl.title = "no valid tile in clipboard";
+                }
+            })
+        }
+
 		</script>
 
 		<style>

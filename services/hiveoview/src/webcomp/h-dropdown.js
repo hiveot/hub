@@ -9,6 +9,7 @@
  * - animated slide-in/slide-out using clip-path
  * - move menu left to prevent running over the right side of the window
  *     (button loses its mouse receiver area if the window overlaps)
+ * - send onhide event when hidden and onshow event when shown
  */
 
 
@@ -274,8 +275,10 @@ class HDropdown extends HTMLElement {
         } else if (name === "show") {
             if (newValue == "false") {
                 this.elContent.classList.remove("show")
+                this.dispatchEvent(new Event('onhide', {bubbles:true }))
             } else {
                 this.elContent.classList.add("show")
+                this.dispatchEvent(new Event('onshow', {bubbles:true }))
             }
         }
         // console.log("height:" + this.style.getPropertyValue("height"));
@@ -324,6 +327,7 @@ class HDropdown extends HTMLElement {
         // is no longer active.
         // console.log("hidecontent remove show")
         this.elContent.classList.remove("show")
+        this.dispatchEvent(new Event('onhide', {bubbles:true }))
     }
 
 
@@ -340,11 +344,15 @@ class HDropdown extends HTMLElement {
         if (isShown) {
             this.elContent.classList.remove("show")
             this.elButton.focus()  // remove focus from content so it hides
+            this.dispatchEvent(new Event('onhide', {bubbles:true }))
+            // console.log("onhidden")
         } else {
             this.elContent.classList.add("show")
             this.elContent.focus();
             // show content to determine size
             this.correctContentPosition()
+            this.dispatchEvent(new Event('onshow', {bubbles:true }))
+            // console.log("onshown")
         }
         // console.log("clear ignoreBlur (toggleMenu)")
         this.ignoreBlur = false

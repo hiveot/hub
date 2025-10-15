@@ -2,6 +2,11 @@ package tile
 
 import (
 	"fmt"
+	"log/slog"
+	"net/http"
+	"strconv"
+	"strings"
+
 	"github.com/hiveot/hub/lib/consumedthing"
 	"github.com/hiveot/hub/lib/utils"
 	"github.com/hiveot/hub/messaging"
@@ -9,10 +14,6 @@ import (
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"github.com/teris-io/shortid"
-	"log/slog"
-	"net/http"
-	"strconv"
-	"strings"
 )
 
 const RenderEditTileTemplate = "EditTile.gohtml"
@@ -81,12 +82,12 @@ func RenderEditTile(w http.ResponseWriter, r *http.Request) {
 	}
 	ctDir := sess.GetConsumedThingsDirectory()
 	data := EditTileTemplateData{
+		ctDir:                       ctDir,
 		Dashboard:                   ctc.dashboard,
 		Tile:                        ctc.tile,
 		TileTypeLabels:              session.TileTypesLabels,
 		RenderSelectTileSourcesPath: getTilePath(src.RenderTileSelectSourcesPath, ctc),
 		SubmitEditTilePath:          getTilePath(src.PostTileEditPath, ctc),
-		ctDir:                       ctDir,
 	}
 	buff, err := app.RenderAppOrFragment(r, RenderEditTileTemplate, data)
 	sess.WritePage(w, buff, err)

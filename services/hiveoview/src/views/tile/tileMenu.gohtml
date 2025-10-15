@@ -1,12 +1,14 @@
 {{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/tile.RenderTileTemplateData*/ -}}
 
 <!-- dropdown menu -->
-<h-dropdown position="bottomright">
+<h-dropdown position="bottomright"
+        hx-on:onshow="enablePasteTile(this, '{{.Tile.ID}}-menu-paste')"
+    >
     <button slot="button" class="h-icon-button outline" style="border:none">
         <iconify-icon icon="mdi:menu"></iconify-icon>
     </button>
 
-    <ul hx-params="none"
+    <ul hx-params="tile, tile2"
         hx-swap="innerHTML"
         hx-target="#modalLevel1">
 
@@ -14,14 +16,29 @@
             <button class="link">
                 <iconify-icon icon='mdi:edit'></iconify-icon>
                 Edit Tile
-            </button></li>
-        <li disabled>
-            <iconify-icon icon='mdi:content-copy'></iconify-icon>
-            Copy Tile
+            </button>
         </li>
-        <li disabled>
-            <iconify-icon icon='mdi:content-paste'></iconify-icon>
-            Paste Tile
+
+        {{/* Tile JS functions can be found in the DashboardPage.gohtml */}}
+        <li hx-get={{.CopyTileSourcePath}} hx-swap="none" hx-trigger="click"
+            hx-on::after-request="onCopyTileResponse(event)"
+            >
+                <iconify-icon icon='mdi:content-copy'></iconify-icon>
+                Copy Tile
+        </li>
+
+        {{/* Paste tile content from clipboard */}}
+        <li id="{{.Tile.ID}}-menu-paste" >
+            <button class="link" 
+                hx-post="{{.PasteTileSourcePath}}"
+                hx-swap="none"
+                hx-trigger="click"
+                hx-on::before-request="event.stopImmediatePropagation()"
+                 onclick="onPasteClipboardConfigRequest(event,{{.PasteTileSourcePath}})"
+                 >
+                <iconify-icon icon='mdi:content-paste'></iconify-icon>
+                Paste Tile
+            </button>
         </li>
 
         <li class="h-horizontal-divider"></li>
