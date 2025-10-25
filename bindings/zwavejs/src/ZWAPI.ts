@@ -356,8 +356,9 @@ export default class ZWAPI {
     // setup a new node after it is added and listen for its events
     setupNode(node: ZWaveNode) {
         console.log("setting up node", node.id)
-        // first time publish node TD and value map
-        // this.onNodeUpdate?.(node);
+        
+        // first time publish node TD and value map. Needed for controller node.
+        this.onNodeUpdate?.(node);
 
         node.on("alive", (node: ZWaveNode, oldStatus: NodeStatus) => {
             hcLog.info(`ZWNode ${node.id}: is alive`);

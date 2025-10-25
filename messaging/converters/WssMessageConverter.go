@@ -2,6 +2,7 @@ package converters
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/messaging"
@@ -112,7 +113,11 @@ func (svc *WssMessageConverter) DecodeResponse(
 
 	var wssResp WssResponseMessage
 	err := jsoniter.Unmarshal(raw, &wssResp)
-	if err != nil || wssResp.MessageType != messaging.MessageTypeResponse {
+	if err != nil {
+		slog.Warn("DecodeResponse: Can't unmarshal websocket response", "error", err, "raw", string(raw))
+		return nil
+	}
+	if wssResp.MessageType != messaging.MessageTypeResponse {
 		return nil
 	}
 

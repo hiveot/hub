@@ -13,8 +13,17 @@
         {{$iout2 := $.GetOutputValue $source2}}
 			  {{$value2 = $iout2.ToString}}
     {{end}}
-
-		<h-gauge id="{{$.Tile.ID}}" class="gauge-card"
+	{{/* Add a link to view history of the value */}}
+	<a style="display:inline-block; width:100%; height:100%;"	
+ 		href="/value/{{$iout.AffordanceType}}/{{$iout.ThingID}}/{{$iout.Name}}/history"
+   		hx-get="/value/{{$iout.AffordanceType}}/{{$iout.ThingID}}/{{$iout.Name}}/history"
+   		hx-target="#historyPage"
+   		hx-swap="innerHtml"
+   		hx-trigger="click"
+   		hx-on::after-request="navigateTo(null,this.href)"
+	>		
+		<h-gauge
+		 id="{{$.Tile.ID}}" class="gauge-card"
 		         linear='{{eq $.Tile.TileType "linear-gauge"}}'
 		         gauge-type="{{$.Tile.GaugeType}}"
 		         override="{{$.Tile.GaugeOverride}}"
@@ -30,7 +39,7 @@
 		         title="{{$iout.Value.Number}} {{$iout.UnitSymbol}}"
 		>
 		</h-gauge>
-
+	</a>
 {{end}}
 
 <style>

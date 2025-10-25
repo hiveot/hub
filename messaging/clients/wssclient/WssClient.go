@@ -151,6 +151,19 @@ func (cc *WssClient) HandleWssMessage(raw []byte) {
 	var req *messaging.RequestMessage
 	var resp *messaging.ResponseMessage
 
+	// // for testing:
+	// var jsonObj any
+	// err := jsoniter.Unmarshal(raw, &jsonObj)
+	// if err != nil {
+	// 	slog.Error("HandleWssMessage: failed to decode JSON",
+	// 		"clientID", cc.cinfo.ClientID,
+	// 		"err", err.Error(),
+	// 		"raw", string(raw))
+	// 	return
+	// }
+
+	// try to decode as notification first, then response, then request as
+
 	// both non-agents and agents receive responses
 	notif = cc.messageConverter.DecodeNotification(raw)
 	if notif == nil {
@@ -197,7 +210,8 @@ func (cc *WssClient) HandleWssMessage(raw []byte) {
 			_ = cc.SendResponse(resp)
 		}
 	} else {
-		slog.Warn("HandleWssMessage: Message is not a notification, request or response")
+		slog.Warn("HandleWssMessage: Message is not a valid notification, request or response",
+			"raw", string(raw))
 		return
 	}
 }
