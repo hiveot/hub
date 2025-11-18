@@ -6,13 +6,13 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/utils"
+	"github.com/hiveot/gocore/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/messaging"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
-	"github.com/hiveot/hub/wot/td"
 )
 
 // ActiveRequestRecord holds active requests

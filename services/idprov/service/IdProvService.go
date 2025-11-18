@@ -3,10 +3,11 @@ package service
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"github.com/hiveot/hub/messaging"
+	"log/slog"
+
+	"github.com/hiveot/gocore/messaging"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
-	"log/slog"
 )
 
 //

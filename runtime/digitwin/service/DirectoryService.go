@@ -3,11 +3,11 @@ package service
 import (
 	"log/slog"
 
-	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/wot"
+	"github.com/hiveot/gocore/wot/td"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/runtime/digitwin/store"
-	"github.com/hiveot/hub/wot"
-	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 )
 

@@ -2,12 +2,13 @@ package service
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/bindings/ipnet/config"
-	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/lib/plugin"
-	"github.com/hiveot/hub/messaging"
 	"log/slog"
 	"time"
+
+	"github.com/hiveot/gocore/logging"
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/hub/bindings/ipnet/config"
+	"github.com/hiveot/hub/lib/plugin"
 )
 
 type IPNetBinding struct {

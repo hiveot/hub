@@ -2,12 +2,13 @@ package certs
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/lib/certs"
 	"log/slog"
 	"path"
 	"time"
+
+	"github.com/hiveot/gocore/certs"
+	"github.com/urfave/cli/v2"
 )
-import "github.com/urfave/cli/v2"
 
 // ViewCACommand shows info on the Hub self-signed CA
 // This does not require any services to run.

@@ -2,12 +2,13 @@ package certs
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/lib/certs"
 	"log/slog"
 	"os"
 	"path"
+
+	"github.com/hiveot/gocore/certs"
+	"github.com/urfave/cli/v2"
 )
-import "github.com/urfave/cli/v2"
 
 // CreateCACommand create the Hub self-signed CA, valid for 10 years
 // This does not require any services to run.

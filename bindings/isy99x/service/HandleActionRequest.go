@@ -2,9 +2,10 @@ package service
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/messaging"
 	"log/slog"
+
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/hub/api/go/vocab"
 )
 
 // HandleRequest passes the action request to the associated Thing.

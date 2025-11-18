@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/gocore/messaging"
 	"github.com/teris-io/shortid"
 )
 

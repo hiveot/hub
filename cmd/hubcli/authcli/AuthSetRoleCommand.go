@@ -2,10 +2,11 @@ package authcli
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/messaging"
+	"strings"
+
+	"github.com/hiveot/gocore/messaging"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/urfave/cli/v2"
-	"strings"
 )
 
 // AuthSetRoleCommand changes a user's role

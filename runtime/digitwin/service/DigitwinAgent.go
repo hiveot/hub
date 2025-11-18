@@ -2,9 +2,10 @@ package service
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/messaging"
-	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"log/slog"
+
+	"github.com/hiveot/gocore/messaging"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 )
 
 type DigitwinAgent struct {

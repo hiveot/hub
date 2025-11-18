@@ -8,16 +8,16 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/utils"
+	"github.com/hiveot/gocore/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/consumedthing"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"github.com/hiveot/hub/services/hiveoview/src/views/history"
-	"github.com/hiveot/hub/wot/td"
 	"golang.org/x/exp/maps"
 )
 
@@ -65,13 +65,13 @@ func (dt *ThingDetailsTemplateData) GetEventHistory(name string) *history.Histor
 // GetRenderEditPropertyPath returns the URL path for editing a property
 func (dt *ThingDetailsTemplateData) GetRenderEditPropertyPath(name string) string {
 	pathArgs := map[string]string{"thingID": dt.ThingID, "name": name}
-	return tputils.Substitute(src.RenderThingPropertyEditPath, pathArgs)
+	return utils.Substitute(src.RenderThingPropertyEditPath, pathArgs)
 }
 
 // GetRenderActionPath returns the URL path for rendering an action request
 func (dt *ThingDetailsTemplateData) GetRenderActionPath(name string) string {
 	pathArgs := map[string]string{"thingID": dt.ThingID, "name": name}
-	return tputils.Substitute(src.RenderActionRequestPath, pathArgs)
+	return utils.Substitute(src.RenderActionRequestPath, pathArgs)
 }
 
 // RenderThingDetails renders thing details view fragment 'thingDetails.html'
@@ -90,8 +90,8 @@ func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 		ActionNames:               make([]string, 0),
 		AgentID:                   agentID,
 		ThingID:                   thingID,
-		RenderConfirmDeleteTDPath: tputils.Substitute(src.RenderThingConfirmDeletePath, pathParams),
-		RenderRawTDPath:           tputils.Substitute(src.RenderThingRawPath, pathParams),
+		RenderConfirmDeleteTDPath: utils.Substitute(src.RenderThingConfirmDeletePath, pathParams),
+		RenderRawTDPath:           utils.Substitute(src.RenderThingRawPath, pathParams),
 	}
 
 	// Read the TD being displayed and its latest values

@@ -7,17 +7,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hiveot/gocore/clients/authclient"
+	"github.com/hiveot/gocore/logging"
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/utils"
+	"github.com/hiveot/gocore/wot"
+	"github.com/hiveot/gocore/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/clients/authenticator"
-	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/runtime"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	authz "github.com/hiveot/hub/runtime/authz/api"
-	"github.com/hiveot/hub/wot"
-	"github.com/hiveot/hub/wot/td"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -51,7 +51,7 @@ func TestLoginAsAgent(t *testing.T) {
 
 	r := startRuntime()
 	agent, cc, token := ts.AddConnectAgent(agentID)
-	authCl := authenticator.NewAuthClientFromConnection(cc, token)
+	authCl := authclient.NewAuthClientFromConnection(cc, token)
 	t2, err := authCl.RefreshToken(token)
 	require.NoError(t, err)
 	assert.NotEmpty(t, t2)
@@ -71,7 +71,7 @@ func TestLoginAsConsumer(t *testing.T) {
 
 	r := startRuntime()
 	consumer, cc, token := ts.AddConnectConsumer(clientID, authz.ClientRoleManager)
-	authCl := authenticator.NewAuthClientFromConnection(cc, token)
+	authCl := authclient.NewAuthClientFromConnection(cc, token)
 	t2, err := authCl.RefreshToken(token)
 
 	require.NoError(t, err)
@@ -201,7 +201,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	// Agent receives action request which we'll handle here
 	agentRequestHandler := func(req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
 		rxMsg = *req
-		reply := tputils.DecodeAsString(req.Input, 0) + ".reply"
+		reply := utils.DecodeAsString(req.Input, 0) + ".reply"
 		// TODO WSS doesn't support the senderID in the message. How important is this?
 		// option1: not important - no use-case
 		// option2: extend the websocket InvokeAction message format with a SenderID
@@ -262,7 +262,7 @@ func TestServiceReconnect(t *testing.T) {
 
 		var req string
 		rxMsg.Store(msg)
-		_ = tputils.DecodeAsObject(msg.Input, &req)
+		_ = utils.DecodeAsObject(msg.Input, &req)
 		output := req + ".reply"
 		slog.Info("agent1 delivery complete", "correlationID", msg.CorrelationID)
 		return msg.CreateResponse(output, nil)

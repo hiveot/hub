@@ -2,24 +2,25 @@ package idprov_test
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/lib/keys"
+	"os"
+	"testing"
+	"time"
+
+	"github.com/hiveot/gocore/clients"
+	"github.com/hiveot/gocore/keys"
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/utils/tlsclient"
 	"github.com/hiveot/hub/lib/testenv"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/clients"
-	"github.com/hiveot/hub/messaging/tputils/tlsclient"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
 	"github.com/hiveot/hub/services/idprov/idprovclient"
 	"github.com/hiveot/hub/services/idprov/service"
-	"os"
-	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/gocore/logging"
 )
 
 // when testing using the capnp RPC

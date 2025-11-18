@@ -4,13 +4,26 @@ package kvbtree
 import (
 	"bytes"
 	"fmt"
-	"github.com/hiveot/hub/lib/buckets"
-	"github.com/hiveot/hub/lib/utils"
 	"log/slog"
 	"sync"
 
+	"github.com/hiveot/hub/lib/buckets"
+
 	"github.com/tidwall/btree"
 )
+
+// Clone the given byte array.
+// Use this is the source holds a transient value and its buffer can be reused elsewhere.
+// Eg, all capnp byte arrays
+// Golang will eventually get a bytes.clone() method but it isn't in go-19
+//
+// returns nil if b is nil
+func Clone(b []byte) (c []byte) {
+	if b != nil {
+		c = []byte(string(b))
+	}
+	return c
+}
 
 // KVBTreeBucket is an in-memory bucket for the KVBTreeBucket
 type KVBTreeBucket struct {
@@ -260,7 +273,7 @@ func (bucket *KVBTreeBucket) Set(key string, doc []byte) error {
 	// store the document and object
 	bucket.mutex.Lock()
 	defer bucket.mutex.Unlock()
-	bucket.kvtree.Set(key, utils.Clone(doc))
+	bucket.kvtree.Set(key, Clone(doc))
 	bucket.updated(bucket)
 	return nil
 }

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/wot/td"
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/utils"
+	"github.com/hiveot/gocore/wot/td"
 )
 
 // HandleActionResponse handles receiving a response to an action

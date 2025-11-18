@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hiveot/gocore/messaging"
 	"github.com/hiveot/hub/lib/testenv"
-	"github.com/hiveot/hub/messaging"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	launcher "github.com/hiveot/hub/services/launcher/api"
@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/gocore/logging"
 )
 
 // var homeDir = "/tmp/test-launcher"

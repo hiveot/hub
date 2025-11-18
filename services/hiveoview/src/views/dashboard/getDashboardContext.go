@@ -2,10 +2,11 @@ package dashboard
 
 import (
 	"fmt"
-	"github.com/go-chi/chi/v5"
-	"github.com/hiveot/hub/messaging/tputils"
-	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"net/http"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/hiveot/gocore/utils"
+	"github.com/hiveot/hub/services/hiveoview/src/session"
 )
 
 // URL parameter for dashboard ID
@@ -72,5 +73,5 @@ func getDashboardContext(r *http.Request, createDashboard bool) (
 // cdc dashboard context info
 func getDashboardPath(dashboardPath string, cdc ClientDashboardContext) string {
 	pathArgs := map[string]string{"dashboardID": cdc.dashboardID}
-	return tputils.Substitute(dashboardPath, pathArgs)
+	return utils.Substitute(dashboardPath, pathArgs)
 }

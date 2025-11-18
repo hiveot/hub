@@ -1,9 +1,8 @@
 package genagent
 
 import (
+	"github.com/hiveot/gocore/wot/td"
 	"github.com/hiveot/hub/cmd/tm2go/gentypes"
-	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/wot/td"
 )
 
 // GenServiceAgent generates a function that returns a request handler that invokes
@@ -15,7 +14,7 @@ import (
 //
 //	func (agent *...)NewHandleAction(
 //	  consumerID string, dThingID string, actionName string, input any, correlationID string
-func GenServiceAgent(l *utils.SL, agentID, serviceID string, td1 *td.TD) {
+func GenServiceAgent(l *gentypes.SL, agentID, serviceID string, td1 *td.TD) {
 	// ServiceType is the type of the service implementation that handles the messages
 	//serviceType := ToTitle(td1.GetID()) + "Service"
 	interfaceName := "I" + serviceID + "Service"
@@ -57,7 +56,7 @@ func GenServiceAgent(l *utils.SL, agentID, serviceID string, td1 *td.TD) {
 //
 // This unmarshal the request, invokes the service, and marshals the response
 // name  of the action affordance in the TD
-func GenRequestMethodHandler(l *utils.SL, serviceTitle string, name string, action *td.ActionAffordance) {
+func GenRequestMethodHandler(l *gentypes.SL, serviceTitle string, name string, action *td.ActionAffordance) {
 	methodName := gentypes.Name2ID(name)
 	// build the argument string
 	argsString := "msg.SenderID" // all handlers receive the sender ID
@@ -72,7 +71,7 @@ func GenRequestMethodHandler(l *utils.SL, serviceTitle string, name string, acti
 			goType := gentypes.GoTypeFromSchema(action.Input)
 			l.Add("var args %s", goType)
 		}
-		l.Add("err = tputils.DecodeAsObject(msg.Input, &args)")
+		l.Add("err = utils.DecodeAsObject(msg.Input, &args)")
 
 		argsString += ", args"
 	}

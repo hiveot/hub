@@ -6,10 +6,11 @@ import (
 	"path"
 	"time"
 
-	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/gocore/logging"
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/servers"
+	"github.com/hiveot/gocore/wot/td"
 	"github.com/hiveot/hub/lib/plugin"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/servers"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	"github.com/hiveot/hub/runtime/authn/service"
 	authz "github.com/hiveot/hub/runtime/authz/api"
@@ -17,7 +18,6 @@ import (
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/runtime/digitwin/router"
 	service4 "github.com/hiveot/hub/runtime/digitwin/service"
-	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 )
 

@@ -5,7 +5,7 @@ import (
 	"path"
 	"testing"
 
-	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/gocore/logging"
 	"github.com/hiveot/hub/runtime/digitwin/router"
 )
 

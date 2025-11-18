@@ -7,13 +7,13 @@ import (
 	"path"
 	"testing"
 
+	"github.com/dchest/uniuri"
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/servers/connections"
+	"github.com/hiveot/gocore/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/connections"
 	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/runtime/digitwin/store"
-	"github.com/hiveot/hub/wot/td"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -55,21 +55,21 @@ func startService(clean bool) (
 
 // generate a TD document with properties, events and actions
 func createTDDoc(thingID string, nrProps, nrEvents, nrActions int) *td.TD {
-	title := utils.CreateRandomName("title-", 0)
+	title := CreateRandomName("title-", 0)
 	tdi := td.NewTD(thingID, title, vocab.ThingDevice)
 	for range nrProps {
-		name := utils.CreateRandomName("prop-", 0)
+		name := CreateRandomName("prop-", 0)
 		tdi.AddProperty(name, "", name, vocab.WoTDataTypeInteger)
 	}
 	for range nrEvents {
-		name := utils.CreateRandomName("ev-", 0)
+		name := CreateRandomName("ev-", 0)
 		tdi.AddEvent(name, name, "",
 			&td.DataSchema{
 				Type: vocab.WoTDataTypeInteger,
 			})
 	}
 	for range nrActions {
-		name := utils.CreateRandomName("act-", 0)
+		name := CreateRandomName("act-", 0)
 		tdi.AddAction(name, name, "",
 			&td.DataSchema{
 				Type: vocab.WoTDataTypeBool,
@@ -78,6 +78,13 @@ func createTDDoc(thingID string, nrProps, nrEvents, nrActions int) *td.TD {
 	return tdi
 }
 
+// Create a random text
+func CreateRandomName(prefix string, length int) string {
+	if length > 0 {
+		return prefix + uniuri.NewLen(length)
+	}
+	return prefix + uniuri.New()
+}
 func TestStartStopService(t *testing.T) {
 	t.Logf("---%s---\n", t.Name())
 	var thingIDs = []string{"thing1", "thing2", "thing3", "thing4"}

@@ -9,14 +9,14 @@ import (
 
 	"github.com/araddon/dateparse"
 	"github.com/go-chi/chi/v5"
+	"github.com/hiveot/gocore/utils"
+	"github.com/hiveot/gocore/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/consumedthing"
-	"github.com/hiveot/hub/messaging/tputils"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
-	"github.com/hiveot/hub/wot/td"
 )
 
 const RenderActionRequestTemplate = "ActionRequest.gohtml"
@@ -118,12 +118,12 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 		//data.PrevValue = &lastActionRecord
 		updatedTime, _ := dateparse.ParseAny(data.LastActionRecord.TimeUpdated)
 		data.LastActionTime = updatedTime.Format(time.RFC1123)
-		data.LastActionAge = tputils.Age(updatedTime)
+		data.LastActionAge = Age(updatedTime)
 		data.InputValue.Value.Raw = data.LastActionRecord.Input
 	}
 
 	pathArgs := map[string]string{"thingID": data.ThingID, "name": data.Name}
-	data.SubmitActionRequestPath = tputils.Substitute(src.PostActionRequestPath, pathArgs)
+	data.SubmitActionRequestPath = utils.Substitute(src.PostActionRequestPath, pathArgs)
 
 	buff, err := app.RenderAppOrFragment(r, RenderActionRequestTemplate, data)
 	sess.WritePage(w, buff, err)
@@ -192,7 +192,7 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 			//   property/thingID/propertyName SSE endpoint
 			// See also the sse-swap attribute in gohtml templates
 			thingAddr := fmt.Sprintf("property/%s/%s", thingID, actionName)
-			propVal := tputils.DecodeAsString(reply, 0)
+			propVal := utils.DecodeAsString(reply, 0)
 			sess.SendSSE(thingAddr, propVal)
 		}
 	}

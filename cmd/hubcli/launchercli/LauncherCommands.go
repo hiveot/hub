@@ -2,11 +2,12 @@ package launchercli
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/messaging"
+	"time"
+
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/utils"
 	launcher "github.com/hiveot/hub/services/launcher/api"
 	"github.com/urfave/cli/v2"
-	"time"
 )
 
 func LauncherListCommand(hc **messaging.Consumer) *cli.Command {

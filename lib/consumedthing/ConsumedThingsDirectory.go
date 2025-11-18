@@ -4,9 +4,9 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/wot/td"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
-	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 )
 

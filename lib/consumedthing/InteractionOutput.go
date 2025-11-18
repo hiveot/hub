@@ -3,11 +3,11 @@ package consumedthing
 import (
 	"fmt"
 
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/utils"
+	"github.com/hiveot/gocore/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/tputils"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
-	"github.com/hiveot/hub/wot/td"
 )
 
 type InteractionOutputMap map[string]*InteractionOutput
@@ -69,7 +69,7 @@ type InteractionOutput struct {
 
 // Substr is a simple helper that returns a substring of the given input
 func (iout *InteractionOutput) Substr(data any, maxLen int) string {
-	text := tputils.DecodeAsString(data, maxLen)
+	text := utils.DecodeAsString(data, maxLen)
 	return text
 }
 

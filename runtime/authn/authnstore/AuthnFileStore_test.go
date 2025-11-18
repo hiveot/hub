@@ -2,10 +2,6 @@ package authnstore_test
 
 import (
 	"fmt"
-	authn "github.com/hiveot/hub/runtime/authn/api"
-	"github.com/hiveot/hub/runtime/authn/authnstore"
-	"github.com/hiveot/hub/runtime/authn/config"
-	authz "github.com/hiveot/hub/runtime/authz/api"
 	"log/slog"
 	"os"
 	"path"
@@ -13,10 +9,15 @@ import (
 	"testing"
 	"time"
 
+	authn "github.com/hiveot/hub/runtime/authn/api"
+	"github.com/hiveot/hub/runtime/authn/authnstore"
+	"github.com/hiveot/hub/runtime/authn/config"
+	authz "github.com/hiveot/hub/runtime/authz/api"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/gocore/logging"
 )
 
 const unpwFileName = "testunpwstore.passwd"

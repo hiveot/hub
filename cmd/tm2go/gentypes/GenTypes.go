@@ -4,13 +4,12 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/wot/td"
+	"github.com/hiveot/gocore/wot/td"
 )
 
 // GenTypes is the main function to generate the types API based on a TD
 // This contains all constants, enums, and data schemas used in the TD
-func GenTypes(l *utils.SL, agentID string, tdi *td.TD) (err error) {
+func GenTypes(l *SL, agentID string, tdi *td.TD) (err error) {
 
 	serviceID := ToTitle(tdi.ID)
 
@@ -28,7 +27,7 @@ func GenTypes(l *utils.SL, agentID string, tdi *td.TD) (err error) {
 	return err
 }
 
-func genImports(l *utils.SL, agentID string, serviceID string) {
+func genImports(l *SL, agentID string, serviceID string) {
 
 	l.Add("// Package %s with types of service '%s' from agent '%s'",
 		agentID, serviceID, agentID)
@@ -39,9 +38,9 @@ func genImports(l *utils.SL, agentID string, serviceID string) {
 
 	l.Add("")
 	//l.Add("import \"errors\"")
-	//l.Add("import \"github.com/hiveot/hub/messaging/messaging\"")
-	//l.Add("import \"github.com/hiveot/hub/messaging/tputils\"")
-	//l.Add("import \"github.com/hiveot/hub/messaging\"")
+	//l.Add("import \"github.com/hiveot/gocore/messaging/messaging\"")
+	//l.Add("import \"github.com/hiveot/gocore/utils\"")
+	//l.Add("import \"github.com/hiveot/gocore/messaging\"")
 	l.Add("")
 
 }

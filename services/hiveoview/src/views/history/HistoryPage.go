@@ -1,16 +1,17 @@
 package history
 
 import (
-	"github.com/araddon/dateparse"
-	"github.com/go-chi/chi/v5"
-	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/services/history/historyclient"
-	"github.com/hiveot/hub/services/hiveoview/src/session"
-	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/araddon/dateparse"
+	"github.com/go-chi/chi/v5"
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/utils"
+	"github.com/hiveot/hub/services/history/historyclient"
+	"github.com/hiveot/hub/services/hiveoview/src/session"
+	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 )
 
 const RenderHistoryTemplate = "HistoryPage.gohtml"

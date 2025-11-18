@@ -1,11 +1,12 @@
 package gentypes
 
 import (
-	"github.com/hiveot/hub/wot"
-	"github.com/hiveot/hub/wot/td"
 	"strings"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/hiveot/gocore/wot"
+	"github.com/hiveot/gocore/wot/td"
 )
 
 // This file contains naming helper functions

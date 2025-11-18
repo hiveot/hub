@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/hiveot/hub/messaging/servers/hiveotsseserver"
+	"github.com/hiveot/gocore/servers/hiveotsseserver"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 )
 

@@ -1,18 +1,19 @@
 package authz_test
 
 import (
+	"os"
+	"path"
+	"testing"
+
+	"github.com/hiveot/gocore/logging"
+	"github.com/hiveot/gocore/messaging"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/messaging"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	"github.com/hiveot/hub/runtime/authn/authnstore"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/hiveot/hub/runtime/authz/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"os"
-	"path"
-	"testing"
 )
 
 var testDir = path.Join(os.TempDir(), "test-authz")

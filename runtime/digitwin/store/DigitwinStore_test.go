@@ -3,10 +3,10 @@ package store_test
 import (
 	"fmt"
 
+	"github.com/hiveot/gocore/logging"
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/utils"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
-	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/messaging"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/runtime/digitwin/store"
 
@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hiveot/hub/wot/td"
+	"github.com/hiveot/gocore/wot/td"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -148,7 +148,7 @@ func TestGetEvents(t *testing.T) {
 	d0 := time.Now().Sub(t0)
 	// warmup
 	_, _ = svc.ReadAllEvents(dThingID1)
-	
+
 	// 2nd time from cache should be faster
 	t1 := time.Now()
 	values2, err := svc.ReadAllEvents(dThingID1)

@@ -1,9 +1,10 @@
 package service
 
 import (
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/services/history/historyapi"
 	"log/slog"
+
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/hub/services/history/historyapi"
 )
 
 // ManageHistory provides the capability to manage how history is captured

@@ -2,7 +2,7 @@
 package router
 
 import (
-	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/gocore/messaging"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 )
 

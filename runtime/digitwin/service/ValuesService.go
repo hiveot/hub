@@ -1,7 +1,7 @@
 package service
 
 import (
-	"github.com/hiveot/hub/messaging/tputils"
+	"github.com/hiveot/gocore/utils"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/runtime/digitwin/store"
 )
@@ -19,7 +19,7 @@ func (svc *ValuesService) QueryAction(clientID string,
 	//convert action status to action value, because ... need generated agent code
 	as, err := svc.dtwStore.QueryAction(args.ThingID, args.Name)
 	if err == nil {
-		err = tputils.Decode(as, &av)
+		err = utils.Decode(as, &av)
 	}
 	return av, err
 }
@@ -31,7 +31,7 @@ func (svc *ValuesService) QueryAllActions(clientID string,
 	//convert action status to action value, because ... need generated agent code
 	as, err := svc.dtwStore.QueryAllActions(thingID)
 	if err == nil {
-		err = tputils.Decode(as, &av)
+		err = utils.Decode(as, &av)
 	}
 	return av, err
 }

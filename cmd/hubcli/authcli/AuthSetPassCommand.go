@@ -2,12 +2,13 @@ package authcli
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/messaging"
+	"strings"
+	"time"
+
+	"github.com/hiveot/gocore/messaging"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/exp/rand"
-	"strings"
-	"time"
 )
 
 // AuthSetPasswordCommand sets a client's password

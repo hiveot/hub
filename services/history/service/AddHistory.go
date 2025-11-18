@@ -2,16 +2,16 @@ package service
 
 import (
 	"fmt"
-	"github.com/araddon/dateparse"
-	"github.com/hiveot/hub/lib/buckets"
-	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/tputils"
-	"github.com/hiveot/hub/wot"
-	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"strconv"
 	"time"
+
+	"github.com/araddon/dateparse"
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/utils"
+	"github.com/hiveot/gocore/wot"
+	"github.com/hiveot/hub/lib/buckets"
+	jsoniter "github.com/json-iterator/go"
 )
 
 const DefaultMaxMessageSize = 30
@@ -115,7 +115,7 @@ func (svc *AddHistory) AddMessage(msg *messaging.NotificationMessage) error {
 		// output is a key:value map
 		tv.AffordanceType = messaging.AffordanceTypeProperty
 		propMap := make(map[string]any)
-		err := tputils.DecodeAsObject(msg.Value, &propMap)
+		err := utils.DecodeAsObject(msg.Value, &propMap)
 		if err != nil {
 			return err
 		}

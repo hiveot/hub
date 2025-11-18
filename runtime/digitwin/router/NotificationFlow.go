@@ -6,12 +6,11 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/tputils"
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/utils"
+	"github.com/hiveot/gocore/wot"
+	"github.com/hiveot/gocore/wot/td"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
-	"github.com/hiveot/hub/wot"
-	"github.com/hiveot/hub/wot/td"
 )
 
 // HandleNotification handles receiving a notification from an agent (event, property, action)
@@ -23,7 +22,7 @@ func (r *DigitwinRouter) HandleNotification(notif *messaging.NotificationMessage
 		slog.String("operation", notif.Operation),
 		slog.String("thingID", notif.ThingID),
 		slog.String("name", notif.Name),
-		slog.String("value", tputils.DecodeAsString(notif.Value, 30)),
+		slog.String("value", utils.DecodeAsString(notif.Value, 30)),
 	)
 	// Convert the agent ThingID to that of the digital twin
 	dtwNotif := *notif
@@ -65,7 +64,7 @@ func (r *DigitwinRouter) HandleNotification(notif *messaging.NotificationMessage
 	} else if dtwNotif.Operation == wot.OpObserveAllProperties {
 		// output is a key-value map
 		var propMap map[string]any
-		err := tputils.DecodeAsObject(dtwNotif.Value, &propMap)
+		err := utils.DecodeAsObject(dtwNotif.Value, &propMap)
 		if err == nil {
 			for k, v := range propMap {
 				tv := digitwin.ThingValue{

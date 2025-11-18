@@ -4,9 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/messaging/tputils"
-	"github.com/hiveot/hub/services/hiveoview/src"
 	"html/template"
 	"io/fs"
 	"log/slog"
@@ -14,6 +11,9 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/hiveot/gocore/utils"
+	"github.com/hiveot/hub/services/hiveoview/src"
 )
 
 const baseTemplateName = "base.gohtml"
@@ -54,8 +54,8 @@ func (svc *TemplateManager) GetTemplate(name string) (*template.Template, error)
 	slog.Debug("GetTemplate, parsing files")
 	t := template.New("hiveot")
 	t.Funcs(template.FuncMap{
-		"substr":   tputils.DecodeAsString, // func(any,maxlen)
-		"datetime": utils.FormatDateTime,   // func(any,format)
+		"substr":   utils.DecodeAsString, // func(any,maxlen)
+		"datetime": utils.FormatDateTime, // func(any,format)
 	})
 
 	templateFS := os.DirFS(svc.templatePath)
@@ -73,8 +73,8 @@ func (svc *TemplateManager) ParseAllTemplates() {
 	slog.Info("Parsing all templates")
 	t := template.New("hiveot")
 	t.Funcs(template.FuncMap{
-		"substr":   tputils.DecodeAsString, // func(any,maxlen)
-		"datetime": utils.FormatDateTime,   // func(any,format)
+		"substr":   utils.DecodeAsString, // func(any,maxlen)
+		"datetime": utils.FormatDateTime, // func(any,format)
 	})
 	// embed app templates first to allow components to override templates in block statements
 	if svc.templatePath == "" {

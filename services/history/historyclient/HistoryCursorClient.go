@@ -2,12 +2,13 @@ package historyclient
 
 import "C"
 import (
-	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/services/history/historyapi"
-	"github.com/hiveot/hub/wot"
-	"github.com/hiveot/hub/wot/td"
 	"time"
+
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/utils"
+	"github.com/hiveot/gocore/wot"
+	"github.com/hiveot/gocore/wot/td"
+	"github.com/hiveot/hub/services/history/historyapi"
 )
 
 // HistoryCursorClient provides iterator client for iterating the history

@@ -2,7 +2,8 @@ package hubagent
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/messaging"
+
+	"github.com/hiveot/gocore/messaging"
 )
 
 // Deprecated: This is a reflection based request handler that invokes a service

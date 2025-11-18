@@ -2,14 +2,15 @@ package service
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/bindings/isy99x/service/isy"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/tputils"
-	"github.com/hiveot/hub/wot"
-	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"time"
+
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/utils"
+	"github.com/hiveot/gocore/wot"
+	"github.com/hiveot/gocore/wot/td"
+	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/bindings/isy99x/service/isy"
 )
 
 // IsySwitchThing is a general-purpose on/off switch
@@ -41,7 +42,7 @@ func (it *IsySwitchThing) HandleActionRequest(
 	// FIXME: req keys are the raw keys, not @type
 	// supported actions: on, off
 	if req.Name == "ST" {
-		input = tputils.DecodeAsBool(req.Input)
+		input = utils.DecodeAsBool(req.Input)
 		newValue = "DOF"
 		if input {
 			newValue = "DON"

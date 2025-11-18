@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/utils"
+	"github.com/hiveot/gocore/wot/td"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
-	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 
 	"github.com/araddon/dateparse"

@@ -2,13 +2,14 @@ package tile
 
 import (
 	"fmt"
-	"github.com/go-chi/chi/v5"
-	"github.com/hiveot/hub/lib/consumedthing"
-	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"html"
 	"net/http"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/utils"
+	"github.com/hiveot/hub/lib/consumedthing"
+	"github.com/hiveot/hub/services/hiveoview/src/session"
 )
 
 // RenderTileSourceRow renders a single table row with the tile 'source'

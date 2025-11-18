@@ -2,17 +2,18 @@ package genagent
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/cmd/tm2go/gentypes"
-	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/wot/td"
 	"regexp"
+
+	"github.com/hiveot/gocore/utils"
+	"github.com/hiveot/gocore/wot/td"
+	"github.com/hiveot/hub/cmd/tm2go/gentypes"
 )
 
 // GenServiceInterface generates the interface the service has to implement.
 //
 //	agentID is this package name, eg: the agent for this service
 //	serviceID is the ThingID of the service capitalized
-func GenServiceInterface(l *utils.SL, agentID, serviceID string, tdi *td.TD) {
+func GenServiceInterface(l *gentypes.SL, agentID, serviceID string, tdi *td.TD) {
 	// ServiceType is the interface of the service. Interface names start with 'I'
 	interfaceName := "I" + serviceID + "Service"
 	l.Add("")
@@ -39,7 +40,7 @@ func GenServiceInterface(l *utils.SL, agentID, serviceID string, tdi *td.TD) {
 //
 // The generated method arguments are the senderID and the value.
 // The value is either a native type or a struct, based on the TDD definition
-func GenInterfaceMethod(l *utils.SL, serviceTitle string, name string, action *td.ActionAffordance) {
+func GenInterfaceMethod(l *gentypes.SL, serviceTitle string, name string, action *td.ActionAffordance) {
 
 	// 1. build the input arguments. All methods receive the sender client ID.
 	methodName := gentypes.Name2ID(name)

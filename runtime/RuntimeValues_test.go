@@ -6,13 +6,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/utils"
+	"github.com/hiveot/gocore/wot"
+	"github.com/hiveot/gocore/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/tputils"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
-	"github.com/hiveot/hub/wot"
-	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -73,7 +73,7 @@ func TestQueryActions(t *testing.T) {
 	require.NoError(t, err)
 	// this should be convertable to the messaging.ActionStatus map
 	var msgActionStatusMap map[string]messaging.ActionStatus
-	err = tputils.Decode(apiActionStatusMap, &msgActionStatusMap)
+	err = utils.Decode(apiActionStatusMap, &msgActionStatusMap)
 	require.NoError(t, err)
 
 	// value must match that of the action in step 1 and match its correlationID

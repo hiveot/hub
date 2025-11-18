@@ -3,15 +3,16 @@ package dashboard
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/hiveot/hub/messaging/tputils"
+	"html/template"
+	"log/slog"
+	"net/http"
+
+	"github.com/hiveot/gocore/utils"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"github.com/hiveot/hub/services/hiveoview/src/views/tile"
 	jsoniter "github.com/json-iterator/go"
-	"html/template"
-	"log/slog"
-	"net/http"
 )
 
 const RenderDashboardTemplate = "DashboardPage.gohtml"
@@ -34,7 +35,7 @@ type DashboardPageTemplateData struct {
 func (data DashboardPageTemplateData) GetTileTemplateData(tileID string) tile.RenderTileTemplateData {
 
 	pathArgs := map[string]string{"dashboardID": data.Dashboard.ID, "tileID": tileID}
-	renderTilePath := tputils.Substitute(src.RenderTilePath, pathArgs)
+	renderTilePath := utils.Substitute(src.RenderTilePath, pathArgs)
 	tileTemplateData := tile.RenderTileTemplateData{
 		//DashboardID:      data.Dashboard.ID,
 		ReRenderTilePath: renderTilePath,

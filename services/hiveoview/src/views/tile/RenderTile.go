@@ -5,16 +5,15 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/utils"
+	"github.com/hiveot/gocore/wot/td"
 	"github.com/hiveot/hub/lib/consumedthing"
-	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"github.com/hiveot/hub/services/hiveoview/src/views/history"
-	"github.com/hiveot/hub/wot/td"
 )
 
 const RenderTileTemplate = "RenderTile.gohtml"
@@ -156,10 +155,10 @@ func RenderTile(w http.ResponseWriter, r *http.Request) {
 		Tile:                        ctc.tile,
 		CopyTileSourcePath:          getTilePath(src.GetCopyTilePath, ctc),
 		PasteTileSourcePath:         getTilePath(src.PostPasteTilePath, ctc),
-		RenderEditTilePath:          tputils.Substitute(src.RenderTileEditPath, pathArgs),
-		RenderConfirmDeleteTilePath: tputils.Substitute(src.RenderTileConfirmDeletePath, pathArgs),
-		ReRenderTilePath:            tputils.Substitute(src.RenderTilePath, pathArgs),
-		TileUpdatedEvent:            tputils.Substitute(src.TileUpdatedEvent, pathArgs),
+		RenderEditTilePath:          utils.Substitute(src.RenderTileEditPath, pathArgs),
+		RenderConfirmDeleteTilePath: utils.Substitute(src.RenderTileConfirmDeletePath, pathArgs),
+		ReRenderTilePath:            utils.Substitute(src.RenderTilePath, pathArgs),
+		TileUpdatedEvent:            utils.Substitute(src.TileUpdatedEvent, pathArgs),
 		cts:                         sess.GetConsumedThingsDirectory(),
 		Locked:                      ctc.dashboard.Locked,
 	}

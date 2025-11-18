@@ -1,12 +1,12 @@
 package gentypes
 
 import (
-	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/wot/td"
+	"github.com/hiveot/gocore/utils"
+	"github.com/hiveot/gocore/wot/td"
 )
 
 // GenSchemaDefinitions generates golang structs from the dataschema in the SchemaDefinitions section
-func GenSchemaDefinitions(l *utils.SL, td1 *td.TD) error {
+func GenSchemaDefinitions(l *SL, td1 *td.TD) error {
 
 	//agentID, _ := td.SplitDigiTwinThingID(td1.ID)
 

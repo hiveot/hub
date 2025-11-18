@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/utils"
+	"github.com/hiveot/gocore/wot"
+	"github.com/hiveot/gocore/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/tputils"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/runtime/digitwin/service"
-	"github.com/hiveot/hub/wot"
-	"github.com/hiveot/hub/wot/td"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -50,7 +50,7 @@ func TestActionFlow(t *testing.T) {
 		ThingID: dThingID,
 		Name:    actionName})
 	require.NoError(t, err)
-	inputVal := tputils.DecodeAsInt(as.Input)
+	inputVal := utils.DecodeAsInt(as.Input)
 	require.Equal(t, actionValue, inputVal)
 	require.Equal(t, correlationID, as.ActionID)
 	require.Equal(t, messaging.StatusPending, as.State)
@@ -69,7 +69,7 @@ func TestActionFlow(t *testing.T) {
 		Name:    actionName})
 
 	require.NoError(t, err)
-	outputInt := tputils.DecodeAsInt(as.Output)
+	outputInt := utils.DecodeAsInt(as.Output)
 	require.Equal(t, actionValue, outputInt)
 	require.Equal(t, messaging.StatusCompleted, as.State)
 

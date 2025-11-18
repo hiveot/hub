@@ -5,6 +5,10 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/hiveot/gocore/clients"
+	"github.com/hiveot/gocore/logging"
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/utils"
 	"github.com/hiveot/hub/cmd/hubcli/authcli"
 	"github.com/hiveot/hub/cmd/hubcli/certs"
 	"github.com/hiveot/hub/cmd/hubcli/directorycli"
@@ -12,11 +16,7 @@ import (
 	"github.com/hiveot/hub/cmd/hubcli/idprovcli"
 	"github.com/hiveot/hub/cmd/hubcli/launchercli"
 	"github.com/hiveot/hub/cmd/hubcli/pubsubcli"
-	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
-	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/clients"
 	"github.com/urfave/cli/v2"
 )
 

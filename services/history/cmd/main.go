@@ -3,13 +3,14 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
+	"path"
+
+	"github.com/hiveot/gocore/logging"
 	"github.com/hiveot/hub/lib/buckets/bucketstore"
-	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/services/history/config"
 	"github.com/hiveot/hub/services/history/service"
-	"log/slog"
-	"path"
 )
 
 // Connect the history store service

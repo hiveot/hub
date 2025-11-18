@@ -1,13 +1,14 @@
 package tile
 
 import (
+	"net/http"
+
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/utils"
 	"github.com/hiveot/hub/lib/consumedthing"
-	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"github.com/hiveot/hub/services/hiveoview/src/views/directory"
-	"net/http"
 )
 
 const RenderSelectSourceTemplate = "SelectSources.gohtml"

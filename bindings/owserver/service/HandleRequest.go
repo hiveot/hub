@@ -2,11 +2,12 @@ package service
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/bindings/owserver/service/eds"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/wot"
 	"log/slog"
 	"time"
+
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/wot"
+	"github.com/hiveot/hub/bindings/owserver/service/eds"
 )
 
 const MaxUpdateWaitTime = 10

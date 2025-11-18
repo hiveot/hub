@@ -1,15 +1,16 @@
 package dashboard
 
 import (
-	"github.com/hiveot/hub/messaging/tputils"
-	"github.com/hiveot/hub/services/hiveoview/src"
-	"github.com/hiveot/hub/services/hiveoview/src/session"
-	"github.com/hiveot/hub/services/hiveoview/src/views/app"
-	"github.com/teris-io/shortid"
 	"html/template"
 	"log/slog"
 	"net/http"
 	"strconv"
+
+	"github.com/hiveot/gocore/utils"
+	"github.com/hiveot/hub/services/hiveoview/src"
+	"github.com/hiveot/hub/services/hiveoview/src/session"
+	"github.com/hiveot/hub/services/hiveoview/src/views/app"
+	"github.com/teris-io/shortid"
 )
 
 const RenderEditDashboardTemplateFile = "EditDashboard.gohtml"
@@ -32,7 +33,7 @@ func RenderAddDashboard(w http.ResponseWriter, r *http.Request) {
 	pathArgs := map[string]string{"dashboardID": newDashboard.ID}
 	data := RenderEditDashboardTemplateData{
 		Dashboard:       newDashboard,
-		SubmitDashboard: tputils.Substitute(src.PostDashboardEditPath, pathArgs),
+		SubmitDashboard: utils.Substitute(src.PostDashboardEditPath, pathArgs),
 	}
 	data.BackgroundImageURL = template.URL(data.Dashboard.BackgroundImage)
 	buff, err := app.RenderAppOrFragment(r, RenderEditDashboardTemplateFile, data)
@@ -103,7 +104,7 @@ func SubmitEditDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 	// do a full reload in case title and dashboard selection changed
 	args := map[string]string{URLParamDashboardID: cdc.dashboardID}
-	dashboardPath := tputils.Substitute(src.RenderDashboardPath, args)
+	dashboardPath := utils.Substitute(src.RenderDashboardPath, args)
 	w.Header().Add("HX-Redirect", dashboardPath)
 	w.WriteHeader(http.StatusOK)
 }

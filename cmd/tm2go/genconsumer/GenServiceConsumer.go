@@ -2,12 +2,13 @@ package genconsumer
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/cmd/tm2go/gentypes"
-	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/wot"
-	"github.com/hiveot/hub/wot/td"
 	"regexp"
 	"time"
+
+	"github.com/hiveot/gocore/utils"
+	"github.com/hiveot/gocore/wot"
+	"github.com/hiveot/gocore/wot/td"
+	"github.com/hiveot/hub/cmd/tm2go/gentypes"
 )
 
 // GenServiceConsumer generates a consumer function for invoking Thing actions.
@@ -16,7 +17,7 @@ import (
 // invoke the method using the provided messaging transport.
 //
 // The TD document must be a digital twin received version
-func GenServiceConsumer(l *utils.SL, agentID string, tdi *td.TD) error {
+func GenServiceConsumer(l *gentypes.SL, agentID string, tdi *td.TD) error {
 
 	serviceID := gentypes.ToTitle(tdi.ID)
 	actionKeys := utils.OrderedMapKeys(tdi.Actions)
@@ -30,7 +31,7 @@ func GenServiceConsumer(l *utils.SL, agentID string, tdi *td.TD) error {
 }
 
 // imports needed for the agent
-func genImports(l *utils.SL, agentID string, serviceID string) {
+func genImports(l *gentypes.SL, agentID string, serviceID string) {
 
 	l.Add("// Package %s with the agent request handler for using service '%s'",
 		agentID, serviceID)
@@ -41,9 +42,9 @@ func genImports(l *utils.SL, agentID string, serviceID string) {
 
 	l.Add("")
 	//l.Add("import \"errors\"")
-	l.Add("import \"github.com/hiveot/hub/messaging\"")
-	//l.Add("import \"github.com/hiveot/hub/messaging/tputils\"")
-	//l.Add("import \"github.com/hiveot/hub/messaging\"")
+	l.Add("import \"github.com/hiveot/gocore/messaging\"")
+	//l.Add("import \"github.com/hiveot/gocore/utils\"")
+	//l.Add("import \"github.com/hiveot/gocore/messaging\"")
 	l.Add("")
 }
 
@@ -59,7 +60,7 @@ func genImports(l *utils.SL, agentID string, serviceID string) {
 //	serviceTitle  title-case thingID of the service without the agent prefix
 //	key with the service action method.
 //	action affordance describing the input and output parameters
-func GenActionMethod(l *utils.SL, serviceTitle string, key string, action *td.ActionAffordance) {
+func GenActionMethod(l *gentypes.SL, serviceTitle string, key string, action *td.ActionAffordance) {
 	argsString := "hc *messaging.Consumer"
 	respString := "err error"
 	invokeArgs := "nil"

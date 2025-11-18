@@ -3,11 +3,12 @@ package vocab
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/lib/utils"
 	"os"
 	"path"
 	"strings"
 	"time"
+
+	"github.com/hiveot/gocore/utils"
 )
 
 const jsFile = "./api/js/vocab/vocab.js"

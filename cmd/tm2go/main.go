@@ -8,13 +8,12 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/hiveot/gocore/logging"
+	"github.com/hiveot/gocore/wot/td"
 	"github.com/hiveot/hub/cmd/tm2go/genagent"
 	"github.com/hiveot/hub/cmd/tm2go/genconsumer"
 	"github.com/hiveot/hub/cmd/tm2go/gentypes"
 	"github.com/hiveot/hub/cmd/tm2go/listtms"
-	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/wot/td"
 	"github.com/urfave/cli/v2"
 )
 
@@ -228,7 +227,7 @@ func GenerateSource(gentype string, agentID string, sourceFile string, outDir st
 	outFileName = gentypes.ToTitle(outFileName)
 
 	sourceStat, _ := os.Stat(sourceFile)
-	l := &utils.SL{}
+	l := &gentypes.SL{}
 	if gentype == "types" {
 		outfilePath = filepath.Join(outDir, outFileName+TypesAPISuffix)
 		outfileStat, _ := os.Stat(outfilePath)

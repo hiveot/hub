@@ -1,11 +1,12 @@
 package authn_test
 
 import (
-	"github.com/hiveot/hub/lib/keys"
+	"testing"
+
+	"github.com/hiveot/gocore/keys"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 // NOTE: this uses default settings from Authn_test.go
@@ -26,29 +27,29 @@ func TestAddRemoveClientsSuccess(t *testing.T) {
 	//err := svc.AdminSvc.AddConsumer(serviceID,
 	//         authn.AdminAddConsumerArgs{ "user1", "user 1", "pass1")
 	err := svc.AdminSvc.AddConsumer(serviceID,
-		authn.AdminAddConsumerArgs{"user1", "user 1", "pass1"})
+		authn.AdminAddConsumerArgs{ClientID: "user1", DisplayName: "user 1", Password: "pass1"})
 	assert.NoError(t, err)
 	// duplicate should update
 	err = svc.AdminSvc.AddConsumer(serviceID,
-		authn.AdminAddConsumerArgs{"user1", "user 1 updated", "pass1"})
+		authn.AdminAddConsumerArgs{ClientID: "user1", DisplayName: "user 1 updated", Password: "pass1"})
 	assert.NoError(t, err)
 
 	err = svc.AdminSvc.AddConsumer(serviceID,
-		authn.AdminAddConsumerArgs{"user2", "user 2", "pass2"})
+		authn.AdminAddConsumerArgs{ClientID: "user2", DisplayName: "user 2", Password: "pass2"})
 	assert.NoError(t, err)
 	err = svc.AdminSvc.AddConsumer(serviceID,
-		authn.AdminAddConsumerArgs{"user3", "user 3", "pass2"})
+		authn.AdminAddConsumerArgs{ClientID: "user3", DisplayName: "user 3", Password: "pass2"})
 	assert.NoError(t, err)
 	err = svc.AdminSvc.AddConsumer(serviceID,
-		authn.AdminAddConsumerArgs{"user4", "user 4", "pass2"})
+		authn.AdminAddConsumerArgs{ClientID: "user4", DisplayName: "user 4", Password: "pass2"})
 	assert.NoError(t, err)
 
 	_, err = svc.AdminSvc.AddAgent(serviceID,
-		authn.AdminAddAgentArgs{deviceID, "agent 1", deviceKeyPub})
+		authn.AdminAddAgentArgs{ClientID: deviceID, DisplayName: "agent 1", PubKey: deviceKeyPub})
 	assert.NoError(t, err)
 
 	_, err = svc.AdminSvc.AddService(serviceID,
-		authn.AdminAddServiceArgs{serviceID, "service 1", serviceKeyPub})
+		authn.AdminAddServiceArgs{ClientID: serviceID, DisplayName: "service 1", PubKey: serviceKeyPub})
 	assert.NoError(t, err)
 
 	// update the server. users can connect and have unlimited access

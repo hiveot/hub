@@ -3,7 +3,7 @@ package idprovclient
 import (
 	"fmt"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
-	"github.com/hiveot/hub/messaging/tputils/discovery"
+	"github.com/hiveot/gocore/utils/discovery"
 	"log/slog"
 	"time"
 )

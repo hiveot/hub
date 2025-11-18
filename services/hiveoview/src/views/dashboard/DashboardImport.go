@@ -3,13 +3,14 @@ package dashboard
 import (
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/messaging/tputils"
+	"log/slog"
+	"net/http"
+
+	"github.com/hiveot/gocore/utils"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	jsoniter "github.com/json-iterator/go"
-	"log/slog"
-	"net/http"
 )
 
 const NewDashboardFieldName = "new-dashboard"
@@ -91,7 +92,7 @@ func SubmitDashboardImport(w http.ResponseWriter, r *http.Request) {
 	}
 	// do a full reload in case title and dashboard selection changed
 	args := map[string]string{URLParamDashboardID: cdc.dashboardID}
-	dashboardPath := tputils.Substitute(src.RenderDashboardPath, args)
+	dashboardPath := utils.Substitute(src.RenderDashboardPath, args)
 	w.Header().Add("HX-Redirect", dashboardPath)
 	w.WriteHeader(http.StatusOK)
 }

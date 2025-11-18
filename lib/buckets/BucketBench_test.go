@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/thanhpk/randstr"
 
-	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/gocore/logging"
 )
 
 // $ go test -bench=Benchmark_bucket -benchtime=3s -run=^#    (skip unit tests)

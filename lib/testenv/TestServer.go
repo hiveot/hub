@@ -8,15 +8,15 @@ import (
 	"path"
 	"time"
 
+	"github.com/hiveot/gocore/certs"
+	"github.com/hiveot/gocore/clients"
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/plugin"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/clients"
 	"github.com/hiveot/hub/runtime"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	authz "github.com/hiveot/hub/runtime/authz/api"
-	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -50,7 +50,7 @@ var testTDs = []struct {
 	{ID: "thing-1", Title: "Environmental Sensor",
 		DeviceType: vocab.ThingSensorEnvironment, NrEvents: 1, NrProps: 1, NrActions: 3},
 	{ID: "thing-2", Title: "Light Switch",
-		DeviceType: vocab.ThingActuatorLight, NrEvents: 12, NrProps: 2, NrActions: 0},
+		DeviceType: vocab.ThingActuatorLight, NrEvents: 2, NrProps: 2, NrActions: 0},
 	{ID: "thing-3", Title: "Power meter",
 		DeviceType: vocab.ThingMeterElectric, NrEvents: 3, NrProps: 3, NrActions: 1},
 	{ID: "thing-4", Title: "Multisensor",

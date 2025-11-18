@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/wot"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
-	"github.com/hiveot/hub/wot"
 	jsoniter "github.com/json-iterator/go"
 )
 

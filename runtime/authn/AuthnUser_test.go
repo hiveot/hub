@@ -1,11 +1,12 @@
 package authn_test
 
 import (
-	"github.com/hiveot/hub/lib/keys"
+	"testing"
+
+	"github.com/hiveot/gocore/keys"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestClientUpdatePubKey(t *testing.T) {

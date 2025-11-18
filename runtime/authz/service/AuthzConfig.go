@@ -1,12 +1,13 @@
 package service
 
 import (
-	"github.com/hiveot/hub/api/go/vocab"
-	authz "github.com/hiveot/hub/runtime/authz/api"
-	"github.com/hiveot/hub/wot"
-	"github.com/hiveot/hub/wot/td"
 	"path"
 	"sync"
+
+	"github.com/hiveot/gocore/wot"
+	"github.com/hiveot/gocore/wot/td"
+	"github.com/hiveot/hub/api/go/vocab"
+	authz "github.com/hiveot/hub/runtime/authz/api"
 )
 
 const DefaultAclFilename = "authz.acl"

@@ -5,12 +5,11 @@ import (
 	"log/slog"
 	"sync"
 
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/utils"
+	"github.com/hiveot/gocore/wot/td"
 	"github.com/hiveot/hub/lib/buckets"
-	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/tputils"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
-	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -439,7 +438,7 @@ func (svc *DigitwinStore) UpdateActionWithNotification(notif *messaging.Notifica
 	var actionStatus digitwin.ActionStatus
 	var rxStatus digitwin.ActionStatus
 
-	err := tputils.DecodeAsObject(notif.Value, &rxStatus)
+	err := utils.DecodeAsObject(notif.Value, &rxStatus)
 	if err != nil || rxStatus.State == "" {
 		slog.Warn("UpdateActionWithNotification: Notification does not contain an ActionStatus")
 		return
@@ -505,7 +504,7 @@ func (svc *DigitwinStore) UpdateActionWithResponse(
 
 	// action response contains a messaging.ActionStatus object
 	var respStatus messaging.ActionStatus
-	err = tputils.DecodeAsObject(resp.Value, &respStatus)
+	err = utils.DecodeAsObject(resp.Value, &respStatus)
 
 	if err != nil {
 		// the response does not hold an ActionStatus object,
@@ -532,7 +531,7 @@ func (svc *DigitwinStore) UpdateActionWithResponse(
 	if !found {
 		// an existing action status is expected. Recover by creating a new one.
 		// convert messaging.ActionStatus to api.ActionStatus
-		err = tputils.Decode(respStatus, &actionStatus)
+		err = utils.Decode(respStatus, &actionStatus)
 		if err != nil {
 			slog.Error("UpdateActionWithResponse: Cannot decode ActionStatus from response",
 				"thingID", resp.ThingID,

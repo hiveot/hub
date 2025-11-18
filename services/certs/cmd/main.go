@@ -2,14 +2,15 @@ package main
 
 import (
 	"crypto/x509"
-	"github.com/hiveot/hub/lib/certs"
-	"github.com/hiveot/hub/lib/keys"
-	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/lib/plugin"
-	"github.com/hiveot/hub/services/certs/service/selfsigned"
 	"log/slog"
 	"os"
 	"path"
+
+	"github.com/hiveot/gocore/certs"
+	"github.com/hiveot/gocore/keys"
+	"github.com/hiveot/gocore/logging"
+	"github.com/hiveot/hub/lib/plugin"
+	"github.com/hiveot/hub/services/certs/service/selfsigned"
 )
 
 // Connect the certs service

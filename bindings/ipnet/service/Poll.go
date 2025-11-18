@@ -1,15 +1,16 @@
 package service
 
 import (
-	"github.com/hiveot/hub/messaging/tputils/net"
 	"log/slog"
+
+	"github.com/hiveot/gocore/utils/net"
 )
 
 // determineSubnetsToScan returns a list of subnets and IP addresses to scan, obtained from configuration
 // If no subnets are configured, determine the subnets of the interfaces
 func (svc *IPNetBinding) determineSubnetsToScan() []string {
 	// auto determine subnets
-	subnets, _ := net.GetIP4Subnets()
+	subnets, _ := net.GetIP4Subnets(true)
 
 	return subnets
 }
@@ -29,10 +30,10 @@ func (svc *IPNetBinding) onDiscoveredDevice(deviceInfo *IPDeviceInfo, publish bo
 	}
 
 	// Check if the discovered device is known (MAC or IP)
-	dev, _ := svc.devicesMap[address]
+	dev := svc.devicesMap[address]
 	if dev == nil && deviceInfo.MAC != "" {
 		// this device might be pre-configured with a MAC address. Perform a lookup
-		dev, _ = svc.devicesMap[deviceInfo.MAC]
+		dev = svc.devicesMap[deviceInfo.MAC]
 	}
 	if dev != nil {
 		// Existing node
@@ -52,9 +53,9 @@ func (svc *IPNetBinding) onDiscoveredDevice(deviceInfo *IPDeviceInfo, publish bo
 	// TODO: Store and publish ports
 	//portsProp := node.NewProperty("ports", device.DataTypeString, device.UnitNameNone, false)
 	// Only update ports if it has results
-	if deviceInfo.Ports != nil && len(deviceInfo.Ports) > 0 {
-		//portsProp.Value = deviceInfo.Ports
-	}
+	// if deviceInfo.Ports != nil && len(deviceInfo.Ports) > 0 {
+	//portsProp.Value = deviceInfo.Ports
+	// }
 	//// Update discovered nodes
 	//if publish {
 	//  //if !found {

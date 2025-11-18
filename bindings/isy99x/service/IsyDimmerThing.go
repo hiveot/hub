@@ -3,10 +3,11 @@ package service
 import (
 	"errors"
 	"fmt"
+
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/wot"
+	"github.com/hiveot/gocore/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/wot"
-	"github.com/hiveot/hub/wot/td"
 )
 
 // IsyDimmerThing is a general-purpose dimmer switch

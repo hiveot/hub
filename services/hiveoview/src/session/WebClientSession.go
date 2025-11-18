@@ -9,12 +9,11 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/utils"
+	"github.com/hiveot/gocore/wot"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/consumedthing"
-	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/tputils"
-	"github.com/hiveot/hub/wot"
 )
 
 type NotifyType string
@@ -311,7 +310,7 @@ func (sess *WebClientSession) onNotification(notif *messaging.NotificationMessag
 		// TODO: can htmx work with the ResponseMessage or InteractionOutput object?
 		propID := fmt.Sprintf("%s/%s/%s",
 			messaging.AffordanceTypeProperty, notif.ThingID, notif.Name)
-		propVal := tputils.DecodeAsString(notif.Value, 0)
+		propVal := utils.DecodeAsString(notif.Value, 0)
 		sess.SendSSE(propID, propVal)
 		// also notify of a change to updated timestamp
 		propID = fmt.Sprintf("%s/%s/%s/updated",

@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/hiveot/hub/wot/td"
+	"github.com/hiveot/gocore/wot/td"
 )
 
 // HandleTMScan scan and display a list of TM (TD model) documents

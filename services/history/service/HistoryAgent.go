@@ -2,11 +2,12 @@ package service
 
 import (
 	"fmt"
+
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/wot"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubagent"
-	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/services/history/historyapi"
-	"github.com/hiveot/hub/wot"
 )
 
 // StartHistoryAgent returns a new instance of the agent for the history services.

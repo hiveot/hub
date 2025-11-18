@@ -1,12 +1,13 @@
 package main
 
 import (
-	"github.com/hiveot/hub/lib/logging"
+	"log/slog"
+	"os"
+
+	"github.com/hiveot/gocore/logging"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/services/launcher/config"
 	"github.com/hiveot/hub/services/launcher/service"
-	"log/slog"
-	"os"
 )
 
 // Connect the launcher service

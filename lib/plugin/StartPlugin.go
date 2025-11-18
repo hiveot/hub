@@ -1,10 +1,11 @@
 package plugin
 
 import (
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/clients"
 	"log/slog"
 	"os"
+
+	"github.com/hiveot/gocore/clients"
+	"github.com/hiveot/gocore/messaging"
 )
 
 type PluginConfig struct {

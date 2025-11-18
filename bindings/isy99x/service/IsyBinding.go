@@ -4,17 +4,18 @@ package service
 
 import (
 	"fmt"
+	"log/slog"
+	"sync"
+	"time"
+
+	"github.com/hiveot/gocore/logging"
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/isy99x/config"
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
 	"github.com/hiveot/hub/lib/exposedthing"
-	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/plugin"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/wot/td"
-	"log/slog"
-	"sync"
-	"time"
 )
 
 // IsyBinding is the protocol binding for managing the ISY99x Insteon gateway

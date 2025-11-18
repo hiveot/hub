@@ -2,20 +2,21 @@ package certs_test
 
 import (
 	"crypto/x509"
+	"os"
+	"testing"
+
+	"github.com/hiveot/gocore/certs"
+	"github.com/hiveot/gocore/keys"
+	"github.com/hiveot/gocore/logging"
+	"github.com/hiveot/gocore/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/certs"
-	"github.com/hiveot/hub/lib/keys"
-	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/hiveot/hub/services/certs/certsapi"
 	"github.com/hiveot/hub/services/certs/certsclient"
 	"github.com/hiveot/hub/services/certs/service/selfsigned"
-	"github.com/hiveot/hub/wot/td"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"os"
-	"testing"
 )
 
 var ts *testenv.TestServer

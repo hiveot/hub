@@ -6,11 +6,11 @@ import (
 	"math"
 	"time"
 
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/utils"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/weather/config"
 	"github.com/hiveot/hub/bindings/weather/providers"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/tputils"
 )
 
 // Poll for current and forecast weather updates and publish events.
@@ -132,10 +132,10 @@ func PublishCurrent(ag *messaging.Agent, thingID string, current providers.Curre
 	}
 
 	// convert wind speed to configured units
-	windSpeed := tputils.DecodeAsNumber(current.WindSpeed)
+	windSpeed := utils.DecodeAsNumber(current.WindSpeed)
 
 	// convert wind gusts to configured units
-	windGusts := tputils.DecodeAsNumber(current.WindGusts)
+	windGusts := utils.DecodeAsNumber(current.WindGusts)
 
 	_ = ag.PubEvent(thingID, vocab.PropEnvHumidity, current.Humidity)
 	_ = ag.PubEvent(thingID, vocab.PropEnvPrecipitation, current.Precipitation)

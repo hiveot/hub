@@ -1,7 +1,7 @@
 package service
 
 import (
-	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/gocore/messaging"
 	"github.com/hiveot/hub/runtime/authn/authenticator"
 	"github.com/hiveot/hub/runtime/authn/authnstore"
 	"github.com/hiveot/hub/runtime/authn/config"

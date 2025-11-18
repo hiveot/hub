@@ -9,9 +9,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/hiveot/gocore/utils"
 	"github.com/hiveot/hub/bindings/weather/config"
-	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/messaging/tputils"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -80,22 +79,22 @@ func (svc *OpenMeteoProvider) ReadCurrent(config config.WeatherLocation) (c Curr
 	}
 	c.Updated = utils.FormatNowUTCMilli()
 	currentWeather := weatherJson["current"].(map[string]interface{})
-	c.Updated = tputils.DecodeAsString(currentWeather["time"], 0)
+	c.Updated = utils.DecodeAsString(currentWeather["time"], 0)
 	//updated,_ := dateparse.ParseAny(timeStamp)
 	//c.Updated = utils.FormatNowUTCMilli()
-	c.AtmoPressureMsl = tputils.DecodeAsString(currentWeather["pressure_msl"], 0)
-	c.AtmoPressureSurface = tputils.DecodeAsString(currentWeather["surface_pressure"], 0)
-	c.CloudCover = tputils.DecodeAsString(currentWeather["cloud_cover"], 0)
-	c.Humidity = tputils.DecodeAsString(currentWeather["relative_humidity_2m"], 0)
-	c.Precipitation = tputils.DecodeAsString(currentWeather["precipitation"], 0)
-	c.Rain = tputils.DecodeAsString(currentWeather["rain"], 0)
-	//c.Showers = tputils.DecodeAsString(currentWeather["showers"], 0)
-	c.Snowfall = tputils.DecodeAsString(currentWeather["snowfall"], 0)
-	c.Temperature = tputils.DecodeAsString(currentWeather["temperature_2m"], 0)
-	c.WindSpeed = tputils.DecodeAsString(currentWeather["wind_speed_10m"], 0)
-	c.WindHeading = tputils.DecodeAsString(currentWeather["wind_direction_10m"], 0)
-	c.WindGusts = tputils.DecodeAsString(currentWeather["wind_gusts_10m"], 0)
-	c.WeatherCode = tputils.DecodeAsInt(currentWeather["weather_code"])
+	c.AtmoPressureMsl = utils.DecodeAsString(currentWeather["pressure_msl"], 0)
+	c.AtmoPressureSurface = utils.DecodeAsString(currentWeather["surface_pressure"], 0)
+	c.CloudCover = utils.DecodeAsString(currentWeather["cloud_cover"], 0)
+	c.Humidity = utils.DecodeAsString(currentWeather["relative_humidity_2m"], 0)
+	c.Precipitation = utils.DecodeAsString(currentWeather["precipitation"], 0)
+	c.Rain = utils.DecodeAsString(currentWeather["rain"], 0)
+	//c.Showers = utils.DecodeAsString(currentWeather["showers"], 0)
+	c.Snowfall = utils.DecodeAsString(currentWeather["snowfall"], 0)
+	c.Temperature = utils.DecodeAsString(currentWeather["temperature_2m"], 0)
+	c.WindSpeed = utils.DecodeAsString(currentWeather["wind_speed_10m"], 0)
+	c.WindHeading = utils.DecodeAsString(currentWeather["wind_direction_10m"], 0)
+	c.WindGusts = utils.DecodeAsString(currentWeather["wind_gusts_10m"], 0)
+	c.WeatherCode = utils.DecodeAsInt(currentWeather["weather_code"])
 
 	return c, err
 }

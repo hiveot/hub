@@ -1,12 +1,13 @@
 package service
 
 import (
+	"log/slog"
+
+	"github.com/hiveot/gocore/wot"
+	"github.com/hiveot/gocore/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
-	"github.com/hiveot/hub/wot"
-	"github.com/hiveot/hub/wot/td"
 	jsoniter "github.com/json-iterator/go"
-	"log/slog"
 )
 
 // MakeBindingTD generates a TD document for this binding
@@ -21,6 +22,7 @@ func (svc *IPNetBinding) MakeBindingTD() *td.TD {
 
 	// nr of discovered devices is a readonly attr
 	prop = tdi.AddPropertyAsInt("deviceCount", "Device Count", "Nr discovered devices")
+	_ = prop
 	return tdi
 }
 
@@ -36,14 +38,19 @@ func (svc *IPNetBinding) MakeDeviceTD(deviceInfo *IPDeviceInfo) *td.TD {
 	prop.ReadOnly = true // TODO: allow edit and save the new device name
 	prop = tdi.AddProperty(vocab.PropNetPort, "Ports", "", vocab.WoTDataTypeArray).
 		SetAtType(vocab.PropNetPort)
+	_ = prop
 	prop = tdi.AddPropertyAsString(vocab.PropNetHostname, "Hostname", "").
 		SetAtType(vocab.PropNetHostname)
+	_ = prop
 	prop = tdi.AddPropertyAsString(vocab.PropNetIP4, "IP4 address", "").
 		SetAtType(vocab.PropNetIP4)
+	_ = prop
 	prop = tdi.AddPropertyAsString(vocab.PropNetIP6, "IP6 address", "").
 		SetAtType(vocab.PropNetIP6)
+	_ = prop
 	prop = tdi.AddPropertyAsString(vocab.PropNetMAC, "MAC address", "").
 		SetAtType(vocab.PropNetMAC)
+	_ = prop
 	prop = tdi.AddPropertyAsInt(vocab.PropNetLatency, "Latency", "").
 		SetAtType(vocab.PropNetLatency)
 	prop.Unit = vocab.UnitMilliSecond

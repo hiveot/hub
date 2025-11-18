@@ -24,8 +24,9 @@ func StartHeartbeat(interval time.Duration, fn func()) (stopFn func()) {
 
 	ctx, ctxStop := context.WithCancel(context.Background())
 
+	// stoplock for waiting until the hearthbeat has ended
+	stopLock.Lock()
 	go func() {
-		stopLock.Lock()
 		defer stopLock.Unlock()
 		slog.Info("Heartbeat started", "interval", interval)
 		for {
@@ -49,9 +50,11 @@ func StartHeartbeat(interval time.Duration, fn func()) (stopFn func()) {
 		}
 	}()
 	return func() {
+		// stop the heartbeat loop
 		ctxStop()
 		// the lock releases when the heartbeat loop has exited
 		stopLock.Lock()
+		// immediately unlock as this has completed
 		stopLock.Unlock()
 	}
 }

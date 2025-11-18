@@ -2,12 +2,13 @@ package service
 
 import (
 	"fmt"
-	"github.com/araddon/dateparse"
-	"github.com/hiveot/hub/lib/buckets"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/services/history/historyapi"
 	"log/slog"
 	"time"
+
+	"github.com/araddon/dateparse"
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hub/services/history/historyapi"
 )
 
 // ReadHistory provides read access to the history of things values.

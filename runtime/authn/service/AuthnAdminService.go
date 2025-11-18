@@ -2,19 +2,20 @@ package service
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/lib/keys"
-	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/clients"
+	"log/slog"
+	"os"
+	"path"
+	"time"
+
+	"github.com/hiveot/gocore/clients"
+	"github.com/hiveot/gocore/keys"
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/utils"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	"github.com/hiveot/hub/runtime/authn/authnstore"
 	"github.com/hiveot/hub/runtime/authn/config"
 	"github.com/hiveot/hub/runtime/authn/sessions"
 	authz "github.com/hiveot/hub/runtime/authz/api"
-	"log/slog"
-	"os"
-	"path"
-	"time"
 )
 
 // AuthnAdminService handles administration of clients

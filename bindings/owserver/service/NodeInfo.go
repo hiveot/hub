@@ -1,8 +1,8 @@
 package service
 
 import (
+	"github.com/hiveot/gocore/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/wot/td"
 )
 
 // define 1-wire node information

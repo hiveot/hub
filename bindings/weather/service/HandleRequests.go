@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/utils"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/weather/config"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/tputils"
 )
 
 // HandleRequest passes the action and config request to the associated Thing.
@@ -27,7 +27,7 @@ func (svc *WeatherBinding) handleRequest(req *messaging.RequestMessage,
 	if req.Name == ActionNameAddLocation {
 		err = fmt.Errorf("add location '%s' is not yet supported", req.ThingID)
 		locInfo := config.WeatherLocation{}
-		err = tputils.DecodeAsObject(req.Input, &locInfo)
+		err = utils.DecodeAsObject(req.Input, &locInfo)
 		if err == nil {
 			err = svc.AddLocation(locInfo)
 		}
@@ -62,10 +62,10 @@ func (svc *WeatherBinding) handleConfigRequest(req *messaging.RequestMessage,
 
 	switch req.Name {
 	case PropNameCurrentEnabled:
-		loc.CurrentEnabled = tputils.DecodeAsBool(req.Input)
+		loc.CurrentEnabled = utils.DecodeAsBool(req.Input)
 		newValue = loc.CurrentEnabled
 	case PropNameCurrentInterval:
-		newInterval := tputils.DecodeAsInt(req.Input)
+		newInterval := utils.DecodeAsInt(req.Input)
 		if newInterval < 0 {
 			newInterval = svc.cfg.DefaultCurrentInterval
 		} else if newInterval < svc.cfg.MinCurrentInterval {
@@ -75,7 +75,7 @@ func (svc *WeatherBinding) handleConfigRequest(req *messaging.RequestMessage,
 		loc.CurrentInterval = newInterval
 		newValue = newInterval
 	case PropNameWeatherProvider:
-		newProvider := tputils.DecodeAsString(req.Input, 0)
+		newProvider := utils.DecodeAsString(req.Input, 0)
 		_, isProvider := svc.cfg.Providers[newProvider]
 		if !isProvider {
 			err = fmt.Errorf("unknown weather provider: %s", newProvider)
@@ -84,16 +84,16 @@ func (svc *WeatherBinding) handleConfigRequest(req *messaging.RequestMessage,
 		loc.WeatherProvider = newProvider
 		newValue = newProvider
 	case PropNameHourlyEnabled:
-		loc.HourlyEnabled = tputils.DecodeAsBool(req.Input)
+		loc.HourlyEnabled = utils.DecodeAsBool(req.Input)
 		newValue = loc.HourlyEnabled
 	case vocab.PropLocationLatitude:
-		loc.Latitude = tputils.DecodeAsString(req.Input, 0)
+		loc.Latitude = utils.DecodeAsString(req.Input, 0)
 		newValue = loc.Latitude
 	case vocab.PropLocationLongitude:
-		loc.Longitude = tputils.DecodeAsString(req.Input, 0)
+		loc.Longitude = utils.DecodeAsString(req.Input, 0)
 		newValue = loc.Longitude
 	case vocab.PropLocationName:
-		loc.Name = tputils.DecodeAsString(req.Input, 0)
+		loc.Name = utils.DecodeAsString(req.Input, 0)
 		newValue = loc.Name
 	default:
 		err = fmt.Errorf("handleConfigRequest: '%s' is not a configuration", req.Name)

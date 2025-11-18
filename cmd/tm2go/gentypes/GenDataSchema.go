@@ -3,12 +3,12 @@ package gentypes
 import (
 	"fmt"
 
-	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/wot/td"
+	"github.com/hiveot/gocore/utils"
+	"github.com/hiveot/gocore/wot/td"
 	"golang.org/x/exp/slices"
 )
 
-func GenDataSchema(l *utils.SL, schemaName string, ds *td.DataSchema) (err error) {
+func GenDataSchema(l *SL, schemaName string, ds *td.DataSchema) (err error) {
 	schemaTypeName := ToTitle(schemaName)
 
 	if ds.Type == "object" {
@@ -46,7 +46,7 @@ func GenDataSchema(l *utils.SL, schemaName string, ds *td.DataSchema) (err error
 //	}
 //
 // data struct or map scoped to the agent from schema definition
-func GenDataSchemaObject(l *utils.SL, typeName string, ds *td.DataSchema) (err error) {
+func GenDataSchemaObject(l *SL, typeName string, ds *td.DataSchema) (err error) {
 	l.Add("// %s defines a %s data schema.", typeName, ds.Title)
 	GenDescription(l, ds.Description, ds.Comments)
 
@@ -96,7 +96,7 @@ func GenDataSchemaObject(l *utils.SL, typeName string, ds *td.DataSchema) (err e
 //	l is the output lines with generated source code
 //	name is the field name of the dataschema if there is only a single field
 //	ds is the dataschema to generate
-func GenDataSchemaFields(l *utils.SL, name string, ds *td.DataSchema) (err error) {
+func GenDataSchemaFields(l *SL, name string, ds *td.DataSchema) (err error) {
 	// Each field of a dataschema is a native type or an object
 	if len(ds.Properties) > 0 {
 		err = GenSchemaAttr(l, ds.Properties)
@@ -109,7 +109,7 @@ func GenDataSchemaFields(l *utils.SL, name string, ds *td.DataSchema) (err error
 }
 
 // GenDescription generates the comments from description and comments
-func GenDescription(l *utils.SL, description string, comments []string) {
+func GenDescription(l *SL, description string, comments []string) {
 	if description != "" {
 		l.Add("//")
 		l.Add("// %s", description)
@@ -126,8 +126,8 @@ func GenDescription(l *utils.SL, description string, comments []string) {
 //
 //	attrMap contains a map of attribute name with their description
 //
-// func GenSchemaAttr(l *utils.SL, attrList []SchemaAttr) {
-func GenSchemaAttr(l *utils.SL, attrMap map[string]*td.DataSchema) (err error) {
+// func GenSchemaAttr(l *SL, attrList []SchemaAttr) {
+func GenSchemaAttr(l *SL, attrMap map[string]*td.DataSchema) (err error) {
 
 	names := utils.OrderedMapKeys(attrMap)
 	for _, key := range names {
@@ -170,14 +170,14 @@ func GenSchemaAttr(l *utils.SL, attrMap map[string]*td.DataSchema) (err error) {
 }
 
 // GenDataSchemaConst generates a constant value from schema definition
-func GenDataSchemaConst(l *utils.SL, title string, ds *td.DataSchema) {
+func GenDataSchemaConst(l *SL, title string, ds *td.DataSchema) {
 	l.Add("")
 	l.Add("// %s constant with %s", title, ds.Description)
 	l.Add("const %s = %s", title, ds.Const)
 }
 
 // GenDataSchemaEnum generates enum type and constants from schema definition
-func GenDataSchemaEnum(l *utils.SL, enumTypeName string, ds *td.DataSchema) {
+func GenDataSchemaEnum(l *SL, enumTypeName string, ds *td.DataSchema) {
 
 	goType := GoTypeFromSchema(ds)
 
@@ -207,7 +207,7 @@ func GenDataSchemaEnum(l *utils.SL, enumTypeName string, ds *td.DataSchema) {
 }
 
 // GenDataSchemaOneOf generates enum constants from 'onOff' schema definition
-func GenDataSchemaOneOf(l *utils.SL, enumTypeName string, ds *td.DataSchema) (err error) {
+func GenDataSchemaOneOf(l *SL, enumTypeName string, ds *td.DataSchema) (err error) {
 	goType := GoTypeFromSchema(ds)
 	l.Add("// %s enumerator", enumTypeName)
 	GenDescription(l, ds.Description, ds.Comments)

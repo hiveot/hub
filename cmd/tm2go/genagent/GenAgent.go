@@ -1,15 +1,15 @@
 package genagent
 
 import (
-	"github.com/hiveot/hub/cmd/tm2go/gentypes"
-	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/wot/td"
 	"time"
+
+	"github.com/hiveot/gocore/wot/td"
+	"github.com/hiveot/hub/cmd/tm2go/gentypes"
 )
 
 // GenAgent is the main function to generate the agent request handler that
 // maps requests to service calls and returns the service result.
-func GenAgent(l *utils.SL, agentID string, tdi *td.TD) (err error) {
+func GenAgent(l *gentypes.SL, agentID string, tdi *td.TD) (err error) {
 
 	serviceID := gentypes.ToTitle(tdi.ID)
 
@@ -20,7 +20,7 @@ func GenAgent(l *utils.SL, agentID string, tdi *td.TD) (err error) {
 }
 
 // imports needed for the agent
-func genImports(l *utils.SL, agentID string, serviceID string) {
+func genImports(l *gentypes.SL, agentID string, serviceID string) {
 
 	l.Add("// Package %s with the agent request handler for using service '%s'",
 		agentID, serviceID)
@@ -31,8 +31,8 @@ func genImports(l *utils.SL, agentID string, serviceID string) {
 
 	l.Add("")
 	l.Add("import \"errors\"")
-	//l.Add("import \"github.com/hiveot/hub/messaging/messaging\"")
-	l.Add("import \"github.com/hiveot/hub/messaging/tputils\"")
-	l.Add("import \"github.com/hiveot/hub/messaging\"")
+	//l.Add("import \"github.com/hiveot/gocore/messaging/messaging\"")
+	l.Add("import \"github.com/hiveot/gocore/utils\"")
+	l.Add("import \"github.com/hiveot/gocore/messaging\"")
 	l.Add("")
 }

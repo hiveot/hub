@@ -2,14 +2,15 @@ package history_test
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/wot/td"
 	"testing"
 	"time"
+
+	"github.com/hiveot/gocore/wot/td"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/gocore/logging"
 )
 
 const timespanHour = 3600

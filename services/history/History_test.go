@@ -10,24 +10,23 @@ import (
 	"time"
 
 	"github.com/araddon/dateparse"
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/utils"
+	"github.com/hiveot/gocore/wot"
+	"github.com/hiveot/gocore/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/bucketstore"
 	"github.com/hiveot/hub/lib/testenv"
-	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/tputils"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/hiveot/hub/services/history/historyapi"
 	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/hiveot/hub/services/history/service"
-	"github.com/hiveot/hub/wot"
-	"github.com/hiveot/hub/wot/td"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/gocore/logging"
 )
 
 const thingIDPrefix = "things-"
@@ -382,7 +381,7 @@ func TestAddProperties(t *testing.T) {
 			//err = utils.DecodeAsObject(msg.Data, &props)
 			//require.NoError(t, err)
 		} else if msg.Name == vocab.PropEnvTemperature {
-			dataInt := tputils.DecodeAsInt(msg.Data)
+			dataInt := utils.DecodeAsInt(msg.Data)
 			require.Equal(t, temp1, dataInt)
 		}
 		msg, valid, err = c.Next()

@@ -1,16 +1,17 @@
 package service_test
 
 import (
-	"github.com/hiveot/hub/bindings/ipnet/service"
-	"github.com/hiveot/hub/messaging/tputils/net"
-	"github.com/stretchr/testify/assert"
 	"log/slog"
 	"testing"
+
+	"github.com/hiveot/gocore/utils/net"
+	"github.com/hiveot/hub/bindings/ipnet/service"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNmapScan(t *testing.T) {
 	nmap := service.NewNmapAPI()
-	subnets, err := net.GetIP4Subnets()
+	subnets, err := net.GetIP4Subnets(true)
 	assert.NoError(t, err)
 	devices, err := nmap.ScanSubnet(subnets, false, false) // no port scan and no root
 	assert.NoError(t, err)

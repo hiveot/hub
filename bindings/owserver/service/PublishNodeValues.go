@@ -1,13 +1,14 @@
 package service
 
 import (
-	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/wot"
-	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"math"
 	"strconv"
 	"time"
+
+	"github.com/hiveot/gocore/wot"
+	"github.com/hiveot/gocore/wot/td"
+	"github.com/hiveot/hub/api/go/vocab"
 
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
 )

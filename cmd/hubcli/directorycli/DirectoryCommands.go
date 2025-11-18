@@ -6,11 +6,10 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/tputils"
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/utils"
+	"github.com/hiveot/gocore/wot/td"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
-	"github.com/hiveot/hub/wot/td"
 	"github.com/urfave/cli/v2"
 )
 
@@ -61,10 +60,10 @@ func HandleListDirectory(co *messaging.Consumer) (err error) {
 	for _, tdDoc := range tdList {
 		var updatedStr = ""
 		if tdDoc.Modified != "" {
-			//updatedStr = tputils.DecodeAsDatetime(tdDoc.Modified)
+			//updatedStr = utils.DecodeAsDatetime(tdDoc.Modified)
 			updatedStr = utils.FormatDateTime(tdDoc.Modified)
 		} else if tdDoc.Created != "" {
-			//updatedStr = tputils.DecodeAsDatetime(tdDoc.Created)
+			//updatedStr = utils.DecodeAsDatetime(tdDoc.Created)
 			updatedStr = utils.FormatDateTime(tdDoc.Created)
 		}
 
@@ -110,7 +109,7 @@ func HandleListThing(co *messaging.Consumer, thingID string) error {
 		prop, found := tdDoc.Properties[key]
 		if found && prop.ReadOnly {
 			value := propValueMap[key]
-			valueStr := tputils.DecodeAsString(value.Data, 15)
+			valueStr := utils.DecodeAsString(value.Data, 15)
 			fmt.Printf(" %-30s %-40.40s %s%-15.15s%s %-.80s\n",
 				key, prop.Title, utils.COGreen, valueStr, utils.COReset, prop.Description)
 		}
@@ -123,7 +122,7 @@ func HandleListThing(co *messaging.Consumer, thingID string) error {
 		prop, found := tdDoc.Properties[key]
 		if found && !prop.ReadOnly {
 			value := propValueMap[key]
-			valueStr := tputils.DecodeAsString(value.Data, 15)
+			valueStr := utils.DecodeAsString(value.Data, 15)
 			fmt.Printf(" %-30s %-40.40s %-10.10s %s%-15.15s%s %-.80s\n",
 				key, prop.Title, prop.Type, utils.COBlue, valueStr, utils.COReset, prop.Description)
 		}
@@ -141,7 +140,7 @@ func HandleListThing(co *messaging.Consumer, thingID string) error {
 			dataType = ev.Data.Type
 		}
 		value := eventValueMap[key]
-		valueStr := tputils.DecodeAsString(value.Data, 15)
+		valueStr := utils.DecodeAsString(value.Data, 15)
 		if ev.Data.Type != "" {
 			//initialValue = ev.Data.InitialValue
 		}
@@ -158,7 +157,7 @@ func HandleListThing(co *messaging.Consumer, thingID string) error {
 		action := tdDoc.Actions[key]
 		dataType := "(n/a)"
 		value := actionValueMap[key]
-		valueStr := tputils.DecodeAsString(value.Data, 15)
+		valueStr := utils.DecodeAsString(value.Data, 15)
 		if action.Input != nil {
 			dataType = action.Input.Type
 			//initialValue = action.Input.InitialValue

@@ -2,14 +2,15 @@
 package main
 
 import (
-	"github.com/hiveot/hub/lib/certs"
-	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/lib/plugin"
-	"github.com/hiveot/hub/runtime"
-	"github.com/hiveot/hub/services/idprov/service"
 	"log/slog"
 	"os"
 	"path"
+
+	"github.com/hiveot/gocore/certs"
+	"github.com/hiveot/gocore/logging"
+	"github.com/hiveot/hub/lib/plugin"
+	"github.com/hiveot/hub/runtime"
+	"github.com/hiveot/hub/services/idprov/service"
 )
 
 // TODO: merge the server with a web server that hosts the admin ui server

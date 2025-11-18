@@ -1,9 +1,9 @@
 package historyclient
 
 import (
-	"github.com/hiveot/hub/messaging"
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/wot/td"
 	"github.com/hiveot/hub/services/history/historyapi"
-	"github.com/hiveot/hub/wot/td"
 )
 
 // ManageHistoryClient client for managing retention of the history service

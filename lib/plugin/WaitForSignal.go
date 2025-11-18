@@ -15,5 +15,4 @@ func WaitForSignal() {
 	signal.Notify(exitChannel, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL)
 	sigID := <-exitChannel
 	println("Exiting with signal (", sigID, "): ", os.Args[0], "\n")
-	return
 }

@@ -1,8 +1,8 @@
 package service
 
 import (
+	"github.com/hiveot/gocore/messaging"
 	"github.com/hiveot/hub/lib/hubagent"
-	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
 )
 

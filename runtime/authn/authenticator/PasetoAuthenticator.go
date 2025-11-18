@@ -7,12 +7,12 @@ import (
 	"time"
 
 	"aidanwoods.dev/go-paseto"
-	"github.com/hiveot/hub/lib/keys"
+	"github.com/hiveot/gocore/keys"
+	"github.com/hiveot/gocore/wot/td"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	"github.com/hiveot/hub/runtime/authn/authnstore"
 	"github.com/hiveot/hub/runtime/authn/config"
 	"github.com/hiveot/hub/runtime/authn/sessions"
-	"github.com/hiveot/hub/wot/td"
 	"github.com/teris-io/shortid"
 )
 

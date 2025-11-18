@@ -2,10 +2,11 @@ package tile
 
 import (
 	"fmt"
-	"github.com/go-chi/chi/v5"
-	"github.com/hiveot/hub/messaging/tputils"
-	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"net/http"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/hiveot/gocore/utils"
+	"github.com/hiveot/hub/services/hiveoview/src/session"
 )
 
 type ClientTileContext struct {
@@ -67,5 +68,5 @@ func GetTileContext(r *http.Request, mustExist bool) (
 //		tileID to substitute
 func getTilePath(tilePath string, ctc ClientTileContext) string {
 	pathArgs := map[string]string{"dashboardID": ctc.dashboardID, "tileID": ctc.tileID}
-	return tputils.Substitute(tilePath, pathArgs)
+	return utils.Substitute(tilePath, pathArgs)
 }

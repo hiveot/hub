@@ -5,11 +5,12 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
-	"github.com/hiveot/hub/lib/keys"
 	"log/slog"
 	"math/big"
 	"net"
 	"time"
+
+	"github.com/hiveot/gocore/keys"
 )
 
 // createClientCert is the internal function to create a client certificate

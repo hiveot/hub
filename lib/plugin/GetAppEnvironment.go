@@ -4,14 +4,15 @@ import (
 	"crypto/x509"
 	"flag"
 	"fmt"
-	"github.com/hiveot/hub/lib/certs"
-	"gopkg.in/yaml.v3"
 	"log/slog"
 	"os"
 	"os/user"
 	"path"
 	"path/filepath"
 	"strings"
+
+	"github.com/hiveot/gocore/certs"
+	"gopkg.in/yaml.v3"
 )
 
 // DirectoryURL_Arg is the optional commandline argument name with the URL of the directory TD

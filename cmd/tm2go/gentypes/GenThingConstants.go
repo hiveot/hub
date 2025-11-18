@@ -1,8 +1,7 @@
 package gentypes
 
 import (
-	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/wot/td"
+	"github.com/hiveot/gocore/wot/td"
 )
 
 // GenThingConstantsFromTD generates the thing constants from the TD.
@@ -15,7 +14,7 @@ import (
 //   - property names         {ThingTitle}PropName = "name"
 //   - event names            {ThingTitle}EventName = "name"
 //   - action names           {ThingTitle}ActionName = "name"
-func GenThingConstantsFromTD(l *utils.SL, agentID, serviceID string, td1 *td.TD) {
+func GenThingConstantsFromTD(l *SL, agentID, serviceID string, td1 *td.TD) {
 	dThingID := td.MakeDigiTwinThingID(agentID, serviceID)
 
 	// thing identifiers

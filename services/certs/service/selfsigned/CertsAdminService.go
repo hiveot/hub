@@ -5,15 +5,16 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"fmt"
-	"github.com/hiveot/hub/lib/certs"
-	"github.com/hiveot/hub/lib/keys"
-	"github.com/hiveot/hub/messaging"
-	authz "github.com/hiveot/hub/runtime/authz/api"
-	"github.com/hiveot/hub/services/certs/certsapi"
 	"log/slog"
 	"math/big"
 	"net"
 	"time"
+
+	"github.com/hiveot/gocore/certs"
+	"github.com/hiveot/gocore/keys"
+	"github.com/hiveot/gocore/messaging"
+	authz "github.com/hiveot/hub/runtime/authz/api"
+	"github.com/hiveot/hub/services/certs/certsapi"
 )
 
 // SelfSignedCertsService creates certificates for use by services, devices and admin users.

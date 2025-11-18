@@ -3,15 +3,16 @@ package authcli
 import (
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/lib/keys"
-	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/messaging"
-	authn "github.com/hiveot/hub/runtime/authn/api"
-	authz "github.com/hiveot/hub/runtime/authz/api"
-	"github.com/urfave/cli/v2"
 	"log/slog"
 	"os"
 	"path"
+
+	"github.com/hiveot/gocore/keys"
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/utils"
+	authn "github.com/hiveot/hub/runtime/authn/api"
+	authz "github.com/hiveot/hub/runtime/authz/api"
+	"github.com/urfave/cli/v2"
 )
 
 // AuthAddUserCommand adds a user

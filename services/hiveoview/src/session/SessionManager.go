@@ -9,11 +9,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hiveot/gocore/clients"
+	"github.com/hiveot/gocore/clients/authclient"
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/servers/httpbasic"
 	"github.com/hiveot/hub/lib/buckets"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/clients"
-	"github.com/hiveot/hub/messaging/clients/authenticator"
-	"github.com/hiveot/hub/messaging/servers/httpbasic"
 	"github.com/hiveot/hub/services/hiveoview/src"
 )
 
@@ -198,7 +198,7 @@ func (sm *WebSessionManager) HandleConnectWithPassword(
 
 	// Authentication uses its own client that knows the auth protocol
 	parts, _ := url.Parse(sm.hubURL)
-	authCl := authenticator.NewAuthClient(parts.Host, sm.caCert, sm.timeout)
+	authCl := authclient.NewAuthClient(parts.Host, sm.caCert, sm.timeout)
 
 	// attempt to login
 	newToken, err = authCl.LoginWithPassword(loginID, password)

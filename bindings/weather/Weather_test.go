@@ -7,14 +7,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hiveot/gocore/logging"
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/wot/td"
 	"github.com/hiveot/hub/bindings/weather/config"
 	"github.com/hiveot/hub/bindings/weather/providers"
 	"github.com/hiveot/hub/bindings/weather/service"
-	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
-	"github.com/hiveot/hub/messaging"
 	authz "github.com/hiveot/hub/runtime/authz/api"
-	"github.com/hiveot/hub/wot/td"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

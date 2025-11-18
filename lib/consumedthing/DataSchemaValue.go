@@ -3,7 +3,7 @@ package consumedthing
 import (
 	"log/slog"
 
-	"github.com/hiveot/hub/messaging/tputils"
+	"github.com/hiveot/gocore/utils"
 )
 
 // DataSchemaValue represents a value provided by an InteractionOutput.
@@ -23,23 +23,23 @@ type DataSchemaValue struct {
 //	string: returns a single element with string
 func (v DataSchemaValue) Array() []interface{} {
 	objArr := make([]interface{}, 0)
-	err := tputils.DecodeAsObject(v.Raw, &objArr)
+	err := utils.DecodeAsObject(v.Raw, &objArr)
 	_ = err
 	return objArr
 }
 
 func (v DataSchemaValue) Boolean() bool {
-	return tputils.DecodeAsBool(v.Raw)
+	return utils.DecodeAsBool(v.Raw)
 }
 func (v DataSchemaValue) Integer() int {
-	return tputils.DecodeAsInt(v.Raw)
+	return utils.DecodeAsInt(v.Raw)
 }
 
 // Map returns the value as a name-value map
 // Returns nil if no data was provided.
 func (v DataSchemaValue) Map() map[string]interface{} {
 	o := make(map[string]interface{})
-	err := tputils.DecodeAsObject(v.Raw, &o)
+	err := utils.DecodeAsObject(v.Raw, &o)
 	if err != nil {
 		slog.Error("Can't convert value to a map", "value", v.Raw)
 	}
@@ -48,22 +48,22 @@ func (v DataSchemaValue) Map() map[string]interface{} {
 
 // Number returns the value as a float32
 func (v DataSchemaValue) Number() float32 {
-	return tputils.DecodeAsNumber(v.Raw)
+	return utils.DecodeAsNumber(v.Raw)
 }
 
 // Object decodes the value to the given object.
 func (v DataSchemaValue) Object(output interface{}) error {
-	return tputils.DecodeAsObject(v.Raw, output)
+	return utils.DecodeAsObject(v.Raw, output)
 }
 
 // Text returns the text representation of the value
 func (v DataSchemaValue) Text() string {
-	return tputils.DecodeAsString(v.Raw, 0)
+	return utils.DecodeAsString(v.Raw, 0)
 }
 
 // ToString returns the text representation of the value with a size limit
 func (v DataSchemaValue) ToString(maxlen int) string {
-	return tputils.DecodeAsString(v.Raw, maxlen)
+	return utils.DecodeAsString(v.Raw, maxlen)
 }
 
 // NewDataSchemaValue implements a dataschema value

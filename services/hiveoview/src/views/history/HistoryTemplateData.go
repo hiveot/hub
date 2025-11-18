@@ -6,11 +6,10 @@ import (
 	"sort"
 	"time"
 
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/utils"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/consumedthing"
-	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/tputils"
 	"github.com/hiveot/hub/services/hiveoview/src"
 )
 
@@ -55,7 +54,7 @@ func (ht HistoryTemplateData) AsJSON() string {
 	for _, m := range ht.Values {
 		yValue := m.Data
 		if ht.Schema.Type == vocab.WoTDataTypeBool {
-			boolValue := tputils.DecodeAsBool(m.Data)
+			boolValue := utils.DecodeAsBool(m.Data)
 			yValue = 0
 			if boolValue {
 				yValue = 1
@@ -175,10 +174,10 @@ func NewHistoryTemplateData(
 	prevDayTime := hs.PrevDay().Format(time.RFC3339)
 	nextDayTime := hs.NextDay().Format(time.RFC3339)
 	todayTime := time.Now().Format(time.RFC3339)
-	hs.PrevDayPath = tputils.Substitute(src.RenderHistoryTimePath+prevDayTime, pathParams)
-	hs.NextDayPath = tputils.Substitute(src.RenderHistoryTimePath+nextDayTime, pathParams)
-	hs.TodayPath = tputils.Substitute(src.RenderHistoryTimePath+todayTime, pathParams)
-	hs.RenderHistoryLatestRow = tputils.Substitute(src.RenderHistoryLatestValueRowPath, pathParams)
-	hs.RenderThingDetailsPath = tputils.Substitute(src.RenderThingDetailsPath, pathParams)
+	hs.PrevDayPath = utils.Substitute(src.RenderHistoryTimePath+prevDayTime, pathParams)
+	hs.NextDayPath = utils.Substitute(src.RenderHistoryTimePath+nextDayTime, pathParams)
+	hs.TodayPath = utils.Substitute(src.RenderHistoryTimePath+todayTime, pathParams)
+	hs.RenderHistoryLatestRow = utils.Substitute(src.RenderHistoryLatestValueRowPath, pathParams)
+	hs.RenderThingDetailsPath = utils.Substitute(src.RenderThingDetailsPath, pathParams)
 	return &hs, err
 }

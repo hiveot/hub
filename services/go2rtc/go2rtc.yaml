@@ -1,0 +1,16 @@
+streams:
+  1.gatecam:
+    - rtsp://motion:Glowcz42@10.3.3.53:554/stream0
+  2.top:
+    - rtsp://motion:Glowcz42@10.3.3.55:554/stream1
+  3.paddocks:
+    - "onvif://motion:Glowcz42@10.3.3.15"
+  4.cabin:
+    - rtsp://motion:Glowcz42@10.3.3.56:554/Streaming/Channels/101
+    - isapi://motion:Glowcz42@10.3.3.56:80
+  5.riding:
+    - rtsp://motion:Glowcz42@10.3.3.11:554/Stream1
+  6.pasture:
+    - rtsp://motion:Glowcz42@10.3.3.54:554/Stream1
+    
+

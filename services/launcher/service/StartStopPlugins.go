@@ -12,8 +12,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/hiveot/gocore/utils"
 	"github.com/hiveot/hub/lib/plugin"
-	"github.com/hiveot/hub/lib/utils"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	launcher "github.com/hiveot/hub/services/launcher/api"
 	"github.com/struCoder/pidusage"

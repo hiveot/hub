@@ -3,20 +3,21 @@ package buckets_test
 import (
 	"encoding/json"
 	"fmt"
-	vocab2 "github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/buckets"
-	"github.com/hiveot/hub/lib/buckets/bucketstore"
-	"github.com/hiveot/hub/wot/td"
 	"log/slog"
 	"math/rand"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/hiveot/gocore/wot/td"
+	vocab2 "github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hub/lib/buckets/bucketstore"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/gocore/logging"
 )
 
 var testBucketID = "default"

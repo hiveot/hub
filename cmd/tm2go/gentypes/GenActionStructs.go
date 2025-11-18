@@ -3,14 +3,14 @@ package gentypes
 import (
 	"fmt"
 
-	"github.com/hiveot/hub/lib/utils"
-	"github.com/hiveot/hub/wot/td"
+	"github.com/hiveot/gocore/utils"
+	"github.com/hiveot/gocore/wot/td"
 )
 
 // GenActionStructs generates argument and response structs for actions defined in the TD.
 // This returns and array of lines of code or an error
 // Action structs are defined if the input or output types are of type object.
-func GenActionStructs(l *utils.SL, agentID, serviceID string, td *td.TD) {
+func GenActionStructs(l *SL, agentID, serviceID string, td *td.TD) {
 	l.Indent = 0
 	l.Add("//--- Argument and Response struct for action of Thing '%s' ---", td.ID)
 	l.Add("")
@@ -33,7 +33,7 @@ func GenActionStructs(l *utils.SL, agentID, serviceID string, td *td.TD) {
 // Argument structs are named the '{name}'Args where key is modified to remove
 // invalid chars.
 // If the affordance has no input or it is not an object, then no type is generated.
-func GenActionArgs(l *utils.SL, serviceTitle string, key string, action *td.ActionAffordance) {
+func GenActionArgs(l *SL, serviceTitle string, key string, action *td.ActionAffordance) {
 
 	// don't generate an args struct when there is no input or it isn't an object
 	if action.Input == nil || action.Input.Type != "object" {
@@ -66,7 +66,7 @@ func GenActionArgs(l *utils.SL, serviceTitle string, key string, action *td.Acti
 //
 // This defines a "{name}Resp" output struct that is returned by the action.
 // If the affordance has no output, or it is not an object, then no type is generated.
-func GenActionResp(l *utils.SL, serviceTitle string, key string, action *td.ActionAffordance) {
+func GenActionResp(l *SL, serviceTitle string, key string, action *td.ActionAffordance) {
 	// don't generate a response struct when there is no output or it isn't an object
 	if action.Output == nil {
 		// don't generate a response struct when output is a native type (non-object)

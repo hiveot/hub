@@ -4,12 +4,13 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
-	"github.com/hiveot/hub/messaging/tputils/tlsserver"
-	"github.com/hiveot/hub/services/idprov/idprovapi"
-	jsoniter "github.com/json-iterator/go"
 	"io"
 	"log/slog"
 	"net/http"
+
+	"github.com/hiveot/gocore/utils/tlsserver"
+	"github.com/hiveot/hub/services/idprov/idprovapi"
+	jsoniter "github.com/json-iterator/go"
 )
 
 // IdProvHttpServer serves the provisioning requests

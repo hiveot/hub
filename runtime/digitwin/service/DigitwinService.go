@@ -6,11 +6,11 @@ import (
 	"path"
 	"sync"
 
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/wot/td"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
-	"github.com/hiveot/hub/messaging"
 	"github.com/hiveot/hub/runtime/digitwin/store"
-	"github.com/hiveot/hub/wot/td"
 )
 
 // The DigitwinService stores digital twin things, property values and provide

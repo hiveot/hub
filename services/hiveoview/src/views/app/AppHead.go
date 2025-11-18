@@ -1,10 +1,11 @@
 package app
 
 import (
-	"github.com/hiveot/hub/messaging/tputils"
+	"net/http"
+
+	"github.com/hiveot/gocore/utils"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
-	"net/http"
 )
 
 const RenderAppHeadTemplate = "AppHead.gohtml"
@@ -65,12 +66,12 @@ func RenderAppHead(w http.ResponseWriter, r *http.Request) {
 		dashboardData := AppHeadDashboardData{
 			ID:                         dashboardModel.ID,
 			Title:                      dashboardModel.Title,
-			GetDashboardRawPath:        tputils.Substitute(src.RenderDashboardExportPath, pathArgs),
-			RenderDashboardPath:        tputils.Substitute(src.RenderDashboardPath, pathArgs),
-			RenderAddTilePath:          tputils.Substitute(src.RenderTileAddPath, pathArgs),
-			RenderDeleteDashboardPath:  tputils.Substitute(src.RenderDashboardDeletePath, pathArgs),
-			RenderEditDashboardPath:    tputils.Substitute(src.RenderDashboardEditPath, pathArgs),
-			RenderRestoreDashboardPath: tputils.Substitute(src.RenderDashboardImportPath, pathArgs),
+			GetDashboardRawPath:        utils.Substitute(src.RenderDashboardExportPath, pathArgs),
+			RenderDashboardPath:        utils.Substitute(src.RenderDashboardPath, pathArgs),
+			RenderAddTilePath:          utils.Substitute(src.RenderTileAddPath, pathArgs),
+			RenderDeleteDashboardPath:  utils.Substitute(src.RenderDashboardDeletePath, pathArgs),
+			RenderEditDashboardPath:    utils.Substitute(src.RenderDashboardEditPath, pathArgs),
+			RenderRestoreDashboardPath: utils.Substitute(src.RenderDashboardImportPath, pathArgs),
 		}
 		data.AppHeadDashboards = append(data.AppHeadDashboards, dashboardData)
 	}

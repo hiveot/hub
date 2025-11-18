@@ -2,11 +2,12 @@ package service
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/messaging"
+	"log/slog"
+
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/wot/td"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	authz "github.com/hiveot/hub/runtime/authz/api"
-	"github.com/hiveot/hub/wot/td"
-	"log/slog"
 )
 
 // AuthzAgent serves the message based interface to the authz service API.

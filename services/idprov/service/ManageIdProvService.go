@@ -2,12 +2,13 @@ package service
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/messaging"
-	authn "github.com/hiveot/hub/runtime/authn/api"
-	"github.com/hiveot/hub/services/idprov/idprovapi"
 	"log/slog"
 	"sync"
 	"time"
+
+	"github.com/hiveot/gocore/messaging"
+	authn "github.com/hiveot/hub/runtime/authn/api"
+	"github.com/hiveot/hub/services/idprov/idprovapi"
 )
 
 type ManageIdProvService struct {

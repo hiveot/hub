@@ -8,19 +8,19 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/gocore/utils"
+	"github.com/hiveot/gocore/wot/td"
 	"github.com/hiveot/hub/bindings/owserver/config"
 	"github.com/hiveot/hub/bindings/owserver/service"
 	"github.com/hiveot/hub/lib/testenv"
-	"github.com/hiveot/hub/messaging"
-	"github.com/hiveot/hub/messaging/tputils"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
-	"github.com/hiveot/hub/wot/td"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/gocore/logging"
 )
 
 // TODO: switch for testing with real owserver
@@ -103,7 +103,7 @@ func TestPoll(t *testing.T) {
 	co1.SetNotificationHandler(func(msg *messaging.NotificationMessage) {
 		slog.Info("received notification", "operation", msg.Operation, "id", msg.Name)
 		var value interface{}
-		err2 := tputils.DecodeAsObject(msg.Value, &value)
+		err2 := utils.DecodeAsObject(msg.Value, &value)
 		assert.NoError(t, err2)
 
 		tdCount.Add(1)
