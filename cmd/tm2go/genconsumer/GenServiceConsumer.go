@@ -5,10 +5,10 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/hiveot/gocore/utils"
-	"github.com/hiveot/gocore/wot"
-	"github.com/hiveot/gocore/wot/td"
-	"github.com/hiveot/hub/cmd/tm2go/gentypes"
+	"github.com/hiveot/hivehub/cmd/tm2go/gentypes"
+	"github.com/hiveot/hivekitgo/utils"
+	"github.com/hiveot/hivekitgo/wot"
+	"github.com/hiveot/hivekitgo/wot/td"
 )
 
 // GenServiceConsumer generates a consumer function for invoking Thing actions.
@@ -42,9 +42,9 @@ func genImports(l *gentypes.SL, agentID string, serviceID string) {
 
 	l.Add("")
 	//l.Add("import \"errors\"")
-	l.Add("import \"github.com/hiveot/gocore/messaging\"")
-	//l.Add("import \"github.com/hiveot/gocore/utils\"")
-	//l.Add("import \"github.com/hiveot/gocore/messaging\"")
+	l.Add("import \"github.com/hiveot/hivekitgo/messaging\"")
+	//l.Add("import \"github.com/hiveot/hivekitgo/utils\"")
+	//l.Add("import \"github.com/hiveot/hivekitgo/messaging\"")
 	l.Add("")
 }
 

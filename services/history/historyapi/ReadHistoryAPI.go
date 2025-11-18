@@ -1,7 +1,7 @@
 package historyapi
 
 import (
-	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/hivekitgo/messaging"
 )
 
 // ReadHistoryServiceID is the ID of the service exposed by the agent

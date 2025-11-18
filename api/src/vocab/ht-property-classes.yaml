@@ -1,6 +1,6 @@
 # ht-props-classes.yaml
 #
-# By: HiveOT project (github.com/hiveot/hub)
+# By: HiveOT project (github.com/hiveot/hivehub)
 # Subject: Vocabulary definitions for HiveOT WoT property and event classes.
 # Version: 0.1
 #
@@ -16,7 +16,7 @@
 #
 PropertyClasses:
   version: "0.1"
-  link: "github.com/hiveot/hub/api/vocab/ht-property-classes.yaml"
+  link: "github.com/hiveot/hivehub/api/vocab/ht-property-classes.yaml"
   namespace: "hiveot"
   vocab:
     # hiveot:prop:alarm properties for alarm status
@@ -43,7 +43,7 @@ PropertyClasses:
     PropDeviceDescription:
       class: "hiveot:prop:device:description"
       title: "Description"
-      description: "Device product description"  # also TD.Description
+      description: "Device product description" # also TD.Description
     PropDeviceEnabledDisabled:
       class: "hiveot:prop:device:enabled-disabled"
       title: "Enabled/Disabled"
@@ -114,7 +114,6 @@ PropertyClasses:
       class: "hiveot:prop:electric:overload"
       title: "Overload protection"
       description: "Cut load on overload"
-
 
     # hy:prop:env - properties with environmental sensors
     PropEnv:

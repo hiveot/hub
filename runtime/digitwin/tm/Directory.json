@@ -6,10 +6,7 @@
       "hiveot": "https://www.hiveot.net/vocab/v0.1"
     }
   ],
-  "@type": [
-    "tm:ThingModel",
-    "ThingDirectory"
-  ],
+  "@type": ["tm:ThingModel", "ThingDirectory"],
   "id": "ThingDirectory",
   "title": "DigiTwin Directory Service",
   "description": "HiveOT digital twin directory service",
@@ -18,11 +15,9 @@
   },
   "created": "2025-09-22T17:00:00.000Z",
   "modified": "2025-09-22T17:00:00.000Z",
-  "support": "https://www.github.com/hiveot/hub",
+  "support": "https://www.github.com/hiveot/hivehub",
   "base": "{{DIRECTORY_BASE_URL}}",
-  "deny": [
-    "none"
-  ],
+  "deny": ["none"],
   "properties": {
     "things": {
       "description": "Retrieve all Thing Descriptions",
@@ -96,10 +91,7 @@
       "title": "Create Thing TD",
       "description": "Update the Thing TD in the directory. For use by Thing agents only.",
       "idempotent": true,
-      "allow": [
-        "agent",
-        "admin"
-      ],
+      "allow": ["agent", "admin"],
       "input": {
         "title": "TD JSON",
         "description": "Device TD document in JSON format",
@@ -136,9 +128,7 @@
       "description": "Remove a digital twin TD from the directory",
       "safe": false,
       "idempotent": true,
-      "allow": [
-        "admin"
-      ],
+      "allow": ["admin"],
       "comment": "only admin can remove TDs",
       "input": {
         "title": "dThing ID",
@@ -275,10 +265,7 @@
       "title": "Update Thing TD",
       "description": "Update the Thing TD in the directory. For use by agents only.",
       "idempotent": true,
-      "allow": [
-        "agent",
-        "admin"
-      ],
+      "allow": ["agent", "admin"],
       "comment": "Only agents can update their TD",
       "input": {
         "title": "TD",

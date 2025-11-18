@@ -1,6 +1,6 @@
 <!--Chart Tile renderer for lines, area, bars -->
 
-{{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/tile.RenderTileTemplateData*/ -}}
+{{- /*gotype:github.com/hiveot/hivehub/services/hiveoview/src/views/tile.RenderTileTemplateData*/ -}}
 
 <div style="height:100%; width:100%">
 
@@ -10,7 +10,7 @@
     {{/* Each source is a line*/}}
     {{range .Tile.Sources}}
 
-	    {{- /*gotype:github.com/hiveot/hub/services/hiveoview/src/views/history.HistoryTemplateData*/ -}}
+	    {{- /*gotype:github.com/hiveot/hivehub/services/hiveoview/src/views/history.HistoryTemplateData*/ -}}
 	    {{$hist := $.GetHistory .AffordanceType .ThingID .Name}}
 
 	    {{if $hist}}

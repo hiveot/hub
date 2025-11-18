@@ -5,8 +5,8 @@ import (
 	"path"
 	"testing"
 
-	"github.com/hiveot/gocore/logging"
-	"github.com/hiveot/hub/runtime/digitwin/router"
+	"github.com/hiveot/hivehub/runtime/digitwin/router"
+	"github.com/hiveot/hivekitgo/logging"
 )
 
 var testDir = path.Join(os.TempDir(), "test-router")

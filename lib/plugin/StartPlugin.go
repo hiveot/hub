@@ -4,8 +4,8 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/hiveot/gocore/clients"
-	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/hivekitgo/clients"
+	"github.com/hiveot/hivekitgo/messaging"
 )
 
 type PluginConfig struct {

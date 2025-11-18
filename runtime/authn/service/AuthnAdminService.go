@@ -7,15 +7,15 @@ import (
 	"path"
 	"time"
 
-	"github.com/hiveot/gocore/clients"
-	"github.com/hiveot/gocore/keys"
-	"github.com/hiveot/gocore/messaging"
-	"github.com/hiveot/gocore/utils"
-	authn "github.com/hiveot/hub/runtime/authn/api"
-	"github.com/hiveot/hub/runtime/authn/authnstore"
-	"github.com/hiveot/hub/runtime/authn/config"
-	"github.com/hiveot/hub/runtime/authn/sessions"
-	authz "github.com/hiveot/hub/runtime/authz/api"
+	authn "github.com/hiveot/hivehub/runtime/authn/api"
+	"github.com/hiveot/hivehub/runtime/authn/authnstore"
+	"github.com/hiveot/hivehub/runtime/authn/config"
+	"github.com/hiveot/hivehub/runtime/authn/sessions"
+	authz "github.com/hiveot/hivehub/runtime/authz/api"
+	"github.com/hiveot/hivekitgo/clients"
+	"github.com/hiveot/hivekitgo/keys"
+	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivekitgo/utils"
 )
 
 // AuthnAdminService handles administration of clients

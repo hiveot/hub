@@ -10,11 +10,11 @@ import (
 	"net"
 	"time"
 
-	"github.com/hiveot/gocore/certs"
-	"github.com/hiveot/gocore/keys"
-	"github.com/hiveot/gocore/messaging"
-	authz "github.com/hiveot/hub/runtime/authz/api"
-	"github.com/hiveot/hub/services/certs/certsapi"
+	authz "github.com/hiveot/hivehub/runtime/authz/api"
+	"github.com/hiveot/hivehub/services/certs/certsapi"
+	"github.com/hiveot/hivekitgo/certs"
+	"github.com/hiveot/hivekitgo/keys"
+	"github.com/hiveot/hivekitgo/messaging"
 )
 
 // SelfSignedCertsService creates certificates for use by services, devices and admin users.

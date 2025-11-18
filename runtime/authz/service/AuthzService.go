@@ -2,9 +2,9 @@ package service
 
 import (
 	"fmt"
-	authn "github.com/hiveot/hub/runtime/authn/api"
-	"github.com/hiveot/hub/runtime/authn/authnstore"
-	authz "github.com/hiveot/hub/runtime/authz/api"
+	authn "github.com/hiveot/hivehub/runtime/authn/api"
+	"github.com/hiveot/hivehub/runtime/authn/authnstore"
+	authz "github.com/hiveot/hivehub/runtime/authz/api"
 	"log/slog"
 	"slices"
 )

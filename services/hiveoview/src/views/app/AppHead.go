@@ -3,9 +3,9 @@ package app
 import (
 	"net/http"
 
-	"github.com/hiveot/gocore/utils"
-	"github.com/hiveot/hub/services/hiveoview/src"
-	"github.com/hiveot/hub/services/hiveoview/src/session"
+	"github.com/hiveot/hivehub/services/hiveoview/src"
+	"github.com/hiveot/hivehub/services/hiveoview/src/session"
+	"github.com/hiveot/hivekitgo/utils"
 )
 
 const RenderAppHeadTemplate = "AppHead.gohtml"

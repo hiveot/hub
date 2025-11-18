@@ -9,12 +9,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hiveot/gocore/clients"
-	"github.com/hiveot/gocore/clients/authclient"
-	"github.com/hiveot/gocore/messaging"
-	"github.com/hiveot/gocore/servers/httpbasic"
-	"github.com/hiveot/hub/lib/buckets"
-	"github.com/hiveot/hub/services/hiveoview/src"
+	"github.com/hiveot/hivehub/lib/buckets"
+	"github.com/hiveot/hivehub/services/hiveoview/src"
+	"github.com/hiveot/hivekitgo/clients"
+	"github.com/hiveot/hivekitgo/clients/authclient"
+	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivekitgo/servers/httpbasic"
 )
 
 // WebSessionManager tracks client sessions using session cookies

@@ -5,12 +5,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hiveot/gocore/wot/td"
+	"github.com/hiveot/hivekitgo/wot/td"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/hiveot/gocore/logging"
+	"github.com/hiveot/hivekitgo/logging"
 )
 
 const timespanHour = 3600

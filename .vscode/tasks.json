@@ -12,7 +12,7 @@
 				"$go"
 			],
 			"group": "test",
-			"detail": "cd /home/henk/projects/hiveot/hub; go test ${fileDirname}"
+			"detail": "cd /home/henk/projects/hiveot/hivehub; go test ${fileDirname}"
 		}
 	]
 }

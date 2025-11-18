@@ -3,9 +3,9 @@ package service
 import (
 	"fmt"
 
-	"github.com/hiveot/gocore/messaging"
-	"github.com/hiveot/gocore/wot/td"
-	authn "github.com/hiveot/hub/runtime/authn/api"
+	authn "github.com/hiveot/hivehub/runtime/authn/api"
+	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivekitgo/wot/td"
 )
 
 // AuthnAgent agent for the authentication services:

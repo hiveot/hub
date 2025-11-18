@@ -3,7 +3,7 @@ package kvbtree
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hivehub/lib/buckets"
 	"log/slog"
 	"os"
 	"path"

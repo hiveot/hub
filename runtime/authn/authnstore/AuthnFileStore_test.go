@@ -9,15 +9,15 @@ import (
 	"testing"
 	"time"
 
-	authn "github.com/hiveot/hub/runtime/authn/api"
-	"github.com/hiveot/hub/runtime/authn/authnstore"
-	"github.com/hiveot/hub/runtime/authn/config"
-	authz "github.com/hiveot/hub/runtime/authz/api"
+	authn "github.com/hiveot/hivehub/runtime/authn/api"
+	"github.com/hiveot/hivehub/runtime/authn/authnstore"
+	"github.com/hiveot/hivehub/runtime/authn/config"
+	authz "github.com/hiveot/hivehub/runtime/authz/api"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/hiveot/gocore/logging"
+	"github.com/hiveot/hivekitgo/logging"
 )
 
 const unpwFileName = "testunpwstore.passwd"

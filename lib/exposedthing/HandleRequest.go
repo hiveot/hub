@@ -1,8 +1,8 @@
 package exposedthing
 
 import (
-	"github.com/hiveot/gocore/messaging"
-	"github.com/hiveot/gocore/wot/td"
+	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivekitgo/wot/td"
 )
 
 type ThingAction struct {

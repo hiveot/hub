@@ -3,10 +3,10 @@ package service
 import (
 	"log/slog"
 
-	"github.com/hiveot/gocore/messaging"
-	"github.com/hiveot/hub/lib/buckets"
-	authz "github.com/hiveot/hub/runtime/authz/api"
-	"github.com/hiveot/hub/services/history/historyapi"
+	"github.com/hiveot/hivehub/lib/buckets"
+	authz "github.com/hiveot/hivehub/runtime/authz/api"
+	"github.com/hiveot/hivehub/services/history/historyapi"
+	"github.com/hiveot/hivekitgo/messaging"
 )
 
 // HistoryService provides storage for action and event history using the bucket store

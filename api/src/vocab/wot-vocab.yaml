@@ -3,7 +3,7 @@
 # This is subject to change as definitions for the query parameters, arguments and responses need to be included.
 WoTVocab:
   version: "0.1"
-  link: "github.com/hiveot/hub/api/vocab/wot-vocab.yaml"
+  link: "github.com/hiveot/hivehub/api/vocab/wot-vocab.yaml"
   namespace: ""
   description: "WoT vocabulary definition. See https://www.w3.org/TR/2020/WD-wot-thing-description11-20201124/#sec-core-vocabulary-definition"
   vocab:

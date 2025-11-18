@@ -3,7 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
-	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
+	digitwin "github.com/hiveot/hivehub/runtime/digitwin/api"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 )

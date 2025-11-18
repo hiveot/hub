@@ -7,8 +7,8 @@ package launcher
 import (
 	"errors"
 
-	"github.com/hiveot/gocore/messaging"
-	"github.com/hiveot/gocore/utils"
+	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivekitgo/utils"
 )
 
 // IAdminService defines the interface of the 'Admin' service

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hiveot/gocore/utils"
+	"github.com/hiveot/hivekitgo/utils"
 )
 
 const jsFile = "./api/js/vocab/vocab.js"

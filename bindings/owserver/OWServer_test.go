@@ -8,19 +8,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hiveot/gocore/messaging"
-	"github.com/hiveot/gocore/utils"
-	"github.com/hiveot/gocore/wot/td"
-	"github.com/hiveot/hub/bindings/owserver/config"
-	"github.com/hiveot/hub/bindings/owserver/service"
-	"github.com/hiveot/hub/lib/testenv"
-	authz "github.com/hiveot/hub/runtime/authz/api"
-	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
+	"github.com/hiveot/hivehub/bindings/owserver/config"
+	"github.com/hiveot/hivehub/bindings/owserver/service"
+	"github.com/hiveot/hivehub/lib/testenv"
+	authz "github.com/hiveot/hivehub/runtime/authz/api"
+	digitwin "github.com/hiveot/hivehub/runtime/digitwin/api"
+	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivekitgo/utils"
+	"github.com/hiveot/hivekitgo/wot/td"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/hiveot/gocore/logging"
+	"github.com/hiveot/hivekitgo/logging"
 )
 
 // TODO: switch for testing with real owserver

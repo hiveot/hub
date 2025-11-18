@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hiveot/gocore/logging"
-	"github.com/hiveot/hub/bindings/isy99x/config"
-	"github.com/hiveot/hub/bindings/isy99x/service"
-	"github.com/hiveot/hub/lib/testenv"
+	"github.com/hiveot/hivehub/bindings/isy99x/config"
+	"github.com/hiveot/hivehub/bindings/isy99x/service"
+	"github.com/hiveot/hivehub/lib/testenv"
+	"github.com/hiveot/hivekitgo/logging"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

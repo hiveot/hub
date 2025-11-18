@@ -2,9 +2,9 @@ package dashboard
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/services/hiveoview/src"
-	"github.com/hiveot/hub/services/hiveoview/src/session"
-	"github.com/hiveot/hub/services/hiveoview/src/views/app"
+	"github.com/hiveot/hivehub/services/hiveoview/src"
+	"github.com/hiveot/hivehub/services/hiveoview/src/session"
+	"github.com/hiveot/hivehub/services/hiveoview/src/views/app"
 	"log/slog"
 	"net/http"
 )

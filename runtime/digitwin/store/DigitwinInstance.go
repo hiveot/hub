@@ -1,8 +1,8 @@
 package store
 
 import (
-	"github.com/hiveot/gocore/wot/td"
-	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
+	digitwin "github.com/hiveot/hivehub/runtime/digitwin/api"
+	"github.com/hiveot/hivekitgo/wot/td"
 )
 
 type ValueQueue struct {

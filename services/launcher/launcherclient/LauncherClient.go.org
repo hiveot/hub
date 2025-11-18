@@ -2,9 +2,9 @@ package launcherclient
 
 import (
 	"fmt"
-	"github.com/hiveot/gocore/messaging"
-	"github.com/hiveot/hub/services/launcher/launcherapi"
-	"github.com/hiveot/gocore/wot/td"
+	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivehub/services/launcher/launcherapi"
+	"github.com/hiveot/hivekitgo/wot/td"
 )
 
 // LauncherClient is a marshaller for service messages using a provided hub connection.

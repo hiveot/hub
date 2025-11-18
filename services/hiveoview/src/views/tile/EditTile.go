@@ -7,12 +7,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/hiveot/gocore/messaging"
-	"github.com/hiveot/gocore/utils"
-	"github.com/hiveot/hub/lib/consumedthing"
-	"github.com/hiveot/hub/services/hiveoview/src"
-	"github.com/hiveot/hub/services/hiveoview/src/session"
-	"github.com/hiveot/hub/services/hiveoview/src/views/app"
+	"github.com/hiveot/hivehub/lib/consumedthing"
+	"github.com/hiveot/hivehub/services/hiveoview/src"
+	"github.com/hiveot/hivehub/services/hiveoview/src/session"
+	"github.com/hiveot/hivehub/services/hiveoview/src/views/app"
+	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivekitgo/utils"
 	"github.com/teris-io/shortid"
 )
 

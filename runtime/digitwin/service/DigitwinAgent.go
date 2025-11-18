@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/hiveot/gocore/messaging"
-	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
+	digitwin "github.com/hiveot/hivehub/runtime/digitwin/api"
+	"github.com/hiveot/hivekitgo/messaging"
 )
 
 type DigitwinAgent struct {

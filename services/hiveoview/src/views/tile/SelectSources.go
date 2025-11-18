@@ -3,12 +3,12 @@ package tile
 import (
 	"net/http"
 
-	"github.com/hiveot/gocore/messaging"
-	"github.com/hiveot/gocore/utils"
-	"github.com/hiveot/hub/lib/consumedthing"
-	"github.com/hiveot/hub/services/hiveoview/src/session"
-	"github.com/hiveot/hub/services/hiveoview/src/views/app"
-	"github.com/hiveot/hub/services/hiveoview/src/views/directory"
+	"github.com/hiveot/hivehub/lib/consumedthing"
+	"github.com/hiveot/hivehub/services/hiveoview/src/session"
+	"github.com/hiveot/hivehub/services/hiveoview/src/views/app"
+	"github.com/hiveot/hivehub/services/hiveoview/src/views/directory"
+	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivekitgo/utils"
 )
 
 const RenderSelectSourceTemplate = "SelectSources.gohtml"

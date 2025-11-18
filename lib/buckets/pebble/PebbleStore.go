@@ -3,7 +3,7 @@ package pebble
 import (
 	"errors"
 	"fmt"
-	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hivehub/lib/buckets"
 	"log/slog"
 	"os"
 

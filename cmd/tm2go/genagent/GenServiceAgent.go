@@ -1,8 +1,8 @@
 package genagent
 
 import (
-	"github.com/hiveot/gocore/wot/td"
-	"github.com/hiveot/hub/cmd/tm2go/gentypes"
+	"github.com/hiveot/hivehub/cmd/tm2go/gentypes"
+	"github.com/hiveot/hivekitgo/wot/td"
 )
 
 // GenServiceAgent generates a function that returns a request handler that invokes

@@ -14,14 +14,14 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/hiveot/gocore/messaging"
-	"github.com/hiveot/gocore/utils/tlsserver"
-	"github.com/hiveot/hub/lib/buckets"
-	"github.com/hiveot/hub/lib/buckets/kvbtree"
-	authz "github.com/hiveot/hub/runtime/authz/api"
-	"github.com/hiveot/hub/services/hiveoview/src"
-	"github.com/hiveot/hub/services/hiveoview/src/session"
-	"github.com/hiveot/hub/services/hiveoview/src/views"
+	"github.com/hiveot/hivehub/lib/buckets"
+	"github.com/hiveot/hivehub/lib/buckets/kvbtree"
+	authz "github.com/hiveot/hivehub/runtime/authz/api"
+	"github.com/hiveot/hivehub/services/hiveoview/src"
+	"github.com/hiveot/hivehub/services/hiveoview/src/session"
+	"github.com/hiveot/hivehub/services/hiveoview/src/views"
+	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivekitgo/utils/tlsserver"
 )
 
 const HiveoviewStoreName = "hiveoview.kvbtree"

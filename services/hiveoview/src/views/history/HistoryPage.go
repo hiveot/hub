@@ -7,11 +7,11 @@ import (
 
 	"github.com/araddon/dateparse"
 	"github.com/go-chi/chi/v5"
-	"github.com/hiveot/gocore/messaging"
-	"github.com/hiveot/gocore/utils"
-	"github.com/hiveot/hub/services/history/historyclient"
-	"github.com/hiveot/hub/services/hiveoview/src/session"
-	"github.com/hiveot/hub/services/hiveoview/src/views/app"
+	"github.com/hiveot/hivehub/services/history/historyclient"
+	"github.com/hiveot/hivehub/services/hiveoview/src/session"
+	"github.com/hiveot/hivehub/services/hiveoview/src/views/app"
+	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivekitgo/utils"
 )
 
 const RenderHistoryTemplate = "HistoryPage.gohtml"

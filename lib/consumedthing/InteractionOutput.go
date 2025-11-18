@@ -3,11 +3,11 @@ package consumedthing
 import (
 	"fmt"
 
-	"github.com/hiveot/gocore/messaging"
-	"github.com/hiveot/gocore/utils"
-	"github.com/hiveot/gocore/wot/td"
-	"github.com/hiveot/hub/api/go/vocab"
-	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
+	"github.com/hiveot/hivehub/api/go/vocab"
+	digitwin "github.com/hiveot/hivehub/runtime/digitwin/api"
+	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivekitgo/utils"
+	"github.com/hiveot/hivekitgo/wot/td"
 )
 
 type InteractionOutputMap map[string]*InteractionOutput

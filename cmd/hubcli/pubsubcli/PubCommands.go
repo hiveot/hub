@@ -3,7 +3,7 @@ package pubsubcli
 import (
 	"fmt"
 
-	"github.com/hiveot/gocore/messaging"
+	"github.com/hiveot/hivekitgo/messaging"
 	"github.com/urfave/cli/v2"
 )
 

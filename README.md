@@ -1,14 +1,12 @@
 # Hive-Of-Things Hub
 
-HiveOT stands for the "Hive of Things". It consists of one or more 'Hubs' to collect and share IoT data with its users.
-
-The Hub for the _Hive-of-Things_ provides a secure [runtime](runtime/README-runtime.md) to view and control IoT devices. The Hub securely mediates between IoT device 'Things', services, and users using a hub-and-spokes architecture. Users interact with Things via the Hub's digital twin, without connecting directly to the IoT devices or services. The Hub is based on the [W3C WoT TD 1.1 specification](https://www.w3.org/TR/wot-thing-description11/). Multiple communication protocols are supported for IoT devices and users.
+The Hub for the _Hive-of-Things_ provides a secure [runtime](runtime/README-runtime.md) to interact with IoT devices. The Hub securely mediates between IoT device 'Things', services, and users using a hub-and-spokes architecture. Users interact with Things via the Hub's digital twin, without connecting directly to the IoT devices or services. The Hub is based on the [W3C WoT TD 1.1 specification](https://www.w3.org/TR/wot-thing-description11/). Multiple communication protocols are supported for IoT devices and users.
 
 ![System Overview](docs/hub-overview.jpg)
 
 ## Project Status
 
-Status Aug 2025: The Hub runtime, services and bindings have been reworked to support the Web-of-things (WoT) Thing Description (TD) specification. It is currently in Alpha.
+Status Nov 2025: The Hub runtime, services and bindings have been reworked to support the Web-of-things (WoT) Thing Description (TD) specification. It is currently in alpha, functional but breaking changes should be expected.
 
 The generated TDs for use of digital-twins contain forms with security and communication as provided by the Hub. This is still incomplete.
 
@@ -16,7 +14,7 @@ Medium term roadmap:
 
 1. Launcher support for distributed environment. (multiple launcher instances) [todo]
 1. Support lets-encrypt CA and server certificate [todo]
-1. Support mqtt transport protocol. [tbd as client or server?]
+1. Support mqtt transport protocol. [as client or as server]
 1. Websockets sub-protocol binding [functional but spec is in development]
 1. Support for TD Security section. [it is not fully clear how to describe login for obtaining tokens]
 1. Support for TD Forms sections. [contentious, as they are hardly useful in this setup]

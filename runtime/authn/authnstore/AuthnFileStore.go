@@ -11,13 +11,13 @@ import (
 
 	"github.com/alexedwards/argon2id"
 	"github.com/fsnotify/fsnotify"
-	"github.com/hiveot/gocore/utils"
-	authn "github.com/hiveot/hub/runtime/authn/api"
-	"github.com/hiveot/hub/runtime/authn/config"
+	authn "github.com/hiveot/hivehub/runtime/authn/api"
+	"github.com/hiveot/hivehub/runtime/authn/config"
+	"github.com/hiveot/hivekitgo/utils"
 	jsoniter "github.com/json-iterator/go"
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/hiveot/hub/lib/watcher"
+	"github.com/hiveot/hivehub/lib/watcher"
 )
 
 // AuthnFileStore stores client data, including users, devices and services.

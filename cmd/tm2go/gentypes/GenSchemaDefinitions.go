@@ -1,8 +1,8 @@
 package gentypes
 
 import (
-	"github.com/hiveot/gocore/utils"
-	"github.com/hiveot/gocore/wot/td"
+	"github.com/hiveot/hivekitgo/utils"
+	"github.com/hiveot/hivekitgo/wot/td"
 )
 
 // GenSchemaDefinitions generates golang structs from the dataschema in the SchemaDefinitions section

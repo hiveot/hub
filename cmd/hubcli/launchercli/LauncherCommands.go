@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hiveot/gocore/messaging"
-	"github.com/hiveot/gocore/utils"
-	launcher "github.com/hiveot/hub/services/launcher/api"
+	launcher "github.com/hiveot/hivehub/services/launcher/api"
+	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivekitgo/utils"
 	"github.com/urfave/cli/v2"
 )
 

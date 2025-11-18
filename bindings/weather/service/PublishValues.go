@@ -6,11 +6,11 @@ import (
 	"math"
 	"time"
 
-	"github.com/hiveot/gocore/messaging"
-	"github.com/hiveot/gocore/utils"
-	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/bindings/weather/config"
-	"github.com/hiveot/hub/bindings/weather/providers"
+	"github.com/hiveot/hivehub/api/go/vocab"
+	"github.com/hiveot/hivehub/bindings/weather/config"
+	"github.com/hiveot/hivehub/bindings/weather/providers"
+	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivekitgo/utils"
 )
 
 // Poll for current and forecast weather updates and publish events.

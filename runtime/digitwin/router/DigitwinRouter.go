@@ -4,10 +4,10 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/hiveot/gocore/messaging"
-	"github.com/hiveot/gocore/servers"
-	"github.com/hiveot/hub/runtime/digitwin/service"
-	"github.com/hiveot/hub/runtime/digitwin/store"
+	"github.com/hiveot/hivehub/runtime/digitwin/service"
+	"github.com/hiveot/hivehub/runtime/digitwin/store"
+	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivekitgo/servers"
 )
 
 // ActionHandler is the API for service action handling

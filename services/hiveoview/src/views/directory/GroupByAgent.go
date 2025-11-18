@@ -3,7 +3,7 @@ package directory
 import (
 	"sort"
 
-	"github.com/hiveot/gocore/wot/td"
+	"github.com/hiveot/hivekitgo/wot/td"
 )
 
 // ReadDirLimit is the maximum amount of TDs to read in one call

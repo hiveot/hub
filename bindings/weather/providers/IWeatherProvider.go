@@ -1,6 +1,6 @@
 package providers
 
-import "github.com/hiveot/hub/bindings/weather/config"
+import "github.com/hiveot/hivehub/bindings/weather/config"
 
 // definitions to be implemented by weather service providers
 

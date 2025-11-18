@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hiveot/gocore/messaging"
-	authn "github.com/hiveot/hub/runtime/authn/api"
-	"github.com/hiveot/hub/services/idprov/idprovapi"
+	authn "github.com/hiveot/hivehub/runtime/authn/api"
+	"github.com/hiveot/hivehub/services/idprov/idprovapi"
+	"github.com/hiveot/hivekitgo/messaging"
 )
 
 type ManageIdProvService struct {

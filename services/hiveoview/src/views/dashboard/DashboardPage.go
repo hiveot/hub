@@ -7,11 +7,11 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/hiveot/gocore/utils"
-	"github.com/hiveot/hub/services/hiveoview/src"
-	"github.com/hiveot/hub/services/hiveoview/src/session"
-	"github.com/hiveot/hub/services/hiveoview/src/views/app"
-	"github.com/hiveot/hub/services/hiveoview/src/views/tile"
+	"github.com/hiveot/hivehub/services/hiveoview/src"
+	"github.com/hiveot/hivehub/services/hiveoview/src/session"
+	"github.com/hiveot/hivehub/services/hiveoview/src/views/app"
+	"github.com/hiveot/hivehub/services/hiveoview/src/views/tile"
+	"github.com/hiveot/hivekitgo/utils"
 	jsoniter "github.com/json-iterator/go"
 )
 

@@ -3,12 +3,12 @@ package store_test
 import (
 	"fmt"
 
-	"github.com/hiveot/gocore/logging"
-	"github.com/hiveot/gocore/messaging"
-	"github.com/hiveot/gocore/utils"
-	"github.com/hiveot/hub/lib/buckets/kvbtree"
-	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
-	"github.com/hiveot/hub/runtime/digitwin/store"
+	"github.com/hiveot/hivehub/lib/buckets/kvbtree"
+	digitwin "github.com/hiveot/hivehub/runtime/digitwin/api"
+	"github.com/hiveot/hivehub/runtime/digitwin/store"
+	"github.com/hiveot/hivekitgo/logging"
+	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivekitgo/utils"
 
 	"math/rand"
 	"os"
@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hiveot/gocore/wot/td"
+	"github.com/hiveot/hivekitgo/wot/td"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

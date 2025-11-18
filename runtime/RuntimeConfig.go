@@ -9,13 +9,13 @@ import (
 	"os"
 	"path"
 
-	"github.com/hiveot/gocore/certs"
-	"github.com/hiveot/gocore/keys"
-	"github.com/hiveot/gocore/servers"
-	"github.com/hiveot/gocore/utils/net"
-	"github.com/hiveot/hub/lib/plugin"
-	service2 "github.com/hiveot/hub/runtime/authn/config"
-	"github.com/hiveot/hub/runtime/authz/service"
+	"github.com/hiveot/hivehub/lib/plugin"
+	service2 "github.com/hiveot/hivehub/runtime/authn/config"
+	"github.com/hiveot/hivehub/runtime/authz/service"
+	"github.com/hiveot/hivekitgo/certs"
+	"github.com/hiveot/hivekitgo/keys"
+	"github.com/hiveot/hivekitgo/servers"
+	"github.com/hiveot/hivekitgo/utils/net"
 	"gopkg.in/yaml.v3"
 )
 

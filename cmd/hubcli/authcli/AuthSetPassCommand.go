@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hiveot/gocore/messaging"
-	authn "github.com/hiveot/hub/runtime/authn/api"
+	authn "github.com/hiveot/hivehub/runtime/authn/api"
+	"github.com/hiveot/hivekitgo/messaging"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/exp/rand"
 )

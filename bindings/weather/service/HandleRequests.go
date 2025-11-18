@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/hiveot/gocore/messaging"
-	"github.com/hiveot/gocore/utils"
-	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/bindings/weather/config"
+	"github.com/hiveot/hivehub/api/go/vocab"
+	"github.com/hiveot/hivehub/bindings/weather/config"
+	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivekitgo/utils"
 )
 
 // HandleRequest passes the action and config request to the associated Thing.

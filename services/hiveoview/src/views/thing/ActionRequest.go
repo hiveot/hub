@@ -9,14 +9,14 @@ import (
 
 	"github.com/araddon/dateparse"
 	"github.com/go-chi/chi/v5"
-	"github.com/hiveot/gocore/utils"
-	"github.com/hiveot/gocore/wot/td"
-	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/consumedthing"
-	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
-	"github.com/hiveot/hub/services/hiveoview/src"
-	"github.com/hiveot/hub/services/hiveoview/src/session"
-	"github.com/hiveot/hub/services/hiveoview/src/views/app"
+	"github.com/hiveot/hivehub/api/go/vocab"
+	"github.com/hiveot/hivehub/lib/consumedthing"
+	digitwin "github.com/hiveot/hivehub/runtime/digitwin/api"
+	"github.com/hiveot/hivehub/services/hiveoview/src"
+	"github.com/hiveot/hivehub/services/hiveoview/src/session"
+	"github.com/hiveot/hivehub/services/hiveoview/src/views/app"
+	"github.com/hiveot/hivekitgo/utils"
+	"github.com/hiveot/hivekitgo/wot/td"
 )
 
 const RenderActionRequestTemplate = "ActionRequest.gohtml"

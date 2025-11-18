@@ -1,9 +1,9 @@
 package certsclient
 
 import (
-	"github.com/hiveot/gocore/messaging"
-	"github.com/hiveot/gocore/wot/td"
-	"github.com/hiveot/hub/services/certs/certsapi"
+	"github.com/hiveot/hivehub/services/certs/certsapi"
+	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivekitgo/wot/td"
 )
 
 // CertsClient is a marshaller for cert service messages using a provided hub connection.

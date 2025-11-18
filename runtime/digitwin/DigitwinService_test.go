@@ -8,12 +8,12 @@ import (
 	"testing"
 
 	"github.com/dchest/uniuri"
-	"github.com/hiveot/gocore/messaging"
-	"github.com/hiveot/gocore/servers/connections"
-	"github.com/hiveot/gocore/wot/td"
-	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/runtime/digitwin/service"
-	"github.com/hiveot/hub/runtime/digitwin/store"
+	"github.com/hiveot/hivehub/api/go/vocab"
+	"github.com/hiveot/hivehub/runtime/digitwin/service"
+	"github.com/hiveot/hivehub/runtime/digitwin/store"
+	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivekitgo/servers/connections"
+	"github.com/hiveot/hivekitgo/wot/td"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

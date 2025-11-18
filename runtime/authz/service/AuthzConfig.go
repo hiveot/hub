@@ -4,10 +4,10 @@ import (
 	"path"
 	"sync"
 
-	"github.com/hiveot/gocore/wot"
-	"github.com/hiveot/gocore/wot/td"
-	"github.com/hiveot/hub/api/go/vocab"
-	authz "github.com/hiveot/hub/runtime/authz/api"
+	"github.com/hiveot/hivehub/api/go/vocab"
+	authz "github.com/hiveot/hivehub/runtime/authz/api"
+	"github.com/hiveot/hivekitgo/wot"
+	"github.com/hiveot/hivekitgo/wot/td"
 )
 
 const DefaultAclFilename = "authz.acl"

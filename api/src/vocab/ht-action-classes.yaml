@@ -1,6 +1,6 @@
 # ht-action-classes.yaml
 #
-# By: HiveOT project (github.com/hiveot/hub)
+# By: HiveOT project (github.com/hiveot/hivehub)
 # Subject: Vocabulary definitions for HiveOT WoT action classes.
 # Version: 0.1
 #
@@ -15,7 +15,7 @@
 #
 ActionClasses:
   version: "0.1"
-  link: "github.com/hiveot/hub/api/vocab/ht-action-classes.yaml"
+  link: "github.com/hiveot/hivehub/api/vocab/ht-action-classes.yaml"
   namespace: "hiveot"
   vocab:
     # hiveot:action:media commands to control media playback
@@ -82,14 +82,14 @@ ActionClasses:
       class: "hiveot:action:switch"
       title: "Switch"
       description: "General switch action"
-#    ActionSwitchOff:
-#      class: "hiveot:action:switch:off"
-#      title: "Switch off"
-#      description: "Action to turn the switch off"
-#    ActionSwitchOn:
-#      class: "hiveot:action:switch:on"
-#      title: "Switch on"
-#      description: "Action to turn the switch on"
+    #    ActionSwitchOff:
+    #      class: "hiveot:action:switch:off"
+    #      title: "Switch off"
+    #      description: "Action to turn the switch off"
+    #    ActionSwitchOn:
+    #      class: "hiveot:action:switch:on"
+    #      title: "Switch on"
+    #      description: "Action to turn the switch on"
     ActionSwitchOnOff:
       class: "hiveot:action:switch:onoff"
       title: "Set On/Off switch"

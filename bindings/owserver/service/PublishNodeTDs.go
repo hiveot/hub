@@ -1,11 +1,11 @@
 package service
 
 import (
-	"github.com/hiveot/gocore/wot"
-	"github.com/hiveot/gocore/wot/td"
-	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/bindings/owserver/service/eds"
-	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
+	"github.com/hiveot/hivehub/api/go/vocab"
+	"github.com/hiveot/hivehub/bindings/owserver/service/eds"
+	digitwin "github.com/hiveot/hivehub/runtime/digitwin/api"
+	"github.com/hiveot/hivekitgo/wot"
+	"github.com/hiveot/hivekitgo/wot/td"
 	jsoniter "github.com/json-iterator/go"
 )
 

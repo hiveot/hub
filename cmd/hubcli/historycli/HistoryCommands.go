@@ -3,9 +3,9 @@ package historycli
 import (
 	"fmt"
 
-	"github.com/hiveot/gocore/messaging"
-	"github.com/hiveot/gocore/utils"
-	"github.com/hiveot/hub/services/history/historyclient"
+	"github.com/hiveot/hivehub/services/history/historyclient"
+	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivekitgo/utils"
 	"github.com/urfave/cli/v2"
 )
 

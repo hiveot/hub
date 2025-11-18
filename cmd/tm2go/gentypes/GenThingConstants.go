@@ -1,7 +1,7 @@
 package gentypes
 
 import (
-	"github.com/hiveot/gocore/wot/td"
+	"github.com/hiveot/hivekitgo/wot/td"
 )
 
 // GenThingConstantsFromTD generates the thing constants from the TD.

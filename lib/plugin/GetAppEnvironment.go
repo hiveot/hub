@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/hiveot/gocore/certs"
+	"github.com/hiveot/hivekitgo/certs"
 	"gopkg.in/yaml.v3"
 )
 

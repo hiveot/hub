@@ -1,10 +1,10 @@
 package idprovclient
 
 import (
-	"github.com/hiveot/gocore/messaging"
-	"github.com/hiveot/gocore/wot/td"
-	authn "github.com/hiveot/hub/runtime/authn/api"
-	"github.com/hiveot/hub/services/idprov/idprovapi"
+	authn "github.com/hiveot/hivehub/runtime/authn/api"
+	"github.com/hiveot/hivehub/services/idprov/idprovapi"
+	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivekitgo/wot/td"
 )
 
 // ManageIdProvClient is a hiveot client for communicating with the provisioning

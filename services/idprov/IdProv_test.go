@@ -6,21 +6,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hiveot/gocore/clients"
-	"github.com/hiveot/gocore/keys"
-	"github.com/hiveot/gocore/messaging"
-	"github.com/hiveot/gocore/utils/tlsclient"
-	"github.com/hiveot/hub/lib/testenv"
-	authn "github.com/hiveot/hub/runtime/authn/api"
-	authz "github.com/hiveot/hub/runtime/authz/api"
-	"github.com/hiveot/hub/services/idprov/idprovapi"
-	"github.com/hiveot/hub/services/idprov/idprovclient"
-	"github.com/hiveot/hub/services/idprov/service"
+	"github.com/hiveot/hivehub/lib/testenv"
+	authn "github.com/hiveot/hivehub/runtime/authn/api"
+	authz "github.com/hiveot/hivehub/runtime/authz/api"
+	"github.com/hiveot/hivehub/services/idprov/idprovapi"
+	"github.com/hiveot/hivehub/services/idprov/idprovclient"
+	"github.com/hiveot/hivehub/services/idprov/service"
+	"github.com/hiveot/hivekitgo/clients"
+	"github.com/hiveot/hivekitgo/keys"
+	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivekitgo/utils/tlsclient"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/hiveot/gocore/logging"
+	"github.com/hiveot/hivekitgo/logging"
 )
 
 // when testing using the capnp RPC

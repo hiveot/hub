@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/hiveot/gocore/wot/td"
+	"github.com/hiveot/hivekitgo/wot/td"
 )
 
 // GenTypes is the main function to generate the types API based on a TD
@@ -38,9 +38,9 @@ func genImports(l *SL, agentID string, serviceID string) {
 
 	l.Add("")
 	//l.Add("import \"errors\"")
-	//l.Add("import \"github.com/hiveot/gocore/messaging/messaging\"")
-	//l.Add("import \"github.com/hiveot/gocore/utils\"")
-	//l.Add("import \"github.com/hiveot/gocore/messaging\"")
+	//l.Add("import \"github.com/hiveot/hivekitgo/messaging/messaging\"")
+	//l.Add("import \"github.com/hiveot/hivekitgo/utils\"")
+	//l.Add("import \"github.com/hiveot/hivekitgo/messaging\"")
 	l.Add("")
 
 }

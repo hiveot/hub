@@ -1,9 +1,9 @@
 package selfsigned
 
 import (
-	"github.com/hiveot/gocore/messaging"
-	"github.com/hiveot/hub/lib/hubagent"
-	"github.com/hiveot/hub/services/certs/certsapi"
+	"github.com/hiveot/hivehub/lib/hubagent"
+	"github.com/hiveot/hivehub/services/certs/certsapi"
+	"github.com/hiveot/hivekitgo/messaging"
 )
 
 // StartCertsAgent returns a new instance of the agent for the certificate management service.

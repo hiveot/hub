@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/hiveot/hub/bindings/weather/config"
-	"github.com/hiveot/hub/lib/buckets"
-	"github.com/hiveot/hub/lib/buckets/kvbtree"
+	"github.com/hiveot/hivehub/bindings/weather/config"
+	"github.com/hiveot/hivehub/lib/buckets"
+	"github.com/hiveot/hivehub/lib/buckets/kvbtree"
 	jsoniter "github.com/json-iterator/go"
 )
 

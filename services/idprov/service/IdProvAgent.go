@@ -1,9 +1,9 @@
 package service
 
 import (
-	"github.com/hiveot/gocore/messaging"
-	"github.com/hiveot/hub/lib/hubagent"
-	"github.com/hiveot/hub/services/idprov/idprovapi"
+	"github.com/hiveot/hivehub/lib/hubagent"
+	"github.com/hiveot/hivehub/services/idprov/idprovapi"
+	"github.com/hiveot/hivekitgo/messaging"
 )
 
 // StartIdProvAgent registers the idprov messaging agent for the idprov service.

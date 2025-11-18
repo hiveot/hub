@@ -5,9 +5,9 @@ import (
 	"crypto/x509"
 	"log/slog"
 
-	"github.com/hiveot/gocore/messaging"
-	authz "github.com/hiveot/hub/runtime/authz/api"
-	"github.com/hiveot/hub/services/idprov/idprovapi"
+	authz "github.com/hiveot/hivehub/runtime/authz/api"
+	"github.com/hiveot/hivehub/services/idprov/idprovapi"
+	"github.com/hiveot/hivekitgo/messaging"
 )
 
 //

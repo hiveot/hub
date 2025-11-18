@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hiveot/gocore/messaging"
-	authz "github.com/hiveot/hub/runtime/authz/api"
+	authz "github.com/hiveot/hivehub/runtime/authz/api"
+	"github.com/hiveot/hivekitgo/messaging"
 	"github.com/urfave/cli/v2"
 )
 

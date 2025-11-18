@@ -3,7 +3,7 @@ package service
 import (
 	"log/slog"
 
-	"github.com/hiveot/gocore/utils/net"
+	"github.com/hiveot/hivekitgo/utils/net"
 )
 
 // determineSubnetsToScan returns a list of subnets and IP addresses to scan, obtained from configuration

@@ -5,10 +5,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hiveot/gocore/messaging"
-	"github.com/hiveot/hub/bindings/weather/config"
-	"github.com/hiveot/hub/bindings/weather/providers"
-	"github.com/hiveot/hub/lib/plugin"
+	"github.com/hiveot/hivehub/bindings/weather/config"
+	"github.com/hiveot/hivehub/bindings/weather/providers"
+	"github.com/hiveot/hivehub/lib/plugin"
+	"github.com/hiveot/hivekitgo/messaging"
 )
 
 // the key under which custom Thing titles are stored in the state service

@@ -1,6 +1,7 @@
 {
-  "@context":[ "https://www.w3.org/2022/wot/td/v1.1",
-    {"hiveot": "https://www.hiveot.net/vocab/v0.1"}
+  "@context": [
+    "https://www.w3.org/2022/wot/td/v1.1",
+    { "hiveot": "https://www.hiveot.net/vocab/v0.1" }
   ],
   "@type": "Service",
   "id": "admin",
@@ -11,7 +12,7 @@
   },
   "created": "2024-06-04T17:00:00.000Z",
   "modified": "2025-01-28T17:00:00.000Z",
-  "support": "https://www.github.com/hiveot/hub",
+  "support": "https://www.github.com/hiveot/hivehub",
   "comment": "TODO: how to reference ClientProfile defined in the user service?",
   "links": [],
 
@@ -128,7 +129,7 @@
         }
       },
       "output": {
-        "title":"Token",
+        "title": "Token",
         "description": "Service authentication token",
         "type": "string"
       }
@@ -141,8 +142,8 @@
       "idempotent": true,
       "safe": true,
       "input": {
-          "title": "Client ID",
-          "type": "string"
+        "title": "Client ID",
+        "type": "string"
       },
       "output": {
         "title": "Profile",

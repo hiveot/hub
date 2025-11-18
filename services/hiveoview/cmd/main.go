@@ -8,13 +8,13 @@ import (
 	"path"
 	"time"
 
-	"github.com/hiveot/gocore/certs"
-	"github.com/hiveot/gocore/keys"
-	"github.com/hiveot/gocore/logging"
-	"github.com/hiveot/hub/lib/plugin"
-	"github.com/hiveot/hub/runtime"
-	"github.com/hiveot/hub/services/hiveoview/config"
-	"github.com/hiveot/hub/services/hiveoview/src/service"
+	"github.com/hiveot/hivehub/lib/plugin"
+	"github.com/hiveot/hivehub/runtime"
+	"github.com/hiveot/hivehub/services/hiveoview/config"
+	"github.com/hiveot/hivehub/services/hiveoview/src/service"
+	"github.com/hiveot/hivekitgo/certs"
+	"github.com/hiveot/hivekitgo/keys"
+	"github.com/hiveot/hivekitgo/logging"
 )
 
 const defaultServerPort = 8443

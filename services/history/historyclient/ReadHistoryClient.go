@@ -3,10 +3,10 @@ package historyclient
 import (
 	"time"
 
-	"github.com/hiveot/gocore/messaging"
-	"github.com/hiveot/gocore/wot"
-	"github.com/hiveot/gocore/wot/td"
-	"github.com/hiveot/hub/services/history/historyapi"
+	"github.com/hiveot/hivehub/services/history/historyapi"
+	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivekitgo/wot"
+	"github.com/hiveot/hivekitgo/wot/td"
 )
 
 // ReadHistoryClient for talking to the history service

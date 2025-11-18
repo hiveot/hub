@@ -6,11 +6,11 @@ import (
 	"sort"
 	"time"
 
-	"github.com/hiveot/gocore/messaging"
-	"github.com/hiveot/gocore/utils"
-	"github.com/hiveot/hub/api/go/vocab"
-	"github.com/hiveot/hub/lib/consumedthing"
-	"github.com/hiveot/hub/services/hiveoview/src"
+	"github.com/hiveot/hivehub/api/go/vocab"
+	"github.com/hiveot/hivehub/lib/consumedthing"
+	"github.com/hiveot/hivehub/services/hiveoview/src"
+	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivekitgo/utils"
 )
 
 // HistoryTemplateData holds the data for rendering a history table or graph

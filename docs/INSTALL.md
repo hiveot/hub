@@ -2,7 +2,6 @@
 
 Use this method during development to easily build and upgrade hiveot from source.
 
-
 Prerequisites:
 
 1. An x86 or arm based Linux system. Ubuntu, Debian, Raspberrian
@@ -14,12 +13,15 @@ Prerequisites:
 This step is only needed if you build to run on the target device.
 
 1. Create a non-system user 'hiveot' and give it rights to run the sudo command.  
-Note: this works for ubuntu/debian. Any other system your milage may vary.
+   Note: this works for ubuntu/debian. Any other system your milage may vary.
+
 ```sh
 sudo useradd -m -G sudo -s /bin/bash hiveot
-sudo passwd hiveot                  
+sudo passwd hiveot
 ```
+
 Switch to the user (and verify the password)
+
 ```sh
 su -l hiveot
 ```
@@ -34,6 +36,7 @@ Note that hiveot doesn't need any of these to run. The binaries are self-contain
 ### Check Golang version 1.22 or higher
 
 Verify a recent version of golang is installed, eg v1.22 or up
+
 > go version
 
 Installing and upgrading golang is out of scope of these instructions.
@@ -41,24 +44,29 @@ Installing and upgrading golang is out of scope of these instructions.
 ### Setup Node v22
 
 Install node version manager:
+
 ```sh
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
 ```
 
 re-login or source .bashrc to make nvm work
+
 ```sh
 source ~/.bashrc
 ```
 
 Install node v22
+
 ```sh
 nvm install 22
 ```
 
 Verify
+
 ```sh
 node --version
 ```
+
 `
 This should show "v22."
 
@@ -70,15 +78,15 @@ Prerequisites: git, make, nvm (node version manager) or node-v22
 
 ```sh
 mkdir src && cd src  (or whatever your source directory is)
-git clone https://github.com/hiveot/hub
+git clone https://github.com/hiveot/hivehub
 cd hub
 make all
 ```
 
 have a coffee... especially on a raspberry pi
 
-
 If something goes wrong, build parts separately in order of dependency:
+
 ```sh
 make api
 make runtime
@@ -93,15 +101,16 @@ Raspberry pi boots fine but as soon as zwave-js opens the serial port it deadloc
 
 There is a discussion on this: https://github.com/zwave-js/zwave-js-ui/discussions/3880
 
-Workaround, downgrade the kernel to 6.1-77 
+Workaround, downgrade the kernel to 6.1-77
+
 > sudo rpi-update af3ab905d42
 
 Potential fix instead of kernel downgrade:
 Some people report that configuring the firmware in /boot/firmware/config.txt to say:
+
 > dtoverlay=dwc2,dr_mode=host
 
-would fix it, but this pi3 already had this line. Perhaps it needs to sit above the [cm5] section? 
-
+would fix it, but this pi3 already had this line. Perhaps it needs to sit above the [cm5] section?
 
 ## Install To User (Easiest)
 
@@ -131,7 +140,7 @@ To change what plugins to run automatically edit config/launcher.yaml and (un)co
 
 ```sh
 cd ~/bin/hiveot
-bin/launcher & 
+bin/launcher &
 ```
 
 If all goes well then it should be able to list the running services using hubcli:
@@ -140,6 +149,7 @@ If all goes well then it should be able to list the running services using hubcl
 bin/hubcli ls
 fg                   # back to the foreground
 ```
+
 Next shut it down with ctrl-c.
 
 ### Launch Using Systemd
@@ -147,34 +157,35 @@ Next shut it down with ctrl-c.
 Hiveot comes with a default systemd init script that starts the launcher as the hiveot user and group. It can easily be changed to accomodate a different user.
 
 In the src/hub directory:
+
 ```sh
 sudo cp init/hiveot.service /etc/systemd/system
 sudo systemctl daemon-reload
 ```
 
 6. Test
-7. 
+7.
+
 ```sh
 sudo service hiveot start
 sudo service hiveot status
 ```
 
 Check it runs:
+
 ```sh
 bin/hubcli ls
 ```
- 
+
 To enable startup on boot
 
 ```sh
 sudo systemctl enable hiveot.service
 ```
 
-
-
 ## Install To System (tenative)
 
-While it is a bit early to install hiveot as a system application, this is how it could work: 
+While it is a bit early to install hiveot as a system application, this is how it could work:
 
 For systemd installation to run as user 'hiveot'. When changing the user and folders make sure to edit the init/hiveot.service file accordingly. From the dist folder run:
 
@@ -183,17 +194,17 @@ For systemd installation to run as user 'hiveot'. When changing the user and fol
 ```sh
 sudo mkdir -P /opt/hiveot/bin
 sudo mkdir -P /opt/hiveot/plugins
-sudo mkdir -P /etc/hiveot/conf.d/ 
-sudo mkdir -P /etc/hiveot/certs/ 
-sudo mkdir /var/log/hiveot/   
-sudo mkdir /var/lib/hiveot   
+sudo mkdir -P /etc/hiveot/conf.d/
+sudo mkdir -P /etc/hiveot/certs/
+sudo mkdir /var/log/hiveot/
+sudo mkdir /var/lib/hiveot
 sudo mkdir /run/hiveot/
 
-# Install HiveOT 
+# Install HiveOT
 # download and extract the binaries tarfile in a temp for and copy the files:
 tar -xf hiveot.tgz
 sudo cp config/* /etc/hiveot/conf.d
-sudo vi /etc/hiveot/hub.yaml    - and edit the config, log, plugin folders
+sudo vi /etc/hiveot/hivehub.yaml    - and edit the config, log, plugin folders
 sudo cp -a bin/* /opt/hiveot
 sudo cp -a plugins/* /opt/hiveot
 ```
@@ -215,13 +226,12 @@ sudo chown -R hiveot:hiveot /var/lib/hiveot
 
 This is considered for the future.
 
-
 # Distributed System Installation (manually)
 
 Hiveot is designed so its services and bindings can run on multiple devices in a distributed configuration.
 
-By installing the hiveot launcher on multiple devices, it can manage running services on these devices. 
-This is currently a manual process. 
+By installing the hiveot launcher on multiple devices, it can manage running services on these devices.
+This is currently a manual process.
 
 ## Future
 
@@ -229,33 +239,33 @@ The (future) intent is to be able to use the launcher on every device using the 
 The launcher credentials should be copied from the primary device along with the (public) CA certificate.
 
 How this could work (todo):
-* each launcher has a unique ID 'launcher-{hostname}'.
-* launchers are aware of each other by reading the directory and looking for launcher services.
-* a launcher can list, start and stop services managed by other launchers
-* a service can be run on any device that has a launcher running
-* administrators can configure services to run on any launcher managed device (of the same architecture)
-* support for failover if a device becomes unreachable
 
-This is a simplistic version of a distributed system for IoT. 
+- each launcher has a unique ID 'launcher-{hostname}'.
+- launchers are aware of each other by reading the directory and looking for launcher services.
+- a launcher can list, start and stop services managed by other launchers
+- a service can be run on any device that has a launcher running
+- administrators can configure services to run on any launcher managed device (of the same architecture)
+- support for failover if a device becomes unreachable
 
+This is a simplistic version of a distributed system for IoT.
 
 Manual setup rough description below.
- 
+
 ## Runtime on device-1 and service {serviceName} on device-2.
 
 First install the runtime as per above. Start the runtime and check its running.
+
 > bin/hubcli ls
 
 This has created a self-signed CA certificate that is needed by services to run on another device.
 
 1. If the computer architecture on both devices is the same then simply copy the bin/hiveot directory to the second device.
-	> scp bin/hiveot device-2:bin
+   > scp bin/hiveot device-2:bin
 2. Edit config/launcher.yaml and
-	* disable launching the runtime 
-    * enable the service to run on device 2 in the autostart section.
+   - disable launching the runtime
+   - enable the service to run on device 2 in the autostart section.
 3. Get a service token on device 1 and install on device-2
-	> bin/hubcli addsvc {serviceName}
-    > scp certs/{serviceName}.token device-2:bin/hiveot/certs
+   > bin/hubcli addsvc {serviceName}
+   > scp certs/{serviceName}.token device-2:bin/hiveot/certs
 4. Run the launcher on device-2
-   > bin/launcher 
-	
+   > bin/launcher

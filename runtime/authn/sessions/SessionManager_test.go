@@ -1,7 +1,7 @@
 package sessions_test
 
 import (
-	"github.com/hiveot/hub/runtime/authn/sessions"
+	"github.com/hiveot/hivehub/runtime/authn/sessions"
 	"github.com/stretchr/testify/require"
 	"testing"
 	"time"

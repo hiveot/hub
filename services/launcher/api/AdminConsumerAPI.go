@@ -4,7 +4,7 @@
 // Generated 13 Oct 2025 14:21 PDT.
 package launcher
 
-import "github.com/hiveot/gocore/messaging"
+import "github.com/hiveot/hivekitgo/messaging"
 
 // AdminListPlugins client method - List Plugins.
 // List available plugins and their status

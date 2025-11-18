@@ -1,7 +1,7 @@
 package kvbtree
 
 import (
-	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hivehub/lib/buckets"
 	"github.com/tidwall/btree"
 )
 

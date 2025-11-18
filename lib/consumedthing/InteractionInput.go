@@ -1,8 +1,9 @@
 package consumedthing
 
 import (
-	"github.com/hiveot/gocore/wot/td"
 	"log/slog"
+
+	"github.com/hiveot/hivekitgo/wot/td"
 )
 
 // InteractionInput contains the last value and data schema of an input

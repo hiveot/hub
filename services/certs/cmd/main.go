@@ -6,11 +6,11 @@ import (
 	"os"
 	"path"
 
-	"github.com/hiveot/gocore/certs"
-	"github.com/hiveot/gocore/keys"
-	"github.com/hiveot/gocore/logging"
-	"github.com/hiveot/hub/lib/plugin"
-	"github.com/hiveot/hub/services/certs/service/selfsigned"
+	"github.com/hiveot/hivehub/lib/plugin"
+	"github.com/hiveot/hivehub/services/certs/service/selfsigned"
+	"github.com/hiveot/hivekitgo/certs"
+	"github.com/hiveot/hivekitgo/keys"
+	"github.com/hiveot/hivekitgo/logging"
 )
 
 // Connect the certs service

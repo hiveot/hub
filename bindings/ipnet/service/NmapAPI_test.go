@@ -4,8 +4,8 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/hiveot/gocore/utils/net"
-	"github.com/hiveot/hub/bindings/ipnet/service"
+	"github.com/hiveot/hivehub/bindings/ipnet/service"
+	"github.com/hiveot/hivekitgo/utils/net"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -12,8 +12,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/hiveot/gocore/utils"
-	"github.com/hiveot/hub/services/hiveoview/src"
+	"github.com/hiveot/hivehub/services/hiveoview/src"
+	"github.com/hiveot/hivekitgo/utils"
 )
 
 const baseTemplateName = "base.gohtml"

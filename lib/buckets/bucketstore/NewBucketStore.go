@@ -2,9 +2,9 @@ package bucketstore
 
 import (
 	"fmt"
-	"github.com/hiveot/hub/lib/buckets"
-	"github.com/hiveot/hub/lib/buckets/kvbtree"
-	"github.com/hiveot/hub/lib/buckets/pebble"
+	"github.com/hiveot/hivehub/lib/buckets"
+	"github.com/hiveot/hivehub/lib/buckets/kvbtree"
+	"github.com/hiveot/hivehub/lib/buckets/pebble"
 	"path"
 )
 

@@ -1,6 +1,6 @@
 # ht-thing-classes.yaml
 #
-# By: HiveOT project (github.com/hiveot/hub)
+# By: HiveOT project (github.com/hiveot/hivehub)
 # Subject: Vocabulary definitions for HiveOT device classes.
 # Version: 0.1
 #
@@ -13,7 +13,7 @@
 #
 ThingClasses:
   version: "0.1"
-  link: "github.com/hiveot/hub/api/vocab/ht-thing-classes.yaml"
+  link: "github.com/hiveot/hivehub/api/vocab/ht-thing-classes.yaml"
   namespace: "hiveot"
   vocab:
     # hiveot:thing:actuator devices
@@ -99,7 +99,6 @@ ThingClasses:
       class: "hiveot:thing:appliance:washer"
       title: "Washer"
       description: "Clothing washer"
-
 
     # hiveot:thing:computer devices including phones
     ThingComputer:

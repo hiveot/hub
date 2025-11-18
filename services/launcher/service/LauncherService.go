@@ -12,14 +12,14 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/hiveot/gocore/clients"
-	"github.com/hiveot/gocore/messaging"
-	"github.com/hiveot/gocore/servers/wssserver"
-	"github.com/hiveot/gocore/utils"
-	authz "github.com/hiveot/hub/runtime/authz/api"
-	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
-	launcher "github.com/hiveot/hub/services/launcher/api"
-	"github.com/hiveot/hub/services/launcher/config"
+	authz "github.com/hiveot/hivehub/runtime/authz/api"
+	digitwin "github.com/hiveot/hivehub/runtime/digitwin/api"
+	launcher "github.com/hiveot/hivehub/services/launcher/api"
+	"github.com/hiveot/hivehub/services/launcher/config"
+	"github.com/hiveot/hivekitgo/clients"
+	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivekitgo/servers/wssserver"
+	"github.com/hiveot/hivekitgo/utils"
 )
 
 // Use this default path instead of discovery when running locally and no server is configured

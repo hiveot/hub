@@ -4,10 +4,10 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/hiveot/gocore/logging"
-	"github.com/hiveot/hub/lib/plugin"
-	"github.com/hiveot/hub/services/launcher/config"
-	"github.com/hiveot/hub/services/launcher/service"
+	"github.com/hiveot/hivehub/lib/plugin"
+	"github.com/hiveot/hivehub/services/launcher/config"
+	"github.com/hiveot/hivehub/services/launcher/service"
+	"github.com/hiveot/hivekitgo/logging"
 )
 
 // Connect the launcher service

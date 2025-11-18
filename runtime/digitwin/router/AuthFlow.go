@@ -2,8 +2,8 @@
 package router
 
 import (
-	"github.com/hiveot/gocore/messaging"
-	authn "github.com/hiveot/hub/runtime/authn/api"
+	authn "github.com/hiveot/hivehub/runtime/authn/api"
+	"github.com/hiveot/hivekitgo/messaging"
 )
 
 // HandleLogin passes the request as an action to the authn service

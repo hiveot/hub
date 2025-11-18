@@ -8,12 +8,12 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/hiveot/gocore/keys"
-	"github.com/hiveot/gocore/wot/td"
-	authn "github.com/hiveot/hub/runtime/authn/api"
-	"github.com/hiveot/hub/runtime/authn/authnstore"
-	"github.com/hiveot/hub/runtime/authn/config"
-	"github.com/hiveot/hub/runtime/authn/sessions"
+	authn "github.com/hiveot/hivehub/runtime/authn/api"
+	"github.com/hiveot/hivehub/runtime/authn/authnstore"
+	"github.com/hiveot/hivehub/runtime/authn/config"
+	"github.com/hiveot/hivehub/runtime/authn/sessions"
+	"github.com/hiveot/hivekitgo/keys"
+	"github.com/hiveot/hivekitgo/wot/td"
 	"github.com/teris-io/shortid"
 )
 

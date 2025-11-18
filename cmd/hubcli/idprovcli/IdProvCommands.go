@@ -3,11 +3,11 @@ package idprovcli
 import (
 	"fmt"
 
-	"github.com/hiveot/gocore/messaging"
-	"github.com/hiveot/gocore/utils"
-	authn "github.com/hiveot/hub/runtime/authn/api"
-	"github.com/hiveot/hub/services/idprov/idprovapi"
-	"github.com/hiveot/hub/services/idprov/idprovclient"
+	authn "github.com/hiveot/hivehub/runtime/authn/api"
+	"github.com/hiveot/hivehub/services/idprov/idprovapi"
+	"github.com/hiveot/hivehub/services/idprov/idprovclient"
+	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivekitgo/utils"
 	"github.com/urfave/cli/v2"
 )
 

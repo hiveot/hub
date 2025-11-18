@@ -7,18 +7,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hiveot/gocore/messaging"
-	"github.com/hiveot/hub/lib/testenv"
-	authn "github.com/hiveot/hub/runtime/authn/api"
-	authz "github.com/hiveot/hub/runtime/authz/api"
-	launcher "github.com/hiveot/hub/services/launcher/api"
-	"github.com/hiveot/hub/services/launcher/config"
-	"github.com/hiveot/hub/services/launcher/service"
+	"github.com/hiveot/hivehub/lib/testenv"
+	authn "github.com/hiveot/hivehub/runtime/authn/api"
+	authz "github.com/hiveot/hivehub/runtime/authz/api"
+	launcher "github.com/hiveot/hivehub/services/launcher/api"
+	"github.com/hiveot/hivehub/services/launcher/config"
+	"github.com/hiveot/hivehub/services/launcher/service"
+	"github.com/hiveot/hivekitgo/messaging"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/hiveot/gocore/logging"
+	"github.com/hiveot/hivekitgo/logging"
 )
 
 // var homeDir = "/tmp/test-launcher"

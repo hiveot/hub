@@ -1,9 +1,9 @@
-module github.com/hiveot/hub
+module github.com/hiveot/hivehub
 
 go 1.24.0
 
 // can't use go.work. See https://github.com/golang/go/issues/50750
-replace github.com/hiveot/gocore => ../gocore
+replace github.com/hiveot/hivekitgo => ../hivekitgo
 
 require (
 	aidanwoods.dev/go-paseto v1.5.4
@@ -14,7 +14,7 @@ require (
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-chi/chi/v5 v5.2.3
 	github.com/golang-jwt/jwt/v5 v5.3.0
-	github.com/hiveot/gocore v0.0.0-20251117075232-bc09dcf1ce76
+	github.com/hiveot/hivekitgo v0.0.0-20251117075232-bc09dcf1ce76
 	github.com/huin/goupnp v1.3.0
 	github.com/json-iterator/go v1.1.12
 	github.com/mostlygeek/arp v0.0.0-20170424181311-541a2129847a

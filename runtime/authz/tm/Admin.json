@@ -1,6 +1,7 @@
 {
-  "@context":[ "https://www.w3.org/2022/wot/td/v1.1",
-    {"hiveot": "https://www.hiveot.net/vocab/v0.1"}
+  "@context": [
+    "https://www.w3.org/2022/wot/td/v1.1",
+    { "hiveot": "https://www.hiveot.net/vocab/v0.1" }
   ],
   "@type": "Service",
   "id": "admin",
@@ -11,15 +12,12 @@
   },
   "created": "2024-06-04T17:00:00.000Z",
   "modified": "2024-06-04T17:00:00.000Z",
-  "support": "https://www.github.com/hiveot/hub",
+  "support": "https://www.github.com/hiveot/hivehub",
   "allow": ["admin"],
 
-  "schemaDefinitions": {
-  },
-  "properties": {
-  },
-  "events": {
-  },
+  "schemaDefinitions": {},
+  "properties": {},
+  "events": {},
   "actions": {
     "getClientRole": {
       "@type": "hiveot:function",

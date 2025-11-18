@@ -9,8 +9,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/hiveot/gocore/utils"
-	"github.com/hiveot/hub/bindings/weather/config"
+	"github.com/hiveot/hivehub/bindings/weather/config"
+	"github.com/hiveot/hivekitgo/utils"
 	jsoniter "github.com/json-iterator/go"
 )
 
