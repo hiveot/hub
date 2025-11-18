@@ -6,10 +6,10 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/hiveot/hivehub/lib/consumedthing"
-	"github.com/hiveot/hivehub/services/hiveoview/src/session"
-	"github.com/hiveot/hivekitgo/messaging"
-	"github.com/hiveot/hivekitgo/utils"
+	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/utils"
+	"github.com/hiveot/hub/lib/consumedthing"
+	"github.com/hiveot/hub/services/hiveoview/src/session"
 )
 
 // RenderTileSourceRow renders a single table row with the tile 'source'

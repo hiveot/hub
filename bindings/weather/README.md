@@ -41,7 +41,7 @@ Locations can be managed through the actions 'add/remove location' and by settin
 
 ## Dependencies
 
-This integration works with the [HiveOT Hub](https://github.com/hiveot/hivehub).
+This integration works with the [HiveOT Hub](https://github.com/hiveot/hub).
 This binding needs an internet connection to access the [Open-Meteo API](https://open-meteo.com/en/docs) server.
 
 ## Usage

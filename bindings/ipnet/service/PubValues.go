@@ -1,8 +1,8 @@
 package service
 
 import (
-	"github.com/hiveot/hivehub/api/go/vocab"
-	"github.com/hiveot/hivekitgo/wot"
+	"github.com/hiveot/hivekit/go/wot"
+	"github.com/hiveot/hub/api/go/vocab"
 	jsoniter "github.com/json-iterator/go"
 )
 

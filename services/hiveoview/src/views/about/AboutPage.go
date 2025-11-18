@@ -1,7 +1,7 @@
 package about
 
 import (
-	"github.com/hiveot/hivehub/services/hiveoview/src/views/app"
+	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"net/http"
 )
 

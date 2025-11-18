@@ -3,7 +3,7 @@ package consumedthing
 import (
 	"log/slog"
 
-	"github.com/hiveot/hivekitgo/wot/td"
+	"github.com/hiveot/hivekit/go/wot/td"
 )
 
 // InteractionInput contains the last value and data schema of an input

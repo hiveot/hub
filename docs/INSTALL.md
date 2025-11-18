@@ -78,7 +78,7 @@ Prerequisites: git, make, nvm (node version manager) or node-v22
 
 ```sh
 mkdir src && cd src  (or whatever your source directory is)
-git clone https://github.com/hiveot/hivehub
+git clone https://github.com/hiveot/hub
 cd hub
 make all
 ```
@@ -204,7 +204,7 @@ sudo mkdir /run/hiveot/
 # download and extract the binaries tarfile in a temp for and copy the files:
 tar -xf hiveot.tgz
 sudo cp config/* /etc/hiveot/conf.d
-sudo vi /etc/hiveot/hivehub.yaml    - and edit the config, log, plugin folders
+sudo vi /etc/hiveot/hub.yaml    - and edit the config, log, plugin folders
 sudo cp -a bin/* /opt/hiveot
 sudo cp -a plugins/* /opt/hiveot
 ```

@@ -14,14 +14,14 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/hiveot/hivehub/lib/buckets"
-	"github.com/hiveot/hivehub/lib/buckets/kvbtree"
-	authz "github.com/hiveot/hivehub/runtime/authz/api"
-	"github.com/hiveot/hivehub/services/hiveoview/src"
-	"github.com/hiveot/hivehub/services/hiveoview/src/session"
-	"github.com/hiveot/hivehub/services/hiveoview/src/views"
-	"github.com/hiveot/hivekitgo/messaging"
-	"github.com/hiveot/hivekitgo/utils/tlsserver"
+	"github.com/hiveot/hivekit/go/agent"
+	"github.com/hiveot/hivekit/go/utils/tlsserver"
+	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hub/lib/buckets/kvbtree"
+	authz "github.com/hiveot/hub/runtime/authz/api"
+	"github.com/hiveot/hub/services/hiveoview/src"
+	"github.com/hiveot/hub/services/hiveoview/src/session"
+	"github.com/hiveot/hub/services/hiveoview/src/views"
 )
 
 const HiveoviewStoreName = "hiveoview.kvbtree"
@@ -50,7 +50,7 @@ type HiveoviewService struct {
 
 	// ag agent hub client of this service.
 	// This client's CA and URL is also used to establish client sessions.
-	ag *messaging.Agent
+	ag *agent.Agent
 
 	// cookie signing
 	signingKey ed25519.PrivateKey
@@ -81,7 +81,7 @@ func (svc *HiveoviewService) GetSM() *session.WebSessionManager {
 // This is invoked by the plugin library.
 //
 //	ag is the service agent connection to the hub for publishing notifications
-func (svc *HiveoviewService) Start(ag *messaging.Agent) error {
+func (svc *HiveoviewService) Start(ag *agent.Agent) error {
 	slog.Info("Starting HiveoviewService", "clientID", ag.GetClientID())
 	svc.ag = ag
 

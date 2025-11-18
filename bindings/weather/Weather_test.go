@@ -7,14 +7,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hiveot/hivehub/bindings/weather/config"
-	"github.com/hiveot/hivehub/bindings/weather/providers"
-	"github.com/hiveot/hivehub/bindings/weather/service"
-	"github.com/hiveot/hivehub/lib/testenv"
-	authz "github.com/hiveot/hivehub/runtime/authz/api"
-	"github.com/hiveot/hivekitgo/logging"
-	"github.com/hiveot/hivekitgo/messaging"
-	"github.com/hiveot/hivekitgo/wot/td"
+	"github.com/hiveot/hivekit/go/agent"
+	"github.com/hiveot/hivekit/go/logging"
+	"github.com/hiveot/hivekit/go/wot/td"
+	"github.com/hiveot/hub/bindings/weather/config"
+	"github.com/hiveot/hub/bindings/weather/providers"
+	"github.com/hiveot/hub/bindings/weather/service"
+	"github.com/hiveot/hub/lib/testenv"
+	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -43,7 +43,7 @@ var storePath string
 var tempFolder string
 var weatherConfig = config.NewWeatherConfig()
 
-func Setup() (ts *testenv.TestServer, ag *messaging.Agent, stopFn func()) {
+func Setup() (ts *testenv.TestServer, ag *agent.Agent, stopFn func()) {
 	logging.SetLogging("warn", "")
 	ts = testenv.StartTestServer(true)
 

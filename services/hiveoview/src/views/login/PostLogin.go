@@ -7,9 +7,9 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/hiveot/hivehub/services/hiveoview/src"
-	"github.com/hiveot/hivehub/services/hiveoview/src/session"
-	"github.com/hiveot/hivekitgo/servers/httpbasic"
+	"github.com/hiveot/hivekit/go/server/httpbasic"
+	"github.com/hiveot/hub/services/hiveoview/src"
+	"github.com/hiveot/hub/services/hiveoview/src/session"
 	jsoniter "github.com/json-iterator/go"
 )
 

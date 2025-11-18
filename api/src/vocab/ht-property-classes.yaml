@@ -1,6 +1,6 @@
 # ht-props-classes.yaml
 #
-# By: HiveOT project (github.com/hiveot/hivehub)
+# By: HiveOT project (github.com/hiveot/hub)
 # Subject: Vocabulary definitions for HiveOT WoT property and event classes.
 # Version: 0.1
 #
@@ -16,7 +16,7 @@
 #
 PropertyClasses:
   version: "0.1"
-  link: "github.com/hiveot/hivehub/api/vocab/ht-property-classes.yaml"
+  link: "github.com/hiveot/hub/api/vocab/ht-property-classes.yaml"
   namespace: "hiveot"
   vocab:
     # hiveot:prop:alarm properties for alarm status

@@ -1,8 +1,8 @@
 package idprovclient
 
 import (
-	"github.com/hiveot/hivehub/services/idprov/idprovapi"
-	"github.com/hiveot/hivekitgo/utils/tlsclient"
+	"github.com/hiveot/hivekit/go/utils/tlsclient"
+	"github.com/hiveot/hub/services/idprov/idprovapi"
 	jsoniter "github.com/json-iterator/go"
 )
 

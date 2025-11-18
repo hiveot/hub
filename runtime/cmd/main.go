@@ -6,9 +6,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/hiveot/hivehub/lib/plugin"
-	"github.com/hiveot/hivehub/runtime"
-	"github.com/hiveot/hivekitgo/logging"
+	"github.com/hiveot/hivekit/go/logging"
+	"github.com/hiveot/hub/lib/plugin"
+	"github.com/hiveot/hub/runtime"
 )
 
 // Launch the hub digital twin runtime.

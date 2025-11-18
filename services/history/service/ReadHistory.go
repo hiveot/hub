@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/araddon/dateparse"
-	"github.com/hiveot/hivehub/lib/buckets"
-	"github.com/hiveot/hivehub/services/history/historyapi"
-	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hub/services/history/historyapi"
 )
 
 // ReadHistory provides read access to the history of things values.

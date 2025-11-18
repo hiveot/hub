@@ -3,7 +3,7 @@ package consumedthing
 import (
 	"log/slog"
 
-	"github.com/hiveot/hivekitgo/utils"
+	"github.com/hiveot/hivekit/go/utils"
 )
 
 // DataSchemaValue represents a value provided by an InteractionOutput.

@@ -2,8 +2,8 @@ package app
 
 import (
 	"bytes"
-	"github.com/hiveot/hivehub/services/hiveoview/src/session"
-	"github.com/hiveot/hivehub/services/hiveoview/src/views"
+	"github.com/hiveot/hub/services/hiveoview/src/session"
+	"github.com/hiveot/hub/services/hiveoview/src/views"
 	"github.com/teris-io/shortid"
 	"net/http"
 )

@@ -5,16 +5,17 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/hiveot/hivehub/bindings/ipnet/config"
-	"github.com/hiveot/hivehub/lib/plugin"
-	"github.com/hiveot/hivekitgo/logging"
-	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivekit/go/agent"
+	"github.com/hiveot/hivekit/go/logging"
+	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hub/bindings/ipnet/config"
+	"github.com/hiveot/hub/lib/plugin"
 )
 
 type IPNetBinding struct {
 	config *config.IPNetConfig
 	// Hub connection
-	ag *messaging.Agent
+	ag *agent.Agent
 
 	// discovered devices
 	devicesMap      map[string]*IPDeviceInfo
@@ -31,7 +32,7 @@ func (svc *IPNetBinding) ActionHandler(req *messaging.RequestMessage,
 }
 
 // Start the binding
-func (svc *IPNetBinding) Start(ag *messaging.Agent) (err error) {
+func (svc *IPNetBinding) Start(ag *agent.Agent) (err error) {
 	if svc.config.LogLevel != "" {
 		logging.SetLogging(svc.config.LogLevel, "")
 	}

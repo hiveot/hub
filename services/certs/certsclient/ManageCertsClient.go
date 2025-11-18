@@ -1,9 +1,9 @@
 package certsclient
 
 import (
-	"github.com/hiveot/hivehub/services/certs/certsapi"
-	"github.com/hiveot/hivekitgo/messaging"
-	"github.com/hiveot/hivekitgo/wot/td"
+	"github.com/hiveot/hivekit/go/consumer"
+	"github.com/hiveot/hivekit/go/wot/td"
+	"github.com/hiveot/hub/services/certs/certsapi"
 )
 
 // CertsClient is a marshaller for cert service messages using a provided hub connection.
@@ -12,7 +12,7 @@ type CertsClient struct {
 	// dThingID digital twin service ID of the certificate management
 	dThingID string
 	// Connection to the hub
-	co *messaging.Consumer
+	co *consumer.Consumer
 }
 
 //// helper for publishing a rpc request to the certs service
@@ -95,7 +95,7 @@ func (cl *CertsClient) VerifyCert(
 // NewCertsClient returns a certs service client for managing certificates
 //
 //	hc is the hub client connection to use
-func NewCertsClient(co *messaging.Consumer) *CertsClient {
+func NewCertsClient(co *consumer.Consumer) *CertsClient {
 	agentID := certsapi.CertsAdminAgentID
 
 	cl := CertsClient{

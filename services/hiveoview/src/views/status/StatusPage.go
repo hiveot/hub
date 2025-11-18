@@ -2,8 +2,8 @@ package status
 
 import (
 	"bytes"
-	"github.com/hiveot/hivehub/services/hiveoview/src/session"
-	app2 "github.com/hiveot/hivehub/services/hiveoview/src/views/app"
+	"github.com/hiveot/hub/services/hiveoview/src/session"
+	app2 "github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"net/http"
 )
 

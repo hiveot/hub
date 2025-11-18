@@ -12,14 +12,15 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	authz "github.com/hiveot/hivehub/runtime/authz/api"
-	digitwin "github.com/hiveot/hivehub/runtime/digitwin/api"
-	launcher "github.com/hiveot/hivehub/services/launcher/api"
-	"github.com/hiveot/hivehub/services/launcher/config"
-	"github.com/hiveot/hivekitgo/clients"
-	"github.com/hiveot/hivekitgo/messaging"
-	"github.com/hiveot/hivekitgo/servers/wssserver"
-	"github.com/hiveot/hivekitgo/utils"
+	"github.com/hiveot/hivekit/go/agent"
+	"github.com/hiveot/hivekit/go/client"
+	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/server/wssserver"
+	"github.com/hiveot/hivekit/go/utils"
+	authz "github.com/hiveot/hub/runtime/authz/api"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
+	launcher "github.com/hiveot/hub/services/launcher/api"
+	"github.com/hiveot/hub/services/launcher/config"
 )
 
 // Use this default path instead of discovery when running locally and no server is configured
@@ -49,7 +50,7 @@ type LauncherService struct {
 	cmds []*exec.Cmd
 
 	// agent messaging client
-	ag *messaging.Agent
+	ag *agent.Agent
 
 	// mutex to keep things safe
 	mux sync.Mutex
@@ -225,11 +226,11 @@ func (svc *LauncherService) Start() error {
 	// this was delayed until after the runtime is up and running
 	// if a local runtime is started then the plugins can use localhost
 	if svc.ag == nil {
-		cc, token, _, err := clients.ConnectWithTokenFile(
+		cc, token, _, err := client.ConnectWithTokenFile(
 			svc.clientID, svc.certsDir, svc.serverURL, 0)
 		_ = token
 		if err == nil {
-			svc.ag = messaging.NewAgent(cc, nil, nil, nil, nil, 0)
+			svc.ag = agent.NewAgent(cc, nil, nil, nil, nil, 0)
 		} else {
 			err = fmt.Errorf("failed starting launcher service: %w", err)
 			return err

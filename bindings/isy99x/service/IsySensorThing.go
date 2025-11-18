@@ -3,8 +3,8 @@ package service
 import (
 	"errors"
 
-	"github.com/hiveot/hivekitgo/messaging"
-	"github.com/hiveot/hivekitgo/wot/td"
+	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/wot/td"
 )
 
 // IsySensorThing is a general-purpose sensor

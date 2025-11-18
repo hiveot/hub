@@ -4,10 +4,10 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/hiveot/hivekitgo/logging"
-	"github.com/hiveot/hivekitgo/messaging"
-	"github.com/hiveot/hivekitgo/wot"
-	"github.com/hiveot/hivekitgo/wot/td"
+	"github.com/hiveot/hivekit/go/logging"
+	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/wot"
+	"github.com/hiveot/hivekit/go/wot/td"
 
 	"github.com/stretchr/testify/assert"
 )

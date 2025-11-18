@@ -76,7 +76,7 @@ The Hub CLI provide a command to create user certificates manually. See the CLI 
 
 This package is built as part of the Hub.
 
-See [hub's README.md](https://github.com/hiveot/hivehub/blob/main/README.md) for more details on building and installation.
+See [hub's README.md](https://github.com/hiveot/hub/blob/main/README.md) for more details on building and installation.
 
 ### Configuration
 
@@ -107,17 +107,17 @@ The Hub CLI provides a commandline interface for managing certificates. For more
 
 The service API is defined with capnproto IDL at:
 
-> github.com/hiveot/hivehub/api/capnp/hubapi/certs.capnp
+> github.com/hiveot/hub/api/capnp/hubapi/certs.capnp
 
 A golang interface at:
 
-> github.com/hiveot/hivehub/pkg/certs/ICerts
+> github.com/hiveot/hub/pkg/certs/ICerts
 
 ### Golang Clients
 
 An easy to use golang POGS (plain old Golang Struct) client can be found at:
 
-> github.com/hiveot/hivehub/pkg/certs/capnpclient
+> github.com/hiveot/hub/pkg/certs/capnpclient
 
 To use this client, first obtain the capability (see below) and create the POGS instance. For example, to create a device certificate the provisioning service does this:
 

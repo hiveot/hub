@@ -8,12 +8,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/hiveot/hivehub/cmd/tm2go/genagent"
-	"github.com/hiveot/hivehub/cmd/tm2go/genconsumer"
-	"github.com/hiveot/hivehub/cmd/tm2go/gentypes"
-	"github.com/hiveot/hivehub/cmd/tm2go/listtms"
-	"github.com/hiveot/hivekitgo/logging"
-	"github.com/hiveot/hivekitgo/wot/td"
+	"github.com/hiveot/hivekit/go/logging"
+	"github.com/hiveot/hivekit/go/wot/td"
+	"github.com/hiveot/hub/cmd/tm2go/genagent"
+	"github.com/hiveot/hub/cmd/tm2go/genconsumer"
+	"github.com/hiveot/hub/cmd/tm2go/gentypes"
+	"github.com/hiveot/hub/cmd/tm2go/listtms"
 	"github.com/urfave/cli/v2"
 )
 

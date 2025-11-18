@@ -9,12 +9,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hiveot/hivehub/lib/buckets"
-	"github.com/hiveot/hivehub/services/hiveoview/src"
-	"github.com/hiveot/hivekitgo/clients"
-	"github.com/hiveot/hivekitgo/clients/authclient"
-	"github.com/hiveot/hivekitgo/messaging"
-	"github.com/hiveot/hivekitgo/servers/httpbasic"
+	"github.com/hiveot/hivekit/go/agent"
+	clients "github.com/hiveot/hivekit/go/client"
+	"github.com/hiveot/hivekit/go/client/authclient"
+	"github.com/hiveot/hivekit/go/consumer"
+	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/server/httpbasic"
+	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hub/services/hiveoview/src"
 )
 
 // WebSessionManager tracks client sessions using session cookies
@@ -36,7 +38,7 @@ type WebSessionManager struct {
 	// Hub CA certificate
 	caCert *x509.Certificate
 	// this service's agent for publishing events
-	ag *messaging.Agent
+	ag *agent.Agent
 
 	// persistence of dashboard configuration
 	configStore buckets.IBucketStore
@@ -77,10 +79,10 @@ func (sm *WebSessionManager) _addSession(
 		// session (plus its waiting for a lock).
 		// If the connection has been replaced then it won't match so ignore the
 		// callback if the connection differs.
-		co := messaging.NewConsumer(cc, sm.timeout)
+		co := consumer.NewConsumer(cc, sm.timeout)
 		existingSession.ReplaceConsumer(co)
 	} else {
-		co := messaging.NewConsumer(cc, sm.timeout)
+		co := consumer.NewConsumer(cc, sm.timeout)
 		clientID := co.GetClientID()
 		clientBucket := sm.configStore.GetBucket(clientID)
 
@@ -211,6 +213,7 @@ func (sm *WebSessionManager) HandleConnectWithPassword(
 	if err == nil {
 		if cid != "" {
 			_, err = sm._addSession(r, cid, cc)
+			_ = err
 		} else {
 			cc.Disconnect()
 		}
@@ -250,6 +253,7 @@ func (sm *WebSessionManager) ConnectWithToken(
 		loginID, authToken, sm.caCert, sm.hubURL, sm.timeout)
 	if err == nil {
 		cs, err = sm._addSession(r, cid, cc)
+		_ = err
 		// Update the session cookie with the new auth token (default 14 days)
 		maxAge := time.Hour * 24 * 14
 		err = SetSessionCookie(w, loginID, authToken, maxAge, sm.signingKey)
@@ -326,7 +330,7 @@ func (sm *WebSessionManager) GetSessionFromCookie(r *http.Request) (
 //	timeout of hub connections
 func NewWebSessionManager(
 	signingKey ed25519.PrivateKey, caCert *x509.Certificate,
-	ag *messaging.Agent, configStore buckets.IBucketStore,
+	ag *agent.Agent, configStore buckets.IBucketStore,
 	timeout time.Duration) *WebSessionManager {
 
 	cc := ag.GetConnection()

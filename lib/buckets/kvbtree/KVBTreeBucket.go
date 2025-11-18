@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/hiveot/hivehub/lib/buckets"
+	"github.com/hiveot/hub/lib/buckets"
 
 	"github.com/tidwall/btree"
 )

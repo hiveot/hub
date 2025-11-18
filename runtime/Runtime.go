@@ -6,18 +6,18 @@ import (
 	"path"
 	"time"
 
-	"github.com/hiveot/hivehub/lib/plugin"
-	authn "github.com/hiveot/hivehub/runtime/authn/api"
-	"github.com/hiveot/hivehub/runtime/authn/service"
-	authz "github.com/hiveot/hivehub/runtime/authz/api"
-	service2 "github.com/hiveot/hivehub/runtime/authz/service"
-	digitwin "github.com/hiveot/hivehub/runtime/digitwin/api"
-	"github.com/hiveot/hivehub/runtime/digitwin/router"
-	service4 "github.com/hiveot/hivehub/runtime/digitwin/service"
-	"github.com/hiveot/hivekitgo/logging"
-	"github.com/hiveot/hivekitgo/messaging"
-	"github.com/hiveot/hivekitgo/servers"
-	"github.com/hiveot/hivekitgo/wot/td"
+	"github.com/hiveot/hivekit/go/logging"
+	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/server"
+	"github.com/hiveot/hivekit/go/wot/td"
+	"github.com/hiveot/hub/lib/plugin"
+	authn "github.com/hiveot/hub/runtime/authn/api"
+	"github.com/hiveot/hub/runtime/authn/service"
+	authz "github.com/hiveot/hub/runtime/authz/api"
+	service2 "github.com/hiveot/hub/runtime/authz/service"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
+	"github.com/hiveot/hub/runtime/digitwin/router"
+	service4 "github.com/hiveot/hub/runtime/digitwin/service"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -32,7 +32,7 @@ type Runtime struct {
 	AuthzAgent     *service2.AuthzAgent
 	DigitwinSvc    *service4.DigitwinService
 	DigitwinRouter *router.DigitwinRouter
-	TransportsMgr  *servers.TransportManager
+	TransportsMgr  *server.TransportManager
 
 	// logging of request and response messages
 	requestLogger  *slog.Logger
@@ -165,7 +165,7 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	// Look for AddTDForms in each protocol. This is a rather roundabout way of getting
 	// the security scheme in the TD but necessary as it is pluggable.
 	// See AuthnSvc above
-	r.TransportsMgr = servers.NewTransportManager(
+	r.TransportsMgr = server.NewTransportManager(
 		&r.cfg.ProtocolsConfig,
 		r.cfg.ServerCert,
 		r.cfg.CaCert,

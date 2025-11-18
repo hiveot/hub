@@ -5,22 +5,23 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/hiveot/hivehub/cmd/hubcli/authcli"
-	"github.com/hiveot/hivehub/cmd/hubcli/certs"
-	"github.com/hiveot/hivehub/cmd/hubcli/directorycli"
-	"github.com/hiveot/hivehub/cmd/hubcli/historycli"
-	"github.com/hiveot/hivehub/cmd/hubcli/idprovcli"
-	"github.com/hiveot/hivehub/cmd/hubcli/launchercli"
-	"github.com/hiveot/hivehub/cmd/hubcli/pubsubcli"
-	"github.com/hiveot/hivehub/lib/plugin"
-	"github.com/hiveot/hivekitgo/clients"
-	"github.com/hiveot/hivekitgo/logging"
-	"github.com/hiveot/hivekitgo/messaging"
-	"github.com/hiveot/hivekitgo/utils"
+	"github.com/hiveot/hivekit/go/client"
+	"github.com/hiveot/hivekit/go/consumer"
+	"github.com/hiveot/hivekit/go/logging"
+	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/utils"
+	"github.com/hiveot/hub/cmd/hubcli/authcli"
+	"github.com/hiveot/hub/cmd/hubcli/certs"
+	"github.com/hiveot/hub/cmd/hubcli/directorycli"
+	"github.com/hiveot/hub/cmd/hubcli/historycli"
+	"github.com/hiveot/hub/cmd/hubcli/idprovcli"
+	"github.com/hiveot/hub/cmd/hubcli/launchercli"
+	"github.com/hiveot/hub/cmd/hubcli/pubsubcli"
+	"github.com/hiveot/hub/lib/plugin"
 	"github.com/urfave/cli/v2"
 )
 
-const Version = `0.6-alpha`
+const Version = `1.0-alpha`
 
 // var env utils.AppEnvironment
 var nowrap bool
@@ -30,7 +31,7 @@ var nowrap bool
 // commandline:  hubcli command options
 
 func main() {
-	var hc *messaging.Consumer
+	var hc *consumer.Consumer
 	var verbose bool
 	var loginID = "admin"
 	var password = ""
@@ -105,7 +106,7 @@ func main() {
 			}
 
 			// most commands need auth
-			authToken, err = clients.LoadToken(loginID, certsDir)
+			authToken, err = client.LoadToken(loginID, certsDir)
 
 			// TODO: cleanup: don't connect for these commands
 			cmd := c.Args().First()
@@ -114,20 +115,20 @@ func main() {
 			}
 
 			if err != nil && password == "" {
-				return fmt.Errorf("Missing authentication token: %w", err)
+				return fmt.Errorf("missing authentication token: %w", err)
 			}
-			caCert, _ := clients.LoadCA(certsDir)
+			caCert, _ := client.LoadCA(certsDir)
 			if password != "" {
-				cc, authToken, err = clients.ConnectWithPassword(loginID, password, caCert, serverURL, "", 0)
+				cc, authToken, err = client.ConnectWithPassword(loginID, password, caCert, serverURL, "", 0)
 			} else {
-				cc, err = clients.ConnectWithToken(loginID, authToken, caCert, serverURL, 0)
+				cc, err = client.ConnectWithToken(loginID, authToken, caCert, serverURL, 0)
 			}
 
 			if err != nil {
 				slog.Error("Unable to connect to the server", "err", err)
-				return fmt.Errorf("Unable to connect to the hub")
+				return fmt.Errorf("unable to connect to the hub")
 			}
-			hc = messaging.NewConsumer(cc, 0)
+			hc = consumer.NewConsumer(cc, 0)
 			return nil
 		},
 		// commands arguments are passed by reference so they are updated in the Before section

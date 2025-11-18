@@ -5,9 +5,9 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/hiveot/hivehub/bindings/owserver/service/eds"
-	"github.com/hiveot/hivekitgo/messaging"
-	"github.com/hiveot/hivekitgo/wot"
+	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/wot"
+	"github.com/hiveot/hub/bindings/owserver/service/eds"
 )
 
 const MaxUpdateWaitTime = 10

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hiveot/hivekitgo/logging"
+	"github.com/hiveot/hivekit/go/logging"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
 )

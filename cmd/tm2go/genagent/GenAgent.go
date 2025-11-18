@@ -3,8 +3,8 @@ package genagent
 import (
 	"time"
 
-	"github.com/hiveot/hivehub/cmd/tm2go/gentypes"
-	"github.com/hiveot/hivekitgo/wot/td"
+	"github.com/hiveot/hivekit/go/wot/td"
+	"github.com/hiveot/hub/cmd/tm2go/gentypes"
 )
 
 // GenAgent is the main function to generate the agent request handler that
@@ -31,8 +31,8 @@ func genImports(l *gentypes.SL, agentID string, serviceID string) {
 
 	l.Add("")
 	l.Add("import \"errors\"")
-	//l.Add("import \"github.com/hiveot/hivekitgo/messaging/messaging\"")
-	l.Add("import \"github.com/hiveot/hivekitgo/utils\"")
-	l.Add("import \"github.com/hiveot/hivekitgo/messaging\"")
+	//l.Add("import \"github.com/hiveot/hivekit/go/messaging/messaging\"")
+	l.Add("import \"github.com/hiveot/hivekit/go/utils\"")
+	l.Add("import \"github.com/hiveot/hivekit/go/messaging\"")
 	l.Add("")
 }

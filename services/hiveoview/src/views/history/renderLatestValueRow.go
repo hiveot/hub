@@ -6,9 +6,9 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/hiveot/hivehub/services/hiveoview/src/session"
-	"github.com/hiveot/hivekitgo/messaging"
-	"github.com/hiveot/hivekitgo/utils"
+	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/utils"
+	"github.com/hiveot/hub/services/hiveoview/src/session"
 )
 
 // Add the latest event value to the history table and to the history chart

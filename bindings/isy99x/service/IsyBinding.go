@@ -8,14 +8,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hiveot/hivehub/api/go/vocab"
-	"github.com/hiveot/hivehub/bindings/isy99x/config"
-	"github.com/hiveot/hivehub/bindings/isy99x/service/isy"
-	"github.com/hiveot/hivehub/lib/exposedthing"
-	"github.com/hiveot/hivehub/lib/plugin"
-	"github.com/hiveot/hivekitgo/logging"
-	"github.com/hiveot/hivekitgo/messaging"
-	"github.com/hiveot/hivekitgo/wot/td"
+	"github.com/hiveot/hivekit/go/agent"
+	"github.com/hiveot/hivekit/go/logging"
+	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/wot/td"
+	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/bindings/isy99x/config"
+	"github.com/hiveot/hub/bindings/isy99x/service/isy"
+	"github.com/hiveot/hub/lib/exposedthing"
+	"github.com/hiveot/hub/lib/plugin"
 )
 
 // IsyBinding is the protocol binding for managing the ISY99x Insteon gateway
@@ -26,7 +27,7 @@ type IsyBinding struct {
 
 	// Configuration of this protocol binding
 	config *config.Isy99xConfig
-	ag     *messaging.Agent
+	ag     *agent.Agent
 
 	thingID      string           // ID of the binding Thing
 	isyAPI       *isy.IsyAPI      // methods for communicating met ISY gateway device
@@ -145,7 +146,7 @@ func (svc *IsyBinding) MakeBindingTD() *td.TD {
 // If no connection can be made the heartbeat will retry periodically until stopped.
 //
 // This publishes a TD for this binding, starts a background polling heartbeat.
-func (svc *IsyBinding) Start(ag *messaging.Agent) (err error) {
+func (svc *IsyBinding) Start(ag *agent.Agent) (err error) {
 	slog.Info("Starting Isy99x binding")
 	svc.ag = ag
 	svc.thingID = ag.GetClientID()

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hiveot/hivekitgo/clients/discovery"
-	"github.com/hiveot/hivekitgo/utils/tlsclient"
+	"github.com/hiveot/hivekit/go/client/discovery"
+	"github.com/hiveot/hivekit/go/utils/tlsclient"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/urfave/cli/v2"
 )

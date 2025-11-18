@@ -6,11 +6,11 @@ import (
 	"log/slog"
 	"time"
 
-	digitwin "github.com/hiveot/hivehub/runtime/digitwin/api"
-	"github.com/hiveot/hivekitgo/messaging"
-	"github.com/hiveot/hivekitgo/utils"
-	"github.com/hiveot/hivekitgo/wot"
-	"github.com/hiveot/hivekitgo/wot/td"
+	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/utils"
+	"github.com/hiveot/hivekit/go/wot"
+	"github.com/hiveot/hivekit/go/wot/td"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 )
 
 // HandleNotification handles receiving a notification from an agent (event, property, action)

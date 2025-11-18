@@ -5,10 +5,10 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/hiveot/hivehub/cmd/tm2go/gentypes"
-	"github.com/hiveot/hivekitgo/utils"
-	"github.com/hiveot/hivekitgo/wot"
-	"github.com/hiveot/hivekitgo/wot/td"
+	"github.com/hiveot/hivekit/go/utils"
+	"github.com/hiveot/hivekit/go/wot"
+	"github.com/hiveot/hivekit/go/wot/td"
+	"github.com/hiveot/hub/cmd/tm2go/gentypes"
 )
 
 // GenServiceConsumer generates a consumer function for invoking Thing actions.
@@ -42,9 +42,9 @@ func genImports(l *gentypes.SL, agentID string, serviceID string) {
 
 	l.Add("")
 	//l.Add("import \"errors\"")
-	l.Add("import \"github.com/hiveot/hivekitgo/messaging\"")
-	//l.Add("import \"github.com/hiveot/hivekitgo/utils\"")
-	//l.Add("import \"github.com/hiveot/hivekitgo/messaging\"")
+	// l.Add("import \"github.com/hiveot/hivekit/go/messaging\"")
+	//l.Add("import \"github.com/hiveot/hivekit/go/utils\"")
+	l.Add("import \"github.com/hiveot/hivekit/go/consumer\"")
 	l.Add("")
 }
 
@@ -61,7 +61,7 @@ func genImports(l *gentypes.SL, agentID string, serviceID string) {
 //	key with the service action method.
 //	action affordance describing the input and output parameters
 func GenActionMethod(l *gentypes.SL, serviceTitle string, key string, action *td.ActionAffordance) {
-	argsString := "hc *messaging.Consumer"
+	argsString := "hc *consumer.Consumer"
 	respString := "err error"
 	invokeArgs := "nil"
 	invokeResp := "nil"

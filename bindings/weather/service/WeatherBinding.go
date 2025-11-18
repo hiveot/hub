@@ -5,10 +5,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hiveot/hivehub/bindings/weather/config"
-	"github.com/hiveot/hivehub/bindings/weather/providers"
-	"github.com/hiveot/hivehub/lib/plugin"
-	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivekit/go/agent"
+	"github.com/hiveot/hub/bindings/weather/config"
+	"github.com/hiveot/hub/bindings/weather/providers"
+	"github.com/hiveot/hub/lib/plugin"
 )
 
 // the key under which custom Thing titles are stored in the state service
@@ -20,7 +20,7 @@ type WeatherBinding struct {
 	cfg *config.WeatherConfig
 
 	// hub client to publish TDs and values and receive actions
-	ag *messaging.Agent
+	ag *agent.Agent
 
 	// Supported weather providers
 	providers map[string]providers.IWeatherProvider
@@ -77,7 +77,7 @@ func (svc *WeatherBinding) RemoveLocation(thingID string) {
 }
 
 // Start the weather binding using the given agent
-func (svc *WeatherBinding) Start(ag *messaging.Agent) error {
+func (svc *WeatherBinding) Start(ag *agent.Agent) error {
 	svc.ag = ag
 
 	// load the saved and add the pre-configured locations

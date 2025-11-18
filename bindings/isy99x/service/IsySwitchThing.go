@@ -5,12 +5,13 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/hiveot/hivehub/api/go/vocab"
-	"github.com/hiveot/hivehub/bindings/isy99x/service/isy"
-	"github.com/hiveot/hivekitgo/messaging"
-	"github.com/hiveot/hivekitgo/utils"
-	"github.com/hiveot/hivekitgo/wot"
-	"github.com/hiveot/hivekitgo/wot/td"
+	"github.com/hiveot/hivekit/go/agent"
+	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/utils"
+	"github.com/hiveot/hivekit/go/wot"
+	"github.com/hiveot/hivekit/go/wot/td"
+	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/bindings/isy99x/service/isy"
 )
 
 // IsySwitchThing is a general-purpose on/off switch
@@ -33,7 +34,7 @@ func (it *IsySwitchThing) GetPropValues(onlyChanges bool) map[string]any {
 // actionID string as defined in the action affordance
 // newValue is not used as these actions do not carry a parameter
 func (it *IsySwitchThing) HandleActionRequest(
-	ag *messaging.Agent, req *messaging.RequestMessage) *messaging.ResponseMessage {
+	ag *agent.Agent, req *messaging.RequestMessage) *messaging.ResponseMessage {
 	var restPath = ""
 	var newValue = ""
 	var input bool

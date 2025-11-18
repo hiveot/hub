@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hiveot/hivehub/lib/hubagent"
+	"github.com/hiveot/hub/lib/hubagent"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -10,11 +10,11 @@ import (
 	"net"
 	"time"
 
-	authz "github.com/hiveot/hivehub/runtime/authz/api"
-	"github.com/hiveot/hivehub/services/certs/certsapi"
-	"github.com/hiveot/hivekitgo/certs"
-	"github.com/hiveot/hivekitgo/keys"
-	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivekit/go/agent"
+	"github.com/hiveot/hivekit/go/certs"
+	"github.com/hiveot/hivekit/go/keys"
+	authz "github.com/hiveot/hub/runtime/authz/api"
+	"github.com/hiveot/hub/services/certs/certsapi"
 )
 
 // SelfSignedCertsService creates certificates for use by services, devices and admin users.
@@ -198,7 +198,7 @@ func (svc *SelfSignedCertsService) CreateUserCert(
 // Start the service and listen for requests
 //
 //	hc is the connection to the hub with a service role. For testing it can be nil.
-func (svc *SelfSignedCertsService) Start(ag *messaging.Agent) (err error) {
+func (svc *SelfSignedCertsService) Start(ag *agent.Agent) (err error) {
 	slog.Info("Starting certs service", "serviceID", ag.GetClientID())
 
 	// permissions for using this service are for admin only

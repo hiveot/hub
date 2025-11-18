@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/hiveot/hivehub/api/go/vocab"
-	digitwin "github.com/hiveot/hivehub/runtime/digitwin/api"
-	"github.com/hiveot/hivehub/services/hiveoview/src"
-	"github.com/hiveot/hivekitgo/utils/net"
-	"github.com/hiveot/hivekitgo/wot/td"
+	"github.com/hiveot/hivekit/go/utils/net"
+	"github.com/hiveot/hivekit/go/wot/td"
+	"github.com/hiveot/hub/api/go/vocab"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
+	"github.com/hiveot/hub/services/hiveoview/src"
 	jsoniter "github.com/json-iterator/go"
 )
 

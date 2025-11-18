@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hiveot/hivehub/runtime/authn/config"
-	"github.com/hiveot/hivehub/runtime/authn/service"
-	"github.com/hiveot/hivekitgo/logging"
+	"github.com/hiveot/hivekit/go/logging"
+	"github.com/hiveot/hub/runtime/authn/config"
+	"github.com/hiveot/hub/runtime/authn/service"
 	"github.com/stretchr/testify/assert"
 )
 

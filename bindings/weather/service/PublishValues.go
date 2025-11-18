@@ -6,11 +6,11 @@ import (
 	"math"
 	"time"
 
-	"github.com/hiveot/hivehub/api/go/vocab"
-	"github.com/hiveot/hivehub/bindings/weather/config"
-	"github.com/hiveot/hivehub/bindings/weather/providers"
-	"github.com/hiveot/hivekitgo/messaging"
-	"github.com/hiveot/hivekitgo/utils"
+	"github.com/hiveot/hivekit/go/agent"
+	"github.com/hiveot/hivekit/go/utils"
+	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/bindings/weather/config"
+	"github.com/hiveot/hub/bindings/weather/providers"
 )
 
 // Poll for current and forecast weather updates and publish events.
@@ -99,7 +99,7 @@ func (svc *WeatherBinding) Poll() error {
 }
 
 // PublishBindingProperties publish attributes and configuration of the binding
-func PublishBindingProperties(ag *messaging.Agent, thingID string, cfg *config.WeatherConfig) error {
+func PublishBindingProperties(ag *agent.Agent, thingID string, cfg *config.WeatherConfig) error {
 	propMap := map[string]any{
 		PropNameWeatherProvider: cfg.DefaultProvider,
 		PropNameUnitsWindSpeed:  cfg.WindSpeedUnits,
@@ -109,7 +109,7 @@ func PublishBindingProperties(ag *messaging.Agent, thingID string, cfg *config.W
 }
 
 // PublishLocationProperties publish attributes and configuration of a location
-func PublishLocationProperties(ag *messaging.Agent, thingID string, config config.WeatherLocation) error {
+func PublishLocationProperties(ag *agent.Agent, thingID string, config config.WeatherLocation) error {
 	propMap := map[string]any{
 		PropNameCurrentEnabled:      config.CurrentEnabled,
 		PropNameCurrentInterval:     config.CurrentInterval,
@@ -125,7 +125,7 @@ func PublishLocationProperties(ag *messaging.Agent, thingID string, config confi
 }
 
 // PublishCurrent publish events with the current weather
-func PublishCurrent(ag *messaging.Agent, thingID string, current providers.CurrentWeather) error {
+func PublishCurrent(ag *agent.Agent, thingID string, current providers.CurrentWeather) error {
 	err := ag.PubProperty(thingID, PropNameCurrentUpdated, current.Updated)
 	if err != nil {
 		return err

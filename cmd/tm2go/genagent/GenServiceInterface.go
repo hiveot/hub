@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/hiveot/hivehub/cmd/tm2go/gentypes"
-	"github.com/hiveot/hivekitgo/utils"
-	"github.com/hiveot/hivekitgo/wot/td"
+	"github.com/hiveot/hivekit/go/utils"
+	"github.com/hiveot/hivekit/go/wot/td"
+	"github.com/hiveot/hub/cmd/tm2go/gentypes"
 )
 
 // GenServiceInterface generates the interface the service has to implement.

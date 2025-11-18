@@ -4,11 +4,12 @@ import "C"
 import (
 	"time"
 
-	"github.com/hiveot/hivehub/services/history/historyapi"
-	"github.com/hiveot/hivekitgo/messaging"
-	"github.com/hiveot/hivekitgo/utils"
-	"github.com/hiveot/hivekitgo/wot"
-	"github.com/hiveot/hivekitgo/wot/td"
+	"github.com/hiveot/hivekit/go/consumer"
+	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/utils"
+	"github.com/hiveot/hivekit/go/wot"
+	"github.com/hiveot/hivekit/go/wot/td"
+	"github.com/hiveot/hub/services/history/historyapi"
 )
 
 // HistoryCursorClient provides iterator client for iterating the history
@@ -18,7 +19,7 @@ type HistoryCursorClient struct {
 
 	// history cursor service ID
 	dThingID string
-	co       *messaging.Consumer
+	co       *consumer.Consumer
 }
 
 // First positions the cursor at the first key in the ordered list
@@ -133,7 +134,7 @@ func (cl *HistoryCursorClient) Seek(timeStamp time.Time) (
 //	co client connection to the Hub
 //	serviceID of the read capability
 //	cursorKey is the iterator key obtain when requesting the cursor
-func NewHistoryCursorClient(co *messaging.Consumer, cursorKey string) *HistoryCursorClient {
+func NewHistoryCursorClient(co *consumer.Consumer, cursorKey string) *HistoryCursorClient {
 	agentID := historyapi.AgentID
 	serviceID := historyapi.ReadHistoryServiceID
 	cl := &HistoryCursorClient{

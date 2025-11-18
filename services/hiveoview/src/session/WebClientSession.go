@@ -9,11 +9,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/hiveot/hivehub/lib/buckets"
-	"github.com/hiveot/hivehub/lib/consumedthing"
-	"github.com/hiveot/hivekitgo/messaging"
-	"github.com/hiveot/hivekitgo/utils"
-	"github.com/hiveot/hivekitgo/wot"
+	"github.com/hiveot/hivekit/go/consumer"
+	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/utils"
+	"github.com/hiveot/hivekit/go/wot"
+	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hub/lib/consumedthing"
 )
 
 type NotifyType string
@@ -62,7 +63,7 @@ type WebClientSession struct {
 	clientStateError error
 
 	// The consumer connection of this session
-	co *messaging.Consumer
+	co *consumer.Consumer
 
 	// Holder of consumed things for this session
 	ctDir *consumedthing.ConsumedThingsDirectory
@@ -80,7 +81,7 @@ type WebClientSession struct {
 	//lastError    error
 
 	// The associated consumer client for pub/sub
-	//co *messaging.Consumer
+	//co *consumer.Consumer
 
 	// session mutex for updating sse and activity
 	mux sync.RWMutex
@@ -122,7 +123,7 @@ func (sess *WebClientSession) GetClientData() *SessionData {
 }
 
 // GetConsumer returns the hub client connection for use in pub/sub
-func (sess *WebClientSession) GetConsumer() *messaging.Consumer {
+func (sess *WebClientSession) GetConsumer() *consumer.Consumer {
 	return sess.co
 }
 
@@ -329,12 +330,11 @@ func (sess *WebClientSession) onNotification(notif *messaging.NotificationMessag
 			messaging.AffordanceTypeEvent, notif.ThingID, notif.Name)
 		sess.SendSSE(eventID, utils.FormatDateTime(notif.Timestamp))
 	}
-	return
 }
 
 // ReplaceConsumer replaces the hub consumer connection for this client session.
 // This closes the old connection and ignores the callback it gives.
-func (sess *WebClientSession) ReplaceConsumer(newCo *messaging.Consumer) {
+func (sess *WebClientSession) ReplaceConsumer(newCo *consumer.Consumer) {
 	oldCo := sess.co
 	oldCo.Disconnect()
 	sess.co = newCo
@@ -452,7 +452,7 @@ func (sess *WebClientSession) WritePage(w http.ResponseWriter, buff *bytes.Buffe
 //	configBucket to store dashboards. This will be closed when this session is removed.
 //	onClose is the callback to invoke when this session is closed.
 func NewWebClientSession(
-	cid string, co *messaging.Consumer, remoteAddr string,
+	cid string, co *consumer.Consumer, remoteAddr string,
 	configBucket buckets.IBucket,
 	onClosed func(*WebClientSession)) *WebClientSession {
 	var err error
@@ -486,7 +486,9 @@ func NewWebClientSession(
 
 	// TODO: selectively subscribe instead of everything, but, based on what?
 	err = co.Subscribe("", "")
-	err = co.ObserveProperty("", "")
+	if err == nil {
+		err = co.ObserveProperty("", "")
+	}
 	if err != nil {
 		//webSess.lastError = err
 	}

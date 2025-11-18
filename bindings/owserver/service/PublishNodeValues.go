@@ -6,11 +6,11 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/hiveot/hivehub/api/go/vocab"
-	"github.com/hiveot/hivekitgo/wot"
-	"github.com/hiveot/hivekitgo/wot/td"
+	"github.com/hiveot/hivekit/go/wot"
+	"github.com/hiveot/hivekit/go/wot/td"
+	"github.com/hiveot/hub/api/go/vocab"
 
-	"github.com/hiveot/hivehub/bindings/owserver/service/eds"
+	"github.com/hiveot/hub/bindings/owserver/service/eds"
 )
 
 type NodeValueStamp struct {

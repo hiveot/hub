@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/hiveot/hivehub/services/hiveoview/src/session"
-	"github.com/hiveot/hivekitgo/servers/hiveotsseserver"
+	"github.com/hiveot/hivekit/go/server/hiveotsseserver"
+	"github.com/hiveot/hub/services/hiveoview/src/session"
 )
 
 // SseServe serves incoming SSE connections, eg. one per browser tab.

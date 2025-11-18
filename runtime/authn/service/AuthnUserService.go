@@ -3,10 +3,10 @@ package service
 import (
 	"log/slog"
 
-	authn "github.com/hiveot/hivehub/runtime/authn/api"
-	"github.com/hiveot/hivehub/runtime/authn/authnstore"
-	"github.com/hiveot/hivehub/runtime/authn/config"
-	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivekit/go/messaging"
+	authn "github.com/hiveot/hub/runtime/authn/api"
+	"github.com/hiveot/hub/runtime/authn/authnstore"
+	"github.com/hiveot/hub/runtime/authn/config"
 )
 
 // AuthnUserService handles authentication and authorization of regular users

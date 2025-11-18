@@ -1,7 +1,7 @@
 package launcher_test
 
 import (
-	"github.com/hiveot/hivehub/services/launcher/service"
+	"github.com/hiveot/hub/services/launcher/service"
 	"os"
 	"sync"
 	"sync/atomic"

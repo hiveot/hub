@@ -1,12 +1,12 @@
 package service
 
 import (
-	"github.com/hiveot/hivehub/api/go/vocab"
-	"github.com/hiveot/hivehub/bindings/weather/config"
-	"github.com/hiveot/hivehub/bindings/weather/providers"
-	"github.com/hiveot/hivekitgo/messaging"
-	"github.com/hiveot/hivekitgo/wot"
-	"github.com/hiveot/hivekitgo/wot/td"
+	"github.com/hiveot/hivekit/go/agent"
+	"github.com/hiveot/hivekit/go/wot"
+	"github.com/hiveot/hivekit/go/wot/td"
+	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/bindings/weather/config"
+	"github.com/hiveot/hub/bindings/weather/providers"
 )
 
 // read-only properties
@@ -221,7 +221,7 @@ func CreateTDOfLocation(defaultCfg *config.WeatherConfig, cfg *config.WeatherLoc
 }
 
 // PublishBindingTD publishes the TD of the binding itself
-func PublishBindingTD(ag *messaging.Agent, cfg *config.WeatherConfig) error {
+func PublishBindingTD(ag *agent.Agent, cfg *config.WeatherConfig) error {
 	thingID := ag.GetClientID()
 	tdoc := CreateBindingTD(thingID)
 	err := ag.UpdateThing(tdoc)
@@ -232,7 +232,7 @@ func PublishBindingTD(ag *messaging.Agent, cfg *config.WeatherConfig) error {
 }
 
 // PublishLocationTDs publishes the TD of all locationStore and current properties
-func PublishLocationTDs(ag *messaging.Agent, defaultCfg *config.WeatherConfig, locationStore *LocationStore) (err error) {
+func PublishLocationTDs(ag *agent.Agent, defaultCfg *config.WeatherConfig, locationStore *LocationStore) (err error) {
 	locationStore.ForEach(func(loc config.WeatherLocation) {
 		err2 := PublishLocationTD(ag, defaultCfg, loc)
 		if err2 != nil {
@@ -243,7 +243,7 @@ func PublishLocationTDs(ag *messaging.Agent, defaultCfg *config.WeatherConfig, l
 }
 
 // PublishLocationTD publishes the TD of the given location and its current values
-func PublishLocationTD(ag *messaging.Agent, defaultCfg *config.WeatherConfig, loc config.WeatherLocation) error {
+func PublishLocationTD(ag *agent.Agent, defaultCfg *config.WeatherConfig, loc config.WeatherLocation) error {
 	tdoc := CreateTDOfLocation(defaultCfg, &loc)
 	err := ag.UpdateThing(tdoc)
 	if err == nil {

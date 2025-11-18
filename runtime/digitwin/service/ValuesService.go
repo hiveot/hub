@@ -1,9 +1,9 @@
 package service
 
 import (
-	digitwin "github.com/hiveot/hivehub/runtime/digitwin/api"
-	"github.com/hiveot/hivehub/runtime/digitwin/store"
-	"github.com/hiveot/hivekitgo/utils"
+	"github.com/hiveot/hivekit/go/utils"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
+	"github.com/hiveot/hub/runtime/digitwin/store"
 )
 
 // ValuesService provides access to digital thing values by consumers

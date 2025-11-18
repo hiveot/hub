@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/hiveot/hivehub/lib/buckets"
+	"github.com/hiveot/hub/lib/buckets"
 	"log/slog"
 
 	"github.com/cockroachdb/pebble"

@@ -8,13 +8,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hiveot/hivehub/api/go/vocab"
-	"github.com/hiveot/hivehub/bindings/isy99x/service/isy"
-	"github.com/hiveot/hivehub/lib/exposedthing"
-	digitwin "github.com/hiveot/hivehub/runtime/digitwin/api"
-	"github.com/hiveot/hivekitgo/messaging"
-	"github.com/hiveot/hivekitgo/wot"
-	"github.com/hiveot/hivekitgo/wot/td"
+	"github.com/hiveot/hivekit/go/agent"
+	"github.com/hiveot/hivekit/go/wot"
+	"github.com/hiveot/hivekit/go/wot/td"
+	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/bindings/isy99x/service/isy"
+	"github.com/hiveot/hub/lib/exposedthing"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -368,7 +368,7 @@ func (igw *IsyGatewayThing) MakeTD() *td.TD {
 //}
 
 // PubTD read and publishes the gateway's TD
-func (svc *IsyGatewayThing) PubTD(ag *messaging.Agent) (err error) {
+func (svc *IsyGatewayThing) PubTD(ag *agent.Agent) (err error) {
 	tdi := svc.MakeTD()
 	tdJSON, _ := jsoniter.MarshalToString(tdi)
 	err = digitwin.ThingDirectoryUpdateThing(ag.Consumer, tdJSON)

@@ -5,14 +5,14 @@ import (
 	"strings"
 	"time"
 
-	authn "github.com/hiveot/hivehub/runtime/authn/api"
-	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivekit/go/consumer"
+	authn "github.com/hiveot/hub/runtime/authn/api"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/exp/rand"
 )
 
 // AuthSetPasswordCommand sets a client's password
-func AuthSetPasswordCommand(hc **messaging.Consumer) *cli.Command {
+func AuthSetPasswordCommand(hc **consumer.Consumer) *cli.Command {
 	return &cli.Command{
 		Name:      "setpass",
 		Usage:     "Set password. (careful, no confirmation)",
@@ -36,7 +36,7 @@ func AuthSetPasswordCommand(hc **messaging.Consumer) *cli.Command {
 //
 //	loginID is the ID or email of the user
 //	newPassword can be empty to auto-generate a password
-func HandleSetPassword(hc *messaging.Consumer, loginID string, newPassword string) error {
+func HandleSetPassword(hc *consumer.Consumer, loginID string, newPassword string) error {
 	if newPassword == "" {
 		newPassword = GeneratePassword(9, true)
 	}

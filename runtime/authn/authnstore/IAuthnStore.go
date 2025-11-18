@@ -1,7 +1,7 @@
 package authnstore
 
 import (
-	authn "github.com/hiveot/hivehub/runtime/authn/api"
+	authn "github.com/hiveot/hub/runtime/authn/api"
 )
 
 // AuthnEntry containing client profile and password hash

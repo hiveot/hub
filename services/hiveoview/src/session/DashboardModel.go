@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivekit/go/messaging"
 	"github.com/teris-io/shortid"
 )
 
@@ -81,7 +81,7 @@ type DashboardTile struct {
 func (t DashboardTile) GetRGBA() string {
 	// color has format #aabbcc
 	// rgba has the format rgba(aa,bb,cc, tp)
-	tp, _ := strconv.ParseFloat(t.BackgroundTransparency, 10)
+	tp, _ := strconv.ParseFloat(t.BackgroundTransparency, 32)
 	tpInt := int(tp * 255) // to hex
 	rgba := fmt.Sprintf("%s%02X", t.BackgroundColor, tpInt)
 	return rgba

@@ -5,7 +5,7 @@ package vocab
 // type: WoTVocab
 // version: 0.1
 // generated: 03 Oct 25 12:32 PDT
-// source: github.com/hiveot/hivehub/api/vocab/wot-vocab.yaml
+// source: github.com/hiveot/hub/api/vocab/wot-vocab.yaml
 // description: WoT vocabulary definition. See https://www.w3.org/TR/2020/WD-wot-thing-description11-20201124/#sec-core-vocabulary-definition
 const (
 	OpCancelAction                = "cancelaction"
@@ -90,7 +90,7 @@ const (
 // type: ActionClasses
 // version: 0.1
 // generated: 03 Oct 25 12:32 PDT
-// source: github.com/hiveot/hivehub/api/vocab/ht-action-classes.yaml
+// source: github.com/hiveot/hub/api/vocab/ht-action-classes.yaml
 // namespace: hiveot
 const (
 	ActionDimmer              = "hiveot:action:dimmer"
@@ -154,7 +154,7 @@ var ActionClassesMap = map[string]struct {
 // type: PropertyClasses
 // version: 0.1
 // generated: 03 Oct 25 12:32 PDT
-// source: github.com/hiveot/hivehub/api/vocab/ht-property-classes.yaml
+// source: github.com/hiveot/hub/api/vocab/ht-property-classes.yaml
 // namespace: hiveot
 const (
 	PropAlarmMotion           = "hiveot:prop:alarm:motion"
@@ -342,7 +342,7 @@ var PropertyClassesMap = map[string]struct {
 // type: ThingClasses
 // version: 0.1
 // generated: 03 Oct 25 12:32 PDT
-// source: github.com/hiveot/hivehub/api/vocab/ht-thing-classes.yaml
+// source: github.com/hiveot/hub/api/vocab/ht-thing-classes.yaml
 // namespace: hiveot
 const (
 	ThingActuator                 = "hiveot:thing:actuator"
@@ -552,7 +552,7 @@ var ThingClassesMap = map[string]struct {
 // type: UnitClasses
 // version: 0.1
 // generated: 03 Oct 25 12:32 PDT
-// source: github.com/hiveot/hivehub/api/vocab/ht-unit-classes.yaml
+// source: github.com/hiveot/hub/api/vocab/ht-unit-classes.yaml
 // namespace: hiveot
 const (
 	UnitAmpere           = "hiveot:unit:ampere"

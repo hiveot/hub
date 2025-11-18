@@ -6,21 +6,22 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hiveot/hivehub/lib/testenv"
-	authn "github.com/hiveot/hivehub/runtime/authn/api"
-	authz "github.com/hiveot/hivehub/runtime/authz/api"
-	"github.com/hiveot/hivehub/services/idprov/idprovapi"
-	"github.com/hiveot/hivehub/services/idprov/idprovclient"
-	"github.com/hiveot/hivehub/services/idprov/service"
-	"github.com/hiveot/hivekitgo/clients"
-	"github.com/hiveot/hivekitgo/keys"
-	"github.com/hiveot/hivekitgo/messaging"
-	"github.com/hiveot/hivekitgo/utils/tlsclient"
+	"github.com/hiveot/hivekit/go/agent"
+	clients "github.com/hiveot/hivekit/go/client"
+	"github.com/hiveot/hivekit/go/consumer"
+	"github.com/hiveot/hivekit/go/keys"
+	"github.com/hiveot/hivekit/go/utils/tlsclient"
+	"github.com/hiveot/hub/lib/testenv"
+	authn "github.com/hiveot/hub/runtime/authn/api"
+	authz "github.com/hiveot/hub/runtime/authz/api"
+	"github.com/hiveot/hub/services/idprov/idprovapi"
+	"github.com/hiveot/hub/services/idprov/idprovclient"
+	"github.com/hiveot/hub/services/idprov/service"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/hiveot/hivekitgo/logging"
+	"github.com/hiveot/hivekit/go/logging"
 )
 
 // when testing using the capnp RPC
@@ -30,7 +31,7 @@ var testPort = 23001
 var ts *testenv.TestServer
 
 // Create a new store, delete if it already exists
-func newIdProvService() (svc *service.IdProvService, co1 *messaging.Consumer, stopFn func()) {
+func newIdProvService() (svc *service.IdProvService, co1 *consumer.Consumer, stopFn func()) {
 
 	ts = testenv.StartTestServer(true)
 	agentConn, token1 := ts.AddConnectService(idprovapi.AgentID)
@@ -128,7 +129,7 @@ func TestAutomaticProvisioning(t *testing.T) {
 	require.NoError(t, err)
 	//err = agConn.ConnectWithToken(token1)
 	//require.NoError(t, err)
-	ag1 := messaging.NewAgent(cc, nil, nil, nil, nil, 0)
+	ag1 := agent.NewAgent(cc, nil, nil, nil, nil, 0)
 	//ag1.SetRetryConnect(false)
 	ag1.Disconnect()
 }
@@ -165,11 +166,15 @@ func TestAutomaticProvisioningBadParameters(t *testing.T) {
 	status, tokenEnc, err = idprovclient.SubmitIdProvRequest(
 		device1ID, "", "", tlsClient)
 	assert.Error(t, err)
+	assert.Empty(t, status)
+	assert.Empty(t, tokenEnc)
 
 	// test bad public key
 	status, tokenEnc, err = idprovclient.SubmitIdProvRequest(
 		device1ID, "badpubkey", "", tlsClient)
 	require.Error(t, err)
+	assert.Empty(t, status)
+	assert.Empty(t, tokenEnc)
 }
 
 func TestManualProvisioning(t *testing.T) {
@@ -197,8 +202,10 @@ func TestManualProvisioning(t *testing.T) {
 
 	// provisioned device should be added to the list of pending devices
 	pendingList, err := mngCl.GetRequests(true, false, false)
+	require.NoError(t, err)
 	require.True(t, len(pendingList) > 0)
 	assert.Equal(t, device1ID, pendingList[0].ClientID)
+
 	approvedList, err := mngCl.GetRequests(false, true, false)
 	assert.NoError(t, err)
 	assert.True(t, len(approvedList) == 0)
@@ -208,11 +215,10 @@ func TestManualProvisioning(t *testing.T) {
 	assert.NoError(t, err)
 
 	// provisioning request should now succeed
-	status, token, err = idprovclient.SubmitIdProvRequest(
+	status, _, err = idprovclient.SubmitIdProvRequest(
 		device1ID, device1PubPEM, "", tlsClient)
 	require.NoError(t, err)
 	require.False(t, status.Pending)
-	require.NotEmpty(t, status.ReceivedMSE)
 	require.NotEmpty(t, status.ApprovedMSE)
 	require.Empty(t, status.RejectedMSE)
 
@@ -223,5 +229,6 @@ func TestManualProvisioning(t *testing.T) {
 	assert.Equal(t, device1ID, approvedList[0].ClientID)
 
 	pendingList, err = mngCl.GetRequests(true, false, false)
+	assert.NoError(t, err)
 	require.True(t, len(pendingList) == 0)
 }

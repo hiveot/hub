@@ -6,7 +6,7 @@ import (
 	"path"
 	"time"
 
-	"github.com/hiveot/hivehub/cmd/genvocab/vocab"
+	"github.com/hiveot/hub/cmd/genvocab/vocab"
 	"github.com/urfave/cli/v2"
 )
 

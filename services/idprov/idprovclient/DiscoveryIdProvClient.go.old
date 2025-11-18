@@ -2,8 +2,8 @@ package idprovclient
 
 import (
 	"fmt"
-	"github.com/hiveot/hivehub/services/idprov/idprovapi"
-	"github.com/hiveot/hivekitgo/utils/discovery"
+	"github.com/hiveot/hub/services/idprov/idprovapi"
+	"github.com/hiveot/hivekit/go/utils/discovery"
 	"log/slog"
 	"time"
 )

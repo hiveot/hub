@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/hiveot/hivehub/bindings/isy99x/config"
-	"github.com/hiveot/hivehub/bindings/isy99x/service"
-	"github.com/hiveot/hivehub/lib/plugin"
+	"github.com/hiveot/hub/bindings/isy99x/config"
+	"github.com/hiveot/hub/bindings/isy99x/service"
+	"github.com/hiveot/hub/lib/plugin"
 )
 
 // Start the ISY99x protocol binding

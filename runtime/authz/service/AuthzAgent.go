@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"log/slog"
 
-	authn "github.com/hiveot/hivehub/runtime/authn/api"
-	authz "github.com/hiveot/hivehub/runtime/authz/api"
-	"github.com/hiveot/hivekitgo/messaging"
-	"github.com/hiveot/hivekitgo/wot/td"
+	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/wot/td"
+	authn "github.com/hiveot/hub/runtime/authn/api"
+	authz "github.com/hiveot/hub/runtime/authz/api"
 )
 
 // AuthzAgent serves the message based interface to the authz service API.

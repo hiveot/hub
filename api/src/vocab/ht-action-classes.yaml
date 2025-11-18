@@ -1,6 +1,6 @@
 # ht-action-classes.yaml
 #
-# By: HiveOT project (github.com/hiveot/hivehub)
+# By: HiveOT project (github.com/hiveot/hub)
 # Subject: Vocabulary definitions for HiveOT WoT action classes.
 # Version: 0.1
 #
@@ -15,7 +15,7 @@
 #
 ActionClasses:
   version: "0.1"
-  link: "github.com/hiveot/hivehub/api/vocab/ht-action-classes.yaml"
+  link: "github.com/hiveot/hub/api/vocab/ht-action-classes.yaml"
   namespace: "hiveot"
   vocab:
     # hiveot:action:media commands to control media playback

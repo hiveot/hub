@@ -7,7 +7,7 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/hiveot/hivehub/lib/buckets"
+	"github.com/hiveot/hub/lib/buckets"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -87,6 +87,9 @@ func (model *SessionData) LoadState() error {
 		err = jsoniter.Unmarshal(dashboardsRaw, &dashboards)
 		if err != nil {
 			err = fmt.Errorf("invalid dashboard data in store: %w", err)
+		}
+		if err != nil {
+			slog.Error(err.Error())
 		}
 	}
 	// nothing saved so use defaults

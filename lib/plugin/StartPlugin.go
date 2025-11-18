@@ -4,8 +4,8 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/hiveot/hivekitgo/clients"
-	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivekit/go/agent"
+	"github.com/hiveot/hivekit/go/client"
 )
 
 type PluginConfig struct {
@@ -16,7 +16,7 @@ type PluginConfig struct {
 type IPlugin interface {
 	// Start the plugin with the given environment settings and hub connection
 	//	ag is the agent with the capability for publishing and subscribing
-	Start(ag *messaging.Agent) error
+	Start(ag *agent.Agent) error
 	Stop()
 }
 
@@ -41,7 +41,7 @@ type IPlugin interface {
 //	serverURL is the URL of the hub server to connect to, if provided
 func StartPlugin(plugin IPlugin, clientID string, certsDir string, serverURL string) {
 
-	cc, token, _, err := clients.ConnectWithTokenFile(clientID, certsDir, serverURL, 0)
+	cc, token, _, err := client.ConnectWithTokenFile(clientID, certsDir, serverURL, 0)
 	_ = token
 
 	if err != nil {
@@ -49,7 +49,7 @@ func StartPlugin(plugin IPlugin, clientID string, certsDir string, serverURL str
 		os.Exit(1)
 	}
 	// start the service with the agent.
-	ag := messaging.NewAgent(cc, nil, nil, nil, nil, 0)
+	ag := agent.NewAgent(cc, nil, nil, nil, nil, 0)
 	err = plugin.Start(ag)
 	if err != nil {
 		slog.Error("failed starting service", "err", err.Error())

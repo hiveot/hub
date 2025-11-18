@@ -37,7 +37,7 @@ This binding:
 ## Dependencies
 
 1. A working EDS OWServer gateway on the local network.
-2. This binding works with the [HiveOT Hub](https://github.com/hiveot/hivehub).
+2. This binding works with the [HiveOT Hub](https://github.com/hiveot/hub).
 
 ## Usage
 

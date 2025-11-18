@@ -7,16 +7,16 @@ import (
 	"os"
 	"path"
 
-	authn "github.com/hiveot/hivehub/runtime/authn/api"
-	authz "github.com/hiveot/hivehub/runtime/authz/api"
-	"github.com/hiveot/hivekitgo/keys"
-	"github.com/hiveot/hivekitgo/messaging"
-	"github.com/hiveot/hivekitgo/utils"
+	"github.com/hiveot/hivekit/go/consumer"
+	"github.com/hiveot/hivekit/go/keys"
+	"github.com/hiveot/hivekit/go/utils"
+	authn "github.com/hiveot/hub/runtime/authn/api"
+	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/urfave/cli/v2"
 )
 
 // AuthAddUserCommand adds a user
-func AuthAddUserCommand(hc **messaging.Consumer) *cli.Command {
+func AuthAddUserCommand(hc **consumer.Consumer) *cli.Command {
 	displayName := ""
 	var role string = string(authz.ClientRoleViewer)
 	rolesTxt := fmt.Sprintf("[%s, %s, %s, %s]",
@@ -56,7 +56,7 @@ func AuthAddUserCommand(hc **messaging.Consumer) *cli.Command {
 }
 
 // AuthAddServiceCommand adds a service with key and auth token
-func AuthAddServiceCommand(hc **messaging.Consumer, certsDir *string) *cli.Command {
+func AuthAddServiceCommand(hc **consumer.Consumer, certsDir *string) *cli.Command {
 	displayName := ""
 
 	return &cli.Command{
@@ -85,7 +85,7 @@ func AuthAddServiceCommand(hc **messaging.Consumer, certsDir *string) *cli.Comma
 }
 
 // AuthListClientsCommand lists user profiles
-func AuthListClientsCommand(hc **messaging.Consumer) *cli.Command {
+func AuthListClientsCommand(hc **consumer.Consumer) *cli.Command {
 	return &cli.Command{
 		Name:     "lu",
 		Usage:    "List users",
@@ -102,7 +102,7 @@ func AuthListClientsCommand(hc **messaging.Consumer) *cli.Command {
 }
 
 // AuthRemoveClientCommand removes a user
-func AuthRemoveClientCommand(hc **messaging.Consumer) *cli.Command {
+func AuthRemoveClientCommand(hc **consumer.Consumer) *cli.Command {
 	return &cli.Command{
 		Name:      "rm",
 		Usage:     "Remove a user or service. (careful, no confirmation)",
@@ -121,7 +121,7 @@ func AuthRemoveClientCommand(hc **messaging.Consumer) *cli.Command {
 }
 
 // AuthRoleCommand changes a user's role
-func AuthRoleCommand(hc **messaging.Consumer) *cli.Command {
+func AuthRoleCommand(hc **consumer.Consumer) *cli.Command {
 	return &cli.Command{
 		Name:      "setrole",
 		Usage:     "Set a new role",
@@ -142,7 +142,7 @@ func AuthRoleCommand(hc **messaging.Consumer) *cli.Command {
 
 // HandleAddUser adds a user and displays a temporary password
 func HandleAddUser(
-	hc *messaging.Consumer, loginID string, displayName string, role string) (err error) {
+	hc *consumer.Consumer, loginID string, displayName string, role string) (err error) {
 
 	newPassword := GeneratePassword(9, true)
 
@@ -167,7 +167,7 @@ func HandleAddUser(
 //	displayName is optional
 //	certsDir with directory to store keys/token
 func HandleAddService(
-	hc *messaging.Consumer, serviceID string, displayName string, certsDir string) (err error) {
+	hc *consumer.Consumer, serviceID string, displayName string, certsDir string) (err error) {
 	var kp keys.IHiveKey
 	//TODO: use standardized extensions from launcher
 	keyFile := serviceID + ".key"
@@ -217,7 +217,7 @@ func HandleAddService(
 }
 
 // HandleListClients shows a list of user profiles
-func HandleListClients(hc *messaging.Consumer) (err error) {
+func HandleListClients(hc *consumer.Consumer) (err error) {
 
 	profileList, err := authn.AdminGetProfiles(hc)
 
@@ -252,7 +252,7 @@ func HandleListClients(hc *messaging.Consumer) (err error) {
 }
 
 // HandleRemoveClient removes a user
-func HandleRemoveClient(hc *messaging.Consumer, clientID string) (err error) {
+func HandleRemoveClient(hc *consumer.Consumer, clientID string) (err error) {
 	err = authn.AdminRemoveClient(hc, clientID)
 
 	if err != nil {

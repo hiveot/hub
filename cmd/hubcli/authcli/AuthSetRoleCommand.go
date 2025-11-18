@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"strings"
 
-	authz "github.com/hiveot/hivehub/runtime/authz/api"
-	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivekit/go/consumer"
+	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/urfave/cli/v2"
 )
 
 // AuthSetRoleCommand changes a user's role
-func AuthSetRoleCommand(hc **messaging.Consumer) *cli.Command {
+func AuthSetRoleCommand(hc **consumer.Consumer) *cli.Command {
 	validRoles := []string{
 		string(authz.ClientRoleViewer), string(authz.ClientRoleOperator),
 		string(authz.ClientRoleManager), string(authz.ClientRoleAdmin),
@@ -39,7 +39,7 @@ func AuthSetRoleCommand(hc **messaging.Consumer) *cli.Command {
 //
 //	loginID is the ID or email of the user
 //	newPassword can be empty to auto-generate a password
-func HandleSetRole(hc *messaging.Consumer, loginID string, newRole string) error {
+func HandleSetRole(hc *consumer.Consumer, loginID string, newRole string) error {
 
 	err := authz.AdminSetClientRole(hc, loginID, authz.ClientRole(newRole))
 

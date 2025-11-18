@@ -1,7 +1,7 @@
 package idprovapi
 
 import (
-	authn "github.com/hiveot/hivehub/runtime/authn/api"
+	authn "github.com/hiveot/hub/runtime/authn/api"
 )
 
 // AgentID is the connect ID of the agent connecting to the Hub

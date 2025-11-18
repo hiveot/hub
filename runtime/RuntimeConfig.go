@@ -9,13 +9,13 @@ import (
 	"os"
 	"path"
 
-	"github.com/hiveot/hivehub/lib/plugin"
-	service2 "github.com/hiveot/hivehub/runtime/authn/config"
-	"github.com/hiveot/hivehub/runtime/authz/service"
-	"github.com/hiveot/hivekitgo/certs"
-	"github.com/hiveot/hivekitgo/keys"
-	"github.com/hiveot/hivekitgo/servers"
-	"github.com/hiveot/hivekitgo/utils/net"
+	"github.com/hiveot/hivekit/go/certs"
+	"github.com/hiveot/hivekit/go/keys"
+	"github.com/hiveot/hivekit/go/server"
+	"github.com/hiveot/hivekit/go/utils/net"
+	"github.com/hiveot/hub/lib/plugin"
+	service2 "github.com/hiveot/hub/runtime/authn/config"
+	"github.com/hiveot/hub/runtime/authz/service"
 	"gopkg.in/yaml.v3"
 )
 
@@ -30,9 +30,9 @@ const DefaultServerKeyFile = "hubKey.pem"
 type RuntimeConfig struct {
 
 	// middleware and services config. These all work out of the box with their defaults.
-	Authn           service2.AuthnConfig    `yaml:"authn"`
-	Authz           service.AuthzConfig     `yaml:"authz"`
-	ProtocolsConfig servers.ProtocolsConfig `yaml:"protocols"`
+	Authn           service2.AuthnConfig   `yaml:"authn"`
+	Authz           service.AuthzConfig    `yaml:"authz"`
+	ProtocolsConfig server.ProtocolsConfig `yaml:"protocols"`
 
 	// Runtime logging
 	LogLevel string `yaml:"logLevel,omitempty"` // default: warn
@@ -294,7 +294,7 @@ func NewRuntimeConfig() *RuntimeConfig {
 	cfg := &RuntimeConfig{
 		Authn:           service2.NewAuthnConfig(),
 		Authz:           service.NewAuthzConfig(),
-		ProtocolsConfig: servers.NewProtocolsConfig(),
+		ProtocolsConfig: server.NewProtocolsConfig(),
 		LogLevel:        "info", // error, warning, info, debug
 		NotifLog:        "",     // no logfile
 		RequestLog:      "",     // no request logfile

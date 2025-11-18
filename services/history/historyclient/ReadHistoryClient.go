@@ -3,17 +3,18 @@ package historyclient
 import (
 	"time"
 
-	"github.com/hiveot/hivehub/services/history/historyapi"
-	"github.com/hiveot/hivekitgo/messaging"
-	"github.com/hiveot/hivekitgo/wot"
-	"github.com/hiveot/hivekitgo/wot/td"
+	"github.com/hiveot/hivekit/go/consumer"
+	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/wot"
+	"github.com/hiveot/hivekit/go/wot/td"
+	"github.com/hiveot/hub/services/history/historyapi"
 )
 
 // ReadHistoryClient for talking to the history service
 type ReadHistoryClient struct {
 	// ThingID of the service providing the read history capability
 	dThingID string
-	co       *messaging.Consumer
+	co       *consumer.Consumer
 }
 
 // GetCursor returns an iterator for ThingMessage objects containing historical events,tds or actions
@@ -64,7 +65,7 @@ func (cl *ReadHistoryClient) ReadHistory(thingID string, filterOnName string,
 // NewReadHistoryClient returns an instance of the read history client using the given connection
 //
 //	invokeAction is the TD invokeAction for the invoke-action operation of the history service
-func NewReadHistoryClient(co *messaging.Consumer) *ReadHistoryClient {
+func NewReadHistoryClient(co *consumer.Consumer) *ReadHistoryClient {
 	agentID := historyapi.AgentID
 	histCl := ReadHistoryClient{
 		co:       co,

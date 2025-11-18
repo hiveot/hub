@@ -5,12 +5,13 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/hiveot/hivehub/api/go/vocab"
-	"github.com/hiveot/hivehub/bindings/isy99x/service/isy"
-	"github.com/hiveot/hivehub/lib/exposedthing"
-	"github.com/hiveot/hivekitgo/messaging"
-	"github.com/hiveot/hivekitgo/wot"
-	"github.com/hiveot/hivekitgo/wot/td"
+	"github.com/hiveot/hivekit/go/agent"
+	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/wot"
+	"github.com/hiveot/hivekit/go/wot/td"
+	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/bindings/isy99x/service/isy"
+	"github.com/hiveot/hub/lib/exposedthing"
 )
 
 // mapping from insteon device category to TD device type
@@ -38,7 +39,7 @@ type IIsyThing interface {
 	// GetPropValues returns the property values of the thing
 	GetPropValues(onlyChanges bool) map[string]any
 	// HandleActionRequest passes incoming actions to the Thing for execution
-	HandleActionRequest(ag *messaging.Agent, req *messaging.RequestMessage) *messaging.ResponseMessage
+	HandleActionRequest(ag *agent.Agent, req *messaging.RequestMessage) *messaging.ResponseMessage
 	// HandleConfigRequest passes configuration changes to the Thing for execution
 	HandleConfigRequest(req *messaging.RequestMessage) *messaging.ResponseMessage
 	// HandleValueUpdate updates the Thing properties with value obtained via the ISY gateway
@@ -98,7 +99,7 @@ func (it *IsyThing) GetPropValues(onlyChanges bool) map[string]any {
 
 // HandleActionRequest invokes the action handler of the specialized thing
 func (it *IsyThing) HandleActionRequest(
-	ag *messaging.Agent, req *messaging.RequestMessage) *messaging.ResponseMessage {
+	ag *agent.Agent, req *messaging.RequestMessage) *messaging.ResponseMessage {
 
 	err := fmt.Errorf("HandleRequest not supported for this thing")
 	return req.CreateResponse(nil, err)

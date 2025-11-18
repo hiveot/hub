@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hiveot/hivekitgo/utils"
+	"github.com/hiveot/hivekit/go/utils"
 )
 
 const pyFile = "./api/py/vocab/vocab.py"

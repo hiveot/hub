@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	digitwin "github.com/hiveot/hivehub/runtime/digitwin/api"
-	"github.com/hiveot/hivekitgo/wot/td"
+	"github.com/hiveot/hivekit/go/wot/td"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

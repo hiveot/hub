@@ -10,7 +10,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/hiveot/hivekitgo/keys"
+	"github.com/hiveot/hivekit/go/keys"
 )
 
 // createClientCert is the internal function to create a client certificate

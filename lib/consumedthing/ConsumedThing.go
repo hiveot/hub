@@ -5,11 +5,12 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/hiveot/hivehub/api/go/vocab"
-	digitwin "github.com/hiveot/hivehub/runtime/digitwin/api"
-	"github.com/hiveot/hivekitgo/messaging"
-	"github.com/hiveot/hivekitgo/wot"
-	"github.com/hiveot/hivekitgo/wot/td"
+	"github.com/hiveot/hivekit/go/consumer"
+	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/wot"
+	"github.com/hiveot/hivekit/go/wot/td"
+	"github.com/hiveot/hub/api/go/vocab"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -26,7 +27,7 @@ type InteractionListener func(*InteractionOutput)
 // This keeps a copy of the Thing's property and event values and updates on changes.
 type ConsumedThing struct {
 	// The consumer instance this uses for invoking actions
-	co *messaging.Consumer
+	co *consumer.Consumer
 
 	// ID of this Thing for use by consumers
 	ThingID string
@@ -156,7 +157,7 @@ func (ct *ConsumedThing) GetAtTypeTitle() string {
 
 // GetConsumer returns the consumer instance this ConsumedT hing uses to communicate with
 // the server.
-func (ct *ConsumedThing) GetConsumer() (co *messaging.Consumer) {
+func (ct *ConsumedThing) GetConsumer() (co *consumer.Consumer) {
 	return ct.co
 }
 
@@ -497,7 +498,7 @@ func (ct *ConsumedThing) WriteProperty(name string, ii InteractionInput) (err er
 
 // NewConsumedThing creates a new instance of a Thing
 // Call Stop() when done
-func NewConsumedThing(tdi *td.TD, co *messaging.Consumer) *ConsumedThing {
+func NewConsumedThing(tdi *td.TD, co *consumer.Consumer) *ConsumedThing {
 	ct := ConsumedThing{
 		ThingID: tdi.ID,
 		// title and description are updated with corresponding properties if they exist

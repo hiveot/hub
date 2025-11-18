@@ -9,15 +9,15 @@ import (
 	"testing"
 	"time"
 
-	vocab2 "github.com/hiveot/hivehub/api/go/vocab"
-	"github.com/hiveot/hivehub/lib/buckets"
-	"github.com/hiveot/hivehub/lib/buckets/bucketstore"
-	"github.com/hiveot/hivekitgo/wot/td"
+	"github.com/hiveot/hivekit/go/wot/td"
+	vocab2 "github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hub/lib/buckets/bucketstore"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/hiveot/hivekitgo/logging"
+	"github.com/hiveot/hivekit/go/logging"
 )
 
 var testBucketID = "default"

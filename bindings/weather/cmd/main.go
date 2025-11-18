@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/hiveot/hivehub/bindings/weather/config"
-	"github.com/hiveot/hivehub/bindings/weather/service"
-	"github.com/hiveot/hivehub/lib/plugin"
+	"github.com/hiveot/hub/bindings/weather/config"
+	"github.com/hiveot/hub/bindings/weather/service"
+	"github.com/hiveot/hub/lib/plugin"
 	"log/slog"
 	"path"
 )

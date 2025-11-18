@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"time"
 
-	launcher "github.com/hiveot/hivehub/services/launcher/api"
-	"github.com/hiveot/hivekitgo/messaging"
-	"github.com/hiveot/hivekitgo/utils"
+	"github.com/hiveot/hivekit/go/consumer"
+	"github.com/hiveot/hivekit/go/utils"
+	launcher "github.com/hiveot/hub/services/launcher/api"
 	"github.com/urfave/cli/v2"
 )
 
-func LauncherListCommand(hc **messaging.Consumer) *cli.Command {
+func LauncherListCommand(hc **consumer.Consumer) *cli.Command {
 
 	return &cli.Command{
 		Name: "ls",
@@ -28,7 +28,7 @@ func LauncherListCommand(hc **messaging.Consumer) *cli.Command {
 	}
 }
 
-func LauncherStartCommand(hc **messaging.Consumer) *cli.Command {
+func LauncherStartCommand(hc **consumer.Consumer) *cli.Command {
 
 	return &cli.Command{
 		Name: "start",
@@ -47,7 +47,7 @@ func LauncherStartCommand(hc **messaging.Consumer) *cli.Command {
 	}
 }
 
-func LauncherStopCommand(hc **messaging.Consumer) *cli.Command {
+func LauncherStopCommand(hc **consumer.Consumer) *cli.Command {
 
 	return &cli.Command{
 		Name: "stop",
@@ -66,7 +66,7 @@ func LauncherStopCommand(hc **messaging.Consumer) *cli.Command {
 }
 
 // HandleListServices prints a list of available services
-func HandleListServices(co *messaging.Consumer) error {
+func HandleListServices(co *consumer.Consumer) error {
 
 	if co == nil {
 		return fmt.Errorf("no Hub connection")
@@ -114,7 +114,7 @@ func HandleListServices(co *messaging.Consumer) error {
 }
 
 // HandleStartService starts a service
-func HandleStartService(pluginID string, co *messaging.Consumer) error {
+func HandleStartService(pluginID string, co *consumer.Consumer) error {
 	var err error
 	if co == nil {
 		return fmt.Errorf("no Hub connection")
@@ -143,7 +143,7 @@ func HandleStartService(pluginID string, co *messaging.Consumer) error {
 }
 
 // HandleStopService stops a service
-func HandleStopService(serviceName string, co *messaging.Consumer) error {
+func HandleStopService(serviceName string, co *consumer.Consumer) error {
 	var err error
 
 	if co == nil {

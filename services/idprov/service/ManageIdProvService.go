@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
-	authn "github.com/hiveot/hivehub/runtime/authn/api"
-	"github.com/hiveot/hivehub/services/idprov/idprovapi"
-	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivekit/go/agent"
+	authn "github.com/hiveot/hub/runtime/authn/api"
+	"github.com/hiveot/hub/services/idprov/idprovapi"
 )
 
 type ManageIdProvService struct {
@@ -18,7 +18,7 @@ type ManageIdProvService struct {
 	requests map[string]idprovapi.ProvisionStatus
 
 	//
-	ag *messaging.Agent
+	ag *agent.Agent
 	// mutex to guard access to maps
 	mux sync.RWMutex
 }
@@ -191,7 +191,7 @@ func (svc *ManageIdProvService) SubmitRequest(senderID string, args *idprovapi.P
 func (svc *ManageIdProvService) Stop() {
 }
 
-func StartManageIdProvService(ag *messaging.Agent) (*ManageIdProvService, error) {
+func StartManageIdProvService(ag *agent.Agent) (*ManageIdProvService, error) {
 
 	svc := &ManageIdProvService{
 		// map of requests by SenderID

@@ -6,11 +6,11 @@ import (
 	"os"
 	"path"
 
-	"github.com/hiveot/hivehub/lib/plugin"
-	"github.com/hiveot/hivehub/runtime"
-	"github.com/hiveot/hivehub/services/idprov/service"
-	"github.com/hiveot/hivekitgo/certs"
-	"github.com/hiveot/hivekitgo/logging"
+	"github.com/hiveot/hivekit/go/certs"
+	"github.com/hiveot/hivekit/go/logging"
+	"github.com/hiveot/hub/lib/plugin"
+	"github.com/hiveot/hub/runtime"
+	"github.com/hiveot/hub/services/idprov/service"
 )
 
 // TODO: merge the server with a web server that hosts the admin ui server

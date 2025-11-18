@@ -4,10 +4,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/hiveot/hivehub/api/go/vocab"
-	"github.com/hiveot/hivekitgo/messaging"
-	"github.com/hiveot/hivekitgo/wot"
-	"github.com/hiveot/hivekitgo/wot/td"
+	"github.com/hiveot/hivekit/go/agent"
+	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/wot"
+	"github.com/hiveot/hivekit/go/wot/td"
+	"github.com/hiveot/hub/api/go/vocab"
 )
 
 // IsyDimmerThing is a general-purpose dimmer switch
@@ -56,7 +57,7 @@ func (it *IsyDimmerThing) HandleConfigRequest(req *messaging.RequestMessage) *me
 // HandleActionRequest handles request to execute an action on this device
 // actionID string as defined in the action affordance
 // newValue is not used as these actions do not carry a parameter
-func (it *IsyDimmerThing) HandleActionRequest(ag *messaging.Agent, req *messaging.RequestMessage) *messaging.ResponseMessage {
+func (it *IsyDimmerThing) HandleActionRequest(ag *agent.Agent, req *messaging.RequestMessage) *messaging.ResponseMessage {
 	var restPath = ""
 	var newValue = ""
 	// FIXME: req keys are node attributes keys, not vocab @types (or are they?)

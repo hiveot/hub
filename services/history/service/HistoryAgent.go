@@ -3,11 +3,12 @@ package service
 import (
 	"fmt"
 
-	"github.com/hiveot/hivehub/api/go/vocab"
-	"github.com/hiveot/hivehub/lib/hubagent"
-	"github.com/hiveot/hivehub/services/history/historyapi"
-	"github.com/hiveot/hivekitgo/messaging"
-	"github.com/hiveot/hivekitgo/wot"
+	"github.com/hiveot/hivekit/go/agent"
+	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/wot"
+	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/lib/hubagent"
+	"github.com/hiveot/hub/services/history/historyapi"
 )
 
 // StartHistoryAgent returns a new instance of the agent for the history services.
@@ -18,7 +19,7 @@ import (
 //
 //	svc is the history service whose capabilities to expose
 //	ag is the optional connected agent connected to the server protocol
-func StartHistoryAgent(svc *HistoryService, ag *messaging.Agent) {
+func StartHistoryAgent(svc *HistoryService, ag *agent.Agent) {
 
 	// TODO: load latest retention rules from state store
 	manageHistoryMethods := map[string]interface{}{

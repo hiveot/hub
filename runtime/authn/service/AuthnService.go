@@ -1,11 +1,11 @@
 package service
 
 import (
-	"github.com/hiveot/hivehub/runtime/authn/authenticator"
-	"github.com/hiveot/hivehub/runtime/authn/authnstore"
-	"github.com/hiveot/hivehub/runtime/authn/config"
-	"github.com/hiveot/hivehub/runtime/authn/sessions"
-	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hub/runtime/authn/authenticator"
+	"github.com/hiveot/hub/runtime/authn/authnstore"
+	"github.com/hiveot/hub/runtime/authn/config"
+	"github.com/hiveot/hub/runtime/authn/sessions"
 )
 
 type AuthnService struct {

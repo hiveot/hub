@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"time"
 
-	digitwin "github.com/hiveot/hivehub/runtime/digitwin/api"
-	"github.com/hiveot/hivekitgo/messaging"
-	"github.com/hiveot/hivekitgo/utils"
-	"github.com/hiveot/hivekitgo/wot/td"
+	"github.com/hiveot/hivekit/go/consumer"
+	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/utils"
+	"github.com/hiveot/hivekit/go/wot/td"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	jsoniter "github.com/json-iterator/go"
 
 	"github.com/araddon/dateparse"
@@ -15,7 +16,7 @@ import (
 )
 
 // SubTDCommand shows TD publications
-func SubTDCommand(hc **messaging.Consumer) *cli.Command {
+func SubTDCommand(hc **consumer.Consumer) *cli.Command {
 	return &cli.Command{
 		Name:     "subtd",
 		Usage:    "SubscribeEvent to TD publications",
@@ -27,7 +28,7 @@ func SubTDCommand(hc **messaging.Consumer) *cli.Command {
 	}
 }
 
-func SubEventsCommand(hc **messaging.Consumer) *cli.Command {
+func SubEventsCommand(hc **consumer.Consumer) *cli.Command {
 	return &cli.Command{
 		Name:      "subev",
 		Usage:     "SubscribeEvent to Thing events",
@@ -53,7 +54,7 @@ func SubEventsCommand(hc **messaging.Consumer) *cli.Command {
 }
 
 // HandleSubTD subscribes and prints TD publications
-func HandleSubTD(hc *messaging.Consumer) error {
+func HandleSubTD(hc *consumer.Consumer) error {
 
 	err := hc.Subscribe(digitwin.ThingDirectoryDThingID, digitwin.ThingDirectoryEventThingUpdated)
 	if err != nil {
@@ -85,7 +86,7 @@ func HandleSubTD(hc *messaging.Consumer) error {
 }
 
 // HandleSubEvents subscribes and prints events
-func HandleSubEvents(hc *messaging.Consumer, thingID string, name string) error {
+func HandleSubEvents(hc *consumer.Consumer, thingID string, name string) error {
 	fmt.Printf("Subscribing to  thingID: '%s', name: '%s'\n\n", thingID, name)
 
 	fmt.Printf("Time             Agent ID        Thing ID                       Event Name                     Value\n")

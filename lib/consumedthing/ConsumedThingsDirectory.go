@@ -4,9 +4,10 @@ import (
 	"log/slog"
 	"sync"
 
-	digitwin "github.com/hiveot/hivehub/runtime/digitwin/api"
-	"github.com/hiveot/hivekitgo/messaging"
-	"github.com/hiveot/hivekitgo/wot/td"
+	"github.com/hiveot/hivekit/go/consumer"
+	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/wot/td"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -18,7 +19,7 @@ const ReadDirLimit = 1000
 // The cache must be updated by an external consumer that receives update events.
 type ConsumedThingsDirectory struct {
 	// the consumer connection for sending requests
-	co *messaging.Consumer
+	co *consumer.Consumer
 	// Things used by the client
 	consumedThings map[string]*ConsumedThing
 	// directory of TD documents
@@ -204,7 +205,7 @@ func (cts *ConsumedThingsDirectory) UpdateTD(tdJSON string) *ConsumedThing {
 //
 // A consumed thing contains a Thing TD, with its property and event values. The
 // values are updated when consumer events are received.
-func NewConsumedThingsDirectory(co *messaging.Consumer) *ConsumedThingsDirectory {
+func NewConsumedThingsDirectory(co *consumer.Consumer) *ConsumedThingsDirectory {
 	ctm := ConsumedThingsDirectory{
 		co:             co,
 		consumedThings: make(map[string]*ConsumedThing),

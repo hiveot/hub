@@ -1,8 +1,8 @@
 package dthing
 
 import (
-	digitwin "github.com/hiveot/hivehub/runtime/digitwin/api"
-	"github.com/hiveot/hivekitgo/wot/td"
+	"github.com/hiveot/hivekit/go/wot/td"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 )
 
 // DigitwinThing This is the digital twin Thing

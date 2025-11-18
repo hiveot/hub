@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/hiveot/hivehub/bindings/owserver/config"
-	"github.com/hiveot/hivehub/bindings/owserver/service"
-	"github.com/hiveot/hivehub/lib/plugin"
+	"github.com/hiveot/hub/bindings/owserver/config"
+	"github.com/hiveot/hub/bindings/owserver/service"
+	"github.com/hiveot/hub/lib/plugin"
 	"path"
 )
 

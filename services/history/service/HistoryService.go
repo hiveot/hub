@@ -3,10 +3,10 @@ package service
 import (
 	"log/slog"
 
-	"github.com/hiveot/hivehub/lib/buckets"
-	authz "github.com/hiveot/hivehub/runtime/authz/api"
-	"github.com/hiveot/hivehub/services/history/historyapi"
-	"github.com/hiveot/hivekitgo/messaging"
+	"github.com/hiveot/hivekit/go/agent"
+	"github.com/hiveot/hub/lib/buckets"
+	authz "github.com/hiveot/hub/runtime/authz/api"
+	"github.com/hiveot/hub/services/history/historyapi"
 )
 
 // HistoryService provides storage for action and event history using the bucket store
@@ -25,7 +25,7 @@ type HistoryService struct {
 
 	agentID string
 	// the messaging agent used to pubsub service to subscribe to event
-	ag *messaging.Agent
+	ag *agent.Agent
 	// optional handling of pubsub events. nil if not used
 	//subEventHandler *PubSubEventHandler
 	// handler that adds history to the store
@@ -39,7 +39,7 @@ func (svc *HistoryService) GetAddHistory() *AddHistory {
 }
 
 // Start the history service
-func (svc *HistoryService) Start(ag *messaging.Agent) (err error) {
+func (svc *HistoryService) Start(ag *agent.Agent) (err error) {
 
 	slog.Info("Starting HistoryService", "clientID", ag.GetClientID())
 
