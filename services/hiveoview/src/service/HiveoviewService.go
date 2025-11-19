@@ -17,7 +17,7 @@ import (
 	"github.com/hiveot/hivekit/go/agent"
 	"github.com/hiveot/hivekit/go/buckets"
 	"github.com/hiveot/hivekit/go/buckets/kvbtree"
-	"github.com/hiveot/hivekit/go/utils/tlsserver"
+	"github.com/hiveot/hivekit/go/servers/tlsserver"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"

@@ -10,7 +10,7 @@ import (
 
 	"github.com/hiveot/hivekit/go/agent"
 	"github.com/hiveot/hivekit/go/certs"
-	"github.com/hiveot/hivekit/go/client"
+	"github.com/hiveot/hivekit/go/clients"
 	"github.com/hiveot/hivekit/go/consumer"
 	"github.com/hiveot/hivekit/go/messaging"
 	"github.com/hiveot/hivekit/go/plugin"
@@ -167,7 +167,7 @@ func (test *TestServer) AddConnectService(serviceID string) (ag *agent.Agent, to
 	connectURL := s.GetConnectURL()
 	//server := test.Runtime.TransportsMgr.GetServer(test.ServiceProtocol)
 	//getForm := server.GetForm
-	cc, err := client.NewClient(serviceID, test.Certs.CaCert, connectURL, test.ConnectTimeout)
+	cc, err := clients.NewClient(serviceID, test.Certs.CaCert, connectURL, test.ConnectTimeout)
 	if err == nil {
 		err = cc.ConnectWithToken(token)
 		ag = agent.NewAgent(cc, nil, nil, nil, nil, 0)
@@ -253,7 +253,7 @@ func (test *TestServer) GetAgentConnection(agentID string, protocolType string) 
 	s := test.Runtime.TransportsMgr.GetServer(protocolType)
 	connectURL := s.GetConnectURL()
 
-	cc, _ := client.NewClient(agentID, test.Certs.CaCert, connectURL, test.ConnectTimeout)
+	cc, _ := clients.NewClient(agentID, test.Certs.CaCert, connectURL, test.ConnectTimeout)
 	ag := agent.NewAgent(cc, nil, nil, nil, nil, test.ConnectTimeout)
 	return cc, ag
 }
@@ -270,7 +270,7 @@ func (test *TestServer) GetConsumerConnection(clientID string, protocolType stri
 	s := test.Runtime.TransportsMgr.GetServer(protocolType)
 	connectURL := s.GetConnectURL()
 	// FIXME: need an option for Wot protocol
-	cc, _ := client.NewClient(clientID, test.Certs.CaCert, connectURL, test.ConnectTimeout)
+	cc, _ := clients.NewClient(clientID, test.Certs.CaCert, connectURL, test.ConnectTimeout)
 	co := consumer.NewConsumer(cc, test.ConnectTimeout)
 	return cc, co
 }

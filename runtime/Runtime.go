@@ -9,7 +9,7 @@ import (
 	"github.com/hiveot/hivekit/go/logging"
 	"github.com/hiveot/hivekit/go/messaging"
 	"github.com/hiveot/hivekit/go/plugin"
-	"github.com/hiveot/hivekit/go/server"
+	"github.com/hiveot/hivekit/go/servers/transportmanager"
 	"github.com/hiveot/hivekit/go/wot/td"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	"github.com/hiveot/hub/runtime/authn/service"
@@ -32,7 +32,7 @@ type Runtime struct {
 	AuthzAgent     *service2.AuthzAgent
 	DigitwinSvc    *service4.DigitwinService
 	DigitwinRouter *router.DigitwinRouter
-	TransportsMgr  *server.TransportManager
+	TransportsMgr  *transportmanager.TransportManager
 
 	// logging of request and response messages
 	requestLogger  *slog.Logger
@@ -165,7 +165,7 @@ func (r *Runtime) Start(env *plugin.AppEnvironment) error {
 	// Look for AddTDForms in each protocol. This is a rather roundabout way of getting
 	// the security scheme in the TD but necessary as it is pluggable.
 	// See AuthnSvc above
-	r.TransportsMgr = server.NewTransportManager(
+	r.TransportsMgr = transportmanager.NewTransportManager(
 		&r.cfg.ProtocolsConfig,
 		r.cfg.ServerCert,
 		r.cfg.CaCert,

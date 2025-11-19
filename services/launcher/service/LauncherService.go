@@ -13,9 +13,9 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/hiveot/hivekit/go/agent"
-	"github.com/hiveot/hivekit/go/client"
+	"github.com/hiveot/hivekit/go/clients"
 	"github.com/hiveot/hivekit/go/messaging"
-	"github.com/hiveot/hivekit/go/server/wssserver"
+	"github.com/hiveot/hivekit/go/servers/wssserver"
 	"github.com/hiveot/hivekit/go/utils"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
@@ -226,7 +226,7 @@ func (svc *LauncherService) Start() error {
 	// this was delayed until after the runtime is up and running
 	// if a local runtime is started then the plugins can use localhost
 	if svc.ag == nil {
-		cc, token, _, err := client.ConnectWithTokenFile(
+		cc, token, _, err := clients.ConnectWithTokenFile(
 			svc.clientID, svc.certsDir, svc.serverURL, 0)
 		_ = token
 		if err == nil {

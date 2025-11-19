@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/hiveot/hivekit/go/messaging"
-	"github.com/hiveot/hivekit/go/server"
+	"github.com/hiveot/hivekit/go/servers"
 	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/runtime/digitwin/store"
 )
@@ -40,7 +40,7 @@ type DigitwinRouter struct {
 	// cache map usage mux
 	mux sync.Mutex
 	// connection manager for forwarding messages to agents or consumers
-	transportServer server.IMessageServer
+	transportServer servers.IMessageServer
 
 	// logging of requests and response
 	requestLogger *slog.Logger
@@ -63,7 +63,7 @@ func (r *DigitwinRouter) SetRequestLogger(logger *slog.Logger) {
 }
 
 // SetTransportServer sets the transport server for routing outgoing messages
-func (r *DigitwinRouter) SetTransportServer(srv server.IMessageServer) {
+func (r *DigitwinRouter) SetTransportServer(srv servers.IMessageServer) {
 	r.transportServer = srv
 }
 
@@ -82,7 +82,7 @@ func NewDigitwinRouter(
 	authnAgent messaging.RequestHandler,
 	authzAgent messaging.RequestHandler,
 	permissionHandler PermissionHandler,
-	transportServer server.IMessageServer,
+	transportServer servers.IMessageServer,
 ) *DigitwinRouter {
 	r := &DigitwinRouter{
 		dtwStore: dtwService.DtwStore,

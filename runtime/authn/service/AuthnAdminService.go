@@ -7,7 +7,7 @@ import (
 	"path"
 	"time"
 
-	clients "github.com/hiveot/hivekit/go/client"
+	"github.com/hiveot/hivekit/go/clients"
 	"github.com/hiveot/hivekit/go/keys"
 	"github.com/hiveot/hivekit/go/messaging"
 	"github.com/hiveot/hivekit/go/utils"

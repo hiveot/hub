@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/hiveot/hivekit/go/client"
+	"github.com/hiveot/hivekit/go/clients"
 	"github.com/hiveot/hivekit/go/consumer"
 	"github.com/hiveot/hivekit/go/logging"
 	"github.com/hiveot/hivekit/go/messaging"
@@ -106,7 +106,7 @@ func main() {
 			}
 
 			// most commands need auth
-			authToken, err = client.LoadToken(loginID, certsDir)
+			authToken, err = clients.LoadToken(loginID, certsDir)
 
 			// TODO: cleanup: don't connect for these commands
 			cmd := c.Args().First()
@@ -117,11 +117,11 @@ func main() {
 			if err != nil && password == "" {
 				return fmt.Errorf("missing authentication token: %w", err)
 			}
-			caCert, _ := client.LoadCA(certsDir)
+			caCert, _ := clients.LoadCA(certsDir)
 			if password != "" {
-				cc, authToken, err = client.ConnectWithPassword(loginID, password, caCert, serverURL, "", 0)
+				cc, authToken, err = clients.ConnectWithPassword(loginID, password, caCert, serverURL, "", 0)
 			} else {
-				cc, err = client.ConnectWithToken(loginID, authToken, caCert, serverURL, 0)
+				cc, err = clients.ConnectWithToken(loginID, authToken, caCert, serverURL, 0)
 			}
 
 			if err != nil {

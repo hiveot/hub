@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hiveot/hivekit/go/client/discovery"
-	"github.com/hiveot/hivekit/go/utils/tlsclient"
+	"github.com/hiveot/hivekit/go/clients/discoclient"
+	"github.com/hiveot/hivekit/go/clients/tlsclient"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/urfave/cli/v2"
 )
@@ -42,7 +42,7 @@ func DiscoListCommand(authToken *string) *cli.Command {
 // HandleDiscover prints a list of discovered Things and Directories
 func HandleDiscover(readtd bool, authToken string) error {
 
-	allRecords := discovery.DiscoverTDD("", time.Second*2, false)
+	allRecords := discoclient.DiscoverTDD("", time.Second*2, false)
 	//hiveotRecords := discovery.DiscoverTDD("", "hiveot", time.Second*2, false)
 	//allRecords := append(hiveotRecords, wotRecords...)
 
