@@ -8,9 +8,9 @@ import (
 
 	"github.com/hiveot/hivekit/go/logging"
 	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/plugin"
 	"github.com/hiveot/hivekit/go/server"
 	"github.com/hiveot/hivekit/go/wot/td"
-	"github.com/hiveot/hub/lib/plugin"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	"github.com/hiveot/hub/runtime/authn/service"
 	authz "github.com/hiveot/hub/runtime/authz/api"

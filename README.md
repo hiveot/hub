@@ -8,35 +8,7 @@ The Hub for the _Hive-of-Things_ provides a secure [runtime](runtime/README-runt
 
 Status Nov 2025: The Hub runtime, services and bindings have been reworked to support the Web-of-things (WoT) Thing Description (TD) specification. It is currently in alpha, functional but breaking changes should be expected.
 
-The generated TDs for use of digital-twins contain forms with security and communication as provided by the Hub. This is still incomplete.
-
-Medium term roadmap:
-
-1. Launcher support for distributed environment. (multiple launcher instances) [todo]
-1. Support lets-encrypt CA and server certificate [todo]
-1. Support mqtt transport protocol. [as client or as server]
-1. Websockets sub-protocol binding [functional but spec is in development]
-1. Support for TD Security section. [it is not fully clear how to describe login for obtaining tokens]
-1. Support for TD Forms sections. [contentious, as they are hardly useful in this setup]
-1. Support for WoT discovery profile [done]
-1. Revisit the vocabulary to integrate or adopt existing vocabularies where possible
-1. improve security; 2. detect/notify of bad agents or consumers 3. Manage token expiry 3. role based access to Things 4. rate limiting
-1. hiveoview dashboard improvements 3. support notifications
-1. Various services and bindings 3. weather service integration: open-meteo [partly complete] 3. weather service integration: environment canada (better for local forecast?) 2. ups binding (using [nut](https://networkupstools.org/))
-1. Android integration/location tracking
-
-Future:
-
-1. HiveOT inter-hub bridging service
-2. OAuth2 support
-
-Integrations
-
-It is a bit early to look at integrations, but some interesting candidates are:
-
-- interoperability with WoT clients
-- plc4go (https://plc4x.apache.org/users/getting-started/plc4go.html)
-- home assistant (https://www.home-assistant.io/)
+The Hub is reworked to extract the core library in a reusable 'hive kit' for builing WoT applications. Inspired by go2rtc (for video) the core runtime will be migrated to a stand-alone 'hive flow' concentrator that provides access to collections of IoT devices using WoT plugins without depending on Hub features. The Hub will consists of this runtime and plugins for additional features such as a digital twin, consumer authentication and authorization management, history tracking, a dashboard, launcher and various automation services.
 
 ## Audience
 

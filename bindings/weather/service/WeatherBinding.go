@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/hiveot/hivekit/go/agent"
+	"github.com/hiveot/hivekit/go/plugin"
 	"github.com/hiveot/hub/bindings/weather/config"
 	"github.com/hiveot/hub/bindings/weather/providers"
-	"github.com/hiveot/hub/lib/plugin"
 )
 
 // the key under which custom Thing titles are stored in the state service

@@ -10,12 +10,12 @@ import (
 	"time"
 
 	"github.com/hiveot/hivekit/go/agent"
+	"github.com/hiveot/hivekit/go/buckets"
 	clients "github.com/hiveot/hivekit/go/client"
 	"github.com/hiveot/hivekit/go/client/authclient"
 	"github.com/hiveot/hivekit/go/consumer"
 	"github.com/hiveot/hivekit/go/messaging"
 	"github.com/hiveot/hivekit/go/server/httpbasic"
-	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/services/hiveoview/src"
 )
 

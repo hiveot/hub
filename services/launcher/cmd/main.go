@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/hiveot/hivekit/go/logging"
-	"github.com/hiveot/hub/lib/plugin"
+	"github.com/hiveot/hivekit/go/plugin"
 	"github.com/hiveot/hub/services/launcher/config"
 	"github.com/hiveot/hub/services/launcher/service"
 )

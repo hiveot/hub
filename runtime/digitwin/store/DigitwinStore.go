@@ -5,10 +5,10 @@ import (
 	"log/slog"
 	"sync"
 
+	"github.com/hiveot/hivekit/go/buckets"
 	"github.com/hiveot/hivekit/go/messaging"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hivekit/go/wot/td"
-	"github.com/hiveot/hub/lib/buckets"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	jsoniter "github.com/json-iterator/go"
 )
@@ -170,6 +170,7 @@ func (svc *DigitwinStore) QueryAction(
 		}
 	}
 	v, found = dtw.ActionStatuses[name]
+	_ = found
 	return v, nil
 }
 
@@ -255,6 +256,7 @@ func (svc *DigitwinStore) ReadEvent(
 	}
 	// event value might not exist
 	v, found = dtw.EventValues[name]
+	_ = found
 	return v, nil
 }
 
@@ -281,6 +283,7 @@ func (svc *DigitwinStore) ReadProperty(
 	}
 	// value might not exist is optional
 	v, found = dtw.PropValues[name]
+	_ = found
 	return v, nil
 }
 

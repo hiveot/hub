@@ -8,8 +8,8 @@ import (
 	"github.com/hiveot/hivekit/go/agent"
 	"github.com/hiveot/hivekit/go/logging"
 	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/plugin"
 	"github.com/hiveot/hub/bindings/ipnet/config"
-	"github.com/hiveot/hub/lib/plugin"
 )
 
 type IPNetBinding struct {

@@ -11,12 +11,12 @@ import (
 	"github.com/hiveot/hivekit/go/agent"
 	"github.com/hiveot/hivekit/go/logging"
 	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/plugin"
 	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/isy99x/config"
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
 	"github.com/hiveot/hub/lib/exposedthing"
-	"github.com/hiveot/hub/lib/plugin"
 )
 
 // IsyBinding is the protocol binding for managing the ISY99x Insteon gateway

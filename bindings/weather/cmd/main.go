@@ -1,11 +1,12 @@
 package main
 
 import (
-	"github.com/hiveot/hub/bindings/weather/config"
-	"github.com/hiveot/hub/bindings/weather/service"
-	"github.com/hiveot/hub/lib/plugin"
 	"log/slog"
 	"path"
+
+	"github.com/hiveot/hivekit/go/plugin"
+	"github.com/hiveot/hub/bindings/weather/config"
+	"github.com/hiveot/hub/bindings/weather/service"
 )
 
 // Start the Weather binding

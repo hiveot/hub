@@ -4,7 +4,7 @@ import (
 	"log/slog"
 
 	"github.com/hiveot/hivekit/go/agent"
-	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hivekit/go/buckets"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/hiveot/hub/services/history/historyapi"
 )

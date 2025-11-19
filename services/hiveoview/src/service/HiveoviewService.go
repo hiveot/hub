@@ -15,9 +15,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hivekit/go/agent"
+	"github.com/hiveot/hivekit/go/buckets"
+	"github.com/hiveot/hivekit/go/buckets/kvbtree"
 	"github.com/hiveot/hivekit/go/utils/tlsserver"
-	"github.com/hiveot/hub/lib/buckets"
-	"github.com/hiveot/hub/lib/buckets/kvbtree"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"

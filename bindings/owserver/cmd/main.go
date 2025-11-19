@@ -1,10 +1,11 @@
 package main
 
 import (
+	"path"
+
+	"github.com/hiveot/hivekit/go/plugin"
 	"github.com/hiveot/hub/bindings/owserver/config"
 	"github.com/hiveot/hub/bindings/owserver/service"
-	"github.com/hiveot/hub/lib/plugin"
-	"path"
 )
 
 // Start the OWServer protocol binding

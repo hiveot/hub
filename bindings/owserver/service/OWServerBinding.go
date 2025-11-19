@@ -6,14 +6,14 @@ import (
 	"time"
 
 	"github.com/hiveot/hivekit/go/agent"
+	"github.com/hiveot/hivekit/go/buckets"
+	"github.com/hiveot/hivekit/go/buckets/kvbtree"
 	"github.com/hiveot/hivekit/go/logging"
+	"github.com/hiveot/hivekit/go/plugin"
 	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/owserver/config"
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
-	"github.com/hiveot/hub/lib/buckets"
-	"github.com/hiveot/hub/lib/buckets/kvbtree"
-	"github.com/hiveot/hub/lib/plugin"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	jsoniter "github.com/json-iterator/go"
 )

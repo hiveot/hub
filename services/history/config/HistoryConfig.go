@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hivekit/go/buckets"
 )
 
 // HistoryConfig with history store database configuration

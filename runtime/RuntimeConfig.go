@@ -11,9 +11,9 @@ import (
 
 	"github.com/hiveot/hivekit/go/certs"
 	"github.com/hiveot/hivekit/go/keys"
+	"github.com/hiveot/hivekit/go/plugin"
 	"github.com/hiveot/hivekit/go/server"
 	"github.com/hiveot/hivekit/go/utils/net"
-	"github.com/hiveot/hub/lib/plugin"
 	service2 "github.com/hiveot/hub/runtime/authn/config"
 	"github.com/hiveot/hub/runtime/authz/service"
 	"gopkg.in/yaml.v3"

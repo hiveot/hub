@@ -9,6 +9,7 @@ import (
 	"github.com/hiveot/hivekit/go/consumer"
 	"github.com/hiveot/hivekit/go/logging"
 	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/plugin"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/cmd/hubcli/authcli"
 	"github.com/hiveot/hub/cmd/hubcli/certs"
@@ -17,7 +18,6 @@ import (
 	"github.com/hiveot/hub/cmd/hubcli/idprovcli"
 	"github.com/hiveot/hub/cmd/hubcli/launchercli"
 	"github.com/hiveot/hub/cmd/hubcli/pubsubcli"
-	"github.com/hiveot/hub/lib/plugin"
 	"github.com/urfave/cli/v2"
 )
 
