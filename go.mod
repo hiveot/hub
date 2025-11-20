@@ -22,7 +22,7 @@ require (
 	github.com/struCoder/pidusage v0.2.1
 	github.com/teris-io/shortid v0.0.0-20220617161101-71ec9f2aa569
 	github.com/urfave/cli/v2 v2.27.7
-	golang.org/x/crypto v0.44.0
+	golang.org/x/crypto v0.45.0
 	golang.org/x/exp v0.0.0-20251113190631-e25ba8c21ef6
 	gopkg.in/yaml.v3 v3.0.1
 )
