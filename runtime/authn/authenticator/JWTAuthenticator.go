@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/hiveot/hivekit/go/keys"
+	"github.com/hiveot/hivekit/go/lib/keys"
 	"github.com/hiveot/hivekit/go/wot/td"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	"github.com/hiveot/hub/runtime/authn/authnstore"

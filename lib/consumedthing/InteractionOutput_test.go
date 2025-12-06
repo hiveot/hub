@@ -4,8 +4,8 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/hiveot/hivekit/go/logging"
-	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/lib/logging"
+	"github.com/hiveot/hivekit/go/lib/messaging"
 	"github.com/hiveot/hivekit/go/wot"
 	"github.com/hiveot/hivekit/go/wot/td"
 

@@ -1,7 +1,7 @@
 package service
 
 import (
-	"github.com/hiveot/hivekit/go/agent"
+	"github.com/hiveot/hivekit/go/lib/agent"
 	"github.com/hiveot/hub/lib/hubagent"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
 )

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hiveot/hivekit/go/logging"
+	"github.com/hiveot/hivekit/go/lib/logging"
 	"github.com/hiveot/hub/bindings/isy99x/config"
 	"github.com/hiveot/hub/bindings/isy99x/service"
 	"github.com/hiveot/hub/lib/testenv"

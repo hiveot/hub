@@ -6,7 +6,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/hiveot/hivekit/go/agent"
+	"github.com/hiveot/hivekit/go/lib/agent"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/weather/config"

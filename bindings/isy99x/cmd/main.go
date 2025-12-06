@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/hiveot/hivekit/go/plugin"
+	"github.com/hiveot/hivekit/go/lib/plugin"
 	"github.com/hiveot/hub/bindings/isy99x/config"
 	"github.com/hiveot/hub/bindings/isy99x/service"
 )

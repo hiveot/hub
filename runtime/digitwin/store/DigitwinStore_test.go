@@ -3,9 +3,9 @@ package store_test
 import (
 	"fmt"
 
-	"github.com/hiveot/hivekit/go/buckets/kvbtree"
-	"github.com/hiveot/hivekit/go/logging"
-	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/lib/buckets/kvbtree"
+	"github.com/hiveot/hivekit/go/lib/logging"
+	"github.com/hiveot/hivekit/go/lib/messaging"
 	"github.com/hiveot/hivekit/go/utils"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/runtime/digitwin/store"

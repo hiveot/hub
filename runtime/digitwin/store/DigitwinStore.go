@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/hiveot/hivekit/go/buckets"
-	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/lib/buckets"
+	"github.com/hiveot/hivekit/go/lib/messaging"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hivekit/go/wot/td"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"

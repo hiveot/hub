@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hiveot/hivekit/go/consumer"
+	"github.com/hiveot/hivekit/go/lib/consumer"
 	"github.com/hiveot/hivekit/go/utils"
 	launcher "github.com/hiveot/hub/services/launcher/api"
 	"github.com/urfave/cli/v2"

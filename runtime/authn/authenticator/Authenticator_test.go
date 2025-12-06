@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hiveot/hivekit/go/keys"
-	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/lib/keys"
+	"github.com/hiveot/hivekit/go/lib/messaging"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	"github.com/hiveot/hub/runtime/authn/authenticator"
 	"github.com/hiveot/hub/runtime/authn/authnstore"

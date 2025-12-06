@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/dchest/uniuri"
-	"github.com/hiveot/hivekit/go/messaging"
-	"github.com/hiveot/hivekit/go/servers/connections"
+	"github.com/hiveot/hivekit/go/lib/messaging"
+	"github.com/hiveot/hivekit/go/lib/servers/connections"
 	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/runtime/digitwin/service"

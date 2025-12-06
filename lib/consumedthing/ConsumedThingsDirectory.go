@@ -4,8 +4,8 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/hiveot/hivekit/go/consumer"
-	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/lib/consumer"
+	"github.com/hiveot/hivekit/go/lib/messaging"
 	"github.com/hiveot/hivekit/go/wot/td"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	jsoniter "github.com/json-iterator/go"

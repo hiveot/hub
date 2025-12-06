@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hiveot/hivekit/go/agent"
+	"github.com/hiveot/hivekit/go/lib/agent"
 	"github.com/hiveot/hivekit/go/wot"
 	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"

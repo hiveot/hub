@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/lib/messaging"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/bindings/owserver/config"
@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/hiveot/hivekit/go/logging"
+	"github.com/hiveot/hivekit/go/lib/logging"
 )
 
 // TODO: switch for testing with real owserver

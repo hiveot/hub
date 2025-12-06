@@ -17,8 +17,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/hiveot/hivekit/go/consumer"
-	"github.com/hiveot/hivekit/go/logging"
+	"github.com/hiveot/hivekit/go/lib/consumer"
+	"github.com/hiveot/hivekit/go/lib/logging"
 )
 
 // var homeDir = "/tmp/test-launcher"

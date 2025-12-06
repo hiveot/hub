@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/hiveot/hivekit/go/logging"
+	"github.com/hiveot/hivekit/go/lib/logging"
 )
 
 const unpwFileName = "testunpwstore.passwd"
@@ -67,7 +67,6 @@ func TestOpenBadData(t *testing.T) {
 }
 
 func TestGetMissingEntry(t *testing.T) {
-	const user1 = "user1"
 	_ = os.Remove(unpwFilePath)
 	// create 2 separate stores
 	pwStore1 := authnstore.NewAuthnFileStore(unpwFilePath, "")

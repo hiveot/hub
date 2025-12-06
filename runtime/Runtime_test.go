@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hiveot/hivekit/go/clients/authclient"
-	"github.com/hiveot/hivekit/go/logging"
-	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/lib/clients/authclient"
+	"github.com/hiveot/hivekit/go/lib/logging"
+	"github.com/hiveot/hivekit/go/lib/messaging"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hivekit/go/wot"
 	"github.com/hiveot/hivekit/go/wot/td"

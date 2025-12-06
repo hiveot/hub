@@ -5,10 +5,10 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/hiveot/hivekit/go/agent"
-	"github.com/hiveot/hivekit/go/logging"
-	"github.com/hiveot/hivekit/go/messaging"
-	"github.com/hiveot/hivekit/go/plugin"
+	"github.com/hiveot/hivekit/go/lib/agent"
+	"github.com/hiveot/hivekit/go/lib/logging"
+	"github.com/hiveot/hivekit/go/lib/messaging"
+	"github.com/hiveot/hivekit/go/lib/plugin"
 	"github.com/hiveot/hub/bindings/ipnet/config"
 )
 

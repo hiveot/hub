@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/hiveot/hivekit/go/consumer"
+	"github.com/hiveot/hivekit/go/lib/consumer"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hivekit/go/wot/td"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"

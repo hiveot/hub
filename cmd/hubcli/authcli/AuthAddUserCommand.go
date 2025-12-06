@@ -7,8 +7,8 @@ import (
 	"os"
 	"path"
 
-	"github.com/hiveot/hivekit/go/consumer"
-	"github.com/hiveot/hivekit/go/keys"
+	"github.com/hiveot/hivekit/go/lib/consumer"
+	"github.com/hiveot/hivekit/go/lib/keys"
 	"github.com/hiveot/hivekit/go/utils"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	authz "github.com/hiveot/hub/runtime/authz/api"

@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/hiveot/hivekit/go/servers/httpbasic"
+	"github.com/hiveot/hivekit/go/lib/servers/httpbasic"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/views"
 	"github.com/teris-io/shortid"

@@ -3,7 +3,7 @@ package historycli
 import (
 	"fmt"
 
-	"github.com/hiveot/hivekit/go/consumer"
+	"github.com/hiveot/hivekit/go/lib/consumer"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/urfave/cli/v2"

@@ -5,9 +5,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hiveot/hivekit/go/certs"
-	"github.com/hiveot/hivekit/go/keys"
-	"github.com/hiveot/hivekit/go/logging"
+	"github.com/hiveot/hivekit/go/lib/certs"
+	"github.com/hiveot/hivekit/go/lib/keys"
+	"github.com/hiveot/hivekit/go/lib/logging"
 	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/testenv"

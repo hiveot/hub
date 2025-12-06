@@ -5,7 +5,7 @@ import (
 	"crypto/x509"
 	"log/slog"
 
-	"github.com/hiveot/hivekit/go/agent"
+	"github.com/hiveot/hivekit/go/lib/agent"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
 )

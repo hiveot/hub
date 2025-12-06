@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/araddon/dateparse"
-	"github.com/hiveot/hivekit/go/buckets"
-	"github.com/hiveot/hivekit/go/buckets/bucketstore"
-	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/lib/buckets"
+	"github.com/hiveot/hivekit/go/lib/buckets/bucketstore"
+	"github.com/hiveot/hivekit/go/lib/messaging"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hivekit/go/wot"
 	"github.com/hiveot/hivekit/go/wot/td"
@@ -26,7 +26,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/hiveot/hivekit/go/logging"
+	"github.com/hiveot/hivekit/go/lib/logging"
 )
 
 const thingIDPrefix = "things-"

@@ -10,9 +10,9 @@ import (
 	"net"
 	"time"
 
-	"github.com/hiveot/hivekit/go/agent"
-	"github.com/hiveot/hivekit/go/certs"
-	"github.com/hiveot/hivekit/go/keys"
+	"github.com/hiveot/hivekit/go/lib/agent"
+	"github.com/hiveot/hivekit/go/lib/certs"
+	"github.com/hiveot/hivekit/go/lib/keys"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/hiveot/hub/services/certs/certsapi"
 )

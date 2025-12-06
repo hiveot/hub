@@ -3,7 +3,7 @@ package service
 import (
 	"log/slog"
 
-	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/lib/messaging"
 	"github.com/hiveot/hub/services/history/historyapi"
 )
 

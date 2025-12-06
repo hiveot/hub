@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hiveot/hivekit/go/agent"
+	"github.com/hiveot/hivekit/go/lib/agent"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
 )

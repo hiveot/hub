@@ -3,7 +3,7 @@ package main
 import (
 	"path"
 
-	"github.com/hiveot/hivekit/go/plugin"
+	"github.com/hiveot/hivekit/go/lib/plugin"
 	"github.com/hiveot/hub/bindings/owserver/config"
 	"github.com/hiveot/hub/bindings/owserver/service"
 )

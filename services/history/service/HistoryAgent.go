@@ -3,8 +3,8 @@ package service
 import (
 	"fmt"
 
-	"github.com/hiveot/hivekit/go/agent"
-	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/lib/agent"
+	"github.com/hiveot/hivekit/go/lib/messaging"
 	"github.com/hiveot/hivekit/go/wot"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/hubagent"

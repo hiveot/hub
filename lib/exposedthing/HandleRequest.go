@@ -1,7 +1,7 @@
 package exposedthing
 
 import (
-	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/lib/messaging"
 	"github.com/hiveot/hivekit/go/wot/td"
 )
 

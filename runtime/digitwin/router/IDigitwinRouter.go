@@ -1,7 +1,7 @@
 package router
 
 import (
-	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/lib/messaging"
 )
 
 // IDigitwinRouter is the interface for routing the action,event and property messages

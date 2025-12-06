@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/hiveot/hivekit/go/logging"
+	"github.com/hiveot/hivekit/go/lib/logging"
 	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/cmd/tm2go/genagent"
 	"github.com/hiveot/hub/cmd/tm2go/genconsumer"

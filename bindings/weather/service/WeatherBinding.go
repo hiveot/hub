@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hiveot/hivekit/go/agent"
-	"github.com/hiveot/hivekit/go/plugin"
+	"github.com/hiveot/hivekit/go/lib/agent"
+	"github.com/hiveot/hivekit/go/lib/plugin"
 	"github.com/hiveot/hub/bindings/weather/config"
 	"github.com/hiveot/hub/bindings/weather/providers"
 )

@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/hiveot/hivekit/go/plugin"
+	"github.com/hiveot/hivekit/go/lib/plugin"
 	"github.com/hiveot/hivekit/go/utils"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	launcher "github.com/hiveot/hub/services/launcher/api"

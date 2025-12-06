@@ -16,8 +16,6 @@ import (
 	"github.com/hiveot/hub/runtime/authn/config"
 	jsoniter "github.com/json-iterator/go"
 	"golang.org/x/crypto/bcrypt"
-
-	"github.com/hiveot/hub/lib/watcher"
 )
 
 // AuthnFileStore stores client data, including users, devices and services.
@@ -142,7 +140,7 @@ func (store *AuthnFileStore) Open() (err error) {
 		err = store.Reload()
 	}
 	if err == nil {
-		store.watcher, err = watcher.WatchFile(store.storePath, store.Reload)
+		store.watcher, err = utils.WatchFile(store.storePath, store.Reload)
 	}
 	if err != nil {
 		err = fmt.Errorf("AddSession failed %w", err)
@@ -253,7 +251,7 @@ func (store *AuthnFileStore) SetPasswordHash(loginID string, hash string) (err e
 
 	entry, found := store.entries[loginID]
 	if !found {
-		return fmt.Errorf("Client '%s' not found", loginID)
+		return fmt.Errorf("client '%s' not found", loginID)
 	}
 	entry.PasswordHash = hash
 	entry.Updated = utils.FormatNowUTCMilli()

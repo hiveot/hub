@@ -5,8 +5,8 @@ import (
 	"path"
 	"testing"
 
-	"github.com/hiveot/hivekit/go/logging"
-	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hivekit/go/lib/logging"
+	"github.com/hiveot/hivekit/go/lib/messaging"
 	"github.com/hiveot/hub/api/go/vocab"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	"github.com/hiveot/hub/runtime/authn/authnstore"
