@@ -1,21 +1,20 @@
-import {
-    NodeStatus,
-    ZWaveNode,
-    ZWavePlusNodeType,
-    ZWavePlusRoleType
-} from "zwave-js";
+import { CommandClasses, InterviewStage } from '@zwave-js/core';
 import type {
     TranslatedValueID,
     ValueMetadataBoolean,
     ValueMetadataNumeric,
     ValueMetadataString,
 } from "zwave-js";
-import {CommandClasses, InterviewStage} from '@zwave-js/core';
+import {
+    NodeStatus,
+    ZWaveNode,
+    ZWavePlusNodeType,
+    ZWavePlusRoleType
+} from "zwave-js";
 
-import TD, {type ActionAffordance, type EventAffordance, type PropertyAffordance} from "../hivelib/wot/TD.ts";
+import TD, { type ActionAffordance, type EventAffordance, type PropertyAffordance } from "../hivelib/wot/TD.ts";
 
 import * as vocab from "../hivelib/api/vocab/vocab.js";
-import  DataSchema from "../hivelib/wot/dataSchema.ts";
 import {
     UnitMilliSecond,
     WoTDataTypeArray,
@@ -24,11 +23,15 @@ import {
     WoTDataTypeNumber,
     WoTDataTypeString, WoTTitle
 } from "../hivelib/api/vocab/vocab.js";
+import DataSchema from "../hivelib/wot/dataSchema.ts";
+
+import * as tslog from 'tslog';
+const log = new  tslog.Logger({prettyLogTimeZone:"local"})
 
 import type ZWAPI from "./ZWAPI.ts";
+import getAffordanceFromVid, { type VidAffordance } from "./getAffordanceFromVid.ts";
+import { getDeviceType } from "./getDeviceType.ts";
 import logVid from "./logVid.ts";
-import getAffordanceFromVid, { type VidAffordance} from "./getAffordanceFromVid.ts";
-import {getDeviceType} from "./getDeviceType.ts";
 
 
 // Add the ZWave value data to the TD as an action
@@ -140,6 +143,7 @@ export default function createNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: nu
     //     description = node.deviceConfig.description
     // }
     const tdi = new TD(deviceID, deviceType, title, description);
+    log.info("Creating TD for device", deviceID,": ",title);
 
     //--- Step 2: Add read-only attributes that are common to many nodes
     // since none of these have standard property names, use the ZWave name instead.
@@ -359,33 +363,37 @@ export default function createNodeTD(zwapi: ZWAPI, node: ZWaveNode, vidLogFD: nu
     prop.readOnly = false
 
     // now continue with the zwave provided vids
-    const vids = node.getDefinedValueIDs()
-    for (const vid of vids) {
-        const va = getAffordanceFromVid(node, vid, maxNrScenes)
+    try {
+        const vids = node.getDefinedValueIDs()
+        for (const vid of vids) {
+            const va = getAffordanceFromVid(node, vid, maxNrScenes)
 
-        // let pt = getPropType(node, vid)
-        if (va) {
-            logVid(vidLogFD, node, vid, va)
-        }
+            // let pt = getPropType(node, vid)
+            if (va) {
+                logVid(vidLogFD, node, vid, va)
+            }
 
-        // the vid is either config, attr, action or event based on CC
-        switch (va?.affType) {
-            case "action":
-                // actuators accept input actions
-                addAction(tdi, node, vid, va)
-                break;
-            case "event":
-                // sensors emit events
-                addEvent(tdi, node, vid, va)
-                break;
-            // these are varieties of properties
-            case "property":
-                addProperty(tdi, node, vid, va)
-                break;
-            default:
-                //console.log("Not adding property", va?.name)
-            // ignore this vid
+            // the vid is either config, attr, action or event based on CC
+            switch (va?.affType) {
+                case "action":
+                    // actuators accept input actions
+                    addAction(tdi, node, vid, va)
+                    break;
+                case "event":
+                    // sensors emit events
+                    addEvent(tdi, node, vid, va)
+                    break;
+                // these are varieties of properties
+                case "property":
+                    addProperty(tdi, node, vid, va)
+                    break;
+                default:
+                    //console.log("Not adding property", va?.name)
+                // ignore this vid
+            }
         }
+    } catch (e) {
+        log.error("Exception ", e);
     }
     return tdi;
 }
