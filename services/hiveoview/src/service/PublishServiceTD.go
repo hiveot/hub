@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/hiveot/hivekit/go/utils/net"
+	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
@@ -25,7 +25,7 @@ func (svc *HiveoviewService) CreateServiceTD() *td.TD {
 			//AtType: vocab.SessionCount,
 			Type: vocab.WoTDataTypeInteger,
 		})
-	myAddress := fmt.Sprintf("%s:%d", net.GetOutboundIP("").String(), svc.port)
+	myAddress := fmt.Sprintf("%s:%d", utils.GetOutboundIP("").String(), svc.port)
 	prop := tdi.AddProperty(vocab.PropNetPort, "Server Listening Port",
 		fmt.Sprintf("Web server listening port (for example: %d in https://%s)", svc.port, myAddress),
 		vocab.WoTDataTypeInteger)
