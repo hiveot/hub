@@ -67,7 +67,7 @@ type OWServerBinding struct {
 func (svc *OWServerBinding) CreateBindingTD() *td.TD {
 	// This binding exposes the TD of itself.
 	// Currently its configuration comes from file.
-	tdi := td.NewTD(svc.agentID, "OWServer binding", vocab.ThingService)
+	tdi := td.NewTD("", svc.agentID, "OWServer binding", vocab.ThingService)
 	tdi.Description = "Driver for the OWServer V2 Gateway 1-wire interface"
 
 	prop := tdi.AddProperty(bindingMake, "Developer", "", vocab.WoTDataTypeString).

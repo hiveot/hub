@@ -290,7 +290,7 @@ func (igw *IsyGatewayThing) MakeTD() *td.TD {
 		return nil
 	}
 
-	tdi := td.NewTD(igw.thingID, igw.Configuration.DeviceSpecs.Model, vocab.ThingNetGateway)
+	tdi := td.NewTD("", igw.thingID, igw.Configuration.DeviceSpecs.Model, vocab.ThingNetGateway)
 	tdi.Description = igw.Configuration.DeviceSpecs.Make + "-" + igw.Configuration.DeviceSpecs.Model
 
 	//--- device read-only attributes

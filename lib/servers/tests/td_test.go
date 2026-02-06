@@ -73,7 +73,7 @@ func TestAddForms(t *testing.T) {
 	defer cancelFn()
 
 	// 2. Create a TD
-	tdi := td.NewTD(thingID, "My gadget", DeviceTypeSensor)
+	tdi := td.NewTD("", thingID, "My gadget", DeviceTypeSensor)
 
 	// 3. add forms
 	transportServer.AddTDForms(tdi, true)

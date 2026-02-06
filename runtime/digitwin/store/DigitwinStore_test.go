@@ -66,7 +66,7 @@ func addValues(svc *store.DigitwinStore,
 		_, err := svc.ReadDThing(dThingID)
 		if err != nil {
 			title := fmt.Sprintf("Test thing %d", j)
-			thingTD := td.NewTD(thingID, title, "randomdevice")
+			thingTD := td.NewTD("", thingID, title, "randomdevice")
 			dtwTD := *thingTD
 			dtwTD.ID = dThingID
 			svc.UpdateTD(agentID, thingTD, &dtwTD)

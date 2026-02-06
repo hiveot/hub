@@ -15,7 +15,7 @@ import (
 const key1ID = "key1"
 
 func MakeTD() *td.TD {
-	tdi := td.NewTD("thingID", "test Thing", "devicetype")
+	tdi := td.NewTD("", "thingID", "test Thing", "devicetype")
 	tdi.AddProperty(key1ID, "property 1", "test property", wot.DataTypeString)
 	return tdi
 }

@@ -174,7 +174,7 @@ func (it *IsyThing) MakeTD() *td.TD {
 		title, _ = titleProp.(string)
 	}
 	it.mux.RLock()
-	td := td.NewTD(it.thingID, title, it.deviceType)
+	td := td.NewTD("", it.thingID, title, it.deviceType)
 	it.mux.RUnlock()
 
 	//--- read-only properties

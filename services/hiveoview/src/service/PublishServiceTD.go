@@ -16,7 +16,7 @@ import (
 func (svc *HiveoviewService) CreateServiceTD() *td.TD {
 	title := "Web Server"
 	deviceType := vocab.ThingService
-	tdi := td.NewTD(src.HiveoviewServiceID, title, deviceType)
+	tdi := td.NewTD("", src.HiveoviewServiceID, title, deviceType)
 	//TODO: add properties or events for : uptime, nr connections, nr clients, etc
 
 	tdi.AddEvent(src.NrActiveSessionsEvent,

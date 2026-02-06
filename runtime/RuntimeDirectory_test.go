@@ -36,7 +36,7 @@ func TestAddRemoveTD(t *testing.T) {
 	defer r.Stop()
 
 	// Create the agent and its TDs to query
-	td1 := td.NewTD(agThing1ID, "Title", vocab.ThingSensorMulti)
+	td1 := td.NewTD("", agThing1ID, "Title", vocab.ThingSensorMulti)
 	td1JSON, _ := jsoniter.MarshalToString(td1)
 	ag1, _, _ := ts.AddConnectAgent(agentID)
 	defer ag1.Disconnect()

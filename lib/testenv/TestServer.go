@@ -220,7 +220,7 @@ func (test *TestServer) CreateTestTD(i int) (tdi *td.TD) {
 		ttd.ID = fmt.Sprintf("thing-%d", rand.Intn(99823))
 	}
 
-	tdi = td.NewTD(ttd.ID, ttd.Title, ttd.DeviceType)
+	tdi = td.NewTD("", ttd.ID, ttd.Title, ttd.DeviceType)
 	// add random properties
 	for n := 0; n < ttd.NrProps; n++ {
 		propName := fmt.Sprintf("prop-%d", n)

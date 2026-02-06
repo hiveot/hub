@@ -29,7 +29,7 @@ const ActionNameRemoveLocation = "removedLocation"
 // This binding exposes the TD of itself.
 func CreateBindingTD(serviceID string) *td.TD {
 	// the agent-ID is the thingID of the binding
-	tdoc := td.NewTD(serviceID, "Weather binding", vocab.ThingService)
+	tdoc := td.NewTD("", serviceID, "Weather binding", vocab.ThingService)
 	tdoc.Description = "Binding for the weather service"
 
 	// The defaults are defined in the config yaml.
@@ -71,7 +71,7 @@ func CreateTDOfLocation(defaultCfg *config.WeatherConfig, cfg *config.WeatherLoc
 	thingID := cfg.ID
 	deviceType := vocab.ThingSensorEnvironment
 	title := cfg.Name
-	tdoc := td.NewTD(thingID, title, deviceType)
+	tdoc := td.NewTD("", thingID, title, deviceType)
 	tdoc.Description = "Current weather for " + cfg.Name
 
 	// Attributes

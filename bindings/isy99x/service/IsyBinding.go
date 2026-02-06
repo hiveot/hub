@@ -100,7 +100,7 @@ func (svc *IsyBinding) HandleWriteBindingProperty(
 // MakeBindingTD generates a TD document for this binding containing properties,
 // event and action definitions.
 func (svc *IsyBinding) MakeBindingTD() *td.TD {
-	tdi := td.NewTD(svc.thingID, "ISY99x binding", vocab.ThingService)
+	tdi := td.NewTD("", svc.thingID, "ISY99x binding", vocab.ThingService)
 
 	// binding attributes
 	prop := tdi.AddProperty(vocab.PropNetConnection, "Connected", "Device is connected", vocab.WoTDataTypeBool).

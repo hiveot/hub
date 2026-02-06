@@ -74,7 +74,7 @@ func TestCreateDeviceCert(t *testing.T) {
 	pubKeyPEM := k.ExportPublic()
 
 	// a TD is needed first
-	td1 := td.NewTD(agThingID, "Title", vocab.ThingSensorMulti)
+	td1 := td.NewTD("", agThingID, "Title", vocab.ThingSensorMulti)
 	ts.AddTD(agentID, td1)
 
 	deviceCertPEM, caCertPEM, err := certAdmin.CreateDeviceCert(
@@ -116,7 +116,7 @@ func TestDeviceCertBadParms(t *testing.T) {
 	certAdmin, stopFunc := startService()
 	defer stopFunc()
 	// a TD is needed first
-	td1 := td.NewTD(agThingID, "Title", vocab.ThingSensorMulti)
+	td1 := td.NewTD("", agThingID, "Title", vocab.ThingSensorMulti)
 	ts.AddTD(agentID, td1)
 
 	k := keys.NewKey(keys.KeyTypeECDSA)

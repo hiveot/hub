@@ -56,7 +56,7 @@ func startService(clean bool) (
 // generate a TD document with properties, events and actions
 func createTDDoc(thingID string, nrProps, nrEvents, nrActions int) *td.TD {
 	title := CreateRandomName("title-", 0)
-	tdi := td.NewTD(thingID, title, vocab.ThingDevice)
+	tdi := td.NewTD("", thingID, title, vocab.ThingDevice)
 	for range nrProps {
 		name := CreateRandomName("prop-", 0)
 		tdi.AddProperty(name, "", name, vocab.WoTDataTypeInteger)
