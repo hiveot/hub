@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hiveot/hivekit/go/lib/consumer"
+	"github.com/hiveot/hub/lib/consumer"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/urfave/cli/v2"
 )

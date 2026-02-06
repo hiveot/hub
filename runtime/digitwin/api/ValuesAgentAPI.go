@@ -7,8 +7,8 @@ package digitwin
 import (
 	"errors"
 
-	"github.com/hiveot/hivekit/go/lib/messaging"
 	"github.com/hiveot/hivekit/go/utils"
+	"github.com/hiveot/hub/lib/messaging"
 )
 
 // IThingValuesService defines the interface of the 'ThingValues' service

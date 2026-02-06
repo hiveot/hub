@@ -7,9 +7,9 @@ import (
 	"os"
 	"path"
 
-	"github.com/hiveot/hivekit/go/lib/consumer"
-	"github.com/hiveot/hivekit/go/lib/keys"
 	"github.com/hiveot/hivekit/go/utils"
+	"github.com/hiveot/hub/lib/consumer"
+	"github.com/hiveot/hub/lib/keys"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/urfave/cli/v2"

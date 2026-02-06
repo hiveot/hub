@@ -5,10 +5,10 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/hiveot/hivekit/go/lib/buckets"
-	"github.com/hiveot/hivekit/go/lib/messaging"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hivekit/go/wot/td"
+	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hub/lib/messaging"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	jsoniter "github.com/json-iterator/go"
 )

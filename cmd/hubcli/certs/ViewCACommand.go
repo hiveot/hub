@@ -6,7 +6,7 @@ import (
 	"path"
 	"time"
 
-	"github.com/hiveot/hivekit/go/lib/certs"
+	"github.com/hiveot/hub/lib/certs"
 	"github.com/urfave/cli/v2"
 )
 

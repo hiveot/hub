@@ -8,11 +8,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hiveot/hivekit/go/lib/agent"
 	"github.com/hiveot/hivekit/go/wot"
 	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
+	"github.com/hiveot/hub/lib/agent"
 	"github.com/hiveot/hub/lib/exposedthing"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	jsoniter "github.com/json-iterator/go"

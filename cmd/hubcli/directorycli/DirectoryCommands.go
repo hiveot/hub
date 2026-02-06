@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/hiveot/hivekit/go/lib/consumer"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hivekit/go/wot/td"
+	"github.com/hiveot/hub/lib/consumer"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/urfave/cli/v2"
 )

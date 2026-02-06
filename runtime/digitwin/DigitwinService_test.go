@@ -8,10 +8,10 @@ import (
 	"testing"
 
 	"github.com/dchest/uniuri"
-	"github.com/hiveot/hivekit/go/lib/messaging"
-	"github.com/hiveot/hivekit/go/lib/servers/connections"
 	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/lib/messaging"
+	"github.com/hiveot/hub/lib/servers/connections"
 	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/runtime/digitwin/store"
 	"github.com/stretchr/testify/assert"

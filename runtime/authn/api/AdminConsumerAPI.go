@@ -4,7 +4,7 @@
 // Generated 18 Nov 2025 13:58 PST.
 package authn
 
-import "github.com/hiveot/hivekit/go/lib/consumer"
+import "github.com/hiveot/hub/lib/consumer"
 
 // AdminAddAgent client method - Add Agent.
 // Create an account for IoT device agents

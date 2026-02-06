@@ -5,13 +5,13 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/hiveot/hivekit/go/lib/agent"
-	"github.com/hiveot/hivekit/go/lib/messaging"
 	"github.com/hiveot/hivekit/go/wot"
 	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
+	"github.com/hiveot/hub/lib/agent"
 	"github.com/hiveot/hub/lib/exposedthing"
+	"github.com/hiveot/hub/lib/messaging"
 )
 
 // mapping from insteon device category to TD device type

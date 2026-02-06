@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/araddon/dateparse"
-	"github.com/hiveot/hivekit/go/lib/buckets"
-	"github.com/hiveot/hivekit/go/lib/messaging"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hivekit/go/wot"
+	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hub/lib/messaging"
 	jsoniter "github.com/json-iterator/go"
 )
 

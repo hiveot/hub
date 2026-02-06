@@ -9,13 +9,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hiveot/hivekit/go/lib/agent"
-	"github.com/hiveot/hivekit/go/lib/buckets"
-	"github.com/hiveot/hivekit/go/lib/clients"
-	"github.com/hiveot/hivekit/go/lib/clients/authclient"
-	"github.com/hiveot/hivekit/go/lib/consumer"
-	"github.com/hiveot/hivekit/go/lib/messaging"
-	"github.com/hiveot/hivekit/go/lib/servers/httpbasic"
+	"github.com/hiveot/hub/lib/agent"
+	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hub/lib/clients"
+	"github.com/hiveot/hub/lib/clients/authclient"
+	"github.com/hiveot/hub/lib/consumer"
+	"github.com/hiveot/hub/lib/messaging"
+	"github.com/hiveot/hub/lib/servers/httpbasic"
 	"github.com/hiveot/hub/services/hiveoview/src"
 )
 

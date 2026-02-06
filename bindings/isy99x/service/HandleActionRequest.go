@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/hiveot/hivekit/go/lib/messaging"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/lib/messaging"
 )
 
 // HandleRequest passes the action request to the associated Thing.

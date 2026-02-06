@@ -4,7 +4,7 @@
 // Generated 18 Nov 2025 13:58 PST.
 package authn
 
-import "github.com/hiveot/hivekit/go/lib/consumer"
+import "github.com/hiveot/hub/lib/consumer"
 
 // UserGetProfile client method - Get Client Profile.
 func UserGetProfile(hc *consumer.Consumer) (resp ClientProfile, err error) {

@@ -4,7 +4,7 @@
 // Generated 18 Nov 2025 13:58 PST.
 package digitwin
 
-import "github.com/hiveot/hivekit/go/lib/consumer"
+import "github.com/hiveot/hub/lib/consumer"
 
 // ThingDirectoryCreateThing client method - Create Thing TD.
 // Update the Thing TD in the directory. For use by Thing agents only.

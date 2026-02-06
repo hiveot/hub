@@ -1,12 +1,12 @@
 package service
 
 import (
-	"github.com/hiveot/hivekit/go/lib/agent"
 	"github.com/hiveot/hivekit/go/wot"
 	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/weather/config"
 	"github.com/hiveot/hub/bindings/weather/providers"
+	"github.com/hiveot/hub/lib/agent"
 )
 
 // read-only properties

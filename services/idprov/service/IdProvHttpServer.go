@@ -8,7 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/hiveot/hivekit/go/lib/servers/tlsserver"
+	"github.com/hiveot/hub/lib/servers/tlsserver"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
 	jsoniter "github.com/json-iterator/go"
 )

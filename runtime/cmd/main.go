@@ -6,8 +6,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/hiveot/hivekit/go/lib/logging"
-	"github.com/hiveot/hivekit/go/lib/plugin"
+	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/runtime"
 )
 

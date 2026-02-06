@@ -1,8 +1,8 @@
 package historyclient
 
 import (
-	"github.com/hiveot/hivekit/go/lib/consumer"
 	"github.com/hiveot/hivekit/go/wot/td"
+	"github.com/hiveot/hub/lib/consumer"
 	"github.com/hiveot/hub/services/history/historyapi"
 )
 

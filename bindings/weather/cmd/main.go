@@ -4,9 +4,9 @@ import (
 	"log/slog"
 	"path"
 
-	"github.com/hiveot/hivekit/go/lib/plugin"
 	"github.com/hiveot/hub/bindings/weather/config"
 	"github.com/hiveot/hub/bindings/weather/service"
+	"github.com/hiveot/hub/lib/plugin"
 )
 
 // Start the Weather binding

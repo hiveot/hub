@@ -4,7 +4,7 @@
 // Generated 18 Nov 2025 13:58 PST.
 package digitwin
 
-import "github.com/hiveot/hivekit/go/lib/consumer"
+import "github.com/hiveot/hub/lib/consumer"
 
 // ThingValuesQueryAction client method - Action status.
 // Read the current action status of a Thing

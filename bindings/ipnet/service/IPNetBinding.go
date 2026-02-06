@@ -5,11 +5,11 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/hiveot/hivekit/go/lib/agent"
-	"github.com/hiveot/hivekit/go/lib/logging"
-	"github.com/hiveot/hivekit/go/lib/messaging"
-	"github.com/hiveot/hivekit/go/lib/plugin"
 	"github.com/hiveot/hub/bindings/ipnet/config"
+	"github.com/hiveot/hub/lib/agent"
+	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/hub/lib/messaging"
+	"github.com/hiveot/hub/lib/plugin"
 )
 
 type IPNetBinding struct {

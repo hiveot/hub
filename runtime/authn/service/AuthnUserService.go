@@ -3,7 +3,7 @@ package service
 import (
 	"log/slog"
 
-	"github.com/hiveot/hivekit/go/lib/messaging"
+	"github.com/hiveot/hub/lib/messaging"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	"github.com/hiveot/hub/runtime/authn/authnstore"
 	"github.com/hiveot/hub/runtime/authn/config"

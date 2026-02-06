@@ -4,7 +4,7 @@
 // Generated 18 Nov 2025 13:58 PST.
 package authz
 
-import "github.com/hiveot/hivekit/go/lib/consumer"
+import "github.com/hiveot/hub/lib/consumer"
 
 // UserSetPermissions client method - Set Permissions.
 // Set the roles that can use a Thing or service

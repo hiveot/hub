@@ -4,7 +4,7 @@
 // Generated 18 Nov 2025 13:58 PST.
 package launcher
 
-import "github.com/hiveot/hivekit/go/lib/consumer"
+import "github.com/hiveot/hub/lib/consumer"
 
 // AdminListPlugins client method - List Plugins.
 // List available plugins and their status

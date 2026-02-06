@@ -4,7 +4,7 @@
 // Generated 18 Nov 2025 13:58 PST.
 package authz
 
-import "github.com/hiveot/hivekit/go/lib/consumer"
+import "github.com/hiveot/hub/lib/consumer"
 
 // AdminGetClientRole client method - Get Client Role.
 // Read the role of a client
