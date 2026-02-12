@@ -42,9 +42,9 @@ func genImports(l *gentypes.SL, agentID string, serviceID string) {
 
 	l.Add("")
 	//l.Add("import \"errors\"")
-	// l.Add("import \"github.com/hiveot/hivekit/go/messaging\"")
+	// l.Add("import \"github.com/hiveot/hub/lib/messaging\"")
 	//l.Add("import \"github.com/hiveot/hivekit/go/utils\"")
-	l.Add("import \"github.com/hiveot/hivekit/go/consumer\"")
+	l.Add("import \"github.com/hiveot/hub/lib/consumer\"")
 	l.Add("")
 }
 

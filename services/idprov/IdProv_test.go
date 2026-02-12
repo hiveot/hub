@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hiveot/hivekit/go/agent"
-	clients "github.com/hiveot/hivekit/go/clients"
-	"github.com/hiveot/hivekit/go/clients/tlsclient"
-	"github.com/hiveot/hivekit/go/consumer"
-	"github.com/hiveot/hivekit/go/keys"
+	"github.com/hiveot/hub/lib/agent"
+	clients "github.com/hiveot/hub/lib/clients"
+	"github.com/hiveot/hub/lib/clients/tlsclient"
+	"github.com/hiveot/hub/lib/consumer"
+	"github.com/hiveot/hub/lib/keys"
 	"github.com/hiveot/hub/lib/testenv"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	authz "github.com/hiveot/hub/runtime/authz/api"
@@ -21,7 +21,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/hiveot/hivekit/go/logging"
+	"github.com/hiveot/hub/lib/logging"
 )
 
 // when testing using the capnp RPC

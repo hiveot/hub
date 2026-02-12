@@ -9,12 +9,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hiveot/hivekit/go/clients/tlsclient"
-	"github.com/hiveot/hivekit/go/messaging"
-	"github.com/hiveot/hivekit/go/servers/discoserver"
 	"github.com/hiveot/hivekit/go/wot"
 	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/lib/clients/tlsclient"
+	"github.com/hiveot/hub/lib/messaging"
+	"github.com/hiveot/hub/lib/servers/discoserver"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
@@ -36,7 +36,7 @@ func TestAddRemoveTD(t *testing.T) {
 	defer r.Stop()
 
 	// Create the agent and its TDs to query
-	td1 := td.NewTD(agThing1ID, "Title", vocab.ThingSensorMulti)
+	td1 := td.NewTD("", agThing1ID, "Title", vocab.ThingSensorMulti)
 	td1JSON, _ := jsoniter.MarshalToString(td1)
 	ag1, _, _ := ts.AddConnectAgent(agentID)
 	defer ag1.Disconnect()

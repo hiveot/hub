@@ -8,15 +8,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hiveot/hivekit/go/agent"
-	"github.com/hiveot/hivekit/go/logging"
-	"github.com/hiveot/hivekit/go/messaging"
-	"github.com/hiveot/hivekit/go/plugin"
 	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/isy99x/config"
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
+	"github.com/hiveot/hub/lib/agent"
 	"github.com/hiveot/hub/lib/exposedthing"
+	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/hub/lib/messaging"
+	"github.com/hiveot/hub/lib/plugin"
 )
 
 // IsyBinding is the protocol binding for managing the ISY99x Insteon gateway
@@ -100,7 +100,7 @@ func (svc *IsyBinding) HandleWriteBindingProperty(
 // MakeBindingTD generates a TD document for this binding containing properties,
 // event and action definitions.
 func (svc *IsyBinding) MakeBindingTD() *td.TD {
-	tdi := td.NewTD(svc.thingID, "ISY99x binding", vocab.ThingService)
+	tdi := td.NewTD("", svc.thingID, "ISY99x binding", vocab.ThingService)
 
 	// binding attributes
 	prop := tdi.AddProperty(vocab.PropNetConnection, "Connected", "Device is connected", vocab.WoTDataTypeBool).

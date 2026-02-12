@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hiveot/hivekit/go/logging"
 	"github.com/hiveot/hub/bindings/ipnet/config"
 	"github.com/hiveot/hub/bindings/ipnet/service"
+	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
 	"github.com/stretchr/testify/require"
 )

@@ -8,14 +8,14 @@ import (
 	"path"
 	"time"
 
-	"github.com/hiveot/hivekit/go/agent"
-	"github.com/hiveot/hivekit/go/certs"
-	"github.com/hiveot/hivekit/go/clients"
-	"github.com/hiveot/hivekit/go/consumer"
-	"github.com/hiveot/hivekit/go/messaging"
-	"github.com/hiveot/hivekit/go/plugin"
 	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/lib/agent"
+	"github.com/hiveot/hub/lib/certs"
+	"github.com/hiveot/hub/lib/clients"
+	"github.com/hiveot/hub/lib/consumer"
+	"github.com/hiveot/hub/lib/messaging"
+	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/runtime"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	authz "github.com/hiveot/hub/runtime/authz/api"
@@ -220,7 +220,7 @@ func (test *TestServer) CreateTestTD(i int) (tdi *td.TD) {
 		ttd.ID = fmt.Sprintf("thing-%d", rand.Intn(99823))
 	}
 
-	tdi = td.NewTD(ttd.ID, ttd.Title, ttd.DeviceType)
+	tdi = td.NewTD("", ttd.ID, ttd.Title, ttd.DeviceType)
 	// add random properties
 	for n := 0; n < ttd.NrProps; n++ {
 		propName := fmt.Sprintf("prop-%d", n)

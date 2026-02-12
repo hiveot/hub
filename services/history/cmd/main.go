@@ -6,9 +6,9 @@ import (
 	"log/slog"
 	"path"
 
-	"github.com/hiveot/hivekit/go/buckets/bucketstore"
-	"github.com/hiveot/hivekit/go/logging"
-	"github.com/hiveot/hivekit/go/plugin"
+	"github.com/hiveot/hub/lib/buckets/bucketstore"
+	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/services/history/config"
 	"github.com/hiveot/hub/services/history/service"
 )

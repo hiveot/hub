@@ -9,11 +9,11 @@ import (
 	"os"
 	"path"
 
-	"github.com/hiveot/hivekit/go/certs"
-	"github.com/hiveot/hivekit/go/keys"
-	"github.com/hiveot/hivekit/go/plugin"
-	"github.com/hiveot/hivekit/go/servers"
-	"github.com/hiveot/hivekit/go/utils/net"
+	"github.com/hiveot/hivekit/go/utils"
+	"github.com/hiveot/hub/lib/certs"
+	"github.com/hiveot/hub/lib/keys"
+	"github.com/hiveot/hub/lib/plugin"
+	"github.com/hiveot/hub/lib/servers"
 	service2 "github.com/hiveot/hub/runtime/authn/config"
 	"github.com/hiveot/hub/runtime/authz/service"
 	"gopkg.in/yaml.v3"
@@ -168,7 +168,7 @@ func (cfg *RuntimeConfig) setupCerts(env *plugin.AppEnvironment) {
 	if cfg.ServerCert == nil {
 		serverID := "dtr-" + hostName
 		ou := "hiveot"
-		outboundIP := net.GetOutboundIP("")
+		outboundIP := utils.GetOutboundIP("")
 		names := []string{"localhost", "127.0.0.1", hostName, outboundIP.String()}
 
 		// regenerate a new server cert, valid for 1 year

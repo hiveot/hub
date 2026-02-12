@@ -3,7 +3,7 @@ package authn_test
 import (
 	"testing"
 
-	"github.com/hiveot/hivekit/go/keys"
+	"github.com/hiveot/hub/lib/keys"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -5,11 +5,11 @@ import (
 	"os"
 	"testing"
 
-	"github.com/hiveot/hivekit/go/certs"
-	"github.com/hiveot/hivekit/go/keys"
-	"github.com/hiveot/hivekit/go/logging"
 	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/lib/certs"
+	"github.com/hiveot/hub/lib/keys"
+	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/hiveot/hub/services/certs/certsapi"
@@ -74,7 +74,7 @@ func TestCreateDeviceCert(t *testing.T) {
 	pubKeyPEM := k.ExportPublic()
 
 	// a TD is needed first
-	td1 := td.NewTD(agThingID, "Title", vocab.ThingSensorMulti)
+	td1 := td.NewTD("", agThingID, "Title", vocab.ThingSensorMulti)
 	ts.AddTD(agentID, td1)
 
 	deviceCertPEM, caCertPEM, err := certAdmin.CreateDeviceCert(
@@ -116,7 +116,7 @@ func TestDeviceCertBadParms(t *testing.T) {
 	certAdmin, stopFunc := startService()
 	defer stopFunc()
 	// a TD is needed first
-	td1 := td.NewTD(agThingID, "Title", vocab.ThingSensorMulti)
+	td1 := td.NewTD("", agThingID, "Title", vocab.ThingSensorMulti)
 	ts.AddTD(agentID, td1)
 
 	k := keys.NewKey(keys.KeyTypeECDSA)

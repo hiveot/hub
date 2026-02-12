@@ -9,12 +9,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/hiveot/hivekit/go/buckets"
-	"github.com/hiveot/hivekit/go/consumer"
-	"github.com/hiveot/hivekit/go/messaging"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hivekit/go/wot"
+	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/consumedthing"
+	"github.com/hiveot/hub/lib/consumer"
+	"github.com/hiveot/hub/lib/messaging"
 )
 
 type NotifyType string

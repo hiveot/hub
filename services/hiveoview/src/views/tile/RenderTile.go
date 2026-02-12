@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/hiveot/hivekit/go/messaging"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/consumedthing"
+	"github.com/hiveot/hub/lib/messaging"
 	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"

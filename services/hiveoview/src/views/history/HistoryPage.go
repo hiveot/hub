@@ -7,8 +7,8 @@ import (
 
 	"github.com/araddon/dateparse"
 	"github.com/go-chi/chi/v5"
-	"github.com/hiveot/hivekit/go/messaging"
 	"github.com/hiveot/hivekit/go/utils"
+	"github.com/hiveot/hub/lib/messaging"
 	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"

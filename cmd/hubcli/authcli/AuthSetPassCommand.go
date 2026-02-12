@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hiveot/hivekit/go/consumer"
+	"github.com/hiveot/hub/lib/consumer"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/exp/rand"

@@ -6,10 +6,10 @@ import (
 	"os"
 	"path"
 
-	"github.com/hiveot/hivekit/go/certs"
-	"github.com/hiveot/hivekit/go/keys"
-	"github.com/hiveot/hivekit/go/logging"
-	"github.com/hiveot/hivekit/go/plugin"
+	"github.com/hiveot/hub/lib/certs"
+	"github.com/hiveot/hub/lib/keys"
+	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/services/certs/service/selfsigned"
 )
 

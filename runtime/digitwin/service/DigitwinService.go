@@ -6,10 +6,10 @@ import (
 	"path"
 	"sync"
 
-	"github.com/hiveot/hivekit/go/buckets"
-	"github.com/hiveot/hivekit/go/buckets/kvbtree"
-	"github.com/hiveot/hivekit/go/messaging"
 	"github.com/hiveot/hivekit/go/wot/td"
+	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hub/lib/buckets/kvbtree"
+	"github.com/hiveot/hub/lib/messaging"
 	"github.com/hiveot/hub/runtime/digitwin/store"
 )
 

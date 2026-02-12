@@ -3,10 +3,10 @@ package store_test
 import (
 	"fmt"
 
-	"github.com/hiveot/hivekit/go/buckets/kvbtree"
-	"github.com/hiveot/hivekit/go/logging"
-	"github.com/hiveot/hivekit/go/messaging"
 	"github.com/hiveot/hivekit/go/utils"
+	"github.com/hiveot/hub/lib/buckets/kvbtree"
+	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/hub/lib/messaging"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/runtime/digitwin/store"
 
@@ -66,7 +66,7 @@ func addValues(svc *store.DigitwinStore,
 		_, err := svc.ReadDThing(dThingID)
 		if err != nil {
 			title := fmt.Sprintf("Test thing %d", j)
-			thingTD := td.NewTD(thingID, title, "randomdevice")
+			thingTD := td.NewTD("", thingID, title, "randomdevice")
 			dtwTD := *thingTD
 			dtwTD.ID = dThingID
 			svc.UpdateTD(agentID, thingTD, &dtwTD)

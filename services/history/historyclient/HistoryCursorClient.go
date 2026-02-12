@@ -4,11 +4,11 @@ import "C"
 import (
 	"time"
 
-	"github.com/hiveot/hivekit/go/consumer"
-	"github.com/hiveot/hivekit/go/messaging"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hivekit/go/wot"
 	"github.com/hiveot/hivekit/go/wot/td"
+	"github.com/hiveot/hub/lib/consumer"
+	"github.com/hiveot/hub/lib/messaging"
 	"github.com/hiveot/hub/services/history/historyapi"
 )
 

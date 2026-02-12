@@ -5,11 +5,6 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/hiveot/hivekit/go/clients"
-	"github.com/hiveot/hivekit/go/consumer"
-	"github.com/hiveot/hivekit/go/logging"
-	"github.com/hiveot/hivekit/go/messaging"
-	"github.com/hiveot/hivekit/go/plugin"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/cmd/hubcli/authcli"
 	"github.com/hiveot/hub/cmd/hubcli/certs"
@@ -18,6 +13,11 @@ import (
 	"github.com/hiveot/hub/cmd/hubcli/idprovcli"
 	"github.com/hiveot/hub/cmd/hubcli/launchercli"
 	"github.com/hiveot/hub/cmd/hubcli/pubsubcli"
+	"github.com/hiveot/hub/lib/clients"
+	"github.com/hiveot/hub/lib/consumer"
+	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/hub/lib/messaging"
+	"github.com/hiveot/hub/lib/plugin"
 	"github.com/urfave/cli/v2"
 )
 

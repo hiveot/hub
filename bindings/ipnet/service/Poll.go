@@ -3,14 +3,14 @@ package service
 import (
 	"log/slog"
 
-	"github.com/hiveot/hivekit/go/utils/net"
+	"github.com/hiveot/hivekit/go/utils"
 )
 
 // determineSubnetsToScan returns a list of subnets and IP addresses to scan, obtained from configuration
 // If no subnets are configured, determine the subnets of the interfaces
 func (svc *IPNetBinding) determineSubnetsToScan() []string {
 	// auto determine subnets
-	subnets, _ := net.GetIP4Subnets(true)
+	subnets, _ := utils.GetIP4Subnets(true)
 
 	return subnets
 }

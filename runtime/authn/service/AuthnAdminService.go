@@ -7,10 +7,10 @@ import (
 	"path"
 	"time"
 
-	"github.com/hiveot/hivekit/go/clients"
-	"github.com/hiveot/hivekit/go/keys"
-	"github.com/hiveot/hivekit/go/messaging"
 	"github.com/hiveot/hivekit/go/utils"
+	"github.com/hiveot/hub/lib/clients"
+	"github.com/hiveot/hub/lib/keys"
+	"github.com/hiveot/hub/lib/messaging"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	"github.com/hiveot/hub/runtime/authn/authnstore"
 	"github.com/hiveot/hub/runtime/authn/config"

@@ -1,3 +1,4 @@
+import { InterviewStage, SecurityClass } from '@zwave-js/core';
 import {
     Driver,
     getEnumMemberName,
@@ -6,11 +7,12 @@ import {
     ZWavePlusNodeType,
     ZWavePlusRoleType,
 } from "zwave-js";
-import {InterviewStage, SecurityClass} from '@zwave-js/core';
 
+import * as tslog from 'tslog';
 import * as vocab from "../hivelib/api/vocab/vocab.js";
-import {getVidValue} from "./ZWAPI.ts";
+import { getVidValue } from "./ZWAPI.ts";
 import getAffordanceFromVid from "./getAffordanceFromVid.ts";
+const log = new  tslog.Logger({prettyLogTimeZone:"local"})
 
 
 // NodeValues holds the latest values of a single node regardless if it is a prop, event or action
@@ -124,15 +126,18 @@ export default class NodeValues {
         this.setIf("zwavePlusVersion", node.zwavePlusVersion);
 
         // add value ID values
-
-        const vids = node.getDefinedValueIDs()
-        for (const vid of vids) {
-            const vidValue = getVidValue(node, vid)
-            const va = getAffordanceFromVid(node,vid,0)
-            if (va) {
-                // const propID = getVidID(vid)
-                this.setIf(va.name, vidValue)
+        try {
+            const vids = node.getDefinedValueIDs()
+            for (const vid of vids) {
+                const vidValue = getVidValue(node, vid)
+                const va = getAffordanceFromVid(node,vid,0)
+                if (va) {
+                    // const propID = getVidID(vid)
+                    this.setIf(va.name, vidValue)
+                }
             }
+        } catch (e) {
+            log.error("Exception processing vids",e)
         }
         // let nameVid = {
         //     commandClass:0x77, endpoint:0, property: "name"}

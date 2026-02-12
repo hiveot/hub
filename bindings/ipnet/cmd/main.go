@@ -1,9 +1,9 @@
 package main
 
 import (
-	"github.com/hiveot/hivekit/go/plugin"
 	"github.com/hiveot/hub/bindings/ipnet/config"
 	"github.com/hiveot/hub/bindings/ipnet/service"
+	"github.com/hiveot/hub/lib/plugin"
 )
 
 // Run the ipnet service binding

@@ -2,7 +2,7 @@ package launcherclient
 
 import (
 	"fmt"
-	"github.com/hiveot/hivekit/go/messaging"
+	"github.com/hiveot/hub/lib/messaging"
 	"github.com/hiveot/hub/services/launcher/launcherapi"
 	"github.com/hiveot/hivekit/go/wot/td"
 )

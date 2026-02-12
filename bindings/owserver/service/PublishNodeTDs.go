@@ -28,7 +28,7 @@ func (svc *OWServerBinding) CreateTDFromNode(node *eds.OneWireNode) (tdoc *td.TD
 		deviceType = vocab.ThingDevice
 	}
 	thingTitle := node.Name
-	tdoc = td.NewTD(thingID, thingTitle, deviceType)
+	tdoc = td.NewTD("", thingID, thingTitle, deviceType)
 	tdoc.UpdateTitleDescription(thingTitle, node.Description)
 
 	// Add a writable 'title' property so consumer can edit the device's title.

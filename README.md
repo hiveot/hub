@@ -8,7 +8,7 @@ The Hub for the _Hive-of-Things_ provides a secure [runtime](runtime/README-runt
 
 Status Nov 2025: The Hub runtime, services and bindings have been reworked to support the Web-of-things (WoT) Thing Description (TD) specification. It is currently in alpha, functional but breaking changes should be expected.
 
-The Hub is reworked to extract the core library in a reusable 'hive kit' for builing WoT applications. Inspired by go2rtc (for video) the core runtime will be migrated to a stand-alone 'hive flow' concentrator that provides access to collections of IoT devices using WoT plugins without depending on Hub features. The Hub will consists of this runtime and plugins for additional features such as a digital twin, consumer authentication and authorization management, history tracking, a dashboard, launcher and various automation services.
+The Hub is currently further reworked to extract the core library in a reusable 'hive kit' for builing IoT applications. Inspired by go2rtc (for video) the runtime, bindings and services will be migrated to use the stand-alone 'hive kit' modules.
 
 ## Audience
 

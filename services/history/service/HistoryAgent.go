@@ -3,11 +3,11 @@ package service
 import (
 	"fmt"
 
-	"github.com/hiveot/hivekit/go/agent"
-	"github.com/hiveot/hivekit/go/messaging"
 	"github.com/hiveot/hivekit/go/wot"
 	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hub/lib/agent"
 	"github.com/hiveot/hub/lib/hubagent"
+	"github.com/hiveot/hub/lib/messaging"
 	"github.com/hiveot/hub/services/history/historyapi"
 )
 

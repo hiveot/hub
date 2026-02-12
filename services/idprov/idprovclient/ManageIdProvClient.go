@@ -1,8 +1,8 @@
 package idprovclient
 
 import (
-	"github.com/hiveot/hivekit/go/consumer"
 	"github.com/hiveot/hivekit/go/wot/td"
+	"github.com/hiveot/hub/lib/consumer"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
 )

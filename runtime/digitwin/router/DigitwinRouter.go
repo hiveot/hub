@@ -4,8 +4,8 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/hiveot/hivekit/go/messaging"
-	"github.com/hiveot/hivekit/go/servers"
+	"github.com/hiveot/hub/lib/messaging"
+	"github.com/hiveot/hub/lib/servers"
 	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/hiveot/hub/runtime/digitwin/store"
 )

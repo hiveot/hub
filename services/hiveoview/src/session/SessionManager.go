@@ -9,13 +9,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hiveot/hivekit/go/agent"
-	"github.com/hiveot/hivekit/go/buckets"
-	"github.com/hiveot/hivekit/go/clients"
-	"github.com/hiveot/hivekit/go/clients/authclient"
-	"github.com/hiveot/hivekit/go/consumer"
-	"github.com/hiveot/hivekit/go/messaging"
-	"github.com/hiveot/hivekit/go/servers/httpbasic"
+	"github.com/hiveot/hub/lib/agent"
+	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hub/lib/clients"
+	"github.com/hiveot/hub/lib/clients/authclient"
+	"github.com/hiveot/hub/lib/consumer"
+	"github.com/hiveot/hub/lib/messaging"
+	"github.com/hiveot/hub/lib/servers/httpbasic"
 	"github.com/hiveot/hub/services/hiveoview/src"
 )
 
@@ -245,7 +245,7 @@ func (sm *WebSessionManager) ConnectWithToken(
 	w http.ResponseWriter, r *http.Request, loginID string, cid string, authToken string) (
 	cs *WebClientSession, err error) {
 
-	slog.Info("SetBearerToken",
+	slog.Info("ConnectWithToken",
 		"loginID", loginID, "cid", cid, "remoteAddr", r.RemoteAddr,
 		"nr websessions", len(sm.sessions))
 	//var newToken string

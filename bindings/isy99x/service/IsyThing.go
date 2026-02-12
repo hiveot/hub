@@ -5,13 +5,13 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/hiveot/hivekit/go/agent"
-	"github.com/hiveot/hivekit/go/messaging"
 	"github.com/hiveot/hivekit/go/wot"
 	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
+	"github.com/hiveot/hub/lib/agent"
 	"github.com/hiveot/hub/lib/exposedthing"
+	"github.com/hiveot/hub/lib/messaging"
 )
 
 // mapping from insteon device category to TD device type
@@ -174,7 +174,7 @@ func (it *IsyThing) MakeTD() *td.TD {
 		title, _ = titleProp.(string)
 	}
 	it.mux.RLock()
-	td := td.NewTD(it.thingID, title, it.deviceType)
+	td := td.NewTD("", it.thingID, title, it.deviceType)
 	it.mux.RUnlock()
 
 	//--- read-only properties

@@ -1,12 +1,10 @@
-import {Buffer} from "node:buffer";
+import { Buffer } from "node:buffer";
 import * as tslog from 'tslog';
 
-import getLogger from "./getLogger.ts";
-import findSerialPort from "./serial/findserialport.ts";
 import {
     Driver, Endpoint, FoundNode, getEnumMemberName,
     InclusionResult,
-    InclusionStrategy, InterviewStage, NodeStatistics,
+    InclusionStrategy, InterviewStage,
     NodeStatus,
     PartialZWaveOptions,
     RebuildRoutesStatus,
@@ -18,6 +16,7 @@ import {
     ZWaveNodeValueRemovedArgs,
     ZWaveNodeValueUpdatedArgs
 } from "zwave-js";
+import findSerialPort from "./serial/findserialport.ts";
 
 // fix 'require is not defined' when running as a module
 // This comes from zwave-js-server: server.ts
@@ -429,7 +428,8 @@ export default class ZWAPI {
         });
 
         node.on("ready", (node2: any) => {
-            hcLog.info("--- Node", node2.id, "is ready. Updated the node. status=", node2.status);
+            // note, this ready callback is rarely received.
+            hcLog.info("--- Node", node2.id, "is ready. status=", node2.status);
             // handle in interview completed
             // this.onNodeUpdate(node);
         });
