@@ -84,7 +84,7 @@ func NewLauncherClient(agentID string, hc *consumer.Consumer) *LauncherClient {
 	}
 	cl := LauncherClient{
 		co:       hc,
-		dThingID: td.MakeDigiTwinThingID(agentID, launcherapi.ManageServiceID),
+		dThingID: digitwin.MakeDigitwinID(agentID, launcherapi.ManageServiceID),
 	}
 	return &cl
 }

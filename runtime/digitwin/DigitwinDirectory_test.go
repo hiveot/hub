@@ -4,8 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/hiveot/hivekit/go/wot/td"
-	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
+	digitwinapi "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -16,7 +15,7 @@ func TestAddRemoveTD(t *testing.T) {
 	const thing1ID = "thing1"
 	const title1 = "title1"
 	const consumerID = "user1"
-	var dThing1ID = td.MakeDigiTwinThingID(agentID, thing1ID)
+	var dThing1ID = digitwinapi.MakeDigitwinID(agentID, thing1ID)
 
 	svc, _, stopFunc := startService(true)
 	defer stopFunc()
@@ -29,13 +28,13 @@ func TestAddRemoveTD(t *testing.T) {
 	err := dirSvc.UpdateThing(agentID, string(tdd1JSON))
 	require.NoError(t, err)
 
-	dThingID := td.MakeDigiTwinThingID(agentID, thing1ID)
+	dThingID := digitwinapi.MakeDigitwinID(agentID, thing1ID)
 	tdd2JSON, err := dirSvc.RetrieveThing(consumerID, dThingID)
 	require.NoError(t, err)
 	require.NotEmpty(t, tdd2JSON)
 
 	dtdList, err := dirSvc.RetrieveAllThings(consumerID,
-		digitwin.ThingDirectoryRetrieveAllThingsArgs{Limit: 10})
+		digitwinapi.ThingDirectoryRetrieveAllThingsArgs{Limit: 10})
 	assert.NoError(t, err)
 	assert.NotEmpty(t, dtdList)
 

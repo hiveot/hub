@@ -3,9 +3,9 @@ package service
 import (
 	"fmt"
 
-	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/messaging"
 	authn "github.com/hiveot/hub/runtime/authn/api"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 )
 
 // AuthnAgent agent for the authentication services:
@@ -18,7 +18,7 @@ type AuthnAgent struct {
 func (agent *AuthnAgent) HandleRequest(
 	req *messaging.RequestMessage, c messaging.IConnection) (resp *messaging.ResponseMessage) {
 
-	_, thingID := td.SplitDigiTwinThingID(req.ThingID)
+	_, thingID, _ := digitwin.SplitDigitwinID(req.ThingID)
 	if thingID == authn.AdminServiceID {
 		resp = agent.adminHandler(req, c)
 	} else if thingID == authn.UserServiceID {

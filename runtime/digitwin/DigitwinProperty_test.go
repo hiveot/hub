@@ -4,8 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/hiveot/hivekit/go/wot/td"
-	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
+	digitwinapi "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -20,7 +19,7 @@ func TestUpdateReadProperty(t *testing.T) {
 	const propValue = 25
 	const propValue2 = 52
 	const correlationID = "request-1"
-	dThing1ID := td.MakeDigiTwinThingID(agent1ID, thing1ID)
+	dThing1ID := digitwinapi.MakeDigitwinID(agent1ID, thing1ID)
 
 	svc, dtwStore, stopFunc := startService(true)
 	defer stopFunc()
@@ -35,12 +34,12 @@ func TestUpdateReadProperty(t *testing.T) {
 
 	// agent has provided a new property value
 	changed, err := dtwStore.UpdatePropertyValue(
-		digitwin.ThingValue{ThingID: dThing1ID, Name: propName, Data: propValue})
+		digitwinapi.ThingValue{ThingID: dThing1ID, Name: propName, Data: propValue})
 	assert.NoError(t, err)
 	assert.True(t, changed)
 
 	// Read the property value and all values
-	v2, err := svc.ValuesSvc.ReadProperty(user1ID, digitwin.ThingValuesReadPropertyArgs{
+	v2, err := svc.ValuesSvc.ReadProperty(user1ID, digitwinapi.ThingValuesReadPropertyArgs{
 		ThingID: dThing1ID,
 		Name:    propName})
 	assert.NoError(t, err)
@@ -52,11 +51,11 @@ func TestUpdateReadProperty(t *testing.T) {
 
 	// next write a new value
 	changed, err = dtwStore.UpdatePropertyValue(
-		digitwin.ThingValue{ThingID: dThing1ID, Name: propName, Data: propValue2})
+		digitwinapi.ThingValue{ThingID: dThing1ID, Name: propName, Data: propValue2})
 
 	assert.NoError(t, err)
 	assert.True(t, changed)
-	v3, err := svc.ValuesSvc.ReadProperty(user1ID, digitwin.ThingValuesReadPropertyArgs{
+	v3, err := svc.ValuesSvc.ReadProperty(user1ID, digitwinapi.ThingValuesReadPropertyArgs{
 		ThingID: dThing1ID,
 		Name:    propName})
 	assert.Equal(t, propValue2, v3.Data)
@@ -77,7 +76,7 @@ func TestPropertyReadFail(t *testing.T) {
 	err := svc.DirSvc.UpdateThing(agentID, string(tdDoc1Json))
 	require.NoError(t, err)
 
-	_, err = svc.ValuesSvc.ReadProperty("itsme", digitwin.ThingValuesReadPropertyArgs{
+	_, err = svc.ValuesSvc.ReadProperty("itsme", digitwinapi.ThingValuesReadPropertyArgs{
 		ThingID: "badthingid",
 		Name:    "someprop"})
 	assert.Error(t, err)
@@ -90,8 +89,8 @@ func TestPropertyUpdateFail(t *testing.T) {
 	const agentID = "agent1"
 	const thingID = "thing1"
 	const propName = "prop1"
-	dThing1ID := td.MakeDigiTwinThingID(agentID, thingID)
-	dBadThingID := td.MakeDigiTwinThingID(agentID, "notathing")
+	dThing1ID := digitwinapi.MakeDigitwinID(agentID, thingID)
+	dBadThingID := digitwinapi.MakeDigitwinID(agentID, "notathing")
 
 	svc, dtwStore, stopFunc := startService(true)
 	defer stopFunc()
@@ -105,17 +104,17 @@ func TestPropertyUpdateFail(t *testing.T) {
 	require.NoError(t, err)
 
 	changed, err := dtwStore.UpdatePropertyValue(
-		digitwin.ThingValue{ThingID: dBadThingID, Name: propName, Data: 123})
+		digitwinapi.ThingValue{ThingID: dBadThingID, Name: propName, Data: 123})
 	assert.Error(t, err)
 	assert.False(t, changed)
 	//property names not in the TD are accepted
 	changed, err = dtwStore.UpdatePropertyValue(
-		digitwin.ThingValue{ThingID: dThing1ID, Name: "unknownprop", Data: 123})
+		digitwinapi.ThingValue{ThingID: dThing1ID, Name: "unknownprop", Data: 123})
 	assert.NoError(t, err)
 	assert.True(t, changed)
 
 	//can't update a property that doesn't exist
-	//dThingID := td.MakeDigiTwinThingID(agentID, thingID)
+	//dThingID := digitwin.MakeDigitwinID(agentID, thingID)
 	//err = dtwStore.WriteProperty(dThingID, digitwin.ThingValue{
 	//	Name:     "unknownprop",
 	//	Data:     123,

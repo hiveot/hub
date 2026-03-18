@@ -6,9 +6,9 @@ import (
 
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hivekit/go/wot"
-	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/consumer"
 	"github.com/hiveot/hub/lib/messaging"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/services/history/historyapi"
 )
 
@@ -140,7 +140,7 @@ func NewHistoryCursorClient(co *consumer.Consumer, cursorKey string) *HistoryCur
 	cl := &HistoryCursorClient{
 		cursorKey: cursorKey,
 		// history cursor serviceID
-		dThingID: td.MakeDigiTwinThingID(agentID, serviceID),
+		dThingID: digitwin.MakeDigitwinID(agentID, serviceID),
 		co:       co,
 	}
 	return cl

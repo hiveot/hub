@@ -8,7 +8,6 @@ import (
 
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hivekit/go/wot"
-	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/messaging"
 	authz "github.com/hiveot/hub/runtime/authz/api"
@@ -37,7 +36,7 @@ func TestQueryActions(t *testing.T) {
 
 	// step 1: agent publishes a TD: dtw:agent1:thing-1
 	td1 := ts.CreateTestTD(0)
-	var dThing1ID = td.MakeDigiTwinThingID(agentID, td1.ID)
+	var dThing1ID = digitwin.MakeDigitwinID(agentID, td1.ID)
 
 	ag1.SetRequestHandler(func(msg *messaging.RequestMessage,
 		c messaging.IConnection) *messaging.ResponseMessage {
@@ -120,7 +119,7 @@ func TestReadEvents(t *testing.T) {
 	time.Sleep(time.Millisecond * 1)
 
 	// step 3: read all events
-	var dThing1ID = td.MakeDigiTwinThingID(agentID, td1.ID)
+	var dThing1ID = digitwin.MakeDigitwinID(agentID, td1.ID)
 	dtwValues, err := digitwin.ThingValuesReadAllEvents(co1, dThing1ID)
 	require.NoError(t, err)
 	require.NotZero(t, len(dtwValues))
@@ -168,7 +167,7 @@ func TestHttpsGetProps(t *testing.T) {
 	require.NoError(t, err)
 	//
 	time.Sleep(time.Millisecond * 10)
-	var dThingID = td.MakeDigiTwinThingID(agentID, td1.ID)
+	var dThingID = digitwin.MakeDigitwinID(agentID, td1.ID)
 	valueMap, err := cl2.ReadAllProperties(dThingID)
 	//valueMap, err := digitwin.ThingValuesReadAllProperties(cl2, dThingID)
 	require.NoError(t, err)
@@ -269,7 +268,7 @@ func TestWriteProperties(t *testing.T) {
 	})
 	time.Sleep(time.Millisecond * 100)
 
-	dThingID := td.MakeDigiTwinThingID(agentID, td1.ID)
+	dThingID := digitwin.MakeDigitwinID(agentID, td1.ID)
 	//stat2 := co1.WriteProperty(dThingID, key1, data1)
 	//require.Empty(t, stat2.Error)
 	err = co1.Rpc(wot.OpWriteProperty, dThingID, key1, data1, nil)

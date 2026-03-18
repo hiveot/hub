@@ -6,8 +6,8 @@ import (
 	"log/slog"
 
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/messaging"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 )
 
 // HandleActionResponse handles receiving a response to an action
@@ -107,7 +107,7 @@ func (r *DigitwinRouter) HandleResponse(resp *messaging.ResponseMessage) error {
 	var err error
 
 	// Convert the agent ThingID to that of the digital twin
-	dThingID := td.MakeDigiTwinThingID(resp.SenderID, resp.ThingID)
+	dThingID := digitwin.MakeDigitwinID(resp.SenderID, resp.ThingID)
 	resp.ThingID = dThingID
 	// ensure the updated time is set
 	if resp.Timestamp == "" {

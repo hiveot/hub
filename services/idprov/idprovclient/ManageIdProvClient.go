@@ -1,9 +1,9 @@
 package idprovclient
 
 import (
-	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/consumer"
 	authn "github.com/hiveot/hub/runtime/authn/api"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/services/idprov/idprovapi"
 )
 
@@ -84,7 +84,7 @@ func NewIdProvManageClient(co *consumer.Consumer) *ManageIdProvClient {
 	agentID := idprovapi.AgentID
 	cl := &ManageIdProvClient{
 		co:       co,
-		dThingID: td.MakeDigiTwinThingID(agentID, idprovapi.ManageServiceID),
+		dThingID: digitwin.MakeDigitwinID(agentID, idprovapi.ManageServiceID),
 	}
 	return cl
 }

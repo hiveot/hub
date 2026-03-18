@@ -4,9 +4,9 @@ import (
 	"time"
 
 	"github.com/hiveot/hivekit/go/wot"
-	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/consumer"
 	"github.com/hiveot/hub/lib/messaging"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/services/history/historyapi"
 )
 
@@ -69,7 +69,7 @@ func NewReadHistoryClient(co *consumer.Consumer) *ReadHistoryClient {
 	agentID := historyapi.AgentID
 	histCl := ReadHistoryClient{
 		co:       co,
-		dThingID: td.MakeDigiTwinThingID(agentID, historyapi.ReadHistoryServiceID),
+		dThingID: digitwin.MakeDigitwinID(agentID, historyapi.ReadHistoryServiceID),
 	}
 	return &histCl
 }

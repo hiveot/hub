@@ -6,7 +6,7 @@ import (
 
 	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"
-	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
+	digitwinapi "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -17,7 +17,7 @@ func TestAddReadEvent(t *testing.T) {
 	const thing1ID = "thing1"
 	const eventName = "event1"
 	const eventValue = 25
-	dThing1ID := td.MakeDigiTwinThingID(agent1ID, thing1ID)
+	dThing1ID := digitwinapi.MakeDigitwinID(agent1ID, thing1ID)
 
 	svc, dtwStore, stopFunc := startService(true)
 	defer stopFunc()
@@ -33,12 +33,12 @@ func TestAddReadEvent(t *testing.T) {
 	err := svc.DirSvc.UpdateThing(agent1ID, string(tdDoc1Json))
 
 	// provide an event value
-	evVal := digitwin.ThingValue{Data: eventValue, Name: eventName, ThingID: dThing1ID}
+	evVal := digitwinapi.ThingValue{Data: eventValue, Name: eventName, ThingID: dThing1ID}
 	err = dtwStore.UpdateEventValue(evVal)
 	assert.NoError(t, err)
 
 	// Read the event value and all events
-	ev2, err := svc.ValuesSvc.ReadEvent("user1", digitwin.ThingValuesReadEventArgs{
+	ev2, err := svc.ValuesSvc.ReadEvent("user1", digitwinapi.ThingValuesReadEventArgs{
 		ThingID: dThing1ID,
 		Name:    eventName,
 	})
@@ -53,7 +53,7 @@ func TestEventReadFail(t *testing.T) {
 	t.Logf("---%s---\n", t.Name())
 	const agentID = "agent1"
 	const thingID = "thing1"
-	var dThingID = td.MakeDigiTwinThingID(agentID, thingID)
+	var dThingID = digitwinapi.MakeDigitwinID(agentID, thingID)
 
 	svc, _, stopFunc := startService(true)
 	defer stopFunc()
@@ -65,13 +65,13 @@ func TestEventReadFail(t *testing.T) {
 	err := svc.DirSvc.UpdateThing(agentID, string(tdDoc1Json))
 	require.NoError(t, err)
 
-	_, err = svc.ValuesSvc.ReadEvent("itsme", digitwin.ThingValuesReadEventArgs{
+	_, err = svc.ValuesSvc.ReadEvent("itsme", digitwinapi.ThingValuesReadEventArgs{
 		ThingID: "badthingid",
 		Name:    "someevent",
 	})
 	assert.Error(t, err)
 	// if strict is set to false this can succeed with nil output
-	_, err = svc.ValuesSvc.ReadEvent("itsme", digitwin.ThingValuesReadEventArgs{
+	_, err = svc.ValuesSvc.ReadEvent("itsme", digitwinapi.ThingValuesReadEventArgs{
 		ThingID: dThingID,
 		Name:    "badeventname",
 	})
@@ -101,13 +101,13 @@ func TestEventUpdateFail(t *testing.T) {
 	err := svc.DirSvc.UpdateThing(agentID, string(tdDoc1Json))
 	require.NoError(t, err)
 
-	evVal := digitwin.ThingValue{Data: 123, Name: EventName, ThingID: "notathing"}
+	evVal := digitwinapi.ThingValue{Data: 123, Name: EventName, ThingID: "notathing"}
 	err = dtwStore.UpdateEventValue(evVal)
 	assert.Error(t, err)
 
 	//event names not in the TD are accepted
-	dThingID2 := td.MakeDigiTwinThingID(agentID, thingID)
-	evVal = digitwin.ThingValue{Data: 123, Name: "notanevent", ThingID: dThingID2}
+	dThingID2 := digitwinapi.MakeDigitwinID(agentID, thingID)
+	evVal = digitwinapi.ThingValue{Data: 123, Name: "notanevent", ThingID: dThingID2}
 	err = dtwStore.UpdateEventValue(evVal)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, dThingID2)

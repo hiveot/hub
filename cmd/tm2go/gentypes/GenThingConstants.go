@@ -2,6 +2,7 @@ package gentypes
 
 import (
 	"github.com/hiveot/hivekit/go/wot/td"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 )
 
 // GenThingConstantsFromTD generates the thing constants from the TD.
@@ -15,7 +16,7 @@ import (
 //   - event names            {ThingTitle}EventName = "name"
 //   - action names           {ThingTitle}ActionName = "name"
 func GenThingConstantsFromTD(l *SL, agentID, serviceID string, td1 *td.TD) {
-	dThingID := td.MakeDigiTwinThingID(agentID, serviceID)
+	dThingID := digitwin.MakeDigitwinID(agentID, serviceID)
 
 	// thing identifiers
 	l.Add("//--- Constants ---")

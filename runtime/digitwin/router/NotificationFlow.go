@@ -8,7 +8,6 @@ import (
 
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hivekit/go/wot"
-	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/messaging"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 )
@@ -26,7 +25,7 @@ func (r *DigitwinRouter) HandleNotification(notif *messaging.NotificationMessage
 	)
 	// Convert the agent ThingID to that of the digital twin
 	dtwNotif := *notif
-	dThingID := td.MakeDigiTwinThingID(notif.SenderID, notif.ThingID)
+	dThingID := digitwin.MakeDigitwinID(notif.SenderID, notif.ThingID)
 	dtwNotif.ThingID = dThingID
 	if dtwNotif.Timestamp == "" {
 		dtwNotif.Timestamp = utils.FormatUTCMilli(time.Now())

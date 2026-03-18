@@ -12,13 +12,13 @@ import (
 	"github.com/araddon/dateparse"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hivekit/go/wot"
-	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/bucketstore"
 	"github.com/hiveot/hub/lib/messaging"
 	"github.com/hiveot/hub/lib/testenv"
 	authz "github.com/hiveot/hub/runtime/authz/api"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/services/history/historyapi"
 	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/hiveot/hub/services/history/service"
@@ -102,7 +102,7 @@ func makeValueBatch(agentID string, nrValues, nrThings, timespanSec int) (
 		randomTime := time.Now().Add(-randomSeconds)
 		//
 		thingID := thingIDPrefix + strconv.Itoa(randomID)
-		dThingID := td.MakeDigiTwinThingID(agentID, thingID)
+		dThingID := digitwin.MakeDigitwinID(agentID, thingID)
 
 		randomMsgType := rand.Intn(2)
 		affType := messaging.AffordanceTypeEvent
@@ -194,7 +194,7 @@ func TestAddGetEvent(t *testing.T) {
 
 	// add thing1 temperature from 5 minutes ago
 	addHist := svc.GetAddHistory()
-	dThing1ID := td.MakeDigiTwinThingID(agent1ID, thing1ID)
+	dThing1ID := digitwin.MakeDigitwinID(agent1ID, thing1ID)
 	ev1_1 := &messaging.NotificationMessage{
 		Operation: wot.OpSubscribeEvent,
 		SenderID:  agent1ID, ThingID: dThing1ID, Name: evTemperature,
@@ -212,7 +212,7 @@ func TestAddGetEvent(t *testing.T) {
 	assert.NoError(t, err)
 
 	// add thing2 humidity from 5 minutes ago
-	dThing2ID := td.MakeDigiTwinThingID(agent1ID, thing2ID)
+	dThing2ID := digitwin.MakeDigitwinID(agent1ID, thing2ID)
 	ev2_1 := &messaging.NotificationMessage{
 		Operation: vocab.OpSubscribeEvent,
 		SenderID:  agent1ID, ThingID: dThing2ID, Name: evHumidity,
@@ -289,7 +289,7 @@ func TestAddProperties(t *testing.T) {
 	svc, readHist, closeFn := startHistoryService(true)
 	defer closeFn()
 
-	dThing1ID := td.MakeDigiTwinThingID(agent1, thing1ID)
+	dThing1ID := digitwin.MakeDigitwinID(agent1, thing1ID)
 	action1 := &messaging.NotificationMessage{
 		SenderID:  agent1,
 		ThingID:   dThing1ID,
@@ -416,7 +416,7 @@ func TestPrevNext(t *testing.T) {
 	const count = 1000
 	const agentID = "agent1"
 	const thing0ID = thingIDPrefix + "0" // matches a percentage of the random things
-	var dThing0ID = td.MakeDigiTwinThingID(agentID, thing0ID)
+	var dThing0ID = digitwin.MakeDigitwinID(agentID, thing0ID)
 
 	store, readHist, closeFn := startHistoryService(true)
 	defer closeFn()
@@ -475,7 +475,7 @@ func TestPrevNextFiltered(t *testing.T) {
 	const count = 1000
 	const agentID = "agent1"
 	const thing0ID = thingIDPrefix + "0" // matches a percentage of the random things
-	var dThing0ID = td.MakeDigiTwinThingID(agentID, thing0ID)
+	var dThing0ID = digitwin.MakeDigitwinID(agentID, thing0ID)
 
 	svc, readHist, closeFn := startHistoryService(true)
 	defer closeFn()
@@ -543,7 +543,7 @@ func TestNextPrevUntil(t *testing.T) {
 	const count = 1000
 	const agentID = "agent1"
 	const thing0ID = thingIDPrefix + "0" // matches a percentage of the random things
-	var dThing0ID = td.MakeDigiTwinThingID(agentID, thing0ID)
+	var dThing0ID = digitwin.MakeDigitwinID(agentID, thing0ID)
 
 	store, readHist, closeFn := startHistoryService(true)
 	defer closeFn()
@@ -583,7 +583,7 @@ func TestReadHistory(t *testing.T) {
 	const count = 1000
 	const agentID = "device1"
 	const thing0ID = thingIDPrefix + "0" // matches a percentage of the random things
-	var dThing0ID = td.MakeDigiTwinThingID(agentID, thing0ID)
+	var dThing0ID = digitwin.MakeDigitwinID(agentID, thing0ID)
 
 	store, readHist, closeFn := startHistoryService(true)
 	defer closeFn()
@@ -625,7 +625,7 @@ func TestPubEvents(t *testing.T) {
 	td1 := ts.CreateTestTD(0)
 	ts.AddTD(agent1ID, td1)
 	thing0ID := td1.ID
-	dThing0ID := td.MakeDigiTwinThingID(agent1ID, thing0ID)
+	dThing0ID := digitwin.MakeDigitwinID(agent1ID, thing0ID)
 
 	// publish events
 	names := []string{
@@ -681,7 +681,7 @@ func TestManageRetention(t *testing.T) {
 	// make sure the TD whose retention rules are added exist
 	td0 := ts.CreateTestTD(0)
 	ts.AddTD(agentID, td0)
-	dThing0ID := td.MakeDigiTwinThingID(agentID, td0.ID)
+	dThing0ID := digitwin.MakeDigitwinID(agentID, td0.ID)
 
 	// connect as an admin user
 	co1, _, _ := ts.AddConnectConsumer(client1ID, authz.ClientRoleAdmin)

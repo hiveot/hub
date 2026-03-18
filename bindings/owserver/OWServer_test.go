@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/bindings/owserver/config"
 	"github.com/hiveot/hub/bindings/owserver/service"
 	"github.com/hiveot/hub/lib/messaging"
@@ -122,7 +121,7 @@ func TestPoll(t *testing.T) {
 	assert.GreaterOrEqual(t, tdCount.Load(), int32(4))
 
 	// get events from the digitwin
-	dThingID := td.MakeDigiTwinThingID(agentID, device1ID)
+	dThingID := digitwin.MakeDigitwinID(agentID, device1ID)
 	events, err := digitwin.ThingValuesReadAllEvents(co1, dThingID)
 	require.NoError(t, err)
 	// this thing has 5 sensors and 4 alarm events
@@ -153,7 +152,7 @@ func TestAction(t *testing.T) {
 	t.Logf("---%s---\n", t.Name())
 	const user1ID = "operator1"
 	// node in test data
-	var dThingID = td.MakeDigiTwinThingID(agentID, device1ID)
+	var dThingID = digitwin.MakeDigitwinID(agentID, device1ID)
 	var actionName = "RelayFunction" // the action attribute as defined by the device
 	var actionValue = "1"
 
@@ -201,7 +200,7 @@ func TestConfig(t *testing.T) {
 	// note that the simulation file doesn't support writes so this logs an error
 	co1, _, _ := ts.AddConnectConsumer(user1ID, authz.ClientRoleManager)
 	defer co1.Disconnect()
-	dThingID := td.MakeDigiTwinThingID(agentID, device1ID)
+	dThingID := digitwin.MakeDigitwinID(agentID, device1ID)
 	err = co1.WriteProperty(dThingID, configName, &configValue, true)
 
 	// can't write to a simulation file. Write should fail.

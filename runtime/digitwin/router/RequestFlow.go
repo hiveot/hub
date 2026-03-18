@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/messaging"
 	authn "github.com/hiveot/hub/runtime/authn/api"
@@ -44,7 +43,7 @@ func (r *DigitwinRouter) ForwardRequestToRemoteAgent(
 	req *messaging.RequestMessage, sc messaging.IConnection) (
 	resp *messaging.ResponseMessage) {
 
-	agentID, agThingID := td.SplitDigiTwinThingID(req.ThingID)
+	agentID, agThingID, _ := digitwin.SplitDigitwinID(req.ThingID)
 
 	// Determine the agent to forward the request to.
 	// Agents only have a single connection instance so the agentID can be used.
@@ -205,7 +204,7 @@ func (r *DigitwinRouter) HandleInvokeAction(
 	req *messaging.RequestMessage, c messaging.IConnection) (resp *messaging.ResponseMessage) {
 
 	// Forward the action to the built-in services
-	agentID, thingID := td.SplitDigiTwinThingID(req.ThingID)
+	agentID, thingID, _ := digitwin.SplitDigitwinID(req.ThingID)
 	_ = thingID
 
 	// internal services return instant result.

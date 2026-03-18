@@ -9,7 +9,7 @@ import (
 	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/messaging"
-	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
+	digitwinapi "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/runtime/digitwin/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -24,7 +24,7 @@ func TestActionFlow(t *testing.T) {
 	const actionName = "action1"
 	const actionValue = 25
 	const correlationID = "req-1"
-	dThingID := td.MakeDigiTwinThingID(agentID, thingID)
+	dThingID := digitwinapi.MakeDigitwinID(agentID, thingID)
 
 	svc, dtwStore, stopFunc := startService(true)
 	defer stopFunc()
@@ -46,7 +46,7 @@ func TestActionFlow(t *testing.T) {
 	require.Equal(t, messaging.StatusPending, as.State)
 
 	// check progress
-	as, err = svc.ValuesSvc.QueryAction(consumerID, digitwin.ThingValuesQueryActionArgs{
+	as, err = svc.ValuesSvc.QueryAction(consumerID, digitwinapi.ThingValuesQueryActionArgs{
 		ThingID: dThingID,
 		Name:    actionName})
 	require.NoError(t, err)
@@ -64,7 +64,7 @@ func TestActionFlow(t *testing.T) {
 	assert.Equal(t, "completed", as.State)
 
 	// read action status
-	as, err = svc.ValuesSvc.QueryAction(consumerID, digitwin.ThingValuesQueryActionArgs{
+	as, err = svc.ValuesSvc.QueryAction(consumerID, digitwinapi.ThingValuesQueryActionArgs{
 		ThingID: dThingID,
 		Name:    actionName})
 
@@ -83,7 +83,7 @@ func TestActionReadFail(t *testing.T) {
 	t.Logf("---%s---\n", t.Name())
 	const agentID = "agent1"
 	const thingID = "thing1"
-	var dThingID = td.MakeDigiTwinThingID(agentID, thingID)
+	var dThingID = digitwinapi.MakeDigitwinID(agentID, thingID)
 
 	svc, _, stopFunc := startService(true)
 	defer stopFunc()
@@ -94,13 +94,13 @@ func TestActionReadFail(t *testing.T) {
 	err := svc.DirSvc.UpdateThing(agentID, string(tdDoc1Json))
 	require.NoError(t, err)
 
-	_, err = svc.ValuesSvc.QueryAction("itsme", digitwin.ThingValuesQueryActionArgs{
+	_, err = svc.ValuesSvc.QueryAction("itsme", digitwinapi.ThingValuesQueryActionArgs{
 		ThingID: "badthingid",
 		Name:    "someevent"})
 	assert.Error(t, err)
 
 	// query non-existing action is allowed if strict is set to false
-	_, err = svc.ValuesSvc.QueryAction("itsme", digitwin.ThingValuesQueryActionArgs{
+	_, err = svc.ValuesSvc.QueryAction("itsme", digitwinapi.ThingValuesQueryActionArgs{
 		ThingID: dThingID,
 		Name:    "badeventname"})
 	require.NoError(t, err)
@@ -115,7 +115,7 @@ func TestInvokeActionErrors(t *testing.T) {
 	const actionName = "action1"
 	const actionValue = 25
 	const correlationID = "request-1"
-	dThingID := td.MakeDigiTwinThingID(agentID, thingID)
+	dThingID := digitwinapi.MakeDigitwinID(agentID, thingID)
 
 	svc, dtwStore, stopFunc := startService(true)
 	defer stopFunc()
@@ -169,7 +169,7 @@ func TestDigitwinAgentAction(t *testing.T) {
 	const actionValue = 25
 	const correlationID = "request-1"
 
-	dThingID := td.MakeDigiTwinThingID(agentID, thingID)
+	dThingID := digitwinapi.MakeDigitwinID(agentID, thingID)
 
 	svc, _, stopFunc := startService(true)
 	defer stopFunc()
@@ -190,7 +190,7 @@ func TestDigitwinAgentAction(t *testing.T) {
 	// next, invoke the action to read the thing from the directory.
 	ag := service.NewDigitwinAgent(svc)
 	req := messaging.NewRequestMessage(vocab.OpInvokeAction,
-		digitwin.ThingDirectoryDThingID, digitwin.ThingDirectoryRetrieveThingMethod, dThingID, consumerID)
+		digitwinapi.ThingDirectoryDThingID, digitwinapi.ThingDirectoryRetrieveThingMethod, dThingID, consumerID)
 	req.CorrelationID = correlationID
 	resp := ag.HandleRequest(req, nil)
 
@@ -199,21 +199,21 @@ func TestDigitwinAgentAction(t *testing.T) {
 
 	// a non-existing TD should fail
 	req = messaging.NewRequestMessage(vocab.OpInvokeAction,
-		digitwin.ThingDirectoryDThingID, digitwin.ThingDirectoryRetrieveThingMethod, "badid", consumerID)
+		digitwinapi.ThingDirectoryDThingID, digitwinapi.ThingDirectoryRetrieveThingMethod, "badid", consumerID)
 	req.CorrelationID = correlationID
 	resp = ag.HandleRequest(req, nil)
 	require.NotEmpty(t, resp.Error)
 
 	// a non-existing method name should fail
 	req = messaging.NewRequestMessage(vocab.OpInvokeAction,
-		digitwin.ThingDirectoryDThingID, "badMethod", dThingID, consumerID)
+		digitwinapi.ThingDirectoryDThingID, "badMethod", dThingID, consumerID)
 	req.CorrelationID = correlationID
 	resp = ag.HandleRequest(req, nil)
 	require.NotEmpty(t, resp.Error)
 
 	// a non-existing serviceID should fail
 	req = messaging.NewRequestMessage(vocab.OpInvokeAction,
-		"badservicename", digitwin.ThingDirectoryRetrieveThingMethod, dThingID, consumerID)
+		"badservicename", digitwinapi.ThingDirectoryRetrieveThingMethod, dThingID, consumerID)
 	req.CorrelationID = correlationID
 	resp = ag.HandleRequest(req, nil)
 	require.NotEmpty(t, resp.Error)

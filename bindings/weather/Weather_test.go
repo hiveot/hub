@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/bindings/weather/config"
 	"github.com/hiveot/hub/bindings/weather/providers"
 	"github.com/hiveot/hub/bindings/weather/service"
@@ -15,6 +14,7 @@ import (
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/testenv"
 	authz "github.com/hiveot/hub/runtime/authz/api"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -160,7 +160,7 @@ func TestDisableCurrent(t *testing.T) {
 	co1, _, _ := ts.AddConnectConsumer(client1ID, authz.ClientRoleAdmin)
 	defer co1.Disconnect()
 
-	thingID := td.MakeDigiTwinThingID(ag.GetClientID(), testLocation1.ID)
+	thingID := digitwin.MakeDigitwinID(ag.GetClientID(), testLocation1.ID)
 	err = co1.WriteProperty(thingID, service.PropNameCurrentEnabled, false, true)
 	require.NoError(t, err)
 

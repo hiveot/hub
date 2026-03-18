@@ -5,9 +5,9 @@ import (
 	"sync"
 
 	"github.com/hiveot/hivekit/go/wot"
-	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"
 	authz "github.com/hiveot/hub/runtime/authz/api"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 )
 
 const DefaultAclFilename = "authz.acl"
@@ -161,7 +161,7 @@ func (cfg *AuthzConfig) GetPermissions(dThingID string) (authz.ThingPermissions,
 func (cfg *AuthzConfig) SetPermissions(perms authz.ThingPermissions) {
 	cfg.mux.Lock()
 	defer cfg.mux.Unlock()
-	dThingID := td.MakeDigiTwinThingID(perms.AgentID, perms.ThingID)
+	dThingID := digitwin.MakeDigitwinID(perms.AgentID, perms.ThingID)
 	cfg.ThingPermissions[dThingID] = perms
 }
 

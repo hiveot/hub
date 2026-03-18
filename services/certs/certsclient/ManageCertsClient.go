@@ -1,8 +1,8 @@
 package certsclient
 
 import (
-	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/consumer"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/services/certs/certsapi"
 )
 
@@ -100,7 +100,7 @@ func NewCertsClient(co *consumer.Consumer) *CertsClient {
 
 	cl := CertsClient{
 		co:       co,
-		dThingID: td.MakeDigiTwinThingID(agentID, certsapi.CertsAdminThingID),
+		dThingID: digitwin.MakeDigitwinID(agentID, certsapi.CertsAdminThingID),
 	}
 	return &cl
 }

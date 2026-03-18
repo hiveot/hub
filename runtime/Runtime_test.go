@@ -9,7 +9,6 @@ import (
 
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hivekit/go/wot"
-	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/clients/authclient"
 	"github.com/hiveot/hub/lib/logging"
@@ -18,6 +17,7 @@ import (
 	"github.com/hiveot/hub/runtime"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	authz "github.com/hiveot/hub/runtime/authz/api"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -214,7 +214,7 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 
 	// client sends action to agent and expect a 'delivered' result
 	// The RPC method returns an error if no reply is received
-	dThingID := td.MakeDigiTwinThingID(agentID, thingID)
+	dThingID := digitwin.MakeDigitwinID(agentID, thingID)
 
 	var result string
 	err := cl1.Rpc(wot.OpInvokeAction, dThingID, actionID, actionPayload, &result)
@@ -294,7 +294,7 @@ func TestServiceReconnect(t *testing.T) {
 	time.Sleep(time.Second * 1)
 
 	// this rpc call succeeds after agent1 has automatically reconnected
-	dThingID := td.MakeDigiTwinThingID(agentID, thingID)
+	dThingID := digitwin.MakeDigitwinID(agentID, thingID)
 	var reply string
 	err = cl2.Rpc(wot.OpInvokeAction, dThingID, actionID, &actionPayload, &reply)
 	require.NoError(t, err)

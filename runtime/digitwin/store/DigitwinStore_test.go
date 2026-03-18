@@ -62,7 +62,7 @@ func addValues(svc *store.DigitwinStore,
 		//ev.Created = randomTime.Format(time.RFC3339)
 
 		// add a TD
-		dThingID := td.MakeDigiTwinThingID(agentID, thingID)
+		dThingID := digitwin.MakeDigitwinID(agentID, thingID)
 		_, err := svc.ReadDThing(dThingID)
 		if err != nil {
 			title := fmt.Sprintf("Test thing %d", j)
@@ -108,7 +108,7 @@ func TestStartStop(t *testing.T) {
 	addValues(svc, 100, agentID, thingIDs, 100)
 
 	//valList1, err := svc.ReadLatest(vocab.HTOpPublishEvent, thingIDs[1], nil, "")
-	dthingID := td.MakeDigiTwinThingID(agentID, thingIDs[1])
+	dthingID := digitwin.MakeDigitwinID(agentID, thingIDs[1])
 	valList1, err := svc.ReadAllEvents(dthingID)
 	assert.NoError(t, err)
 	assert.True(t, len(valList1) > 1)
@@ -121,7 +121,7 @@ func TestStartStop(t *testing.T) {
 	//tdList2, err := directory.ReadThings(mt, 0, 10)
 	//assert.Equal(t, len(thingIDs), len(tdList2))
 
-	dThingID1 := td.MakeDigiTwinThingID(agentID, thingIDs[1])
+	dThingID1 := digitwin.MakeDigitwinID(agentID, thingIDs[1])
 	valList2a, err := svc.ReadAllEvents(dThingID1)
 	assert.NoError(t, err)
 	assert.Equal(t, len(valList1), len(valList2a))
@@ -132,7 +132,7 @@ func TestGetEvents(t *testing.T) {
 	const agent1ID = "agent1"
 	const thing1ID = "thing1"       // matches a percentage of the random things
 	const valueName = "temperature" // from the list with names above
-	var dThingID1 = td.MakeDigiTwinThingID(agent1ID, thing1ID)
+	var dThingID1 = digitwin.MakeDigitwinID(agent1ID, thing1ID)
 
 	svc, closeFn := startLatestStore(true)
 	defer closeFn()
@@ -179,7 +179,7 @@ func TestGetEvents(t *testing.T) {
 func TestUpdateProps(t *testing.T) {
 	agent1ID := "agent1"
 	thing1ID := "thing1"
-	var dThingID1 = td.MakeDigiTwinThingID(agent1ID, thing1ID)
+	var dThingID1 = digitwin.MakeDigitwinID(agent1ID, thing1ID)
 	const prop1Name = "temperature"
 	const prop1Value = 10.5
 
@@ -206,7 +206,7 @@ func TestUpdateProps(t *testing.T) {
 func TestAddPropsFail(t *testing.T) {
 	agent1ID := "agent1"
 	thing1ID := "badthingid"
-	dThingID := td.MakeDigiTwinThingID(agent1ID, thing1ID)
+	dThingID := digitwin.MakeDigitwinID(agent1ID, thing1ID)
 	svc, closeFn := startLatestStore(true)
 	_ = svc
 	defer closeFn()

@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/hiveot/hivekit/go/wot"
-	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/messaging"
 	"github.com/hiveot/hub/lib/servers/connections"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -148,7 +148,7 @@ func TestPublishEventProp(t *testing.T) {
 	const session1ID = "sess1"
 	const agent1ID = "agent1"
 	const thing1ID = "thing1"
-	var dThingID = td.MakeDigiTwinThingID(agent1ID, thing1ID)
+	var dThingID = digitwin.MakeDigitwinID(agent1ID, thing1ID)
 	const evName = "event1"
 	const propName = "prop1"
 	var evCount = 0

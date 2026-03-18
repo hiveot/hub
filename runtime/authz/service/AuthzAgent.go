@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/messaging"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	authz "github.com/hiveot/hub/runtime/authz/api"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 )
 
 // AuthzAgent serves the message based interface to the authz service API.
@@ -26,7 +26,7 @@ func (agent *AuthzAgent) HandleAction(
 
 	// if the message has an authn agent prefix then remove it.
 	// This can happen if invoked directly through an embedded client
-	_, thingID := td.SplitDigiTwinThingID(req.ThingID)
+	_, thingID, _ := digitwin.SplitDigitwinID(req.ThingID)
 	if thingID == authz.AdminServiceID {
 		resp = agent.adminHandler(req, c)
 	} else if thingID == authz.UserServiceID {

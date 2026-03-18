@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"github.com/hiveot/hivekit/go/wot/td"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 )
 
 // ReadDirLimit is the maximum amount of TDs to read in one call
@@ -20,7 +21,7 @@ func GroupByAgent(tds map[string]*td.TD) []*AgentThings {
 	agentMap := make(map[string]*AgentThings)
 	// first split the things by their agent
 	for thingID, tdi := range tds {
-		agentID, _ := td.SplitDigiTwinThingID(thingID)
+		agentID, _, _ := digitwin.SplitDigitwinID(thingID)
 		agentGroup, found := agentMap[agentID]
 		if !found {
 			agentGroup = &AgentThings{

@@ -1,8 +1,8 @@
 package historyclient
 
 import (
-	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/consumer"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/services/history/historyapi"
 )
 
@@ -50,7 +50,7 @@ func (cl *ManageHistoryClient) SetRetentionRules(rules historyapi.RetentionRuleS
 func NewManageHistoryClient(co *consumer.Consumer) *ManageHistoryClient {
 	agentID := historyapi.AgentID
 	mngCl := &ManageHistoryClient{
-		dThingID: td.MakeDigiTwinThingID(agentID, historyapi.ManageHistoryServiceID),
+		dThingID: digitwin.MakeDigitwinID(agentID, historyapi.ManageHistoryServiceID),
 		co:       co,
 	}
 	return mngCl

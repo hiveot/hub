@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/hiveot/hivekit/go/wot"
-	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/agent"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/clients"
@@ -28,6 +27,7 @@ import (
 	"github.com/hiveot/hub/lib/servers/httpbasic"
 	"github.com/hiveot/hub/lib/servers/tlsserver"
 	"github.com/hiveot/hub/lib/servers/wssserver"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -399,7 +399,7 @@ func TestReconnect(t *testing.T) {
 	const actionKey = "action1"
 	const agentID = "agent1"
 	var reconnectedCallback atomic.Bool
-	var dThingID = td.MakeDigiTwinThingID(agentID, thingID)
+	var dThingID = digitwin.MakeDigitwinID(agentID, thingID)
 	var srv servers.IMessageServer
 	var cancelFn func()
 

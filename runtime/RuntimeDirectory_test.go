@@ -18,6 +18,7 @@ import (
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
+	digitwinapi "github.com/hiveot/hub/runtime/digitwin/api"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -46,13 +47,13 @@ func TestAddRemoveTD(t *testing.T) {
 	defer co1.Disconnect()
 
 	// Add the TD
-	err := digitwin.ThingDirectoryUpdateThing(ag1.Consumer, td1JSON)
+	err := digitwinapi.ThingDirectoryUpdateThing(ag1.Consumer, td1JSON)
 	assert.NoError(t, err)
 
 	// Get returns a serialized TD object
 	// use the helper directory client rpc method
-	var dtThing1ID = td.MakeDigiTwinThingID(agentID, agThing1ID)
-	td3JSON, err := digitwin.ThingDirectoryRetrieveThing(ag1.Consumer, dtThing1ID)
+	var dtThing1ID = digitwin.MakeDigitwinID(agentID, agThing1ID)
+	td3JSON, err := digitwinapi.ThingDirectoryRetrieveThing(ag1.Consumer, dtThing1ID)
 	require.NoError(t, err)
 	var td3 td.TD
 	err = jsoniter.UnmarshalFromString(td3JSON, &td3)
@@ -60,13 +61,13 @@ func TestAddRemoveTD(t *testing.T) {
 	assert.Equal(t, dtThing1ID, td3.ID)
 
 	// RemoveTD from the directory
-	err = co1.Rpc(wot.OpInvokeAction, digitwin.ThingDirectoryDThingID,
-		digitwin.ThingDirectoryDeleteThingMethod, dtThing1ID, nil)
+	err = co1.Rpc(wot.OpInvokeAction, digitwinapi.ThingDirectoryDThingID,
+		digitwinapi.ThingDirectoryDeleteThingMethod, dtThing1ID, nil)
 	require.NoError(t, err)
 
 	// after removal of the TD, getTD should return an error
 	t.Log("Reading non-existing TD should fail")
-	td4Json, err := digitwin.ThingDirectoryRetrieveThing(co1, dtThing1ID)
+	td4Json, err := digitwinapi.ThingDirectoryRetrieveThing(co1, dtThing1ID)
 	require.Error(t, err)
 	require.Empty(t, td4Json)
 }
@@ -95,15 +96,15 @@ func TestReadTDs(t *testing.T) {
 
 	// GetThings returns a serialized TD object
 	// 1. Use actions
-	args := digitwin.ThingDirectoryRetrieveAllThingsArgs{Limit: 10}
+	args := digitwinapi.ThingDirectoryRetrieveAllThingsArgs{Limit: 10}
 	tdList1 := []string{}
-	err := co1.Rpc(wot.OpInvokeAction, digitwin.ThingDirectoryDThingID,
-		digitwin.ThingDirectoryRetrieveAllThingsMethod, args, &tdList1)
+	err := co1.Rpc(wot.OpInvokeAction, digitwinapi.ThingDirectoryDThingID,
+		digitwinapi.ThingDirectoryRetrieveAllThingsMethod, args, &tdList1)
 	require.NoError(t, err)
 	require.True(t, len(tdList1) > 0)
 
 	// 2. Try it the easy way using the generated client code
-	tdList2, err := digitwin.ThingDirectoryRetrieveAllThings(co1, 333, 02)
+	tdList2, err := digitwinapi.ThingDirectoryRetrieveAllThings(co1, 333, 02)
 	require.NoError(t, err)
 	require.True(t, len(tdList2) > 0)
 
@@ -156,7 +157,7 @@ func TestReadTDsRest(t *testing.T) {
 	cl2 := tlsclient.NewTLSClient(urlParts.Host, nil, ts.Certs.CaCert, time.Second*30)
 	cl2.SetAuthToken(token)
 
-	tdJSONList, err := digitwin.ThingDirectoryRetrieveAllThings(co1, 100, 0)
+	tdJSONList, err := digitwinapi.ThingDirectoryRetrieveAllThings(co1, 100, 0)
 	require.NoError(t, err)
 
 	// tds are sent as an array of JSON, first unpack the array of JSON strings
@@ -165,7 +166,7 @@ func TestReadTDsRest(t *testing.T) {
 	require.Equal(t, 100, len(tdList)) // 100 is the given limit
 
 	// check reading a single td
-	tdJSON, err := digitwin.ThingDirectoryRetrieveThing(co1, tdList[0].ID)
+	tdJSON, err := digitwinapi.ThingDirectoryRetrieveThing(co1, tdList[0].ID)
 	require.NoError(t, err)
 	require.NotEmpty(t, tdJSON)
 }
@@ -187,8 +188,8 @@ func TestTDEvent(t *testing.T) {
 	// wait to directory TD updated events
 	notifHandler := func(msg *messaging.NotificationMessage) {
 		if msg.Operation == vocab.OpSubscribeEvent &&
-			msg.ThingID == digitwin.ThingDirectoryDThingID &&
-			msg.Name == digitwin.ThingDirectoryEventThingUpdated {
+			msg.ThingID == digitwinapi.ThingDirectoryDThingID &&
+			msg.Name == digitwinapi.ThingDirectoryEventThingUpdated {
 
 			// decode the TD
 			tdi := td.TD{}

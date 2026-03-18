@@ -5,12 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hiveot/hivekit/go/wot/td"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/hiveot/hub/lib/logging"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 )
 
 const timespanHour = 3600
@@ -63,7 +62,7 @@ func BenchmarkAddEvents(b *testing.B) {
 	const agentID = "agent1"
 	const thing0ID = thingIDPrefix + "0"
 	const timespanSec = 3600 * 24 * 10
-	var dThing0ID = td.MakeDigiTwinThingID(agentID, thing0ID)
+	var dThing0ID = digitwin.MakeDigitwinID(agentID, thing0ID)
 
 	logging.SetLogging("error", "")
 

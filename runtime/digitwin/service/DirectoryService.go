@@ -64,7 +64,7 @@ func (svc *DirectoryService) MakeDigitalTwinTD(
 	_ = jsoniter.UnmarshalFromString(tdJSON, &dtwTD)
 
 	// 2. Change the ThingID to the digital twins ID by prefixing the agent ID
-	dtwTD.ID = td.MakeDigiTwinThingID(agentID, thingTD.ID)
+	dtwTD.ID = digitwin.MakeDigitwinID(agentID, thingTD.ID)
 
 	// 3. reset all existing forms and auth info
 	dtwTD.Forms = make([]td.Form, 0)

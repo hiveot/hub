@@ -9,10 +9,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/consumedthing"
 	"github.com/hiveot/hub/lib/messaging"
+	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
@@ -79,7 +79,7 @@ func (dt *ThingDetailsTemplateData) GetRenderActionPath(name string) string {
 // @param thingID to view
 func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 	thingID := chi.URLParam(r, "thingID")
-	agentID, _ := td.SplitDigiTwinThingID(thingID)
+	agentID, _, _ := digitwin.SplitDigitwinID(thingID)
 	var ct *consumedthing.ConsumedThing
 
 	pathParams := map[string]string{"thingID": thingID}
