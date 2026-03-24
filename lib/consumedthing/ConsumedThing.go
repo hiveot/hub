@@ -5,9 +5,8 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/hiveot/hivekit/go/wot"
 	"github.com/hiveot/hivekit/go/wot/td"
-	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hivekit/go/wot/vocab"
 	"github.com/hiveot/hub/lib/consumer"
 	"github.com/hiveot/hub/lib/messaging"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
@@ -148,7 +147,7 @@ func (ct *ConsumedThing) GetAtTypeTitle() string {
 		}
 	}
 	// FIXME: read from file to support different vocabularies?
-	atTypeVocab, found := vocab.ThingClassesMap[atTypeValue]
+	atTypeVocab, found := vocab.DeviceClassesMap[atTypeValue]
 	if !found {
 		return atTypeValue
 	}
@@ -266,7 +265,7 @@ func (ct *ConsumedThing) GetAllProperties() map[string]*InteractionOutput {
 func (ct *ConsumedThing) InvokeAction(name string, iin InteractionInput) (*InteractionOutput, error) {
 
 	req := messaging.NewRequestMessage(
-		wot.OpInvokeAction, ct.ThingID, name, iin.Value.Raw, "")
+		td.OpInvokeAction, ct.ThingID, name, iin.Value.Raw, "")
 	resp, err := ct.co.SendRequest(req, true)
 	if err != nil {
 		return nil, err
@@ -299,7 +298,7 @@ func (ct *ConsumedThing) ObserveProperty(name string, listener InteractionListen
 //	msg is the notification message received.
 func (ct *ConsumedThing) OnNotification(notif *messaging.NotificationMessage) {
 
-	if notif.Operation == wot.OpSubscribeEvent &&
+	if notif.Operation == td.OpSubscribeEvent &&
 		notif.ThingID == digitwin.ThingDirectoryDThingID &&
 		notif.Name == digitwin.ThingDirectoryEventThingUpdated {
 		// decode the TD
@@ -314,16 +313,16 @@ func (ct *ConsumedThing) OnNotification(notif *messaging.NotificationMessage) {
 		ct.mux.Lock()
 		ct.tdi = tdi
 		ct.mux.Unlock()
-	} else if notif.Operation == wot.OpObserveProperty {
+	} else if notif.Operation == td.OpObserveProperty {
 		// update value
 		iout := NewInteractionOutputFromNotification(
 			ct, messaging.AffordanceTypeProperty, notif)
 		ct.mux.Lock()
 		ct.propValues[notif.Name] = iout
 		// the consumed thing title and description are updated with corresponding properties
-		if notif.Name == wot.WoTTitle {
+		if notif.Name == td.WoTTitle {
 			ct.Title = iout.Value.Text()
-		} else if notif.Name == wot.WoTDescription {
+		} else if notif.Name == td.WoTDescription {
 			ct.Description = iout.Value.Text()
 		}
 		ct.mux.Unlock()
@@ -332,7 +331,7 @@ func (ct *ConsumedThing) OnNotification(notif *messaging.NotificationMessage) {
 		if subscr != nil {
 			subscr(iout)
 		}
-	} else if notif.Operation == wot.OpSubscribeEvent {
+	} else if notif.Operation == td.OpSubscribeEvent {
 		iout := NewInteractionOutputFromNotification(ct, messaging.AffordanceTypeEvent, notif)
 		// this is a regular value event
 		ct.mux.Lock()
@@ -342,7 +341,7 @@ func (ct *ConsumedThing) OnNotification(notif *messaging.NotificationMessage) {
 		if subscr != nil {
 			subscr(iout)
 		}
-	} else if notif.Operation == wot.OpInvokeAction {
+	} else if notif.Operation == td.OpInvokeAction {
 		iout := NewInteractionOutputFromNotification(ct, messaging.AffordanceTypeAction, notif)
 		// this is a regular action progress event
 		ct.mux.Lock()
@@ -430,9 +429,9 @@ func (ct *ConsumedThing) Refresh() error {
 		if found {
 			iout = NewInteractionOutputFromValue(ct, messaging.AffordanceTypeProperty, tv)
 			// the consumed thing title and description can be modified with corresponding properties
-			if name == wot.WoTTitle {
+			if name == td.WoTTitle {
 				ct.Title = iout.Value.Text()
-			} else if name == wot.WoTDescription {
+			} else if name == td.WoTDescription {
 				ct.Description = iout.Value.Text()
 			}
 		} else {

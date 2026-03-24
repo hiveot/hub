@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hiveot/hivekit/go/wot"
+	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/messaging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -75,7 +75,7 @@ func TestSubscribeAll(t *testing.T) {
 	// 3. Server sends event to consumers
 	time.Sleep(time.Millisecond * 10)
 	notif1 := messaging.NewNotificationMessage(
-		wot.OpSubscribeEvent, thingID, eventKey, testMsg1)
+		td.OpSubscribeEvent, thingID, eventKey, testMsg1)
 	srv.SendNotification(notif1)
 
 	// 4. subscriber should have received them
@@ -96,7 +96,7 @@ func TestSubscribeAll(t *testing.T) {
 
 	// 5. Server sends another event to consumers
 	notif2 := messaging.NewNotificationMessage(
-		wot.OpSubscribeEvent, thingID, eventKey, testMsg2)
+		td.OpSubscribeEvent, thingID, eventKey, testMsg2)
 	srv.SendNotification(notif2)
 	time.Sleep(time.Millisecond)
 	// update not received
@@ -152,7 +152,7 @@ func TestPublishEventsByAgent(t *testing.T) {
 //	// 1. start the agent transport with the request handler
 //	// in this case the consumer connects to the agent (unlike when using a hub)
 //	agentReqHandler := func(req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
-//		if req.Operation == wot.HTOpReadEvent && req.ThingID == thingID && req.Name == eventKey {
+//		if req.Operation == td.HTOpReadEvent && req.ThingID == thingID && req.Name == eventKey {
 //			evVal := transports.ThingValue{
 //				ID:      "ud1",
 //				Name:    req.Name,
@@ -192,10 +192,10 @@ func TestPublishEventsByAgent(t *testing.T) {
 //	// 1. start the agent transport with the request handler
 //	// in this case the consumer connects to the agent (unlike when using a hub)
 //	agentReqHandler := func(req *transports.RequestMessage, c transports.IConnection) *transports.ResponseMessage {
-//		if req.Operation == wot.HTOpReadAllEvents {
+//		if req.Operation == td.HTOpReadAllEvents {
 //			output := make(map[string]*transports.ResponseMessage)
-//			output[event1Name] = transports.NewResponseMessage(wot.OpSubscribeEvent, thingID, event1Name, event1Value, nil, "")
-//			output[event2Name] = transports.NewResponseMessage(wot.OpSubscribeEvent, thingID, event2Name, event2Value, nil, "")
+//			output[event1Name] = transports.NewResponseMessage(td.OpSubscribeEvent, thingID, event1Name, event1Value, nil, "")
+//			output[event2Name] = transports.NewResponseMessage(td.OpSubscribeEvent, thingID, event2Name, event2Value, nil, "")
 //			resp := req.CreateResponse(output, nil)
 //			return resp
 //		}

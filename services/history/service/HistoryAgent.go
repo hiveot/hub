@@ -3,8 +3,7 @@ package service
 import (
 	"fmt"
 
-	"github.com/hiveot/hivekit/go/wot"
-	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/agent"
 	"github.com/hiveot/hub/lib/hubagent"
 	"github.com/hiveot/hub/lib/messaging"
@@ -44,9 +43,9 @@ func StartHistoryAgent(svc *HistoryService, ag *agent.Agent) {
 
 	// receive subscribed updates for events and properties
 	ag.Consumer.SetNotificationHandler(func(notif *messaging.NotificationMessage) {
-		if notif.Operation == wot.OpSubscribeEvent {
+		if notif.Operation == td.OpSubscribeEvent {
 			_ = svc.addHistory.AddMessage(notif)
-		} else if notif.Operation == wot.OpObserveProperty {
+		} else if notif.Operation == td.OpObserveProperty {
 			_ = svc.addHistory.AddMessage(notif)
 		}
 		//ignore the rest
@@ -55,7 +54,7 @@ func StartHistoryAgent(svc *HistoryService, ag *agent.Agent) {
 
 	// handle service requests
 	ag.SetRequestHandler(func(req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
-		if req.Operation == vocab.OpInvokeAction {
+		if req.Operation == td.OpInvokeAction {
 			if req.ThingID == historyapi.ReadHistoryServiceID {
 				return rah.HandleRequest(req, c)
 			} else if req.ThingID == historyapi.ManageHistoryServiceID {

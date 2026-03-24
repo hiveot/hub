@@ -9,7 +9,7 @@ import (
 
 	"github.com/dchest/uniuri"
 	"github.com/hiveot/hivekit/go/wot/td"
-	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hivekit/go/wot/vocab"
 	"github.com/hiveot/hub/lib/messaging"
 	"github.com/hiveot/hub/lib/servers/connections"
 	"github.com/hiveot/hub/runtime/digitwin/service"
@@ -56,23 +56,23 @@ func startService(clean bool) (
 // generate a TD document with properties, events and actions
 func createTDDoc(thingID string, nrProps, nrEvents, nrActions int) *td.TD {
 	title := CreateRandomName("title-", 0)
-	tdi := td.NewTD("", thingID, title, vocab.ThingDevice)
+	tdi := td.NewTD(thingID, title, vocab.Device)
 	for range nrProps {
 		name := CreateRandomName("prop-", 0)
-		tdi.AddProperty(name, "", name, vocab.WoTDataTypeInteger)
+		tdi.AddProperty(name, "", name, td.DataTypeInteger)
 	}
 	for range nrEvents {
 		name := CreateRandomName("ev-", 0)
 		tdi.AddEvent(name, name, "",
 			&td.DataSchema{
-				Type: vocab.WoTDataTypeInteger,
+				Type: td.DataTypeInteger,
 			})
 	}
 	for range nrActions {
 		name := CreateRandomName("act-", 0)
 		tdi.AddAction(name, name, "",
 			&td.DataSchema{
-				Type: vocab.WoTDataTypeBool,
+				Type: td.DataTypeBool,
 			})
 	}
 	return tdi

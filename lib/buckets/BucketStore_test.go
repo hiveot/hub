@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hiveot/hivekit/go/wot"
 	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/bucketstore"
@@ -79,7 +78,7 @@ func createTD(id string) *td.TD {
 		DataSchema: td.DataSchema{
 			Title:       "Sensor title",
 			Description: "This is a smart sensor",
-			Type:        wot.DataTypeString,
+			Type:        td.DataTypeString,
 			Default:     "Default value",
 		},
 	}
@@ -87,7 +86,7 @@ func createTD(id string) *td.TD {
 		DataSchema: td.DataSchema{
 			Title:       "Version",
 			Description: "Embedded firmware",
-			Type:        wot.DataTypeString,
+			Type:        td.DataTypeString,
 			Default:     "Default value",
 			Const:       "v1.0",
 		},
@@ -96,7 +95,7 @@ func createTD(id string) *td.TD {
 		Title:       "Event 1",
 		Description: "ID of this event",
 		Data: &td.DataSchema{
-			Type:        wot.DataTypeString,
+			Type:        td.DataTypeString,
 			Const:       "123",
 			Title:       "Event name data",
 			Description: "String with friendly name of the event"},
@@ -104,7 +103,7 @@ func createTD(id string) *td.TD {
 	tdi.Events[propDeviceBattery] = &td.EventAffordance{
 		Title: "Event 2",
 		Data: &td.DataSchema{
-			Type:        wot.DataTypeInteger,
+			Type:        td.DataTypeInteger,
 			Title:       "Battery level",
 			Unit:        unitPercent,
 			Description: "Battery level update in % of device"},
@@ -565,13 +564,13 @@ func TestPrevNextN(t *testing.T) {
 //	td1.Properties[vocab.PropNameTitle] = &things.PropertyAffordance{
 //		DataSchema: things.DataSchema{
 //			Title: "Sensor title",
-//			Type:  vocab.WoTDataTypeString,
+//			Type:  td.DataTypeString,
 //		},
 //	}
 //	td1.Properties[vocab.PropNameValue] = &things.PropertyAffordance{
 //		DataSchema: things.DataSchema{
 //			Title: "Sensor value",
-//			Type:  vocab.WoTDataTypeNumber,
+//			Type:  td.DataTypeNumber,
 //		},
 //	}
 //
@@ -584,7 +583,7 @@ func TestPrevNextN(t *testing.T) {
 //	td2.Properties[vocab.PropNameTitle] = &things.PropertyAffordance{
 //		DataSchema: things.DataSchema{
 //			Title: "The switch",
-//			Type:  vocab.WoTDataTypeBool,
+//			Type:  td.DataTypeBool,
 //		},
 //	}
 //

@@ -9,9 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hiveot/hivekit/go/wot"
 	"github.com/hiveot/hivekit/go/wot/td"
-	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hivekit/go/wot/vocab"
 	"github.com/hiveot/hub/lib/clients/tlsclient"
 	"github.com/hiveot/hub/lib/messaging"
 	"github.com/hiveot/hub/lib/servers/discoserver"
@@ -37,7 +36,7 @@ func TestAddRemoveTD(t *testing.T) {
 	defer r.Stop()
 
 	// Create the agent and its TDs to query
-	td1 := td.NewTD("", agThing1ID, "Title", vocab.ThingSensorMulti)
+	td1 := td.NewTD(agThing1ID, "Title", vocab.DeviceSensorMulti)
 	td1JSON, _ := jsoniter.MarshalToString(td1)
 	ag1, _, _ := ts.AddConnectAgent(agentID)
 	defer ag1.Disconnect()
@@ -61,7 +60,7 @@ func TestAddRemoveTD(t *testing.T) {
 	assert.Equal(t, dtThing1ID, td3.ID)
 
 	// RemoveTD from the directory
-	err = co1.Rpc(wot.OpInvokeAction, digitwinapi.ThingDirectoryDThingID,
+	err = co1.Rpc(td.OpInvokeAction, digitwinapi.ThingDirectoryDThingID,
 		digitwinapi.ThingDirectoryDeleteThingMethod, dtThing1ID, nil)
 	require.NoError(t, err)
 
@@ -98,7 +97,7 @@ func TestReadTDs(t *testing.T) {
 	// 1. Use actions
 	args := digitwinapi.ThingDirectoryRetrieveAllThingsArgs{Limit: 10}
 	tdList1 := []string{}
-	err := co1.Rpc(wot.OpInvokeAction, digitwinapi.ThingDirectoryDThingID,
+	err := co1.Rpc(td.OpInvokeAction, digitwinapi.ThingDirectoryDThingID,
 		digitwinapi.ThingDirectoryRetrieveAllThingsMethod, args, &tdList1)
 	require.NoError(t, err)
 	require.True(t, len(tdList1) > 0)
@@ -187,7 +186,7 @@ func TestTDEvent(t *testing.T) {
 
 	// wait to directory TD updated events
 	notifHandler := func(msg *messaging.NotificationMessage) {
-		if msg.Operation == vocab.OpSubscribeEvent &&
+		if msg.Operation == td.OpSubscribeEvent &&
 			msg.ThingID == digitwinapi.ThingDirectoryDThingID &&
 			msg.Name == digitwinapi.ThingDirectoryEventThingUpdated {
 

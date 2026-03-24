@@ -3,7 +3,7 @@ package historyclient
 import (
 	"time"
 
-	"github.com/hiveot/hivekit/go/wot"
+	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/consumer"
 	"github.com/hiveot/hub/lib/messaging"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
@@ -30,7 +30,7 @@ func (cl *ReadHistoryClient) GetCursor(thingID string, filterOnName string) (
 		FilterOnName: filterOnName,
 	}
 	resp := historyapi.GetCursorResp{}
-	err = cl.co.Rpc(wot.OpInvokeAction, cl.dThingID, historyapi.GetCursorMethod, &args, &resp)
+	err = cl.co.Rpc(td.OpInvokeAction, cl.dThingID, historyapi.GetCursorMethod, &args, &resp)
 	cursor = NewHistoryCursorClient(cl.co, resp.CursorKey)
 	return cursor, cursor.Release, err
 }
@@ -58,7 +58,7 @@ func (cl *ReadHistoryClient) ReadHistory(thingID string, filterOnName string,
 		Limit:        limit,
 	}
 	resp := historyapi.ReadHistoryResp{}
-	err = cl.co.Rpc(wot.OpInvokeAction, cl.dThingID, historyapi.ReadHistoryMethod, &args, &resp)
+	err = cl.co.Rpc(td.OpInvokeAction, cl.dThingID, historyapi.ReadHistoryMethod, &args, &resp)
 	return resp.Values, resp.ItemsRemaining, err
 }
 

@@ -5,7 +5,7 @@ import (
 	"path"
 	"testing"
 
-	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/messaging"
 	authn "github.com/hiveot/hub/runtime/authn/api"
@@ -99,13 +99,13 @@ func TestHasPermission(t *testing.T) {
 	err = svc.SetClientRole(operatorID, authz.AdminSetClientRoleArgs{operatorID, client1Role})
 	assert.NoError(t, err)
 	// consumers have permission to publish actions and write-property requests
-	msg := messaging.NewRequestMessage(vocab.OpInvokeAction, thingID, key, nil, correlationID)
+	msg := messaging.NewRequestMessage(td.OpInvokeAction, thingID, key, nil, correlationID)
 	msg.SenderID = operatorID
 	hasPerm := svc.HasPermission(msg.SenderID, msg.Operation, msg.ThingID)
 	assert.True(t, hasPerm)
 
 	// operators cannot respond with events updates
-	//resp := transports.NewResponseMessage(vocab.OpSubscribeEvent, thingID, key, "eventValue", nil, correlationID)
+	//resp := transports.NewResponseMessage(td.OpSubscribeEvent, thingID, key, "eventValue", nil, correlationID)
 	//resp.SenderID = operatorID
 	//// haspermission only validates requests and event/property notificates are now subscription responses
 	//hasPerm = svc.HasPermission(msg.SenderID, msg.Operation, msg.ThingID)

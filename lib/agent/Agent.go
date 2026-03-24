@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hivekit/go/wot"
 	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/consumer"
 	"github.com/hiveot/hub/lib/messaging"
@@ -70,7 +69,7 @@ func (ag *Agent) PubActionProgress(req messaging.RequestMessage, value any) erro
 		TimeUpdated:   utils.FormatNowUTCMilli(),
 	}
 
-	resp := messaging.NewNotificationMessage(wot.OpInvokeAction, req.ThingID, req.Name, status)
+	resp := messaging.NewNotificationMessage(td.OpInvokeAction, req.ThingID, req.Name, status)
 	return ag.GetConnection().SendNotification(resp)
 }
 
@@ -82,7 +81,7 @@ func (ag *Agent) PubEvent(thingID string, name string, value any) error {
 
 	// This is a response to subscription request.
 	// for now assume this is a hub connection and the hub wants all events
-	notif := messaging.NewNotificationMessage(wot.OpSubscribeEvent, thingID, name, value)
+	notif := messaging.NewNotificationMessage(td.OpSubscribeEvent, thingID, name, value)
 	slog.Info("PubEvent",
 		"thingID", thingID,
 		"name", name,
@@ -98,7 +97,7 @@ func (ag *Agent) PubEvent(thingID string, name string, value any) error {
 func (ag *Agent) PubProperty(thingID string, name string, value any) error {
 	// This is a response to an observation request.
 	// send the property update as a response to the observe request
-	notif := messaging.NewNotificationMessage(wot.OpObserveProperty, thingID, name, value)
+	notif := messaging.NewNotificationMessage(td.OpObserveProperty, thingID, name, value)
 	slog.Info("PubProperty",
 		"thingID", thingID,
 		"name", notif.Name,
@@ -113,7 +112,7 @@ func (ag *Agent) PubProperty(thingID string, name string, value any) error {
 func (ag *Agent) PubProperties(thingID string, propMap map[string]any) error {
 	// Implicit rule: if no name is provided the data is a map
 	// the transport adds the correlationID of the subscription.
-	notif := messaging.NewNotificationMessage(wot.OpObserveAllProperties, thingID, "", propMap)
+	notif := messaging.NewNotificationMessage(td.OpObserveAllProperties, thingID, "", propMap)
 
 	slog.Info("PubProperties",
 		"thingID", thingID,
@@ -151,7 +150,7 @@ func (ag *Agent) UpdateThing(tdoc *td.TD) error {
 
 	// TD is sent as JSON
 	tdJson, _ := jsoniter.MarshalToString(tdoc)
-	err := ag.Rpc(wot.OpInvokeAction, ThingDirectoryDThingID, ThingDirectoryUpdateThingMethod,
+	err := ag.Rpc(td.OpInvokeAction, ThingDirectoryDThingID, ThingDirectoryUpdateThingMethod,
 		tdJson, nil)
 	return err
 }

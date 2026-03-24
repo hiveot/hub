@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/hiveot/hivekit/go/wot"
+	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/messaging"
 	"github.com/hiveot/hub/lib/servers/connections"
 	jsoniter "github.com/json-iterator/go"
@@ -148,13 +148,13 @@ func (c *HiveotSseServerConnection) onRequestMessage(
 	// handle subscriptions
 	handled = true
 	switch req.Operation {
-	case wot.OpSubscribeEvent, wot.OpSubscribeAllEvents:
+	case td.OpSubscribeEvent, td.OpSubscribeAllEvents:
 		c.subscriptions.Subscribe(req.ThingID, req.Name, req.CorrelationID)
-	case wot.OpUnsubscribeEvent, wot.OpUnsubscribeAllEvents:
+	case td.OpUnsubscribeEvent, td.OpUnsubscribeAllEvents:
 		c.subscriptions.Unsubscribe(req.ThingID, req.Name)
-	case wot.OpObserveProperty, wot.OpObserveAllProperties:
+	case td.OpObserveProperty, td.OpObserveAllProperties:
 		c.observations.Subscribe(req.ThingID, req.Name, req.CorrelationID)
-	case wot.OpUnobserveProperty, wot.OpUnobserveAllProperties:
+	case td.OpUnobserveProperty, td.OpUnobserveAllProperties:
 		c.observations.Unsubscribe(req.ThingID, req.Name)
 	default:
 		handled = false
@@ -196,7 +196,7 @@ func (c *HiveotSseServerConnection) onRequestMessage(
 func (c *HiveotSseServerConnection) SendNotification(
 	notif *messaging.NotificationMessage) (err error) {
 
-	if notif.Operation == wot.OpSubscribeEvent || notif.Operation == wot.OpSubscribeAllEvents {
+	if notif.Operation == td.OpSubscribeEvent || notif.Operation == td.OpSubscribeAllEvents {
 		correlationID := c.subscriptions.GetSubscription(notif.ThingID, notif.Name)
 		if correlationID != "" {
 			slog.Info("SendNotification (subscribed event)",
@@ -206,7 +206,7 @@ func (c *HiveotSseServerConnection) SendNotification(
 			)
 			err = c._send(messaging.MessageTypeNotification, notif)
 		}
-	} else if notif.Operation == wot.OpObserveProperty || notif.Operation == wot.OpObserveAllProperties {
+	} else if notif.Operation == td.OpObserveProperty || notif.Operation == td.OpObserveAllProperties {
 		correlationID := c.observations.GetSubscription(notif.ThingID, notif.Name)
 		if correlationID != "" {
 			slog.Info("SendNotification (observed property)",
@@ -216,7 +216,7 @@ func (c *HiveotSseServerConnection) SendNotification(
 			)
 			err = c._send(messaging.MessageTypeNotification, notif)
 		}
-	} else if notif.Operation == wot.OpInvokeAction {
+	} else if notif.Operation == td.OpInvokeAction {
 		// action progress update
 		slog.Info("SendNotification (action status)",
 			slog.String("clientID", c.cinfo.ClientID),

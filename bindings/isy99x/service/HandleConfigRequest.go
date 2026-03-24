@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/hiveot/hivekit/go/wot"
+	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/messaging"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	jsoniter "github.com/json-iterator/go"
@@ -46,7 +46,7 @@ func (svc *IsyBinding) handleConfigRequest(req *messaging.RequestMessage) (resp 
 		_ = svc.ag.PubProperties(isyThing.GetID(), values)
 
 		// re-submit the TD if the title changes
-		if req.Name == wot.WoTTitle {
+		if req.Name == td.WoTTitle {
 			tdi := isyThing.MakeTD()
 			tdJSON, _ := jsoniter.MarshalToString(tdi)
 			_ = digitwin.ThingDirectoryUpdateThing(svc.ag.Consumer, tdJSON)

@@ -4,9 +4,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/hiveot/hivekit/go/wot"
 	"github.com/hiveot/hivekit/go/wot/td"
-	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hivekit/go/wot/vocab"
 	"github.com/hiveot/hub/lib/agent"
 	"github.com/hiveot/hub/lib/messaging"
 )
@@ -30,7 +29,7 @@ func (it *IsyDimmerThing) MakeTD() *td.TD {
 	//td.AddDimmerEvent(vocab.PropSwitchDimmer)
 
 	a := tdi.AddAction(vocab.ActionDimmerSet, "Set Dimmer", "",
-		&td.DataSchema{Type: wot.DataTypeInteger},
+		&td.DataSchema{Type: td.DataTypeInteger},
 	)
 	a.SetAtType(vocab.ActionDimmer)
 

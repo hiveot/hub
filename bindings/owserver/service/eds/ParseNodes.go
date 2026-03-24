@@ -22,7 +22,7 @@ func ParseOneWireNodes(
 		Name:        xmlNode.XMLName.Local,
 		Description: xmlNode.Description,
 		Attr:        make(map[string]OneWireAttr),
-		//DeviceType:  vocab.ThingNetGateway,
+		//DeviceType:  vocab.DeviceNetGateway,
 	}
 	owNodeList = append(owNodeList, &owNode)
 	// todo: find a better place for this
@@ -32,7 +32,7 @@ func ParseOneWireNodes(
 	//		Name:     vocab.PropNetLatency,
 	//		Value:    fmt.Sprintf("%.2f", latency.Seconds()),
 	//		Unit:     "sec",
-	//		DataType: vocab.WoTDataTypeNumber,
+	//		DataType: td.DataTypeNumber,
 	//	}
 	//	owNode.Attr[owAttr.Name] = owAttr
 	//}

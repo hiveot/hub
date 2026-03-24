@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hivekit/go/wot"
+	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/messaging"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 )
@@ -32,8 +32,8 @@ func (r *DigitwinRouter) HandleNotification(notif *messaging.NotificationMessage
 	}
 
 	// Update the digital twin with this event or property value
-	if dtwNotif.Operation == wot.OpSubscribeEvent ||
-		dtwNotif.Operation == wot.OpSubscribeAllEvents {
+	if dtwNotif.Operation == td.OpSubscribeEvent ||
+		dtwNotif.Operation == td.OpSubscribeAllEvents {
 		tv := digitwin.ThingValue{
 			Name:           dtwNotif.Name,
 			Data:           dtwNotif.Value,
@@ -46,7 +46,7 @@ func (r *DigitwinRouter) HandleNotification(notif *messaging.NotificationMessage
 			// broadcast the event to subscribers of the digital twin
 			r.transportServer.SendNotification(&dtwNotif)
 		}
-	} else if dtwNotif.Operation == wot.OpObserveProperty {
+	} else if dtwNotif.Operation == td.OpObserveProperty {
 		tv := digitwin.ThingValue{
 			Name:           dtwNotif.Name,
 			Data:           dtwNotif.Value,
@@ -60,7 +60,7 @@ func (r *DigitwinRouter) HandleNotification(notif *messaging.NotificationMessage
 		if changed {
 			r.transportServer.SendNotification(&dtwNotif)
 		}
-	} else if dtwNotif.Operation == wot.OpObserveAllProperties {
+	} else if dtwNotif.Operation == td.OpObserveAllProperties {
 		// output is a key-value map
 		var propMap map[string]any
 		err := utils.DecodeAsObject(dtwNotif.Value, &propMap)
@@ -80,14 +80,14 @@ func (r *DigitwinRouter) HandleNotification(notif *messaging.NotificationMessage
 					// notify the consumer with individual updates instead of a map
 					// this seems more correct than sending a map.
 					notifCpy2 := dtwNotif
-					notifCpy2.Operation = wot.OpObserveProperty
+					notifCpy2.Operation = td.OpObserveProperty
 					notifCpy2.Name = k
 					notifCpy2.Value = v
 					r.transportServer.SendNotification(&notifCpy2)
 				}
 			}
 		}
-	} else if dtwNotif.Operation == wot.OpInvokeAction {
+	} else if dtwNotif.Operation == td.OpInvokeAction {
 		// action progress update. Forward to sender of the request
 		var cc messaging.IConnection
 		r.mux.Lock()

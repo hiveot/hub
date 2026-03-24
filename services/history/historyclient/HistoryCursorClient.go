@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hivekit/go/wot"
+	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/consumer"
 	"github.com/hiveot/hub/lib/messaging"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
@@ -29,7 +29,7 @@ func (cl *HistoryCursorClient) First() (thingValue *messaging.ThingValue, valid 
 		CursorKey: cl.cursorKey,
 	}
 	resp := historyapi.CursorSingleResp{}
-	err = cl.co.Rpc(wot.OpInvokeAction, cl.dThingID, historyapi.CursorFirstMethod, &req, &resp)
+	err = cl.co.Rpc(td.OpInvokeAction, cl.dThingID, historyapi.CursorFirstMethod, &req, &resp)
 	//err = cl.co.SendRequest(cl.dThingID, historyapi.CursorFirstMethod, &req, &resp)
 	return resp.Value, resp.Valid, err
 }
@@ -43,7 +43,7 @@ func (cl *HistoryCursorClient) Last() (
 		CursorKey: cl.cursorKey,
 	}
 	resp := historyapi.CursorSingleResp{}
-	err = cl.co.Rpc(wot.OpInvokeAction, cl.dThingID, historyapi.CursorLastMethod, &req, &resp)
+	err = cl.co.Rpc(td.OpInvokeAction, cl.dThingID, historyapi.CursorLastMethod, &req, &resp)
 	return resp.Value, resp.Valid, err
 }
 
@@ -56,7 +56,7 @@ func (cl *HistoryCursorClient) Next() (
 		CursorKey: cl.cursorKey,
 	}
 	resp := historyapi.CursorSingleResp{}
-	err = cl.co.Rpc(wot.OpInvokeAction, cl.dThingID, historyapi.CursorNextMethod, &req, &resp)
+	err = cl.co.Rpc(td.OpInvokeAction, cl.dThingID, historyapi.CursorNextMethod, &req, &resp)
 	return resp.Value, resp.Valid, err
 }
 
@@ -71,7 +71,7 @@ func (cl *HistoryCursorClient) NextN(
 		Limit:     limit,
 	}
 	resp := historyapi.CursorNResp{}
-	err = cl.co.Rpc(wot.OpInvokeAction, cl.dThingID, historyapi.CursorNextNMethod, &req, &resp)
+	err = cl.co.Rpc(td.OpInvokeAction, cl.dThingID, historyapi.CursorNextNMethod, &req, &resp)
 	return resp.Values, resp.ItemsRemaining, err
 }
 
@@ -84,7 +84,7 @@ func (cl *HistoryCursorClient) Prev() (
 		CursorKey: cl.cursorKey,
 	}
 	resp := historyapi.CursorSingleResp{}
-	err = cl.co.Rpc(wot.OpInvokeAction, cl.dThingID, historyapi.CursorPrevMethod, &req, &resp)
+	err = cl.co.Rpc(td.OpInvokeAction, cl.dThingID, historyapi.CursorPrevMethod, &req, &resp)
 	return resp.Value, resp.Valid, err
 }
 
@@ -99,7 +99,7 @@ func (cl *HistoryCursorClient) PrevN(
 		Limit:     limit,
 	}
 	resp := historyapi.CursorNResp{}
-	err = cl.co.Rpc(wot.OpInvokeAction, cl.dThingID, historyapi.CursorPrevNMethod, &req, &resp)
+	err = cl.co.Rpc(td.OpInvokeAction, cl.dThingID, historyapi.CursorPrevNMethod, &req, &resp)
 	return resp.Values, resp.ItemsRemaining, err
 }
 
@@ -108,7 +108,7 @@ func (cl *HistoryCursorClient) Release() {
 	req := historyapi.CursorReleaseArgs{
 		CursorKey: cl.cursorKey,
 	}
-	err := cl.co.Rpc(wot.OpInvokeAction, cl.dThingID, historyapi.CursorReleaseMethod, &req, nil)
+	err := cl.co.Rpc(td.OpInvokeAction, cl.dThingID, historyapi.CursorReleaseMethod, &req, nil)
 	_ = err
 	return
 }
@@ -124,7 +124,7 @@ func (cl *HistoryCursorClient) Seek(timeStamp time.Time) (
 		TimeStamp: timeStampStr,
 	}
 	resp := historyapi.CursorSingleResp{}
-	err = cl.co.Rpc(wot.OpInvokeAction, cl.dThingID, historyapi.CursorSeekMethod, &req, &resp)
+	err = cl.co.Rpc(td.OpInvokeAction, cl.dThingID, historyapi.CursorSeekMethod, &req, &resp)
 	return resp.Value, resp.Valid, err
 }
 

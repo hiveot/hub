@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/hiveot/hivekit/go/wot/td"
+	"github.com/hiveot/hivekit/go/wot/vocab"
 )
 
 // test TD messages and forms
@@ -32,10 +33,10 @@ const DeviceTypeSensor = "hiveot:sensor"
 //	agentReqHandler := func(req *transports.RequestMessage,
 //		connection transports.IConnection) *transports.ResponseMessage {
 //		t.Log("Received request: " + req.Operation)
-//		if req.Operation == wot.HTOpReadTD {
+//		if req.Operation == td.HTOpReadTD {
 //			tdJSON, err := jsoniter.Marshal(td1)
 //			return req.CreateResponse(tdJSON, err)
-//		} else if req.Operation == wot.HTOpReadAllTDs {
+//		} else if req.Operation == td.HTOpReadAllTDs {
 //			tdJSON, err := jsoniter.Marshal(td1)
 //			return req.CreateResponse([]string{string(tdJSON)}, err)
 //		} else {
@@ -73,7 +74,7 @@ func TestAddForms(t *testing.T) {
 	defer cancelFn()
 
 	// 2. Create a TD
-	tdi := td.NewTD("", thingID, "My gadget", DeviceTypeSensor)
+	tdi := td.NewTD(thingID, "My gadget", vocab.DeviceSensor)
 
 	// 3. add forms
 	transportServer.AddTDForms(tdi, true)
@@ -97,7 +98,7 @@ func TestAddForms(t *testing.T) {
 //	requestHandler := func(msg *transports.RequestMessage,
 //		c transports.IConnection) *transports.ResponseMessage {
 //		var err error
-//		if msg.Operation == wot.HTOpUpdateTD {
+//		if msg.Operation == td.HTOpUpdateTD {
 //			assert.Equal(t, thingID, msg.ThingID)
 //			assert.Equal(t, td1JSON, msg.Input)
 //			assert.NotEmpty(t, msg.Input)

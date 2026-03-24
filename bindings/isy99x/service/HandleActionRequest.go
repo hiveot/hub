@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/messaging"
 )
 
@@ -12,7 +12,7 @@ import (
 func (svc *IsyBinding) handleRequest(req *messaging.RequestMessage,
 	_ messaging.IConnection) (resp *messaging.ResponseMessage) {
 
-	if req.Operation == vocab.OpWriteProperty {
+	if req.Operation == td.OpWriteProperty {
 		return svc.handleConfigRequest(req)
 	}
 

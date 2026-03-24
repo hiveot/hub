@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hivekit/go/wot"
+	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/teris-io/shortid"
 )
 
@@ -127,7 +127,7 @@ func (req *RequestMessage) CreateErrorResponse(err error) (errResp *ResponseMess
 //	err is set when the request has failed. In that case value can contain error details
 func (req *RequestMessage) CreateResponse(value any, err error) (resp *ResponseMessage) {
 	// response to invoke action is an ActionStatus
-	if req.Operation == wot.OpInvokeAction {
+	if req.Operation == td.OpInvokeAction {
 		resp, _ = req.CreateActionResponse("", StatusCompleted, value, err)
 	} else {
 		resp = NewResponseMessage(

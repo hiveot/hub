@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/hiveot/hivekit/go/wot"
+	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/messaging"
 	"github.com/hiveot/hub/lib/servers/httpbasic"
 	"github.com/hiveot/hub/lib/servers/tlsserver"
@@ -149,7 +149,7 @@ func (srv *HiveotSseServer) HandleRequestMessage(w http.ResponseWriter, r *http.
 	connectionID := rp.ConnectionID
 
 	// 1. handle ping operation internally
-	if req.Operation == wot.HTOpPing {
+	if req.Operation == td.HTOpPing {
 		//resp := req.CreateResponse("pong", nil)
 		output = req.CreateResponse("pong", nil)
 		handled = true

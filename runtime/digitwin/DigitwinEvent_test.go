@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/hiveot/hivekit/go/wot/td"
-	"github.com/hiveot/hub/api/go/vocab"
 	digitwinapi "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,7 +26,7 @@ func TestAddReadEvent(t *testing.T) {
 	tdDoc1.AddEvent(eventName, "event1", "Descr 1",
 		&td.DataSchema{
 			Title: "type1",
-			Type:  vocab.WoTDataTypeInteger,
+			Type:  td.DataTypeInteger,
 		})
 	tdDoc1Json, _ := json.Marshal(tdDoc1)
 	err := svc.DirSvc.UpdateThing(agent1ID, string(tdDoc1Json))
@@ -95,7 +94,7 @@ func TestEventUpdateFail(t *testing.T) {
 	tdDoc1.AddEvent(EventName, "event1", "Descr 1",
 		&td.DataSchema{
 			Title: "type1",
-			Type:  vocab.WoTDataTypeInteger,
+			Type:  td.DataTypeInteger,
 		})
 	tdDoc1Json, _ := json.Marshal(tdDoc1)
 	err := svc.DirSvc.UpdateThing(agentID, string(tdDoc1Json))

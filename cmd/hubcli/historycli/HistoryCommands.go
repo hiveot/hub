@@ -113,7 +113,7 @@ func HistoryListCommand(hc **consumer.Consumer) *cli.Command {
 func HandleListEvents(hc *consumer.Consumer, dThingID string, name string, limit int) error {
 	// FIXME: hc has a bootstrap algo to read the needed TD
 	//histTD := hc.GetTD(historyapi.ReadHistoryServiceID)
-	//f := histTD.GetForm(wot.OpInvokeAction)
+	//f := histTD.GetForm(td.OpInvokeAction)
 	rd := historyclient.NewReadHistoryClient(hc)
 
 	cursor, releaseFn, err := rd.GetCursor(dThingID, name)

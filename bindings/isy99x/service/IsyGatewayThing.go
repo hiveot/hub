@@ -8,9 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hiveot/hivekit/go/wot"
 	"github.com/hiveot/hivekit/go/wot/td"
-	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hivekit/go/wot/vocab"
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
 	"github.com/hiveot/hub/lib/agent"
 	"github.com/hiveot/hub/lib/exposedthing"
@@ -290,7 +289,7 @@ func (igw *IsyGatewayThing) MakeTD() *td.TD {
 		return nil
 	}
 
-	tdi := td.NewTD("", igw.thingID, igw.Configuration.DeviceSpecs.Model, vocab.ThingNetGateway)
+	tdi := td.NewTD(igw.thingID, igw.Configuration.DeviceSpecs.Model, vocab.DeviceNetGateway)
 	tdi.Description = igw.Configuration.DeviceSpecs.Make + "-" + igw.Configuration.DeviceSpecs.Model
 
 	//--- device read-only attributes
@@ -409,7 +408,7 @@ func (igw *IsyGatewayThing) ReadGatewayValues() (err error) {
 	pv.SetValue(vocab.PropDeviceSoftwareVersion, igw.Configuration.AppVersion)
 	pv.SetValue(vocab.PropNetMAC, igw.Configuration.Root.ID)
 	pv.SetValue(vocab.PropDeviceDescription, igw.Configuration.Product.Description)
-	pv.SetValue(wot.WoTTitle, igw.Configuration.Root.Name) // custom name
+	pv.SetValue(td.WoTTitle, igw.Configuration.Root.Name) // custom name
 	pv.SetValue(vocab.PropNetIP4, igw.Network.Interface.IP)
 	pv.SetValue(vocab.PropNetPort, igw.Network.WebServer.HttpPort)
 

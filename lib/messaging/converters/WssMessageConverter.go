@@ -5,7 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hivekit/go/wot"
+	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/messaging"
 	jsoniter "github.com/json-iterator/go"
 )
@@ -99,7 +99,7 @@ func (svc *WssMessageConverter) DecodeRequest(raw []byte) *messaging.RequestMess
 	reqmsg := &wssreq.RequestMessage
 	switch wssreq.Operation {
 
-	case wot.OpQueryAction, wot.OpCancelAction:
+	case td.OpQueryAction, td.OpCancelAction:
 		// input is actionID
 		reqmsg.Input = wssreq.ActionID
 	}
@@ -130,9 +130,9 @@ func (svc *WssMessageConverter) DecodeResponse(
 
 	switch wssResp.Operation {
 
-	case wot.OpCancelAction:
+	case td.OpCancelAction:
 		// hiveot response API doesnt contain the actionID. This is okay as the sender knows it.
-	case wot.OpInvokeAction:
+	case td.OpInvokeAction:
 		// hiveot always returns an ActionStatus object
 		//
 		// in websocket profile synchronous actions respond with output,
@@ -151,7 +151,7 @@ func (svc *WssMessageConverter) DecodeResponse(
 		}
 		respMsg.Value = as
 
-	case wot.OpQueryAction:
+	case td.OpQueryAction:
 		// ResponseMessage should contain ActionStatus object
 		var wssStatus WssActionStatus
 		err = utils.Decode(wssResp.Status, &wssStatus)
@@ -172,7 +172,7 @@ func (svc *WssMessageConverter) DecodeResponse(
 			respMsg.Value = as
 		}
 
-	case wot.OpQueryAllActions:
+	case td.OpQueryAllActions:
 		// ResponseMessage should contain ActionStatus list
 		var wssStatusMap map[string]WssActionStatus
 		actionStatusMap := make(map[string]messaging.ActionStatus)
@@ -193,8 +193,8 @@ func (svc *WssMessageConverter) DecodeResponse(
 		}
 		respMsg.Value = actionStatusMap
 
-	case wot.OpReadAllProperties, wot.OpReadMultipleProperties,
-		wot.OpWriteMultipleProperties:
+	case td.OpReadAllProperties, td.OpReadMultipleProperties,
+		td.OpWriteMultipleProperties:
 
 		// the 'Value' property from the messaging.ResponseMessage embedded struct
 		// already contains the messaging.ThingValue map.
@@ -239,9 +239,9 @@ func (svc *WssMessageConverter) EncodeRequest(req *messaging.RequestMessage) (an
 	// ensure this field is present as it is needed for decoding
 	wssReq.MessageType = messaging.MessageTypeRequest
 	switch req.Operation {
-	case wot.OpWriteMultipleProperties:
+	case td.OpWriteMultipleProperties:
 		wssReq.Values = req.Input
-	case wot.OpQueryAction:
+	case td.OpQueryAction:
 		// correlationID is used as actionID
 		wssReq.ActionID = req.CorrelationID
 	}
@@ -264,10 +264,10 @@ func (svc *WssMessageConverter) EncodeResponse(resp *messaging.ResponseMessage) 
 	// ensure this field is present as it is needed for decoding
 	wssResp.MessageType = messaging.MessageTypeResponse
 	switch resp.Operation {
-	case wot.OpCancelAction:
+	case td.OpCancelAction:
 		// actionID of cancelled action ?
 		// wssResp.ActionID = resp.CorrelationID
-	case wot.OpInvokeAction:
+	case td.OpInvokeAction:
 		// hiveot invokeaction always contains an ActionStatus object in the response
 		var as messaging.ActionStatus
 		err := utils.Decode(resp.Value, &as)
@@ -286,7 +286,7 @@ func (svc *WssMessageConverter) EncodeResponse(resp *messaging.ResponseMessage) 
 				TimeRequested: as.TimeRequested,
 			}
 		}
-	case wot.OpQueryAction:
+	case td.OpQueryAction:
 		// convert from messaging.ActionStatus to WssActionStatus
 		var actionStatus messaging.ActionStatus
 		err := utils.Decode(resp.Value, &actionStatus)
@@ -301,7 +301,7 @@ func (svc *WssMessageConverter) EncodeResponse(resp *messaging.ResponseMessage) 
 			TimeRequested: actionStatus.TimeRequested,
 			TimeEnded:     actionStatus.TimeUpdated,
 		}
-	case wot.OpQueryAllActions:
+	case td.OpQueryAllActions:
 		// convert from messaging.ActionStatus map to WssActionStatuses map
 		// FIXME: response is api.ActionStatus which differs from messaging.ActionStatus
 		var actionStatusMap map[string]messaging.ActionStatus
@@ -326,7 +326,7 @@ func (svc *WssMessageConverter) EncodeResponse(resp *messaging.ResponseMessage) 
 			}
 		}
 		wssResp.Statuses = wssStatusMap
-	case wot.OpReadAllProperties, wot.OpReadMultipleProperties:
+	case td.OpReadAllProperties, td.OpReadMultipleProperties:
 		// convert ThingValue map to map of name-value pairs
 		// the last updated timestamp is lost.
 		var thingValueList map[string]messaging.ThingValue
@@ -343,7 +343,7 @@ func (svc *WssMessageConverter) EncodeResponse(resp *messaging.ResponseMessage) 
 		// Note that wssResp also includes the ResponseMessage 'Value' property
 		// which hiveot clients can use to obtain the ThingValue result.
 		// non-hiveot clients will see the key-value map in 'Values'
-	case wot.OpReadProperty:
+	case td.OpReadProperty:
 	}
 
 	return wssResp

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hiveot/hivekit/go/wot"
+	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/messaging"
 	"github.com/hiveot/hub/lib/servers/connections"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
@@ -159,9 +159,9 @@ func TestPublishEventProp(t *testing.T) {
 	c1.SubscribeEvent(dThingID, "")
 	c1.ObserveProperty(dThingID, "")
 	c1.SendNotificationHandler = func(notif *messaging.NotificationMessage) {
-		if notif.Operation == wot.OpSubscribeEvent {
+		if notif.Operation == td.OpSubscribeEvent {
 			evCount++
-		} else if notif.Operation == wot.OpObserveProperty {
+		} else if notif.Operation == td.OpObserveProperty {
 			propCount++
 		}
 	}
@@ -175,11 +175,11 @@ func TestPublishEventProp(t *testing.T) {
 
 	// publish
 	notif1 := messaging.NewNotificationMessage(
-		wot.OpSubscribeEvent, dThingID, evName, nil)
+		td.OpSubscribeEvent, dThingID, evName, nil)
 	err = cm.SendNotification(notif1)
 	assert.NoError(t, err)
 	notif2 := messaging.NewNotificationMessage(
-		wot.OpObserveProperty, dThingID, propName, nil)
+		td.OpObserveProperty, dThingID, propName, nil)
 	err = cm.SendNotification(notif2)
 	assert.NoError(t, err)
 

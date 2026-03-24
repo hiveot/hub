@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/hiveot/hivekit/go/wot"
+	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/messaging"
 	"github.com/hiveot/hub/lib/servers/connections"
 	jsoniter "github.com/json-iterator/go"
@@ -159,22 +159,22 @@ func (sc *WssServerConnection) onMessage(raw []byte) {
 		// note that this field is still useful for services that need to know the sender
 		req.SenderID = sc.cinfo.ClientID
 		switch req.Operation {
-		case wot.HTOpPing:
+		case td.HTOpPing:
 			resp = req.CreateResponse("pong", nil)
 
-		case wot.OpSubscribeEvent, wot.OpSubscribeAllEvents:
+		case td.OpSubscribeEvent, td.OpSubscribeAllEvents:
 			sc.subscriptions.Subscribe(req.ThingID, req.Name, req.CorrelationID)
 			resp = req.CreateResponse(nil, nil)
 
-		case wot.OpUnsubscribeEvent, wot.OpUnsubscribeAllEvents:
+		case td.OpUnsubscribeEvent, td.OpUnsubscribeAllEvents:
 			sc.subscriptions.Unsubscribe(req.ThingID, req.Name)
 			resp = req.CreateResponse(nil, nil)
 
-		case wot.OpObserveProperty, wot.OpObserveAllProperties:
+		case td.OpObserveProperty, td.OpObserveAllProperties:
 			sc.observations.Subscribe(req.ThingID, req.Name, req.CorrelationID)
 			resp = req.CreateResponse(nil, nil)
 
-		case wot.OpUnobserveProperty, wot.OpUnobserveAllProperties:
+		case td.OpUnobserveProperty, td.OpUnobserveAllProperties:
 			sc.observations.Unsubscribe(req.ThingID, req.Name)
 			resp = req.CreateResponse(nil, nil)
 		default:
@@ -239,7 +239,7 @@ func (sc *WssServerConnection) SendNotification(
 			"thingID", notif.ThingID, "senderID", notif.SenderID)
 	}
 	switch notif.Operation {
-	case wot.OpSubscribeEvent, wot.OpSubscribeAllEvents:
+	case td.OpSubscribeEvent, td.OpSubscribeAllEvents:
 		correlationID := sc.subscriptions.GetSubscription(notif.ThingID, notif.Name)
 		if correlationID != "" {
 			slog.Info("SendNotification (event subscription)",
@@ -250,7 +250,7 @@ func (sc *WssServerConnection) SendNotification(
 			msg, _ := sc.messageConverter.EncodeNotification(notif)
 			err = sc._send(msg)
 		}
-	case wot.OpObserveProperty, wot.OpObserveMultipleProperties, wot.OpObserveAllProperties:
+	case td.OpObserveProperty, td.OpObserveMultipleProperties, td.OpObserveAllProperties:
 		correlationID := sc.observations.GetSubscription(notif.ThingID, notif.Name)
 		if correlationID != "" {
 			slog.Info("SendNotification (observed property(ies))",
@@ -261,7 +261,7 @@ func (sc *WssServerConnection) SendNotification(
 			msg, _ := sc.messageConverter.EncodeNotification(notif)
 			err = sc._send(msg)
 		}
-	case wot.OpInvokeAction:
+	case td.OpInvokeAction:
 		// action progress update, for original sender only
 		slog.Info("SendNotification (action status)",
 			slog.String("clientID", sc.cinfo.ClientID),

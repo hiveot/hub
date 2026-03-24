@@ -11,8 +11,8 @@ import (
 
 	"github.com/araddon/dateparse"
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hivekit/go/wot"
-	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hivekit/go/wot/td"
+	"github.com/hiveot/hivekit/go/wot/vocab"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/bucketstore"
 	"github.com/hiveot/hub/lib/messaging"
@@ -196,7 +196,7 @@ func TestAddGetEvent(t *testing.T) {
 	addHist := svc.GetAddHistory()
 	dThing1ID := digitwin.MakeDigitwinID(agent1ID, thing1ID)
 	ev1_1 := &messaging.NotificationMessage{
-		Operation: wot.OpSubscribeEvent,
+		Operation: td.OpSubscribeEvent,
 		SenderID:  agent1ID, ThingID: dThing1ID, Name: evTemperature,
 		Value: "12.5", Timestamp: utils.FormatUTCMilli(fivemago),
 	}
@@ -204,7 +204,7 @@ func TestAddGetEvent(t *testing.T) {
 	assert.NoError(t, err)
 	// add thing1 humidity from 55 minutes ago
 	ev1_2 := &messaging.NotificationMessage{
-		Operation: vocab.OpSubscribeEvent,
+		Operation: td.OpSubscribeEvent,
 		SenderID:  agent1ID, ThingID: dThing1ID, Name: evHumidity,
 		Value: "70", Timestamp: utils.FormatUTCMilli(fiftyfivemago),
 	}
@@ -214,7 +214,7 @@ func TestAddGetEvent(t *testing.T) {
 	// add thing2 humidity from 5 minutes ago
 	dThing2ID := digitwin.MakeDigitwinID(agent1ID, thing2ID)
 	ev2_1 := &messaging.NotificationMessage{
-		Operation: vocab.OpSubscribeEvent,
+		Operation: td.OpSubscribeEvent,
 		SenderID:  agent1ID, ThingID: dThing2ID, Name: evHumidity,
 		Value: "50", Timestamp: utils.FormatUTCMilli(fivemago),
 	}
@@ -223,7 +223,7 @@ func TestAddGetEvent(t *testing.T) {
 
 	// add thing2 temperature from 55 minutes ago
 	ev2_2 := &messaging.NotificationMessage{
-		Operation: vocab.OpSubscribeEvent,
+		Operation: td.OpSubscribeEvent,
 		SenderID:  agent1ID, ThingID: dThing2ID, Name: evTemperature,
 		Value: "17.5", Timestamp: utils.FormatUTCMilli(fiftyfivemago),
 	}
@@ -295,34 +295,34 @@ func TestAddProperties(t *testing.T) {
 		ThingID:   dThing1ID,
 		Name:      vocab.ActionSwitchOnOff,
 		Value:     "on",
-		Operation: vocab.OpInvokeAction,
+		Operation: td.OpInvokeAction,
 	}
 	event1 := &messaging.NotificationMessage{
 		SenderID:  agent1,
 		ThingID:   dThing1ID,
 		Name:      vocab.PropEnvTemperature,
 		Value:     temp1,
-		Operation: vocab.OpSubscribeEvent,
+		Operation: td.OpSubscribeEvent,
 	}
 	badEvent1 := &messaging.NotificationMessage{
 		SenderID:  agent1,
 		ThingID:   dThing1ID,
 		Name:      "", // missing name
-		Operation: vocab.OpSubscribeEvent,
+		Operation: td.OpSubscribeEvent,
 	}
 	// dThing1ID identifies the publisher so not an error
 	//badEvent2 := &transports.IConsumer{
 	//	SenderID:  "", // missing publisher
 	//	ThingID:   dThing1ID,
 	//	Name:      "name",
-	//	Operation: vocab.OpSubscribeEvent,
+	//	Operation: td.OpSubscribeEvent,
 	//}
 	badEvent3 := &messaging.NotificationMessage{
 		SenderID:  agent1,
 		ThingID:   dThing1ID,
 		Name:      "baddate",
 		Timestamp: "-1",
-		Operation: vocab.OpSubscribeEvent,
+		Operation: td.OpSubscribeEvent,
 	}
 	badEvent4 := &messaging.NotificationMessage{
 		SenderID: agent1,
@@ -338,7 +338,7 @@ func TestAddProperties(t *testing.T) {
 		ThingID:   dThing1ID,
 		Name:      "", // property list
 		Value:     propsList,
-		Operation: wot.OpObserveAllProperties,
+		Operation: td.OpObserveAllProperties,
 	}
 
 	// in total add 5 properties

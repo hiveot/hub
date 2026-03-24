@@ -3,7 +3,6 @@ package service
 import (
 	"log/slog"
 
-	"github.com/hiveot/hivekit/go/wot"
 	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/messaging"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
@@ -36,7 +35,7 @@ func (svc *DirectoryService) DeleteThing(senderID string, dThingID string) error
 	if err == nil && svc.notifHandler != nil {
 		// Publish an event notifying subscribers that the Thing was removed from the directory
 		// Those subscribing to directory event will be notified
-		notif := messaging.NewNotificationMessage(wot.OpSubscribeEvent,
+		notif := messaging.NewNotificationMessage(td.OpSubscribeEvent,
 			digitwin.ThingDirectoryDThingID, digitwin.ThingDirectoryEventThingDeleted,
 			dThingID)
 		go svc.notifHandler(notif)
@@ -145,7 +144,7 @@ func (svc *DirectoryService) UpdateThing(agentID string, tdJson string) error {
 
 		// todo: only send notification on changes
 		// publish an event that the directory TD has updated with a new TD
-		notif := messaging.NewNotificationMessage(wot.OpSubscribeEvent,
+		notif := messaging.NewNotificationMessage(td.OpSubscribeEvent,
 			digitwin.ThingDirectoryDThingID, digitwin.ThingDirectoryEventThingUpdated,
 			dtdJSON)
 		go svc.notifHandler(notif)

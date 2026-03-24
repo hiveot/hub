@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/hiveot/hivekit/go/wot/td"
-	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hivekit/go/wot/vocab"
 	"github.com/hiveot/hub/bindings/owserver/config"
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
 	"github.com/hiveot/hub/lib/agent"
@@ -67,24 +67,24 @@ type OWServerBinding struct {
 func (svc *OWServerBinding) CreateBindingTD() *td.TD {
 	// This binding exposes the TD of itself.
 	// Currently its configuration comes from file.
-	tdi := td.NewTD("", svc.agentID, "OWServer binding", vocab.ThingService)
+	tdi := td.NewTD(svc.agentID, "OWServer binding", vocab.DeviceTypeService)
 	tdi.Description = "Driver for the OWServer V2 Gateway 1-wire interface"
 
-	prop := tdi.AddProperty(bindingMake, "Developer", "", vocab.WoTDataTypeString).
+	prop := tdi.AddProperty(bindingMake, "Developer", "", td.DataTypeString).
 		SetAtType(vocab.PropDeviceMake)
 
 	// these are configured through the configuration file.
-	prop = tdi.AddProperty(bindingValuePollIntervalID, "Poll Interval", "Value polling", vocab.WoTDataTypeInteger).
+	prop = tdi.AddProperty(bindingValuePollIntervalID, "Poll Interval", "Value polling", td.DataTypeInteger).
 		SetAtType(vocab.PropDevicePollinterval)
 	prop.Unit = vocab.UnitSecond
 
 	prop = tdi.AddProperty(bindingValuePublishIntervalID, "Value Republish Interval",
 		"Interval the values are published even if they haven't changed.",
-		vocab.WoTDataTypeInteger)
+		td.DataTypeInteger)
 	prop.Unit = vocab.UnitSecond
 
 	prop = tdi.AddProperty(bindingOWServerAddressID, "IP Address", "OWServer gateway IP address",
-		vocab.WoTDataTypeString).SetAtType(vocab.PropNetAddress)
+		td.DataTypeString).SetAtType(vocab.PropNetAddress)
 	return tdi
 }
 

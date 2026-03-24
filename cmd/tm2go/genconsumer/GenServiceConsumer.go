@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hivekit/go/wot"
 	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/cmd/tm2go/gentypes"
 )
@@ -147,7 +146,7 @@ func GenActionMethod(l *gentypes.SL, serviceTitle string, key string, action *td
 	l.Add("%s", argStructLine) // go-1.24 warns about non-constant format string
 
 	l.Add("err = hc.Rpc(\"%s\", %s, %sMethod, %s, %s)",
-		wot.OpInvokeAction, serviceDigitwinID, methodName, invokeArgs, invokeResp)
+		td.OpInvokeAction, serviceDigitwinID, methodName, invokeArgs, invokeResp)
 	l.Add("return")
 	l.Indent--
 	l.Add("}")

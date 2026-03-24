@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hivekit/go/wot"
+	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/consumedthing"
 	"github.com/hiveot/hub/lib/consumer"
@@ -305,7 +305,7 @@ func (sess *WebClientSession) onNotification(notif *messaging.NotificationMessag
 	// update the directory
 	_ = sess.ctDir.OnNotification(notif)
 
-	if notif.Operation == wot.OpObserveProperty {
+	if notif.Operation == td.OpObserveProperty {
 		// Notify the UI of the property value change:
 		//    hx-trigger="sse:{{.AffordanceType}}/{{.ThingID}}/{{.Name}}"
 		// TODO: can htmx work with the ResponseMessage or InteractionOutput object?
@@ -317,7 +317,7 @@ func (sess *WebClientSession) onNotification(notif *messaging.NotificationMessag
 		propID = fmt.Sprintf("%s/%s/%s/updated",
 			messaging.AffordanceTypeProperty, notif.ThingID, notif.Name)
 		sess.SendSSE(propID, utils.FormatDateTime(notif.Timestamp))
-	} else if notif.Operation == wot.OpSubscribeEvent {
+	} else if notif.Operation == td.OpSubscribeEvent {
 		// Publish sse event indicating the event affordance or value has changed.
 		// The UI that displays this event can use this as a trigger to reload the
 		// fragment that displays this event:

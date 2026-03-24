@@ -216,7 +216,7 @@ func (cl *MqttClientConnection) GetConnectionInfo() messaging.ConnectionInfo {
 //func (cl *MqttClientConnection) HandleMqttMessage(rxMsg *transports.ThingMessage) {
 //
 //	switch rxMsg.Operation {
-//	case wot.HTOpActionStatus:
+//	case td.HTOpActionStatus:
 //		// the consumer received an async update to the action request
 //		// this client is receiving a status update from a previously sent action.
 //		cl.handleActionStatus(rxMsg)
@@ -312,7 +312,7 @@ func (cl *MqttClientConnection) handlePahoMessage(m *paho.Publish) {
 
 // InvokeAction invokes an action on a thing and wait for the response
 //func (cl *MqttClientConnection) InvokeAction(dThingID, name string, input any, output any) error {
-//	return cl.SendRequest(wot.OpInvokeAction, dThingID, name, input, output)
+//	return cl.SendRequest(td.OpInvokeAction, dThingID, name, input, output)
 //}
 
 // IsConnected return whether the return channel is connection, eg can receive data

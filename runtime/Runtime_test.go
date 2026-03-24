@@ -8,8 +8,7 @@ import (
 	"time"
 
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hivekit/go/wot"
-	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/clients/authclient"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/messaging"
@@ -217,12 +216,12 @@ func TestActionWithDeliveryConfirmation(t *testing.T) {
 	dThingID := digitwin.MakeDigitwinID(agentID, thingID)
 
 	var result string
-	err := cl1.Rpc(wot.OpInvokeAction, dThingID, actionID, actionPayload, &result)
+	err := cl1.Rpc(td.OpInvokeAction, dThingID, actionID, actionPayload, &result)
 	require.NoError(t, err)
 	assert.Equal(t, expectedReply, result)
 	assert.Equal(t, thingID, rxMsg.ThingID)
 	assert.Equal(t, actionID, rxMsg.Name)
-	assert.Equal(t, vocab.OpInvokeAction, rxMsg.Operation)
+	assert.Equal(t, td.OpInvokeAction, rxMsg.Operation)
 
 }
 
@@ -296,7 +295,7 @@ func TestServiceReconnect(t *testing.T) {
 	// this rpc call succeeds after agent1 has automatically reconnected
 	dThingID := digitwin.MakeDigitwinID(agentID, thingID)
 	var reply string
-	err = cl2.Rpc(wot.OpInvokeAction, dThingID, actionID, &actionPayload, &reply)
+	err = cl2.Rpc(td.OpInvokeAction, dThingID, actionID, &actionPayload, &reply)
 	require.NoError(t, err)
 
 	require.NoError(t, err, "auto-reconnect didn't take place")
@@ -317,7 +316,7 @@ func TestAccess(t *testing.T) {
 	defer hc.Disconnect()
 	_ = token
 
-	//f := r.GetForm(wot.OpInvokeAction, hc.GetProtocolType())
+	//f := r.GetForm(td.OpInvokeAction, hc.GetProtocolType())
 
 	// regulars users should not have authn and authz admin access
 	clientProfiles, err := authn.AdminGetProfiles(hc)

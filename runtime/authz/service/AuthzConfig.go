@@ -4,8 +4,7 @@ import (
 	"path"
 	"sync"
 
-	"github.com/hiveot/hivekit/go/wot"
-	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hivekit/go/wot/td"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 )
@@ -63,26 +62,26 @@ type RolePermission struct {
 
 // re-usable auth permissions to refresh token and logout
 var authPermissions = []string{
-	//wot.HTOpLogout,
-	//wot.HTOpRefresh,
+	//td.HTOpLogout,
+	//td.HTOpRefresh,
 }
 
 // re-usable permissions to observe and read and observe properties, events, actions, TDs
 var readPermissions = []string{
-	//wot.HTOpReadEvent, wot.HTOpReadAllEvents,
-	//wot.HTOpReadTD, wot.HTOpReadAllTDs,
-	wot.OpObserveProperty, wot.OpObserveAllProperties,
-	//wot.OpQueryAction, wot.OpQueryAllActions,  // why query actions if you cant invoke?
-	wot.OpReadProperty, wot.OpReadAllProperties,
-	wot.OpSubscribeEvent, wot.OpSubscribeAllEvents,
-	wot.OpUnobserveProperty, wot.OpUnobserveAllProperties,
-	wot.OpUnsubscribeEvent, wot.OpUnsubscribeAllEvents,
+	//td.HTOpReadEvent, td.HTOpReadAllEvents,
+	//td.HTOpReadTD, td.HTOpReadAllTDs,
+	td.OpObserveProperty, td.OpObserveAllProperties,
+	//td.OpQueryAction, td.OpQueryAllActions,  // why query actions if you cant invoke?
+	td.OpReadProperty, td.OpReadAllProperties,
+	td.OpSubscribeEvent, td.OpSubscribeAllEvents,
+	td.OpUnobserveProperty, td.OpUnobserveAllProperties,
+	td.OpUnsubscribeEvent, td.OpUnsubscribeAllEvents,
 }
 
 // Thing agents can refresh tokens and invoke actions on services.
 var agentPermissions = RolePermission{
 	Operations: append(authPermissions,
-		wot.OpInvokeAction,
+		td.OpInvokeAction,
 	),
 }
 
@@ -90,8 +89,8 @@ var agentPermissions = RolePermission{
 var servicePermissions = RolePermission{
 	Operations: append(
 		append(authPermissions, readPermissions...),
-		wot.OpQueryAction, wot.OpQueryAllActions,
-		wot.OpInvokeAction, wot.OpWriteProperty,
+		td.OpQueryAction, td.OpQueryAllActions,
+		td.OpInvokeAction, td.OpWriteProperty,
 	),
 }
 
@@ -105,15 +104,15 @@ var viewerPermissions = RolePermission{
 var operatorPermissions = RolePermission{
 	Operations: append(
 		append(authPermissions, readPermissions...),
-		vocab.OpInvokeAction,
-		wot.OpQueryAction, wot.OpQueryAllActions,
+		td.OpInvokeAction,
+		td.OpQueryAction, td.OpQueryAllActions,
 	),
 }
 
 // managers are operators that can also configure properties
 var managerPermissions = RolePermission{
 	Operations: append(operatorPermissions.Operations,
-		vocab.OpWriteProperty,
+		td.OpWriteProperty,
 	),
 }
 

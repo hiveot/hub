@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/hiveot/hivekit/go/wot"
 	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/messaging"
 	"github.com/hiveot/hub/lib/servers/connections"
@@ -46,15 +45,15 @@ func (svc *MqttTransportServer) GetForm(op, thingID, name string) td.Form {
 		return nil
 	}
 	switch op {
-	case wot.OpSubscribeEvent, wot.OpSubscribeAllEvents,
-		wot.OpObserveProperty, wot.OpObserveAllProperties:
+	case td.OpSubscribeEvent, td.OpSubscribeAllEvents,
+		td.OpObserveProperty, td.OpObserveAllProperties:
 		controlPacket = "subscribe"
-	case wot.OpUnsubscribeEvent, wot.OpUnsubscribeAllEvents,
-		wot.OpUnobserveProperty, wot.OpUnobserveAllProperties:
+	case td.OpUnsubscribeEvent, td.OpUnsubscribeAllEvents,
+		td.OpUnobserveProperty, td.OpUnobserveAllProperties:
 		controlPacket = "unsubscribe"
-	case wot.OpReadProperty, wot.OpReadAllProperties,
-		wot.OpWriteProperty, wot.OpWriteMultipleProperties,
-		wot.OpInvokeAction:
+	case td.OpReadProperty, td.OpReadAllProperties,
+		td.OpWriteProperty, td.OpWriteMultipleProperties,
+		td.OpInvokeAction:
 		// NOTE: the spec recommends to use subscribe for reading properties, but that
 		// makes no sense (yet).
 		// https://w3c.github.io/wot-binding-templates/bindings/protocols/mqtt/index.html#default-mappings

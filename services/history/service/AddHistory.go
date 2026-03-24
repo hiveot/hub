@@ -8,7 +8,7 @@ import (
 
 	"github.com/araddon/dateparse"
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hivekit/go/wot"
+	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/messaging"
 	jsoniter "github.com/json-iterator/go"
@@ -105,13 +105,13 @@ func (svc *AddHistory) AddMessage(msg *messaging.NotificationMessage) error {
 		Timestamp: msg.Timestamp,
 	}
 	switch msg.Operation {
-	case wot.OpInvokeAction:
+	case td.OpInvokeAction:
 		tv.AffordanceType = messaging.AffordanceTypeAction
 		return svc.AddValue(msg.SenderID, tv) // response of an action
-	case wot.OpObserveProperty:
+	case td.OpObserveProperty:
 		tv.AffordanceType = messaging.AffordanceTypeProperty
 		return svc.AddValue(msg.SenderID, tv)
-	case wot.OpObserveAllProperties:
+	case td.OpObserveAllProperties:
 		// output is a key:value map
 		tv.AffordanceType = messaging.AffordanceTypeProperty
 		propMap := make(map[string]any)
@@ -125,7 +125,7 @@ func (svc *AddHistory) AddMessage(msg *messaging.NotificationMessage) error {
 			_ = svc.AddValue(msg.SenderID, tv)
 		}
 		return err
-	case wot.OpSubscribeEvent, wot.OpSubscribeAllEvents:
+	case td.OpSubscribeEvent, td.OpSubscribeAllEvents:
 		tv.AffordanceType = messaging.AffordanceTypeEvent
 		return svc.AddValue(msg.SenderID, tv)
 	default:

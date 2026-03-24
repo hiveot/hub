@@ -35,7 +35,7 @@ export default interface IConsumerConnection {
     // getStatus(): TransportStatus
 
     // invokeAction sends an action request and waits for a response or until timeout.
-    // This is a simple helper that uses sendRequest(wot.OpInvokeAction, ...)
+    // This is a simple helper that uses sendRequest(td.OpInvokeAction, ...)
     //
     //	@param dThingID the digital twin ID for whom the action is intended
     //	@param name is the action or method name of the action to invoke

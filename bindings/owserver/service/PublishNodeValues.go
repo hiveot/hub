@@ -6,9 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/hiveot/hivekit/go/wot"
 	"github.com/hiveot/hivekit/go/wot/td"
-	"github.com/hiveot/hub/api/go/vocab"
 
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
 )
@@ -63,7 +61,7 @@ func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode, force bo
 		// inject the writable device title, if set. Default is model name.
 		deviceTitleByte, _ := svc.customTitles.Get(thingID)
 		if deviceTitleByte != nil && force {
-			propMap[wot.WoTTitle] = string(deviceTitleByte)
+			propMap[td.WoTTitle] = string(deviceTitleByte)
 		}
 		// first and unknown values are always changed
 		for attrID, attr := range node.Attr {
@@ -110,17 +108,17 @@ func (svc *OWServerBinding) PublishNodeValues(nodes []*eds.OneWireNode, force bo
 // GetValueChange parses the attribute value and track changes to the
 // value.
 func (svc *OWServerBinding) GetValueChange(
-	attrName string, attrValue string, info AttrConversion, td *td.TD) (
+	attrName string, attrValue string, info AttrConversion, tdDoc *td.TD) (
 	value any, changed bool) {
 
 	var err error
 
 	// parse all data values to their native types and compare if they changed
 	// since the previous stored value.
-	prevValue, prevFound := svc.getPrevValue(td.ID, attrName)
+	prevValue, prevFound := svc.getPrevValue(tdDoc.ID, attrName)
 
 	switch info.DataType {
-	case vocab.WoTDataTypeNumber:
+	case td.DataTypeNumber:
 		valueFloat, err2 := strconv.ParseFloat(attrValue, 32)
 		prec := math.Pow10(info.Precision)
 		roundedInt := int(valueFloat * prec)
@@ -136,12 +134,12 @@ func (svc *OWServerBinding) GetValueChange(
 			changed = true
 		}
 		if changed {
-			svc.setPrevValue(td.ID, attrName, roundedFloat)
+			svc.setPrevValue(tdDoc.ID, attrName, roundedFloat)
 		}
 		// return the rounded /truncated result
 		value = roundedFloat
 
-	case vocab.WoTDataTypeInteger, vocab.WoTDataTypeUnsignedInt:
+	case td.DataTypeInteger, td.DataTypeUnsignedInt:
 		valueInt64, err2 := strconv.ParseInt(attrValue, 10, 32)
 		valueInt := int(valueInt64)
 		err = err2
@@ -156,11 +154,11 @@ func (svc *OWServerBinding) GetValueChange(
 			changed = true
 		}
 		if changed {
-			svc.setPrevValue(td.ID, attrName, valueInt)
+			svc.setPrevValue(tdDoc.ID, attrName, valueInt)
 		}
 		value = valueInt
 
-	case vocab.WoTDataTypeBool:
+	case td.DataTypeBool:
 		valueBool, err2 := strconv.ParseBool(attrValue)
 		err = err2
 		if prevFound {
@@ -169,7 +167,7 @@ func (svc *OWServerBinding) GetValueChange(
 			changed = true
 		}
 		if changed {
-			svc.setPrevValue(td.ID, attrName, valueBool)
+			svc.setPrevValue(tdDoc.ID, attrName, valueBool)
 		}
 		value = valueBool
 	default: // strings and other values
@@ -183,7 +181,7 @@ func (svc *OWServerBinding) GetValueChange(
 			changed = true
 		}
 		if changed {
-			svc.setPrevValue(td.ID, attrName, value)
+			svc.setPrevValue(tdDoc.ID, attrName, value)
 		}
 	}
 	if err != nil {

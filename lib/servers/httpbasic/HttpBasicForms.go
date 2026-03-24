@@ -4,13 +4,12 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/hiveot/hivekit/go/wot"
 	"github.com/hiveot/hivekit/go/wot/td"
 )
 
 var HttpKnownOperations = []string{
-	wot.OpQueryAllActions, wot.OpReadAllProperties, wot.OpWriteMultipleProperties,
-	wot.OpReadProperty, wot.OpWriteProperty, wot.OpInvokeAction, wot.OpQueryAction}
+	td.OpQueryAllActions, td.OpReadAllProperties, td.OpWriteMultipleProperties,
+	td.OpReadProperty, td.OpWriteProperty, td.OpInvokeAction, td.OpQueryAction}
 
 // AddTDForms sets the forms for use of http-basic to the given TD.
 //
@@ -29,10 +28,10 @@ func (srv *HttpWoTBasicServer) AddTDForms(tdoc *td.TD, includeAffordances bool) 
 
 	// add thing level forms that apply to all things. http-basic only supports read/write
 	tdoc.Forms = append(tdoc.Forms,
-		srv.createThingLevelForm(wot.OpQueryAllActions, http.MethodGet, tdoc.ID),
-		//srv.createThingLevelForm(wot.OpReadAllEvents, http.MethodGet, tdoc.ID),
-		srv.createThingLevelForm(wot.OpReadAllProperties, http.MethodGet, tdoc.ID),
-		srv.createThingLevelForm(wot.OpWriteMultipleProperties, http.MethodPost, tdoc.ID),
+		srv.createThingLevelForm(td.OpQueryAllActions, http.MethodGet, tdoc.ID),
+		//srv.createThingLevelForm(td.OpReadAllEvents, http.MethodGet, tdoc.ID),
+		srv.createThingLevelForm(td.OpReadAllProperties, http.MethodGet, tdoc.ID),
+		srv.createThingLevelForm(td.OpWriteMultipleProperties, http.MethodPost, tdoc.ID),
 	)
 	if includeAffordances {
 		srv.AddAffordanceForms(tdoc)
@@ -43,27 +42,27 @@ func (srv *HttpWoTBasicServer) AddTDForms(tdoc *td.TD, includeAffordances bool) 
 // http-basic only supports read-write
 func (srv *HttpWoTBasicServer) AddAffordanceForms(tdoc *td.TD) {
 	for name, aff := range tdoc.Actions {
-		f := srv.createAffordanceForm(wot.OpInvokeAction, http.MethodPost, tdoc.ID, name)
+		f := srv.createAffordanceForm(td.OpInvokeAction, http.MethodPost, tdoc.ID, name)
 		aff.AddForm(f)
-		f = srv.createAffordanceForm(wot.OpQueryAction, http.MethodGet, tdoc.ID, name)
+		f = srv.createAffordanceForm(td.OpQueryAction, http.MethodGet, tdoc.ID, name)
 		aff.AddForm(f)
 	}
 	//for name, aff := range tdoc.Events {
-	//f = srv.createAffordanceForm(wot.HTOpReadEvent, http.MethodPut, baseURL, tdoc.ID, name)
+	//f = srv.createAffordanceForm(td.HTOpReadEvent, http.MethodPut, baseURL, tdoc.ID, name)
 	//aff.AddForm(f)
 	//}
 	for name, aff := range tdoc.Properties {
 		if !aff.WriteOnly {
 			// http-basic doesn't support observe/unobserve
-			//f := srv.createAffordanceForm(wot.OpObserveProperty, http.MethodGet, tdoc.ID, name)
+			//f := srv.createAffordanceForm(td.OpObserveProperty, http.MethodGet, tdoc.ID, name)
 			//aff.AddForm(f)
-			//f = srv.createAffordanceForm(wot.OpUnobserveProperty, http.MethodGet, tdoc.ID, name)
+			//f = srv.createAffordanceForm(td.OpUnobserveProperty, http.MethodGet, tdoc.ID, name)
 			//aff.AddForm(f)
-			f := srv.createAffordanceForm(wot.OpReadProperty, http.MethodGet, tdoc.ID, name)
+			f := srv.createAffordanceForm(td.OpReadProperty, http.MethodGet, tdoc.ID, name)
 			aff.AddForm(f)
 		}
 		if !aff.ReadOnly {
-			f := srv.createAffordanceForm(wot.OpWriteProperty, http.MethodPut, tdoc.ID, name)
+			f := srv.createAffordanceForm(td.OpWriteProperty, http.MethodPut, tdoc.ID, name)
 			aff.AddForm(f)
 		}
 	}

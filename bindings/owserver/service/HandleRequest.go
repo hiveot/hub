@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/hiveot/hivekit/go/wot"
+	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
 	"github.com/hiveot/hub/lib/messaging"
 )
@@ -26,7 +26,7 @@ func (svc *OWServerBinding) HandleRequest(req *messaging.RequestMessage,
 	var err error
 
 	// Custom config. Change device title.
-	if req.Name == wot.WoTTitle {
+	if req.Name == td.WoTTitle {
 		err = svc.SetTitle(req)
 		deviceTitleByte, _ := svc.customTitles.Get(req.ThingID)
 		resp := req.CreateResponse(string(deviceTitleByte), err)
@@ -41,7 +41,7 @@ func (svc *OWServerBinding) HandleRequest(req *messaging.RequestMessage,
 	}
 
 	// Actions do not return a value
-	if req.Operation == wot.OpInvokeAction {
+	if req.Operation == td.OpInvokeAction {
 		resp := req.CreateResponse(nil, nil)
 		return resp
 	}
@@ -79,7 +79,7 @@ func (svc *OWServerBinding) SetTitle(req *messaging.RequestMessage) (err error) 
 	}
 	if err == nil {
 		// publish notification with the new title after returning
-		go svc.ag.PubProperty(req.ThingID, wot.WoTTitle, valueStr)
+		go svc.ag.PubProperty(req.ThingID, td.WoTTitle, valueStr)
 	}
 	return err
 }

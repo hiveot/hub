@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/hiveot/hivekit/go/wot"
+	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/messaging"
 	"github.com/teris-io/shortid"
 )
@@ -62,7 +62,7 @@ func (co *Consumer) GetConnection() messaging.IConnection {
 func (co *Consumer) InvokeAction(
 	dThingID, name string, input any, output any) error {
 
-	req := messaging.NewRequestMessage(wot.OpInvokeAction, dThingID, name, input, "")
+	req := messaging.NewRequestMessage(td.OpInvokeAction, dThingID, name, input, "")
 	resp, err := co.SendRequest(req, true)
 
 	if err != nil {
@@ -85,7 +85,7 @@ func (co *Consumer) IsConnected() bool {
 //	slog.Info("Logout",
 //		slog.String("clientID", co.GetClientID()))
 //
-//	req := transports.NewRequestMessage(wot.HTOpLogout, "", "", nil, "")
+//	req := transports.NewRequestMessage(td.HTOpLogout, "", "", nil, "")
 //	_, err = co.SendRequest(req, true)
 //	return err
 //}
@@ -95,9 +95,9 @@ func (co *Consumer) IsConnected() bool {
 //	thingID is empty for all things
 //	name is empty for all properties of the selected things
 func (co *Consumer) ObserveProperty(thingID string, name string) error {
-	op := wot.OpObserveProperty
+	op := td.OpObserveProperty
 	if name == "" {
-		op = wot.OpObserveAllProperties
+		op = td.OpObserveAllProperties
 	}
 	req := messaging.NewRequestMessage(op, thingID, name, nil, "")
 	resp, err := co.SendRequest(req, true)
@@ -120,7 +120,7 @@ func (co *Consumer) onNotification(notif *messaging.NotificationMessage) {
 
 	hPtr := co.appNotificationHandlerPtr.Load()
 	if hPtr == nil {
-		if notif.Operation == wot.OpInvokeAction {
+		if notif.Operation == td.OpInvokeAction {
 			// not everyone is interested in action progress updates
 			slog.Info("onNotification: Action progress received. No handler registered",
 				"operation", notif.Operation,
@@ -190,7 +190,7 @@ func (co *Consumer) onResponse(resp *messaging.ResponseMessage) error {
 // This uses the underlying transport native method of ping-pong.
 func (co *Consumer) Ping() error {
 	correlationID := shortid.MustGenerate()
-	req := messaging.NewRequestMessage(wot.HTOpPing, "", "", nil, correlationID)
+	req := messaging.NewRequestMessage(td.HTOpPing, "", "", nil, correlationID)
 	resp, err := co.SendRequest(req, true)
 	if err != nil {
 		return err
@@ -213,7 +213,7 @@ func (co *Consumer) Ping() error {
 func (co *Consumer) QueryAction(thingID, name string) (
 	value messaging.ActionStatus, err error) {
 
-	err = co.Rpc(wot.OpQueryAction, thingID, name, nil, &value)
+	err = co.Rpc(td.OpQueryAction, thingID, name, nil, &value)
 	// if state is empty then this action has not run before
 	if err == nil && value.State == "" {
 		value.ThingID = thingID
@@ -238,7 +238,7 @@ func (co *Consumer) QueryAction(thingID, name string) (
 func (co *Consumer) QueryAllActions(thingID string) (
 	values map[string]messaging.ActionStatus, err error) {
 
-	err = co.Rpc(wot.OpQueryAllActions, thingID, "", nil, &values)
+	err = co.Rpc(td.OpQueryAllActions, thingID, "", nil, &values)
 	return values, err
 }
 
@@ -250,7 +250,7 @@ func (co *Consumer) QueryAllActions(thingID string) (
 //func (co *Consumer) ReadAllEvents(thingID string) (
 //	values map[string]transports.ThingValue, err error) {
 //
-//	err = co.Rpc(wot.HTOpReadAllEvents, thingID, "", nil, &values)
+//	err = co.Rpc(td.HTOpReadAllEvents, thingID, "", nil, &values)
 //	return values, err
 //}
 
@@ -262,7 +262,7 @@ func (co *Consumer) QueryAllActions(thingID string) (
 func (co *Consumer) ReadAllProperties(thingID string) (
 	values map[string]messaging.ThingValue, err error) {
 
-	err = co.Rpc(wot.OpReadAllProperties, thingID, "", nil, &values)
+	err = co.Rpc(td.OpReadAllProperties, thingID, "", nil, &values)
 	return values, err
 }
 
@@ -270,7 +270,7 @@ func (co *Consumer) ReadAllProperties(thingID string) (
 // This returns an array of TDs in JSON format
 // This is not a WoT operation (but maybe it should be)
 //func (co *Consumer) ReadAllTDs() (tdJSONs []string, err error) {
-//	err = co.Rpc(wot.HTOpReadAllTDs, "", "", nil, &tdJSONs)
+//	err = co.Rpc(td.HTOpReadAllTDs, "", "", nil, &tdJSONs)
 //	return tdJSONs, err
 //}
 
@@ -283,7 +283,7 @@ func (co *Consumer) ReadAllProperties(thingID string) (
 //func (co *Consumer) ReadEvent(thingID, name string) (
 //	value transports.ThingValue, err error) {
 //
-//	err = co.Rpc(wot.HTOpReadEvent, thingID, name, nil, &value)
+//	err = co.Rpc(td.HTOpReadEvent, thingID, name, nil, &value)
 //	return value, err
 //}
 
@@ -295,7 +295,7 @@ func (co *Consumer) ReadAllProperties(thingID string) (
 func (co *Consumer) ReadProperty(thingID, name string) (
 	value messaging.ThingValue, err error) {
 
-	err = co.Rpc(wot.OpReadProperty, thingID, name, nil, &value)
+	err = co.Rpc(td.OpReadProperty, thingID, name, nil, &value)
 	return value, err
 }
 
@@ -303,7 +303,7 @@ func (co *Consumer) ReadProperty(thingID, name string) (
 // This returns the TD in JSON format.
 // This is not a WoT operation (but maybe it should be)
 //func (co *Consumer) RetrieveThing(thingID string) (tdJSON string, err error) {
-//	err = co.Rpc(wot.HTOpReadTD, thingID, "", nil, &tdJSON)
+//	err = co.Rpc(td.HTOpReadTD, thingID, "", nil, &tdJSON)
 //	return tdJSON, err
 //}
 
@@ -316,7 +316,7 @@ func (co *Consumer) ReadProperty(thingID, name string) (
 //	slog.Info("RefreshToken",
 //		slog.String("clientID", co.GetClientID()))
 //
-//	req := transports.NewRequestMessage(wot.HTOpRefresh, "", "", oldToken, "")
+//	req := transports.NewRequestMessage(td.HTOpRefresh, "", "", oldToken, "")
 //	resp, err := co.SendRequest(req, true)
 //
 //	// set the new token as the bearer token
@@ -388,7 +388,7 @@ func (co *Consumer) SendRequest(req *messaging.RequestMessage, waitForCompletion
 	}
 	// hmm, not pretty but during login the connection status can be ignored
 	// the alternative is not to use SendRequest but plain TLS post
-	//ignoreDisconnect := req.Operation == wot.HTOpLogin || req.Operation == wot.HTOpRefresh
+	//ignoreDisconnect := req.Operation == td.HTOpLogin || req.Operation == td.HTOpRefresh
 	ignoreDisconnect := false
 	resp, err = co.WaitForCompletion(rChan, req.Operation, req.CorrelationID, ignoreDisconnect)
 
@@ -450,9 +450,9 @@ func (co *Consumer) SetResponseHandler(cb messaging.ResponseHandler) {
 // Subscribe to one or all events of a thing
 // name is the event to subscribe to or "" for all events
 func (co *Consumer) Subscribe(thingID string, name string) error {
-	op := wot.OpSubscribeEvent
+	op := td.OpSubscribeEvent
 	if name == "" {
-		op = wot.OpSubscribeAllEvents
+		op = td.OpSubscribeAllEvents
 	}
 	req := messaging.NewRequestMessage(op, thingID, name, nil, "")
 	resp, err := co.SendRequest(req, true)
@@ -462,9 +462,9 @@ func (co *Consumer) Subscribe(thingID string, name string) error {
 
 // UnobserveProperty a previous observed property or all properties
 func (co *Consumer) UnobserveProperty(thingID string, name string) error {
-	op := wot.OpUnobserveProperty
+	op := td.OpUnobserveProperty
 	if name == "" {
-		op = wot.OpUnobserveAllProperties
+		op = td.OpUnobserveAllProperties
 	}
 	req := messaging.NewRequestMessage(op, thingID, name, nil, "")
 	resp, err := co.SendRequest(req, true)
@@ -474,9 +474,9 @@ func (co *Consumer) UnobserveProperty(thingID string, name string) error {
 
 // Unsubscribe is a helper for sending an unsubscribe request
 func (co *Consumer) Unsubscribe(thingID string, name string) error {
-	op := wot.OpUnsubscribeEvent
+	op := td.OpUnsubscribeEvent
 	if name == "" {
-		op = wot.OpUnsubscribeAllEvents
+		op = td.OpUnsubscribeAllEvents
 	}
 	req := messaging.NewRequestMessage(op, thingID, name, nil, "")
 	resp, err := co.SendRequest(req, true)
@@ -549,7 +549,7 @@ func (co *Consumer) WaitForCompletion(
 // WriteProperty is a helper to send a write property request
 func (co *Consumer) WriteProperty(thingID string, name string, input any, wait bool) error {
 	correlationID := shortid.MustGenerate()
-	req := messaging.NewRequestMessage(wot.OpWriteProperty, thingID, name, input, correlationID)
+	req := messaging.NewRequestMessage(td.OpWriteProperty, thingID, name, input, correlationID)
 	resp, err := co.SendRequest(req, wait)
 	_ = resp
 	return err

@@ -45,16 +45,16 @@ func getHiveoviewForm(op, thingID, name string) *td.Form {
 	var href string
 	var method string
 	switch op {
-	//case wot.HTOpLogin:
+	//case td.HTOpLogin:
 	//	href = "/login"
 	//	method = "POST"
-	//case wot.HTOpLoginWithForm:
+	//case td.HTOpLoginWithForm:
 	//	href = "/loginForm"
 	//	method = "GET"
-	//case wot.HTOpLogout:
+	//case td.HTOpLogout:
 	//	href = "/logout"
 	//	method = "POST"
-	//case wot.HTOpRefresh:
+	//case td.HTOpRefresh:
 	//	href = "/refresh" // todo
 	//	method = "POST"
 	default:

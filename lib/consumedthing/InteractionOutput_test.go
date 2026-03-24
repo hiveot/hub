@@ -4,7 +4,6 @@ import (
 	"log/slog"
 	"testing"
 
-	"github.com/hiveot/hivekit/go/wot"
 	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/messaging"
@@ -15,8 +14,8 @@ import (
 const key1ID = "key1"
 
 func MakeTD() *td.TD {
-	tdi := td.NewTD("", "thingID", "test Thing", "devicetype")
-	tdi.AddProperty(key1ID, "property 1", "test property", wot.DataTypeString)
+	tdi := td.NewTD("thingID", "test Thing", "devicetype")
+	tdi.AddProperty(key1ID, "property 1", "test property", td.DataTypeString)
 	return tdi
 }
 

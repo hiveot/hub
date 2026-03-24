@@ -1,7 +1,6 @@
 package wssserver
 
 import (
-	"github.com/hiveot/hivekit/go/wot"
 	"github.com/hiveot/hivekit/go/wot/td"
 )
 
@@ -16,10 +15,10 @@ func (srv *WssServer) AddTDForms(tdoc *td.TD, includeAffordances bool) {
 	// 1 form for all operations
 	form := td.NewForm("", srv.GetConnectURL(), SubprotocolWSS)
 	form["op"] = []string{
-		wot.OpQueryAllActions,
-		wot.OpObserveAllProperties, wot.OpUnobserveAllProperties,
-		wot.OpReadAllProperties, // wot.OpWriteMultipleProperties,
-		wot.OpSubscribeAllEvents, wot.OpUnsubscribeAllEvents,
+		td.OpQueryAllActions,
+		td.OpObserveAllProperties, td.OpUnobserveAllProperties,
+		td.OpReadAllProperties, // td.OpWriteMultipleProperties,
+		td.OpSubscribeAllEvents, td.OpUnsubscribeAllEvents,
 	}
 	//form["contentType"] = "application/json"
 
@@ -38,14 +37,14 @@ func (srv *WssServer) AddAffordanceForms(tdoc *td.TD) {
 	for name, aff := range tdoc.Actions {
 		_ = name
 		form := td.NewForm("", href, SubprotocolWSS)
-		form["op"] = []string{wot.OpInvokeAction, wot.OpQueryAction}
+		form["op"] = []string{td.OpInvokeAction, td.OpQueryAction}
 		aff.AddForm(form)
 		// cancel action is currently not supported
 	}
 	for name, aff := range tdoc.Events {
 		_ = name
 		form := td.NewForm("", href, SubprotocolWSS)
-		form["op"] = []string{wot.OpSubscribeEvent, wot.OpUnsubscribeEvent}
+		form["op"] = []string{td.OpSubscribeEvent, td.OpUnsubscribeEvent}
 		aff.AddForm(form)
 	}
 	for name, aff := range tdoc.Properties {
@@ -53,10 +52,10 @@ func (srv *WssServer) AddAffordanceForms(tdoc *td.TD) {
 		form := td.NewForm("", href, SubprotocolWSS)
 		ops := []string{}
 		if !aff.WriteOnly {
-			ops = append(ops, wot.OpReadProperty, wot.OpObserveProperty, wot.OpUnobserveProperty)
+			ops = append(ops, td.OpReadProperty, td.OpObserveProperty, td.OpUnobserveProperty)
 		}
 		if !aff.ReadOnly {
-			ops = append(ops, wot.OpWriteProperty)
+			ops = append(ops, td.OpWriteProperty)
 		}
 
 		form["op"] = ops

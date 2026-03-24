@@ -1,9 +1,8 @@
 package service
 
 import (
-	"github.com/hiveot/hivekit/go/wot"
 	"github.com/hiveot/hivekit/go/wot/td"
-	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hivekit/go/wot/vocab"
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	jsoniter "github.com/json-iterator/go"
@@ -20,15 +19,15 @@ func (svc *OWServerBinding) CreateTDFromNode(node *eds.OneWireNode) (tdoc *td.TD
 	//thingID := things.CreateThingID(svc.config.ID, node.NodeID, node.DeviceType)
 	thingID := node.ROMId
 	if thingID == "" {
-		thingID = vocab.ThingNetGateway
+		thingID = vocab.DeviceNetGateway
 	}
 	deviceType := deviceTypeMap[node.Family]
 	if deviceType == "" {
 		// unknown device
-		deviceType = vocab.ThingDevice
+		deviceType = vocab.Device
 	}
 	thingTitle := node.Name
-	tdoc = td.NewTD("", thingID, thingTitle, deviceType)
+	tdoc = td.NewTD(thingID, thingTitle, deviceType)
 	tdoc.UpdateTitleDescription(thingTitle, node.Description)
 
 	// Add a writable 'title' property so consumer can edit the device's title.
@@ -36,7 +35,7 @@ func (svc *OWServerBinding) CreateTDFromNode(node *eds.OneWireNode) (tdoc *td.TD
 	// The UI should prefer a title property over the TD title.
 	// how does the dtw know if to forward a title property write request?
 	//  look into the device's TD
-	prop := tdoc.AddProperty(wot.WoTTitle, "Title", "", vocab.WoTDataTypeString)
+	prop := tdoc.AddProperty(td.WoTTitle, "Title", "", td.DataTypeString)
 	prop.SetAtType(vocab.PropDeviceTitle)
 	prop.ReadOnly = false
 
@@ -73,7 +72,7 @@ func (svc *OWServerBinding) CreateTDFromNode(node *eds.OneWireNode) (tdoc *td.TD
 		if attrInfo.IsEvent {
 			var evSchema *td.DataSchema
 			// only add data schema if the event carries a value
-			if attrInfo.DataType != vocab.WoTDataTypeNone {
+			if attrInfo.DataType != td.DataTypeNone {
 				unit, _ := UnitNameVocab[attr.Unit]
 				evSchema = &td.DataSchema{
 					Type:     attrInfo.DataType,
@@ -88,7 +87,7 @@ func (svc *OWServerBinding) CreateTDFromNode(node *eds.OneWireNode) (tdoc *td.TD
 		if attrInfo.IsActuator {
 			var inputSchema *td.DataSchema
 			// only add data schema if the action accepts parameters
-			if attrInfo.DataType != vocab.WoTDataTypeNone {
+			if attrInfo.DataType != td.DataTypeNone {
 				unit, _ := UnitNameVocab[attr.Unit]
 				inputSchema = &td.DataSchema{
 					Type:      attrInfo.DataType,

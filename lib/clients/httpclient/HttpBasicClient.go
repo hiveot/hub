@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hivekit/go/wot"
 	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/clients/tlsclient"
 	"github.com/hiveot/hub/lib/messaging"
@@ -168,22 +167,22 @@ func (cc *HttpBasicClient) GetConnectionInfo() messaging.ConnectionInfo {
 // This simply returns nil for anything else than login, logout, ping or refresh.
 func (cc *HttpBasicClient) GetDefaultForm(op, thingID, name string) (f *td.Form) {
 	// login has its own URL as it is unauthenticated
-	if op == wot.HTOpPing {
+	if op == td.HTOpPing {
 		href := httpbasic.HttpGetPingPath
 		nf := td.NewForm(op, href)
 		nf.SetMethodName(http.MethodGet)
 		f = &nf
-		//} else if op == wot.HTOpLogin {
+		//} else if op == td.HTOpLogin {
 		//	href := httpserver.HttpPostLoginPath
 		//	nf := td.NewForm(op, href)
 		//	nf.SetMethodName(http.MethodPost)
 		//	f = &nf
-		//} else if op == wot.HTOpLogout {
+		//} else if op == td.HTOpLogout {
 		//	href := httpserver.HttpPostLogoutPath
 		//	nf := td.NewForm(op, href)
 		//	nf.SetMethodName(http.MethodPost)
 		//	f = &nf
-		//} else if op == wot.HTOpRefresh {
+		//} else if op == td.HTOpRefresh {
 		//	href := httpserver.HttpPostRefreshPath
 		//	nf := td.NewForm(op, href)
 		//	nf.SetMethodName(http.MethodPost)
@@ -218,7 +217,7 @@ func (cc *HttpBasicClient) IsConnected() bool {
 //	formMock.Add("password", password)
 //
 //	var loginHRef string
-//	f := cl.getForm(wot.HTOpLoginWithForm, "", "")
+//	f := cl.getForm(td.HTOpLoginWithForm, "", "")
 //	if f != nil {
 //		loginHRef, _ = f.GetHRef()
 //	}
@@ -273,7 +272,7 @@ func (cc *HttpBasicClient) IsConnected() bool {
 //		"login":    cl.GetClientID(),
 //		"password": password,
 //	}
-//	f := cl.getForm(wot.HTOpLogin, "", "")
+//	f := cl.getForm(td.HTOpLogin, "", "")
 //	if f == nil {
 //		err = fmt.Errorf("missing form for login operation")
 //		slog.Error(err.Error())

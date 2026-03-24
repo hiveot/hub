@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hiveot/hivekit/go/wot"
+	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/messaging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -54,7 +54,7 @@ func TestObservePropertyByConsumer(t *testing.T) {
 
 	// 3. Server sends a property update to consumers
 	notif1 := messaging.NewNotificationMessage(
-		wot.OpObserveProperty, thingID, propertyKey1, propValue1)
+		td.OpObserveProperty, thingID, propertyKey1, propValue1)
 	srv.SendNotification(notif1)
 
 	// 4. both observers should have received it
@@ -69,10 +69,10 @@ func TestObservePropertyByConsumer(t *testing.T) {
 
 	// 6. Server sends a property update to consumers
 	notif2 := messaging.NewNotificationMessage(
-		wot.OpObserveProperty, thingID, propertyKey1, propValue2)
+		td.OpObserveProperty, thingID, propertyKey1, propValue2)
 	srv.SendNotification(notif2)
 	notif3 := messaging.NewNotificationMessage(
-		wot.OpObserveProperty, thingID, propertyKey2, propValue2)
+		td.OpObserveProperty, thingID, propertyKey2, propValue2)
 	srv.SendNotification(notif3)
 
 	// 7. property should not have been received
@@ -84,7 +84,7 @@ func TestObservePropertyByConsumer(t *testing.T) {
 	err = cl2.UnobserveProperty("", "")
 	time.Sleep(time.Millisecond * 10)
 	notif4 := messaging.NewNotificationMessage(
-		wot.OpObserveProperty, thingID, propertyKey2, propValue1)
+		td.OpObserveProperty, thingID, propertyKey2, propValue1)
 	srv.SendNotification(notif4)
 	// no change is expected
 	assert.Equal(t, propValue2, rxVal2.Load())
@@ -135,7 +135,7 @@ func TestReadProperty(t *testing.T) {
 	// 1. start the agent transport with the request handler
 	// in this case the consumer connects to the agent (unlike when using a hub)
 	agentReqHandler := func(req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
-		if req.Operation == wot.OpReadProperty && req.ThingID == thingID && req.Name == propKey {
+		if req.Operation == td.OpReadProperty && req.ThingID == thingID && req.Name == propKey {
 			tv := messaging.NewThingValue(messaging.AffordanceTypeProperty,
 				"thingID", req.Name, propValue, timestamp)
 			resp := req.CreateResponse(tv, nil)
@@ -170,7 +170,7 @@ func TestReadAllProperties(t *testing.T) {
 	// 1. start the agent transport with the request handler
 	// in this case the consumer connects to the agent (unlike when using a hub)
 	agentReqHandler := func(req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
-		if req.Operation == wot.OpReadAllProperties {
+		if req.Operation == td.OpReadAllProperties {
 			output := make(map[string]*messaging.ThingValue)
 			output[name1] = messaging.NewThingValue(
 				messaging.AffordanceTypeProperty, thingID, name1, value1, "")

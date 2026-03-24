@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/messaging"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	authz "github.com/hiveot/hub/runtime/authz/api"
@@ -141,19 +141,19 @@ func (r *DigitwinRouter) HandleRequest(
 	switch req.Operation {
 	// Thing actions status are tracked and stored.
 	// Responses are send asynchronously to the replyTo address.
-	case vocab.OpInvokeAction:
+	case td.OpInvokeAction:
 		resp = r.HandleInvokeAction(req, c)
-	case vocab.OpWriteProperty:
+	case td.OpWriteProperty:
 		resp = r.HandleWriteProperty(req, c)
 
 	// digital twin requests are handled immediately and return a response
-	case vocab.OpQueryAction:
+	case td.OpQueryAction:
 		resp = r.HandleQueryAction(req, c)
-	case vocab.OpQueryAllActions:
+	case td.OpQueryAllActions:
 		resp = r.HandleQueryAllActions(req, c)
-	case vocab.OpReadProperty:
+	case td.OpReadProperty:
 		resp = r.HandleReadProperty(req, c)
-	case vocab.OpReadAllProperties:
+	case td.OpReadAllProperties:
 		resp = r.HandleReadAllProperties(req, c)
 
 	default:

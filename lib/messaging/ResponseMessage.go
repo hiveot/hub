@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hivekit/go/wot"
+	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/teris-io/shortid"
 )
 
@@ -138,7 +138,7 @@ type ResponseMessage struct {
 // Decode the value in the response
 // If response is for an invokeaction then the output is extracted from the ActionStatus
 func (resp *ResponseMessage) Decode(output any) error {
-	if resp.Operation == wot.OpInvokeAction {
+	if resp.Operation == td.OpInvokeAction {
 		var as ActionStatus
 		err := utils.Decode(resp.Value, &as)
 		if err != nil {

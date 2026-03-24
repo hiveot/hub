@@ -3,9 +3,8 @@ package service
 import (
 	"log/slog"
 
-	"github.com/hiveot/hivekit/go/wot"
 	"github.com/hiveot/hivekit/go/wot/td"
-	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hivekit/go/wot/vocab"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	jsoniter "github.com/json-iterator/go"
 )
@@ -13,7 +12,7 @@ import (
 // MakeBindingTD generates a TD document for this binding
 // containing configuration properties, event and action definitions
 func (svc *IPNetBinding) MakeBindingTD() *td.TD {
-	tdi := td.NewTD("", svc.config.AgentID, "IPNet binding", vocab.ThingService)
+	tdi := td.NewTD(svc.config.AgentID, "IPNet binding", vocab.DeviceTypeService)
 
 	// these are configured through the configuration file.
 	prop := tdi.AddPropertyAsInt(vocab.PropDevicePollinterval, "Poll Interval", "")
@@ -30,13 +29,13 @@ func (svc *IPNetBinding) MakeBindingTD() *td.TD {
 func (svc *IPNetBinding) MakeDeviceTD(deviceInfo *IPDeviceInfo) *td.TD {
 	thingID := "urn:" + deviceInfo.MAC
 	deviceName := deviceInfo.GetDefaultName()
-	tdi := td.NewTD("", thingID, deviceName, vocab.ThingNet)
+	tdi := td.NewTD(thingID, deviceName, vocab.DeviceNet)
 
 	// these are configured through the configuration file.
-	prop := tdi.AddPropertyAsString(wot.WoTTitle, "Device name", "").
+	prop := tdi.AddPropertyAsString(td.WoTTitle, "Device name", "").
 		SetAtType(vocab.PropDeviceTitle)
 	prop.ReadOnly = true // TODO: allow edit and save the new device name
-	prop = tdi.AddProperty(vocab.PropNetPort, "Ports", "", vocab.WoTDataTypeArray).
+	prop = tdi.AddProperty(vocab.PropNetPort, "Ports", "", td.DataTypeArray).
 		SetAtType(vocab.PropNetPort)
 	_ = prop
 	prop = tdi.AddPropertyAsString(vocab.PropNetHostname, "Hostname", "").

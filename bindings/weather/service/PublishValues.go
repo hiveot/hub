@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hivekit/go/wot/vocab"
 	"github.com/hiveot/hub/bindings/weather/config"
 	"github.com/hiveot/hub/bindings/weather/providers"
 	"github.com/hiveot/hub/lib/agent"

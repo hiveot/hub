@@ -5,7 +5,6 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/hiveot/hivekit/go/wot"
 	"github.com/hiveot/hivekit/go/wot/td"
 )
 
@@ -23,9 +22,9 @@ import (
 // return the schema value as the type.
 func GoTypeFromSchema(ds *td.DataSchema) string {
 	switch ds.Type {
-	case wot.DataTypeAnyURI:
+	case td.DataTypeAnyURI:
 		return "string"
-	case wot.DataTypeArray:
+	case td.DataTypeArray:
 		// the actual type is in a dataschema under 'items'
 		if ds.ArrayItems != nil {
 			arrayType := GoTypeFromSchema(ds.ArrayItems)
@@ -34,19 +33,19 @@ func GoTypeFromSchema(ds *td.DataSchema) string {
 			// unknown type
 			return "[]interface{}"
 		}
-	case wot.DataTypeDateTime:
+	case td.DataTypeDateTime:
 		return "string"
-	case wot.DataTypeBool:
+	case td.DataTypeBool:
 		return "bool"
-	case wot.DataTypeInteger:
+	case td.DataTypeInteger:
 		return "int64"
-	case wot.DataTypeNumber:
+	case td.DataTypeNumber:
 		return "float64"
-	case wot.DataTypeString:
+	case td.DataTypeString:
 		return "string"
-	case wot.DataTypeUnsignedInt:
+	case td.DataTypeUnsignedInt:
 		return "uint64"
-	case wot.DataTypeObject:
+	case td.DataTypeObject:
 		if ds.Schema != "" {
 			// Only local references are supported
 			return ToTitle(ds.Schema)

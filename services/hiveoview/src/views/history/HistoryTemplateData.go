@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/consumedthing"
 	"github.com/hiveot/hub/lib/messaging"
 	"github.com/hiveot/hub/services/hiveoview/src"
@@ -53,7 +53,7 @@ func (ht HistoryTemplateData) AsJSON() string {
 
 	for _, m := range ht.Values {
 		yValue := m.Data
-		if ht.Schema.Type == vocab.WoTDataTypeBool {
+		if ht.Schema.Type == td.DataTypeBool {
 			boolValue := utils.DecodeAsBool(m.Data)
 			yValue = 0
 			if boolValue {
@@ -162,7 +162,7 @@ func NewHistoryTemplateData(
 	//hs.UnitSymbol = iout.UnitSymbol()
 	hs.Title = iout.Title //+ " of " + ct.Title
 	//hs.DataSchema.Title = hs.Title
-	hs.Stepped = iout.Schema.Type == vocab.WoTDataTypeBool
+	hs.Stepped = iout.Schema.Type == td.DataTypeBool
 
 	// TODO: (if needed) if items remaining, get the rest in an additional call
 	//hist := historyclient.NewReadHistoryClient(ct.GetConsumer())

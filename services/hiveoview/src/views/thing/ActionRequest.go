@@ -11,7 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hivekit/go/wot/td"
-	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hivekit/go/wot/vocab"
 	"github.com/hiveot/hub/lib/consumedthing"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/services/hiveoview/src"

@@ -5,9 +5,7 @@ import (
 	"testing"
 
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hivekit/go/wot"
 	"github.com/hiveot/hivekit/go/wot/td"
-	"github.com/hiveot/hub/api/go/vocab"
 	"github.com/hiveot/hub/lib/messaging"
 	digitwinapi "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/runtime/digitwin/service"
@@ -31,7 +29,7 @@ func TestActionFlow(t *testing.T) {
 
 	// Create the native TD for invoking an action to
 	tdDoc1 := createTDDoc(thingID, 5, 4, 3)
-	actionSchema := &td.DataSchema{Type: vocab.WoTDataTypeInteger, Title: "Position"}
+	actionSchema := &td.DataSchema{Type: td.DataTypeInteger, Title: "Position"}
 	tdDoc1.AddAction(actionName, "action 1", "", actionSchema)
 	tddjson, _ := json.Marshal(tdDoc1)
 	err := svc.DirSvc.UpdateThing(agentID, string(tddjson))
@@ -39,7 +37,7 @@ func TestActionFlow(t *testing.T) {
 
 	// create the action
 	req := messaging.NewRequestMessage(
-		wot.OpInvokeAction, dThingID, actionName, actionValue, correlationID)
+		td.OpInvokeAction, dThingID, actionName, actionValue, correlationID)
 	as, stored, err := dtwStore.NewActionStart(req)
 	require.NoError(t, err)
 	require.True(t, stored)
@@ -57,7 +55,7 @@ func TestActionFlow(t *testing.T) {
 
 	// complete the action
 	resp := messaging.NewResponseMessage(
-		wot.OpInvokeAction, dThingID, actionName, actionValue, nil, correlationID)
+		td.OpInvokeAction, dThingID, actionName, actionValue, nil, correlationID)
 	as, err = dtwStore.UpdateActionWithResponse(resp)
 	require.NoError(t, err)
 	require.Equal(t, correlationID, as.ActionID)
@@ -122,7 +120,7 @@ func TestInvokeActionErrors(t *testing.T) {
 
 	// Create the native TD for invoking an action to
 	tdDoc1 := createTDDoc(thingID, 5, 4, 3)
-	actionSchema := &td.DataSchema{Type: vocab.WoTDataTypeInteger, Title: "Position"}
+	actionSchema := &td.DataSchema{Type: td.DataTypeInteger, Title: "Position"}
 	tdDoc1.AddAction(actionName, "action 1", "", actionSchema)
 	tddjson, _ := json.Marshal(tdDoc1)
 	err := svc.DirSvc.UpdateThing(agentID, string(tddjson))
@@ -130,7 +128,7 @@ func TestInvokeActionErrors(t *testing.T) {
 
 	// invoke the action with the wrong thing
 	req := messaging.NewRequestMessage(
-		wot.OpInvokeAction, "badThingID", actionName, actionValue, correlationID)
+		td.OpInvokeAction, "badThingID", actionName, actionValue, correlationID)
 	_, stored, err := dtwStore.NewActionStart(req)
 
 	// unknown thingIDs are still allowed for now.
@@ -139,7 +137,7 @@ func TestInvokeActionErrors(t *testing.T) {
 
 	// invoke the action with the wrong name
 	req = messaging.NewRequestMessage(
-		wot.OpInvokeAction, dThingID, "badName", actionValue, correlationID)
+		td.OpInvokeAction, dThingID, "badName", actionValue, correlationID)
 	_, stored, err = dtwStore.NewActionStart(req)
 	// same as above
 	assert.NoError(t, err)
@@ -147,7 +145,7 @@ func TestInvokeActionErrors(t *testing.T) {
 
 	// complete the action on wrong thing
 	resp := messaging.NewResponseMessage(
-		wot.OpInvokeAction, "badThingID", actionName, actionValue, nil, correlationID)
+		td.OpInvokeAction, "badThingID", actionName, actionValue, nil, correlationID)
 
 	_, err = dtwStore.UpdateActionWithResponse(resp)
 	assert.Error(t, err)
@@ -176,7 +174,7 @@ func TestDigitwinAgentAction(t *testing.T) {
 
 	// Create the native TD for invoking an action to
 	tdDoc1 := createTDDoc(thingID, 5, 4, 3)
-	actionSchema := &td.DataSchema{Type: vocab.WoTDataTypeInteger, Title: "Position"}
+	actionSchema := &td.DataSchema{Type: td.DataTypeInteger, Title: "Position"}
 	tdDoc1.AddAction(actionName, "action 1", "", actionSchema)
 	tddJSON1, _ := json.Marshal(tdDoc1)
 	err := svc.DirSvc.UpdateThing(agentID, string(tddJSON1))
@@ -189,7 +187,7 @@ func TestDigitwinAgentAction(t *testing.T) {
 
 	// next, invoke the action to read the thing from the directory.
 	ag := service.NewDigitwinAgent(svc)
-	req := messaging.NewRequestMessage(vocab.OpInvokeAction,
+	req := messaging.NewRequestMessage(td.OpInvokeAction,
 		digitwinapi.ThingDirectoryDThingID, digitwinapi.ThingDirectoryRetrieveThingMethod, dThingID, consumerID)
 	req.CorrelationID = correlationID
 	resp := ag.HandleRequest(req, nil)
@@ -198,21 +196,21 @@ func TestDigitwinAgentAction(t *testing.T) {
 	require.NotEmpty(t, resp.Value)
 
 	// a non-existing TD should fail
-	req = messaging.NewRequestMessage(vocab.OpInvokeAction,
+	req = messaging.NewRequestMessage(td.OpInvokeAction,
 		digitwinapi.ThingDirectoryDThingID, digitwinapi.ThingDirectoryRetrieveThingMethod, "badid", consumerID)
 	req.CorrelationID = correlationID
 	resp = ag.HandleRequest(req, nil)
 	require.NotEmpty(t, resp.Error)
 
 	// a non-existing method name should fail
-	req = messaging.NewRequestMessage(vocab.OpInvokeAction,
+	req = messaging.NewRequestMessage(td.OpInvokeAction,
 		digitwinapi.ThingDirectoryDThingID, "badMethod", dThingID, consumerID)
 	req.CorrelationID = correlationID
 	resp = ag.HandleRequest(req, nil)
 	require.NotEmpty(t, resp.Error)
 
 	// a non-existing serviceID should fail
-	req = messaging.NewRequestMessage(vocab.OpInvokeAction,
+	req = messaging.NewRequestMessage(td.OpInvokeAction,
 		"badservicename", digitwinapi.ThingDirectoryRetrieveThingMethod, dThingID, consumerID)
 	req.CorrelationID = correlationID
 	resp = ag.HandleRequest(req, nil)

@@ -6,9 +6,8 @@ import (
 	"time"
 
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hivekit/go/wot"
 	"github.com/hiveot/hivekit/go/wot/td"
-	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hivekit/go/wot/vocab"
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
 	"github.com/hiveot/hub/lib/agent"
 	"github.com/hiveot/hub/lib/messaging"
@@ -146,14 +145,14 @@ func (it *IsySwitchThing) MakeTD() *td.TD {
 	action := tdi.AddAction("ST", "Switch on/off", "",
 		&td.DataSchema{
 			AtType: vocab.ActionSwitchOnOff,
-			Type:   wot.DataTypeBool,
+			Type:   td.DataTypeBool,
 			Enum:   []interface{}{"on", "off"},
 		})
 	// output data same as input
 	action.Output = action.Input
 
 	// add a corresponding property for the switch state
-	tdi.AddProperty("ST", "Switch on/off", "On/Off switch", wot.DataTypeBool)
+	tdi.AddProperty("ST", "Switch on/off", "On/Off switch", td.DataTypeBool)
 
 	//td.AddSwitchAction(vocab.ActionSwitchOff, "Switch off")
 	//td.AddSwitchAction(vocab.ActionSwitchToggle, "Toggle switch")

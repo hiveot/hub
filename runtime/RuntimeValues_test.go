@@ -7,8 +7,7 @@ import (
 	"time"
 
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hivekit/go/wot"
-	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/messaging"
 	authz "github.com/hiveot/hub/runtime/authz/api"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
@@ -249,7 +248,7 @@ func TestWriteProperties(t *testing.T) {
 	// agents listen for property write requests
 	ag1.SetRequestHandler(func(msg *messaging.RequestMessage,
 		c messaging.IConnection) *messaging.ResponseMessage {
-		if msg.Operation == vocab.OpWriteProperty && msg.Name == key1 {
+		if msg.Operation == td.OpWriteProperty && msg.Name == key1 {
 			msgCount.Add(1)
 		}
 		return msg.CreateResponse(msg.Input, nil)
@@ -271,7 +270,7 @@ func TestWriteProperties(t *testing.T) {
 	dThingID := digitwin.MakeDigitwinID(agentID, td1.ID)
 	//stat2 := co1.WriteProperty(dThingID, key1, data1)
 	//require.Empty(t, stat2.Error)
-	err = co1.Rpc(wot.OpWriteProperty, dThingID, key1, data1, nil)
+	err = co1.Rpc(td.OpWriteProperty, dThingID, key1, data1, nil)
 	require.NoError(t, err)
 	time.Sleep(time.Millisecond * 100)
 

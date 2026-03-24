@@ -5,9 +5,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/hiveot/hivekit/go/wot"
 	"github.com/hiveot/hivekit/go/wot/td"
-	"github.com/hiveot/hub/api/go/vocab"
+	"github.com/hiveot/hivekit/go/wot/vocab"
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
 	"github.com/hiveot/hub/lib/agent"
 	"github.com/hiveot/hub/lib/exposedthing"
@@ -17,14 +16,14 @@ import (
 // mapping from insteon device category to TD device type
 var deviceCatMap = map[string]string{
 
-	"0x00": "Reserved",                   //• 0x00 - Reserved
-	"0x01": vocab.ThingActuatorDimmer,    //• 0x01 - Dimmer device
-	"0x02": vocab.ThingActuatorSwitch,    //• 0x02 - Relay or on/off switch device
-	"0x03": vocab.ThingNet,               //• 0x03 - Network device
-	"0x04": vocab.ThingControlIrrigation, //• 0x04 - Irrigation device
-	"0x05": vocab.ThingControlClimate,    //• 0x05 - Climate control device
-	"0x06": vocab.ThingControlPool,       //• 0x06 - Pool control device
-	"0x07": vocab.ThingActuator,          //• 0x07 - Sensor or actuator device
+	"0x00": "Reserved",                    //• 0x00 - Reserved
+	"0x01": vocab.DeviceActuatorDimmer,    //• 0x01 - Dimmer device
+	"0x02": vocab.DeviceActuatorSwitch,    //• 0x02 - Relay or on/off switch device
+	"0x03": vocab.DeviceNet,               //• 0x03 - Network device
+	"0x04": vocab.DeviceControlIrrigation, //• 0x04 - Irrigation device
+	"0x05": vocab.DeviceControlClimate,    //• 0x05 - Climate control device
+	"0x06": vocab.DeviceControlPool,       //• 0x06 - Pool control device
+	"0x07": vocab.DeviceActuator,          //• 0x07 - Sensor or actuator device
 	"0x08": "Home Entertainment Unit",
 	"0x09": "Energy management",
 }
@@ -108,12 +107,12 @@ func (it *IsyThing) HandleActionRequest(
 // HandleConfigRequest invokes the config handler of the specialized thing
 func (it *IsyThing) HandleConfigRequest(req *messaging.RequestMessage) *messaging.ResponseMessage {
 	// The title is the friendly name of the node
-	if req.Name == wot.WoTTitle {
+	if req.Name == td.WoTTitle {
 		newName := req.ToString(0)
 		err := it.isyAPI.Rename(it.nodeID, newName)
 		if err == nil {
 			// TODO: use WebSocket to receive confirmation of change
-			_ = it.HandleValueUpdate(wot.WoTTitle, "", newName)
+			_ = it.HandleValueUpdate(td.WoTTitle, "", newName)
 		}
 		return req.CreateResponse(nil, err)
 	}
@@ -141,7 +140,7 @@ func (it *IsyThing) Init(ic *isy.IsyAPI, thingID string, node *isy.IsyNode, prod
 	defer it.mux.Unlock()
 	it.deviceType, found = deviceCatMap[prodInfo.Cat]
 	if !found {
-		it.deviceType = vocab.ThingDevice
+		it.deviceType = vocab.Device
 	}
 
 	it.isyAPI = ic
@@ -159,7 +158,7 @@ func (it *IsyThing) Init(ic *isy.IsyAPI, thingID string, node *isy.IsyNode, prod
 	pv.SetValue("flag", fmt.Sprintf("0x%X", node.Flag))
 	pv.SetValue(vocab.PropDeviceEnabledDisabled, enabledDisabled)
 	pv.SetValue(vocab.PropDeviceDescription, prodInfo.ProductName)
-	pv.SetValue(wot.WoTTitle, node.Name)
+	pv.SetValue(td.WoTTitle, node.Name)
 	pv.SetValue(vocab.PropDeviceModel, prodInfo.Model)
 	pv.SetValue(vocab.PropDeviceHardwareVersion, hwVersion)
 	pv.SetValue("nodeType", node.Type)
@@ -169,12 +168,12 @@ func (it *IsyThing) Init(ic *isy.IsyAPI, thingID string, node *isy.IsyNode, prod
 // The parent should add properties, events and actions specific to their capabilities.
 func (it *IsyThing) MakeTD() *td.TD {
 	title := it.productInfo.ProductName
-	titleProp, _ := it.propValues.GetValue(wot.WoTTitle)
+	titleProp, _ := it.propValues.GetValue(td.WoTTitle)
 	if titleProp != nil {
 		title, _ = titleProp.(string)
 	}
 	it.mux.RLock()
-	td := td.NewTD("", it.thingID, title, it.deviceType)
+	td := td.NewTD(it.thingID, title, it.deviceType)
 	it.mux.RUnlock()
 
 	//--- read-only properties
@@ -204,7 +203,7 @@ func (it *IsyThing) MakeTD() *td.TD {
 	prop.Enum = []interface{}{"enabled", "disabled"}
 	//prop.ReadOnly = false // TODO: support for enabled/disabled
 
-	prop = td.AddPropertyAsString(wot.WoTTitle, "Title", "").
+	prop = td.AddPropertyAsString(td.Title, "Title", "").
 		SetAtType(vocab.PropDeviceTitle)
 	prop.ReadOnly = false
 	return td
