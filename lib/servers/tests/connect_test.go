@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hiveot/hivekit/go/wot/td"
+	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hub/lib/agent"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/clients"

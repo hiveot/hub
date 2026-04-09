@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/messaging"
 	digitwinapi "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/runtime/digitwin/service"

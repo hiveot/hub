@@ -3,7 +3,7 @@ package service
 import (
 	"errors"
 
-	"github.com/hiveot/hivekit/go/wot/td"
+	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hub/lib/messaging"
 )
 

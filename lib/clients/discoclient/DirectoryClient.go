@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hiveot/hivekit/go/wot/td"
+	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hub/lib/clients/tlsclient"
 	jsoniter "github.com/json-iterator/go"
 )

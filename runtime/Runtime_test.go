@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/clients/authclient"
 	"github.com/hiveot/hub/lib/logging"
 	"github.com/hiveot/hub/lib/messaging"

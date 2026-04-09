@@ -6,8 +6,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/consumedthing"
 	"github.com/hiveot/hub/lib/messaging"
 	"github.com/hiveot/hub/services/hiveoview/src"

@@ -9,7 +9,7 @@ import (
 	"github.com/eclipse/paho.golang/paho"
 	"github.com/hiveot/hub/lib/messaging"
 	"github.com/hiveot/hivekit/go/wot"
-	"github.com/hiveot/hivekit/go/wot/td"
+	"github.com/hiveot/hivekit/go/api/td"
 	jsoniter "github.com/json-iterator/go"
 	"log/slog"
 	"time"

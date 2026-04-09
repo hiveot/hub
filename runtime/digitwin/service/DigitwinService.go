@@ -6,7 +6,7 @@ import (
 	"path"
 	"sync"
 
-	"github.com/hiveot/hivekit/go/wot/td"
+	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/kvbtree"
 	"github.com/hiveot/hub/lib/messaging"

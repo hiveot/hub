@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"regexp"
 
+	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/cmd/tm2go/gentypes"
 )
 

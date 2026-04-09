@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"aidanwoods.dev/go-paseto"
-	"github.com/hiveot/hivekit/go/wot/td"
+	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hub/lib/keys"
 	authn "github.com/hiveot/hub/runtime/authn/api"
 	"github.com/hiveot/hub/runtime/authn/authnstore"

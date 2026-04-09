@@ -1,7 +1,7 @@
 package dthing
 
 import (
-	"github.com/hiveot/hivekit/go/wot/td"
+	"github.com/hiveot/hivekit/go/api/td"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 )
 

@@ -3,8 +3,8 @@ package service
 import (
 	"log/slog"
 
-	"github.com/hiveot/hivekit/go/wot/td"
-	"github.com/hiveot/hivekit/go/wot/vocab"
+	"github.com/hiveot/hivekit/go/api/td"
+	"github.com/hiveot/hivekit/go/api/vocab"
 	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	jsoniter "github.com/json-iterator/go"
 )

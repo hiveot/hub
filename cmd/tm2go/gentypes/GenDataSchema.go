@@ -3,8 +3,8 @@ package gentypes
 import (
 	"fmt"
 
+	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hivekit/go/wot/td"
 	"golang.org/x/exp/slices"
 )
 

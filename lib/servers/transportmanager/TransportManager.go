@@ -9,8 +9,8 @@ import (
 	"net/url"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hivekit/go/wot/td"
 	"github.com/hiveot/hub/lib/messaging"
 	"github.com/hiveot/hub/lib/servers"
 	"github.com/hiveot/hub/lib/servers/discoserver"

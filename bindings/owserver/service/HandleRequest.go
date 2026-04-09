@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/hiveot/hivekit/go/wot/td"
+	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
 	"github.com/hiveot/hub/lib/messaging"
 )

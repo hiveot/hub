@@ -8,8 +8,8 @@ import (
 	"path"
 	"time"
 
-	"github.com/hiveot/hivekit/go/wot/td"
-	"github.com/hiveot/hivekit/go/wot/vocab"
+	"github.com/hiveot/hivekit/go/api/td"
+	"github.com/hiveot/hivekit/go/api/vocab"
 	"github.com/hiveot/hub/lib/agent"
 	"github.com/hiveot/hub/lib/certs"
 	"github.com/hiveot/hub/lib/clients"

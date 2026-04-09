@@ -1,7 +1,7 @@
 package wssserver
 
 import (
-	"github.com/hiveot/hivekit/go/wot/td"
+	"github.com/hiveot/hivekit/go/api/td"
 )
 
 // AddTDForms adds forms for use of this protocol to the given TD.

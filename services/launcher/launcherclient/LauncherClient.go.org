@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/hiveot/hub/lib/messaging"
 	"github.com/hiveot/hub/services/launcher/launcherapi"
-	"github.com/hiveot/hivekit/go/wot/td"
+	"github.com/hiveot/hivekit/go/api/td"
 )
 
 // LauncherClient is a marshaller for service messages using a provided hub connection.

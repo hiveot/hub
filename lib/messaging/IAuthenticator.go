@@ -3,7 +3,7 @@ package messaging
 import (
 	"time"
 
-	"github.com/hiveot/hivekit/go/wot/td"
+	"github.com/hiveot/hivekit/go/api/td"
 )
 
 // UserLoginArgs defines the arguments of the login function

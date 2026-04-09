@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/araddon/dateparse"
+	"github.com/hiveot/hivekit/go/api/td"
+	"github.com/hiveot/hivekit/go/api/vocab"
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hivekit/go/wot/td"
-	"github.com/hiveot/hivekit/go/wot/vocab"
 	"github.com/hiveot/hub/lib/buckets"
 	"github.com/hiveot/hub/lib/buckets/bucketstore"
 	"github.com/hiveot/hub/lib/messaging"

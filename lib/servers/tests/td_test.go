@@ -3,8 +3,8 @@ package tests
 import (
 	"testing"
 
-	"github.com/hiveot/hivekit/go/wot/td"
-	"github.com/hiveot/hivekit/go/wot/vocab"
+	"github.com/hiveot/hivekit/go/api/td"
+	"github.com/hiveot/hivekit/go/api/vocab"
 )
 
 // test TD messages and forms
