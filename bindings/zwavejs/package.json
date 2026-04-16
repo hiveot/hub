@@ -56,7 +56,7 @@
     "serialport": "^12.0.0",
     "tslog": "^4.9.2",
     "undici": "^6.24.1",
-    "yaml": "^2.7.0"
+    "yaml": "^2.8.3"
   },
   "peerDependencies": {
     "zwave-js": "^13.10.1"
