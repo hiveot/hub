@@ -37,7 +37,7 @@ The digital twin TD will have an updated Thing ID, TD Forms and authentication i
 The TD documents contains a set of attributes to describe a Thing. The attributes used in HiveOT are:
 
 | name                | description                                           |
-|---------------------|-------------------------------------------------------|
+| ------------------- | ----------------------------------------------------- |
 | @context            | "http://www.w3.org/ns/td"                             |
 | @type               | Thing device type as per vocabulary                   |
 | id                  | Unique Thing ID, option in WoT but required in HiveOT |
@@ -49,7 +49,7 @@ The TD documents contains a set of attributes to describe a Thing. The attribute
 | events              | Map of event objects as submitted by the Thing        |
 | schemaDefinitions   | data schema for use in multiple actions or events     |
 | Forms               | Top level operations on Things                        |
-| Links               | Definition of alternative result dataschemas          | 
+| Links               | Definition of alternative result dataschemas          |
 | Security            | Names of security definitions                         |
 | SecurityDefinitions | Security definitions for authentication with the hub  |
 
@@ -135,7 +135,7 @@ When sharing digital twin things between hubs, the hub prefixes the digital twin
 
 ## Thing Properties
 
-Thing Properties describe the Thing attributes, state and configuration, and are identified by their key in the TD property map.
+Thing Properties describe the Thing attributes, internal state and configuration, and are defined in the TD property map.
 
 The WoT TD describes properties with the [PropertyAffordance](https://www.w3.org/TR/wot-thing-description11/#propertyaffordance). This is a sub-class of an [interaction affordance](https://www.w3.org/TR/wot-thing-description11/#interactionaffordance) and [dataschema](https://www.w3.org/TR/wot-thing-description11/#dataschema).
 
@@ -174,8 +174,8 @@ Property names are not used as a classification or purpose of the property. For 
 Properties are defined with the so-called [property affordance](https://www.w3.org/TR/wot-thing-description11/#propertyaffordance). The property affordance defines a set of attributes used to describe the property.
 
 | Attribute    | description                                                                         |
-|--------------|-------------------------------------------------------------------------------------|
-| @type        | property type classification (see [1])                                              | 
+| ------------ | ----------------------------------------------------------------------------------- |
+| @type        | property type classification (see [1])                                              |
 | type         | WoT defined data-type: string, number, integer, boolean, object, array, or null [2] |
 | schema       | Name of the schema defined in the 'schemaDefinitions' section in the TD             |
 | title        | Short human readable label for the property.                                        |
@@ -192,7 +192,7 @@ Properties are defined with the so-called [property affordance](https://www.w3.o
 | maxLength    | type string: Maximum length of a string                                             |
 | *isSensor*   | the property is a sensor output (not a WoT field)                                   |
 | *isActuator* | the property is an actuator (not a WoT field)                                       |
-| forms        | in development [4]                                                                  |
+| forms        | in development [5]                                                                  |
 
 Notes:
 
@@ -209,7 +209,7 @@ HiveOT uses the ground rule that changes to external state are reported through 
 
 Examples of external state are environmental sensors and electrical inputs. A temperature sensor reports changes to the temperature as events. A motion sensor reports motion detection as an event.
 
-In most cases events are not represented as properties as they do not reflect an internal state. 
+In most cases events do not have a corresponding as property as they do not reflect an internal state. 
 
 Hiveot uses the @type field to classify a property but this is too fine of a granularity for this purpose and harder to apply consistently.
 

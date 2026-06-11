@@ -33,15 +33,17 @@ Most debian/ubuntu or other linux systems already have git, make and go installe
 
 Note that hiveot doesn't need any of these to run. The binaries are self-contained.
 
-### Check Golang version 1.22 or higher
+### Check Golang version 1.25 or higher
 
-Verify a recent version of golang is installed, eg v1.22 or up
+Verify a recent version of golang is installed, eg v1.25 or up
 
 > go version
 
 Installing and upgrading golang is out of scope of these instructions.
 
 ### Setup Node v22
+
+(alternatives are considered - Deno or Bun)
 
 Install node version manager:
 

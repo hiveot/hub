@@ -5,19 +5,18 @@ import (
 	"log/slog"
 	"os"
 
+	authnpkg "github.com/hiveot/hivekit/go/modules/authn/pkg"
+	"github.com/hiveot/hivekit/go/modules/consumer"
+	"github.com/hiveot/hivekit/go/modules/factory"
+	"github.com/hiveot/hivekit/go/modules/transport"
+	"github.com/hiveot/hivekit/go/modules/transport/clients"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/cmd/hubcli/authcli"
 	"github.com/hiveot/hub/cmd/hubcli/certs"
 	"github.com/hiveot/hub/cmd/hubcli/directorycli"
 	"github.com/hiveot/hub/cmd/hubcli/historycli"
-	"github.com/hiveot/hub/cmd/hubcli/idprovcli"
 	"github.com/hiveot/hub/cmd/hubcli/launchercli"
 	"github.com/hiveot/hub/cmd/hubcli/pubsubcli"
-	"github.com/hiveot/hub/lib/clients"
-	"github.com/hiveot/hub/lib/consumer"
-	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/lib/messaging"
-	"github.com/hiveot/hub/lib/plugin"
 	"github.com/urfave/cli/v2"
 )
 
@@ -31,7 +30,7 @@ var nowrap bool
 // commandline:  hubcli command options
 
 func main() {
-	var hc *consumer.Consumer
+	var co *consumer.Consumer
 	var verbose bool
 	var loginID = "admin"
 	var password = ""
@@ -41,12 +40,12 @@ func main() {
 	var authToken string
 
 	// environment defaults
-	env := plugin.GetAppEnvironment("", false)
+	env := factory.NewAppEnvironment("", false)
 	homeDir = env.HomeDir
 	certsDir = env.CertsDir
 
 	//defaultHome := env.HomeDir // to detect changes to the home directory
-	logging.SetLogging("warning", "")
+	utils.SetLogging("warning", "")
 	nowrap = false
 
 	app := &cli.App{
@@ -94,19 +93,19 @@ func main() {
 			},
 		},
 		Before: func(c *cli.Context) (err error) {
-			var cc messaging.IClientConnection
+			var cc transport.ITransportClient
 			// reload env in case home changes
-			env = plugin.GetAppEnvironment(homeDir, false)
+			env = factory.NewAppEnvironment(homeDir, false)
 			certsDir = env.CertsDir
 			if verbose {
-				logging.SetLogging("info", "")
+				utils.SetLogging("info", "")
 			}
 			if nowrap {
 				fmt.Printf(utils.WrapOff)
 			}
 
 			// most commands need auth
-			authToken, err = clients.LoadToken(loginID, certsDir)
+			authToken = env.GetAppToken()
 
 			// TODO: cleanup: don't connect for these commands
 			cmd := c.Args().First()
@@ -114,21 +113,30 @@ func main() {
 				return nil
 			}
 
-			if err != nil && password == "" {
-				return fmt.Errorf("missing authentication token: %w", err)
+			if authToken == "" && password == "" {
+				return fmt.Errorf("hubcli: missing authentication token")
 			}
-			caCert, _ := clients.LoadCA(certsDir)
+			caCert, _ := env.GetCA()
 			if password != "" {
-				cc, authToken, err = clients.ConnectWithPassword(loginID, password, caCert, serverURL, "", 0)
+				cc, err = clients.NewTransportClient("", serverURL, caCert)
+				if err == nil {
+					authncl := authnpkg.NewUserAuthnHttpClient(serverURL, caCert)
+					authToken, err = authncl.LoginWithPassword(loginID, password)
+				}
+				cc, err = clients.NewTransportClient("", serverURL, caCert)
+				err = cc.AuthenticateWithToken(loginID, authToken)
 			} else {
-				cc, err = clients.ConnectWithToken(loginID, authToken, caCert, serverURL, 0)
+				cc, err = clients.NewTransportClient("", serverURL, caCert)
+				err = cc.AuthenticateWithToken(loginID, authToken)
 			}
 
 			if err != nil {
 				slog.Error("Unable to connect to the server", "err", err)
 				return fmt.Errorf("unable to connect to the hub")
 			}
-			hc = consumer.NewConsumer(cc, 0)
+			co = consumer.NewConsumer(nil)
+			co.SetRequestSink(cc)
+			cc.SetNotificationSink(co)
 			return nil
 		},
 		// commands arguments are passed by reference so they are updated in the Before section
@@ -137,31 +145,26 @@ func main() {
 			certs.CreateCACommand(&certsDir),
 			certs.ViewCACommand(&certsDir),
 
-			authcli.AuthAddUserCommand(&hc),
-			authcli.AuthAddServiceCommand(&hc, &env.CertsDir),
-			authcli.AuthListClientsCommand(&hc),
-			authcli.AuthRemoveClientCommand(&hc),
-			authcli.AuthSetRoleCommand(&hc),
-			authcli.AuthSetPasswordCommand(&hc),
+			authcli.AuthAddUserCommand(&co),
+			authcli.AuthAddServiceCommand(&co, &env.CertsDir),
+			authcli.AuthListClientsCommand(&co),
+			authcli.AuthRemoveClientCommand(&co),
+			authcli.AuthSetRoleCommand(&co),
+			authcli.AuthSetPasswordCommand(&co),
 
-			launchercli.LauncherListCommand(&hc),
-			launchercli.LauncherStartCommand(&hc),
-			launchercli.LauncherStopCommand(&hc),
+			launchercli.LauncherListCommand(&co),
+			launchercli.LauncherStartCommand(&co),
+			launchercli.LauncherStopCommand(&co),
 
-			directorycli.DirectoryListCommand(&hc),
-			directorycli.DiscoListCommand(&authToken),
+			directorycli.DirectoryListCommand(&co),
+			directorycli.DiscoListCommand(loginID, &authToken),
 
 			//historycli.HistoryLatestCommand(&hc),
-			historycli.HistoryListCommand(&hc),
+			historycli.HistoryListCommand(&co),
 
-			pubsubcli.PubActionCommand(&hc),
-			pubsubcli.SubEventsCommand(&hc),
-			pubsubcli.SubTDCommand(&hc),
-
-			idprovcli.ProvisionListCommand(&hc),
-			idprovcli.ProvisionRequestCommand(&hc),
-			idprovcli.ProvisionApproveRequestCommand(&hc),
-			idprovcli.ProvisionPreApproveCommand(&hc),
+			pubsubcli.PubActionCommand(&co),
+			pubsubcli.SubEventsCommand(&co),
+			pubsubcli.SubTDCommand(&co),
 		},
 	}
 

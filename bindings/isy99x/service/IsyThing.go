@@ -5,12 +5,11 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/hiveot/hivekit/go/api/msg"
 	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/api/vocab"
+	"github.com/hiveot/hivekit/go/modules/agent"
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
-	"github.com/hiveot/hub/lib/agent"
-	"github.com/hiveot/hub/lib/exposedthing"
-	"github.com/hiveot/hub/lib/messaging"
 )
 
 // mapping from insteon device category to TD device type
@@ -38,9 +37,9 @@ type IIsyThing interface {
 	// GetPropValues returns the property values of the thing
 	GetPropValues(onlyChanges bool) map[string]any
 	// HandleActionRequest passes incoming actions to the Thing for execution
-	HandleActionRequest(ag *agent.Agent, req *messaging.RequestMessage) *messaging.ResponseMessage
+	HandleActionRequest(ag *agent.Agent, req *msg.RequestMessage) *msg.ResponseMessage
 	// HandleConfigRequest passes configuration changes to the Thing for execution
-	HandleConfigRequest(req *messaging.RequestMessage) *messaging.ResponseMessage
+	HandleConfigRequest(req *msg.RequestMessage) *msg.ResponseMessage
 	// HandleValueUpdate updates the Thing properties with value obtained via the ISY gateway
 	HandleValueUpdate(propID string, uom string, newValue string) error
 	// Init assigns the ISY connection and node this Thing represents
@@ -53,6 +52,8 @@ type IIsyThing interface {
 // Intended for building specialized Things or for defining a basic Thing.
 // This implements the IThing interface.
 type IsyThing struct {
+	*agent.Agent
+
 	// The node ID, also used as the ThingID
 	nodeID string
 
@@ -64,9 +65,6 @@ type IsyThing struct {
 
 	// ISY device info
 	productInfo InsteonProduct
-
-	// propValues holds the values of the thing properties
-	propValues *exposedthing.ThingValues
 
 	// protect access to property values
 	mux sync.RWMutex
@@ -86,10 +84,10 @@ func (it *IsyThing) GetID() string {
 }
 
 // GetPropValues returns the property values, set with read
-func (it *IsyThing) GetPropValues(onlyChanges bool) map[string]any {
-	propValues := it.propValues.GetValues(onlyChanges)
-	return propValues
-}
+// func (it *IsyThing) GetPropValues(onlyChanges bool) map[string]any {
+// 	propValues := it.propValues.GetValues(onlyChanges)
+// 	return propValues
+// }
 
 // GetOutputValue returns the default 'value' property
 //func (it *IsyThing) GetOutputValue() (string, bool) {
@@ -98,35 +96,35 @@ func (it *IsyThing) GetPropValues(onlyChanges bool) map[string]any {
 
 // HandleActionRequest invokes the action handler of the specialized thing
 func (it *IsyThing) HandleActionRequest(
-	ag *agent.Agent, req *messaging.RequestMessage) *messaging.ResponseMessage {
+	ag *agent.Agent, req *msg.RequestMessage) *msg.ResponseMessage {
 
 	err := fmt.Errorf("HandleRequest not supported for this thing")
 	return req.CreateResponse(nil, err)
 }
 
 // HandleConfigRequest invokes the config handler of the specialized thing
-func (it *IsyThing) HandleConfigRequest(req *messaging.RequestMessage) *messaging.ResponseMessage {
+func (it *IsyThing) HandleConfigRequest(req *msg.RequestMessage, replyTo msg.ResponseHandler) error {
 	// The title is the friendly name of the node
 	if req.Name == td.WoTTitle {
 		newName := req.ToString(0)
 		err := it.isyAPI.Rename(it.nodeID, newName)
 		if err == nil {
-			// TODO: use WebSocket to receive confirmation of change
+			// TODO: use ISY WebSocket to receive confirmation of change
 			_ = it.HandleValueUpdate(td.WoTTitle, "", newName)
 		}
-		return req.CreateResponse(nil, err)
+		resp := req.CreateResponse(nil, err)
+		return replyTo(resp)
 	}
 	err := fmt.Errorf("HandleConfigRequest not supported for this thing")
-	return req.CreateResponse(nil, err)
+	return err
 }
 
 // HandleValueUpdate provides an update of the Thing's value.
 // Invoked by the gateway thing when polling node values.
 // This submits an event to the registered callback if the value differs.
 func (it *IsyThing) HandleValueUpdate(propID string, uom string, newValue string) (err error) {
-	it.mux.Lock()
-	it.propValues.SetValue(propID, newValue)
-	it.mux.Unlock()
+	tstate := it.GetState("")
+	tstate.SetProperty(propID, newValue)
 
 	return err
 }
@@ -147,28 +145,30 @@ func (it *IsyThing) Init(ic *isy.IsyAPI, thingID string, node *isy.IsyNode, prod
 	it.nodeID = node.Address
 	it.thingID = thingID
 	it.productInfo = prodInfo
-	it.propValues = exposedthing.NewThingValues()
+
 	enabledDisabled := "enabled"
 	if strings.ToLower(node.Enabled) != "true" {
 		enabledDisabled = "disabled"
 	}
-	pv := exposedthing.NewThingValues()
-	it.propValues = pv
-	pv.SetValue("deviceType", it.deviceType)
-	pv.SetValue("flag", fmt.Sprintf("0x%X", node.Flag))
-	pv.SetValue(vocab.PropDeviceEnabledDisabled, enabledDisabled)
-	pv.SetValue(vocab.PropDeviceDescription, prodInfo.ProductName)
-	pv.SetValue(td.WoTTitle, node.Name)
-	pv.SetValue(vocab.PropDeviceModel, prodInfo.Model)
-	pv.SetValue(vocab.PropDeviceHardwareVersion, hwVersion)
-	pv.SetValue("nodeType", node.Type)
+
+	props := map[string]any{
+		"deviceType":                    it.deviceType,
+		"flag":                          fmt.Sprintf("0x%X", node.Flag),
+		vocab.PropDeviceEnabledDisabled: enabledDisabled,
+		vocab.PropDeviceDescription:     prodInfo.ProductName,
+		td.WoTTitle:                     node.Name,
+		vocab.PropDeviceModel:           prodInfo.Model,
+		vocab.PropDeviceHardwareVersion: hwVersion,
+		"nodeType":                      node.Type,
+	}
+	it.PubProperties("", props, false)
 }
 
 // MakeTD return a basic TD document that describes the Thing represented here.
 // The parent should add properties, events and actions specific to their capabilities.
 func (it *IsyThing) MakeTD() *td.TD {
 	title := it.productInfo.ProductName
-	titleProp, _ := it.propValues.GetValue(td.WoTTitle)
+	titleProp, _ := it.GetState("").GetProperty(td.WoTTitle)
 	if titleProp != nil {
 		title, _ = titleProp.(string)
 	}

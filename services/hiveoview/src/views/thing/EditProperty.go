@@ -6,10 +6,11 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hivekit/go/api/td"
+	"github.com/hiveot/hivekit/go/modules/consumer"
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hub/lib/consumedthing"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
@@ -24,8 +25,8 @@ type RenderEditPropertyTemplateData struct {
 	DataSchema *td.DataSchema
 	//Value      string
 	// The last known value of the property to edit
-	PropertyValue      consumedthing.InteractionOutput
-	PropertyInput      consumedthing.InteractionInput
+	PropertyValue      consumer.InteractionOutput
+	PropertyInput      consumer.InteractionInput
 	SubmitPropertyPath string
 }
 
@@ -65,7 +66,7 @@ func getConfigValue(
 	// FIXME: Readproperty - handled by whom? is the digitwin service name relevant
 	// What does the wot specification for directory say?
 	//propValue, err := digitwin.ThingValuesReadProperty(hc, name, thingID)
-	//io := consumedthing.NewInteractionOutputFromValue(&propValue, td)
+	//io := consumer.NewInteractionOutputFromValue(&propValue, td)
 	sv = RenderEditPropertyTemplateData{
 		//TD:         &td,
 		ThingID:    thingID,
@@ -105,7 +106,7 @@ func RenderEditProperty(w http.ResponseWriter, r *http.Request) {
 // The posted form value contains a 'value' field
 func SubmitProperty(w http.ResponseWriter, r *http.Request) {
 	var newValue any
-	var ct *consumedthing.ConsumedThing
+	var ct *consumer.ConsumedThing
 	var propAff *td.PropertyAffordance
 	//stat := transports.ActionStatus{}
 	thingID := chi.URLParam(r, "thingID")

@@ -14,7 +14,6 @@ import (
 
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/lib/plugin"
-	authn "github.com/hiveot/hub/runtime/authn/api"
 	launcher "github.com/hiveot/hub/services/launcher/api"
 	"github.com/struCoder/pidusage"
 
@@ -125,7 +124,7 @@ func (svc *LauncherService) _startPlugin(pluginID string) (pi launcher.PluginInf
 		// add a service account. Authn admin generates a new token file in the keys directory
 		// the service must have read access to this directory, or the keys must be
 		// copied elsewhere by the administrator.
-		_, err = authn.AdminAddService(svc.ag.Consumer, pluginID, pluginID, "")
+		_, err = authn.AdminAddService(svc.ag, pluginID, pluginID, "")
 		if err != nil {
 			slog.Error("Unable to add plugin to hub and create credentials. Continuing anyways", "err", err)
 		}

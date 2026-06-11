@@ -6,7 +6,8 @@ import (
 	"os"
 	"path"
 
-	"github.com/hiveot/hub/lib/certs"
+	"github.com/hiveot/hivekit/go/modules/certs"
+	certspkg "github.com/hiveot/hivekit/go/modules/certs/pkg"
 	"github.com/urfave/cli/v2"
 )
 
@@ -71,15 +72,17 @@ func HandleCreateCACert(certsFolder string, validityDays int, force bool) error 
 			return fmt.Errorf("CA key alread exists in '%s'", caKeyPath)
 		}
 	}
-
-	caCert, caKey, err := certs.CreateCA("Hub CA", validityDays)
-	if err != nil {
-		return err
-	}
-	err = certs.SaveX509CertToPEM(caCert, caCertPath)
-	if err == nil {
-		err = caKey.ExportPrivateToFile(caKeyPath)
-	}
+	// the certsservice creates the CA cert and key on start
+	svc := certspkg.NewCertsService(certsFolder)
+	err := svc.Start()
+	// caCert, caKey, err := svc.CreateCACert("Hub CA", validityDays)
+	// if err != nil {
+	// 	return err
+	// }
+	// err = certutils.SaveX509CertToPEM(caCert, caCertPath)
+	// if err == nil {
+	// 	err = caKey.ExportPrivateToFile(caKeyPath)
+	// }
 
 	slog.Info("Generated CA certificate", "caCertPath", caCertPath, "caKeyPath", caKeyPath)
 	return err

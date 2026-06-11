@@ -4,16 +4,17 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hiveot/hub/lib/consumer"
-	authz "github.com/hiveot/hub/runtime/authz/api"
+	"github.com/hiveot/hivekit/go/modules/authn"
+	authnpkg "github.com/hiveot/hivekit/go/modules/authn/pkg"
+	"github.com/hiveot/hivekit/go/modules/consumer"
 	"github.com/urfave/cli/v2"
 )
 
 // AuthSetRoleCommand changes a user's role
 func AuthSetRoleCommand(hc **consumer.Consumer) *cli.Command {
 	validRoles := []string{
-		string(authz.ClientRoleViewer), string(authz.ClientRoleOperator),
-		string(authz.ClientRoleManager), string(authz.ClientRoleAdmin),
+		string(authn.ClientRoleViewer), string(authn.ClientRoleOperator),
+		string(authn.ClientRoleManager), string(authn.ClientRoleAdmin),
 	}
 
 	return &cli.Command{
@@ -39,10 +40,15 @@ func AuthSetRoleCommand(hc **consumer.Consumer) *cli.Command {
 //
 //	loginID is the ID or email of the user
 //	newPassword can be empty to auto-generate a password
-func HandleSetRole(hc *consumer.Consumer, loginID string, newRole string) error {
+func HandleSetRole(co *consumer.Consumer, loginID string, newRole string) error {
 
-	err := authz.AdminSetClientRole(hc, loginID, authz.ClientRole(newRole))
-
+	authnClient := authnpkg.NewAuthnAdminClient(co)
+	prof, err := authnClient.GetClientProfile(loginID)
+	if err != nil {
+		return err
+	}
+	prof.Role = newRole
+	err = authnClient.UpdateClientProfile(prof)
 	if err != nil {
 		//fmt.Println("Error: " + err.Error())
 	} else {

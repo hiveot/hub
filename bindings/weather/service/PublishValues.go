@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/hiveot/hivekit/go/api/vocab"
+	"github.com/hiveot/hivekit/go/modules/agent"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/bindings/weather/config"
 	"github.com/hiveot/hub/bindings/weather/providers"
-	"github.com/hiveot/hub/lib/agent"
 )
 
 // Poll for current and forecast weather updates and publish events.
@@ -56,7 +56,7 @@ func (svc *WeatherBinding) Poll() error {
 					slog.String("temp", currentWeather.Temperature),
 					slog.String("showers", currentWeather.Showers),
 				)
-				err2 = PublishCurrent(svc.ag, loc.ID, currentWeather)
+				PublishCurrent(svc.Agent, loc.ID, currentWeather)
 			}
 			// keep track of the last error but don't stop polling
 			if err2 != nil {
@@ -104,8 +104,8 @@ func PublishBindingProperties(ag *agent.Agent, thingID string, cfg *config.Weath
 		PropNameWeatherProvider: cfg.DefaultProvider,
 		PropNameUnitsWindSpeed:  cfg.WindSpeedUnits,
 	}
-	err := ag.PubProperties(thingID, propMap)
-	return err
+	ag.PubProperties(thingID, propMap)
+	return nil
 }
 
 // PublishLocationProperties publish attributes and configuration of a location
@@ -120,16 +120,13 @@ func PublishLocationProperties(ag *agent.Agent, thingID string, config config.We
 		vocab.PropLocationLongitude: config.Longitude,
 		vocab.PropLocationName:      config.Name,
 	}
-	err := ag.PubProperties(thingID, propMap)
-	return err
+	ag.PubProperties(thingID, propMap)
+	return nil
 }
 
 // PublishCurrent publish events with the current weather
-func PublishCurrent(ag *agent.Agent, thingID string, current providers.CurrentWeather) error {
-	err := ag.PubProperty(thingID, PropNameCurrentUpdated, current.Updated)
-	if err != nil {
-		return err
-	}
+func PublishCurrent(ag *agent.Agent, thingID string, current providers.CurrentWeather) {
+	ag.PubProperty(thingID, PropNameCurrentUpdated, current.Updated)
 
 	// convert wind speed to configured units
 	windSpeed := utils.DecodeAsNumber(current.WindSpeed)
@@ -137,21 +134,19 @@ func PublishCurrent(ag *agent.Agent, thingID string, current providers.CurrentWe
 	// convert wind gusts to configured units
 	windGusts := utils.DecodeAsNumber(current.WindGusts)
 
-	_ = ag.PubEvent(thingID, vocab.PropEnvHumidity, current.Humidity)
-	_ = ag.PubEvent(thingID, vocab.PropEnvPrecipitation, current.Precipitation)
-	_ = ag.PubEvent(thingID, vocab.PropEnvPressureSeaLevel, current.AtmoPressureMsl)
-	_ = ag.PubEvent(thingID, vocab.PropEnvPressureSurface, current.AtmoPressureSurface)
-	_ = ag.PubEvent(thingID, vocab.PropEnvPrecipitationRain, current.Rain)
-	_ = ag.PubEvent(thingID, vocab.PropEnvPrecipitationSnow, current.Snowfall)
-	_ = ag.PubEvent(thingID, vocab.PropEnvPrecipitation, current.Precipitation)
-	_ = ag.PubEvent(thingID, vocab.PropEnvTemperature, current.Temperature)
-	_ = ag.PubEvent(thingID, vocab.PropEnvWindHeading, current.WindHeading)
+	ag.PubEvent(thingID, vocab.PropEnvHumidity, current.Humidity)
+	ag.PubEvent(thingID, vocab.PropEnvPrecipitation, current.Precipitation)
+	ag.PubEvent(thingID, vocab.PropEnvPressureSeaLevel, current.AtmoPressureMsl)
+	ag.PubEvent(thingID, vocab.PropEnvPressureSurface, current.AtmoPressureSurface)
+	ag.PubEvent(thingID, vocab.PropEnvPrecipitationRain, current.Rain)
+	ag.PubEvent(thingID, vocab.PropEnvPrecipitationSnow, current.Snowfall)
+	ag.PubEvent(thingID, vocab.PropEnvPrecipitation, current.Precipitation)
+	ag.PubEvent(thingID, vocab.PropEnvTemperature, current.Temperature)
+	ag.PubEvent(thingID, vocab.PropEnvWindHeading, current.WindHeading)
 
 	// todo: configure unit
 	windGustsKph := math.Round(float64(windGusts) * 3.6)
 	windSpeedKph := math.Round(float64(windSpeed) * 3.6)
-	_ = ag.PubEvent(thingID, vocab.PropEnvWindGusts, windGustsKph) // m/s -> km/h
-	_ = ag.PubEvent(thingID, vocab.PropEnvWindSpeed, windSpeedKph) // m/s -> km/h
-
-	return err
+	ag.PubEvent(thingID, vocab.PropEnvWindGusts, windGustsKph) // m/s -> km/h
+	ag.PubEvent(thingID, vocab.PropEnvWindSpeed, windSpeedKph) // m/s -> km/h
 }

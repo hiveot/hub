@@ -7,7 +7,6 @@ import (
 	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/api/vocab"
 	"github.com/hiveot/hivekit/go/utils"
-	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	jsoniter "github.com/json-iterator/go"
 )
@@ -39,7 +38,7 @@ func (svc *HiveoviewService) PublishServiceTD() error {
 
 	myTD := svc.CreateServiceTD()
 	tdJSON, _ := jsoniter.MarshalToString(myTD)
-	err := digitwin.ThingDirectoryUpdateThing(svc.ag.Consumer, tdJSON)
+	err := svc.ag.WriteTD(tdJSON)
 	//err := svc.ag.UpdateThing(myTD)
 
 	if err != nil {
@@ -49,10 +48,6 @@ func (svc *HiveoviewService) PublishServiceTD() error {
 }
 
 // PublishServiceProps publishes the service properties
-func (svc *HiveoviewService) PublishServiceProps() error {
-	err := svc.ag.PubProperty(src.HiveoviewServiceID, vocab.PropNetPort, svc.port)
-	if err != nil {
-		slog.Error("failed to publish the hiveoview service properties", "err", err.Error())
-	}
-	return err
+func (svc *HiveoviewService) PublishServiceProps() {
+	svc.ag.PubProperty(src.HiveoviewServiceID, vocab.PropNetPort, svc.port)
 }

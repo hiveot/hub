@@ -9,12 +9,12 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/hiveot/hivekit/go/api/msg"
 	"github.com/hiveot/hivekit/go/api/td"
+	"github.com/hiveot/hivekit/go/modules/bucketstore"
+	"github.com/hiveot/hivekit/go/modules/consumer"
+	"github.com/hiveot/hivekit/go/modules/transport"
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hub/lib/buckets"
-	"github.com/hiveot/hub/lib/consumedthing"
-	"github.com/hiveot/hub/lib/consumer"
-	"github.com/hiveot/hub/lib/messaging"
 )
 
 type NotifyType string
@@ -66,7 +66,7 @@ type WebClientSession struct {
 	co *consumer.Consumer
 
 	// Holder of consumed things for this session
-	ctDir *consumedthing.ConsumedThingsDirectory
+	ctDir *consumer.ConsumedThingsDirectory
 
 	// flag, this session is active and can be used to send messages to
 	// the hub. If sseChan is set then the return channel is active too.
@@ -98,7 +98,7 @@ type WebClientSession struct {
 // Consume is short for consumedThingSession.Consume()
 // This returns nil with an error if the thing TD cannot be found
 func (sess *WebClientSession) Consume(
-	thingID string) (ct *consumedthing.ConsumedThing, err error) {
+	thingID string) (ct *consumer.ConsumedThing, err error) {
 	return sess.ctDir.Consume(thingID)
 }
 
@@ -133,7 +133,7 @@ func (sess *WebClientSession) GetLastError() error {
 }
 
 // GetConsumedThingsDirectory returns the directory of consumed things of this client
-func (sess *WebClientSession) GetConsumedThingsDirectory() *consumedthing.ConsumedThingsDirectory {
+func (sess *WebClientSession) GetConsumedThingsDirectory() *consumer.ConsumedThingsDirectory {
 	return sess.ctDir
 }
 
@@ -181,7 +181,7 @@ func (sess *WebClientSession) HandleWebConnectionClosed() {
 	if sess.sseChan == nil {
 		// disconnect from the hub. This will call back into 'HandleHubConnectionClosed'
 		// which will end the session.
-		sess.co.Disconnect()
+		sess.co.Stop()
 	}
 	sess.mux.RUnlock()
 	//}()
@@ -268,7 +268,7 @@ func (sess *WebClientSession) NewSseChan() chan SSEEvent {
 }
 
 // onHubConnectionChange is invoked on hub client disconnect/reconnect
-func (sess *WebClientSession) onHubConnectionChange(connected bool, err error, c messaging.IConnection) {
+func (sess *WebClientSession) onHubConnectionChange(connected bool, err error, c transport.IConnection) {
 	lastErrText := ""
 
 	slog.Debug("onHubConnectionChange",
@@ -292,7 +292,7 @@ func (sess *WebClientSession) onHubConnectionChange(connected bool, err error, c
 // onNotification notifies SSE clients of incoming notifications from the Hub
 // This is intended for notifying the client UI of the update to props or events.
 // The consumed thing itself is already updated.
-func (sess *WebClientSession) onNotification(notif *messaging.NotificationMessage) {
+func (sess *WebClientSession) onNotification(notif *msg.NotificationMessage) {
 
 	//slog.Debug("received notification",
 	//	slog.String("operation", notif.Operation),
@@ -310,12 +310,12 @@ func (sess *WebClientSession) onNotification(notif *messaging.NotificationMessag
 		//    hx-trigger="sse:{{.AffordanceType}}/{{.ThingID}}/{{.Name}}"
 		// TODO: can htmx work with the ResponseMessage or InteractionOutput object?
 		propID := fmt.Sprintf("%s/%s/%s",
-			messaging.AffordanceTypeProperty, notif.ThingID, notif.Name)
+			msg.AffordanceTypeProperty, notif.ThingID, notif.Name)
 		propVal := utils.DecodeAsString(notif.Value, 0)
 		sess.SendSSE(propID, propVal)
 		// also notify of a change to updated timestamp
 		propID = fmt.Sprintf("%s/%s/%s/updated",
-			messaging.AffordanceTypeProperty, notif.ThingID, notif.Name)
+			msg.AffordanceTypeProperty, notif.ThingID, notif.Name)
 		sess.SendSSE(propID, utils.FormatDateTime(notif.Timestamp))
 	} else if notif.Operation == td.OpSubscribeEvent {
 		// Publish sse event indicating the event affordance or value has changed.
@@ -324,10 +324,10 @@ func (sess *WebClientSession) onNotification(notif *messaging.NotificationMessag
 		//    hx-trigger="sse:{{.Thing.ThingID}}/{{$k}}"
 		// where $k is the event ID
 		eventID := fmt.Sprintf("%s/%s/%s",
-			messaging.AffordanceTypeEvent, notif.ThingID, notif.Name)
+			msg.AffordanceTypeEvent, notif.ThingID, notif.Name)
 		sess.SendSSE(eventID, notif.ToString(0))
 		eventID = fmt.Sprintf("%s/%s/%s/updated",
-			messaging.AffordanceTypeEvent, notif.ThingID, notif.Name)
+			msg.AffordanceTypeEvent, notif.ThingID, notif.Name)
 		sess.SendSSE(eventID, utils.FormatDateTime(notif.Timestamp))
 	}
 }
@@ -453,7 +453,7 @@ func (sess *WebClientSession) WritePage(w http.ResponseWriter, buff *bytes.Buffe
 //	onClose is the callback to invoke when this session is closed.
 func NewWebClientSession(
 	cid string, co *consumer.Consumer, remoteAddr string,
-	configBucket buckets.IBucket,
+	configBucket bucketstore.IBucket,
 	onClosed func(*WebClientSession)) *WebClientSession {
 	var err error
 
@@ -463,7 +463,7 @@ func NewWebClientSession(
 	// The consumed things directory holds the consumed thing instances for use
 	// by the web client. Consumed things are automatically updated when Thing
 	// subscription updates are received.
-	coDir := consumedthing.NewConsumedThingsDirectory(co)
+	coDir := consumer.NewConsumedThingsDirectory(co)
 
 	webSess := WebClientSession{
 		cid:          cid,

@@ -5,7 +5,6 @@ import (
 
 	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/api/vocab"
-	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -60,7 +59,7 @@ func (svc *IPNetBinding) MakeDeviceTD(deviceInfo *IPDeviceInfo) *td.TD {
 func (svc *IPNetBinding) PubBindingTD() error {
 	tdi := svc.MakeBindingTD()
 	tdJSON, _ := jsoniter.MarshalToString(tdi)
-	err := digitwin.ThingDirectoryUpdateThing(svc.ag.Consumer, tdJSON)
+	err := svc.ag.WriteTD(tdJSON)
 	//err := svc.ag.UpdateThing(tdi)
 	if err != nil {
 		slog.Error("failed publishing service TD. Continuing...",
@@ -72,7 +71,7 @@ func (svc *IPNetBinding) PubBindingTD() error {
 func (svc *IPNetBinding) PubDeviceTD(deviceInfo *IPDeviceInfo) error {
 	tdi := svc.MakeDeviceTD(deviceInfo)
 	tdJSON, _ := jsoniter.MarshalToString(tdi)
-	err := digitwin.ThingDirectoryUpdateThing(svc.ag.Consumer, tdJSON)
+	err := svc.ag.WriteTD(tdJSON)
 	//err := svc.ag.UpdateThing(tdi)
 	if err != nil {
 		slog.Error("failed publishing device TD. Continuing...",

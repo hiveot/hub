@@ -10,14 +10,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hiveot/hivekit/go/api/msg"
 	"github.com/hiveot/hivekit/go/api/td"
-	"github.com/hiveot/hub/lib/clients/hiveotsseclient"
-	"github.com/hiveot/hub/lib/clients/tlsclient"
-	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/lib/messaging"
-	"github.com/hiveot/hub/lib/servers/httpbasic"
-	"github.com/hiveot/hub/lib/testenv"
-	authz "github.com/hiveot/hub/runtime/authz/api"
+	"github.com/hiveot/hivekit/go/modules/authn"
+	"github.com/hiveot/hivekit/go/modules/transport"
+	ssescpkg "github.com/hiveot/hivekit/go/modules/transport/ssesc/pkg"
+	tlsclientpkg "github.com/hiveot/hivekit/go/modules/transport/tlsclient/pkg"
+	"github.com/hiveot/hivekit/go/testenv"
+	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/service"
 	jsoniter "github.com/json-iterator/go"
@@ -37,7 +37,7 @@ const timeout = time.Second * 100
 var testFolder = path.Join(os.TempDir(), "test-hiveoview")
 
 // the following are set by the testmain
-var ts *testenv.TestServer
+var testEnv *testenv.TestEnv
 
 // return the form with href for login operations to the hiveoview server
 // these must match the paths in hiveoview createRoutes.
@@ -70,12 +70,12 @@ func getHiveoviewForm(op, thingID, name string) *td.Form {
 // The TestLogin test must succeed before using this.
 // This returns a client. Call Close() when done.
 func WebLogin(sseURL string, clientID string,
-	onConnection func(bool, error, messaging.IConnection),
-	onNotification messaging.NotificationHandler,
-	onRequest messaging.RequestHandler,
-	onResponse messaging.ResponseHandler,
+	onConnection func(bool, error, transport.IConnection),
+	onNotification msg.NotificationHandler,
+	onRequest msg.RequestHandler,
+	onResponse msg.ResponseHandler,
 ) (
-	cl messaging.IConnection, err error) {
+	cl transport.IConnection, err error) {
 
 	//sseCl := clients.NewHubClient(sseURL, clientID, ts.Certs.CaCert)
 	// websocket client
@@ -89,8 +89,8 @@ func WebLogin(sseURL string, clientID string,
 	// htmx sse triggers rely on this format. (for now)
 	// FIXME: can htmx sse trigger using additional fields (type=notification, thingID/name=blah?)
 	// or is this too painful in htmx.
-	sseCl := hiveotsseclient.NewHiveotSseClient(sseURL,
-		clientID, nil, ts.Certs.CaCert,
+	sseCl := ssescpkg.NewHiveotSseClient(sseURL,
+		clientID, nil, testEnv.CertBundle.CaCert,
 		getHiveoviewForm, time.Minute)
 
 	// hiveoview uses a different login path as the hub
@@ -131,19 +131,22 @@ func WebLogin(sseURL string, clientID string,
 
 func TestMain(m *testing.M) {
 	var err error
+	var cancelFn func()
+
 	// raise loglevel where you want it in testing
-	logging.SetLogging("warn", "")
+	utils.SetLogging("warn", "")
 	// clean start
 	_ = os.RemoveAll(testFolder)
 	err = os.MkdirAll(testFolder, 0700)
 
-	ts = testenv.StartTestServer(true)
+	testEnv, cancelFn = testenv.StartTestEnv(true)
 	if err != nil {
+		cancelFn()
 		panic(err)
 	}
 
 	res := m.Run()
-	ts.Stop()
+	cancelFn()
 	os.Exit(res)
 }
 
@@ -151,11 +154,11 @@ func TestStartStop(t *testing.T) {
 	t.Log("--- TestStartStop ---")
 
 	storeDir := testFolder
-	svc := service.NewHiveovService(servicePort, true, nil, "",
-		ts.Certs.ServerCert, ts.Certs.CaCert, timeout, storeDir)
-	hc1, _ := ts.AddConnectService(serviceID)
+	ag1, _ := testEnv.NewConnectedClient(serviceID, authn.ClientRoleService)
+	svc := service.NewHiveovService(ag1, servicePort, true, nil, "",
+		testEnv.CertBundle.ServerCert, testEnv.CertBundle.CaCert, timeout, storeDir)
 
-	err := svc.Start(hc1)
+	err := svc.Start()
 	require.NoError(t, err)
 	time.Sleep(time.Second * 3)
 	svc.Stop()
@@ -168,29 +171,28 @@ func TestLogin(t *testing.T) {
 
 	// 1: setup: start a runtime and service; this generates an error that
 	//    the state service isnt found. ignore it.
-	svc := service.NewHiveovService(servicePort, true, nil,
-		"", ts.Certs.ServerCert, ts.Certs.CaCert, timeout, storeDir)
-	avcAg, _ := ts.AddConnectService(serviceID)
-	require.NotNil(t, avcAg)
-	defer avcAg.Disconnect()
-	err := svc.Start(avcAg)
+	ag1, cc1, _ := testEnv.NewRCAgent(serviceID, nil)
+	require.NotNil(t, ag1)
+	defer cc1.Close()
+	svc := service.NewHiveovService(ag1, servicePort, true, nil,
+		"", testEnv.CertBundle.ServerCert, testEnv.CertBundle.CaCert, timeout, storeDir)
+	err := svc.Start()
 	require.NoError(t, err)
 	defer svc.Stop()
 
-	// make sure the client to login as exists
-	cl1, _, token1 := ts.AddConnectConsumer(clientID1, authz.ClientRoleOperator)
+	// make sure the client to login exists
+	cl1, _, token1 := testEnv.NewConnectedConsumer(clientID1, authn.ClientRoleOperator, false)
 	//defer cl1.Disconnect()
-	cl1.Disconnect()
+	cl1.Stop()
 	_ = token1
 	time.Sleep(time.Millisecond * 10)
 
 	// 2: login using plain TLS connection and a form
 	hostPort := fmt.Sprintf("localhost:%d", servicePort)
-	cl2 := tlsclient.NewTLSClient(
-		hostPort, nil, ts.Certs.CaCert, time.Second*60)
+	cl2 := tlsclientpkg.NewTLSClient(hostPort, testEnv.CertBundle.CaCert, time.Second*60)
 
 	// hiveot http requires a connection-id to link the return channel.
-	cl2.SetHeader(httpbasic.ConnectionIDHeader, shortid.MustGenerate())
+	cl2.SetHeader(transport.ConnectionIDHeader, shortid.MustGenerate())
 
 	// try login. The test user password is the clientID
 	// authenticate the connection with the hiveot http/sse service (not the hub server)
@@ -220,7 +222,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	const agentID = "agent1"
 	const testConnections = 1
 	const eventName = "event1"
-	var webClients = make([]messaging.IConnection, 0)
+	var webClients = make([]transport.IConnection, 0)
 	var connectCount atomic.Int32
 	var disConnectCount atomic.Int32
 	var messageCount atomic.Int32
@@ -228,34 +230,34 @@ func TestMultiConnectDisconnect(t *testing.T) {
 
 	storeDir := testFolder
 
-	logging.SetLogging("info", "")
+	utils.SetLogging("info", "")
 	// 1: setup: start a runtime and service; this generates an error that
 	//    the state service isnt found. ignore it.
-	svc := service.NewHiveovService(servicePort, true, nil,
-		"", ts.Certs.ServerCert, ts.Certs.CaCert, timeout, storeDir)
-	avcAg, _ := ts.AddConnectService(serviceID)
-	err := svc.Start(avcAg)
+	avcAg, _ := testEnv.AddConnectService(serviceID)
+	svc := service.NewHiveovService(avcAg, servicePort, true, nil,
+		"", testEnv.CertBundle.ServerCert, testEnv.CertBundle.CaCert, timeout, storeDir)
+	err := svc.Start()
 
 	require.NoError(t, err)
 	defer svc.Stop()
 
 	// the agent for publishing events. A TD is needed for them to be accepted.
-	ag1, _, _ := ts.AddConnectAgent(agentID)
+	ag1, _, _ := testEnv.AddConnectAgent(agentID)
 	_ = ag1
-	td1 := ts.AddTD(agentID, nil)
+	td1 := testEnv.AddTD(agentID, nil)
 	_ = td1
 
 	// create the user account this test is going to connect as.
 	// no notifications are expected as it doesnt subscribe
 	// hiveoview server only supports HTTP/SSE
-	co1, _, token1 := ts.AddConnectConsumer(clientID1, authz.ClientRoleOperator)
+	co1, _, token1 := testEnv.AddConnectConsumer(clientID1, authn.ClientRoleOperator)
 	defer co1.Disconnect()
 	require.NoError(t, err)
 	time.Sleep(waitamoment)
 
 	_ = token1
 	//handler for web connection notifications
-	onConnection := func(connected bool, err error, _ messaging.IConnection) {
+	onConnection := func(connected bool, err error, _ transport.IConnection) {
 		if connected {
 			connectCount.Add(1)
 		} else {
@@ -263,10 +265,10 @@ func TestMultiConnectDisconnect(t *testing.T) {
 		}
 	}
 	// handler hiveoview SSE notifications
-	onNotification := func(msg *messaging.NotificationMessage) {
+	onNotification := func(notif *msg.NotificationMessage) {
 		// the UI expects this format for triggering htmx
 		expectedType := fmt.Sprintf("event/dtw:%s:%s/%s", agentID, td1.ID, eventName)
-		if msg.Operation == expectedType {
+		if notif.Operation == expectedType {
 			messageCount.Add(1)
 		}
 		return
@@ -306,7 +308,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	for _, c := range webClients {
 
 		// disconnect the client connection
-		c.Disconnect()
+		c.Close()
 		time.Sleep(waitamoment)
 	}
 	//time.Sleep(waitamoment)

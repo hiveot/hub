@@ -7,14 +7,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hiveot/hivekit/go/modules/agent"
+	"github.com/hiveot/hivekit/go/modules/authn"
+	"github.com/hiveot/hivekit/go/testenv"
+	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/bindings/weather/config"
 	"github.com/hiveot/hub/bindings/weather/providers"
 	"github.com/hiveot/hub/bindings/weather/service"
-	"github.com/hiveot/hub/lib/agent"
-	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/lib/testenv"
-	authz "github.com/hiveot/hub/runtime/authz/api"
-	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -43,17 +42,19 @@ var storePath string
 var tempFolder string
 var weatherConfig = config.NewWeatherConfig()
 
-func Setup() (ts *testenv.TestServer, ag *agent.Agent, stopFn func()) {
-	logging.SetLogging("warn", "")
-	ts = testenv.StartTestServer(true)
+func Setup() (testEnv *testenv.TestEnv, ag *agent.Agent, stopFn func()) {
+	var cancelFn func()
 
-	ag, _, _ = ts.AddConnectAgent(agentID)
-	logging.SetLogging("info", "")
+	utils.SetLogging("warn", "")
+	testEnv, cancelFn = testenv.StartTestEnv("")
 
-	return ts, ag, func() {
-		logging.SetLogging("warn", "")
-		ag.Disconnect()
-		ts.Stop()
+	ag, _, _ = testEnv.NewRCAgent(agentID, nil)
+	utils.SetLogging("info", "")
+
+	return testEnv, ag, func() {
+		utils.SetLogging("warn", "")
+		ag.Stop()
+		cancelFn()
 	}
 }
 
@@ -65,7 +66,7 @@ func TestMain(m *testing.M) {
 	storePath = path.Join(tempFolder, "openmeteo-config")
 	_ = os.RemoveAll(storePath)
 
-	logging.SetLogging("info", "")
+	utils.SetLogging("info", "")
 	//ts = testenv.StartTestServer(true)
 
 	result := m.Run()
@@ -78,12 +79,13 @@ func TestMain(m *testing.M) {
 
 func TestStartStop(t *testing.T) {
 	t.Logf("---%s---\n", t.Name())
+
 	_, ag, stopFn := Setup()
 	defer stopFn()
 
 	svc := service.NewWeatherBinding(storePath, weatherConfig)
+	err := svc.Start()
 
-	err := svc.Start(ag)
 	require.NoError(t, err)
 	// give heartbeat time to run
 	time.Sleep(time.Millisecond * 1)
@@ -116,7 +118,8 @@ func TestPollFromService(t *testing.T) {
 	defer stopFn()
 
 	svc := service.NewWeatherBinding(storePath, weatherConfig)
-	err := svc.Start(ag)
+	err := svc.Start()
+
 	require.NoError(t, err)
 	err = svc.LocationStore().Add(testLocation1)
 	err = svc.LocationStore().Add(testLocation2)
@@ -143,11 +146,12 @@ func TestDisableCurrent(t *testing.T) {
 	t.Logf("---%s---\n", t.Name())
 	client1ID := "client1"
 
-	ts, ag, stopFn := Setup()
+	testEnv, ag, stopFn := Setup()
 	defer stopFn()
 
 	svc := service.NewWeatherBinding(storePath, weatherConfig)
-	err := svc.Start(ag)
+	err := svc.Start()
+
 	require.NoError(t, err)
 	err = svc.AddLocation(testLocation1)
 	err = svc.AddLocation(testLocation2)
@@ -157,10 +161,11 @@ func TestDisableCurrent(t *testing.T) {
 	// give heartbeat time to run
 	time.Sleep(time.Millisecond * 1)
 
-	co1, _, _ := ts.AddConnectConsumer(client1ID, authz.ClientRoleAdmin)
-	defer co1.Disconnect()
+	co1, cc1, _ := testEnv.NewConnectedConsumer(client1ID, authn.ClientRoleAdmin, false)
+	defer co1.Stop()
+	defer cc1.Stop()
 
-	thingID := digitwin.MakeDigitwinID(ag.GetClientID(), testLocation1.ID)
+	thingID := testLocation1.ID
 	err = co1.WriteProperty(thingID, service.PropNameCurrentEnabled, false, true)
 	require.NoError(t, err)
 

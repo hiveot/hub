@@ -7,13 +7,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/v5"
+	"github.com/hiveot/hivekit/go/api/msg"
 	"github.com/hiveot/hivekit/go/api/vocab"
+	"github.com/hiveot/hivekit/go/modules/consumer"
+	"github.com/hiveot/hivekit/go/modules/digitwin"
+	historypkg "github.com/hiveot/hivekit/go/modules/history/pkg"
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hub/lib/consumedthing"
-	"github.com/hiveot/hub/lib/messaging"
-	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
-	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
@@ -35,7 +36,7 @@ type ThingDetailsTemplateData struct {
 	EventNames  []string
 	ActionNames []string
 
-	CT *consumedthing.ConsumedThing
+	CT *consumer.ConsumedThing
 
 	// URLs
 	RenderConfirmDeleteTDPath string
@@ -48,9 +49,9 @@ func (dt *ThingDetailsTemplateData) GetEventHistory(name string) *history.Histor
 	timestamp := time.Now().Local()
 	duration := time.Hour * time.Duration(-24)
 	//iout := dt.CT.ReadEvent(name)
-	iout := dt.CT.GetValue(messaging.AffordanceTypeEvent, name)
+	iout := dt.CT.GetValue(msg.AffordanceTypeEvent, name)
 
-	hist := historyclient.NewReadHistoryClient(dt.CT.GetConsumer())
+	hist := historypkg.NewReadHistoryClient(dt.CT.GetConsumer())
 	values, itemsRemaining, err := hist.ReadHistory(
 		iout.ThingID, iout.Name, timestamp, duration, 500)
 	_ = itemsRemaining
@@ -80,7 +81,7 @@ func (dt *ThingDetailsTemplateData) GetRenderActionPath(name string) string {
 func RenderThingDetails(w http.ResponseWriter, r *http.Request) {
 	thingID := chi.URLParam(r, "thingID")
 	agentID, _, _ := digitwin.SplitDigitwinID(thingID)
-	var ct *consumedthing.ConsumedThing
+	var ct *consumer.ConsumedThing
 
 	pathParams := map[string]string{"thingID": thingID}
 	thingData := &ThingDetailsTemplateData{

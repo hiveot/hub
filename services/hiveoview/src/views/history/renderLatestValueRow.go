@@ -5,9 +5,11 @@ import (
 	"html"
 	"net/http"
 
+	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/v5"
+	"github.com/hiveot/hivekit/go/api/msg"
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hub/lib/messaging"
+
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 )
 
@@ -50,7 +52,7 @@ func RenderLatestValueRow(w http.ResponseWriter, r *http.Request) {
 	}
 	ct, err := sess.Consume(thingID)
 	if err == nil {
-		iout := ct.GetValue(messaging.AffordanceType(affType), name)
+		iout := ct.GetValue(msg.AffordanceType(affType), name)
 		fragment = fmt.Sprintf(addRowTemplate,
 			utils.FormatDateTime(iout.Timestamp, "S"), iout.Value.Text(), unit)
 	} else {

@@ -3,7 +3,7 @@ package pubsubcli
 import (
 	"fmt"
 
-	"github.com/hiveot/hub/lib/consumer"
+	"github.com/hiveot/hivekit/go/modules/consumer"
 	"github.com/urfave/cli/v2"
 )
 

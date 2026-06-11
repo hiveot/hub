@@ -1,4 +1,4 @@
-# Scratchpad Notes
+# Scratchpad Notes (2024)
 
 These are some notes on thoughts and challenges that have come up.
 More notes in README-TD.md

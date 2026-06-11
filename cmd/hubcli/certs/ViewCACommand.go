@@ -6,7 +6,8 @@ import (
 	"path"
 	"time"
 
-	"github.com/hiveot/hub/lib/certs"
+	"github.com/hiveot/hivekit/go/modules/certs"
+	"github.com/hiveot/hivekit/go/modules/certs/certutils"
 	"github.com/urfave/cli/v2"
 )
 
@@ -35,7 +36,7 @@ func ViewCACommand(certsFolder *string) *cli.Command {
 func HandleViewCACert(certsFolder string) error {
 	caCertPath := path.Join(certsFolder, certs.DefaultCaCertFile)
 
-	caCert, err := certs.LoadX509CertFromPEM(caCertPath)
+	caCert, err := certutils.LoadX509CertFromPEM(caCertPath)
 	if err != nil {
 		slog.Error("Unable to load the CA certificate", "err", err)
 		return err
@@ -50,7 +51,7 @@ func HandleViewCACert(certsFolder string) error {
 	fmt.Println()
 
 	hubCertPath := path.Join(certsFolder, "hubCert.pem")
-	serverCert, err := certs.LoadX509CertFromPEM(hubCertPath)
+	serverCert, err := certutils.LoadX509CertFromPEM(hubCertPath)
 	if err != nil {
 		slog.Error("Unable to load the server certificate", "err", err)
 		return err

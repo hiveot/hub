@@ -3,9 +3,9 @@ package service
 import (
 	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/api/vocab"
+	"github.com/hiveot/hivekit/go/modules/agent"
 	"github.com/hiveot/hub/bindings/weather/config"
 	"github.com/hiveot/hub/bindings/weather/providers"
-	"github.com/hiveot/hub/lib/agent"
 )
 
 // read-only properties
@@ -221,9 +221,10 @@ func CreateTDOfLocation(defaultCfg *config.WeatherConfig, cfg *config.WeatherLoc
 
 // PublishBindingTD publishes the TD of the binding itself
 func PublishBindingTD(ag *agent.Agent, cfg *config.WeatherConfig) error {
-	thingID := ag.GetClientID()
+	thingID := ag.GetThingID()
 	tdoc := CreateBindingTD(thingID)
-	err := ag.UpdateThing(tdoc)
+	tdJson, _ := td.MarshalTD(tdoc)
+	err := ag.WriteTD(tdJson)
 	if err == nil {
 		err = PublishBindingProperties(ag, thingID, cfg)
 	}
@@ -244,7 +245,8 @@ func PublishLocationTDs(ag *agent.Agent, defaultCfg *config.WeatherConfig, locat
 // PublishLocationTD publishes the TD of the given location and its current values
 func PublishLocationTD(ag *agent.Agent, defaultCfg *config.WeatherConfig, loc config.WeatherLocation) error {
 	tdoc := CreateTDOfLocation(defaultCfg, &loc)
-	err := ag.UpdateThing(tdoc)
+	tdJson, _ := td.MarshalTD(tdoc)
+	err := ag.WriteTD(tdJson)
 	if err == nil {
 		err = PublishLocationProperties(ag, loc.ID, loc)
 	}

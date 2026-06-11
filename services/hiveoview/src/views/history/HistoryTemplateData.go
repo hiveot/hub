@@ -6,19 +6,18 @@ import (
 	"sort"
 	"time"
 
+	"github.com/hiveot/hivekit/go/api/msg"
 	"github.com/hiveot/hivekit/go/api/td"
+	"github.com/hiveot/hivekit/go/modules/consumer"
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hub/lib/consumedthing"
-	"github.com/hiveot/hub/lib/messaging"
 	"github.com/hiveot/hub/services/hiveoview/src"
 )
 
 // HistoryTemplateData holds the data for rendering a history table or graph
 type HistoryTemplateData struct {
 	// history of this interaction output
-	consumedthing.InteractionOutput
+	consumer.InteractionOutput
 
-	//AffordanceType messaging.AffordanceType
 	Title string // allow override to data description
 
 	// property or event id as published
@@ -29,7 +28,7 @@ type HistoryTemplateData struct {
 	EndTime        time.Time
 	EndTimeStr     string
 	DurationSec    int
-	Values         []*messaging.ThingValue
+	Values         []*msg.ThingValue
 	ItemsRemaining bool // for paging, if supported
 	Stepped        bool // stepped graph
 
@@ -71,9 +70,9 @@ func (ht HistoryTemplateData) AsJSON() string {
 // GetObjectValues returns the history as an array of interaction objects
 // If this is an object then return an element for each object property, otherwise
 // return an array with 1 element.
-func (ht HistoryTemplateData) GetObjectValues() []consumedthing.InteractionOutput {
+func (ht HistoryTemplateData) GetObjectValues() []consumer.InteractionOutput {
 	if ht.Schema.Type != "object" {
-		return []consumedthing.InteractionOutput{ht.InteractionOutput}
+		return []consumer.InteractionOutput{ht.InteractionOutput}
 	}
 
 	objectValues := map[string]any{}
@@ -81,7 +80,7 @@ func (ht HistoryTemplateData) GetObjectValues() []consumedthing.InteractionOutpu
 	if err == nil {
 		err = json.Unmarshal(objectAsJson, &objectValues)
 	}
-	values := make([]consumedthing.InteractionOutput, 0, len(objectValues))
+	values := make([]consumer.InteractionOutput, 0, len(objectValues))
 
 	if err != nil {
 		slog.Error("failed decoding object", "err", err.Error())
@@ -92,7 +91,7 @@ func (ht HistoryTemplateData) GetObjectValues() []consumedthing.InteractionOutpu
 	for name, schema := range ht.Schema.Properties {
 		raw, found := objectValues[name]
 		_ = found
-		value := consumedthing.NewDataSchemaValue(raw)
+		value := consumer.NewDataSchemaValue(raw)
 
 		iout := ht.InteractionOutput // copy
 		iout.Title = ht.Title + " - " + schema.Title
@@ -139,8 +138,8 @@ func (ht HistoryTemplateData) CompareToday() int {
 //	endTime of the end-time of the history range
 //	duration to read (negative for history)
 func NewHistoryTemplateData(
-	iout *consumedthing.InteractionOutput,
-	values []*messaging.ThingValue,
+	iout *consumer.InteractionOutput,
+	values []*msg.ThingValue,
 	endTime time.Time, duration time.Duration) (
 	data *HistoryTemplateData, err error) {
 
@@ -165,7 +164,7 @@ func NewHistoryTemplateData(
 	hs.Stepped = iout.Schema.Type == td.DataTypeBool
 
 	// TODO: (if needed) if items remaining, get the rest in an additional call
-	//hist := historyclient.NewReadHistoryClient(ct.GetConsumer())
+	//hist := historypkg.NewReadHistoryClient(ct.GetConsumer())
 	//hs.Values, hs.ItemsRemaining, err = hist.ReadHistory(
 	//	iout.ThingID, iout.Name, timestamp, duration, 500)
 

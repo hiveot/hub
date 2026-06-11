@@ -4,7 +4,6 @@ import (
 	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/api/vocab"
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
-	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -128,7 +127,7 @@ func (svc *OWServerBinding) PublishNodeTD(node *eds.OneWireNode) (err error) {
 	tdi := svc.CreateTDFromNode(node)
 	svc.things[tdi.ID] = tdi
 	tdJSON, _ := jsoniter.MarshalToString(tdi)
-	err = digitwin.ThingDirectoryUpdateThing(svc.ag.Consumer, tdJSON)
+	svc.ag.WriteTD(tdJSON)
 	//err = svc.ag.UpdateThing(td)
 	return err
 }

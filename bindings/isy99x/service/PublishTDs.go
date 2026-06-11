@@ -3,9 +3,9 @@ package service
 import (
 	"errors"
 	"fmt"
-	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
-	jsoniter "github.com/json-iterator/go"
 	"log/slog"
+
+	jsoniter "github.com/json-iterator/go"
 )
 
 // PublishTDs reads and publishes the TD document of the binding,
@@ -15,8 +15,7 @@ func (svc *IsyBinding) PublishTDs() (err error) {
 
 	tdi := svc.MakeBindingTD()
 	tdJSON, _ := jsoniter.MarshalToString(tdi)
-	err = digitwin.ThingDirectoryUpdateThing(svc.ag.Consumer, tdJSON)
-	//err = svc.ag.UpdateThing(tdi)
+	err = svc.WriteTD(tdJSON)
 	if err != nil {
 		err = fmt.Errorf("failed publishing binding TD: %w", err)
 		slog.Error(err.Error())
@@ -27,7 +26,8 @@ func (svc *IsyBinding) PublishTDs() (err error) {
 		return errors.New("not connected to the gateway")
 	}
 
-	err = svc.IsyGW.PubTD(svc.ag)
+	// use the binding's agent to write TDs (why exactly?)
+	err = svc.IsyGW.PubTD(svc.Agent)
 	if err == nil {
 		// read and publish the node TDs
 		err = svc.IsyGW.ReadIsyThings()
@@ -40,7 +40,7 @@ func (svc *IsyBinding) PublishTDs() (err error) {
 		for _, thing := range svc.IsyGW.GetIsyThings() {
 			tdi = thing.MakeTD()
 			tdJSON, _ = jsoniter.MarshalToString(tdi)
-			err = digitwin.ThingDirectoryUpdateThing(svc.ag.Consumer, tdJSON)
+			err = svc.WriteTD(tdJSON)
 			if err != nil {
 				slog.Error("failed publishing Thing TD",
 					"thingID", tdi.ID, "err", err.Error())

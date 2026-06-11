@@ -10,10 +10,8 @@ import (
 
 	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/api/vocab"
+	"github.com/hiveot/hivekit/go/modules/agent"
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
-	"github.com/hiveot/hub/lib/agent"
-	"github.com/hiveot/hub/lib/exposedthing"
-	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -33,12 +31,10 @@ const (
 // IsyGatewayThing is a Thing representing the ISY gateway device.
 // This implements IThing interface.
 type IsyGatewayThing struct {
+	*agent.Agent
 
 	// REST/SOAP/WS connection to the ISY hub
 	ic *isy.IsyAPI
-
-	// The gateway thingID
-	thingID string
 
 	// map of ISY product ID's
 	prodMap map[string]InsteonProduct
@@ -50,7 +46,7 @@ type IsyGatewayThing struct {
 	newNodeFound bool
 
 	// current property values of this thing
-	propValues *exposedthing.ThingValues
+	// propValues *ThingValues
 
 	// protect access to the 'things' map
 	mux sync.RWMutex
@@ -162,7 +158,7 @@ func nodeID2ThingID(nodeID string) string {
 }
 
 // AddIsyThing adds a representing of an Insteon device
-func (igw *IsyGatewayThing) AddIsyThing(node *isy.IsyNode) error {
+func (t *IsyGatewayThing) AddIsyThing(node *isy.IsyNode) error {
 	var isyThing IIsyThing
 	var err error
 
@@ -173,7 +169,7 @@ func (igw *IsyGatewayThing) AddIsyThing(node *isy.IsyNode) error {
 	cat, _ := strconv.ParseInt(parts[0], 10, 16)
 	subCat, _ := strconv.ParseInt(parts[1], 10, 16)
 	productID := fmt.Sprintf("0x%02X.0x%02X", cat, subCat)
-	prodInfo := igw.prodMap[productID]
+	prodInfo := t.prodMap[productID]
 	hwVersion := parts[3]
 
 	// determine what device this is using: <category.subcat.description.version>
@@ -181,82 +177,77 @@ func (igw *IsyGatewayThing) AddIsyThing(node *isy.IsyNode) error {
 	//the category determines the high level device type
 	switch cat {
 	case 0: // general controller, tabletop/remote/touch panel
-		isyThing = NewIsyThing(igw.evHandler)
+		isyThing = NewIsyThing(t.evHandler)
 		break
 	case 1: // dimmer control
-		isyThing = NewIsyDimmerThing(igw.evHandler)
+		isyThing = NewIsyDimmerThing(t.evHandler)
 		break
 	case 2: // OnOff switch
-		isyThing = NewIsySwitchThing(igw.evHandler)
+		isyThing = NewIsySwitchThing(t.evHandler)
 		break
 	case 3: // network bridge
-		isyThing = NewIsyThing(igw.evHandler)
+		isyThing = NewIsyThing(t.evHandler)
 		break
 	case 4: // irrigation control
-		isyThing = NewIsyThing(igw.evHandler)
+		isyThing = NewIsyThing(t.evHandler)
 		break
 	case 5: // climate control
-		isyThing = NewIsyThing(igw.evHandler)
+		isyThing = NewIsyThing(t.evHandler)
 		break
 	case 6: // pool/spa control
-		isyThing = NewIsyThing(igw.evHandler)
+		isyThing = NewIsyThing(t.evHandler)
 		break
 	case 7: // sensor switch
-		isyThing = NewIsySensorThing(igw.evHandler)
+		isyThing = NewIsySensorThing(t.evHandler)
 		break
 	case 9: // energy meter/management
-		isyThing = NewIsyThing(igw.evHandler)
+		isyThing = NewIsyThing(t.evHandler)
 		break
 	case 14: // window/blinds
-		isyThing = NewIsyThing(igw.evHandler)
+		isyThing = NewIsyThing(t.evHandler)
 		break
 	case 15: // access control/ door lock
-		isyThing = NewIsyThing(igw.evHandler)
+		isyThing = NewIsyThing(t.evHandler)
 		break
 	default: // unknown general purpose thing
-		isyThing = NewIsyThing(igw.evHandler)
+		isyThing = NewIsyThing(t.evHandler)
 	}
 	if isyThing != nil {
 		thingID := nodeID2ThingID(node.Address)
-		isyThing.Init(igw.ic, thingID, node, prodInfo, hwVersion)
-		igw.mux.Lock()
-		igw.things[isyThing.GetID()] = isyThing
-		igw.mux.Unlock()
+		isyThing.Init(t.ic, thingID, node, prodInfo, hwVersion)
+		t.mux.Lock()
+		t.things[isyThing.GetID()] = isyThing
+		t.mux.Unlock()
 	}
 	return err
 }
 
 // GetIsyThing returns the ISY device Thing with the given ThingID
 // Returns nil of a thing with this ID doesn't exist
-func (igw *IsyGatewayThing) GetIsyThing(thingID string) IIsyThing {
-	igw.mux.RLock()
-	defer igw.mux.RUnlock()
-	it, _ := igw.things[thingID]
+func (t *IsyGatewayThing) GetIsyThing(thingID string) IIsyThing {
+	t.mux.RLock()
+	defer t.mux.RUnlock()
+	it, _ := t.things[thingID]
 	return it
 }
 
 // GetIsyThingByNodeID returns the ISY device Thing with the given Node address/ID
 // Returns nil if a thing with this ID doesn't exist
-func (igw *IsyGatewayThing) GetIsyThingByNodeID(nodeID string) IIsyThing {
+func (t *IsyGatewayThing) GetIsyThingByNodeID(nodeID string) IIsyThing {
 	thingID := nodeID2ThingID(nodeID)
-	igw.mux.RLock()
-	defer igw.mux.RUnlock()
-	it, _ := igw.things[thingID]
+	t.mux.RLock()
+	defer t.mux.RUnlock()
+	it, _ := t.things[thingID]
 	return it
-}
-
-// GetID return the gateway thingID
-func (igw *IsyGatewayThing) GetID() string {
-	return igw.thingID
 }
 
 // GetIsyThings returns a list of ISY devices for publishing TD or values as updated in
 // the last call to ReadIsyThings().
-func (igw *IsyGatewayThing) GetIsyThings() []IIsyThing {
-	igw.mux.RLock()
-	defer igw.mux.RUnlock()
-	thingList := make([]IIsyThing, 0, len(igw.things))
-	for _, it := range igw.things {
+func (t *IsyGatewayThing) GetIsyThings() []IIsyThing {
+	t.mux.RLock()
+	defer t.mux.RUnlock()
+	thingList := make([]IIsyThing, 0, len(t.things))
+	for _, it := range t.things {
 		thingList = append(thingList, it)
 	}
 	return thingList
@@ -264,33 +255,23 @@ func (igw *IsyGatewayThing) GetIsyThings() []IIsyThing {
 
 // GetPropValues returns the current or changed property values.
 // onlyChanges only provides changed properties
-func (igw *IsyGatewayThing) GetPropValues(onlyChanges bool) map[string]any {
-	values := igw.propValues.GetValues(onlyChanges)
-	// TODO: add event values. Currently the TD does not list events.
-	return values
-}
-
-// Init re-initializes the gateway Thing for use and load the gateway configuration/
-// This removes prior use nodes for a fresh start.
-func (igw *IsyGatewayThing) Init(ic *isy.IsyAPI) {
-	igw.ic = ic
-	igw.thingID = ic.GetID()
-	igw.things = make(map[string]IIsyThing)
-	igw.propValues = exposedthing.NewThingValues()
-
-	// values are used in TD title and description
-	_ = igw.ReadGatewayValues()
-}
+// func (t *IsyGatewayThing) GetPropValues(onlyChanges bool) map[string]any {
+// 	state := t.Agent.GetState(t.GetThingID())
+// 	values := state.GetAllProperties()
+// 	// values := t.propValues.GetValues(onlyChanges)
+// 	// TODO: add event values. Currently the TD does not list events.
+// 	return values
+// }
 
 // MakeTD returns the Gateway TD document
 // This returns nil if the gateway wasn't initialized
-func (igw *IsyGatewayThing) MakeTD() *td.TD {
-	if igw.ic == nil {
+func (t *IsyGatewayThing) MakeTD() *td.TD {
+	if t.ic == nil {
 		return nil
 	}
 
-	tdi := td.NewTD(igw.thingID, igw.Configuration.DeviceSpecs.Model, vocab.DeviceNetGateway)
-	tdi.Description = igw.Configuration.DeviceSpecs.Make + "-" + igw.Configuration.DeviceSpecs.Model
+	tdi := td.NewTD(t.GetThingID(), t.Configuration.DeviceSpecs.Model, vocab.DeviceNetGateway)
+	tdi.Description = t.Configuration.DeviceSpecs.Make + "-" + t.Configuration.DeviceSpecs.Model
 
 	//--- device read-only attributes
 	tdi.AddPropertyAsString(vocab.PropDeviceMake, "Manufacturer", "").
@@ -321,9 +302,9 @@ func (igw *IsyGatewayThing) MakeTD() *td.TD {
 	prop.ReadOnly = false
 	prop = tdi.AddPropertyAsString(vocab.PropNetIP4, "IP4 address", "")
 	prop.Description = "Configure gateway fix IP address"
-	prop.ReadOnly = igw.Network.Interface.IsDHCP == false
+	prop.ReadOnly = t.Network.Interface.IsDHCP == false
 	prop = tdi.AddPropertyAsString(vocab.PropNetPort, "Port", "Gateway connection port")
-	prop.ReadOnly = igw.Network.Interface.IsDHCP == false
+	prop.ReadOnly = t.Network.Interface.IsDHCP == false
 	prop = tdi.AddPropertyAsString(PropIDLogin, "Login Name", "Gateway login name")
 	prop.ReadOnly = false
 	prop = tdi.AddPropertyAsString(PropIDPassword, "Password", "Gateway password (hidden)")
@@ -367,10 +348,10 @@ func (igw *IsyGatewayThing) MakeTD() *td.TD {
 //}
 
 // PubTD read and publishes the gateway's TD
-func (svc *IsyGatewayThing) PubTD(ag *agent.Agent) (err error) {
-	tdi := svc.MakeTD()
+func (t *IsyGatewayThing) PubTD(ag *agent.Agent) (err error) {
+	tdi := t.MakeTD()
 	tdJSON, _ := jsoniter.MarshalToString(tdi)
-	err = digitwin.ThingDirectoryUpdateThing(ag.Consumer, tdJSON)
+	err = ag.WriteTD(tdJSON)
 	//err = ag.UpdateThing(tdi)
 	if err != nil {
 		err = fmt.Errorf("failed publishing ISY gateway TD: %w", err)
@@ -380,69 +361,73 @@ func (svc *IsyGatewayThing) PubTD(ag *agent.Agent) (err error) {
 	return nil
 }
 
-// ReadGatewayValues reads ISY gateway properties.
+// ReadGatewayValues reads ISY gateway properties and publish changes.
 // This loads the gateway 'Configuration', 'System', 'Time' and 'Network' data.
 // See also: https://wiki.universal-devices.com/index.php?title=ISY_Developers:API:REST_Interface#Return_Values_/_Codes
-func (igw *IsyGatewayThing) ReadGatewayValues() (err error) {
-	if igw.ic == nil {
+func (t *IsyGatewayThing) ReadGatewayValues() (err error) {
+	if t.ic == nil {
 		return fmt.Errorf("No ISY connection")
 	}
 
 	const NTP_OFFSET = 2208988800
 
-	err = igw.ic.SendRequest("GET", "/rest/config", "", &igw.Configuration)
+	err = t.ic.SendRequest("GET", "/rest/config", "", &t.Configuration)
 	if err == nil {
-		err = igw.ic.SendRequest("GET", "/rest/sys", "", &igw.System)
+		err = t.ic.SendRequest("GET", "/rest/sys", "", &t.System)
 	}
 	if err == nil {
-		err = igw.ic.SendRequest("GET", "/rest/time", "", &igw.Time)
+		err = t.ic.SendRequest("GET", "/rest/time", "", &t.Time)
 	}
 	if err == nil {
-		err = igw.ic.SendRequest("GET", "/rest/network", "", &igw.Network)
+		err = t.ic.SendRequest("GET", "/rest/network", "", &t.Network)
 	}
 
-	pv := igw.propValues
+	thingID := t.GetThingID()
+	sunrise := int64(t.Time.Sunrise-t.Time.TMZOffset) - NTP_OFFSET
+	sunset := int64(t.Time.Sunset-t.Time.TMZOffset) - NTP_OFFSET
 
-	pv.SetValue(vocab.PropDeviceMake, igw.Configuration.DeviceSpecs.Make)
-	pv.SetValue(vocab.PropDeviceModel, igw.Configuration.DeviceSpecs.Model)
-	pv.SetValue(vocab.PropDeviceSoftwareVersion, igw.Configuration.AppVersion)
-	pv.SetValue(vocab.PropNetMAC, igw.Configuration.Root.ID)
-	pv.SetValue(vocab.PropDeviceDescription, igw.Configuration.Product.Description)
-	pv.SetValue(td.WoTTitle, igw.Configuration.Root.Name) // custom name
-	pv.SetValue(vocab.PropNetIP4, igw.Network.Interface.IP)
-	pv.SetValue(vocab.PropNetPort, igw.Network.WebServer.HttpPort)
+	props := map[string]any{
+		vocab.PropDeviceMake:            t.Configuration.DeviceSpecs.Make,
+		vocab.PropDeviceModel:           t.Configuration.DeviceSpecs.Model,
+		vocab.PropDeviceSoftwareVersion: t.Configuration.AppVersion,
+		vocab.PropNetMAC:                t.Configuration.Root.ID,
+		vocab.PropDeviceDescription:     t.Configuration.Product.Description,
+		td.WoTTitle:                     t.Configuration.Root.Name, // custom name
+		vocab.PropNetIP4:                t.Network.Interface.IP,
+		vocab.PropNetPort:               t.Network.WebServer.HttpPort,
 
-	pv.SetValue("productID", igw.Configuration.Product.ID)
-	pv.SetValue(PropIDDHCP, strconv.FormatBool(igw.Network.Interface.IsDHCP)) // true or false
-	//pv.SetValue(PropIDLogin, igw.Configuration.LoginName)
+		"productID": t.Configuration.Product.ID,
+		PropIDDHCP:  strconv.FormatBool(t.Network.Interface.IsDHCP), // true or false
+		//pv.SetValue(PropIDLogin, igw.Configuration.LoginName)
 
-	// isy provides NTP stamp in local time, not in GMT!
-	sunrise := int64(igw.Time.Sunrise-igw.Time.TMZOffset) - NTP_OFFSET
-	pv.SetValue(PropIDSunrise, time.Unix(sunrise, 0).Format(time.TimeOnly))
-	sunset := int64(igw.Time.Sunset-igw.Time.TMZOffset) - NTP_OFFSET
-	pv.SetValue(PropIDSunset, time.Unix(sunset, 0).Format(time.TimeOnly)) // seconds since epoc
+		// isy provides NTP stamp in local time, not in GMT!
+		PropIDSunrise: time.Unix(sunrise, 0).Format(time.TimeOnly),
+		PropIDSunset:  time.Unix(sunset, 0).Format(time.TimeOnly), // seconds since epoc
 
-	pv.SetValue(PropIDNTPHost, igw.System.NTPHost)
-	pv.SetValue(PropIDNTPEnabled, strconv.FormatBool(igw.System.NTPEnabled))
-	pv.SetValue(PropIDTMZOffset, strconv.FormatInt(int64(igw.Time.TMZOffset), 10))
-	pv.SetValue(PropIDDSTEnabled, strconv.FormatBool(igw.Time.DST))
+		PropIDNTPHost:    t.System.NTPHost,
+		PropIDNTPEnabled: strconv.FormatBool(t.System.NTPEnabled),
+		PropIDTMZOffset:  strconv.FormatInt(int64(t.Time.TMZOffset), 10),
+		PropIDDSTEnabled: strconv.FormatBool(t.Time.DST),
+	}
+	t.PubProperties(thingID, props, true)
+
 	return err
 }
 
 // ReadIsyThings reads the ISY Node list and update the collection of ISY Things
-func (igw *IsyGatewayThing) ReadIsyThings() error {
-	if igw.ic == nil {
+func (t *IsyGatewayThing) ReadIsyThings() error {
+	if t.ic == nil {
 		return fmt.Errorf("No ISY connection")
 	}
-	isyNodes, err := igw.ic.ReadNodes()
+	isyNodes, err := t.ic.ReadNodes()
 
 	if err != nil {
 		return err
 	}
 	for _, node := range isyNodes.Nodes {
-		it := igw.GetIsyThingByNodeID(node.Address)
+		it := t.GetIsyThingByNodeID(node.Address)
 		if it == nil {
-			err = igw.AddIsyThing(node)
+			err = t.AddIsyThing(node)
 			if err != nil {
 				slog.Error("Error adding ISY device. Ignored.", "err", err)
 			}
@@ -462,39 +447,55 @@ func (igw *IsyGatewayThing) ReadIsyThings() error {
 //
 // Each ISY Thing will be updated with the latest status. It is up to them
 // to notify their uses with an event if the status has changed.
-func (igw *IsyGatewayThing) ReadIsyNodeValues() error {
-	if igw.ic == nil {
+func (t *IsyGatewayThing) ReadIsyNodeValues() error {
+	if t.ic == nil {
 		return fmt.Errorf("No ISY connection")
 	}
 
 	isyStatus := isy.IsyStatus{}
-	err := igw.ic.SendRequest("GET", "/rest/status", "", &isyStatus)
+	err := t.ic.SendRequest("GET", "/rest/status", "", &isyStatus)
 	for _, node := range isyStatus.Nodes {
 		propID := node.Prop.ID
 		newValue := node.Prop.Value
 		uom := node.Prop.UOM
 
-		it := igw.GetIsyThingByNodeID(node.Address)
+		it := t.GetIsyThingByNodeID(node.Address)
 		if it != nil {
 			err = it.HandleValueUpdate(propID, uom, newValue)
 		} else {
 			// new node found, refresh the node list
-			igw.newNodeFound = true
+			t.newNodeFound = true
 		}
 	}
 	return err
 }
 
+// Start initializes the gateway for use and read its values
+// if Start fails then retry periodically until a connection can be established
+func (t *IsyGatewayThing) Start() error {
+	// t.ic = ic
+	// t.SetThingID = ic.GetID()
+	// t.things = make(map[string]IIsyThing)
+	// t.propValues = exposedthing.NewThingValues()
+
+	// values are used in TD title and description
+	return t.ReadGatewayValues()
+}
+
 // NewIsyGateway creates a new instance of the ISY gateway device representation.
 // prodMap can be retrieved with LoadProductMapCSV()
 // Call Init() before use.
-func NewIsyGateway(prodMap map[string]InsteonProduct, evHandler IsyEventHandler) *IsyGatewayThing {
+func NewIsyGateway(ic *isy.IsyAPI,
+	prodMap map[string]InsteonProduct, evHandler IsyEventHandler) *IsyGatewayThing {
 
+	thingID := ic.GetID()
 	isyGW := &IsyGatewayThing{
-		evHandler:  evHandler,
-		prodMap:    prodMap,
-		things:     make(map[string]IIsyThing),
-		propValues: exposedthing.NewThingValues(),
+		Agent: agent.NewAgent(thingID, nil),
+
+		ic:        ic,
+		evHandler: evHandler,
+		prodMap:   prodMap,
+		things:    make(map[string]IIsyThing),
 	}
 	return isyGW
 }

@@ -4,10 +4,10 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/hiveot/hivekit/go/api/msg"
 	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/api/vocab"
-	"github.com/hiveot/hub/lib/agent"
-	"github.com/hiveot/hub/lib/messaging"
+	"github.com/hiveot/hivekit/go/modules/agent"
 )
 
 // IsyDimmerThing is a general-purpose dimmer switch
@@ -49,14 +49,14 @@ func (it *IsyDimmerThing) MakeTD() *td.TD {
 	return tdi
 }
 
-func (it *IsyDimmerThing) HandleConfigRequest(req *messaging.RequestMessage) *messaging.ResponseMessage {
+func (it *IsyDimmerThing) HandleConfigRequest(req *msg.RequestMessage) *msg.ResponseMessage {
 	return req.CreateResponse(nil, errors.New("unknown config: "+req.Name))
 }
 
 // HandleActionRequest handles request to execute an action on this device
 // actionID string as defined in the action affordance
 // newValue is not used as these actions do not carry a parameter
-func (it *IsyDimmerThing) HandleActionRequest(ag *agent.Agent, req *messaging.RequestMessage) *messaging.ResponseMessage {
+func (it *IsyDimmerThing) HandleActionRequest(ag *agent.Agent, req *msg.RequestMessage) *msg.ResponseMessage {
 	var restPath = ""
 	var newValue = ""
 	// FIXME: req keys are node attributes keys, not vocab @types (or are they?)

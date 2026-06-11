@@ -9,13 +9,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hiveot/hub/lib/agent"
-	"github.com/hiveot/hub/lib/buckets"
-	"github.com/hiveot/hub/lib/clients"
-	"github.com/hiveot/hub/lib/clients/authclient"
-	"github.com/hiveot/hub/lib/consumer"
-	"github.com/hiveot/hub/lib/messaging"
-	"github.com/hiveot/hub/lib/servers/httpbasic"
+	"github.com/hiveot/hivekit/go/modules/agent"
+	authnpkg "github.com/hiveot/hivekit/go/modules/authn/pkg"
+	"github.com/hiveot/hivekit/go/modules/bucketstore"
+	"github.com/hiveot/hivekit/go/modules/consumer"
+	"github.com/hiveot/hivekit/go/modules/transport"
+	"github.com/hiveot/hivekit/go/modules/transport/clients"
 	"github.com/hiveot/hub/services/hiveoview/src"
 )
 
@@ -41,7 +40,7 @@ type WebSessionManager struct {
 	ag *agent.Agent
 
 	// persistence of dashboard configuration
-	configStore buckets.IBucketStore
+	configStore bucketstore.IBucketStore
 
 	// timeout for hub connections
 	timeout time.Duration
@@ -49,7 +48,7 @@ type WebSessionManager struct {
 
 // add a new session with the given hub connection and send a session count event
 func (sm *WebSessionManager) _addSession(
-	r *http.Request, cid string, cc messaging.IClientConnection) (
+	r *http.Request, cid string, cc transport.ITransportClient) (
 	cs *WebClientSession, err error) {
 
 	// if the browser does not provide a CID until after the first connection,
@@ -58,10 +57,10 @@ func (sm *WebSessionManager) _addSession(
 	//
 	// FIXME: the first connection (without cid) doesn't shutdown until it gains
 	// a sse connection and loses it again.
-	cinfo := cc.GetConnectionInfo()
+	clientID := cc.GetClientID()
 
 	sm.mux.Lock()
-	clcid := cinfo.ClientID + "-" + cid
+	clcid := clientID + "-" + cid
 	existingSession := sm.sessions[clcid]
 	if existingSession != nil {
 		// Caution: Attempt to add a new connection while one exists with the cid.
@@ -71,7 +70,7 @@ func (sm *WebSessionManager) _addSession(
 		cs = existingSession
 		//exhccid := existingSession.cid //GetConnectionID()
 		slog.Warn("session with clcid already exists. replace its connection.",
-			slog.String("clientID", cinfo.ClientID),
+			slog.String("clientID", clientID),
 			slog.String("clcid", cs.clcid),
 		)
 
@@ -79,11 +78,12 @@ func (sm *WebSessionManager) _addSession(
 		// session (plus its waiting for a lock).
 		// If the connection has been replaced then it won't match so ignore the
 		// callback if the connection differs.
-		co := consumer.NewConsumer(cc, sm.timeout)
+		co := consumer.NewConsumer(cc)
+		co.SetTimeout(sm.timeout)
 		existingSession.ReplaceConsumer(co)
 	} else {
-		co := consumer.NewConsumer(cc, sm.timeout)
-		clientID := co.GetClientID()
+		co := consumer.NewConsumer(cc)
+		co.SetTimeout(sm.timeout)
 		clientBucket := sm.configStore.GetBucket(clientID)
 
 		cs = NewWebClientSession(cid, co, r.RemoteAddr, clientBucket, sm.onClose)
@@ -96,13 +96,13 @@ func (sm *WebSessionManager) _addSession(
 	//maxAge := time.Hour * 24 * 14
 	//err = SetSessionCookie(w, clientID, newToken, maxAge, sm.signingKey)
 	slog.Info("_addSession",
-		slog.String("clientID", cinfo.ClientID),
+		slog.String("clientID", clientID),
 		slog.String("clcid", cs.clcid),
 		slog.String("remoteAdddr", r.RemoteAddr),
 		slog.String("cc.cid", cinfo.ConnectionID),
 		slog.Int("nr sessions", len(sm.sessions)),
 	)
-	_ = sm.ag.PubEvent(src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions)
+	sm.ag.PubEvent(src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions)
 	return cs, err
 }
 
@@ -143,7 +143,7 @@ func (sm *WebSessionManager) _removeSession(cs *WebClientSession) {
 		//slog.String("hc.cid", hccid),
 	)
 	go func() {
-		_ = sm.ag.PubEvent(src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions)
+		sm.ag.PubEvent(src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions)
 	}()
 }
 
@@ -200,7 +200,8 @@ func (sm *WebSessionManager) HandleConnectWithPassword(
 
 	// Authentication uses its own client that knows the auth protocol
 	parts, _ := url.Parse(sm.hubURL)
-	authCl := authclient.NewAuthClient(parts.Host, sm.caCert, sm.timeout)
+	authCl := authnpkg.NewUserAuthnHttpClient(parts.Host, sm.caCert)
+	authCl.SetTimeout(sm.timeout)
 
 	// attempt to login
 	newToken, err = authCl.LoginWithPassword(loginID, password)
@@ -209,13 +210,17 @@ func (sm *WebSessionManager) HandleConnectWithPassword(
 		return "", err
 	}
 	// FIXME: use the session's directory cache to get the form
-	cc, err := clients.ConnectWithToken(loginID, newToken, sm.caCert, sm.hubURL, sm.timeout)
+	// cc, err := clients.ConnectWithToken(loginID, newToken, sm.caCert, sm.hubURL, sm.timeout)
+	cc, err := clients.NewTransportClient("", sm.hubURL, sm.caCert)
+	cc.SetTimeout(sm.timeout)
+	cc.AuthenticateWithToken(loginID, newToken)
+	err = cc.Connect()
 	if err == nil {
 		if cid != "" {
 			_, err = sm._addSession(r, cid, cc)
 			_ = err
 		} else {
-			cc.Disconnect()
+			cc.Close()
 		}
 		// Update the session cookie with the new auth token (default 14 days)
 		maxAge := time.Hour * 24 * 14
@@ -304,7 +309,7 @@ func (sm *WebSessionManager) GetSessionFromCookie(r *http.Request) (
 	// The UI is supposed to supply a cid header in sse requests. However,
 	// sse-connect ignores the hx-header that contains the cid. As a workaround
 	// also check query parameters.
-	cid = r.Header.Get(httpbasic.ConnectionIDHeader)
+	cid = r.Header.Get(transport.ConnectionIDHeader)
 	if cid == "" {
 		//slog.Error("GetSessionFromCookie: Missing CID")
 		cid = r.URL.Query().Get("cid")
@@ -322,15 +327,15 @@ func (sm *WebSessionManager) GetSessionFromCookie(r *http.Request) (
 // NewWebSessionManager creates a new instance of the hiveoview service
 // session manager.
 //
+//	ag is the agent connecting to the Hub for reporting notifications and handling config
 //	hubURL to connect the clients
 //	signingKey for use with session cookies
 //	caCert of the hub
-//	hc is the agent service connection for reporting notifications and handling config
 //	configStore data store for client configuration
 //	timeout of hub connections
 func NewWebSessionManager(
-	signingKey ed25519.PrivateKey, caCert *x509.Certificate,
-	ag *agent.Agent, configStore buckets.IBucketStore,
+	ag *agent.Agent, signingKey ed25519.PrivateKey, caCert *x509.Certificate,
+	configStore bucketstore.IBucketStore,
 	timeout time.Duration) *WebSessionManager {
 
 	cc := ag.GetConnection()

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/hiveot/hub/lib/messaging"
+	"github.com/hiveot/hivekit/go/api/msg"
 	"github.com/teris-io/shortid"
 )
 
@@ -41,7 +41,7 @@ var TileTypesLabels = map[string]string{
 // The corresponding TD affordance is provided through a lookup method.
 type TileSource struct {
 	// Affordance to present "property", "event" or "action"
-	AffordanceType messaging.AffordanceType `json:"affordanceType"`
+	AffordanceType msg.AffordanceType `json:"affordanceType"`
 	// ThingID source
 	ThingID string `json:"thingID"`
 	// Event/property name

@@ -5,17 +5,17 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/hiveot/hivekit/go/api/msg"
 	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
-	"github.com/hiveot/hub/lib/messaging"
 )
 
 const MaxUpdateWaitTime = 10
 
 // HandleRequest handles action or property write requests
 // For 1-wire, configuration and actions are the same thing
-func (svc *OWServerBinding) HandleRequest(req *messaging.RequestMessage,
-	_ messaging.IConnection) *messaging.ResponseMessage {
+func (svc *OWServerBinding) HandleRequest(
+	req *msg.RequestMessage, replyTo msg.ResponseHandler) error {
 
 	slog.Info("HandleRequest",
 		slog.String("op", req.Operation),
@@ -30,20 +30,20 @@ func (svc *OWServerBinding) HandleRequest(req *messaging.RequestMessage,
 		err = svc.SetTitle(req)
 		deviceTitleByte, _ := svc.customTitles.Get(req.ThingID)
 		resp := req.CreateResponse(string(deviceTitleByte), err)
-		return resp
+		return replyTo(resp)
 	}
 
 	// This is a node update
 	err = svc.WriteNode(req)
 	if err != nil {
 		resp := req.CreateResponse(nil, err)
-		return resp
+		return replyTo(resp)
 	}
 
 	// Actions do not return a value
 	if req.Operation == td.OpInvokeAction {
 		resp := req.CreateResponse(nil, nil)
-		return resp
+		return replyTo(resp)
 	}
 
 	// in the background poll the result a few times until the requested
@@ -55,7 +55,7 @@ func (svc *OWServerBinding) HandleRequest(req *messaging.RequestMessage,
 		}
 		// complete or fail the request
 		resp := req.CreateResponse(newValue, err)
-		_ = svc.ag.SendResponse(resp)
+		replyTo(resp)
 
 		// finally do a full refresh that sends notifications to subscribers
 		_ = svc.RefreshPropertyValues(false)
@@ -69,7 +69,7 @@ func (svc *OWServerBinding) HandleRequest(req *messaging.RequestMessage,
 // SetTitle configures a new title of a thing
 //
 // OWServer doesn't support this so store this in the service store.
-func (svc *OWServerBinding) SetTitle(req *messaging.RequestMessage) (err error) {
+func (svc *OWServerBinding) SetTitle(req *msg.RequestMessage) (err error) {
 
 	valueStr := req.ToString(0)
 
@@ -86,7 +86,7 @@ func (svc *OWServerBinding) SetTitle(req *messaging.RequestMessage) (err error) 
 
 // WriteNode validates and writes the new value to the node
 // in 1-wire actions and configuration is the same thing
-func (svc *OWServerBinding) WriteNode(req *messaging.RequestMessage) (err error) {
+func (svc *OWServerBinding) WriteNode(req *msg.RequestMessage) (err error) {
 
 	var attr eds.OneWireAttr
 	valueStr := req.ToString(0)
@@ -127,7 +127,7 @@ func (svc *OWServerBinding) WriteNode(req *messaging.RequestMessage) (err error)
 
 // WaitForValueUpdate waits for the node value to be applied
 func (svc *OWServerBinding) WaitForValueUpdate(
-	req *messaging.RequestMessage, seconds int) (newValue string, hasUpdated bool) {
+	req *msg.RequestMessage, seconds int) (newValue string, hasUpdated bool) {
 
 	var err error
 	valueStr := req.ToString(0)

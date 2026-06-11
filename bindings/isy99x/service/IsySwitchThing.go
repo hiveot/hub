@@ -5,12 +5,11 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/hiveot/hivekit/go/api/msg"
 	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/api/vocab"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
-	"github.com/hiveot/hub/lib/agent"
-	"github.com/hiveot/hub/lib/messaging"
 )
 
 // IsySwitchThing is a general-purpose on/off switch
@@ -32,8 +31,8 @@ func (it *IsySwitchThing) GetPropValues(onlyChanges bool) map[string]any {
 // HandleActionRequest handles request to execute an action on this device
 // actionID string as defined in the action affordance
 // newValue is not used as these actions do not carry a parameter
-func (it *IsySwitchThing) HandleActionRequest(
-	ag *agent.Agent, req *messaging.RequestMessage) *messaging.ResponseMessage {
+func (it *IsySwitchThing) HandleActionRequest(req *msg.RequestMessage, replyTo msg.ResponseHandler) error {
+	// ag *agent.Agent, req *msg.RequestMessage) *msg.ResponseMessage {
 	var restPath = ""
 	var newValue = ""
 	var input bool
@@ -51,7 +50,8 @@ func (it *IsySwitchThing) HandleActionRequest(
 		// unknown req
 		newValue = ""
 		err := fmt.Errorf("HandleRequest. Unknown req: %s", req.Name)
-		return req.CreateResponse(nil, err)
+		resp := req.CreateResponse(nil, err)
+		return replyTo(resp)
 	}
 
 	// Post a new value
@@ -60,7 +60,8 @@ func (it *IsySwitchThing) HandleActionRequest(
 
 	// read the result. As this takes a while, retry every second for 5 seconds
 	if err != nil {
-		return req.CreateResponse(nil, err)
+		resp := req.CreateResponse(nil, err)
+		return replyTo(resp)
 	}
 	// return a 'running' status while reading back the result
 	//send a 'running' ActionStatus message
@@ -68,7 +69,7 @@ func (it *IsySwitchThing) HandleActionRequest(
 
 	// in the background poll for status update until completed
 	go func() {
-		var resp *messaging.ResponseMessage
+		var resp *msg.ResponseMessage
 		hasUpdated := false
 		// TODO: clean this up. Use websocket instead of repeated polling.
 		for i := 0; i < 5; i++ {
@@ -104,7 +105,8 @@ func (it *IsySwitchThing) HandleActionRequest(
 			// FIXME: send notification in the background for all subscribers.
 			//go it.PublishAllThingValues()
 		}
-		_ = ag.GetConnection().SendResponse(resp)
+		replyTo(resp)
+
 	}()
 	// send the response async when done
 	return nil

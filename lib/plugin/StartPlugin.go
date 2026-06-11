@@ -3,22 +3,14 @@ package plugin
 import (
 	"log/slog"
 	"os"
+	"path"
 
-	"github.com/hiveot/hub/lib/agent"
-	"github.com/hiveot/hub/lib/clients"
+	"github.com/hiveot/hivekit/go/modules"
+	"github.com/hiveot/hivekit/go/modules/factory"
+	"github.com/hiveot/hivekit/go/modules/transport"
+	"github.com/hiveot/hivekit/go/modules/transport/clients"
+	"github.com/hiveot/hivekit/go/utils"
 )
-
-type PluginConfig struct {
-	LogLevel string `yaml:""`
-}
-
-// IPlugin interface of protocol bindings and service plugins
-type IPlugin interface {
-	// Start the plugin with the given environment settings and hub connection
-	//	ag is the agent with the capability for publishing and subscribing
-	Start(ag *agent.Agent) error
-	Stop()
-}
 
 // StartPlugin implements the boilerplate to launch a plugin based on argv
 // and its config. This does not return until a signal is received.
@@ -39,9 +31,18 @@ type IPlugin interface {
 //	 file, primary key, and CA certificate.
 //	certDir contains the service auth tokens
 //	serverURL is the URL of the hub server to connect to, if provided
-func StartPlugin(plugin IPlugin, clientID string, certsDir string, serverURL string) {
+func StartPlugin(plugin modules.IHiveModule, clientID string, certsDir string, serverURL string) {
 
-	cc, token, _, err := clients.ConnectWithTokenFile(clientID, certsDir, serverURL, 0)
+	// temporary locate home as the parten of certs
+	homeDir := path.Dir(certsDir)
+	env := factory.NewAppEnvironment(homeDir, true)
+	cc, err := clients.NewTransportClient(
+		transport.ProtocolTypeWotWebsocket, serverURL, env.CaCert)
+
+	token := env.GetAppToken()
+	cc.AuthenticateWithToken(clientID, token)
+	cc.Connect()
+	// cc, token, _, err := clients.ConnectWithTokenFile(clientID, certsDir, serverURL, 0)
 	_ = token
 
 	if err != nil {
@@ -49,15 +50,14 @@ func StartPlugin(plugin IPlugin, clientID string, certsDir string, serverURL str
 		os.Exit(1)
 	}
 	// start the service with the agent.
-	ag := agent.NewAgent(cc, nil, nil, nil, nil, 0)
-	err = plugin.Start(ag)
+	// ag := agent.NewAgent(cc, nil, nil, nil, nil, 0)
+	err = plugin.Start()
 	if err != nil {
 		slog.Error("failed starting service", "err", err.Error())
 		os.Exit(1)
 	}
-	WaitForSignal()
+	utils.WaitForSignal()
 	plugin.Stop()
 
 	os.Exit(0)
-
 }

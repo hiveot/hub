@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/hiveot/hub/lib/servers/httpbasic"
+	"github.com/hiveot/hivekit/go/modules/transport"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/views"
 	"github.com/teris-io/shortid"
@@ -25,7 +25,7 @@ func RenderLogin(w http.ResponseWriter, r *http.Request) {
 
 	// hx-headers doesnt work on posting a form, so use query instead to pass a CID
 	cid := "login-" + shortid.MustGenerate()
-	postLoginPath := fmt.Sprintf("%s?%s=%s", src.UIPostFormLoginPath, httpbasic.ConnectionIDHeader, cid)
+	postLoginPath := fmt.Sprintf("%s?%s=%s", src.UIPostFormLoginPath, transport.ConnectionIDHeader, cid)
 	data := LoginTemplateData{
 		LoginID:       "",
 		LoginError:    "",

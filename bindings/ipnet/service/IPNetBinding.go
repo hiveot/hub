@@ -5,10 +5,11 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/hiveot/hivekit/go/api/msg"
+	"github.com/hiveot/hivekit/go/modules/agent"
+	"github.com/hiveot/hivekit/go/modules/transport"
+	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/bindings/ipnet/config"
-	"github.com/hiveot/hub/lib/agent"
-	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/lib/messaging"
 	"github.com/hiveot/hub/lib/plugin"
 )
 
@@ -23,8 +24,8 @@ type IPNetBinding struct {
 }
 
 // ActionHandler handle action requests
-func (svc *IPNetBinding) ActionHandler(req *messaging.RequestMessage,
-	_ messaging.IConnection) (resp *messaging.ResponseMessage) {
+func (svc *IPNetBinding) ActionHandler(req *msg.RequestMessage,
+	_ transport.IConnection) (resp *msg.ResponseMessage) {
 
 	resp = req.CreateResponse(nil, fmt.Errorf("unknown action '%s'", req.Name))
 	slog.Warn(resp.Error.String())
@@ -34,14 +35,14 @@ func (svc *IPNetBinding) ActionHandler(req *messaging.RequestMessage,
 // Start the binding
 func (svc *IPNetBinding) Start(ag *agent.Agent) (err error) {
 	if svc.config.LogLevel != "" {
-		logging.SetLogging(svc.config.LogLevel, "")
+		utils.SetLogging(svc.config.LogLevel, "")
 	}
 	slog.Info("Starting the IpNet binding", "logLevel", svc.config.LogLevel)
 
 	svc.ag = ag
 
 	// register the action handler
-	svc.ag.SetRequestHandler(svc.ActionHandler)
+	svc.ag.SetAppRequestHook(svc.ActionHandler)
 
 	// publish this binding's TD document
 	err = svc.PubBindingTD()

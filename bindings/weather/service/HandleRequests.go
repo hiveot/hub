@@ -4,20 +4,21 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/hiveot/hivekit/go/api/msg"
 	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/api/vocab"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/bindings/weather/config"
-	"github.com/hiveot/hub/lib/messaging"
 )
 
 // HandleRequest passes the action and config request to the associated Thing.
-func (svc *WeatherBinding) handleRequest(req *messaging.RequestMessage,
-	c messaging.IConnection) (resp *messaging.ResponseMessage) {
+func (svc *WeatherBinding) HandleRequest(
+	req *msg.RequestMessage, replyTo msg.ResponseHandler) error {
+
 	var err error
 
 	if req.Operation == td.OpWriteProperty {
-		return svc.handleConfigRequest(req, c)
+		return svc.handleConfigRequest(req, replyTo)
 	}
 
 	slog.Info("handleActionRequest",
@@ -38,13 +39,14 @@ func (svc *WeatherBinding) handleRequest(req *messaging.RequestMessage,
 	} else {
 		err = fmt.Errorf("handleActionRequest: unknown operation '%s' for thing '%s'", req.Operation, req.ThingID)
 	}
-	resp = req.CreateResponse(nil, err)
+	resp := req.CreateResponse(nil, err)
 	slog.Warn(resp.Error.String())
-	return resp
+	return replyTo(resp)
 }
 
-func (svc *WeatherBinding) handleConfigRequest(req *messaging.RequestMessage,
-	_ messaging.IConnection) (resp *messaging.ResponseMessage) {
+func (svc *WeatherBinding) handleConfigRequest(
+	req *msg.RequestMessage, replyTo msg.ResponseHandler) error {
+
 	var err error
 	var newValue any // if newValue is set the property is published
 
@@ -56,9 +58,9 @@ func (svc *WeatherBinding) handleConfigRequest(req *messaging.RequestMessage,
 	// If this is a preconfigured location it cannot be modified
 	loc, found := svc.locationStore.Get(req.ThingID)
 	if !found {
-		resp = req.CreateResponse(nil, fmt.Errorf("handleConfigRequest: Location '%s' not found", req.ThingID))
+		resp := req.CreateResponse(nil, fmt.Errorf("handleConfigRequest: Location '%s' not found", req.ThingID))
 		slog.Warn(resp.Error.String())
-		return resp
+		return replyTo(resp)
 	}
 
 	switch req.Name {
@@ -102,14 +104,14 @@ func (svc *WeatherBinding) handleConfigRequest(req *messaging.RequestMessage,
 	if err != nil {
 		slog.Warn(err.Error())
 	}
-	resp = req.CreateResponse(req.Input, err)
+	resp := req.CreateResponse(req.Input, err)
 
 	// If a new value is set, update the location and publish the result
 	if err == nil && newValue != nil {
 		svc.locationStore.Update(loc)
 		go func() {
-			_ = svc.ag.PubProperty(req.ThingID, req.Name, newValue)
+			svc.PubProperty(req.ThingID, req.Name, newValue)
 		}()
 	}
-	return resp
+	return replyTo(resp)
 }

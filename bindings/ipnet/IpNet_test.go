@@ -6,31 +6,33 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hiveot/hivekit/go/modules/authn"
+	"github.com/hiveot/hivekit/go/testenv"
+	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/bindings/ipnet/config"
 	"github.com/hiveot/hub/bindings/ipnet/service"
-	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/lib/testenv"
 	"github.com/stretchr/testify/require"
 )
 
 var tempFolder string
-var ts *testenv.TestServer
+var testEnv *testenv.TestEnv
 
 const agentUsesWSS = true
 
 // TestMain run test server and use the project test folder as the home folder.
 // All tests are run using the simulation file.
 func TestMain(m *testing.M) {
+	var stopFn func()
 	// setup environment
 	tempFolder = path.Join(os.TempDir(), "test-ipnet")
-	logging.SetLogging("info", "")
+	utils.SetLogging("info", "")
 
 	//
-	ts = testenv.StartTestServer(true)
+	testEnv, stopFn = testenv.StartTestEnv("")
 
 	result := m.Run()
 	time.Sleep(time.Millisecond)
-	ts.Stop()
+	stopFn()
 	if result == 0 {
 		_ = os.RemoveAll(tempFolder)
 	}
@@ -46,9 +48,9 @@ func TestStartStop(t *testing.T) {
 	cfg.ScanAsRoot = false
 
 	svc := service.NewIpNetBinding(cfg)
-	ag, _ := ts.AddConnectService("ipnet")
-	defer ag.Disconnect()
-	err := svc.Start(ag)
+	cc1, _ := testEnv.NewConnectedClient("ipnet", authn.ClientRoleService)
+	defer cc1.Close()
+	err := svc.Start(cc1)
 
 	require.NoError(t, err)
 	defer svc.Stop()

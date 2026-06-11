@@ -3,8 +3,8 @@ package service
 import (
 	"errors"
 
+	"github.com/hiveot/hivekit/go/api/msg"
 	"github.com/hiveot/hivekit/go/api/td"
-	"github.com/hiveot/hub/lib/messaging"
 )
 
 // IsySensorThing is a general-purpose sensor
@@ -18,7 +18,7 @@ func (it *IsySensorThing) GetPropValues(onlyChanges bool) map[string]any {
 	return propValues
 }
 
-func (it *IsySensorThing) HandleConfigRequest(req *messaging.RequestMessage) *messaging.ResponseMessage {
+func (it *IsySensorThing) HandleConfigRequest(req *msg.RequestMessage) *msg.ResponseMessage {
 	// TODO: sensor configuration
 	return req.CreateResponse(nil, errors.New("unknown config: "+req.Name))
 }

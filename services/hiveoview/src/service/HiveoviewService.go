@@ -13,12 +13,15 @@ import (
 	"path"
 	"time"
 
+	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/v5"
-	"github.com/hiveot/hub/lib/agent"
-	"github.com/hiveot/hub/lib/buckets"
-	"github.com/hiveot/hub/lib/buckets/kvbtree"
-	"github.com/hiveot/hub/lib/servers/tlsserver"
-	authz "github.com/hiveot/hub/runtime/authz/api"
+	"github.com/hiveot/hivekit/go/modules"
+	"github.com/hiveot/hivekit/go/modules/agent"
+	"github.com/hiveot/hivekit/go/modules/bucketstore"
+	bucketstorepkg "github.com/hiveot/hivekit/go/modules/bucketstore/pkg"
+	"github.com/hiveot/hivekit/go/modules/transport"
+	"github.com/hiveot/hivekit/go/modules/transport/tlsserver"
+	tlsserverpkg "github.com/hiveot/hivekit/go/modules/transport/tlsserver/pkg"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views"
@@ -30,6 +33,8 @@ const HiveoviewStoreName = "hiveoview.kvbtree"
 // It utilizes gin, htmx and TempL for serving html.
 // credits go to: https://github.com/marco-souza/gx/blob/main/cmd/server/server.go
 type HiveoviewService struct {
+	modules.HiveModuleBase
+
 	//serverAddr   string // listening address
 	port         int  // listening port
 	dev          bool // development configuration
@@ -43,7 +48,7 @@ type HiveoviewService struct {
 	// tls server
 	serverCert *tls.Certificate
 	caCert     *x509.Certificate
-	tlsServer  *tlsserver.TLSServer
+	tlsServer  transport.IHttpServer
 
 	// a web session per connections
 	sm *session.WebSessionManager
@@ -63,7 +68,7 @@ type HiveoviewService struct {
 
 	// backend storage of UI configuration for clients by clientID
 	storeDir    string
-	configStore buckets.IBucketStore
+	configStore bucketstore.IBucketStore
 }
 
 //func (svc *HiveoviewService) GetServerURL() string {
@@ -81,31 +86,32 @@ func (svc *HiveoviewService) GetSM() *session.WebSessionManager {
 // This is invoked by the plugin library.
 //
 //	ag is the service agent connection to the hub for publishing notifications
-func (svc *HiveoviewService) Start(ag *agent.Agent) error {
-	slog.Info("Starting HiveoviewService", "clientID", ag.GetClientID())
-	svc.ag = ag
+func (svc *HiveoviewService) Start() error {
+	slog.Info("Starting HiveoviewService", "clientID", svc.ag.GetThingID())
 
 	storePath := path.Join(svc.storeDir, HiveoviewStoreName)
-	svc.configStore = kvbtree.NewKVStore(storePath)
+	// svc.configStore = kvbtree.NewKVStore(storePath)
+	svc.configStore = bucketstorepkg.NewKVBTreeStore(storePath)
 	err := svc.configStore.Open()
 	if err != nil {
 		return err
 	}
 
 	// publish a TD for the service and set allowable roles in this case only a management capability is published
-	err = authz.UserSetPermissions(ag.Consumer, authz.ThingPermissions{
-		AgentID: ag.GetClientID(),
-		ThingID: src.HiveoviewServiceID,
-		Allow:   []authz.ClientRole{authz.ClientRoleAdmin, authz.ClientRoleService, authz.ClientRoleManager},
-	})
-	if err != nil {
-		slog.Error("failed to set the hiveoview service permissions", "err", err.Error())
-	}
+	// authzClient := authzpkg.NewAuthzClient(ag)
+	// err = authz.UserSetPermissions(ag, authz.ThingPermissions{
+	// 	AgentID: ag.GetClientID(),
+	// 	ThingID: src.HiveoviewServiceID,
+	// 	Allow:   []authz.ClientRole{authz.ClientRoleAdmin, authz.ClientRoleService, authz.ClientRoleManager},
+	// })
+	// if err != nil {
+	// 	slog.Error("failed to set the hiveoview service permissions", "err", err.Error())
+	// }
 
 	// Setup the handling of incoming web sessions
 	// re-use the runtime connection manager
 	svc.sm = session.NewWebSessionManager(
-		svc.signingKey, svc.caCert, ag, svc.configStore, svc.timeout)
+		svc.ag, svc.signingKey, svc.caCert, svc.configStore, svc.timeout)
 
 	// parse the templates
 	svc.tm.ParseAllTemplates()
@@ -121,9 +127,10 @@ func (svc *HiveoviewService) Start(ag *agent.Agent) error {
 	// use the hub url.
 	if svc.serverCert != nil {
 
-		tlsServer, router := tlsserver.NewTLSServer(
-			"", svc.port, svc.serverCert, svc.caCert)
+		httpCfg := tlsserver.NewTLSServerConfig("", svc.port, svc.serverCert, svc.caCert, true)
+		tlsServer := tlsserverpkg.NewTLSServer(httpCfg, authenticator)
 
+		router := tlsServer.GetProtectedRoute()
 		svc.CreateRoutes(router, svc.rootPath)
 		svc.tlsServer = tlsServer
 		err = tlsServer.Start()
@@ -146,7 +153,7 @@ func (svc *HiveoviewService) Start(ag *agent.Agent) error {
 	}
 	// last, publish this service's TD and properties
 	_ = svc.PublishServiceTD()
-	_ = svc.PublishServiceProps()
+	svc.PublishServiceProps()
 
 	return nil
 }
@@ -154,7 +161,7 @@ func (svc *HiveoviewService) Start(ag *agent.Agent) error {
 func (svc *HiveoviewService) Stop() {
 	slog.Info("Stopping HiveoviewService")
 	// TODO: send event the service has stopped
-	svc.ag.Disconnect()
+	svc.ag.Stop()
 	svc.sm.CloseAllWebSessions()
 	if svc.tlsServer != nil {
 		svc.tlsServer.Stop()
@@ -174,6 +181,7 @@ func (svc *HiveoviewService) Stop() {
 // This must contain static/, views/ and webc/ directories.
 // If empty, the embedded filesystem is used.
 //
+//	ag is the agent used to connect to the hub
 //	serverPort is the port of the web server will listen on
 //	debug to enable debugging output
 //	signingKey used to sign cookies. Using nil means that a server restart will invalidate the cookies
@@ -182,7 +190,8 @@ func (svc *HiveoviewService) Stop() {
 //	caCert server CA certificate
 //	timeout of client hub connections
 //	storeDir path to directory holding client session and dashboard data
-func NewHiveovService(serverPort int, debug bool,
+func NewHiveovService(
+	ag *agent.Agent, serverPort int, debug bool,
 	signingKey ed25519.PrivateKey, rootPath string,
 	serverCert *tls.Certificate, caCert *x509.Certificate,
 	timeout time.Duration,
@@ -196,17 +205,20 @@ func NewHiveovService(serverPort int, debug bool,
 		_, signingKey, _ = ed25519.GenerateKey(rand.Reader)
 	}
 	tm := views.InitTemplateManager(templatePath)
-	svc := HiveoviewService{
-		port:         serverPort,
-		shouldUpdate: true,
-		debug:        debug,
-		signingKey:   signingKey,
-		rootPath:     rootPath,
-		tm:           tm,
-		serverCert:   serverCert,
-		caCert:       caCert,
-		storeDir:     storeDir,
-		timeout:      timeout,
+	svc := &HiveoviewService{
+		HiveModuleBase: *modules.NewHiveModuleBase(src.HiveoviewServiceID, 0),
+		ag:             ag,
+		port:           serverPort,
+		shouldUpdate:   true,
+		debug:          debug,
+		signingKey:     signingKey,
+		rootPath:       rootPath,
+		tm:             tm,
+		serverCert:     serverCert,
+		caCert:         caCert,
+		storeDir:       storeDir,
+		timeout:        timeout,
 	}
-	return &svc
+	var _ modules.IHiveModule = svc // interface check
+	return svc
 }

@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"path"
 
+	"github.com/hiveot/hivekit/go/modules/factory"
 	"github.com/hiveot/hub/bindings/weather/config"
 	"github.com/hiveot/hub/bindings/weather/service"
 	"github.com/hiveot/hub/lib/plugin"
@@ -11,7 +12,7 @@ import (
 
 // Start the Weather binding
 func main() {
-	env := plugin.GetAppEnvironment("", true)
+	env := factory.NewAppEnvironment("", true)
 	cfg := config.NewWeatherConfig()
 	err := env.LoadConfig(&cfg)
 	if err != nil {

@@ -8,12 +8,12 @@ import (
 	"time"
 
 	"github.com/araddon/dateparse"
+	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/v5"
+	"github.com/hiveot/hivekit/go/api/msg"
 	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/api/vocab"
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hub/lib/consumedthing"
-	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
@@ -29,17 +29,17 @@ type ActionRequestTemplateData struct {
 	Description string
 
 	// the thing instance used to apply the action
-	CT *consumedthing.ConsumedThing
+	CT *consumer.ConsumedThing
 
 	// Affordance of the action to issue containing the input dataschema
 	Action *td.ActionAffordance
 
 	// input value to edit
 	// This defaults to the last action input
-	InputValue *consumedthing.InteractionInput
+	InputValue *consumer.InteractionInput
 
 	// the previous action request record
-	LastActionRecord *digitwin.ActionStatus
+	LastActionRecord *msg.ActionStatus
 	// input value with previous action input (if any)
 	//LastActionInput consumedthing.DataSchemaValue
 	// previous action timestamp (formatted)
@@ -103,7 +103,7 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 		Action:  actionAff,
 		CT:      ct,
 		// The input value will be set to the last action value, if available
-		InputValue:  consumedthing.NewInteractionInput(tdi, name, nil),
+		InputValue:  consumer.NewInteractionInput(tdi, name, nil),
 		Description: actionAff.Description,
 	}
 	if data.Description == "" {
@@ -112,7 +112,8 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 
 	// get last action request that was received
 	// reading a latest value is optional
-	actionVal, err := digitwin.ThingValuesQueryAction(sess.GetConsumer(), name, thingID)
+	co := sess.GetConsumer()
+	actionVal, err := co.QueryAction(name, thingID)
 	if err == nil && actionVal.Name != "" {
 		data.LastActionRecord = &actionVal
 		//data.PrevValue = &lastActionRecord

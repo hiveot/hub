@@ -7,14 +7,12 @@ import (
 
 	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/api/vocab"
+	"github.com/hiveot/hivekit/go/modules/agent"
+	"github.com/hiveot/hivekit/go/modules/bucketstore"
+	"github.com/hiveot/hivekit/go/modules/bucketstore/internal/stores/kvbtree"
+	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/bindings/owserver/config"
 	"github.com/hiveot/hub/bindings/owserver/service/eds"
-	"github.com/hiveot/hub/lib/agent"
-	"github.com/hiveot/hub/lib/buckets"
-	"github.com/hiveot/hub/lib/buckets/kvbtree"
-	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/lib/plugin"
-	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -28,8 +26,10 @@ const customTitlesKey = "customTitles"
 
 // OWServerBinding is the hub protocol binding plugin for capturing 1-wire OWServer V2 Data
 type OWServerBinding struct {
+	*agent.Agent
+
 	// Connecting ID and service ID of this binding
-	agentID string
+	// serviceID string
 
 	// Configuration of this protocol binding
 	config *config.OWServerConfig
@@ -49,9 +49,9 @@ type OWServerBinding struct {
 	values map[string]map[string]NodeValueStamp
 
 	// persistent store with device titles
-	store buckets.IBucketStore
+	store bucketstore.IBucketStore
 	// the user edited node names
-	customTitles buckets.IBucket
+	customTitles bucketstore.IBucket
 
 	// nodes by thingID. Used in handling action requests
 	nodes map[string]*eds.OneWireNode
@@ -67,7 +67,7 @@ type OWServerBinding struct {
 func (svc *OWServerBinding) CreateBindingTD() *td.TD {
 	// This binding exposes the TD of itself.
 	// Currently its configuration comes from file.
-	tdi := td.NewTD(svc.agentID, "OWServer binding", vocab.DeviceTypeService)
+	tdi := td.NewTD(svc.GetThingID(), "OWServer binding", vocab.DeviceTypeService)
 	tdi.Description = "Driver for the OWServer V2 Gateway 1-wire interface"
 
 	prop := tdi.AddProperty(bindingMake, "Developer", "", td.DataTypeString).
@@ -102,19 +102,17 @@ func (svc *OWServerBinding) GetBindingPropValues() map[string]any {
 // This publishes a TD for this binding, starts a background heartbeat.
 //
 //	ag is the agent connection for receiving requests and sending responses.
-func (svc *OWServerBinding) Start(ag *agent.Agent) (err error) {
+func (svc *OWServerBinding) Start() (err error) {
 	slog.Info("Starting OWServer binding")
 	if svc.config.LogLevel != "" {
-		logging.SetLogging(svc.config.LogLevel, "")
+		utils.SetLogging(svc.config.LogLevel, "")
 	}
-	svc.ag = ag
-	svc.agentID = ag.GetClientID()
 	// Create the adapter for the OWServer 1-wire gateway
 	svc.edsAPI = eds.NewEdsAPI(
 		svc.config.OWServerURL, svc.config.OWServerLogin, svc.config.OWServerPassword)
 
 	// subscribe to action and configuration requests
-	svc.ag.SetRequestHandler(svc.HandleRequest)
+	svc.ag.SetAppRequestHook(svc.HandleRequest)
 
 	// open the store
 	err = svc.store.Open()
@@ -127,14 +125,13 @@ func (svc *OWServerBinding) Start(ag *agent.Agent) (err error) {
 	tdi := svc.CreateBindingTD()
 	svc.things[tdi.ID] = tdi
 	tdJSON, _ := jsoniter.MarshalToString(tdi)
-	err = digitwin.ThingDirectoryUpdateThing(svc.ag.Consumer, tdJSON)
-	//err = svc.ag.UpdateThing(tdi)
+	err = svc.ag.WriteTD(tdJSON)
 	if err != nil {
 		slog.Error("failed publishing service TD. Continuing...",
 			slog.String("err", err.Error()))
 	} else {
 		props := svc.GetBindingPropValues()
-		err = ag.PubProperties(tdi.ID, props)
+		svc.ag.PubProperties(tdi.ID, props)
 	}
 
 	// last, start polling heartbeat
@@ -153,7 +150,7 @@ func (svc *OWServerBinding) startHeartBeat() (stopFn func()) {
 	var pollCountDown = 0
 	var republishCountDown = 0
 
-	stopFn = plugin.StartHeartbeat(time.Second, func() {
+	stopFn = utils.StartHeartbeat(time.Second, func() {
 		tdCountDown--
 		pollCountDown--
 		republishCountDown--
@@ -161,10 +158,7 @@ func (svc *OWServerBinding) startHeartBeat() (stopFn func()) {
 			// polling nodes and values takes one call.
 			// Since this can take some time, check if client is closed before using it.
 			nodes, err := svc.PollNodes()
-			svc.mux.RLock()
-			isConnected := svc.ag.IsConnected()
-			svc.mux.RUnlock()
-			if err == nil && isConnected {
+			if err == nil {
 				if tdCountDown <= 0 {
 					// Every TDInterval publish the full TD's
 					err = svc.PublishNodeTDs(nodes)
@@ -201,15 +195,27 @@ func (svc *OWServerBinding) Stop() {
 	slog.Info("OWServer binding stopped")
 }
 
-// NewOWServerBinding creates a new OWServer Protocol Binding service
+// NewOWServerBinding creates a new OWServer Protocol Binding agent
+// This agent can be linked to a server module or to a RC client.
+// Intended to be used with the factory.
 //
+//	serviceID is the service thingID. Typically the environment appID
+//	storePath is the location to store the ?. "" for in-memory storage.
 //	config holds the configuration of the service
-func NewOWServerBinding(storePath string, config *config.OWServerConfig) *OWServerBinding {
+func NewOWServerBinding(
+	serviceID string, storePath string, config *config.OWServerConfig) *OWServerBinding {
+
+	// what should the binding ID be?
+	//  -> thingID to be addressed
+	// what ID does the factory use?
+	//  -> the factory creates a client or server module with the RC clientID
+	//  -> the clientID can be the appID. it must match the server auth
 
 	store := kvbtree.NewKVStore(storePath)
 
 	// these are from hub configuration
 	svc := &OWServerBinding{
+		Agent:  agent.NewAgent(serviceID, nil),
 		config: config,
 		store:  store,
 		values: make(map[string]map[string]NodeValueStamp),

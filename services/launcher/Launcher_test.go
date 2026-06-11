@@ -7,25 +7,23 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hiveot/hub/lib/testenv"
-	authn "github.com/hiveot/hub/runtime/authn/api"
-	authz "github.com/hiveot/hub/runtime/authz/api"
+	"github.com/hiveot/hivekit/go/modules/authn"
+	"github.com/hiveot/hivekit/go/modules/consumer"
+	"github.com/hiveot/hivekit/go/testenv"
+	"github.com/hiveot/hivekit/go/utils"
 	launcher "github.com/hiveot/hub/services/launcher/api"
 	"github.com/hiveot/hub/services/launcher/config"
 	"github.com/hiveot/hub/services/launcher/service"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/hiveot/hub/lib/consumer"
-	"github.com/hiveot/hub/lib/logging"
 )
 
 // var homeDir = "/tmp/test-launcher"
 var logDir = "/tmp/test-launcher"
 
 // the following are set by the testmain
-var ts *testenv.TestServer
+var testEnv *testenv.TestEnv
 
 const agentUsesWSS = false
 
@@ -43,7 +41,7 @@ func startService() (l *consumer.Consumer, stopFn func()) {
 	const launcherID = launcher.AdminAgentID
 	const adminID = "admin"
 
-	ts = testenv.StartTestServer(true)
+	testEnv = testenv.NewTestEnv()
 
 	//hc1, _ := ts.AddConnectService(launcherID)
 	var launcherConfig = config.NewLauncherConfig()
@@ -57,16 +55,16 @@ func startService() (l *consumer.Consumer, stopFn func()) {
 	launcherConfig.ProvideServerURL = false
 	//var env = plugin.GetAppEnvironment(ts.AppEnv.HomeDir, false)
 
-	binDir := ts.AppEnv.BinDir
+	binDir := testEnv.AppEnv.BinDir
 	pluginsDir := "/bin" // for /bin/yes
-	certsDir := ts.AppEnv.CertsDir
+	certsDir := testEnv.AppEnv.CertsDir
 	clientID := launcherID
 
 	//env.LogsDir = logDir
 	//env.CertsDir = homeDir
 	//env.CaCert = ts.Certs.CaCert
 
-	serverURL := ts.GetServerURL(authn.ClientTypeService)
+	serverURL := testEnv.GetServerURL(authn.ClientTypeService)
 	svc := service.NewLauncherService(
 		serverURL, clientID, binDir, pluginsDir, certsDir, launcherConfig)
 	err := svc.Start()
@@ -78,18 +76,18 @@ func startService() (l *consumer.Consumer, stopFn func()) {
 	//agent := service.StartLauncherAgent(svc, hc1)
 	//_ = agent
 	//--- connect the launcher user
-	co1, _, _ := ts.AddConnectConsumer(adminID, authz.ClientRoleAdmin)
+	co1, _, _ := testEnv.AddConnectConsumer(adminID, authn.ClientRoleAdmin)
 	return co1, func() {
 		co1.Disconnect()
 		//hc1.Disconnect()
 		_ = svc.Stop()
 		time.Sleep(time.Millisecond)
-		ts.Stop()
+		testEnv.Stop()
 	}
 }
 
 func TestMain(m *testing.M) {
-	logging.SetLogging("info", "")
+	utils.SetLogging("info", "")
 	res := m.Run()
 	os.Exit(res)
 }
@@ -114,7 +112,7 @@ func TestList(t *testing.T) {
 	require.NoError(t, err)
 	assert.Greater(t, len(infoList), 10)
 
-	co2, _, _ := ts.AddConnectConsumer(userID, authz.ClientRoleAdmin)
+	co2, _, _ := testEnv.AddConnectConsumer(userID, authn.ClientRoleAdmin)
 	defer co2.Disconnect()
 	infoList2, err := launcher.AdminListPlugins(co2, false)
 	require.NoError(t, err)
@@ -129,7 +127,7 @@ func TestListNoPermission(t *testing.T) {
 	defer cancelFunc()
 	require.NotNil(t, co1)
 
-	co2, _, _ := ts.AddConnectConsumer(userID, authz.ClientRoleNone)
+	co2, _, _ := testEnv.AddConnectConsumer(userID, authn.ClientRoleNone)
 	defer co1.Disconnect()
 	info2, err := launcher.AdminListPlugins(co2, false)
 	require.Error(t, err, "user without role should not be able to use launcher")
