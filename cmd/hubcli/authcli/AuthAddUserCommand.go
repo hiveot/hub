@@ -1,27 +1,27 @@
 package authcli
 
 import (
+	"crypto"
 	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"path"
 
+	"github.com/hiveot/hivekit/go/modules/authn"
+	authnpkg "github.com/hiveot/hivekit/go/modules/authn/pkg"
+	"github.com/hiveot/hivekit/go/modules/consumer"
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hub/lib/consumer"
-	"github.com/hiveot/hub/lib/keys"
-	authn "github.com/hiveot/hub/runtime/authn/api"
-	authz "github.com/hiveot/hub/runtime/authz/api"
 	"github.com/urfave/cli/v2"
 )
 
 // AuthAddUserCommand adds a user
 func AuthAddUserCommand(hc **consumer.Consumer) *cli.Command {
 	displayName := ""
-	var role string = string(authz.ClientRoleViewer)
+	var role string = string(authn.ClientRoleViewer)
 	rolesTxt := fmt.Sprintf("[%s, %s, %s, %s]",
-		authz.ClientRoleViewer, authz.ClientRoleOperator,
-		authz.ClientRoleManager, authz.ClientRoleAdmin,
+		authn.ClientRoleViewer, authn.ClientRoleOperator,
+		authn.ClientRoleManager, authn.ClientRoleAdmin,
 	)
 
 	return &cli.Command{
@@ -142,14 +142,17 @@ func AuthRoleCommand(hc **consumer.Consumer) *cli.Command {
 
 // HandleAddUser adds a user and displays a temporary password
 func HandleAddUser(
-	hc *consumer.Consumer, loginID string, displayName string, role string) (err error) {
+	co *consumer.Consumer, loginID string, displayName string, role string) (err error) {
 
 	newPassword := GeneratePassword(9, true)
+	authnAdmin := authnpkg.NewAuthnAdminClient(co)
 
-	err = authn.AdminAddConsumer(hc, loginID, displayName, newPassword)
-	prof, _ := authn.AdminGetClientProfile(hc, loginID)
-	_ = authn.AdminUpdateClientProfile(hc, prof)
-	_ = authz.AdminSetClientRole(hc, loginID, authz.ClientRole(role))
+	token, err := authnAdmin.AddClient(loginID, displayName, authn.ClientRoleViewer, "")
+	_ = token
+	authnAdmin.SetClientPassword(loginID, newPassword)
+	prof, _ := authnAdmin.GetClientProfile(loginID)
+	_ = authnAdmin.UpdateClientProfile(prof)
+
 	if err != nil {
 		fmt.Println("Error: " + err.Error())
 	} else if newPassword != "" {
@@ -167,29 +170,32 @@ func HandleAddUser(
 //	displayName is optional
 //	certsDir with directory to store keys/token
 func HandleAddService(
-	hc *consumer.Consumer, serviceID string, displayName string, certsDir string) (err error) {
-	var kp keys.IHiveKey
+	co *consumer.Consumer, serviceID string, displayName string, certsDir string) (err error) {
+
+	var pubKey crypto.PublicKey
+	var privKey crypto.PrivateKey
 	//TODO: use standardized extensions from launcher
 	keyFile := serviceID + ".key"
 
 	// if a key exists, use it
 	keyPath := path.Join(certsDir, keyFile)
 	if _, err = os.Stat(keyPath); errors.Is(err, os.ErrNotExist) {
-		kp = keys.NewEcdsaKey()
-		err = kp.ExportPrivateToFile(keyPath)
+		privKey, pubKey = utils.NewEcdsaKey()
+		err = utils.SavePrivateKey(privKey, keyPath) // ExportPrivateToFile(keyPath)
 		pubKeyPath := path.Join(certsDir, serviceID+".pub")
-		err = kp.ExportPublicToFile(pubKeyPath)
+		err = utils.SavePublicKey(pubKey, pubKeyPath)
 		fmt.Printf("New private/public keys written to file '%s'\n", keyPath)
 	} else {
-		kp = keys.NewEcdsaKey()
-		err = kp.ImportPrivateFromFile(keyPath)
+		privKey, pubKey, err = utils.LoadPrivateKey(keyPath)
 		fmt.Printf("Private key loaded from file '%s'\n", keyPath)
 	}
 	if err != nil {
 		slog.Error("Failed creating or loading key", "err", err.Error())
 		return
 	}
-	authToken, err := authn.AdminAddService(hc, serviceID, displayName, kp.ExportPrivate())
+	authAdmin := authnpkg.NewAuthnAdminClient(co)
+	pubKeyPem := utils.PublicKeyToPem(pubKey)
+	authToken, err := authAdmin.AddClient(serviceID, displayName, authn.ClientRoleService, pubKeyPem)
 	_ = authToken
 	if err != nil {
 		slog.Error("Failed adding service",
@@ -217,21 +223,23 @@ func HandleAddService(
 }
 
 // HandleListClients shows a list of user profiles
-func HandleListClients(hc *consumer.Consumer) (err error) {
+func HandleListClients(co *consumer.Consumer) (err error) {
 
-	profileList, err := authn.AdminGetProfiles(hc)
+	authnClient := authnpkg.NewAuthnAdminClient(co)
+	authnClient.SetRequestSink(co)
+
+	profileList, err := authnClient.GetProfiles()
 
 	fmt.Println("Users")
 	fmt.Println("Login ID             Display Name              Role            Modified")
 	fmt.Println("--------             ------------              ----            -------")
 	for _, profile := range profileList {
-		if profile.ClientType == authn.ClientTypeConsumer {
-			role, _ := authz.AdminGetClientRole(hc, profile.ClientID)
+		if profile.Role != authn.ClientRoleAgent && profile.Role != authn.ClientRoleService {
 			fmt.Printf("%-20s %-25s %-15s %s\n",
 				profile.ClientID,
 				profile.DisplayName,
-				role,
-				utils.FormatDateTime(profile.Updated, ""),
+				profile.Role,
+				utils.FormatDateTime(profile.TimeUpdated, ""),
 			)
 		}
 	}
@@ -240,11 +248,11 @@ func HandleListClients(hc *consumer.Consumer) (err error) {
 	fmt.Println("SenderID             Type            Modified")
 	fmt.Println("--------             ----            -------")
 	for _, profile := range profileList {
-		if profile.ClientType != authn.ClientTypeConsumer {
+		if profile.Role == authn.ClientRoleAgent || profile.Role == authn.ClientRoleService {
 			fmt.Printf("%-20s %-15s %s\n",
 				profile.ClientID,
-				profile.ClientType,
-				utils.FormatDateTime(profile.Updated, ""),
+				profile.Role,
+				utils.FormatDateTime(profile.TimeUpdated, ""),
 			)
 		}
 	}
@@ -252,8 +260,9 @@ func HandleListClients(hc *consumer.Consumer) (err error) {
 }
 
 // HandleRemoveClient removes a user
-func HandleRemoveClient(hc *consumer.Consumer, clientID string) (err error) {
-	err = authn.AdminRemoveClient(hc, clientID)
+func HandleRemoveClient(co *consumer.Consumer, clientID string) (err error) {
+	authnClient := authnpkg.NewAuthnAdminClient(co)
+	authnClient.RemoveClient(clientID)
 
 	if err != nil {
 		fmt.Println("Error: " + err.Error())

@@ -12,19 +12,17 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/hiveot/hivekit/go/api/msg"
+	"github.com/hiveot/hivekit/go/modules/agent"
+	"github.com/hiveot/hivekit/go/modules/transport/clients"
+	"github.com/hiveot/hivekit/go/modules/transport/wss"
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hub/lib/agent"
-	"github.com/hiveot/hub/lib/clients"
-	"github.com/hiveot/hub/lib/messaging"
-	"github.com/hiveot/hub/lib/servers/wssserver"
-	authz "github.com/hiveot/hub/runtime/authz/api"
-	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	launcher "github.com/hiveot/hub/services/launcher/api"
 	"github.com/hiveot/hub/services/launcher/config"
 )
 
 // Use this default path instead of discovery when running locally and no server is configured
-const DefaultLocalServerURL = "wss://localhost" + wssserver.DefaultWssPath
+const DefaultLocalServerURL = "wss://localhost" + wss.WotWebsocketPath
 
 // LauncherService manages starting and stopping of plugins
 // This implements the ILauncher interface
@@ -62,7 +60,7 @@ type LauncherService struct {
 	done chan bool
 
 	// request handler
-	adminHandler messaging.RequestHandler
+	adminHandler msg.RequestHandler
 }
 
 // Add discovered runtime to svc.plugins
@@ -238,22 +236,22 @@ func (svc *LauncherService) Start() error {
 	}
 
 	// publish this service TD
-	err = digitwin.ThingDirectoryUpdateThing(svc.ag.Consumer, launcher.AdminTD)
+	err = svc.ag.WriteTD(launcher.AdminTD)
 	if err != nil {
 		slog.Error("failed to publish the launcher service TD", "err", err.Error())
 	}
 
 	// permissions for using this service for administrators and managers
-	err = authz.UserSetPermissions(svc.ag.Consumer, authz.ThingPermissions{
-		AgentID: svc.ag.GetClientID(),
-		ThingID: launcher.AdminServiceID,
-		Allow:   []authz.ClientRole{authz.ClientRoleManager, authz.ClientRoleAdmin, authz.ClientRoleService},
-		Deny:    nil,
-	})
+	// err = authz.UserSetPermissions(svc.ag.Consumer, authz.ThingPermissions{
+	// 	AgentID: svc.ag.GetClientID(),
+	// 	ThingID: launcher.AdminServiceID,
+	// 	Allow:   []authz.ClientRole{authz.ClientRoleManager, authz.ClientRoleAdmin, authz.ClientRoleService},
+	// 	Deny:    nil,
+	// })
 
 	// 4: start listening to action requests
 	adminHandler := launcher.NewHandleAdminRequest(svc)
-	svc.ag.SetRequestHandler(adminHandler)
+	svc.ag.SetAppRequestHook(adminHandler)
 
 	//StartLauncherAgent(svc, svc.ag)
 
@@ -276,7 +274,7 @@ func (svc *LauncherService) Stop() error {
 
 	err := svc.StopAllPlugins(svc.clientID, true)
 	if svc.ag != nil {
-		svc.ag.Disconnect()
+		svc.ag.Stop()
 	}
 	return err
 }

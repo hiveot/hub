@@ -8,7 +8,7 @@ The Hub for the _Hive-of-Things_ provides a secure [runtime](runtime/README-runt
 
 Status Nov 2025: The Hub runtime, services and bindings have been reworked to support the Web-of-things (WoT) Thing Description (TD) specification. It is currently in alpha, functional but breaking changes should be expected.
 
-The Hub is currently further reworked to extract the core library in a reusable 'hive kit' for builing IoT applications. Inspired by go2rtc (for video) the runtime, bindings and services will be migrated to use the stand-alone 'hive kit' modules.
+The Hub is currently further reworked to extract the core library in a reusable [Hive-Kit](https://github.com/hiveot/hivekit) for builing IoT applications. Inspired by go2rtc (for video) the runtime, bindings and services will be migrated to use the stand-alone 'hive kit' modules.
 
 ## Audience
 
@@ -88,4 +88,4 @@ This project builds on the Web of Things (WoT) standardization by the W3C.org st
 
 This project is inspired by the Mozilla Thing draft API [published here](https://iot.mozilla.org/wot/#web-thing-description). However, the Mozilla API is intended to be implemented by Things and is not intended for Things to register themselves. The HiveOT Hub will therefore deviate where necessary.
 
-Many thanks go to Visual Studio Code for providing a free golang IDE.
+Many thanks go to Visual Studio Code for providing a free golang IDE, to github for hosting this repository and to the WoT group.

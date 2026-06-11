@@ -4,16 +4,16 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/hiveot/hivekit/go/modules/bucketstore"
+	bucketstorepkg "github.com/hiveot/hivekit/go/modules/bucketstore/pkg"
 	"github.com/hiveot/hub/bindings/weather/config"
-	"github.com/hiveot/hub/lib/buckets"
-	"github.com/hiveot/hub/lib/buckets/kvbtree"
 	jsoniter "github.com/json-iterator/go"
 )
 
 // LocationStore stores configured locationStore in a bucket store
 type LocationStore struct {
-	bucketStore     buckets.IBucketStore
-	locationsBucket buckets.IBucket
+	bucketStore     bucketstore.IBucketStore
+	locationsBucket bucketstore.IBucket
 	locations       []config.WeatherLocation
 	// lock location updates
 	mux sync.RWMutex
@@ -112,7 +112,7 @@ func (svc *LocationStore) Update(loc config.WeatherLocation) {
 }
 
 func NewLocationStore(storePath string) *LocationStore {
-	bucketStore := kvbtree.NewKVStore(storePath)
+	bucketStore := bucketstorepkg.NewKVBTreeStore(storePath)
 
 	store := &LocationStore{
 		bucketStore: bucketStore,

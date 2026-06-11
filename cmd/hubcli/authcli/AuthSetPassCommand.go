@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hiveot/hub/lib/consumer"
-	authn "github.com/hiveot/hub/runtime/authn/api"
+	authnpkg "github.com/hiveot/hivekit/go/modules/authn/pkg"
+	"github.com/hiveot/hivekit/go/modules/consumer"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/exp/rand"
 )
@@ -36,11 +36,12 @@ func AuthSetPasswordCommand(hc **consumer.Consumer) *cli.Command {
 //
 //	loginID is the ID or email of the user
 //	newPassword can be empty to auto-generate a password
-func HandleSetPassword(hc *consumer.Consumer, loginID string, newPassword string) error {
+func HandleSetPassword(co *consumer.Consumer, loginID string, newPassword string) error {
 	if newPassword == "" {
 		newPassword = GeneratePassword(9, true)
 	}
-	err := authn.AdminSetClientPassword(hc, loginID, newPassword)
+	authnClient := authnpkg.NewAuthnAdminClient(co)
+	err := authnClient.SetClientPassword(loginID, newPassword)
 
 	if err != nil {
 		fmt.Println("Error: " + err.Error())

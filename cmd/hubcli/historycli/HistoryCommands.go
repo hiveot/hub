@@ -3,9 +3,9 @@ package historycli
 import (
 	"fmt"
 
+	"github.com/hiveot/hivekit/go/modules/consumer"
+	historypkg "github.com/hiveot/hivekit/go/modules/history/pkg"
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hub/lib/consumer"
-	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/urfave/cli/v2"
 )
 
@@ -110,13 +110,14 @@ func HistoryListCommand(hc **consumer.Consumer) *cli.Command {
 //}
 
 // HandleListEvents lists the history content
-func HandleListEvents(hc *consumer.Consumer, dThingID string, name string, limit int) error {
+func HandleListEvents(co *consumer.Consumer, dThingID string, name string, limit int) error {
 	// FIXME: hc has a bootstrap algo to read the needed TD
 	//histTD := hc.GetTD(historyapi.ReadHistoryServiceID)
 	//f := histTD.GetForm(td.OpInvokeAction)
-	rd := historyclient.NewReadHistoryClient(hc)
+	hc := historypkg.NewReadHistoryClient(co)
+	hc.SetRequestSink(co)
 
-	cursor, releaseFn, err := rd.GetCursor(dThingID, name)
+	cursor, releaseFn, err := hc.GetCursor(dThingID, name)
 	defer releaseFn()
 	if err != nil {
 		return err
@@ -124,7 +125,7 @@ func HandleListEvents(hc *consumer.Consumer, dThingID string, name string, limit
 	fmt.Println("ThingID                        Timestamp                      Event                Value (truncated)")
 	fmt.Println("-----------                    ---------                      -----                ---------------- ")
 	count := 0
-	for tv, valid, err := cursor.Last(); err == nil && valid && count < limit; tv, valid, err = cursor.Prev() {
+	for tv, valid, err := hc.Last(cursor); err == nil && valid && count < limit; tv, valid, err = hc.Prev(cursor) {
 
 		count++
 		value := utils.DecodeAsString(tv.Data, 30)
@@ -177,7 +178,7 @@ func HandleListEvents(hc *consumer.Consumer, dThingID string, name string, limit
 
 //func HandleListLatestEvents(
 //	hc hubclient.IConsumer, agentID string, thingID string) error {
-//	rd := historyclient.NewReadHistoryClient(hc)
+//	rd := historypkg.NewReadHistoryClient(hc)
 //
 //	props, err := rd.GetLatest(agentID, thingID, nil)
 //

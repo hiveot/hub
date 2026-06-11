@@ -7,7 +7,7 @@ import (
 
 func (svc *IsyBinding) PubEvents(thingID string, evMap map[string]any) {
 	for k, v := range evMap {
-		_ = svc.ag.PubEvent(thingID, k, v)
+		svc.ag.PubEvent(thingID, k, v)
 	}
 }
 
@@ -20,12 +20,7 @@ func (svc *IsyBinding) PublishAllThingValues(onlyChanges bool) error {
 	propMap := svc.GetBindingPropValues(onlyChanges)
 	if len(propMap) > 0 {
 		// no use continuing if publishing fails
-		err := svc.ag.PubProperties(svc.thingID, propMap)
-		if err != nil {
-			err = fmt.Errorf("failed publishing ISY binding props: %w", err)
-			slog.Error(err.Error())
-			return err
-		}
+		svc.ag.PubProperties(svc.thingID, propMap)
 	}
 	// read the gateway properties
 	err := svc.IsyGW.ReadGatewayValues()
@@ -34,9 +29,9 @@ func (svc *IsyBinding) PublishAllThingValues(onlyChanges bool) error {
 		slog.Error(err.Error())
 		return err
 	}
-	propMap = svc.IsyGW.GetPropValues(onlyChanges)
+	propMap = svc.IsyGW.Agent.GetPropValues()
 	if len(propMap) > 0 {
-		_ = svc.ag.PubProperties(svc.IsyGW.GetID(), propMap)
+		svc.PubProperties(svc.IsyGW.GetThingID(), propMap, onlyChanges)
 	}
 
 	// read and publish each gateway connected node on the gateway

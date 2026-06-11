@@ -8,20 +8,20 @@ import (
 	"path"
 	"time"
 
-	"github.com/hiveot/hub/lib/certs"
-	"github.com/hiveot/hub/lib/keys"
-	"github.com/hiveot/hub/lib/logging"
+	"github.com/hiveot/hivekit/go/modules/certs"
+	"github.com/hiveot/hivekit/go/modules/certs/certutils"
+	"github.com/hiveot/hivekit/go/modules/factory"
+	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/lib/plugin"
-	"github.com/hiveot/hub/runtime"
 	"github.com/hiveot/hub/services/hiveoview/config"
 	"github.com/hiveot/hub/services/hiveoview/src/service"
 )
 
 const defaultServerPort = 8443
-const serverCertFile = runtime.DefaultServerCertFile
+const serverCertFile = certs.DefaultServerCertFile
 
 // FYI, not all browsers support certificates with ed25519 keys, so this file contains a ecdsa key
-const serverKeyFile = runtime.DefaultServerKeyFile
+const serverKeyFile = certs.DefaultServerKeyFile
 const TemplateRootPath = "services/hiveoview/src"
 
 // hiveoview will use the 'hubKey.pem' key and hubCert.pem for the server cert
@@ -45,15 +45,15 @@ func main() {
 
 	flag.IntVar(&serverPort, "defaultServerPort", serverPort, "Webserver listening defaultServerPort")
 	flag.BoolVar(&extfs, "extfs", extfs, "Use external gohtml filesystem")
-	env := plugin.GetAppEnvironment("", true)
+	env := factory.NewAppEnvironment("", true)
 	env.LogLevel = "info"
-	logging.SetLogging(env.LogLevel, "")
+	utils.SetLogging(env.LogLevel, "")
 
 	// this config will be replaced with hiveoview Thing config
 	cfg := config.NewHiveoviewConfig(serverPort)
 	_ = env.LoadConfig(&cfg)
 	// each app instance has its own storage directory
-	storageDir := path.Join(env.StoresDir, env.ClientID)
+	storageDir := path.Join(env.StoresDir, env.AppID)
 
 	//storeDir := path.Join(env.StoresDir, "hiveoview")
 	//err := os.MkdirAll(storeDir, 0700)
@@ -62,13 +62,8 @@ func main() {
 	//	panic(err.Error())
 	//}
 	// serve the hiveoview web pages
-	keyData, err := os.ReadFile(env.KeyFile)
-	if err == nil {
-		k := keys.NewEd25519Key()
-		err = k.ImportPrivate(string(keyData))
-		signingKey = k.PrivateKey().(ed25519.PrivateKey)
-		//signingKey, err = jwt.ParseECPrivateKeyFromPEM(keyData)
-	}
+	signingKey, _, err := utils.LoadPrivateKey(env.KeyFile)
+
 	// development only, serve files and parse templates from filesystem
 	rootPath := ""
 	if extfs {
@@ -78,7 +73,7 @@ func main() {
 	// A server certificate is needed in the certs directory
 	serverCertPath := path.Join(env.CertsDir, serverCertFile)
 	serverKeyPath := path.Join(env.CertsDir, serverKeyFile)
-	serverCert, err := certs.LoadTLSCertFromPEM(serverCertPath, serverKeyPath)
+	serverCert, err := certutils.LoadTLSCertFromPEM(serverCertPath, serverKeyPath)
 	if err != nil {
 		slog.Error("Unable to load server certificate: " + err.Error())
 		return
@@ -86,10 +81,10 @@ func main() {
 	// FIXME: currently timeout is set to 20 sec to allow slow requests to complete.
 	// However these requests should handle multiple async updates instead.
 	// for example zwavejs refresh device info can take up to 20sec
-	svc := service.NewHiveovService(
+	svc := service.NewHiveovService(ag,
 		cfg.ServerPort, false, signingKey, rootPath, serverCert, env.CaCert,
 		time.Second*20, storageDir)
 
 	// StartPlugin will connect to the hub and wait for a signal to end.
-	plugin.StartPlugin(svc, env.ClientID, env.CertsDir, env.ServerURL)
+	plugin.StartPlugin(svc, env.AppID, env.CertsDir, env.ServerURL)
 }

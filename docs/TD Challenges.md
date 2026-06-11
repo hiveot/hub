@@ -1,5 +1,7 @@
 # Questions related to the use of TD in HiveOT
 
+Written in 2024. To be updated.
+
 3. How to write multiple properties? [solved]
 > Use-case: user applies changes to multiple properties values in one request.
 > Solution: Don't support writing multiple properties. Use writeproperty instead. This avoids the ambiguity of the payload. Writing properties is rare enough so it isn't needed.

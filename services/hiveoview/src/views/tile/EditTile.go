@@ -7,9 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/hiveot/hivekit/go/api/msg"
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hub/lib/consumedthing"
-	"github.com/hiveot/hub/lib/messaging"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
@@ -23,8 +22,8 @@ type EditTileTemplateData struct {
 	Tile      session.DashboardTile
 	// Values of the tile sources by sourceID (affType/thingID/name)
 	// FIXME: used consumed thing directory to get values?
-	ctDir *consumedthing.ConsumedThingsDirectory
-	//Values map[string]*consumedthing.InteractionOutput
+	ctDir *consumer.ConsumedThingsDirectory
+	//Values map[string]*consumer.InteractionOutput
 	// human labels for each tile type
 	TileTypeLabels map[string]string
 
@@ -163,7 +162,7 @@ func SubmitEditTile(w http.ResponseWriter, r *http.Request) {
 			parts := strings.Split(s, "/")
 			if len(parts) >= 3 {
 				tileSource := session.TileSource{
-					AffordanceType: messaging.AffordanceType(parts[0]),
+					AffordanceType: msg.AffordanceType(parts[0]),
 					ThingID:        parts[1],
 					Name:           parts[2],
 					Title:          sourceTitle,

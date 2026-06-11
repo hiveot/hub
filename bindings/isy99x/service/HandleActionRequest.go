@@ -4,16 +4,16 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/hiveot/hivekit/go/api/msg"
 	"github.com/hiveot/hivekit/go/api/td"
-	"github.com/hiveot/hub/lib/messaging"
 )
 
 // HandleRequest passes the action request to the associated Thing.
-func (svc *IsyBinding) handleRequest(req *messaging.RequestMessage,
-	_ messaging.IConnection) (resp *messaging.ResponseMessage) {
+// This distributes the requests to the thing identified in the thingID
+func (svc *IsyBinding) HandleRequest(req *msg.RequestMessage, replyTo msg.ResponseHandler) error {
 
 	if req.Operation == td.OpWriteProperty {
-		return svc.handleConfigRequest(req)
+		return svc.handleConfigRequest(req, replyTo)
 	}
 
 	slog.Info("handleActionRequest",

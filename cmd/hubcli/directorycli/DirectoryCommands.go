@@ -7,9 +7,9 @@ import (
 	"log/slog"
 
 	"github.com/hiveot/hivekit/go/api/td"
+	"github.com/hiveot/hivekit/go/modules/consumer"
+	directorypkg "github.com/hiveot/hivekit/go/modules/directory/pkg"
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hub/lib/consumer"
-	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/urfave/cli/v2"
 )
 
@@ -47,7 +47,9 @@ func DirectoryListCommand(co **consumer.Consumer) *cli.Command {
 // HandleListDirectory lists the directory content
 func HandleListDirectory(co *consumer.Consumer) (err error) {
 	// todo: iterate with offset and limit
-	tdListJson, err := digitwin.ThingDirectoryRetrieveAllThings(co, 300, 0)
+	dirClient := directorypkg.NewDirectoryClient("", co)
+
+	tdListJson, err := dirClient.RetrieveAllThings(300, 0)
 	tdList, err2 := td.UnmarshalTDList(tdListJson)
 
 	if err != nil || err2 != nil {
@@ -84,12 +86,14 @@ func HandleListDirectory(co *consumer.Consumer) (err error) {
 // HandleListThing lists details of a Thing in the directory
 func HandleListThing(co *consumer.Consumer, thingID string) error {
 
-	tdDocJson, err := digitwin.ThingDirectoryRetrieveThing(co, thingID)
+	dirClient := directorypkg.NewDirectoryClient("", co)
+
+	tdDocJson, err := dirClient.RetrieveThing(thingID)
 	tdDoc, err2 := td.UnmarshalTD(tdDocJson)
 	if err != nil || err2 != nil {
 		return err
 	}
-	propValueMap, err := digitwin.ThingValuesReadAllProperties(co, thingID)
+	propValueMap, err := co.ReadAllProperties(thingID)
 
 	if err != nil {
 		slog.Error("Unable to read directory:", "err", err)
@@ -108,8 +112,8 @@ func HandleListThing(co *consumer.Consumer, thingID string) error {
 	for _, key := range keys {
 		prop, found := tdDoc.Properties[key]
 		if found && prop.ReadOnly {
-			value := propValueMap[key]
-			valueStr := utils.DecodeAsString(value.Data, 15)
+			propValue := propValueMap[key]
+			valueStr := utils.DecodeAsString(propValue, 15)
 			fmt.Printf(" %-30s %-40.40s %s%-15.15s%s %-.80s\n",
 				key, prop.Title, utils.COGreen, valueStr, utils.COReset, prop.Description)
 		}
@@ -121,8 +125,8 @@ func HandleListThing(co *consumer.Consumer, thingID string) error {
 	for _, key := range keys {
 		prop, found := tdDoc.Properties[key]
 		if found && !prop.ReadOnly {
-			value := propValueMap[key]
-			valueStr := utils.DecodeAsString(value.Data, 15)
+			propValue := propValueMap[key]
+			valueStr := utils.DecodeAsString(propValue, 15)
 			fmt.Printf(" %-30s %-40.40s %-10.10s %s%-15.15s%s %-.80s\n",
 				key, prop.Title, prop.Type, utils.COBlue, valueStr, utils.COReset, prop.Description)
 		}
@@ -131,7 +135,7 @@ func HandleListThing(co *consumer.Consumer, thingID string) error {
 	fmt.Println(utils.COYellow + "\nEvents:")
 	fmt.Println(" ID                                  EventType                 Title                                    DataType   Value           Description")
 	fmt.Println(" ----------------------------------  ------------------------  ---------------------------------------  ---------  --------------  -----------" + utils.COReset)
-	eventValueMap, err := digitwin.ThingValuesReadAllEvents(co, thingID)
+	eventValueMap, err := co.ReadAllEvents(thingID)
 	keys = utils.OrderedMapKeys(tdDoc.Events)
 	for _, key := range keys {
 		ev := tdDoc.Events[key]
@@ -151,13 +155,13 @@ func HandleListThing(co *consumer.Consumer, thingID string) error {
 	fmt.Println(utils.CORed + "\nActions:")
 	fmt.Println(" ID                                  ActionType                Title                                    Arg(s)     Value           Description")
 	fmt.Println(" ----------------------------------  ------------------------  ---------------------------------------  ---------  --------------  -----------" + utils.COReset)
-	actionValueMap, err := digitwin.ThingValuesReadAllProperties(co, thingID)
+	actionValueMap, err := co.QueryAllActions(thingID)
 	keys = utils.OrderedMapKeys(tdDoc.Actions)
 	for _, key := range keys {
 		action := tdDoc.Actions[key]
 		dataType := "(n/a)"
-		value := actionValueMap[key]
-		valueStr := utils.DecodeAsString(value.Data, 15)
+		actionResp := actionValueMap[key]
+		valueStr := utils.DecodeAsString(actionResp.Output, 15)
 		if action.Input != nil {
 			dataType = action.Input.Type
 			//initialValue = action.Input.InitialValue
@@ -171,7 +175,8 @@ func HandleListThing(co *consumer.Consumer, thingID string) error {
 
 // HandleListThingVerbose lists a Thing full TD
 func HandleListThingVerbose(co *consumer.Consumer, thingID string) error {
-	tdJSON, err := digitwin.ThingDirectoryRetrieveThing(co, thingID)
+	dirClient := directorypkg.NewDirectoryClient("", co)
+	tdJSON, err := dirClient.RetrieveThing(thingID)
 
 	if err != nil {
 		return err

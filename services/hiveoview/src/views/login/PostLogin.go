@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/hiveot/hub/lib/servers/httpbasic"
+	"github.com/hiveot/hivekit/go/modules/transport"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	jsoniter "github.com/json-iterator/go"
@@ -35,9 +35,9 @@ func PostLoginFormHandler(sm *session.WebSessionManager) http.HandlerFunc {
 			return
 		}
 		// hx-headers doesnt work on posting a form so use query instead to pass a CID
-		cid := r.Header.Get(httpbasic.ConnectionIDHeader)
+		cid := r.Header.Get(transport.ConnectionIDHeader)
 		if cid == "" {
-			cid = r.URL.Query().Get(httpbasic.ConnectionIDHeader)
+			cid = r.URL.Query().Get(transport.ConnectionIDHeader)
 		}
 		if cid == "" {
 			slog.Error("PostLoginFormHandler: Missing CID for client. Disconnecting", "loginID", loginID)
@@ -75,10 +75,10 @@ func PostLoginFormHandler(sm *session.WebSessionManager) http.HandlerFunc {
 		// prevent the browser from re-posting on back button or refresh (POST-Redirect-GET) pattern
 
 		// A redirect apparently cannot include the custom CID header.
-		header.Add(httpbasic.ConnectionIDHeader, cid) // this doesn't work
+		header.Add(transport.ConnectionIDHeader, cid) // this doesn't work
 		// fall back to query params
 		redirPath := fmt.Sprintf("%s?%s=%s",
-			src.RenderDashboardRootPath, httpbasic.ConnectionIDHeader, cid)
+			src.RenderDashboardRootPath, transport.ConnectionIDHeader, cid)
 		http.Redirect(w, r, redirPath, http.StatusSeeOther)
 	}
 }
@@ -107,7 +107,7 @@ func PostLoginHandler(sm *session.WebSessionManager) http.HandlerFunc {
 			http.Redirect(w, r, src.RenderLoginPath, http.StatusBadRequest)
 			return
 		}
-		cid := r.Header.Get(httpbasic.ConnectionIDHeader)
+		cid := r.Header.Get(transport.ConnectionIDHeader)
 		if cid == "" {
 			slog.Error("PostLoginHandler: Missing CID for client. Disconnecting", "loginID", loginID)
 			http.Error(w, "missing CID", http.StatusBadRequest)

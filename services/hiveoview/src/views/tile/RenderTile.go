@@ -5,11 +5,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/hiveot/hivekit/go/api/msg"
 	"github.com/hiveot/hivekit/go/api/td"
+	historypkg "github.com/hiveot/hivekit/go/modules/history/pkg"
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hub/lib/consumedthing"
-	"github.com/hiveot/hub/lib/messaging"
-	"github.com/hiveot/hub/services/history/historyclient"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
@@ -39,14 +38,14 @@ type RenderTileTemplateData struct {
 
 	// viewmodel to draw live data from
 	//VM *session.ClientViewModel
-	cts *consumedthing.ConsumedThingsDirectory
+	cts *consumer.ConsumedThingsDirectory
 }
 
 // GetHistory returns the 24 hour history for the given thing affordance.
 // This truncates the result if there are too many values in the range.
 // The max amount of values is the limit set in historyapi.DefaultLimit (1000)
 func (dt RenderTileTemplateData) GetHistory(
-	affType messaging.AffordanceType, thingID string, name string) *history.HistoryTemplateData {
+	affType msg.AffordanceType, thingID string, name string) *history.HistoryTemplateData {
 
 	timestamp := time.Now().Local()
 	ct, err := dt.cts.Consume(thingID)
@@ -55,7 +54,7 @@ func (dt RenderTileTemplateData) GetHistory(
 	}
 	duration, _ := time.ParseDuration("-24h")
 	iout := ct.GetValue(affType, name)
-	hist := historyclient.NewReadHistoryClient(ct.GetConsumer())
+	hist := historypkg.NewReadHistoryClient(ct.GetConsumer())
 	values, itemsRemaining, err := hist.ReadHistory(
 		iout.ThingID, iout.Name, timestamp, duration, 500)
 	_ = itemsRemaining
@@ -71,15 +70,15 @@ func (dt RenderTileTemplateData) GetHistory(
 //	tileSource whose value to display
 //
 //	This returns the interaction output to display
-func (d RenderTileTemplateData) GetOutputValue(tileSource session.TileSource) (iout *consumedthing.InteractionOutput) {
+func (d RenderTileTemplateData) GetOutputValue(tileSource session.TileSource) (iout *consumer.InteractionOutput) {
 	ct, _ := d.cts.Consume(tileSource.ThingID)
 	if ct == nil {
 		// Thing not found. return a dummy interaction output with a non-schema
-		dummy := consumedthing.InteractionOutput{}
+		dummy := consumer.InteractionOutput{}
 		dummy.AffordanceType = "unknown"
 		dummy.ThingID = tileSource.ThingID
 		dummy.Name = tileSource.Name
-		dummy.Value = consumedthing.NewDataSchemaValue("n/a")
+		dummy.Value = consumer.NewDataSchemaValue("n/a")
 		dummy.Schema = &td.DataSchema{
 			Title: "NewInteractionOutput: unknown thing",
 		}
@@ -87,13 +86,13 @@ func (d RenderTileTemplateData) GetOutputValue(tileSource session.TileSource) (i
 		return &dummy
 	}
 
-	if tileSource.AffordanceType == messaging.AffordanceTypeAction {
+	if tileSource.AffordanceType == msg.AffordanceTypeAction {
 		aff := ct.GetActionAff(tileSource.Name)
 		if aff != nil {
 			ct.QueryAction(tileSource.Name)
 			iout = ct.GetActionOutput(tileSource.Name)
 		}
-	} else if tileSource.AffordanceType == messaging.AffordanceTypeEvent {
+	} else if tileSource.AffordanceType == msg.AffordanceTypeEvent {
 		iout = ct.GetEventOutput(tileSource.Name)
 	} else {
 		// must be a property
@@ -101,7 +100,7 @@ func (d RenderTileTemplateData) GetOutputValue(tileSource session.TileSource) (i
 	}
 
 	if iout == nil {
-		iout = consumedthing.NewInteractionOutput(ct,
+		iout = consumer.NewInteractionOutput(ct,
 			tileSource.AffordanceType, tileSource.Name,
 			"no output value", "")
 	}

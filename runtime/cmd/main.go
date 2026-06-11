@@ -6,8 +6,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/lib/plugin"
+	"github.com/hiveot/hivekit/go/modules/factory"
+	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/runtime"
 )
 
@@ -25,8 +25,8 @@ func main() {
 		flag.PrintDefaults()
 		fmt.Println()
 	}
-	env := plugin.GetAppEnvironment("", true)
-	logging.SetLogging(env.LogLevel, "")
+	env := factory.NewAppEnvironment("", true)
+	utils.SetLogging(env.LogLevel, "")
 	fmt.Println("home: ", env.HomeDir)
 	if len(flag.Args()) > 0 {
 		println("ERROR: No arguments expected.")
@@ -36,9 +36,8 @@ func main() {
 	}
 
 	// Initialize the runtime configuration, directories and load keys and certificates
-	cfg := runtime.NewRuntimeConfig()
-	r := runtime.NewRuntime(cfg)
-	err := r.Start(&env)
+	r := runtime.NewRuntime(env)
+	err := r.Start()
 	if err != nil {
 		println("Starting hivot runtime failed: ", err.Error())
 		os.Exit(1)
@@ -46,7 +45,7 @@ func main() {
 
 	// Startup Successful
 	// wait until signal
-	plugin.WaitForSignal()
+	utils.WaitForSignal()
 
 	println("Graceful shutdown of Runtime")
 

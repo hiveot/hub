@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hiveot/hivekit/go/testenv"
+	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/bindings/isy99x/config"
 	"github.com/hiveot/hub/bindings/isy99x/service"
-	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/lib/testenv"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -30,25 +30,26 @@ const agentID = "isy99x"
 
 // set in TestMain
 var tempDir = path.Join(os.TempDir(), "test-isy99x")
-var ts *testenv.TestServer
+var testEnv *testenv.TestEnv
 
 // TestMain run test server and use the project test folder as the home folder.
 // All tests are run using the simulation file.
 func TestMain(m *testing.M) {
 	// setup environment
+	var closeFn func()
 
 	cwd, _ := os.Getwd()
 	simulationRoot := "file://" + path.Join(cwd, "test")
-	logging.SetLogging("info", "")
+	utils.SetLogging("info", "")
 
 	appConfig.IsyAddress = simulationRoot
 
 	//
-	ts = testenv.StartTestServer(true)
+	testEnv, closeFn = testenv.StartTestEnv("")
 	result := m.Run()
 	time.Sleep(time.Second)
 
-	ts.Stop()
+	closeFn()
 	if result == 0 {
 		_ = os.RemoveAll(tempDir)
 	}
@@ -61,7 +62,7 @@ func TestStartStop(t *testing.T) {
 	_ = os.Remove(nodesFile)
 
 	// appconfig, read from test/isy99.yaml, contains simulated gateway file
-	hc, _ := ts.AddConnectService(agentID)
+	hc, _ := testEnv.AddConnectService(agentID)
 	defer hc.Disconnect()
 
 	svc := service.NewIsyBinding(appConfig)
@@ -83,7 +84,7 @@ func TestBadAddress(t *testing.T) {
 	t.Logf("---%s---\n", t.Name())
 	_ = os.Remove(nodesFile)
 
-	hc, _ := ts.AddConnectService(agentID)
+	hc, _ := testEnv.AddConnectService(agentID)
 	defer hc.Disconnect()
 
 	// error case - use real url
@@ -103,7 +104,7 @@ func TestIsyAppPoll(t *testing.T) {
 	t.Logf("---%s---\n", t.Name())
 	_ = os.Remove(nodesFile)
 	// appconfig, read from test/isy99.yaml, contains simulated gateway file
-	hc, _ := ts.AddConnectService(agentID)
+	hc, _ := testEnv.AddConnectService(agentID)
 	defer hc.Disconnect()
 
 	svc := service.NewIsyBinding(appConfig)
@@ -124,7 +125,7 @@ func TestSwitch(t *testing.T) {
 
 	_ = os.Remove(nodesFile)
 	// appconfig, read from test/isy99.yaml, contains simulated gateway file
-	hc, _ := ts.AddConnectService(agentID)
+	hc, _ := testEnv.AddConnectService(agentID)
 	defer hc.Disconnect()
 
 	svc := service.NewIsyBinding(appConfig)

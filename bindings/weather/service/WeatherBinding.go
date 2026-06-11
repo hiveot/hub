@@ -5,10 +5,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hiveot/hivekit/go/modules/agent"
+	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/bindings/weather/config"
 	"github.com/hiveot/hub/bindings/weather/providers"
-	"github.com/hiveot/hub/lib/agent"
-	"github.com/hiveot/hub/lib/plugin"
 )
 
 // the key under which custom Thing titles are stored in the state service
@@ -17,10 +17,10 @@ const DefaultWeatherProvider = providers.OpenMeteoProviderID
 
 // WeatherBinding is the hub protocol binding plugin for integrating with Open-Meteo weather provider.
 type WeatherBinding struct {
-	cfg *config.WeatherConfig
+	// this binding is an agent
+	*agent.Agent
 
-	// hub client to publish TDs and values and receive actions
-	ag *agent.Agent
+	cfg *config.WeatherConfig
 
 	// Supported weather providers
 	providers map[string]providers.IWeatherProvider
@@ -43,7 +43,7 @@ type WeatherBinding struct {
 func (svc *WeatherBinding) AddLocation(loc config.WeatherLocation) error {
 	err := svc.locationStore.Add(loc)
 	if err == nil {
-		err = PublishLocationTD(svc.ag, svc.cfg, loc)
+		err = PublishLocationTD(svc.Agent, svc.cfg, loc)
 	}
 	return err
 }
@@ -77,8 +77,7 @@ func (svc *WeatherBinding) RemoveLocation(thingID string) {
 }
 
 // Start the weather binding using the given agent
-func (svc *WeatherBinding) Start(ag *agent.Agent) error {
-	svc.ag = ag
+func (svc *WeatherBinding) Start() error {
 
 	// load the saved and add the pre-configured locations
 	// Note that this will remove any modifications
@@ -89,17 +88,14 @@ func (svc *WeatherBinding) Start(ag *agent.Agent) error {
 	}
 
 	if err == nil {
-		err = PublishBindingTD(ag, svc.cfg)
+		err = PublishBindingTD(svc.Agent, svc.cfg)
 	}
 	if err == nil {
-		err = PublishLocationTDs(ag, svc.cfg, svc.locationStore)
+		err = PublishLocationTDs(svc.Agent, svc.cfg, svc.locationStore)
 	}
 	if err == nil {
 		slog.Info("Starting heartBeat")
-		svc.stopFn = plugin.StartHeartbeat(time.Second*60, svc.heartBeat)
-
-		// handle config requests
-		ag.SetRequestHandler(svc.handleRequest)
+		svc.stopFn = utils.StartHeartbeat(time.Second*60, svc.heartBeat)
 	}
 	if err != nil {
 		svc.Stop()
@@ -123,7 +119,6 @@ func NewWeatherBinding(storePath string, cfg *config.WeatherConfig) *WeatherBind
 	svc := &WeatherBinding{
 		cfg:                    cfg,
 		providers:              make(map[string]providers.IWeatherProvider),
-		ag:                     nil,
 		locationStore:          NewLocationStore(storePath),
 		currentWeather:         make(map[string]providers.CurrentWeather),
 		lastCurrentPoll:        make(map[string]time.Time),

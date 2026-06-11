@@ -2,107 +2,14 @@
 
 ## Status 
 
-The runtime is in alpha. It is functional but breaking changes can be expected.
+The runtime is being reworked to use hivekit.
 
 Detailed progress status below: 
-
-### refactor hiveot messaging - complete
-
-* hiveot messaging can be used separate from digital twin runtime [complete]
-* protocols use the request/response messaging API [complete]
-  * WoT http-basic [complete]
-  * WoT websocket [spec in development]
-  * HiveOT websocket [complete]
-  * HiveOT SSE [complete]
-* client and server for supported protocols [complete]
-* consumers and agents independent of the connection direction [complete]
-* discovery of directory (with hiveot extensions) [complete]
- 
-### digital twin Thing directory [partial]
-* CRUD directory [complete]
-* compatible with WoT discovery and directory API [in progress]
-
-### digital twin state management [partial]
-* Store Thing and service configuration and state [complete]
-* Services can persist their configuration in their digital twin [in progress]
-
-### authentication [partial]
-* token based authentication [complete]
-* digest authentication [todo]
-* oauth2 authentication [todo]
-
-### authorization [partial]
-* role based authorization [complete]
-* service authorization [partial]
-  * digitwin configuration integration [todo]
-
-### routing between consumers and digital twin [complete]
-
-* invoking actions [complete]
-* read properties [complete]
-* query actions [complete]
-* subscribe events [partial]
-    subscription [complete]
-    retrieve recent events [todo]
-* observing properties [complete]
-
-### routing between digital twin and agents [partial]
-
-* invoking actions [complete]
-* read properties [complete]
-* query actions [complete]
-* subscribe events [partial]
-    subscription [complete]
-    retrieve recent events [todo]
-* observing properties [complete]
-* invoking actions
-    * agent request flow [partial]
-    * agent response flow [partial]
-
-
-## phase 3 - refactor service plugins [complete] 
-
-Service plugins:
-- are extensions to the Hub and integral part of the runtime.
-- run in their own process.
-- can be started and stopped independently
-- are managed through the launcher (also a plugin)
-- store their configuration on their digital twin
-  - publish changed configurations - digitwin stores it
-  - read from digital twin ? how? different Thing IDs
-- publish a TD
-- include optional authorization 
-
-* hiveoview [complete]
-  * internal store for client state (remove state service) [complete]
-  * publish a TD [partial]
-  * manage configuration via digital twin [todo]
-
-* certs
-  * support letsencrypt [todo]
-  * publish a TD [todo]
-  * manage configuration via digital twin [todo]
-
-* launcher [complete]
-    * publish a TD [complete]
-    * manage configuration via digital twin [todo]
-      * launching on startup
-    * events for service start/stop/status [todo]
-    * 
-
-* history [partial]
-  * store events [complete]
-  * store property changes [complete]
-  * store action history [todo]
-    * store only stateful (unsafe) actions [todo] 
-  * manage configuration via digital twin [todo]
 
 
 ## Summary
 
-The HiveOT runtime provides routing of events and actions between devices, services and
-consumers using one or multiple transport protocols. The runtime serves digital twins of 
-IoT devices to consumers, containing the device Thing Definition and state. 
+The HiveOT runtime provides routing of events and actions between devices, services and consumers using one or multiple transport protocols. The runtime serves digital twins of IoT devices to consumers, containing the device Thing Definition and state. 
 
 The runtime includes services for messaging, authentication and authorization and 
 managing digital twin instances of IoT devices and services. It contains:

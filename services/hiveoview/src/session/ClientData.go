@@ -7,7 +7,7 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/hiveot/hub/lib/buckets"
+	"github.com/hiveot/hivekit/go/modules/bucketstore"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -23,7 +23,7 @@ type SessionData struct {
 	DashboardIds []string
 
 	// storage bucket of client state
-	dataBucket buckets.IBucket
+	dataBucket bucketstore.IBucket
 
 	// UI preferences ...
 }
@@ -163,7 +163,7 @@ func (model *SessionData) UpdateDashboard(d *DashboardModel) error {
 //	model.dataChanged = true
 //}
 
-func NewClientDataModel(dataBucket buckets.IBucket) *SessionData {
+func NewClientDataModel(dataBucket bucketstore.IBucket) *SessionData {
 	model := SessionData{
 		mux:        sync.RWMutex{},
 		dataBucket: dataBucket,

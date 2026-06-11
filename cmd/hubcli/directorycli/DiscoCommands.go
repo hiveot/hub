@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hiveot/hub/lib/clients/discoclient"
-	"github.com/hiveot/hub/lib/clients/tlsclient"
+	discoverypkg "github.com/hiveot/hivekit/go/modules/transport/discovery/pkg"
+	tlsclientpkg "github.com/hiveot/hivekit/go/modules/transport/tlsclient/pkg"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/urfave/cli/v2"
 )
@@ -14,7 +14,7 @@ import (
 // DiscoListCommand lists discovered Thing and Directory servers
 //
 // authToken used to read the TD
-func DiscoListCommand(authToken *string) *cli.Command {
+func DiscoListCommand(clientID string, authToken *string) *cli.Command {
 	var readtd = false
 	return &cli.Command{
 		Name: "disco",
@@ -33,21 +33,25 @@ func DiscoListCommand(authToken *string) *cli.Command {
 			if cCtx.NArg() != 0 {
 				return fmt.Errorf("no arguments expected")
 			}
-			err := HandleDiscover(readtd, *authToken)
+			err := HandleDiscover(clientID, *authToken, readtd)
 			return err
 		},
 	}
 }
 
 // HandleDiscover prints a list of discovered Things and Directories
-func HandleDiscover(readtd bool, authToken string) error {
-
-	allRecords := discoclient.DiscoverTDD("", time.Second*2, false)
+func HandleDiscover(clientID string, authToken string, readtd bool) error {
+	discoClient := discoverypkg.NewDiscoveryClient()
+	allRecords, err := discoClient.DiscoverDirectories("", time.Second*2, false, nil)
+	if err != nil {
+		fmt.Println("Discovery failed: ", err.Error())
+		return err
+	}
 	//hiveotRecords := discovery.DiscoverTDD("", "hiveot", time.Second*2, false)
 	//allRecords := append(hiveotRecords, wotRecords...)
 
 	// create a client for reading TD's
-	fmt.Println("Address                     Port  Instance       Type      Scheme   TD path")
+	fmt.Println("Address                     Port  Instance       Type      Schema   TD path")
 	fmt.Println("-------                    -----  --------       ----      ------   -------")
 	for _, entry := range allRecords {
 		fmt.Printf("%-25s %6d  %-11s %10s   %-8s %s\n",
@@ -55,16 +59,25 @@ func HandleDiscover(readtd bool, authToken string) error {
 			entry.Port,
 			entry.Instance,
 			entry.Type,
-			entry.Scheme,
+			entry.Schema,
 			entry.TD,
 		)
 		if readtd {
-			hostPort := fmt.Sprintf("%s:%d", entry.Addr, entry.Port)
-			cl := tlsclient.NewTLSClient(hostPort, nil, nil, 0)
-			cl.SetAuthToken(authToken)
-			tdJSON, code, err := cl.Get(entry.TD)
 			var tdObj map[string]any
-			err = jsoniter.Unmarshal(tdJSON, &tdObj)
+
+			hostPort := fmt.Sprintf("%s:%d", entry.Addr, entry.Port)
+			cl := tlsclientpkg.NewTLSClient(hostPort, nil, 0)
+			err := cl.AuthenticateWithToken(clientID, authToken)
+			if err != nil {
+				break
+			}
+			tdJSON, code, err2 := cl.Get(entry.TD)
+			err = err2
+			_ = code
+			if err == nil {
+				err = jsoniter.Unmarshal(tdJSON, &tdObj)
+			}
+
 			tdPretty, _ := json.MarshalIndent(tdObj, "", "    ")
 
 			if err == nil {

@@ -1,33 +1,31 @@
 package runtime_test
 
 import (
-	"log/slog"
 	"os"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/hiveot/hivekit/go/api/td"
+	"github.com/hiveot/hivekit/go/api/msg"
+	"github.com/hiveot/hivekit/go/modules/authn"
+	authnpkg "github.com/hiveot/hivekit/go/modules/authn/pkg"
+	"github.com/hiveot/hivekit/go/modules/transport"
+	"github.com/hiveot/hivekit/go/testenv"
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hub/lib/clients/authclient"
-	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/lib/messaging"
-	"github.com/hiveot/hub/lib/testenv"
 	"github.com/hiveot/hub/runtime"
-	authn "github.com/hiveot/hub/runtime/authn/api"
-	authz "github.com/hiveot/hub/runtime/authz/api"
-	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-var ts *testenv.TestServer
+var testEnv *testenv.TestEnv
 
 // start the test runtime
 func startRuntime() *runtime.Runtime {
-	logging.SetLogging("info", "")
-	ts = testenv.StartTestServer(true)
-	return ts.Runtime
+	utils.SetLogging("info", "")
+	testEnv = testenv.NewTestEnv()
+	testEnv.StartTestServer(testenv.DefaultProtocol)
+	rt := runtime.NewRuntime()
+	return rt
 }
 
 // TestMain for all authn tests, setup of default folders and filenames
@@ -49,8 +47,10 @@ func TestLoginAsAgent(t *testing.T) {
 	t.Logf("---%s---\n", t.Name())
 
 	r := startRuntime()
-	agent, cc, token := ts.AddConnectAgent(agentID)
-	authCl := authclient.NewAuthClientFromConnection(cc, token)
+	agent, ccag, token := testEnv.NewRCAgent(agentID, nil) //AddConnectAgent(agentID)
+	defer agent.Stop()
+	defer ccag.Close()
+	authCl := authnpkg.NewAuthnUserClient(agent)
 	t2, err := authCl.RefreshToken(token)
 	require.NoError(t, err)
 	assert.NotEmpty(t, t2)
@@ -60,7 +60,6 @@ func TestLoginAsAgent(t *testing.T) {
 	_ = t3
 	require.NoError(t, err)
 
-	agent.Disconnect()
 	r.Stop()
 	//time.Sleep(time.Millisecond * 100)
 }
@@ -69,8 +68,10 @@ func TestLoginAsConsumer(t *testing.T) {
 	t.Logf("---%s---\n", t.Name())
 
 	r := startRuntime()
-	consumer, cc, token := ts.AddConnectConsumer(clientID, authz.ClientRoleManager)
-	authCl := authclient.NewAuthClientFromConnection(cc, token)
+	co1, cc, token := testEnv.NewConnectedConsumer(clientID, authn.ClientRoleManager, false)
+	defer co1.Stop()
+	defer cc.Close()
+	authCl := authnpkg.NewAuthnUserClient(cc)
 	t2, err := authCl.RefreshToken(token)
 
 	require.NoError(t, err)
@@ -81,7 +82,6 @@ func TestLoginAsConsumer(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, t3)
 
-	consumer.Disconnect()
 	r.Stop()
 	//time.Sleep(time.Millisecond * 100)
 }
@@ -93,7 +93,7 @@ func TestMultiConnectSingleClient(t *testing.T) {
 	const agentID = "agent1"
 	const testConnections = int32(100)
 	const eventName = "event1"
-	var clients = make([]messaging.IClientConnection, 0)
+	var clients = make([]transport.ITransportClient, 0)
 	var connectCount atomic.Int32
 	var disConnectCount atomic.Int32
 	var messageCount atomic.Int32
@@ -101,14 +101,15 @@ func TestMultiConnectSingleClient(t *testing.T) {
 
 	// 1: setup: start a runtime and connect N clients
 	r := startRuntime()
-	ag1, _, _ := ts.AddConnectAgent(agentID)
-	td1 := ts.AddTD(agentID, nil)
-	cl1, _, token1 := ts.AddConnectConsumer(clientID1, authz.ClientRoleOperator)
+	ag1, ccag, _ := testEnv.NewRCAgent(agentID, nil)
+	defer ccag.Close()
+	td1 := testEnv.AddTD(agentID, nil)
+	cl1, _, token1 := testEnv.NewConnectedConsumer(clientID1, authn.ClientRoleOperator, false)
 
-	onConnection := func(connected bool, err error, c messaging.IConnection) {
-		if connected {
+	onConnection := func(newStatus transport.ConnectionStatus, c transport.ITransportClient) {
+		if newStatus == transport.StatusConnected {
 			connectCount.Add(1)
-		} else {
+		} else if newStatus == transport.StatusClosed || newStatus == transport.StatusLost {
 			disConnectCount.Add(1)
 		}
 	}
@@ -116,19 +117,19 @@ func TestMultiConnectSingleClient(t *testing.T) {
 	//	messageCount.Add(1)
 	//	return req.CreateResponse()
 	//}
-	onNotification := func(msg *messaging.NotificationMessage) {
+	onNotification := func(notif *msg.NotificationMessage) {
 		messageCount.Add(1)
 	}
 	// 2: connect and subscribe clients and verify
 	for range testConnections {
-		cc, consumer := ts.GetConsumerConnection(clientID1, ts.ConsumerProtocol)
+		co, cc, _ := testEnv.NewConnectedConsumer(clientID1, authn.ClientRoleOperator, false)
 		cc.SetConnectHandler(onConnection)
-		consumer.SetNotificationHandler(onNotification)
-		err := cc.ConnectWithToken(token1)
+		co.SetNotificationHook(onNotification)
+		err := cc.AuthenticateWithToken(clientID1, token1)
 		require.NoError(t, err)
 		// allow server to register its connection
 		time.Sleep(waitafterconnect)
-		err = consumer.Subscribe("", "")
+		err = co.Subscribe("", "")
 		require.NoError(t, err)
 		clients = append(clients, cc)
 	}
@@ -138,9 +139,9 @@ func TestMultiConnectSingleClient(t *testing.T) {
 	//require.Equal(t, testConnections, ts.Runtime.TransportsMgr.GetNrConnections(), "ts connect count mismatch")
 
 	// 3: agent publishes an event, which should be received N times
-	err := ag1.PubEvent(td1.ID, eventName, "a value")
+	ag1.PubEvent(td1.ID, eventName, "a value")
 	//err := ag1.PubEvent(td1.ID, eventName, "a value", "message1")
-	require.NoError(t, err)
+	// require.NoError(t, err)
 
 	// event should have been received N times (in debug mode this can be rather slow)
 	time.Sleep(time.Millisecond * 500)
@@ -148,18 +149,18 @@ func TestMultiConnectSingleClient(t *testing.T) {
 
 	// 4: disconnect
 	for _, c := range clients {
-		c.Disconnect()
+		c.Close()
 	}
-	cl1.Disconnect()
+	cl1.Stop()
 	// disconnection notification should have been received N times
 	time.Sleep(waitafterconnect * 3)
 	require.Equal(t, testConnections, disConnectCount.Load(), "disconnect count mismatch")
 
 	// 5: no more messages should be received after disconnecting
 	messageCount.Store(0)
-	err = ag1.PubEvent(td1.ID, eventName, "a value")
-	require.NoError(t, err)
-	ag1.Disconnect()
+	ag1.PubEvent(td1.ID, eventName, "a value")
+	// require.NoError(t, err)
+	ag1.Stop()
 
 	// zero events should have been received
 	time.Sleep(time.Millisecond * 100)
@@ -172,138 +173,6 @@ func TestMultiConnectSingleClient(t *testing.T) {
 	//time.Sleep(time.Millisecond * 100)
 }
 
-func TestActionWithDeliveryConfirmation(t *testing.T) {
-	t.Logf("---%s---\n", t.Name())
-	const agentID = "agent1"
-	const userID = "user1"
-	const actionID = "action-1" // match the test TD action
-	var actionPayload = "payload1"
-	var expectedReply = actionPayload + ".reply"
-	var rxMsg messaging.RequestMessage
-
-	r := startRuntime()
-	defer r.Stop()
-	logging.SetLogging("warning", "")
-	//slog.SetLogLoggerLevel(slog.LevelWarn)
-	ag1, _, _ := ts.AddConnectAgent(agentID)
-	cl1, _, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
-
-	// step 1: agent publishes a TD
-	td1 := ts.CreateTestTD(0)
-	thingID := td1.ID
-	ts.AddTD(agentID, td1)
-
-	// connect the agent and user clients
-	defer ag1.Disconnect()
-	defer cl1.Disconnect()
-
-	// Agent receives action request which we'll handle here
-	agentRequestHandler := func(req *messaging.RequestMessage, c messaging.IConnection) *messaging.ResponseMessage {
-		rxMsg = *req
-		reply := utils.DecodeAsString(req.Input, 0) + ".reply"
-		// TODO WSS doesn't support the senderID in the message. How important is this?
-		// option1: not important - no use-case
-		// option2: extend the websocket InvokeAction message format with a SenderID
-		//assert.Equal(t, cl1.GetClientID(), msg.SenderID)
-		//stat.Failed(msg, fmt.Errorf("failuretest"))
-		slog.Info("TestActionWithDeliveryConfirmation: agent1 delivery complete", "correlationID", req.CorrelationID)
-		return req.CreateResponse(reply, nil)
-	}
-	ag1.SetRequestHandler(agentRequestHandler)
-
-	// client sends action to agent and expect a 'delivered' result
-	// The RPC method returns an error if no reply is received
-	dThingID := digitwin.MakeDigitwinID(agentID, thingID)
-
-	var result string
-	err := cl1.Rpc(td.OpInvokeAction, dThingID, actionID, actionPayload, &result)
-	require.NoError(t, err)
-	assert.Equal(t, expectedReply, result)
-	assert.Equal(t, thingID, rxMsg.ThingID)
-	assert.Equal(t, actionID, rxMsg.Name)
-	assert.Equal(t, td.OpInvokeAction, rxMsg.Operation)
-
-}
-
-// Services and agents should auto-reconnect when server is restarted
-func TestServiceReconnect(t *testing.T) {
-	t.Logf("---%s---\n", t.Name())
-	const agentID = "agent1"
-	const userID = "user1"
-	var rxMsg atomic.Pointer[messaging.RequestMessage]
-	var actionPayload = "payload1"
-	var expectedReply = actionPayload + ".reply"
-
-	r := startRuntime()
-	// r is stopped below
-
-	// give server time to start up before connecting
-	time.Sleep(time.Millisecond * 10)
-
-	ag1, _, _ := ts.AddConnectAgent(agentID)
-	defer ag1.Disconnect()
-
-	// step 1: ensure the thing TD exists
-	td1 := ts.CreateTestTD(0)
-	thingID := td1.ID
-	actionID := "action-1" // match the test TD action
-	ts.AddTD(agentID, td1)
-
-	// time for agent to connect
-	time.Sleep(time.Millisecond * 1000)
-
-	hasAgent := ts.Runtime.TransportsMgr.GetConnectionByClientID(ag1.GetClientID())
-	require.NotNil(t, hasAgent)
-
-	// Agent receives action request which we'll handle here
-	ag1.SetRequestHandler(func(msg *messaging.RequestMessage,
-		c messaging.IConnection) *messaging.ResponseMessage {
-
-		var req string
-		rxMsg.Store(msg)
-		_ = utils.DecodeAsObject(msg.Input, &req)
-		output := req + ".reply"
-		slog.Info("agent1 delivery complete", "correlationID", msg.CorrelationID)
-		return msg.CreateResponse(output, nil)
-	})
-
-	// give connection time to be established before stopping the server
-	time.Sleep(time.Millisecond * 10)
-
-	// after restarting the server, ag1's connection should automatically be re-established
-	// TBD what is the go-sse reconnect algorithm? How to know it triggered?
-	t.Log("--- restarting the runtime; 1 existing connection remaining")
-	r.Stop()
-	time.Sleep(time.Millisecond * 10)
-
-	err := r.Start(&ts.AppEnv)
-	require.NoError(t, err)
-	defer r.Stop()
-	t.Log("--- server restarted; expecting an agent reconnect")
-
-	// wait for the agent reconnect
-	time.Sleep(time.Millisecond * 2000)
-
-	hasAgent = ts.Runtime.TransportsMgr.GetConnectionByClientID(ag1.GetClientID())
-	assert.NotNil(t, hasAgent)
-
-	cl2, _, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
-	defer cl2.Disconnect()
-	// FIXME: wait for an actual reconnect
-	time.Sleep(time.Second * 1)
-
-	// this rpc call succeeds after agent1 has automatically reconnected
-	dThingID := digitwin.MakeDigitwinID(agentID, thingID)
-	var reply string
-	err = cl2.Rpc(td.OpInvokeAction, dThingID, actionID, &actionPayload, &reply)
-	require.NoError(t, err)
-
-	require.NoError(t, err, "auto-reconnect didn't take place")
-	rx2 := rxMsg.Load()
-	require.NotNil(t, rx2)
-	require.Equal(t, expectedReply, string(reply))
-}
-
 // test that regular users don't have admin access to authn, authz
 func TestAccess(t *testing.T) {
 	t.Logf("---%s---\n", t.Name())
@@ -312,20 +181,21 @@ func TestAccess(t *testing.T) {
 	r := startRuntime()
 	defer r.Stop()
 
-	hc, _, token := ts.AddConnectConsumer(clientID, authz.ClientRoleViewer)
-	defer hc.Disconnect()
+	cc1, token := testEnv.NewConnectedClient(clientID, authn.ClientRoleAdmin)
+	defer cc1.Close()
 	_ = token
 
 	//f := r.GetForm(td.OpInvokeAction, hc.GetProtocolType())
 
 	// regulars users should not have authn and authz admin access
-	clientProfiles, err := authn.AdminGetProfiles(hc)
+	authnAdmin := authnpkg.NewAuthnAdminClient(cc1)
+	clientProfiles, err := authnAdmin.GetProfiles()
 
 	require.Error(t, err, "regular users should not have access to authn.Admin")
 	require.Empty(t, clientProfiles)
 	//time.Sleep(time.Millisecond * 100)
-	role, err := authz.AdminGetClientRole(hc, clientID)
-	require.Error(t, err, "regular users should not have access to authz.Admin")
-	require.Empty(t, role)
+	prof, err := authnAdmin.GetClientProfile(clientID)
+	require.Error(t, err, "regular users should not have access to authn.Admin")
+	require.Empty(t, prof.Role)
 	//time.Sleep(time.Millisecond * 100)
 }

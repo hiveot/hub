@@ -5,10 +5,10 @@ import (
 	"html"
 	"net/http"
 
+	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/v5"
+	"github.com/hiveot/hivekit/go/api/msg"
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hub/lib/consumedthing"
-	"github.com/hiveot/hub/lib/messaging"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 )
 
@@ -60,10 +60,10 @@ func RenderTileSourceRow(w http.ResponseWriter, r *http.Request) {
 
 	cts := sess.GetConsumedThingsDirectory()
 	// get the latest event values of this source
-	var iout *consumedthing.InteractionOutput
+	var iout *consumer.InteractionOutput
 	ct, err := cts.Consume(thingID)
 	if ct != nil {
-		iout = ct.GetValue(messaging.AffordanceType(affType), name)
+		iout = ct.GetValue(msg.AffordanceType(affType), name)
 	}
 	if err == nil && iout == nil {
 		err = fmt.Errorf("RenderTileSourceRow: No such affordance!?: %s", sourceID)

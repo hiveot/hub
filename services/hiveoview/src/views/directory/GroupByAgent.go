@@ -4,7 +4,7 @@ import (
 	"sort"
 
 	"github.com/hiveot/hivekit/go/api/td"
-	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
+	"github.com/hiveot/hivekit/go/modules/digitwin"
 )
 
 // ReadDirLimit is the maximum amount of TDs to read in one call

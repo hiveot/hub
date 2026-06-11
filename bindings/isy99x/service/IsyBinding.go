@@ -8,15 +8,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hiveot/hivekit/go/api/msg"
 	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/api/vocab"
+	"github.com/hiveot/hivekit/go/modules/agent"
+	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/bindings/isy99x/config"
 	"github.com/hiveot/hub/bindings/isy99x/service/isy"
-	"github.com/hiveot/hub/lib/agent"
-	"github.com/hiveot/hub/lib/exposedthing"
-	"github.com/hiveot/hub/lib/logging"
-	"github.com/hiveot/hub/lib/messaging"
-	"github.com/hiveot/hub/lib/plugin"
 )
 
 // IsyBinding is the protocol binding for managing the ISY99x Insteon gateway
@@ -24,10 +22,10 @@ import (
 //
 //	or modify this code for multiple isyAPI instances
 type IsyBinding struct {
+	*agent.Agent
 
 	// Configuration of this protocol binding
 	config *config.Isy99xConfig
-	ag     *agent.Agent
 
 	thingID      string           // ID of the binding Thing
 	isyAPI       *isy.IsyAPI      // methods for communicating met ISY gateway device
@@ -39,9 +37,6 @@ type IsyBinding struct {
 
 	// product identification map by {cat}.{subcat}
 	prodMap map[string]InsteonProduct
-
-	//binding property values
-	propValues *exposedthing.ThingValues
 
 	mu              sync.Mutex
 	stopHeartbeatFn func()
@@ -64,12 +59,12 @@ func (svc *IsyBinding) GetBindingPropValues(onlyChanges bool) map[string]any {
 
 // onIsyEvent publishes the event sent by one of the ISY thing.
 func (svc *IsyBinding) onIsyEvent(thingID string, evName string, value any) {
-	_ = svc.ag.PubEvent(thingID, evName, value)
+	svc.ag.PubEvent(thingID, evName, value)
 }
 
 // HandleWriteBindingProperty configures the binding.
 func (svc *IsyBinding) HandleWriteBindingProperty(
-	req *messaging.RequestMessage) *messaging.ResponseMessage {
+	req *msg.RequestMessage) *msg.ResponseMessage {
 
 	err := fmt.Errorf("unknown configuration request '%s' from '%s'", req.Name, req.SenderID)
 	// connection settings to connect to the gateway
@@ -146,23 +141,18 @@ func (svc *IsyBinding) MakeBindingTD() *td.TD {
 // If no connection can be made the heartbeat will retry periodically until stopped.
 //
 // This publishes a TD for this binding, starts a background polling heartbeat.
-func (svc *IsyBinding) Start(ag *agent.Agent) (err error) {
+func (svc *IsyBinding) Start() (err error) {
 	slog.Info("Starting Isy99x binding")
-	svc.ag = ag
-	svc.thingID = ag.GetClientID()
+
 	if svc.config.LogLevel != "" {
-		logging.SetLogging(svc.config.LogLevel, "")
+		utils.SetLogging(svc.config.LogLevel, "")
 	}
 	svc.prodMap, err = LoadProductMapCSV("")
 
 	//// 'IsyThings' use the 'isy connection' to talk to the gateway
-	svc.isyAPI = isy.NewIsyAPI()
-	svc.IsyGW = NewIsyGateway(svc.prodMap, svc.onIsyEvent)
+	svc.IsyGW = NewIsyGateway(svc.isyAPI, svc.prodMap, svc.onIsyEvent)
 	_ = svc.isyAPI.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
-	svc.IsyGW.Init(svc.isyAPI)
-
-	// subscribe to action and property write requests
-	svc.ag.SetRequestHandler(svc.handleRequest)
+	svc.IsyGW.Start()
 
 	// last, start polling heartbeat
 	svc.stopHeartbeatFn = svc.startHeartbeat()
@@ -180,7 +170,7 @@ func (svc *IsyBinding) startHeartbeat() (stopFn func()) {
 	var forceRepublish bool
 	var err error
 
-	stopFn = plugin.StartHeartbeat(time.Second, func() {
+	stopFn = utils.StartHeartbeat(time.Second, func() {
 		tdCountDown--
 		pollCountDown--
 		republishCountDown--
@@ -191,7 +181,7 @@ func (svc *IsyBinding) startHeartbeat() (stopFn func()) {
 		if !isConnected {
 			// if the connection dropped, send an event
 			if svc.wasConnected {
-				_ = svc.ag.PubEvent(svc.thingID, vocab.PropNetConnection, isConnected)
+				svc.PubEvent(svc.thingID, vocab.PropNetConnection, isConnected)
 			}
 			err = svc.isyAPI.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
 			if err == nil {
@@ -200,7 +190,7 @@ func (svc *IsyBinding) startHeartbeat() (stopFn func()) {
 			}
 			isConnected = svc.isyAPI.IsConnected()
 			if isConnected {
-				_ = svc.ag.PubEvent(svc.thingID, vocab.PropNetConnection, isConnected)
+				svc.PubEvent(svc.thingID, vocab.PropNetConnection, isConnected)
 			}
 		}
 		svc.wasConnected = isConnected
@@ -244,10 +234,15 @@ func (svc *IsyBinding) Stop() {
 }
 
 // NewIsyBinding creates a new instance of the ISY99x protocol binding service
-func NewIsyBinding(cfg *config.Isy99xConfig) *IsyBinding {
-	svc := IsyBinding{
-		config:     cfg,
-		propValues: exposedthing.NewThingValues(),
+//
+// appID is the application instance ID
+// cfg configures gateway access
+func NewIsyBinding(appID string, cfg *config.Isy99xConfig) *IsyBinding {
+
+	svc := &IsyBinding{
+		Agent:  agent.NewAgent(appID, nil),
+		config: cfg,
+		isyAPI: isy.NewIsyAPI(),
 	}
-	return &svc
+	return svc
 }

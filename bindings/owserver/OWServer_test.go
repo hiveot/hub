@@ -8,18 +8,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hiveot/hivekit/go/api/msg"
+	"github.com/hiveot/hivekit/go/modules/authn"
+	"github.com/hiveot/hivekit/go/testenv"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/bindings/owserver/config"
 	"github.com/hiveot/hub/bindings/owserver/service"
-	"github.com/hiveot/hub/lib/messaging"
-	"github.com/hiveot/hub/lib/testenv"
-	authz "github.com/hiveot/hub/runtime/authz/api"
-	digitwin "github.com/hiveot/hub/runtime/digitwin/api"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/hiveot/hub/lib/logging"
 )
 
 // TODO: switch for testing with real owserver
@@ -28,7 +25,7 @@ var tempFolder string
 var storePath string
 var owsConfig config.OWServerConfig
 var owsSimulationFile string // simulation file
-var ts *testenv.TestServer
+var testEnv *testenv.TestEnv
 
 const agentID = "owserver"
 
@@ -40,6 +37,7 @@ const device1ID = "C100100000267C7E" // <-- from the simulation file
 func TestMain(m *testing.M) {
 	// setup environment
 	var err error
+	var cancelFn func()
 	tempFolder = path.Join(os.TempDir(), "test-owserver")
 	storePath = path.Join(tempFolder, "owserver-state")
 	cwd, _ := os.Getwd()
@@ -47,20 +45,20 @@ func TestMain(m *testing.M) {
 	owsSimulationFile = "file://" + path.Join(homeFolder, "owserver-simulation.xml")
 	// uncomment the next line to discover and test with a real owserver
 	//owsSimulationFile = ""
-	logging.SetLogging("info", "")
+	utils.SetLogging("info", "")
 
 	owsConfig = *config.NewConfig()
 	owsConfig.OWServerURL = owsSimulationFile
 	//
-	ts = testenv.StartTestServer(true)
-	if ts == nil {
+	testEnv, cancelFn = testenv.StartTestEnv("")
+	if testEnv == nil {
 		panic("unable to start test server: " + err.Error())
 	}
 	result := m.Run()
 	time.Sleep(time.Millisecond * 10)
 	println("stopping testserver")
 
-	ts.Stop()
+	cancelFn()
 	if result == 0 {
 		_ = os.RemoveAll(tempFolder)
 	}
@@ -70,14 +68,15 @@ func TestMain(m *testing.M) {
 func TestStartStop(t *testing.T) {
 	t.Logf("---%s---\n", t.Name())
 
-	svc := service.NewOWServerBinding(storePath, &owsConfig)
+	// ag1, cc1, _ := testEnv.NewRCAgent(agentID, nil)
+	cc1, _ := testEnv.NewConnectedClient(agentID, authn.ClientRoleAgent)
+	svc := service.NewOWServerBinding(agentID, storePath, &owsConfig)
 
-	ag, _, _ := ts.AddConnectAgent(agentID)
 	//connected := ag.IsConnected()
 	//require.Equal(t, true, connected)
-	defer ag.Disconnect()
+	defer cc1.Close()
 
-	err := svc.Start(ag)
+	err := svc.Start()
 	require.NoError(t, err)
 	// give heartbeat time to run
 	time.Sleep(time.Millisecond * 1)
@@ -89,20 +88,22 @@ func TestPoll(t *testing.T) {
 	const userID = "user1"
 
 	t.Logf("---%s---\n", t.Name())
-	ag1, _, _ := ts.AddConnectAgent(agentID)
-	defer ag1.Disconnect()
-	co1, _, _ := ts.AddConnectConsumer(userID, authz.ClientRoleManager)
-	defer co1.Disconnect()
-	svc := service.NewOWServerBinding(storePath, &owsConfig)
+	ag1, cc1, _ := testEnv.NewRCAgent(agentID, nil)
+	defer cc1.Close()
+	defer ag1.Stop()
+	co1, cc2, _ := testEnv.NewConnectedConsumer(userID, authn.ClientRoleManager, false)
+	defer co1.Stop()
+	defer cc2.Close()
+	svc := service.NewOWServerBinding(ag1, storePath, &owsConfig)
 
 	// Count the number of received TD events
 	err := co1.ObserveProperty("", "")
 	err = co1.Subscribe("", "")
 	require.NoError(t, err)
-	co1.SetNotificationHandler(func(msg *messaging.NotificationMessage) {
-		slog.Info("received notification", "operation", msg.Operation, "id", msg.Name)
+	co1.SetNotificationHook(func(notif *msg.NotificationMessage) {
+		slog.Info("received notification", "type", notif.AffordanceType, "id", notif.Name)
 		var value interface{}
-		err2 := utils.DecodeAsObject(msg.Value, &value)
+		err2 := notif.Decode(&value)
 		assert.NoError(t, err2)
 
 		tdCount.Add(1)
@@ -110,7 +111,7 @@ func TestPoll(t *testing.T) {
 	assert.NoError(t, err)
 
 	// start the service which publishes TDs
-	err = svc.Start(ag1)
+	err = svc.Start()
 	require.NoError(t, err)
 
 	// give heartbeat a chance to run. stop will wait for it to complete
@@ -121,8 +122,8 @@ func TestPoll(t *testing.T) {
 	assert.GreaterOrEqual(t, tdCount.Load(), int32(4))
 
 	// get events from the digitwin
-	dThingID := digitwin.MakeDigitwinID(agentID, device1ID)
-	events, err := digitwin.ThingValuesReadAllEvents(co1, dThingID)
+	// dThingID := digitwin.MakeDigitwinID(agentID, device1ID)
+	events, err := co1.ReadAllEvents(device1ID)
 	require.NoError(t, err)
 	// this thing has 5 sensors and 4 alarm events
 	require.Equal(t, 9, len(events))
@@ -131,14 +132,14 @@ func TestPoll(t *testing.T) {
 func TestPollInvalidEDSAddress(t *testing.T) {
 	t.Logf("---%s---\n", t.Name())
 
-	hc, _, _ := ts.AddConnectAgent(agentID)
-	defer hc.Disconnect()
+	ag1, cc1, _ := testEnv.NewRCAgent(agentID, nil)
+	defer cc1.Close()
 
 	badConfig := owsConfig // copy
 	badConfig.OWServerURL = "http://invalidAddress/"
-	svc := service.NewOWServerBinding(storePath, &badConfig)
+	svc := service.NewOWServerBinding(ag1, storePath, &badConfig)
 
-	err := svc.Start(hc)
+	err := svc.Start()
 	assert.NoError(t, err)
 	// give heartbeat a chance to run. stop will wait for it to complete
 	time.Sleep(time.Millisecond * 1)
@@ -152,15 +153,15 @@ func TestAction(t *testing.T) {
 	t.Logf("---%s---\n", t.Name())
 	const user1ID = "operator1"
 	// node in test data
-	var dThingID = digitwin.MakeDigitwinID(agentID, device1ID)
+	// var dThingID = digitwin.MakeDigitwinID(agentID, device1ID)
 	var actionName = "RelayFunction" // the action attribute as defined by the device
 	var actionValue = "1"
 
-	ag1, _, _ := ts.AddConnectAgent(agentID)
-	defer ag1.Disconnect()
+	ag1, cc1, _ := testEnv.NewRCAgent(agentID, nil)
+	defer cc1.Close()
 
-	svc := service.NewOWServerBinding(storePath, &owsConfig)
-	err := svc.Start(ag1)
+	svc := service.NewOWServerBinding(ag1, storePath, &owsConfig)
+	err := svc.Start()
 	require.NoError(t, err)
 	defer svc.Stop()
 
@@ -168,10 +169,10 @@ func TestAction(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 
 	// note that the simulation file doesn't support writes so this logs an error
-	co1, _, _ := ts.AddConnectConsumer(user1ID, authz.ClientRoleOperator)
+	co1, cc2, _ := testEnv.NewConnectedConsumer(user1ID, authn.ClientRoleOperator, false)
 	require.NoError(t, err)
-	defer co1.Disconnect()
-	err = co1.WriteProperty(dThingID, actionName, &actionValue, true)
+	defer cc2.Close()
+	err = co1.WriteProperty(device1ID, actionName, &actionValue, true)
 
 	//err = co1.SendRequest(dThingID, actionName, &actionValue, nil)
 	// can't write to a simulation
@@ -186,11 +187,11 @@ func TestConfig(t *testing.T) {
 	var configName = "LEDState"
 	var configValue = "1"
 
-	ag1, _, _ := ts.AddConnectAgent(agentID)
-	defer ag1.Disconnect()
+	ag1, cc1, _ := testEnv.NewRCAgent(agentID, nil)
+	defer cc1.Close()
 
-	svc := service.NewOWServerBinding(storePath, &owsConfig)
-	err := svc.Start(ag1)
+	svc := service.NewOWServerBinding(ag1, storePath, &owsConfig)
+	err := svc.Start()
 	require.NoError(t, err)
 	defer svc.Stop()
 
@@ -198,10 +199,10 @@ func TestConfig(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 
 	// note that the simulation file doesn't support writes so this logs an error
-	co1, _, _ := ts.AddConnectConsumer(user1ID, authz.ClientRoleManager)
-	defer co1.Disconnect()
-	dThingID := digitwin.MakeDigitwinID(agentID, device1ID)
-	err = co1.WriteProperty(dThingID, configName, &configValue, true)
+	co1, cc2, _ := testEnv.NewConnectedConsumer(user1ID, authn.ClientRoleManager, false)
+	defer cc2.Close()
+	// dThingID := digitwin.MakeDigitwinID(agentID, device1ID)
+	err = co1.WriteProperty(device1ID, configName, &configValue, true)
 
 	// can't write to a simulation file. Write should fail.
 	assert.Error(t, err)
