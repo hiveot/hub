@@ -55,7 +55,7 @@
     "process": "^0.11.10",
     "serialport": "^12.0.0",
     "tslog": "^4.9.2",
-    "undici": "^6.24.1",
+    "undici": "^6.28.0",
     "yaml": "^2.8.3"
   },
   "peerDependencies": {
