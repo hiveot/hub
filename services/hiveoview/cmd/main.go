@@ -1,16 +1,15 @@
 package main
 
 import (
-	"crypto/ed25519"
+	"crypto"
 	"flag"
 	"log/slog"
 	"os"
 	"path"
 	"time"
 
-	"github.com/hiveot/hivekit/go/modules/certs"
-	"github.com/hiveot/hivekit/go/modules/certs/certutils"
-	"github.com/hiveot/hivekit/go/modules/factory"
+	"github.com/hiveot/hivekit/go/cells/certs"
+	"github.com/hiveot/hivekit/go/cells/certs/certutils"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/services/hiveoview/config"
@@ -39,13 +38,13 @@ const TemplateRootPath = "services/hiveoview/src"
 // By default the templates are embedded. For development it can be useful to reload
 // the templates for each request. Use the --extfs flag for this.
 func main() {
-	var signingKey ed25519.PrivateKey
+	var signingKey crypto.PrivateKey
 	serverPort := defaultServerPort
 	extfs := false
 
 	flag.IntVar(&serverPort, "defaultServerPort", serverPort, "Webserver listening defaultServerPort")
 	flag.BoolVar(&extfs, "extfs", extfs, "Use external gohtml filesystem")
-	env := factory.NewAppEnvironment("", true)
+	env := api.NewAppEnvironment("", true)
 	env.LogLevel = "info"
 	utils.SetLogging(env.LogLevel, "")
 

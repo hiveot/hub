@@ -5,9 +5,9 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/hiveot/hivekit/go/api"
 	"github.com/hiveot/hivekit/go/api/msg"
-	"github.com/hiveot/hivekit/go/modules/agent"
-	"github.com/hiveot/hivekit/go/modules/transport"
+	"github.com/hiveot/hivekit/go/cells/agent"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/bindings/ipnet/config"
 	"github.com/hiveot/hub/lib/plugin"
@@ -25,7 +25,7 @@ type IPNetBinding struct {
 
 // ActionHandler handle action requests
 func (svc *IPNetBinding) ActionHandler(req *msg.RequestMessage,
-	_ transport.IConnection) (resp *msg.ResponseMessage) {
+	_ api.IConnection) (resp *msg.ResponseMessage) {
 
 	resp = req.CreateResponse(nil, fmt.Errorf("unknown action '%s'", req.Name))
 	slog.Warn(resp.Error.String())

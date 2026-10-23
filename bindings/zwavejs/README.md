@@ -92,7 +92,7 @@ The build.sh script builds the output for the current architecture. Cross compil
 
 ## Building with esbuild
 
-This first step is just for testing the build process using esbuild. If this already fails then no use using pkg or the 'postject' node20+ injector. Note: one reason to take this step is to allow packages with es modules (axios) to work. pkg seems to not build correctly with code generated with tsc && tsc-alias.
+This first step is just for testing the build process using esbuild. If this already fails then no use using pkg or the 'postject' node20+ injector. Note: one reason to take this step is to allow packages with es cells (axios) to work. pkg seems to not build correctly with code generated with tsc && tsc-alias.
 
 To build the binding into a single js file:
 
@@ -100,8 +100,8 @@ To build the binding into a single js file:
 
 Note: to run this, 2 folders are needed in the project root: (yes not ideal but this is just for verification)
 
-* ln -s node_modules/@serialport/bindings-cpp/prebuilds .
-* ln -s node_modules/@zwave-js/config/config .
+* ln -s node_cells/@serialport/bindings-cpp/prebuilds .
+* ln -s node_cells/@zwave-js/config/config .
 
 Then run from the project root with:
 > ZWAVEJS_EXTERNAL_CONFIG=./dist/cache node build/zwavejs-esbuild.js --clientID testsvc --home ~/bin/hiveot/

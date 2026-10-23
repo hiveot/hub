@@ -1,23 +1,25 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path"
 	"time"
 
 	"github.com/hiveot/hub/cmd/genvocab/vocab"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 const Version = `0.1-alpha`
 
-// CLI for generating vocabulary out of yaml file
+// [Deprecated] CLI for generating vocabulary out of yaml file
+// genvocab should convert the golang source file to js and puthon
 func main() {
 	var vocabDir = path.Join("api", "src", "vocab")
 	var force bool
 
-	app := &cli.App{
+	app := &cli.Command{
 		Name:  "vocab",
 		Usage: "Generate the vocabulary",
 
@@ -36,12 +38,12 @@ func main() {
 				Aliases:     []string{"f"},
 			},
 		},
-		Action: func(cCtx *cli.Context) error {
+		Action: func(ctx context.Context, cmd *cli.Command) error {
 			err := GenVocab(vocabDir, force)
 			return err
 		},
 	}
-	if err := app.Run(os.Args); err != nil {
+	if err := app.Run(context.Background(), os.Args); err != nil {
 		println("ERROR: ", err.Error())
 		os.Exit(1)
 	}

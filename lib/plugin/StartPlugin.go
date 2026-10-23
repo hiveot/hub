@@ -5,10 +5,8 @@ import (
 	"os"
 	"path"
 
-	"github.com/hiveot/hivekit/go/modules"
-	"github.com/hiveot/hivekit/go/modules/factory"
-	"github.com/hiveot/hivekit/go/modules/transport"
-	"github.com/hiveot/hivekit/go/modules/transport/clients"
+	"github.com/hiveot/hivekit/go/api"
+	"github.com/hiveot/hivekit/go/cells/transport/clients"
 	"github.com/hiveot/hivekit/go/utils"
 )
 
@@ -31,13 +29,13 @@ import (
 //	 file, primary key, and CA certificate.
 //	certDir contains the service auth tokens
 //	serverURL is the URL of the hub server to connect to, if provided
-func StartPlugin(plugin modules.IHiveModule, clientID string, certsDir string, serverURL string) {
+func StartPlugin(plugin api.IHiveCell, clientID string, certsDir string, serverURL string) {
 
 	// temporary locate home as the parten of certs
 	homeDir := path.Dir(certsDir)
-	env := factory.NewAppEnvironment(homeDir, true)
+	env := api.NewAppEnvironment(homeDir, true)
 	cc, err := clients.NewTransportClient(
-		transport.ProtocolTypeWotWebsocket, serverURL, env.CaCert)
+		api.ProtocolTypeWotWebsocket, serverURL, env.CaCert)
 
 	token := env.GetAppToken()
 	cc.AuthenticateWithToken(clientID, token)

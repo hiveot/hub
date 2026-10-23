@@ -16,7 +16,7 @@ dist: .FORCE ## Build binary app using pkg and esbuild
 	./build.sh
 
 clean: ## Clear build and cache
-	rm -rf node_modules
+	rm -rf node_cells
 	rm -rf dist/*
 	rm -rf build/*
 

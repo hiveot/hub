@@ -20,9 +20,9 @@
     "build": "build using esbuild",
     "pkg": "build a single packaged executable for distribution. See dist/ for output",
     "dev": "build using tsc and tsc-alias, and run the application with node. This works with debugger step-through. (Yah!). ",
-    "devtsx": "experiment. running with tsx. Its all good, except debugging into modules has incorrect line numbers and is sometimes minified.",
+    "devtsx": "experiment. running with tsx. Its all good, except debugging into cells has incorrect line numbers and is sometimes minified.",
     "test": "recommended way to run tests",
-    "testtsx": "experiment testing using tsx to run typescript. While tsx works as promised it doesn't support debugging imported modules",
+    "testtsx": "experiment testing using tsx to run typescript. While tsx works as promised it doesn't support debugging imported cells",
     "tsc-alias": "note on tsc-alias. It doesn't work with tsconfig references. alias paths in outdir are not replaced. Workaround, do not use reference but use a symlink to library."
   },
   "bin": "build/index.cjs",
@@ -39,10 +39,10 @@
     "assets": [
       "dist/**/*",
       "snippets/**",
-      "node_modules/@serialport/**",
-      "node_modules/@zwave-js/serial/node_modules/@serialport/**",
-      "node_modules/zwave-js/node_modules/@serialport/**",
-      "node_modules/@zwave-js/config/config/devices/**"
+      "node_cells/@serialport/**",
+      "node_cells/@zwave-js/serial/node_cells/@serialport/**",
+      "node_cells/zwave-js/node_cells/@serialport/**",
+      "node_cells/@zwave-js/config/config/devices/**"
     ],
     "outputPath": "dist"
   },

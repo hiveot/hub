@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/araddon/dateparse"
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hivekit/go/api/msg"
-	historypkg "github.com/hiveot/hivekit/go/modules/history/pkg"
+	historypkg "github.com/hiveot/hivekit/go/cells/history/pkg"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"

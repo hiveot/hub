@@ -1,14 +1,15 @@
 package certs
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"path"
 	"time"
 
-	"github.com/hiveot/hivekit/go/modules/certs"
-	"github.com/hiveot/hivekit/go/modules/certs/certutils"
-	"github.com/urfave/cli/v2"
+	"github.com/hiveot/hivekit/go/cells/certs"
+	"github.com/hiveot/hivekit/go/cells/certs/certutils"
+	"github.com/urfave/cli/v3"
 )
 
 // ViewCACommand shows info on the Hub self-signed CA
@@ -22,9 +23,9 @@ func ViewCACommand(certsFolder *string) *cli.Command {
 		Category: "certs",
 		Usage:    "View CA and server certificate info",
 
-		Action: func(cCtx *cli.Context) error {
-			if cCtx.NArg() > 0 {
-				return fmt.Errorf("unexpected argument(s) '%s'", cCtx.Args().First())
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			if cmd.NArg() > 0 {
+				return fmt.Errorf("unexpected argument(s) '%s'", cmd.Args().First())
 			}
 			err := HandleViewCACert(*certsFolder)
 			return err

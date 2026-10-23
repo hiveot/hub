@@ -6,9 +6,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/hiveot/hivekit/go/modules/factory"
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hub/runtime"
+	runtimepkg "github.com/hiveot/hub/runtime/pkg"
 )
 
 // Launch the hub digital twin runtime.
@@ -25,7 +24,7 @@ func main() {
 		flag.PrintDefaults()
 		fmt.Println()
 	}
-	env := factory.NewAppEnvironment("", true)
+	env := api.NewAppEnvironment("", true)
 	utils.SetLogging(env.LogLevel, "")
 	fmt.Println("home: ", env.HomeDir)
 	if len(flag.Args()) > 0 {
@@ -36,7 +35,7 @@ func main() {
 	}
 
 	// Initialize the runtime configuration, directories and load keys and certificates
-	r := runtime.NewRuntime(env)
+	r := runtimepkg.NewRuntime(env)
 	err := r.Start()
 	if err != nil {
 		println("Starting hivot runtime failed: ", err.Error())

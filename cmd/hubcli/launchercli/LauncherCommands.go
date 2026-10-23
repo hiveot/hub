@@ -1,13 +1,14 @@
 package launchercli
 
 import (
+	"context"
 	"fmt"
 	"time"
 
-	"github.com/hiveot/hivekit/go/modules/consumer"
+	"github.com/hiveot/hivekit/go/cells/consumer"
 	"github.com/hiveot/hivekit/go/utils"
-	launcher "github.com/hiveot/hub/services/launcher/api"
-	"github.com/urfave/cli/v2"
+	launcherpkg "github.com/hiveot/hub/services/launcher/pkg"
+	"github.com/urfave/cli/v3"
 )
 
 func LauncherListCommand(hc **consumer.Consumer) *cli.Command {
@@ -18,8 +19,8 @@ func LauncherListCommand(hc **consumer.Consumer) *cli.Command {
 		//ArgsUsage: "(no args)",
 		Usage:    "List services and their runtime status",
 		Category: "launcher",
-		Action: func(cCtx *cli.Context) error {
-			if cCtx.NArg() != 0 {
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			if cmd.NArg() != 0 {
 				return fmt.Errorf("no arguments expected")
 			}
 			err := HandleListServices(*hc)
@@ -37,11 +38,11 @@ func LauncherStartCommand(hc **consumer.Consumer) *cli.Command {
 		Usage:     "Start a service or all services",
 		Category:  "launcher",
 		//ArgsUsage: "start <serviceName> | all",
-		Action: func(cCtx *cli.Context) error {
-			if cCtx.NArg() != 1 {
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			if cmd.NArg() != 1 {
 				return fmt.Errorf("expected service name")
 			}
-			err := HandleStartService(cCtx.Args().First(), *hc)
+			err := HandleStartService(cmd.Args().First(), *hc)
 			return err
 		},
 	}
@@ -55,11 +56,11 @@ func LauncherStopCommand(hc **consumer.Consumer) *cli.Command {
 		ArgsUsage: "<servicename>|all",
 		Usage:     "Stop a service or all services",
 		Category:  "launcher",
-		Action: func(cCtx *cli.Context) error {
-			if cCtx.NArg() != 1 {
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			if cmd.NArg() != 1 {
 				return fmt.Errorf("expected service name")
 			}
-			err := HandleStopService(cCtx.Args().First(), *hc)
+			err := HandleStopService(cmd.Args().First(), *hc)
 			return err
 		},
 	}
@@ -76,7 +77,7 @@ func HandleListServices(co *consumer.Consumer) error {
 
 	fmt.Println("Service                      Size   Starts       PID    CPU   Memory   Status    Since (" + localTZ + ")          Last Error")
 	fmt.Println("-------                      ----   ------   -------   ----   ------   -------   -------------------  -----------")
-	entries, err := launcher.AdminListPlugins(co, false)
+	entries, err := launcherpkg.NewLauncherClient("", co).ListPlugins(false)
 	if err != nil {
 		return err
 	}
@@ -119,17 +120,17 @@ func HandleStartService(pluginID string, co *consumer.Consumer) error {
 	if co == nil {
 		return fmt.Errorf("no Hub connection")
 	}
-	//lc := launcherclient.NewLauncherClient("", hc)
+	lc := launcherpkg.NewLauncherClient("", co)
 
 	if pluginID == "all" {
-		err = launcher.AdminStartAllPlugins(co)
+		err = lc.StartAllPlugins()
 		if err != nil {
 			//fmt.Println("Connect all failed with: ", err)
 			return err
 		}
 		fmt.Printf("All services started\n")
 	} else {
-		info, err2 := launcher.AdminStartPlugin(co, pluginID)
+		info, err2 := lc.StartPlugin(pluginID)
 
 		if err2 != nil {
 			//fmt.Println("Connect failed:", err2)
@@ -149,10 +150,10 @@ func HandleStopService(serviceName string, co *consumer.Consumer) error {
 	if co == nil {
 		return fmt.Errorf("no Hub connection")
 	}
-	//lc := launcherclient.NewLauncherClient("", co)
+	lc := launcherpkg.NewLauncherClient("", co)
 
 	if serviceName == "all" {
-		err := launcher.AdminStopAllPlugins(co, false)
+		err := lc.StopAllPlugins(false)
 
 		if err != nil {
 			fmt.Println("Stop all failed:", err)
@@ -161,7 +162,7 @@ func HandleStopService(serviceName string, co *consumer.Consumer) error {
 		fmt.Printf("All services stopped\n")
 
 	} else {
-		info, err := launcher.AdminStopPlugin(co, serviceName)
+		info, err := lc.StopPlugin(serviceName)
 		if err != nil {
 			fmt.Printf("Stop %s failed: %s\n", serviceName, err)
 			return err

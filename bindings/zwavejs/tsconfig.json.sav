@@ -12,7 +12,7 @@
     "esModuleInterop": true,
     "emitDecoratorMetadata": false,
     "forceConsistentCasingInFileNames": true,
-    "isolatedModules": true,
+    "isolatedCells": true,
     "incremental": true,
     // Avoid runtime imports that are unnecessary
     "lib": [
@@ -50,7 +50,7 @@
   ],
   "exclude": [
     "./build",
-    "./node_modules",
+    "./node_cells",
     "./dist"
   ]
 }

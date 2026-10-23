@@ -8,7 +8,7 @@ import (
 
 	"github.com/hiveot/hivekit/go/api/msg"
 	"github.com/hiveot/hivekit/go/api/td"
-	"github.com/hiveot/hivekit/go/modules/consumer"
+	"github.com/hiveot/hivekit/go/cells/consumer"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/services/hiveoview/src"
 )

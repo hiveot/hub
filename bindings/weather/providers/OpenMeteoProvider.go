@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hub/bindings/weather/config"
+	"github.com/hiveot/hub/bindings/weather"
 	jsoniter "github.com/json-iterator/go"
 )
 
@@ -28,7 +28,7 @@ func (svc *OpenMeteoProvider) BaseURL() string {
 }
 
 // ReadCurrent requests the current weather from Open-Meteo provider
-func (svc *OpenMeteoProvider) ReadCurrent(config config.WeatherLocation) (c CurrentWeather, err error) {
+func (svc *OpenMeteoProvider) ReadCurrent(config weather.WeatherLocation) (c CurrentWeather, err error) {
 	var rawWeather []byte
 
 	// Simulation file
@@ -99,7 +99,7 @@ func (svc *OpenMeteoProvider) ReadCurrent(config config.WeatherLocation) (c Curr
 	return c, err
 }
 
-func (svc *OpenMeteoProvider) ReadHourlyForecast(loc config.WeatherLocation) (f HourlyWeatherForecast, err error) {
+func (svc *OpenMeteoProvider) ReadHourlyForecast(loc weather.WeatherLocation) (f HourlyWeatherForecast, err error) {
 	return f, errors.New("not yet implemented")
 }
 

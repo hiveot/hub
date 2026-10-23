@@ -11,7 +11,7 @@ Each Hub is a consumer of one or more information agents such as IoT devices and
 
 The heart of a Hub is the 'Digital Twin Runtime' which contains Digital Twins of Things and supports interaction through various transport protocols. A Digital Twin is a digital replica of an actual Thing. It contains the Thing Description (TD) document and property, event and action state values of the Thing. Writing a property on a Digital Twin will be passed on to the actual device (exposed Thing). Changes to the state of the device will update the digital twin, which in turn notify consumers. Consumers can use any of the supported protocol bindings to connect to the Hub and retrieve Thing information.
 
-The Hub is built using [HiveKit](http://github.com/hiveot/hivekit) which provides modules for building Web-Of-Things (WoT) capable applications.
+The Hub is built using [HiveKit](http://github.com/hiveot/hivekit) which provides cells for building Web-Of-Things (WoT) capable applications.
 
 ![](digitwin-overview.jpg)
 

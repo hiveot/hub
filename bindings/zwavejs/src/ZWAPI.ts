@@ -188,7 +188,7 @@ export default class ZWAPI {
         // Start the driver. To await this method, put this line into an async method
         this.driver = new Driver(zwPort, options);
 
-        // driver.configVersion causes panic "require is not defined" when using modules
+        // driver.configVersion causes panic "require is not defined" when using cells
         // hcLog.info("Starting zwave-js. Version="+this.driver.configVersion)
 
         // notify of driver errors

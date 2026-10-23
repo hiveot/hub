@@ -1,13 +1,14 @@
 package authcli
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
-	"github.com/hiveot/hivekit/go/modules/authn"
-	authnpkg "github.com/hiveot/hivekit/go/modules/authn/pkg"
-	"github.com/hiveot/hivekit/go/modules/consumer"
-	"github.com/urfave/cli/v2"
+	"github.com/hiveot/hivekit/go/cells/authn"
+	authnpkg "github.com/hiveot/hivekit/go/cells/authn/pkg"
+	"github.com/hiveot/hivekit/go/cells/consumer"
+	"github.com/urfave/cli/v3"
 )
 
 // AuthSetRoleCommand changes a user's role
@@ -23,13 +24,13 @@ func AuthSetRoleCommand(hc **consumer.Consumer) *cli.Command {
 		ArgsUsage: "<loginID> <newrole>",
 		UsageText: "Valid roles: " + strings.Join(validRoles, ", "),
 		Category:  "auth",
-		Action: func(cCtx *cli.Context) error {
-			if cCtx.NArg() != 2 {
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			if cmd.NArg() != 2 {
 				err := fmt.Errorf("expected 2 arguments")
 				return err
 			}
-			loginID := cCtx.Args().Get(0)
-			newRole := cCtx.Args().Get(1)
+			loginID := cmd.Args().Get(0)
+			newRole := cmd.Args().Get(1)
 			err := HandleSetRole(*hc, loginID, newRole)
 			return err
 		},

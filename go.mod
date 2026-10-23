@@ -9,18 +9,17 @@ require (
 	aidanwoods.dev/go-paseto v1.6.0
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/fsnotify/fsnotify v1.10.1
-	github.com/go-chi/chi v1.5.5
 	github.com/go-chi/chi/v5 v5.3.0
-	github.com/hiveot/hivekit/go v0.0.0-20260608062358-39ed8979195d
+	github.com/hiveot/hivekit/go v0.0.0-20260611173351-7d454381a432
 	github.com/huin/goupnp v1.3.0
 	github.com/json-iterator/go v1.1.12
 	github.com/mostlygeek/arp v0.0.0-20170424181311-541a2129847a
-	github.com/samber/lo v1.52.0
+	github.com/samber/lo v1.53.0
 	github.com/stretchr/testify v1.11.1
 	github.com/struCoder/pidusage v0.2.1
 	github.com/teris-io/shortid v0.0.0-20220617161101-71ec9f2aa569
-	github.com/urfave/cli/v2 v2.27.7
-	golang.org/x/exp v0.0.0-20260529124908-c761662dc8c9
+	github.com/urfave/cli/v3 v3.9.1
+	golang.org/x/exp v0.0.0-20260611194520-c48552f49976
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -37,7 +36,6 @@ require (
 	github.com/cockroachdb/pebble v1.1.5 // indirect
 	github.com/cockroachdb/redact v1.1.8 // indirect
 	github.com/cockroachdb/tokenbucket v0.0.0-20250429170803-42689b6311bb // indirect
-	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
 	github.com/cstockton/go-conv v1.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/getsentry/sentry-go v0.46.2 // indirect
@@ -58,22 +56,20 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_golang v1.23.2 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
-	github.com/prometheus/common v0.68.0 // indirect
+	github.com/prometheus/common v0.68.1 // indirect
 	github.com/prometheus/procfs v0.20.1 // indirect
 	github.com/rogpeppe/go-internal v1.15.0 // indirect
 	github.com/rs/cors v1.11.1 // indirect
-	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/tidwall/btree v1.8.1 // indirect
 	github.com/tmaxmax/go-sse v0.11.0 // indirect
-	github.com/xrash/smetrics v0.0.0-20250705151800-55b8f293f342 // indirect
-	golang.org/x/crypto v0.52.0 // indirect
-	golang.org/x/mod v0.36.0 // indirect
-	golang.org/x/net v0.55.0 // indirect
-	golang.org/x/sync v0.20.0 // indirect
-	golang.org/x/sys v0.45.0 // indirect
-	golang.org/x/text v0.37.0 // indirect
-	golang.org/x/tools v0.45.0 // indirect
-	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
-	google.golang.org/grpc v1.79.2 // indirect
+	golang.org/x/crypto v0.53.0 // indirect
+	golang.org/x/mod v0.37.0 // indirect
+	golang.org/x/net v0.56.0 // indirect
+	golang.org/x/sync v0.21.0 // indirect
+	golang.org/x/sys v0.46.0 // indirect
+	golang.org/x/text v0.38.0 // indirect
+	golang.org/x/tools v0.46.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260610212136-7ab31c22f7ad // indirect
+	google.golang.org/grpc v1.81.1 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 )

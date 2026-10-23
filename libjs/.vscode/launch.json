@@ -13,7 +13,7 @@
             "skipFiles": [
                 "<node_internals>/**"
             ],
-            "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx",
+            "runtimeExecutable": "${workspaceFolder}/node_cells/.bin/tsx",
             "runtimeArgs": [
                 "${workspaceFolder}/src/hubclient/transports/transports.test.ts"
             ],
@@ -30,7 +30,7 @@
             "skipFiles": [
                 "<node_internals>/**"
             ],
-            "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx",
+            "runtimeExecutable": "${workspaceFolder}/node_cells/.bin/tsx",
             "runtimeArgs": [
                 "${workspaceFolder}/src/hubclient/hubclient.test.ts"
             ],
@@ -44,7 +44,7 @@
             "skipFiles": [
                 "<node_internals>/**"
             ],
-            "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/tsx",
+            "runtimeExecutable": "${workspaceFolder}/node_cells/.bin/tsx",
             "runtimeArgs": [
                 "${workspaceFolder}/src/clients/stateclient.test.ts"
             ],

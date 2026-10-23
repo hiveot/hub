@@ -1,15 +1,15 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
 
-	authnpkg "github.com/hiveot/hivekit/go/modules/authn/pkg"
-	"github.com/hiveot/hivekit/go/modules/consumer"
-	"github.com/hiveot/hivekit/go/modules/factory"
-	"github.com/hiveot/hivekit/go/modules/transport"
-	"github.com/hiveot/hivekit/go/modules/transport/clients"
+	"github.com/hiveot/hivekit/go/api"
+	authnpkg "github.com/hiveot/hivekit/go/cells/authn/pkg"
+	"github.com/hiveot/hivekit/go/cells/consumer"
+	"github.com/hiveot/hivekit/go/cells/transport/clients"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/cmd/hubcli/authcli"
 	"github.com/hiveot/hub/cmd/hubcli/certs"
@@ -17,7 +17,7 @@ import (
 	"github.com/hiveot/hub/cmd/hubcli/historycli"
 	"github.com/hiveot/hub/cmd/hubcli/launchercli"
 	"github.com/hiveot/hub/cmd/hubcli/pubsubcli"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 const Version = `1.0-alpha`
@@ -40,7 +40,7 @@ func main() {
 	var authToken string
 
 	// environment defaults
-	env := factory.NewAppEnvironment("", false)
+	env := api.NewAppEnvironment("", false)
 	homeDir = env.HomeDir
 	certsDir = env.CertsDir
 
@@ -48,11 +48,11 @@ func main() {
 	utils.SetLogging("warning", "")
 	nowrap = false
 
-	app := &cli.App{
-		EnableBashCompletion: true,
-		Name:                 "hubcli",
-		Usage:                "Hub Commandline Interface",
-		Version:              Version,
+	app := &cli.Command{
+		EnableShellCompletion: true,
+		Name:                  "hubcli",
+		Usage:                 "Hub Commandline Interface",
+		Version:               Version,
 
 		Flags: []cli.Flag{
 			&cli.StringFlag{
@@ -92,10 +92,11 @@ func main() {
 				Destination: &verbose,
 			},
 		},
-		Before: func(c *cli.Context) (err error) {
-			var cc transport.ITransportClient
+		Before: func(ctx context.Context, c *cli.Command) (context.Context, error) {
+			var cc api.ITransportClient
+			var err error
 			// reload env in case home changes
-			env = factory.NewAppEnvironment(homeDir, false)
+			env = api.NewAppEnvironment(homeDir, false)
 			certsDir = env.CertsDir
 			if verbose {
 				utils.SetLogging("info", "")
@@ -110,11 +111,11 @@ func main() {
 			// TODO: cleanup: don't connect for these commands
 			cmd := c.Args().First()
 			if cmd == "" || cmd == "disco" || cmd == "cca" || cmd == "vca" {
-				return nil
+				return ctx, nil
 			}
 
 			if authToken == "" && password == "" {
-				return fmt.Errorf("hubcli: missing authentication token")
+				return ctx, fmt.Errorf("hubcli: missing authentication token")
 			}
 			caCert, _ := env.GetCA()
 			if password != "" {
@@ -124,20 +125,18 @@ func main() {
 					authToken, err = authncl.LoginWithPassword(loginID, password)
 				}
 				cc, err = clients.NewTransportClient("", serverURL, caCert)
-				err = cc.AuthenticateWithToken(loginID, authToken)
+				err = cc.SetAuthToken(loginID, authToken)
 			} else {
 				cc, err = clients.NewTransportClient("", serverURL, caCert)
-				err = cc.AuthenticateWithToken(loginID, authToken)
+				err = cc.SetAuthToken(loginID, authToken)
 			}
 
 			if err != nil {
 				slog.Error("Unable to connect to the server", "err", err)
-				return fmt.Errorf("unable to connect to the hub")
+				return ctx, fmt.Errorf("unable to connect to the hub")
 			}
-			co = consumer.NewConsumer(nil)
-			co.SetRequestSink(cc)
-			cc.SetNotificationSink(co)
-			return nil
+			co = consumer.NewConsumer(cc, nil)
+			return ctx, nil
 		},
 		// commands arguments are passed by reference so they are updated in the Before section
 		Commands: []*cli.Command{
@@ -188,7 +187,7 @@ func main() {
 	//`
 	app.Suggest = true
 	app.HideHelpCommand = true
-	if err := app.Run(os.Args); err != nil {
+	if err := app.Run(context.Background(), os.Args); err != nil {
 		println("ERROR: ", err.Error())
 		//helpArgs := append(os.Args, "-h")
 		//_ = app.Run(helpArgs)

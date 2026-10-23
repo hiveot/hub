@@ -1,18 +1,17 @@
 # Launcher
 
+The Launcher service manages running of plugins and monitors their running status. 
+
 ## Status
 
 This service is functional and can start and stop plugins.
 
-## Objectives
-
-Manage running of Hub plugins and monitor their status. 
 
 ## Features
 
 1. Start hub runtime if configured
 1. List, Start and Stop available plugins 
-1. Generate a client auth certificate for plugins before start
+1. Generate a client auth certificate or token for plugins before start
 1. Set logging output to log files for each plugin
 1. Plugin autostart on startup. Use launcher.yaml config file.
 2. Send events when plugins are started and stopped
@@ -28,6 +27,8 @@ Future:
 2. TBD: support distributed services with launchers running on remote systems 
 1. TBD: Share status with instances running on distributed computers
 2. TBD: Transfer eligible services to best available runtimes 
+
+
 
 ## Summary
 
@@ -101,6 +102,11 @@ Issue: where to store data
 Issue: how to migrating a service from one host to another?
 Issue: how to present (hiveoview) multiple devices
 
+## Dependencies
+
+The launcher sends requests to its sink for these cells:
+* authn - create authentication tokens for plugins
+* directory - add launcher TD to the directory if provided
 
 
 ## Usage

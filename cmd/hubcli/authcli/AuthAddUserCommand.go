@@ -1,6 +1,7 @@
 package authcli
 
 import (
+	"context"
 	"crypto"
 	"errors"
 	"fmt"
@@ -8,11 +9,11 @@ import (
 	"os"
 	"path"
 
-	"github.com/hiveot/hivekit/go/modules/authn"
-	authnpkg "github.com/hiveot/hivekit/go/modules/authn/pkg"
-	"github.com/hiveot/hivekit/go/modules/consumer"
+	"github.com/hiveot/hivekit/go/cells/authn"
+	authnpkg "github.com/hiveot/hivekit/go/cells/authn/pkg"
+	"github.com/hiveot/hivekit/go/cells/consumer"
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 // AuthAddUserCommand adds a user
@@ -43,12 +44,12 @@ func AuthAddUserCommand(hc **consumer.Consumer) *cli.Command {
 				Destination: &displayName,
 			},
 		},
-		Action: func(cCtx *cli.Context) error {
-			if cCtx.NArg() != 1 {
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			if cmd.NArg() != 1 {
 				err := fmt.Errorf("expected 1 argument")
 				return err
 			}
-			loginID := cCtx.Args().Get(0)
+			loginID := cmd.Args().Get(0)
 			err := HandleAddUser(*hc, loginID, displayName, role)
 			return err
 		},
@@ -72,12 +73,12 @@ func AuthAddServiceCommand(hc **consumer.Consumer, certsDir *string) *cli.Comman
 				Destination: &displayName,
 			},
 		},
-		Action: func(cCtx *cli.Context) error {
-			if cCtx.NArg() != 1 {
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			if cmd.NArg() != 1 {
 				err := fmt.Errorf("expected 1 argument")
 				return err
 			}
-			serviceID := cCtx.Args().First()
+			serviceID := cmd.Args().First()
 			err := HandleAddService(*hc, serviceID, displayName, *certsDir)
 			return err
 		},
@@ -90,8 +91,8 @@ func AuthListClientsCommand(hc **consumer.Consumer) *cli.Command {
 		Name:     "lu",
 		Usage:    "List users",
 		Category: "auth",
-		Action: func(cCtx *cli.Context) error {
-			if cCtx.NArg() > 0 {
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			if cmd.NArg() > 0 {
 				err := fmt.Errorf("too many arguments")
 				return err
 			}
@@ -108,12 +109,12 @@ func AuthRemoveClientCommand(hc **consumer.Consumer) *cli.Command {
 		Usage:     "Remove a user or service. (careful, no confirmation)",
 		ArgsUsage: "<loginID>",
 		Category:  "auth",
-		Action: func(cCtx *cli.Context) error {
-			if cCtx.NArg() != 1 {
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			if cmd.NArg() != 1 {
 				err := fmt.Errorf("expected 1 arguments")
 				return err
 			}
-			loginID := cCtx.Args().Get(0)
+			loginID := cmd.Args().Get(0)
 			err := HandleRemoveClient(*hc, loginID)
 			return err
 		},
@@ -127,13 +128,13 @@ func AuthRoleCommand(hc **consumer.Consumer) *cli.Command {
 		Usage:     "Set a new role",
 		ArgsUsage: "<clientID> <newrole>",
 		Category:  "auth",
-		Action: func(cCtx *cli.Context) error {
-			if cCtx.NArg() != 2 {
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			if cmd.NArg() != 2 {
 				err := fmt.Errorf("expected 2 arguments")
 				return err
 			}
-			loginID := cCtx.Args().Get(0)
-			newRole := cCtx.Args().Get(1)
+			loginID := cmd.Args().Get(0)
+			newRole := cmd.Args().Get(1)
 			err := HandleSetRole(*hc, loginID, newRole)
 			return err
 		},

@@ -10,12 +10,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hiveot/hivekit/go/api"
 	"github.com/hiveot/hivekit/go/api/msg"
 	"github.com/hiveot/hivekit/go/api/td"
-	"github.com/hiveot/hivekit/go/modules/authn"
-	"github.com/hiveot/hivekit/go/modules/transport"
-	ssescpkg "github.com/hiveot/hivekit/go/modules/transport/ssesc/pkg"
-	tlsclientpkg "github.com/hiveot/hivekit/go/modules/transport/tlsclient/pkg"
+	"github.com/hiveot/hivekit/go/cells/authn"
+	ssescpkg "github.com/hiveot/hivekit/go/cells/transport/ssesc/pkg"
+	tlsclientpkg "github.com/hiveot/hivekit/go/cells/transport/tlsclient/pkg"
 	"github.com/hiveot/hivekit/go/testenv"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/services/hiveoview/src"
@@ -70,12 +70,12 @@ func getHiveoviewForm(op, thingID, name string) *td.Form {
 // The TestLogin test must succeed before using this.
 // This returns a client. Call Close() when done.
 func WebLogin(sseURL string, clientID string,
-	onConnection func(bool, error, transport.IConnection),
+	onConnection func(bool, error, api.IConnection),
 	onNotification msg.NotificationHandler,
 	onRequest msg.RequestHandler,
 	onResponse msg.ResponseHandler,
 ) (
-	cl transport.IConnection, err error) {
+	cl api.IConnection, err error) {
 
 	//sseCl := clients.NewHubClient(sseURL, clientID, ts.Certs.CaCert)
 	// websocket client
@@ -192,7 +192,7 @@ func TestLogin(t *testing.T) {
 	cl2 := tlsclientpkg.NewTLSClient(hostPort, testEnv.CertBundle.CaCert, time.Second*60)
 
 	// hiveot http requires a connection-id to link the return channel.
-	cl2.SetHeader(transport.ConnectionIDHeader, shortid.MustGenerate())
+	cl2.SetHeader(api.ConnectionIDHeader, shortid.MustGenerate())
 
 	// try login. The test user password is the clientID
 	// authenticate the connection with the hiveot http/sse service (not the hub server)
@@ -222,7 +222,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	const agentID = "agent1"
 	const testConnections = 1
 	const eventName = "event1"
-	var webClients = make([]transport.IConnection, 0)
+	var webClients = make([]api.IConnection, 0)
 	var connectCount atomic.Int32
 	var disConnectCount atomic.Int32
 	var messageCount atomic.Int32
@@ -257,7 +257,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 
 	_ = token1
 	//handler for web connection notifications
-	onConnection := func(connected bool, err error, _ transport.IConnection) {
+	onConnection := func(connected bool, err error, _ api.IConnection) {
 		if connected {
 			connectCount.Add(1)
 		} else {

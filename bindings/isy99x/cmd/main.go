@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/hiveot/hivekit/go/modules/factory"
 	"github.com/hiveot/hub/bindings/isy99x/config"
 	"github.com/hiveot/hub/bindings/isy99x/service"
 	"github.com/hiveot/hub/lib/plugin"
@@ -10,9 +9,9 @@ import (
 // Start the ISY99x protocol binding
 func main() {
 
-	env := factory.NewAppEnvironment("", true)
+	env := api.NewAppEnvironment("", true)
 	cfg := config.NewIsy99xConfig()
 	_ = env.LoadConfig(&cfg)
 	binding := service.NewIsyBinding(cfg)
-	plugin.StartPlugin(binding, env.ClientID, env.CertsDir, env.ServerURL)
+	plugin.StartPlugin(binding, env.AppID, env.CertsDir, env.ServerURL)
 }

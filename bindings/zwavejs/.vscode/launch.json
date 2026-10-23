@@ -6,7 +6,7 @@
     "configurations": [
         // test using tsx command via package.json
         // Pro: builds and runs when using references without recompiling
-        // Con: debugger doesn't step through imported modules (incl references)
+        // Con: debugger doesn't step through imported cells (incl references)
         //      partial workaround: using symlink instead of references 
         {
             "name": "testtsx",
@@ -27,7 +27,7 @@
             "console": "integratedTerminal",
         },
         // test using tsc and tsc-alias running node using yarn (no tsx)
-        // Pro: debugger steps through imported modules
+        // Pro: debugger steps through imported cells
         // Con: requires use of tsc-alias which doesn't work when using references
         //      must recompile before running 
         //      breakpoints stop in the js file instead of ts file 
@@ -62,7 +62,7 @@
             // },
             // "outFiles": [
             // "${workspaceFolder}/build/*.js",
-            // "!**/node_modules/**"
+            // "!**/node_cells/**"
             // ],
             "presentation": {
                 "group": "tsc",
@@ -104,7 +104,7 @@
             // },
             // "outFiles": [
             // "${workspaceFolder}/build/*.js",
-            // "!**/node_modules/**"
+            // "!**/node_cells/**"
             // ],
             "presentation": {
                 "group": "tsc",

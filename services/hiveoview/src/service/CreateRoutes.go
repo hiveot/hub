@@ -4,10 +4,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/hiveot/hivekit/go/modules/transport/httpbasic"
+	"github.com/hiveot/hivekit/go/cells/transport/httpbasic"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/about"

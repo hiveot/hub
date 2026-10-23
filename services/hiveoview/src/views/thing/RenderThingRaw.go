@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	jsoniter "github.com/json-iterator/go"
 )

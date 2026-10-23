@@ -1,0 +1,47 @@
+package internal
+
+import (
+	"fmt"
+	"log/slog"
+)
+
+func (svc *IsyBinding) PubEvents(thingID string, evMap map[string]any) {
+	for k, v := range evMap {
+		svc.ag.PubEvent(thingID, k, v)
+	}
+}
+
+// PublishAllThingValues reads and publishes the state of the binding, gateway and nodes.
+// Set onlyChanges to only publish changed values.
+func (svc *IsyBinding) PublishAllThingValues(onlyChanges bool) error {
+	slog.Info("PublishThingValues", slog.Bool("onlyChanges", onlyChanges))
+
+	// publish the binding property values
+	propMap := svc.GetBindingPropValues(onlyChanges)
+	if len(propMap) > 0 {
+		// no use continuing if publishing fails
+		svc.ag.PubProperties(svc.thingID, propMap)
+	}
+	// read the gateway properties
+	err := svc.IsyGW.ReadGatewayValues()
+	if err != nil {
+		err = fmt.Errorf("failed reading ISY: %w", err)
+		slog.Error(err.Error())
+		return err
+	}
+	propMap = svc.IsyGW.Agent.GetPropValues()
+	if len(propMap) > 0 {
+		svc.PubProperties(svc.IsyGW.GetThingID(), propMap, onlyChanges)
+	}
+
+	// read and publish each gateway connected node on the gateway
+	_ = svc.IsyGW.ReadIsyNodeValues()
+	isyThings := svc.IsyGW.GetIsyThings()
+	for _, thing := range isyThings {
+		propMap := thing.GetPropValues(onlyChanges)
+		if len(propMap) > 0 {
+			_ = svc.ag.PubProperties(thing.GetID(), propMap)
+		}
+	}
+	return nil
+}

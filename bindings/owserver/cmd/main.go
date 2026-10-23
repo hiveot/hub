@@ -1,37 +1,34 @@
 package main
 
 import (
-	"path"
+	"os"
 
-	"github.com/hiveot/hivekit/go/modules/factory"
-	factorypkg "github.com/hiveot/hivekit/go/modules/factory/pkg"
-	"github.com/hiveot/hub/bindings/owserver/config"
-	"github.com/hiveot/hub/bindings/owserver/service"
-	"github.com/hiveot/hub/lib/plugin"
+	"github.com/hiveot/hivekit/go/api"
+	factorypkg "github.com/hiveot/hivekit/go/cells/factory/pkg"
+	"github.com/hiveot/hub/bindings/owserver"
+	owserverpkg "github.com/hiveot/hub/bindings/owserver/pkg"
 )
-
-// Recipe for a simple device that provides a standalone server for a counter module.
-
-var mods = map[string]factory.ModuleDefinition{
-	client.NewClientModuleType: {
-		Constructor: client.NewClientFactory,
-	},
-	// owserver is the application module
-	owserver.OwServerBindingModuleType: {
-		Constructor: owserver.OWServerBindingFactory,
-	},
-}
 
 // Start the OWServer protocol binding
 func main() {
-	// TODO: migrate to use the factory with a recipe
-	env := factory.NewAppEnvironment("", true)
-	factory := factorypkg.NewModuleFactory(env, mods)
-	err := factory.Start()
-	serviceID := env.AppID
-	cfg := config.NewConfig()
-	_ = env.LoadConfig(&cfg)
-	storePath := path.Join(env.StoresDir, env.AppID)
-	binding := service.NewOWServerBinding(serviceID, storePath, cfg)
-	plugin.StartPlugin(binding, serviceID, env.CertsDir, env.ServerURL)
+	env := api.NewAppEnvironment("", true)
+	f := factorypkg.NewModuleFactory(env, nil)
+
+	// Use the recipe template for building devices using reverse connection.
+	// the factory is configured for auto-discovery the hub and authentication
+	// using the app environment.
+	//
+	// Recipe contains discovery, logging, client auth (token|cert), and transport client
+	// The app module is added at the end.
+	owserverModDef := api.CellDefinition{
+		Type:        owserver.DefaultOWServerThingID,
+		Constructor: owserverpkg.NewOWServerFactory,
+	}
+	r := factorypkg.NewRCDeviceRecipe(f, &owserverModDef)
+
+	// start the recipe services
+	err := r.Start()
+	if err != nil {
+		os.Exit(1)
+	}
 }

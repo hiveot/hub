@@ -23,7 +23,7 @@
 mosquitto.conf
 
 # thingview uses node
-node_modules/
+node_cells/
 
 # Dependency directories
 .history

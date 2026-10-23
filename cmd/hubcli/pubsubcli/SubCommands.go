@@ -1,18 +1,19 @@
 package pubsubcli
 
 import (
+	"context"
 	"fmt"
 	"time"
 
 	"github.com/hiveot/hivekit/go/api/msg"
 	"github.com/hiveot/hivekit/go/api/td"
-	"github.com/hiveot/hivekit/go/modules/consumer"
-	"github.com/hiveot/hivekit/go/modules/directory"
+	"github.com/hiveot/hivekit/go/cells/consumer"
+	"github.com/hiveot/hivekit/go/cells/directory"
 	"github.com/hiveot/hivekit/go/utils"
 	jsoniter "github.com/json-iterator/go"
 
 	"github.com/araddon/dateparse"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 // SubTDCommand shows TD publications
@@ -21,7 +22,7 @@ func SubTDCommand(hc **consumer.Consumer) *cli.Command {
 		Name:     "subtd",
 		Usage:    "SubscribeEvent to TD publications",
 		Category: "pubsub",
-		Action: func(cCtx *cli.Context) error {
+		Action: func(ctx context.Context, cmd *cli.Command) error {
 			err := HandleSubTD(*hc)
 			return err
 		},
@@ -34,16 +35,16 @@ func SubEventsCommand(hc **consumer.Consumer) *cli.Command {
 		Usage:     "SubscribeEvent to Thing events",
 		ArgsUsage: "[<thingID> [<key>]]",
 		Category:  "pubsub",
-		Action: func(cCtx *cli.Context) error {
+		Action: func(ctx context.Context, cmd *cli.Command) error {
 			thingID := ""
 			key := ""
-			if cCtx.NArg() > 0 {
-				thingID = cCtx.Args().Get(0)
+			if cmd.NArg() > 0 {
+				thingID = cmd.Args().Get(0)
 			}
-			if cCtx.NArg() > 1 {
-				key = cCtx.Args().Get(1)
+			if cmd.NArg() > 1 {
+				key = cmd.Args().Get(1)
 			}
-			if cCtx.NArg() > 2 {
+			if cmd.NArg() > 2 {
 				return fmt.Errorf("unexpected arguments")
 			}
 

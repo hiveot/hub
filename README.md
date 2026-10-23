@@ -2,13 +2,11 @@
 
 The Hub for the _Hive-of-Things_ provides a secure [runtime](runtime/README-runtime.md) to interact with IoT devices. The Hub securely mediates between IoT device 'Things', services, and users using a hub-and-spokes architecture. Users interact with Things via the Hub's digital twin, without connecting directly to the IoT devices or services. The Hub is based on the [W3C WoT TD 1.1 specification](https://www.w3.org/TR/wot-thing-description11/). Multiple communication protocols are supported for IoT devices and users.
 
-![System Overview](docs/hub-overview.jpg)
+![System Overview](docs/hub overview.jpg)
 
 ## Project Status
 
-Status Nov 2025: The Hub runtime, services and bindings have been reworked to support the Web-of-things (WoT) Thing Description (TD) specification. It is currently in alpha, functional but breaking changes should be expected.
-
-The Hub is currently further reworked to extract the core library in a reusable [Hive-Kit](https://github.com/hiveot/hivekit) for builing IoT applications. Inspired by go2rtc (for video) the runtime, bindings and services will be migrated to use the stand-alone 'hive kit' modules.
+Status June 2026: The Hub runtime, services and bindings have been reworked to use [Hive-Kit](https://github.com/hiveot/hivekit) for builing IoT applications. Inspired by go2rtc (for video) the runtime, bindings and services will be migrated to use the stand-alone 'hive kit' cells.
 
 ## Audience
 
@@ -30,7 +28,7 @@ The Hub supports multiple transport protocols, such as HTTPS/SSE, WebSocket, NAT
 
 Last but not least, the 'hive' can be expanded by connecting multiple hubs to each other through a 'bridge'. The bridge lets the Hub owner share select IoT information with other hubs. (future feature)
 
-![Digital Twin Runtime Overview](docs/digitwin-overview.jpg)
+![Digital Twin Runtime Overview (old)](docs/hub digitwin.jpg)
 
 ## Build and Install
 

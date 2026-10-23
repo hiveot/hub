@@ -4,23 +4,34 @@ import (
 	"log/slog"
 	"path"
 
-	"github.com/hiveot/hivekit/go/modules/factory"
-	"github.com/hiveot/hub/bindings/weather/config"
-	"github.com/hiveot/hub/bindings/weather/service"
+	"github.com/hiveot/hivekit/go/cells/transport/clients"
+	discoverypkg "github.com/hiveot/hivekit/go/cells/transport/discovery/pkg"
+
+	"github.com/hiveot/hub/bindings/weather"
+	weatherpkg "github.com/hiveot/hub/bindings/weather/pkg"
 	"github.com/hiveot/hub/lib/plugin"
 )
 
 // Start the Weather binding
 func main() {
-	env := factory.NewAppEnvironment("", true)
-	cfg := config.NewWeatherConfig()
+	env := api.NewAppEnvironment("", true)
+	cfg := weather.NewWeatherConfig()
 	err := env.LoadConfig(&cfg)
 	if err != nil {
 		slog.Error("Failed loading configuration", "err", err.Error())
 	}
-	storePath := path.Join(env.StoresDir, env.ClientID)
+	storePath := path.Join(env.StoresDir, env.AppID)
 
-	binding := service.NewWeatherBinding(storePath, cfg)
+	// locate the server for connecting
+	// FIXME: easy way to connect, factory?
+	if env.ServerURL == "" {
+		cl := discoverypkg.NewDiscoveryClient()
+		serverInfo, _ := cl.DiscoverDirectories("", 0, true, nil)
+		env.ServerURL = serverInfo[0].AsURL()
+	}
+	co, err := clients.NewTransportClient("", env.ServerURL, env.CaCert)
+
+	binding := weatherpkg.NewWeatherService(co, storePath, cfg)
 	// the plugin filename is the default binding ID
-	plugin.StartPlugin(binding, env.ClientID, env.CertsDir, env.ServerURL)
+	plugin.StartPlugin(binding, env.AppID, env.CertsDir, env.ServerURL)
 }

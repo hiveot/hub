@@ -1,10 +1,11 @@
 package pubsubcli
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/hiveot/hivekit/go/modules/consumer"
-	"github.com/urfave/cli/v2"
+	"github.com/hiveot/hivekit/go/cells/consumer"
+	"github.com/urfave/cli/v3"
 )
 
 func PubActionCommand(hc **consumer.Consumer) *cli.Command {
@@ -17,13 +18,13 @@ func PubActionCommand(hc **consumer.Consumer) *cli.Command {
 			"  action:  Action to invoke as listed in the Thing's TD document\n" +
 			"  value:   Optional value if required by the action",
 		Category: "pubsub",
-		Action: func(cCtx *cli.Context) error {
-			if cCtx.NArg() < 2 {
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			if cmd.NArg() < 2 {
 				return fmt.Errorf("missing arguments")
 			}
-			dThingID := cCtx.Args().First()
-			action := cCtx.Args().Get(1)
-			args := cCtx.Args().Get(2)
+			dThingID := cmd.Args().First()
+			action := cmd.Args().Get(1)
+			args := cmd.Args().Get(2)
 			err := HandlePubActions(*hc, dThingID, action, args)
 			return err
 		},

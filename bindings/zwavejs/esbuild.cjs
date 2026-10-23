@@ -32,8 +32,8 @@ async function patchPkgJson(path) {
 }
 
 // from https://github.com/evanw/esbuild/issues/1051#issuecomment-806325487
-const nativeNodeModulesPlugin = {
-    name: 'native-node-modules',
+const nativeNodeCellsPlugin = {
+    name: 'native-node-cells',
     setup(build) {
         // If a ".node" file is imported within a module in the "file" namespace, resolve
         // it to an absolute path and put it into the "node-file" virtual namespace.
@@ -103,7 +103,7 @@ async function main() {
             //     : 'api/bin/www.ts',
             "src/main.ts"
         ],
-        plugins: [nativeNodeModulesPlugin],
+        plugins: [nativeNodeCellsPlugin],
         bundle: true,
         platform: 'node',
         target: 'node22',
@@ -124,15 +124,15 @@ async function main() {
     const content = (await readFile(outfile, 'utf-8'))
         .replace(
             /__dirname, "\.\.\/"/g,
-            '__dirname, "./node_modules/@serialport/bindings-cpp"',
+            '__dirname, "./node_cells/@serialport/bindings-cpp"',
         )
         .replace(
             `__dirname, "../package.json"`,
-            `__dirname, "./node_modules/@zwave-js/config/package.json"`,
+            `__dirname, "./node_cells/@zwave-js/config/package.json"`,
         )
         .replace(
             `__dirname, "../config"`,
-            `__dirname, "./node_modules/@zwave-js/config/config"`,
+            `__dirname, "./node_cells/@zwave-js/config/config"`,
         )
 
     await writeFile(outfile, content)
@@ -154,7 +154,7 @@ async function main() {
 
     // copy assets to build folder
     for (const ext of externals) {
-        const path = ext.startsWith('./') ? ext : `node_modules/${ext}`
+        const path = ext.startsWith('./') ? ext : `node_cells/${ext}`
         if (await exists(path)) {
             console.log(`Copying "${path}" to "${outputDir}" folder`)
             await cp(path, `${outputDir}/${path}`, {recursive: true})
@@ -175,7 +175,7 @@ async function main() {
     pkgJson.pkg = {
         assets: ['dist/**',
             'snippets/**',
-            'node_modules/**',],
+            'node_cells/**',],
     }
 
     await writeFile(
@@ -183,8 +183,8 @@ async function main() {
         JSON.stringify(pkgJson, null, 2),
     )
 
-    await patchPkgJson('node_modules/@zwave-js/config')
-    await patchPkgJson('node_modules/zwave-js')
+    await patchPkgJson('node_cells/@zwave-js/config')
+    await patchPkgJson('node_cells/zwave-js')
 }
 
 main().catch((err) => {

@@ -1,13 +1,14 @@
 package authcli
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
 
-	authnpkg "github.com/hiveot/hivekit/go/modules/authn/pkg"
-	"github.com/hiveot/hivekit/go/modules/consumer"
-	"github.com/urfave/cli/v2"
+	authnpkg "github.com/hiveot/hivekit/go/cells/authn/pkg"
+	"github.com/hiveot/hivekit/go/cells/consumer"
+	"github.com/urfave/cli/v3"
 	"golang.org/x/exp/rand"
 )
 
@@ -18,14 +19,14 @@ func AuthSetPasswordCommand(hc **consumer.Consumer) *cli.Command {
 		Usage:     "Set password. (careful, no confirmation)",
 		ArgsUsage: "<login> <password>",
 		Category:  "auth",
-		Action: func(cCtx *cli.Context) error {
+		Action: func(ctx context.Context, cmd *cli.Command) error {
 			newPassword := ""
-			if cCtx.NArg() != 2 {
+			if cmd.NArg() != 2 {
 				err := fmt.Errorf("expected 2 arguments")
 				return err
 			}
-			loginID := cCtx.Args().Get(0)
-			newPassword = cCtx.Args().Get(1)
+			loginID := cmd.Args().Get(0)
+			newPassword = cmd.Args().Get(1)
 			err := HandleSetPassword(*hc, loginID, newPassword)
 			return err
 		},

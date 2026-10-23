@@ -7,7 +7,7 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/hiveot/hivekit/go/modules/bucketstore"
+	"github.com/hiveot/hivekit/go/cells/bucketstore"
 	jsoniter "github.com/json-iterator/go"
 )
 

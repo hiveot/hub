@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hiveot/hivekit/go/modules/authn"
+	"github.com/hiveot/hivekit/go/cells/authn"
 	"github.com/hiveot/hivekit/go/testenv"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/bindings/ipnet/config"

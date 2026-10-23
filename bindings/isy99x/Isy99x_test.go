@@ -45,7 +45,7 @@ func TestMain(m *testing.M) {
 	appConfig.IsyAddress = simulationRoot
 
 	//
-	testEnv, closeFn = testenv.StartTestEnv("")
+	testEnv, closeFn = testenv.StartTestEnv("", true)
 	result := m.Run()
 	time.Sleep(time.Second)
 

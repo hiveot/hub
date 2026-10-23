@@ -1,6 +1,6 @@
 package providers
 
-import "github.com/hiveot/hub/bindings/weather/config"
+import "github.com/hiveot/hub/bindings/weather"
 
 // definitions to be implemented by weather service providers
 
@@ -29,6 +29,6 @@ type HourlyWeatherForecast struct {
 
 type IWeatherProvider interface {
 	BaseURL() string
-	ReadCurrent(loc config.WeatherLocation) (CurrentWeather, error)
-	ReadHourlyForecast(loc config.WeatherLocation) (HourlyWeatherForecast, error)
+	ReadCurrent(loc weather.WeatherLocation) (CurrentWeather, error)
+	ReadHourlyForecast(loc weather.WeatherLocation) (HourlyWeatherForecast, error)
 }

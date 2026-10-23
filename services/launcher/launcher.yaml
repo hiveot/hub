@@ -1,0 +1,67 @@
+# Launcher service default configuration template.
+# Uncomment out the 'runtime' and services in the autostart section as needed
+
+
+# Launcher authentication in the certs directory
+# Use id to run a secondary launcher instance on a different machine
+# It must have a valid token
+#id: launcher                    # default launcher ID
+#keyFile: launcher.key           # default is launcher.key
+#tokenFile: launcher.token       # default is launcher.token
+
+# log launcher to stdout/stderr at level info (default is warning)
+logLevel: info
+
+# log launcher output to file (default is true)
+#logtofile: true  #
+
+# runtime binary to launch before the plugins. The runtime binary must reside in the bin directory.
+# comment out if a runtime is already running elsewhere.
+runtime: runtime
+
+# runtimeWait adds extra wait-time for starting the runtime. On slow systems this might
+# be needed to ensure it is ready to receive connections.
+# This will be deprecated in the future after proper signalling is added.
+#runtimeWait: 1000
+
+# startWait contains the time in msec to wait after starting a plugin.
+#startWait: 100
+
+
+# write plugin stdout and stderr to logfile at logs/{pluginname}.log (default is true)
+#logPlugins: true
+
+# attach to service stderr for logging and testing (default is true)
+#attachstderr: true
+
+# attach to service stdout for logging and testing (default if false)
+#attachstdout: false
+
+# automatically restart services when they stop
+#autorestart: false    # enable the auto-restart feature (default is disabled)
+
+# createPluginCred generates plugin credentials, if they don't exist.
+# location is the application certs directory using the name format {plugin}.key and {plugin}.token.
+#createPluginCred: true    (default true)
+
+# provideDiscovery provides the plugin with the discovery URL of the hub directory TD
+# using the 'directoryURL' commandline argument.
+# The plugin can use it to publish its TD.
+#provideDiscovery: true    (default true)
+
+
+# Plugins to start in order
+autostart:
+# core services
+# - history              # storage of event history
+#  - zwavejs: zwavejs-cb  # run this plugin as a variant
+
+# protocol bindings
+#  - hiveoview         # simple dashboard for viewing in the browser
+#  - owserver          # 1-wire binding using owserver gateway
+#  - zwavejs           # ZWave binding using zwave-js
+#  - isy99x            # Insteon binding using legacy ISY99 gateway
+#  - ipnet             # IP network scanner
+
+#  - openweathermap    # Weather service integration
+#  - locate            # Locate people and devices

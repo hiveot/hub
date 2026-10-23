@@ -2,15 +2,16 @@ package directorycli
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 
 	"github.com/hiveot/hivekit/go/api/td"
-	"github.com/hiveot/hivekit/go/modules/consumer"
-	directorypkg "github.com/hiveot/hivekit/go/modules/directory/pkg"
+	"github.com/hiveot/hivekit/go/cells/consumer"
+	directorypkg "github.com/hiveot/hivekit/go/cells/directory/pkg"
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 func DirectoryListCommand(co **consumer.Consumer) *cli.Command {
@@ -28,15 +29,15 @@ func DirectoryListCommand(co **consumer.Consumer) *cli.Command {
 				Destination: &verbose,
 			},
 		},
-		Action: func(cCtx *cli.Context) error {
+		Action: func(ctx context.Context, cmd *cli.Command) error {
 			var err = fmt.Errorf("expected 0 or 1 parameters")
-			if cCtx.NArg() == 0 {
+			if cmd.NArg() == 0 {
 				err = HandleListDirectory(*co)
-			} else if cCtx.NArg() == 1 {
+			} else if cmd.NArg() == 1 {
 				if !verbose {
-					err = HandleListThing(*co, cCtx.Args().First())
+					err = HandleListThing(*co, cmd.Args().First())
 				} else {
-					err = HandleListThingVerbose(*co, cCtx.Args().First())
+					err = HandleListThingVerbose(*co, cmd.Args().First())
 				}
 			}
 			return err

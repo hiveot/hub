@@ -1,14 +1,15 @@
 package directorycli
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"time"
 
-	discoverypkg "github.com/hiveot/hivekit/go/modules/transport/discovery/pkg"
-	tlsclientpkg "github.com/hiveot/hivekit/go/modules/transport/tlsclient/pkg"
+	discoverypkg "github.com/hiveot/hivekit/go/cells/transport/discovery/pkg"
+	tlsclientpkg "github.com/hiveot/hivekit/go/cells/transport/tlsclient/pkg"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 // DiscoListCommand lists discovered Thing and Directory servers
@@ -29,8 +30,8 @@ func DiscoListCommand(clientID string, authToken *string) *cli.Command {
 				Value:       false,
 				Destination: &readtd,
 			},
-		}, Action: func(cCtx *cli.Context) error {
-			if cCtx.NArg() != 0 {
+		}, Action: func(ctx context.Context, cmd *cli.Command) error {
+			if cmd.NArg() != 0 {
 				return fmt.Errorf("no arguments expected")
 			}
 			err := HandleDiscover(clientID, *authToken, readtd)

@@ -1,12 +1,13 @@
 package historycli
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/hiveot/hivekit/go/modules/consumer"
-	historypkg "github.com/hiveot/hivekit/go/modules/history/pkg"
+	"github.com/hiveot/hivekit/go/cells/consumer"
+	historypkg "github.com/hiveot/hivekit/go/cells/history/pkg"
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 )
 
 //func HistoryInfoCommand(ctx context.Context, runFolder *string) *cli.Command {
@@ -15,8 +16,8 @@ import (
 //		Usage:    "Show history store info",
 //		Category: "history",
 //		//ArgsUsage: "(no args)",
-//		Action: func(cCtx *cli.Context) error {
-//			if cCtx.NArg() != 0 {
+//		Action: func(ctx context.Context, cmd *cli.Command) error {
+//			if cmd.NArg() != 0 {
 //				return fmt.Errorf("no arguments expected")
 //			}
 //			err := HandleHistoryInfo(ctx, *runFolder)
@@ -40,15 +41,15 @@ func HistoryListCommand(hc **consumer.Consumer) *cli.Command {
 				Destination: &limit,
 			},
 		},
-		Action: func(cCtx *cli.Context) error {
-			if cCtx.NArg() < 1 {
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			if cmd.NArg() < 1 {
 				return fmt.Errorf("thingID expected")
 			}
 			key := ""
-			if cCtx.NArg() == 2 {
-				key = cCtx.Args().Get(1)
+			if cmd.NArg() == 2 {
+				key = cmd.Args().Get(1)
 			}
-			err := HandleListEvents(*hc, cCtx.Args().First(), key, limit)
+			err := HandleListEvents(*hc, cmd.Args().First(), key, limit)
 			return err
 		},
 	}
@@ -60,11 +61,11 @@ func HistoryListCommand(hc **consumer.Consumer) *cli.Command {
 //		Usage:     "History latest values of a things",
 //		ArgsUsage: "<pubID> <thingID>",
 //		Category:  "history",
-//		Action: func(cCtx *cli.Context) error {
-//			if cCtx.NArg() != 2 {
+//		Action: func(ctx context.Context, cmd *cli.Command) error {
+//			if cmd.NArg() != 2 {
 //				return fmt.Errorf("publisherID and thingID expected")
 //			}
-//			err := HandleListLatestEvents(*hc, cCtx.Args().First(), cCtx.Args().Get(1))
+//			err := HandleListLatestEvents(*hc, cmd.Args().First(), cmd.Args().Get(1))
 //			return err
 //		},
 //	}
@@ -76,8 +77,8 @@ func HistoryListCommand(hc **consumer.Consumer) *cli.Command {
 //		Usage: "Show history retained events",
 //		//ArgsUsage: "(no args)",
 //		Category: "history",
-//		Action: func(cCtx *cli.Context) error {
-//			if cCtx.NArg() != 0 {
+//		Action: func(ctx context.Context, cmd *cli.Command) error {
+//			if cmd.NArg() != 0 {
 //				return fmt.Errorf("no arguments expected")
 //			}
 //			err := HandleListRetainedEvents(*hc)

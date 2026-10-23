@@ -29,7 +29,7 @@ TODO:
 	* test on both browser and node
 	* add test framework. jest is an option but it doesn't support tsx
 
-## Modules
+## Cells
 
 * discovery: Discovery of the Hub using DNS-SD
 * hubclient: Client for publishing and subscribing of actions, events, td, and config

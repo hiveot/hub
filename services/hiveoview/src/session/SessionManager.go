@@ -1,6 +1,7 @@
 package session
 
 import (
+	"crypto"
 	"crypto/ed25519"
 	"crypto/x509"
 	"log/slog"
@@ -9,12 +10,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hiveot/hivekit/go/modules/agent"
-	authnpkg "github.com/hiveot/hivekit/go/modules/authn/pkg"
-	"github.com/hiveot/hivekit/go/modules/bucketstore"
-	"github.com/hiveot/hivekit/go/modules/consumer"
-	"github.com/hiveot/hivekit/go/modules/transport"
-	"github.com/hiveot/hivekit/go/modules/transport/clients"
+	"github.com/hiveot/hivekit/go/api"
+	"github.com/hiveot/hivekit/go/cells/agent"
+	authnpkg "github.com/hiveot/hivekit/go/cells/authn/pkg"
+	"github.com/hiveot/hivekit/go/cells/bucketstore"
+	"github.com/hiveot/hivekit/go/cells/consumer"
+	"github.com/hiveot/hivekit/go/cells/transport/clients"
 	"github.com/hiveot/hub/services/hiveoview/src"
 )
 
@@ -28,8 +29,8 @@ type WebSessionManager struct {
 	// mutex to access the sessions
 	mux sync.RWMutex
 	// signing key for creating and verifying cookies
-	signingKey ed25519.PrivateKey
-	pubKey     ed25519.PublicKey
+	signingKey crypto.PrivateKey
+	pubKey     crypto.PublicKey
 
 	// Hub address
 	hubURL string
@@ -48,7 +49,7 @@ type WebSessionManager struct {
 
 // add a new session with the given hub connection and send a session count event
 func (sm *WebSessionManager) _addSession(
-	r *http.Request, cid string, cc transport.ITransportClient) (
+	r *http.Request, cid string, cc api.ITransportClient) (
 	cs *WebClientSession, err error) {
 
 	// if the browser does not provide a CID until after the first connection,
@@ -99,7 +100,6 @@ func (sm *WebSessionManager) _addSession(
 		slog.String("clientID", clientID),
 		slog.String("clcid", cs.clcid),
 		slog.String("remoteAdddr", r.RemoteAddr),
-		slog.String("cc.cid", cinfo.ConnectionID),
 		slog.Int("nr sessions", len(sm.sessions)),
 	)
 	sm.ag.PubEvent(src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions)
@@ -309,7 +309,7 @@ func (sm *WebSessionManager) GetSessionFromCookie(r *http.Request) (
 	// The UI is supposed to supply a cid header in sse requests. However,
 	// sse-connect ignores the hx-header that contains the cid. As a workaround
 	// also check query parameters.
-	cid = r.Header.Get(transport.ConnectionIDHeader)
+	cid = r.Header.Get(api.ConnectionIDHeader)
 	if cid == "" {
 		//slog.Error("GetSessionFromCookie: Missing CID")
 		cid = r.URL.Query().Get("cid")
@@ -334,7 +334,7 @@ func (sm *WebSessionManager) GetSessionFromCookie(r *http.Request) (
 //	configStore data store for client configuration
 //	timeout of hub connections
 func NewWebSessionManager(
-	ag *agent.Agent, signingKey ed25519.PrivateKey, caCert *x509.Certificate,
+	ag *agent.Agent, signingKey crypto.PrivateKey, caCert *x509.Certificate,
 	configStore bucketstore.IBucketStore,
 	timeout time.Duration) *WebSessionManager {
 

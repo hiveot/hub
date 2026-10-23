@@ -1,6 +1,7 @@
 package service
 
 import (
+	"crypto"
 	"crypto/ed25519"
 	"crypto/rand"
 	"crypto/tls"
@@ -13,15 +14,14 @@ import (
 	"path"
 	"time"
 
-	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/v5"
-	"github.com/hiveot/hivekit/go/modules"
-	"github.com/hiveot/hivekit/go/modules/agent"
-	"github.com/hiveot/hivekit/go/modules/bucketstore"
-	bucketstorepkg "github.com/hiveot/hivekit/go/modules/bucketstore/pkg"
-	"github.com/hiveot/hivekit/go/modules/transport"
-	"github.com/hiveot/hivekit/go/modules/transport/tlsserver"
-	tlsserverpkg "github.com/hiveot/hivekit/go/modules/transport/tlsserver/pkg"
+	"github.com/hiveot/hivekit/go/api"
+	"github.com/hiveot/hivekit/go/cells"
+	"github.com/hiveot/hivekit/go/cells/agent"
+	"github.com/hiveot/hivekit/go/cells/bucketstore"
+	bucketstorepkg "github.com/hiveot/hivekit/go/cells/bucketstore/pkg"
+	"github.com/hiveot/hivekit/go/cells/transport/tlsserver"
+	tlsserverpkg "github.com/hiveot/hivekit/go/cells/transport/tlsserver/pkg"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views"
@@ -33,7 +33,7 @@ const HiveoviewStoreName = "hiveoview.kvbtree"
 // It utilizes gin, htmx and TempL for serving html.
 // credits go to: https://github.com/marco-souza/gx/blob/main/cmd/server/server.go
 type HiveoviewService struct {
-	modules.HiveModuleBase
+	cells.HiveCellBase
 
 	//serverAddr   string // listening address
 	port         int  // listening port
@@ -48,7 +48,7 @@ type HiveoviewService struct {
 	// tls server
 	serverCert *tls.Certificate
 	caCert     *x509.Certificate
-	tlsServer  transport.IHttpServer
+	tlsServer  api.IHttpServer
 
 	// a web session per connections
 	sm *session.WebSessionManager
@@ -58,7 +58,7 @@ type HiveoviewService struct {
 	ag *agent.Agent
 
 	// cookie signing
-	signingKey ed25519.PrivateKey
+	signingKey crypto.PrivateKey
 
 	// run in debug mode, extra logging and reload templates render
 	debug bool
@@ -192,7 +192,7 @@ func (svc *HiveoviewService) Stop() {
 //	storeDir path to directory holding client session and dashboard data
 func NewHiveovService(
 	ag *agent.Agent, serverPort int, debug bool,
-	signingKey ed25519.PrivateKey, rootPath string,
+	signingKey crypto.PrivateKey, rootPath string,
 	serverCert *tls.Certificate, caCert *x509.Certificate,
 	timeout time.Duration,
 	storeDir string,
@@ -206,19 +206,19 @@ func NewHiveovService(
 	}
 	tm := views.InitTemplateManager(templatePath)
 	svc := &HiveoviewService{
-		HiveModuleBase: *modules.NewHiveModuleBase(src.HiveoviewServiceID, 0),
-		ag:             ag,
-		port:           serverPort,
-		shouldUpdate:   true,
-		debug:          debug,
-		signingKey:     signingKey,
-		rootPath:       rootPath,
-		tm:             tm,
-		serverCert:     serverCert,
-		caCert:         caCert,
-		storeDir:       storeDir,
-		timeout:        timeout,
+		HiveCellBase: *cells.NewHiveCellBase(src.HiveoviewServiceID, 0),
+		ag:           ag,
+		port:         serverPort,
+		shouldUpdate: true,
+		debug:        debug,
+		signingKey:   signingKey,
+		rootPath:     rootPath,
+		tm:           tm,
+		serverCert:   serverCert,
+		caCert:       caCert,
+		storeDir:     storeDir,
+		timeout:      timeout,
 	}
-	var _ modules.IHiveModule = svc // interface check
+	var _ api.IHiveCell = svc // interface check
 	return svc
 }

@@ -1,0 +1,146 @@
+package internal
+
+import (
+	"github.com/hiveot/hivekit/go/api/td"
+	"github.com/hiveot/hivekit/go/api/vocab"
+	"github.com/hiveot/hub/bindings/owserver/internal/eds"
+	jsoniter "github.com/json-iterator/go"
+)
+
+// CreateTDFromNode converts the 1-wire node into a TD that describes the node.
+// - All attributes will be added as node properties
+// - Writable non-sensors attributes are marked as writable configuration
+// - Sensors are also added as events.
+// - Writable sensors are also added as actions.
+func (svc *OWServer) CreateTDFromNode(node *eds.OneWireNode) (tdoc *td.TD) {
+
+	// Should we bother with the URI? In HiveOT things have pubsub addresses that include the ID. The ID is not the address.
+	//thingID := things.CreateThingID(svc.config.ID, node.NodeID, node.DeviceType)
+	thingID := node.ROMId
+	if thingID == "" {
+		thingID = vocab.DeviceNetGateway
+	}
+	deviceType := deviceTypeMap[node.Family]
+	if deviceType == "" {
+		// unknown device
+		deviceType = vocab.Device
+	}
+	thingTitle := node.Name
+	tdoc = td.NewTD(thingID, thingTitle, deviceType)
+	tdoc.UpdateTitleDescription(thingTitle, node.Description)
+
+	// Add a writable 'title' property so consumer can edit the device's title.
+	// Since owserver doesn't support naming a device, the title is stored in this service.
+	// The UI should prefer a title property over the TD title.
+	// how does the dtw know if to forward a title property write request?
+	//  look into the device's TD
+	prop := tdoc.AddProperty(td.WoTTitle, "Title", "", td.DataTypeString)
+	prop.SetAtType(vocab.PropDeviceTitle)
+	prop.ReadOnly = false
+
+	// Map node attribute to Thing properties and events
+	for attrID, attr := range node.Attr {
+		// The AttrInfo table determines what is in the TD as property, event or action
+		attrInfo, found := AttrConfig[attrID]
+
+		if !found || attrInfo.Ignore {
+			// exclude from the TD
+			continue
+		}
+		if attrInfo.IsProp {
+			propType := attrInfo.VocabType
+			title := attrInfo.Title
+			dataType := attrInfo.DataType
+
+			prop = tdoc.AddProperty(attrID, title, attrInfo.Description, dataType).SetAtType(propType)
+			unit := attrInfo.Unit
+			if attr.Unit != "" {
+				unitID, found := UnitNameVocab[attr.Unit]
+				if found {
+					unitInfo := vocab.UnitClassesMap[unitID]
+					unit = unitInfo.Symbol
+				}
+			}
+			prop.Unit = unit
+			// non-sensors are attributes. Writable attributes are configuration.
+			prop.ReadOnly = !attr.Writable
+			if attrInfo.Enum != nil {
+				prop.OneOf = attrInfo.Enum
+			}
+		}
+		if attrInfo.IsEvent {
+			var evSchema *td.DataSchema
+			// only add data schema if the event carries a value
+			if attrInfo.DataType != td.DataTypeNone {
+				unit, _ := UnitNameVocab[attr.Unit]
+				evSchema = &td.DataSchema{
+					Type:     attrInfo.DataType,
+					Unit:     unit,
+					ReadOnly: true,
+				}
+			}
+			// TODO: use a Number/Integerschema for numeric sensors
+			tdoc.AddEvent(attrID, attrInfo.Title, attrInfo.Description, evSchema).
+				SetAtType(attrInfo.VocabType)
+		}
+		if attrInfo.IsActuator {
+			var inputSchema *td.DataSchema
+			// only add data schema if the action accepts parameters
+			if attrInfo.DataType != td.DataTypeNone {
+				unit, _ := UnitNameVocab[attr.Unit]
+				inputSchema = &td.DataSchema{
+					Type:      attrInfo.DataType,
+					Unit:      unit,
+					ReadOnly:  false,
+					WriteOnly: false,
+				}
+			}
+			aff := tdoc.AddAction(attrID, attrInfo.Title, attrInfo.Description, inputSchema)
+			aff.SetAtType(attrInfo.VocabType)
+		}
+	}
+	return tdoc
+}
+
+//func (svc *OWServerBinding) MakeNodePropValues(node *eds.OneWireNode) map[string]string {
+//	pv := make(map[string]string)
+//	// Map node attribute to Thing properties
+//	for attrName, attr := range node.Attr {
+//		pv[attrName] = attr.Value
+//	}
+//
+//	return pv
+//}
+
+// PollNodes polls the OWServer gateway for nodes and property values
+func (svc *OWServer) PollNodes() ([]*eds.OneWireNode, error) {
+	nodes, err := svc.edsAPI.PollNodes()
+	for _, node := range nodes {
+		svc.nodes[node.ROMId] = node
+	}
+	return nodes, err
+}
+
+// PublishNodeTD converts a node to TD documents and publishes it to the Hub.
+// This returns an error if the publications fail
+func (svc *OWServer) PublishNodeTD(node *eds.OneWireNode) (err error) {
+	tdi := svc.CreateTDFromNode(node)
+	svc.things[tdi.ID] = tdi
+	tdJSON, _ := jsoniter.MarshalToString(tdi)
+	svc.ag.WriteTD(tdJSON)
+	//err = svc.ag.UpdateThing(td)
+	return err
+}
+
+// PublishNodeTDs converts the nodes to TD documents and publishes these to the Hub.
+// TD's are stored to be used in publishing its attributes and events.
+// This returns an error if one or more publications fail
+func (svc *OWServer) PublishNodeTDs(nodes []*eds.OneWireNode) (err error) {
+	for _, node := range nodes {
+		err2 := svc.PublishNodeTD(node)
+		if err2 != nil {
+			err = err2
+		}
+	}
+	return err
+}

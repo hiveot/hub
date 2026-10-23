@@ -1,0 +1,142 @@
+package internal
+
+import (
+	"log/slog"
+	"sync"
+	"time"
+
+	"github.com/hiveot/hivekit/go/api"
+	"github.com/hiveot/hivekit/go/cells/agent"
+	"github.com/hiveot/hivekit/go/utils"
+	"github.com/hiveot/hub/bindings/weather"
+	"github.com/hiveot/hub/bindings/weather/providers"
+)
+
+// the key under which custom Thing titles are stored in the state service
+const weatherLocationsKey = "weatherLocations"
+const DefaultWeatherProvider = providers.OpenMeteoProviderID
+
+// WeatherService is the hub protocol binding plugin for integrating with Open-Meteo weather provider.
+type WeatherService struct {
+	// this binding is an agent
+	*agent.Agent
+
+	cfg *weather.WeatherConfig
+
+	// Supported weather providers
+	providers map[string]providers.IWeatherProvider
+
+	// The configured locationStore
+	locationStore          *LocationStore
+	currentWeather         map[string]providers.CurrentWeather
+	lastCurrentPoll        map[string]time.Time // poll timestamp by location ID
+	hourlyForecasts        map[string]providers.HourlyWeatherForecast
+	lastHourlyForecastPoll map[string]time.Time // poll timestamp by location ID
+
+	// protect r/w of current weather
+	mux sync.RWMutex
+
+	// stop the heartbeat
+	stopFn func()
+}
+
+// AddLocation adds a new location and publishes its TD
+func (svc *WeatherService) AddLocation(loc weather.WeatherLocation) error {
+	err := svc.locationStore.Add(loc)
+	if err == nil {
+		err = PublishLocationTD(svc.Agent, svc.cfg, loc)
+	}
+	return err
+}
+
+// GetProvider returns the provider with the given ID or the default provider when no ID is given
+// If the ID is invalid then this returns nil
+func (svc *WeatherService) GetProvider(providerID string) (providers.IWeatherProvider, string) {
+	if providerID == "" {
+		providerID = svc.cfg.DefaultProvider
+	}
+	provider := svc.providers[providerID]
+	return provider, providerID
+}
+
+// heartbeat runs every second and publishes value updates at the right interval
+func (svc *WeatherService) heartBeat() {
+	err := svc.Poll()
+	if err != nil {
+		slog.Error("heartBeat error", "err", err.Error())
+	}
+}
+
+// LocationStore access intended for testing
+func (svc *WeatherService) LocationStore() *LocationStore {
+	return svc.locationStore
+}
+
+// RemoveLocation removes a location
+func (svc *WeatherService) RemoveLocation(thingID string) {
+	svc.locationStore.Remove(thingID)
+}
+
+// Start the weather binding using the given agent
+func (svc *WeatherService) Start() error {
+
+	// load the saved and add the pre-configured locations
+	// Note that this will remove any modifications
+	err := svc.locationStore.Open()
+	for id, loc := range svc.cfg.Locations {
+		loc.ID = id
+		_ = svc.locationStore.Add(loc)
+	}
+
+	if err == nil {
+		err = PublishBindingTD(svc.Agent, svc.cfg)
+	}
+	if err == nil {
+		err = PublishLocationTDs(svc.Agent, svc.cfg, svc.locationStore)
+	}
+	if err == nil {
+		slog.Info("Starting heartBeat")
+		svc.stopFn = utils.StartHeartbeat(time.Second*60, svc.heartBeat)
+	}
+	if err != nil {
+		svc.Stop()
+	}
+
+	return err
+}
+
+// Stop the service and heartbeat
+func (svc *WeatherService) Stop() {
+	if svc.stopFn != nil {
+		svc.stopFn()
+	}
+	svc.locationStore.Close()
+}
+
+// NewWeatherService creates a new weather service binding
+//
+// co is the link to the consumer sending requests and consuming notifications, like an RC Agent or a server chain. nil to manually link.
+// storePath where to store weather configuration
+// cfg weather configuration
+func NewWeatherService(co api.IHiveCell, storePath string, cfg *weather.WeatherConfig) *WeatherService {
+
+	// these are from hub configuration
+	svc := &WeatherService{
+		cfg:                    cfg,
+		providers:              make(map[string]providers.IWeatherProvider),
+		locationStore:          NewLocationStore(storePath),
+		currentWeather:         make(map[string]providers.CurrentWeather),
+		lastCurrentPoll:        make(map[string]time.Time),
+		hourlyForecasts:        make(map[string]providers.HourlyWeatherForecast),
+		lastHourlyForecastPoll: make(map[string]time.Time),
+		stopFn:                 nil,
+	}
+	svc.providers[providers.OpenMeteoProviderID] = providers.NewOpenMeteoProvider()
+	//svc.providers[providers.EnvCanadaProviderID] = providers.NewEnvCanadaProvider()
+
+	if co != nil {
+		co.SetRequestSink(svc)
+		svc.SetNotificationSink(co)
+	}
+	return svc
+}

@@ -1,14 +1,15 @@
 package certs
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
 	"path"
 
-	"github.com/hiveot/hivekit/go/modules/certs"
-	certspkg "github.com/hiveot/hivekit/go/modules/certs/pkg"
-	"github.com/urfave/cli/v2"
+	"github.com/hiveot/hivekit/go/cells/certs"
+	certspkg "github.com/hiveot/hivekit/go/cells/certs/pkg"
+	"github.com/urfave/cli/v3"
 )
 
 // CreateCACommand create the Hub self-signed CA, valid for 10 years
@@ -38,11 +39,11 @@ func CreateCACommand(certsFolder *string) *cli.Command {
 				Destination: &force,
 			},
 		},
-		Action: func(cCtx *cli.Context) error {
-			if cCtx.NArg() > 0 {
-				return fmt.Errorf("unexpected argument(s) '%s'", cCtx.Args().First())
+		Action: func(ctx context.Context, cmd *cli.Command) error {
+			if cmd.NArg() > 0 {
+				return fmt.Errorf("unexpected argument(s) '%s'", cmd.Args().First())
 			}
-			err := HandleCreateCACert(*certsFolder, cCtx.Int("days"), cCtx.Bool("force"))
+			err := HandleCreateCACert(*certsFolder, cmd.Int("days"), cmd.Bool("force"))
 			return err
 		},
 	}

@@ -4,21 +4,20 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/hiveot/hivekit/go/modules/factory"
+	"github.com/hiveot/hivekit/go/cells/transport/clients"
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hub/services/launcher/config"
-	"github.com/hiveot/hub/services/launcher/service"
+	"github.com/hiveot/hub/services/launcher"
+	launcherpkg "github.com/hiveot/hub/services/launcher/pkg"
 )
 
-// Connect the launcher service
+// Connect the launcher service to the hub
 func main() {
 	// setup environment and config
-	env := factory.NewAppEnvironment("", true)
+	env := api.NewAppEnvironment("", true)
 	utils.SetLogging(env.LogLevel, "")
 
-	cfg := config.NewLauncherConfig()
+	cfg := launcher.NewLauncherConfig()
 	cfg.LogLevel = env.LogLevel
-	cfg.LogsDir = env.LogsDir
 
 	err := env.LoadConfig(&cfg)
 	if err != nil {
@@ -27,22 +26,23 @@ func main() {
 	}
 	utils.SetLogging(cfg.LogLevel, "")
 
+	// TODO: need authn TD. For now use the default serverURL config
+	// should hubURL be discovered?
+	cl, err := clients.NewTransportClient("", env.ServerURL, env.CaCert)
+
 	// start the launcher but do not connect yet as the runtime can be started by the launcher itself.
 	// the runtime will generate the launcher key and token.
-	svc := service.NewLauncherService(env.ServerURL, env.AppID,
-		env.BinDir, env.PluginsDir, env.CertsDir, cfg)
+	svc := launcherpkg.NewLauncherService(cl, env, cfg)
+
 	err = svc.Start()
 	if err != nil {
 		slog.Error("Failed starting launcher: ", "err", err)
 		// we're going to exit. Don't leave the core running
-		_ = svc.Stop()
+		svc.Stop()
 		os.Exit(1)
 	}
 	slog.Warn("Launcher has started")
 	// wait for a stop signal
-	service.WaitForSignal()
-	err = svc.Stop()
-	if err != nil {
-		os.Exit(2)
-	}
+	utils.WaitForSignal()
+	svc.Stop()
 }

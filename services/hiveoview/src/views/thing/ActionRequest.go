@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/araddon/dateparse"
-	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hivekit/go/api/msg"
 	"github.com/hiveot/hivekit/go/api/td"

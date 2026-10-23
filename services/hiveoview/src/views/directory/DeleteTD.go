@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/services/hiveoview/src"

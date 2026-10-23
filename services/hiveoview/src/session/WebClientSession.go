@@ -9,11 +9,11 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/hiveot/hivekit/go/api"
 	"github.com/hiveot/hivekit/go/api/msg"
 	"github.com/hiveot/hivekit/go/api/td"
-	"github.com/hiveot/hivekit/go/modules/bucketstore"
-	"github.com/hiveot/hivekit/go/modules/consumer"
-	"github.com/hiveot/hivekit/go/modules/transport"
+	"github.com/hiveot/hivekit/go/cells/bucketstore"
+	"github.com/hiveot/hivekit/go/cells/consumer"
 	"github.com/hiveot/hivekit/go/utils"
 )
 
@@ -268,7 +268,7 @@ func (sess *WebClientSession) NewSseChan() chan SSEEvent {
 }
 
 // onHubConnectionChange is invoked on hub client disconnect/reconnect
-func (sess *WebClientSession) onHubConnectionChange(connected bool, err error, c transport.IConnection) {
+func (sess *WebClientSession) onHubConnectionChange(connected bool, err error, c api.IConnection) {
 	lastErrText := ""
 
 	slog.Debug("onHubConnectionChange",
