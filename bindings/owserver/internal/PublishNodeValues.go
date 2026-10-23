@@ -81,7 +81,7 @@ func (svc *OWServer) PublishNodeValues(nodes []*eds.OneWireNode, force bool) (er
 							slog.String("thingID", thingID),
 							slog.String("attrID", attrID),
 							slog.String("value", attr.Value))
-						svc.ag.PubEvent(nodeTD.ID, attrID, value)
+						svc.PubEvent(nodeTD.ID, attrID, value)
 						evCount++
 					}
 				}
@@ -98,7 +98,7 @@ func (svc *OWServer) PublishNodeValues(nodes []*eds.OneWireNode, force bool) (er
 				slog.String("thingID", thingID),
 				slog.Int("count", len(propMap)),
 			)
-			svc.ag.PubProperties(thingID, propMap, true)
+			svc.PubProperties(thingID, propMap, true)
 			propCount += len(propMap)
 		}
 	}

@@ -8,7 +8,7 @@ import (
 	"github.com/araddon/dateparse"
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hivekit/go/api/msg"
-	historypkg "github.com/hiveot/hivekit/go/cells/history/pkg"
+	history_client "github.com/hiveot/hivekit/go/cells/history/client"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
@@ -57,7 +57,7 @@ func RenderHistoryPage(w http.ResponseWriter, r *http.Request) {
 	}
 	duration := time.Second * time.Duration(durationSec)
 	iout := ct.GetValue(msg.AffordanceType(affType), name)
-	hist := historypkg.NewReadHistoryClient(ct.GetConsumer())
+	hist := history_client.NewReadHistoryClient(ct.GetConsumer())
 	values, itemsRemaining, err := hist.ReadHistory(
 		iout.ThingID, iout.Name, timestamp, duration, 500)
 	_ = itemsRemaining

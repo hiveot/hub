@@ -7,7 +7,7 @@ import (
 
 	"github.com/hiveot/hivekit/go/api/msg"
 	"github.com/hiveot/hivekit/go/api/td"
-	historypkg "github.com/hiveot/hivekit/go/cells/history/pkg"
+	history_client "github.com/hiveot/hivekit/go/cells/history/client"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
@@ -54,7 +54,7 @@ func (dt RenderTileTemplateData) GetHistory(
 	}
 	duration, _ := time.ParseDuration("-24h")
 	iout := ct.GetValue(affType, name)
-	hist := historypkg.NewReadHistoryClient(ct.GetConsumer())
+	hist := history_client.NewReadHistoryClient(ct.GetConsumer())
 	values, itemsRemaining, err := hist.ReadHistory(
 		iout.ThingID, iout.Name, timestamp, duration, 500)
 	_ = itemsRemaining

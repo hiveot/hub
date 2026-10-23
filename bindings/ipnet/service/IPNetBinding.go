@@ -1,22 +1,19 @@
 package service
 
 import (
-	"fmt"
 	"log/slog"
 	"time"
 
-	"github.com/hiveot/hivekit/go/api"
-	"github.com/hiveot/hivekit/go/api/msg"
-	"github.com/hiveot/hivekit/go/cells/agent"
+	"github.com/hiveot/hivekit/go/cells/thing"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/bindings/ipnet/config"
 	"github.com/hiveot/hub/lib/plugin"
 )
 
 type IPNetBinding struct {
+	*thing.ExposedThing
+
 	config *config.IPNetConfig
-	// Hub connection
-	ag *agent.Agent
 
 	// discovered devices
 	devicesMap      map[string]*IPDeviceInfo
@@ -24,25 +21,19 @@ type IPNetBinding struct {
 }
 
 // ActionHandler handle action requests
-func (svc *IPNetBinding) ActionHandler(req *msg.RequestMessage,
-	_ api.IConnection) (resp *msg.ResponseMessage) {
+// func (svc *IPNetBinding) HandleRequest(req *msg.RequestMessage, replyTo msg.ResponseHandler) (err error) {
 
-	resp = req.CreateResponse(nil, fmt.Errorf("unknown action '%s'", req.Name))
-	slog.Warn(resp.Error.String())
-	return resp
-}
+// 	resp = req.CreateResponse(nil, fmt.Errorf("unknown action '%s'", req.Name))
+// 	slog.Warn(resp.Error.String())
+// 	return resp
+// }
 
 // Start the binding
-func (svc *IPNetBinding) Start(ag *agent.Agent) (err error) {
+func (svc *IPNetBinding) Start() {
 	if svc.config.LogLevel != "" {
 		utils.SetLogging(svc.config.LogLevel, "")
 	}
 	slog.Info("Starting the IpNet binding", "logLevel", svc.config.LogLevel)
-
-	svc.ag = ag
-
-	// register the action handler
-	svc.ag.SetAppRequestHook(svc.ActionHandler)
 
 	// publish this binding's TD document
 	err = svc.PubBindingTD()
@@ -57,8 +48,6 @@ func (svc *IPNetBinding) Start(ag *agent.Agent) (err error) {
 	svc.stopHeartbeatFn = svc.startHeartbeat()
 
 	slog.Info("ipnet started")
-
-	return err
 }
 
 // heartbeat polls the gateway device every X seconds and publishes updates
@@ -84,8 +73,9 @@ func (svc *IPNetBinding) Stop() {
 func NewIpNetBinding(cfg *config.IPNetConfig) *IPNetBinding {
 
 	svc := &IPNetBinding{
-		config:     cfg,
-		devicesMap: make(map[string]*IPDeviceInfo),
+		ExposedThing: thing.NewExposedThing(thingID, nil),
+		config:       cfg,
+		devicesMap:   make(map[string]*IPDeviceInfo),
 	}
 	return svc
 }

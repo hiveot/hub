@@ -1,13 +1,12 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
-	"time"
 
+	"github.com/hiveot/hivekit/go/api"
 	"github.com/hiveot/hivekit/go/utils"
-	runtimepkg "github.com/hiveot/hub/runtime/pkg"
+	"github.com/hiveot/hub/runtime/pkg"
 )
 
 // Launch the hub digital twin runtime.
@@ -17,30 +16,17 @@ import (
 //
 // This runs
 func main() {
-	flag.Usage = func() {
-		fmt.Println("Usage: runtime [options]")
-		fmt.Println()
-		fmt.Println("Options:")
-		flag.PrintDefaults()
-		fmt.Println()
-	}
-	env := api.NewAppEnvironment("", true)
-	utils.SetLogging(env.LogLevel, "")
-	fmt.Println("home: ", env.HomeDir)
-	if len(flag.Args()) > 0 {
-		println("ERROR: No arguments expected.")
-		fmt.Println("Options:")
-		flag.PrintDefaults()
-		os.Exit(1)
-	}
 
-	// Initialize the runtime configuration, directories and load keys and certificates
-	r := runtimepkg.NewRuntime(env)
-	err := r.Start()
+	env := api.NewHiveEnvironment("", true)
+	utils.SetLogging(env.LogLevel, "")
+	hub, err := pkg.NewHubRuntime(env)
+
 	if err != nil {
-		println("Starting hivot runtime failed: ", err.Error())
+		fmt.Println("Runtime startup failed: " + err.Error())
 		os.Exit(1)
 	}
+	fmt.Printf("main: homeDir: %s\n", env.HomeDir)
+	fmt.Printf("main: Hub is running and listening on '%v'\n", hub.f.GetConnectURLs())
 
 	// Startup Successful
 	// wait until signal
@@ -48,8 +34,6 @@ func main() {
 
 	println("Graceful shutdown of Runtime")
 
-	r.Stop()
+	hub.Stop()
 
-	// give background tasks time to stop
-	time.Sleep(time.Millisecond * 100)
 }

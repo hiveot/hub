@@ -8,11 +8,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hiveot/hivekit/go/api/msg"
 	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/api/vocab"
-	"github.com/hiveot/hivekit/go/cells/agent"
-	"github.com/hiveot/hub/bindings/isy99x/service/isy"
-	jsoniter "github.com/json-iterator/go"
+	"github.com/hiveot/hivekit/go/cells/thing"
+	"github.com/hiveot/hivekit/go/utils"
+	"github.com/hiveot/hub/bindings/isy99x/config"
+	"github.com/hiveot/hub/bindings/isy99x/internal/isy"
 )
 
 // Non-vocab property IDs
@@ -31,25 +33,31 @@ const (
 // IsyGatewayThing is a Thing representing the ISY gateway device.
 // This implements IThing interface.
 type IsyGatewayThing struct {
-	*agent.Agent
+	*thing.ExposedThing
+
+	// Configuration of this gateway thing
+	config *config.Isy99xConfig
 
 	// REST/SOAP/WS connection to the ISY hub
-	ic *isy.IsyAPI
+	gwAPI *isy.IsyAPI
 
-	// map of ISY product ID's
+	// product identification map by {cat}.{subcat}
 	prodMap map[string]InsteonProduct
 
-	// The things that this gateway manages by thingID
-	things map[string]IIsyThing
+	// The isyThings that this gateway manages by thingID
+	isyThings map[string]IIsyThing
+
+	// protect access to the 'isyThings' map
+	mux sync.RWMutex
 
 	// flag, a new node was discovered when reading values. Trigger a scan for new nodes.
 	newNodeFound bool
 
+	//
+	stopHeartbeatFn func()
+
 	// current property values of this thing
 	// propValues *ThingValues
-
-	// protect access to the 'things' map
-	mux sync.RWMutex
 
 	// callback handler for events
 	evHandler IsyEventHandler
@@ -158,86 +166,77 @@ func nodeID2ThingID(nodeID string) string {
 }
 
 // AddIsyThing adds a representing of an Insteon device
-func (t *IsyGatewayThing) AddIsyThing(node *isy.IsyNode) error {
+// If the node thing already exists it is updated.
+func (svc *IsyGatewayThing) AddIsyThing(node *isy.IsyNode) (IIsyThing, error) {
 	var isyThing IIsyThing
 	var err error
 
 	parts := strings.Split(node.Type, ".")
 	if len(parts) < 4 {
-		return fmt.Errorf("AddIsyThing: expected 4 parts in node type: '%s'", node.Type)
+		return nil, fmt.Errorf("AddIsyThing: expected 4 parts in node type: '%s'", node.Type)
 	}
 	cat, _ := strconv.ParseInt(parts[0], 10, 16)
 	subCat, _ := strconv.ParseInt(parts[1], 10, 16)
 	productID := fmt.Sprintf("0x%02X.0x%02X", cat, subCat)
-	prodInfo := t.prodMap[productID]
+	prodInfo := svc.prodMap[productID]
 	hwVersion := parts[3]
+	thingID := nodeID2ThingID(node.Address)
 
 	// determine what device this is using: <category.subcat.description.version>
 	//deviceType, title := determineNodeDeviceType(node.Type)
 	//the category determines the high level device type
 	switch cat {
 	case 0: // general controller, tabletop/remote/touch panel
-		isyThing = NewIsyThing(t.evHandler)
-		break
+		isyThing = NewIsyThing(svc.gwAPI, thingID, node, prodInfo, hwVersion)
 	case 1: // dimmer control
-		isyThing = NewIsyDimmerThing(t.evHandler)
-		break
+		isyThing = NewIsyDimmerThing(svc.gwAPI, thingID, node, prodInfo, hwVersion)
 	case 2: // OnOff switch
-		isyThing = NewIsySwitchThing(t.evHandler)
-		break
+		isyThing = NewIsySwitchThing(svc.gwAPI, thingID, node, prodInfo, hwVersion)
 	case 3: // network bridge
-		isyThing = NewIsyThing(t.evHandler)
-		break
+		isyThing = NewIsyThing(svc.gwAPI, thingID, node, prodInfo, hwVersion)
 	case 4: // irrigation control
-		isyThing = NewIsyThing(t.evHandler)
-		break
+		isyThing = NewIsyThing(svc.gwAPI, thingID, node, prodInfo, hwVersion)
 	case 5: // climate control
-		isyThing = NewIsyThing(t.evHandler)
-		break
+		isyThing = NewIsyThing(svc.gwAPI, thingID, node, prodInfo, hwVersion)
 	case 6: // pool/spa control
-		isyThing = NewIsyThing(t.evHandler)
-		break
+		isyThing = NewIsyThing(svc.gwAPI, thingID, node, prodInfo, hwVersion)
 	case 7: // sensor switch
-		isyThing = NewIsySensorThing(t.evHandler)
-		break
+		isyThing = NewIsySensorThing(svc.gwAPI, thingID, node, prodInfo, hwVersion)
 	case 9: // energy meter/management
-		isyThing = NewIsyThing(t.evHandler)
-		break
+		isyThing = NewIsyThing(svc.gwAPI, thingID, node, prodInfo, hwVersion)
 	case 14: // window/blinds
-		isyThing = NewIsyThing(t.evHandler)
-		break
+		isyThing = NewIsyThing(svc.gwAPI, thingID, node, prodInfo, hwVersion)
 	case 15: // access control/ door lock
-		isyThing = NewIsyThing(t.evHandler)
-		break
+		isyThing = NewIsyThing(svc.gwAPI, thingID, node, prodInfo, hwVersion)
 	default: // unknown general purpose thing
-		isyThing = NewIsyThing(t.evHandler, t.ic, thingID, node, prodInfo, hwVersion)
+		isyThing = NewIsyThing(svc.gwAPI, thingID, node, prodInfo, hwVersion)
 	}
 	if isyThing != nil {
-		thingID := nodeID2ThingID(node.Address)
-		isyThing.Init(t.ic, thingID, node, prodInfo, hwVersion)
-		t.mux.Lock()
-		t.things[isyThing.GetID()] = isyThing
-		t.mux.Unlock()
+		// thingID := nodeID2ThingID(node.Address)
+		// isyThing.Init(t.ic, thingID, node, prodInfo, hwVersion)
+		svc.mux.Lock()
+		svc.isyThings[isyThing.GetID()] = isyThing
+		svc.mux.Unlock()
 	}
-	return err
+	return isyThing, err
 }
 
 // GetIsyThing returns the ISY device Thing with the given ThingID
 // Returns nil of a thing with this ID doesn't exist
-func (t *IsyGatewayThing) GetIsyThing(thingID string) IIsyThing {
-	t.mux.RLock()
-	defer t.mux.RUnlock()
-	it, _ := t.things[thingID]
+func (svc *IsyGatewayThing) GetIsyThing(thingID string) IIsyThing {
+	svc.mux.RLock()
+	defer svc.mux.RUnlock()
+	it, _ := svc.isyThings[thingID]
 	return it
 }
 
-// GetIsyThingByNodeID returns the ISY device Thing with the given Node address/ID
-// Returns nil if a thing with this ID doesn't exist
-func (t *IsyGatewayThing) GetIsyThingByNodeID(nodeID string) IIsyThing {
-	thingID := nodeID2ThingID(nodeID)
-	t.mux.RLock()
-	defer t.mux.RUnlock()
-	it, _ := t.things[thingID]
+// GetIsyThingByNodeID returns the ISY device Thing with the given Node address
+// Returns nil if a thing with this address doesn't exist
+func (svc *IsyGatewayThing) GetIsyThingByNodeID(nodeAddr string) IIsyThing {
+	thingID := nodeID2ThingID(nodeAddr)
+	svc.mux.RLock()
+	defer svc.mux.RUnlock()
+	it, _ := svc.isyThings[thingID]
 	return it
 }
 
@@ -246,8 +245,8 @@ func (t *IsyGatewayThing) GetIsyThingByNodeID(nodeID string) IIsyThing {
 func (t *IsyGatewayThing) GetIsyThings() []IIsyThing {
 	t.mux.RLock()
 	defer t.mux.RUnlock()
-	thingList := make([]IIsyThing, 0, len(t.things))
-	for _, it := range t.things {
+	thingList := make([]IIsyThing, 0, len(t.isyThings))
+	for _, it := range t.isyThings {
 		thingList = append(thingList, it)
 	}
 	return thingList
@@ -263,80 +262,171 @@ func (t *IsyGatewayThing) GetIsyThings() []IIsyThing {
 // 	return values
 // }
 
-// MakeTD returns the Gateway TD document
-// This returns nil if the gateway wasn't initialized
-func (t *IsyGatewayThing) MakeTD() *td.TD {
-	if t.ic == nil {
-		return nil
-	}
+// HandleRequest passes the request to the associated Thing.
+// This distributes the requests to the thing identified in the thingID
+func (svc *IsyGatewayThing) HandleRequest(
+	req *msg.RequestMessage, replyTo msg.ResponseHandler) (err error) {
 
-	tdi := td.NewTD(t.GetThingID(), t.Configuration.DeviceSpecs.Model, vocab.DeviceNetGateway)
-	tdi.Description = t.Configuration.DeviceSpecs.Make + "-" + t.Configuration.DeviceSpecs.Model
+	// request is either for this gateway or gateway nodes
+	if req.ThingID == svc.GetID() {
+		switch req.Operation {
+		case td.OpInvokeAction:
+			// FIXME-1: how to determine the output of an action with ISY?
+			// FIXME-2: how to determine an action has completed?
+			// nothing to do
+			err = fmt.Errorf("HandleGatewayRequest: Unknown action '%s'", req.Name)
+		case td.OpWriteProperty:
+			err = svc.HandleConfigRequest(req, replyTo)
+		default:
+			// handle property read operations
+			err = svc.ExposedThing.HandleRequest(req, replyTo)
+		}
+		return err
+	} else {
+		isyThing := svc.GetIsyThing(req.ThingID)
+		if isyThing == nil {
+			err := fmt.Errorf("HandleRequest: thing '%s' not found", req.ThingID)
+			slog.Warn(err.Error())
+			return err
+		}
+		return isyThing.HandleRequest(req, replyTo)
+	}
+}
+
+// Handle property request for this device
+func (svc *IsyGatewayThing) HandleConfigRequest(
+	req *msg.RequestMessage, replyTo msg.ResponseHandler) (err error) {
+
+	slog.Info("HandleConfigRequest",
+		slog.String("op", req.Operation),
+		slog.String("thingID", req.ThingID),
+		slog.String("name", req.Name),
+		slog.String("senderID", req.SenderID),
+	)
+
+	// FIXME: persist this configuration
+	switch req.Name {
+	case vocab.PropDevicePollinterval:
+		err = fmt.Errorf("HandleConfigRequest: not implemented '%s'", req.Name)
+
+	case vocab.PropNetAddress:
+		svc.config.IsyAddress = req.ToString(0)
+		_ = svc.gwAPI.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
+
+	case "loginName":
+		svc.config.LoginName = req.ToString(0)
+		_ = svc.gwAPI.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
+
+	case "password":
+		svc.config.Password = req.ToString(0)
+		_ = svc.gwAPI.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
+
+	default:
+		err = fmt.Errorf("HandleConfigRequest: Unknown config '%s'", req.Name)
+	}
+	return err
+}
+
+// MakeTD returns the Gateway TD document
+func (svc *IsyGatewayThing) MakeTD() *td.TD {
+
+	tdoc := td.NewTD(svc.GetID(), svc.Configuration.DeviceSpecs.Model, vocab.DeviceNetGateway)
+	tdoc.Description = svc.Configuration.DeviceSpecs.Make + "-" + svc.Configuration.DeviceSpecs.Model
+
+	//--- connection and polling info
+	prop := tdoc.AddProperty(vocab.PropNetConnection, "Connected", "Device is connected", td.DataTypeBool).
+		SetAtType(vocab.PropNetConnection)
+	prop.Description = "Whether the a connection to the ISY gateway exists"
+
+	prop = tdoc.AddProperty(vocab.PropDevicePollinterval, "Poll Interval", "Poll for updates in seconds", td.DataTypeInteger).
+		SetAtType(vocab.PropDevicePollinterval)
+	prop.Description = "Interval the binding polls the gateway for data value updates."
+	prop.Unit = vocab.UnitSecond
+	prop.ReadOnly = false
+
+	// TBD: these are preconfigured or discovered
+	// prop = tdoc.AddPropertyAsString("loginName", "Login name", "ISY99x gateway login name.")
+	// prop.ReadOnly = false
+
+	// prop = tdoc.AddPropertyAsString("password", "Password", "ISY99x gateway password")
+	// prop.ReadOnly = false
+	// prop.WriteOnly = true
+
+	// prop = tdoc.AddProperty(vocab.PropNetAddress, "Network Address", "", td.DataTypeString).
+	// 	SetAtType(vocab.PropNetAddress)
+	// prop.Description = "ISY99x gateway IP address; empty to auto discover."
+	// prop.ReadOnly = false
+
+	// events
+	tdoc.AddEvent(vocab.PropNetConnection,
+		"Connection changed", "Connection with ISY gateway device has changed",
+		&td.DataSchema{Type: td.DataTypeBool},
+	).SetAtType(vocab.PropNetConnection)
 
 	//--- device read-only attributes
-	tdi.AddPropertyAsString(vocab.PropDeviceMake, "Manufacturer", "").
+	tdoc.AddPropertyAsString(vocab.PropDeviceMake, "Manufacturer", "").
 		SetAtType(vocab.PropDeviceMake) // Universal Devices Inc.
-	tdi.AddPropertyAsString(vocab.PropDeviceModel, "Model", "").
+	tdoc.AddPropertyAsString(vocab.PropDeviceModel, "Model", "").
 		SetAtType(vocab.PropDeviceModel) // ISY-C-99
-	tdi.AddPropertyAsString(vocab.PropDeviceSoftwareVersion, "AppVersion", "").
+	tdoc.AddPropertyAsString(vocab.PropDeviceSoftwareVersion, "AppVersion", "").
 		SetAtType(vocab.PropDeviceSoftwareVersion) // 3.2.6
-	tdi.AddPropertyAsString(vocab.PropNetMAC, "MAC", "").
+	tdoc.AddPropertyAsString(vocab.PropNetMAC, "MAC", "").
 		SetAtType(vocab.PropNetMAC) // 00:21:xx:yy:... (mac)
-	tdi.AddPropertyAsString(vocab.PropDeviceDescription, "Product description", "").
+	tdoc.AddPropertyAsString(vocab.PropDeviceDescription, "Product description", "").
 		SetAtType(vocab.PropDeviceDescription) // ISY 99i 256
-	tdi.AddPropertyAsString("productID", "Product ID", "") // 1020
-	prop := tdi.AddPropertyAsString(PropIDSunrise, "Sunrise", "Current sunrise time").
+	tdoc.AddPropertyAsString("productID", "Product ID", "") // 1020
+	prop = tdoc.AddPropertyAsString(PropIDSunrise, "Sunrise", "Current sunrise time").
 		SetAtType(PropIDSunrise)
-	prop = tdi.AddPropertyAsString(PropIDSunset, "Sunset", "Current sunset time").
+	prop = tdoc.AddPropertyAsString(PropIDSunset, "Sunset", "Current sunset time").
 		SetAtType(PropIDSunset)
 
 	//--- device configuration
 	// custom name
-	prop = tdi.AddPropertyAsString(vocab.PropDeviceTitle, "Title", "").
+	prop = tdoc.AddPropertyAsString(vocab.PropDeviceTitle, "Title", "").
 		SetAtType(vocab.PropDeviceTitle)
 
 	prop.ReadOnly = false
 
 	// network config
-	prop = tdi.AddPropertyAsBool(PropIDDHCP, "DHCP enabled", "")
+	prop = tdoc.AddPropertyAsBool(PropIDDHCP, "DHCP enabled", "")
 	prop.ReadOnly = false
-	prop = tdi.AddPropertyAsString(vocab.PropNetIP4, "IP4 address", "")
+	prop = tdoc.AddPropertyAsString(vocab.PropNetIP4, "IP4 address", "")
 	prop.Description = "Configure gateway fix IP address"
-	prop.ReadOnly = t.Network.Interface.IsDHCP == false
-	prop = tdi.AddPropertyAsString(vocab.PropNetPort, "Port", "Gateway connection port")
-	prop.ReadOnly = t.Network.Interface.IsDHCP == false
-	prop = tdi.AddPropertyAsString(PropIDLogin, "Login Name", "Gateway login name")
-	prop.ReadOnly = false
-	prop = tdi.AddPropertyAsString(PropIDPassword, "Password", "Gateway password (hidden)")
-	prop.ReadOnly = false
-	prop.WriteOnly = true
+	prop.ReadOnly = svc.Network.Interface.IsDHCP == false
+	prop = tdoc.AddPropertyAsString(vocab.PropNetPort, "Port", "Gateway connection port")
+	prop.ReadOnly = svc.Network.Interface.IsDHCP == false
+	// prop = tdoc.AddPropertyAsString(PropIDLogin, "Login Name", "Gateway login name")
+	// prop.ReadOnly = false
+	// prop = tdoc.AddPropertyAsString(PropIDPassword, "Password", "Gateway password (hidden)")
+	// prop.ReadOnly = false
+	// prop.WriteOnly = true
 
 	// time config
-	prop = tdi.AddPropertyAsString(PropIDNTPHost, "Network time host", "")
+	prop = tdoc.AddPropertyAsString(PropIDNTPHost, "Network time host", "")
 	prop.ReadOnly = false
 	prop.Default = "pool.ntp.org"
-	prop = tdi.AddPropertyAsBool(PropIDNTPEnabled, "Use network time", "")
+	prop = tdoc.AddPropertyAsBool(PropIDNTPEnabled, "Use network time", "")
 	prop.ReadOnly = false
-	prop = tdi.AddPropertyAsInt(PropIDTMZOffset, "Timezone Offset", "")
+	prop = tdoc.AddPropertyAsInt(PropIDTMZOffset, "Timezone Offset", "")
 	prop.ReadOnly = false
 	prop.Unit = vocab.UnitSecond
-	prop = tdi.AddPropertyAsBool(PropIDDSTEnabled, "DST Enabled", "")
+	prop = tdoc.AddPropertyAsBool(PropIDDSTEnabled, "DST Enabled", "")
 	prop.ReadOnly = false
 
 	// TODO: any events?
 
 	// TODO: other actions?
-	action := tdi.AddAction("start-linking", "Start Linking",
+	action := tdoc.AddAction("start-linking", "Start Linking",
 		"1. Press and hold the 'Set' button on your Insteon device for 3-5 seconds.\n"+
 			"2. Repeat step 1 for as many devices as you would like to link.\n"+
 			"3. When done, select 'Finish' on the menu.", nil)
 	_ = action
-	action = tdi.AddAction("remove-link", "Remove Link",
+	action = tdoc.AddAction("remove-link", "Remove Link",
 		"1. Press and hold the 'Set' button on the Insteon device to unlink, for 3-5 seconds.\n"+
 			"2. Repeat step 1 for as many devices as you would like to remove.\n"+
 			"3. When done, select 'Finish' on the menu.", nil)
 	_ = action
-	return tdi
+	return tdoc
 }
 
 //
@@ -347,87 +437,21 @@ func (t *IsyGatewayThing) MakeTD() *td.TD {
 //	return err
 //}
 
-// PubTD read and publishes the gateway's TD
-func (t *IsyGatewayThing) PubTD(ag *agent.Agent) (err error) {
-	tdi := t.MakeTD()
-	tdJSON, _ := jsoniter.MarshalToString(tdi)
-	err = ag.WriteTD(tdJSON)
-	//err = ag.UpdateThing(tdi)
-	if err != nil {
-		err = fmt.Errorf("failed publishing ISY gateway TD: %w", err)
-		slog.Error(err.Error())
-		return err
-	}
-	return nil
-}
-
-// ReadGatewayValues reads ISY gateway properties and publish changes.
-// This loads the gateway 'Configuration', 'System', 'Time' and 'Network' data.
-// See also: https://wiki.universal-devices.com/index.php?title=ISY_Developers:API:REST_Interface#Return_Values_/_Codes
-func (t *IsyGatewayThing) ReadGatewayValues() (err error) {
-	if t.ic == nil {
-		return fmt.Errorf("No ISY connection")
-	}
-
-	const NTP_OFFSET = 2208988800
-
-	err = t.ic.SendRequest("GET", "/rest/config", "", &t.Configuration)
-	if err == nil {
-		err = t.ic.SendRequest("GET", "/rest/sys", "", &t.System)
-	}
-	if err == nil {
-		err = t.ic.SendRequest("GET", "/rest/time", "", &t.Time)
-	}
-	if err == nil {
-		err = t.ic.SendRequest("GET", "/rest/network", "", &t.Network)
-	}
-
-	thingID := t.GetThingID()
-	sunrise := int64(t.Time.Sunrise-t.Time.TMZOffset) - NTP_OFFSET
-	sunset := int64(t.Time.Sunset-t.Time.TMZOffset) - NTP_OFFSET
-
-	props := map[string]any{
-		vocab.PropDeviceMake:            t.Configuration.DeviceSpecs.Make,
-		vocab.PropDeviceModel:           t.Configuration.DeviceSpecs.Model,
-		vocab.PropDeviceSoftwareVersion: t.Configuration.AppVersion,
-		vocab.PropNetMAC:                t.Configuration.Root.ID,
-		vocab.PropDeviceDescription:     t.Configuration.Product.Description,
-		td.WoTTitle:                     t.Configuration.Root.Name, // custom name
-		vocab.PropNetIP4:                t.Network.Interface.IP,
-		vocab.PropNetPort:               t.Network.WebServer.HttpPort,
-
-		"productID": t.Configuration.Product.ID,
-		PropIDDHCP:  strconv.FormatBool(t.Network.Interface.IsDHCP), // true or false
-		//pv.SetValue(PropIDLogin, igw.Configuration.LoginName)
-
-		// isy provides NTP stamp in local time, not in GMT!
-		PropIDSunrise: time.Unix(sunrise, 0).Format(time.TimeOnly),
-		PropIDSunset:  time.Unix(sunset, 0).Format(time.TimeOnly), // seconds since epoc
-
-		PropIDNTPHost:    t.System.NTPHost,
-		PropIDNTPEnabled: strconv.FormatBool(t.System.NTPEnabled),
-		PropIDTMZOffset:  strconv.FormatInt(int64(t.Time.TMZOffset), 10),
-		PropIDDSTEnabled: strconv.FormatBool(t.Time.DST),
-	}
-	t.PubProperties(thingID, props, true)
-
-	return err
-}
-
 // ReadIsyThings reads the ISY Node list and update the collection of ISY Things
-func (t *IsyGatewayThing) ReadIsyThings() error {
-	if t.ic == nil {
+func (svc *IsyGatewayThing) ReadIsyThings() error {
+	if !svc.gwAPI.IsConnected() {
 		return fmt.Errorf("No ISY connection")
 	}
-	isyNodes, err := t.ic.ReadNodes()
+	// this reads all nodes
+	isyNodes, err := svc.gwAPI.ReadNodes()
 
 	if err != nil {
 		return err
 	}
 	for _, node := range isyNodes.Nodes {
-		it := t.GetIsyThingByNodeID(node.Address)
+		it := svc.GetIsyThingByNodeID(node.Address)
 		if it == nil {
-			err = t.AddIsyThing(node)
+			it, err = svc.AddIsyThing(node)
 			if err != nil {
 				slog.Error("Error adding ISY device. Ignored.", "err", err)
 			}
@@ -436,7 +460,60 @@ func (t *IsyGatewayThing) ReadIsyThings() error {
 	return nil
 }
 
-// ReadIsyNodeValues reads the ISY Node status values and updates the nodes.
+// RefreshProperties reads ISY gateway properties and publish changes.
+// This loads the gateway 'Configuration', 'System', 'Time' and 'Network' data.
+// See also: https://wiki.universal-devices.com/index.php?title=ISY_Developers:API:REST_Interface#Return_Values_/_Codes
+func (svc *IsyGatewayThing) RefreshProperties(onlyChanges bool) (err error) {
+	if !svc.gwAPI.IsConnected() {
+		return fmt.Errorf("No gateway connection")
+	}
+
+	const NTP_OFFSET = 2208988800
+
+	err = svc.gwAPI.SendRequest("GET", "/rest/config", "", &svc.Configuration)
+	if err == nil {
+		err = svc.gwAPI.SendRequest("GET", "/rest/sys", "", &svc.System)
+	}
+	if err == nil {
+		err = svc.gwAPI.SendRequest("GET", "/rest/time", "", &svc.Time)
+	}
+	if err == nil {
+		err = svc.gwAPI.SendRequest("GET", "/rest/network", "", &svc.Network)
+	}
+
+	thingID := svc.GetID()
+	sunrise := int64(svc.Time.Sunrise-svc.Time.TMZOffset) - NTP_OFFSET
+	sunset := int64(svc.Time.Sunset-svc.Time.TMZOffset) - NTP_OFFSET
+
+	props := map[string]any{
+		vocab.PropDeviceMake:            svc.Configuration.DeviceSpecs.Make,
+		vocab.PropDeviceModel:           svc.Configuration.DeviceSpecs.Model,
+		vocab.PropDeviceSoftwareVersion: svc.Configuration.AppVersion,
+		vocab.PropNetMAC:                svc.Configuration.Root.ID,
+		vocab.PropDeviceDescription:     svc.Configuration.Product.Description,
+		td.WoTTitle:                     svc.Configuration.Root.Name, // custom name
+		vocab.PropNetIP4:                svc.Network.Interface.IP,
+		vocab.PropNetPort:               svc.Network.WebServer.HttpPort,
+
+		"productID": svc.Configuration.Product.ID,
+		PropIDDHCP:  strconv.FormatBool(svc.Network.Interface.IsDHCP), // true or false
+		//pv.SetValue(PropIDLogin, igw.Configuration.LoginName)
+
+		// isy provides NTP stamp in local time, not in GMT!
+		PropIDSunrise: time.Unix(sunrise, 0).Format(time.TimeOnly),
+		PropIDSunset:  time.Unix(sunset, 0).Format(time.TimeOnly), // seconds since epoc
+
+		PropIDNTPHost:    svc.System.NTPHost,
+		PropIDNTPEnabled: strconv.FormatBool(svc.System.NTPEnabled),
+		PropIDTMZOffset:  strconv.FormatInt(int64(svc.Time.TMZOffset), 10),
+		PropIDDSTEnabled: strconv.FormatBool(svc.Time.DST),
+	}
+	svc.PubProperties(thingID, props, onlyChanges)
+
+	return err
+}
+
+// RefreshStatus reads the ISY Node status values and updates the nodes.
 //
 // This requests the status from the gateway and parses the response into a struct with
 // xml properties as follows:
@@ -447,55 +524,141 @@ func (t *IsyGatewayThing) ReadIsyThings() error {
 //
 // Each ISY Thing will be updated with the latest status. It is up to them
 // to notify their uses with an event if the status has changed.
-func (t *IsyGatewayThing) ReadIsyNodeValues() error {
-	if t.ic == nil {
+func (svc *IsyGatewayThing) RefreshStatus() error {
+	if !svc.gwAPI.IsConnected() {
 		return fmt.Errorf("No ISY connection")
 	}
 
 	isyStatus := isy.IsyStatus{}
-	err := t.ic.SendRequest("GET", "/rest/status", "", &isyStatus)
+	err := svc.gwAPI.SendRequest("GET", "/rest/status", "", &isyStatus)
 	for _, node := range isyStatus.Nodes {
 		propID := node.Prop.ID
 		newValue := node.Prop.Value
 		uom := node.Prop.UOM
 
-		it := t.GetIsyThingByNodeID(node.Address)
+		it := svc.GetIsyThingByNodeID(node.Address)
 		if it != nil {
 			err = it.HandleValueUpdate(propID, uom, newValue)
 		} else {
 			// new node found, refresh the node list
-			t.newNodeFound = true
+			svc.newNodeFound = true
 		}
 	}
 	return err
 }
 
-// Start initializes the gateway for use and read its values
-// if Start fails then retry periodically until a connection can be established
-func (t *IsyGatewayThing) Start() error {
-	// t.ic = ic
-	// t.SetThingID = ic.GetID()
-	// t.things = make(map[string]IIsyThing)
-	// t.propValues = exposedthing.NewThingValues()
+// Start publishes the gateway TD, its properties and start the heartbeat
+func (svc *IsyGatewayThing) Start() {
+	tdoc := svc.MakeTD()
+	svc.PublishTD(tdoc)
 
-	// values are used in TD title and description
-	return t.ReadGatewayValues()
+	svc.stopHeartbeatFn = svc.startHeartbeat()
 }
 
-// NewIsyGateway creates a new instance of the ISY gateway device representation.
-// prodMap can be retrieved with LoadProductMapCSV()
-// Call Init() before use.
-func NewIsyGateway(ic *isy.IsyAPI,
-	prodMap map[string]InsteonProduct, evHandler IsyEventHandler) *IsyGatewayThing {
+// heartbeat polls the gateway device every X seconds and publishes updates
+// This returns a stop function that can be used to end the loop
+func (svc *IsyGatewayThing) startHeartbeat() (stopFn func()) {
 
-	thingID := ic.GetID()
-	isyGW := &IsyGatewayThing{
-		Agent: agent.NewAgent(thingID, nil),
+	var tdCountDown = 0
+	var pollCountDown = 0
+	var republishCountDown = 0
+	var isConnected = false
+	var forceRepublish bool
+	var err error
+	var wasConnected bool
 
-		ic:        ic,
-		evHandler: evHandler,
-		prodMap:   prodMap,
-		things:    make(map[string]IIsyThing),
+	stopFn = utils.StartHeartbeat(time.Second, func() {
+		tdCountDown--
+		pollCountDown--
+		republishCountDown--
+		forceRepublish = false
+
+		// if no gateway connection exists, try to reestablish a connection to the gateway
+		isConnected = svc.gwAPI.IsConnected()
+		if !isConnected {
+			// if the connection dropped, send an event
+			if wasConnected {
+				svc.PubEvent("", vocab.PropNetConnection, isConnected)
+			}
+			err = svc.gwAPI.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
+			// if err == nil {
+			// 	// re-establish the gateway device connection
+			// 	svc.IsyGW.Init(svc.isyAPI)
+			// }
+			isConnected = svc.gwAPI.IsConnected()
+			if isConnected {
+				svc.PubEvent("", vocab.PropNetConnection, isConnected)
+			}
+		}
+		wasConnected = isConnected
+
+		// publish node TDs and values
+		if isConnected && tdCountDown <= 0 {
+			tdoc := svc.MakeTD()
+			svc.PublishTD(tdoc)
+			tdCountDown = svc.config.TDInterval
+			// after publishing the TD, republish all values
+			forceRepublish = true
+		}
+		// publish changes to sensor/actuator values
+		if isConnected && pollCountDown <= 0 {
+			// publish changed values or periodically for publishing all values
+			if republishCountDown <= 0 {
+				republishCountDown = svc.config.RepublishInterval
+				forceRepublish = true
+			}
+			err = svc.RefreshProperties(!forceRepublish)
+			for _, thing := range svc.isyThings {
+				thing.RefreshProperties(!forceRepublish)
+			}
+			pollCountDown = svc.config.PollInterval
+			// slow down if this fails. Don't flood the logs
+			if err != nil {
+				pollCountDown = svc.config.PollInterval * 5
+			}
+		}
+	})
+	return stopFn
+}
+
+// Stop the heartbeat
+func (svc *IsyGatewayThing) Stop() {
+	slog.Info("Stopping the ISY99x gateway service")
+	//svc.isRunning.Store(false)
+	svc.mux.Lock()
+	defer svc.mux.Unlock()
+	if svc.stopHeartbeatFn != nil {
+		svc.stopHeartbeatFn()
+		svc.stopHeartbeatFn = nil
 	}
-	return isyGW
+	// let processes finish
+	time.Sleep(time.Millisecond)
+}
+
+// NewIsyGateway creates a new instance of the ISY gateway device.
+// This connects to the gateway and returns an error if the gateway is unreachable.
+func NewIsyGateway(appID string, cfg *config.Isy99xConfig) (*IsyGatewayThing, error) {
+
+	prodMap, err := LoadProductMapCSV("")
+	_ = err
+
+	// connect to the ISY99x gateway, if possible.
+	// this can fail so let it run.
+	gwAPI := isy.NewIsyAPI()
+	err = gwAPI.Connect(cfg.IsyAddress, cfg.LoginName, cfg.Password)
+
+	// if err != nil {
+	// 	return nil, err
+	// }
+	thingID := gwAPI.GetID()
+
+	isyGW := &IsyGatewayThing{
+		ExposedThing: thing.NewExposedThing(thingID, nil),
+		config:       cfg,
+		prodMap:      prodMap,
+		isyThings:    make(map[string]IIsyThing),
+		gwAPI:        gwAPI,
+	}
+
+	return isyGW, nil
 }

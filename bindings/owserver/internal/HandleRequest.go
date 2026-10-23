@@ -79,7 +79,7 @@ func (svc *OWServer) SetTitle(req *msg.RequestMessage) (err error) {
 	}
 	if err == nil {
 		// publish notification with the new title after returning
-		go svc.ag.PubProperty(req.ThingID, td.WoTTitle, valueStr, true)
+		go svc.PubProperty(req.ThingID, td.WoTTitle, valueStr, true)
 	}
 	return err
 }

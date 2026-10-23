@@ -11,10 +11,10 @@ import (
 	"github.com/hiveot/hivekit/go/api/msg"
 	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/api/vocab"
-	"github.com/hiveot/hivekit/go/cells/agent"
+	"github.com/hiveot/hivekit/go/cells/thing"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/bindings/isy99x/config"
-	"github.com/hiveot/hub/bindings/isy99x/service/isy"
+	"github.com/hiveot/hub/bindings/isy99x/internal/isy"
 )
 
 // IsyBinding is the protocol binding for managing the ISY99x Insteon gateway
@@ -22,7 +22,7 @@ import (
 //
 //	or modify this code for multiple isyAPI instances
 type IsyBinding struct {
-	*agent.Agent
+	*thing.ExposedThing
 
 	// Configuration of this protocol binding
 	config *config.Isy99xConfig
@@ -46,20 +46,65 @@ type IsyBinding struct {
 func (svc *IsyBinding) GetBindingPropValues(onlyChanges bool) map[string]any {
 
 	// update the values
-	pv := svc.propValues
-	pv.SetValue(vocab.PropDevicePollinterval, svc.config.PollInterval)
-	pv.SetValue(vocab.PropNetAddress, svc.config.IsyAddress)
-	pv.SetValue("loginName", svc.config.LoginName)
-	pv.SetValue(vocab.PropDeviceMake, "Hive Of Things")
-	pv.SetValue(vocab.PropNetConnection, svc.isyAPI.IsConnected())
+	pv := make(map[string]any)
+	pv[vocab.PropDevicePollinterval] = svc.config.PollInterval
+	pv[vocab.PropNetAddress] = svc.config.IsyAddress
+	pv["loginName"] = svc.config.LoginName
+	pv[vocab.PropDeviceMake] = "Hive Of Things"
+	pv[vocab.PropNetConnection] = svc.isyAPI.IsConnected()
 
-	values := pv.GetValues(onlyChanges)
-	return values
+	return pv
 }
 
 // onIsyEvent publishes the event sent by one of the ISY thing.
 func (svc *IsyBinding) onIsyEvent(thingID string, evName string, value any) {
-	svc.ag.PubEvent(thingID, evName, value)
+	svc.PubEvent(thingID, evName, value)
+}
+
+// HandleRequest passes the action request to the associated Thing.
+// This distributes the requests to the thing identified in the thingID
+func (svc *IsyBinding) HandleRequest(
+	req *msg.RequestMessage, replyTo msg.ResponseHandler) error {
+
+	if req.ThingID == svc.GetID() {
+		return svc.HandleBindingRequest(req, replyTo)
+	} else {
+		isyThing := svc.GetIsyThing(req.ThingID)
+		return isyThing.HandleRequest(req, replyTo)
+	}
+	if req.Operation == td.OpWriteProperty {
+		return svc.handleConfigRequest(req, replyTo)
+	}
+
+	slog.Info("handleActionRequest",
+		slog.String("thingID", req.ThingID),
+		slog.String("name", req.Name),
+		slog.String("senderID", req.SenderID))
+
+	if !svc.isyAPI.IsConnected() {
+		err := fmt.Errorf("No connection with the gateway")
+		slog.Warn(err.Error())
+		return err
+	}
+	isyThing := svc.IsyGW.GetIsyThing(req.ThingID)
+	if isyThing == nil {
+		err := fmt.Errorf("handleActionRequest: thing '%s' not found", req.ThingID)
+		slog.Warn(err.Error())
+		return err
+	}
+	// FIXME-1: how to determine the output of an action with ISY?
+	// FIXME-2: how to determine an action has completed?
+	err := isyThing.HandleActionRequest(req, replyTo)
+
+	// publish any changes that are the result of the action
+	go func() {
+		thingID := req.ThingID
+		values := isyThing.GetPropValues(true)
+		for k, v := range values {
+			svc.PubProperty(thingID, k, v, true)
+		}
+	}()
+	return err
 }
 
 // HandleWriteBindingProperty configures the binding.
@@ -107,7 +152,6 @@ func (svc *IsyBinding) MakeBindingTD() *td.TD {
 	prop.Description = "Developer of the binding"
 
 	// TODO: persist configuration
-	//binding config
 	prop = tdi.AddProperty(vocab.PropDevicePollinterval, "Poll Interval", "Poll for updates in seconds", td.DataTypeInteger).
 		SetAtType(vocab.PropDevicePollinterval)
 	prop.Description = "Interval the binding polls the gateway for data value updates."
@@ -137,26 +181,15 @@ func (svc *IsyBinding) MakeBindingTD() *td.TD {
 }
 
 // Start the ISY99x protocol binding.
-// Connection to the gateway will be made during the heartbeat.
-// If no connection can be made the heartbeat will retry periodically until stopped.
-//
 // This publishes a TD for this binding, starts a background polling heartbeat.
-func (svc *IsyBinding) Start() (err error) {
+func (svc *IsyBinding) Start() {
 	slog.Info("Starting Isy99x binding")
 
-	if svc.config.LogLevel != "" {
-		utils.SetLogging(svc.config.LogLevel, "")
-	}
-	svc.prodMap, err = LoadProductMapCSV("")
-
-	//// 'IsyThings' use the 'isy connection' to talk to the gateway
-	svc.IsyGW = NewIsyGateway(svc.isyAPI, svc.prodMap, svc.onIsyEvent)
-	_ = svc.isyAPI.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
-	svc.IsyGW.Start()
+	td := svc.MakeBindingTD()
+	svc.PublishTD(td)
 
 	// last, start polling heartbeat
 	svc.stopHeartbeatFn = svc.startHeartbeat()
-	return err
 }
 
 // heartbeat polls the gateway device every X seconds and publishes updates
@@ -237,12 +270,26 @@ func (svc *IsyBinding) Stop() {
 //
 // appID is the application instance ID
 // cfg configures gateway access
-func NewIsyBinding(appID string, cfg *config.Isy99xConfig) *IsyBinding {
-
+func NewIsyBinding(appID string, cfg *config.Isy99xConfig) (*IsyBinding, error) {
+	var err error
 	svc := &IsyBinding{
-		Agent:  agent.NewAgent(appID, nil),
-		config: cfg,
-		isyAPI: isy.NewIsyAPI(),
+		ExposedThing: thing.NewExposedThing(appID, nil),
+		config:       cfg,
+		isyAPI:       isy.NewIsyAPI(),
 	}
-	return svc
+
+	if svc.config.LogLevel != "" {
+		utils.SetLogging(svc.config.LogLevel, "")
+	}
+	svc.prodMap, err = LoadProductMapCSV("")
+
+	svc.IsyGW = NewIsyGateway(svc.isyAPI, svc.prodMap, svc.onIsyEvent)
+	// connect to the ISY99x gateway
+	// ignore errors as the heartbeat will keep retrying
+	err2 := svc.isyAPI.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
+	if err2 == nil {
+		err2 = svc.IsyGW.Start()
+	}
+
+	return svc, err
 }

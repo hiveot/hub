@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	discoverypkg "github.com/hiveot/hivekit/go/cells/transport/discovery/pkg"
-	tlsclientpkg "github.com/hiveot/hivekit/go/cells/transport/tlsclient/pkg"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/urfave/cli/v3"
 )
@@ -42,7 +40,7 @@ func DiscoListCommand(clientID string, authToken *string) *cli.Command {
 
 // HandleDiscover prints a list of discovered Things and Directories
 func HandleDiscover(clientID string, authToken string, readtd bool) error {
-	discoClient := discoverypkg.NewDiscoveryClient()
+	discoClient := discovery_client.NewDiscoveryClient()
 	allRecords, err := discoClient.DiscoverDirectories("", time.Second*2, false, nil)
 	if err != nil {
 		fmt.Println("Discovery failed: ", err.Error())
@@ -67,7 +65,7 @@ func HandleDiscover(clientID string, authToken string, readtd bool) error {
 			var tdObj map[string]any
 
 			hostPort := fmt.Sprintf("%s:%d", entry.Addr, entry.Port)
-			cl := tlsclientpkg.NewTLSClient(hostPort, nil, 0)
+			cl := tls_client.NewTLSClient(hostPort, nil, 0)
 			err := cl.AuthenticateWithToken(clientID, authToken)
 			if err != nil {
 				break

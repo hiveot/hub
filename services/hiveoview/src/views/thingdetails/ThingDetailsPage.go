@@ -12,7 +12,6 @@ import (
 	"github.com/hiveot/hivekit/go/api/vocab"
 	"github.com/hiveot/hivekit/go/cells/consumer"
 	"github.com/hiveot/hivekit/go/cells/digitwin"
-	historypkg "github.com/hiveot/hivekit/go/cells/history/pkg"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
@@ -50,7 +49,7 @@ func (dt *ThingDetailsTemplateData) GetEventHistory(name string) *history.Histor
 	//iout := dt.CT.ReadEvent(name)
 	iout := dt.CT.GetValue(msg.AffordanceTypeEvent, name)
 
-	hist := historypkg.NewReadHistoryClient(dt.CT.GetConsumer())
+	hist := history_client.NewReadHistoryClient(dt.CT.GetConsumer())
 	values, itemsRemaining, err := hist.ReadHistory(
 		iout.ThingID, iout.Name, timestamp, duration, 500)
 	_ = itemsRemaining

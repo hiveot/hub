@@ -4,7 +4,6 @@ import (
 	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/api/vocab"
 	"github.com/hiveot/hub/bindings/owserver/internal/eds"
-	jsoniter "github.com/json-iterator/go"
 )
 
 // CreateTDFromNode converts the 1-wire node into a TD that describes the node.
@@ -124,10 +123,9 @@ func (svc *OWServer) PollNodes() ([]*eds.OneWireNode, error) {
 // PublishNodeTD converts a node to TD documents and publishes it to the Hub.
 // This returns an error if the publications fail
 func (svc *OWServer) PublishNodeTD(node *eds.OneWireNode) (err error) {
-	tdi := svc.CreateTDFromNode(node)
-	svc.things[tdi.ID] = tdi
-	tdJSON, _ := jsoniter.MarshalToString(tdi)
-	svc.ag.WriteTD(tdJSON)
+	tdoc := svc.CreateTDFromNode(node)
+	svc.things[tdoc.ID] = tdoc
+	svc.PublishTD(tdoc)
 	//err = svc.ag.UpdateThing(td)
 	return err
 }

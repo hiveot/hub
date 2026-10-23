@@ -5,8 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hiveot/hivekit/go/api"
-	"github.com/hiveot/hivekit/go/cells/agent"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/bindings/weather"
 	"github.com/hiveot/hub/bindings/weather/providers"
@@ -18,8 +16,7 @@ const DefaultWeatherProvider = providers.OpenMeteoProviderID
 
 // WeatherService is the hub protocol binding plugin for integrating with Open-Meteo weather provider.
 type WeatherService struct {
-	// this binding is an agent
-	*agent.Agent
+	*thing.ExposedThing
 
 	cfg *weather.WeatherConfig
 
@@ -118,10 +115,11 @@ func (svc *WeatherService) Stop() {
 // co is the link to the consumer sending requests and consuming notifications, like an RC Agent or a server chain. nil to manually link.
 // storePath where to store weather configuration
 // cfg weather configuration
-func NewWeatherService(co api.IHiveCell, storePath string, cfg *weather.WeatherConfig) *WeatherService {
+func NewWeatherService(storePath string, cfg *weather.WeatherConfig) *WeatherService {
 
 	// these are from hub configuration
 	svc := &WeatherService{
+		ExposedThing:           thing.NewExposedThing(appID, nil),
 		cfg:                    cfg,
 		providers:              make(map[string]providers.IWeatherProvider),
 		locationStore:          NewLocationStore(storePath),
@@ -134,9 +132,5 @@ func NewWeatherService(co api.IHiveCell, storePath string, cfg *weather.WeatherC
 	svc.providers[providers.OpenMeteoProviderID] = providers.NewOpenMeteoProvider()
 	//svc.providers[providers.EnvCanadaProviderID] = providers.NewEnvCanadaProvider()
 
-	if co != nil {
-		co.SetRequestSink(svc)
-		svc.SetNotificationSink(co)
-	}
 	return svc
 }

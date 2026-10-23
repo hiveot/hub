@@ -7,20 +7,20 @@ import (
 	"github.com/hiveot/hivekit/go/api/msg"
 	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/api/vocab"
-	"github.com/hiveot/hivekit/go/cells/agent"
+	"github.com/hiveot/hub/bindings/isy99x/internal/isy"
 )
 
 // IsyDimmerThing is a general-purpose dimmer switch
 type IsyDimmerThing struct {
-	IsyThing
+	*IsyThing
 }
 
 // GetValues returns the property and event values for publication
-func (it *IsyDimmerThing) GetValues(onlyChanges bool) map[string]any {
-	propValues := it.IsyThing.GetPropValues(onlyChanges)
-	propValues[vocab.PropSwitchDimmer] = propValues[vocab.PropSwitchDimmer]
-	return propValues
-}
+// func (it *IsyDimmerThing) GetValues(onlyChanges bool) map[string]any {
+// 	propValues := it.IsyThing.GetPropValues(onlyChanges)
+// 	propValues[vocab.PropSwitchDimmer] = propValues[vocab.PropSwitchDimmer]
+// 	return propValues
+// }
 
 func (it *IsyDimmerThing) MakeTD() *td.TD {
 	tdi := it.IsyThing.MakeTD()
@@ -49,43 +49,67 @@ func (it *IsyDimmerThing) MakeTD() *td.TD {
 	return tdi
 }
 
-func (it *IsyDimmerThing) HandleConfigRequest(req *msg.RequestMessage) *msg.ResponseMessage {
-	return req.CreateResponse(nil, errors.New("unknown config: "+req.Name))
+func (it *IsyDimmerThing) HandleConfigRequest(
+	req *msg.RequestMessage, replyTo msg.ResponseHandler) (err error) {
+
+	return errors.New("unknown config: " + req.Name)
 }
 
 // HandleActionRequest handles request to execute an action on this device
 // actionID string as defined in the action affordance
 // newValue is not used as these actions do not carry a parameter
-func (it *IsyDimmerThing) HandleActionRequest(ag *agent.Agent, req *msg.RequestMessage) *msg.ResponseMessage {
+func (it *IsyDimmerThing) HandleActionRequest(
+	req *msg.RequestMessage, replyTo msg.ResponseHandler) (err error) {
+
 	var restPath = ""
 	var newValue = ""
+	var node = it.GetNode()
+
 	// FIXME: req keys are node attributes keys, not vocab @types (or are they?)
 	// supported actions: on, off
 	if req.Name == vocab.ActionDimmerSet {
 		newValue = req.ToString(0)
-		restPath = fmt.Sprintf("/rest/nodes/%s/cmd/%s", it.nodeID, newValue)
+		restPath = fmt.Sprintf("/rest/nodes/%s/cmd/%s", node.Address, newValue)
 
 		//} else if req.Name == vocab.VocabActionDecrement {
 		//	restPath = fmt.Sprintf("/rest/nodes/%s/cmd/%s", it.nodeID, newValue)
 		//} else if req.Name == vocab.VocabActionIncrement {
 		//	restPath = fmt.Sprintf("/rest/nodes/%s/cmd/%s", it.nodeID, newValue)
+
+		err = it.isyAPI.SendRequest("GET", restPath, "", nil)
 	} else {
 		// unknown req
-		err := fmt.Errorf("HandleRequest. Unknown req: '%s'", req.Name)
-		return req.CreateResponse(nil, err)
+		err = fmt.Errorf("HandleRequest. Unknown req: '%s'", req.Name)
 	}
 
-	err := it.isyAPI.SendRequest("GET", restPath, "", nil)
 	if err == nil {
+		resp := req.CreateResponse(nil, err)
+		err = replyTo(resp)
+
 		// TODO: handle event from gateway using websockets. For now just assume this worked.
 		err = it.HandleValueUpdate(req.Name, "", newValue)
 	}
-	return req.CreateResponse(nil, err)
+	return err
+}
+
+// Start using the ISY dimmer.
+//
+// This publishes the Thing TD and its static properties.
+func (it *IsyDimmerThing) Start() {
+
+	it.IsyThing.Start()
+
 }
 
 // NewIsyDimmerThing creates a new instance of an ISY dimmer.
 // Call Init() before use
-func NewIsyDimmerThing(evHandler IsyEventHandler) *IsyDimmerThing {
-	thing := &IsyDimmerThing{IsyThing{evHandler: evHandler}}
-	return thing
+func NewIsyDimmerThing(ic *isy.IsyAPI,
+	thingID string, node *isy.IsyNode, prodInfo InsteonProduct, hwVersion string,
+) *IsyDimmerThing {
+
+	isyDimmer := &IsyDimmerThing{
+		IsyThing: NewIsyThing(ic, thingID, node, prodInfo, hwVersion),
+	}
+	isyDimmer.tdoc = isyDimmer.MakeTD()
+	return isyDimmer
 }

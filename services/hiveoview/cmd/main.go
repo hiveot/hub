@@ -3,15 +3,15 @@ package main
 import (
 	"crypto"
 	"flag"
+	"fmt"
 	"log/slog"
 	"os"
 	"path"
 	"time"
 
-	"github.com/hiveot/hivekit/go/cells/certs"
-	"github.com/hiveot/hivekit/go/cells/certs/certutils"
+	"github.com/hiveot/hivekit/go/api"
+	rcdevice_recipe "github.com/hiveot/hivekit/go/factory/recipes/rcdevice"
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hub/lib/plugin"
 	"github.com/hiveot/hub/services/hiveoview/config"
 	"github.com/hiveot/hub/services/hiveoview/src/service"
 )
@@ -44,9 +44,7 @@ func main() {
 
 	flag.IntVar(&serverPort, "defaultServerPort", serverPort, "Webserver listening defaultServerPort")
 	flag.BoolVar(&extfs, "extfs", extfs, "Use external gohtml filesystem")
-	env := api.NewAppEnvironment("", true)
-	env.LogLevel = "info"
-	utils.SetLogging(env.LogLevel, "")
+	env := api.NewHiveEnvironment("", true)
 
 	// this config will be replaced with hiveoview Thing config
 	cfg := config.NewHiveoviewConfig(serverPort)
@@ -72,7 +70,7 @@ func main() {
 	// A server certificate is needed in the certs directory
 	serverCertPath := path.Join(env.CertsDir, serverCertFile)
 	serverKeyPath := path.Join(env.CertsDir, serverKeyFile)
-	serverCert, err := certutils.LoadTLSCertFromPEM(serverCertPath, serverKeyPath)
+	serverCert, err := utils.LoadTLSCertFromPEM(serverCertPath, serverKeyPath)
 	if err != nil {
 		slog.Error("Unable to load server certificate: " + err.Error())
 		return
@@ -80,10 +78,15 @@ func main() {
 	// FIXME: currently timeout is set to 20 sec to allow slow requests to complete.
 	// However these requests should handle multiple async updates instead.
 	// for example zwavejs refresh device info can take up to 20sec
-	svc := service.NewHiveovService(ag,
+	svc := service.NewHiveovService(
 		cfg.ServerPort, false, signingKey, rootPath, serverCert, env.CaCert,
 		time.Second*20, storageDir)
 
-	// StartPlugin will connect to the hub and wait for a signal to end.
-	plugin.StartPlugin(svc, env.AppID, env.CertsDir, env.ServerURL)
+	// link it to the RC device recipe that handles connections.
+	r, _, err := rcdevice_recipe.NewRCDeviceRecipe(env, svc)
+	if err != nil {
+		fmt.Println("Startup failed: " + err.Error())
+		os.Exit(1)
+	}
+	r.Run()
 }

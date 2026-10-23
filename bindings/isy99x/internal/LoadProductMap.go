@@ -222,6 +222,7 @@ type InsteonProduct struct {
 	Sub         string
 	Model       string
 	ProductName string
+	HWVersion   string
 }
 
 // LoadProductMapCSV loads the ISY list of product type and description from

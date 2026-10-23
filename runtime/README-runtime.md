@@ -1,62 +1,52 @@
-# HiveOT Digital Twin Runtime 
+# HiveOT Hub Runtime 
 
 ## Status 
 
-The runtime is being reworked to use hivekit.
-
-Detailed progress status below: 
+The Hub runtime is being reworked to use HiveKit.
 
 
 ## Summary
 
-The HiveOT runtime provides routing of events and actions between devices, services and consumers using one or multiple transport protocols. The runtime serves digital twins of IoT devices to consumers, containing the device Thing Definition and state. 
+The Hub runtime provides routing of events and actions between devices, services and consumers using one or multiple transport protocols. The runtime serves digital twins of IoT devices to consumers, containing the device Thing Definition and state. 
 
-The runtime includes services for messaging, authentication and authorization and 
-managing digital twin instances of IoT devices and services. It contains:
-* Transport manager that aggregates protocol bindings for communication with devices, services and consumers
+The runtime includes services for messaging, authentication and authorization and managing digital twin instances of IoT devices and services. It contains:
+* Transport servers for communication with devices, services and consumers
 * Authentication service authenticates connections to the transport protocols
 * Authorization service for authorizing the sending and receiving of messages by authenticated clients
-* HubRouter action flow handles action requests from consumers and forwards it to the actual IoT devices and services
-* HubRouter events flow receives events from IoT devices and forwards it to subscribers
-* HubRouter properties flow receives property updates from IoT devices and forwards them to  subscribers
-* Digitwin directory service serves the inventory of available devices with their digital twin Thing Definition
-
-The hub differentiates three types of clients: IoT agents, consumers and services. Agents are clients that can operate on IoT devices or run stand-alone, and represent one or more IoT devices. They form a bridge between the native IoT device protocol and the Hub's WoT standards. Consumers are end-users that read information from the digital twins and send action requests to the digital twins. Services can act as agents and consumers.
-Services enrich information received from the digital twin devices and publish the results.
+* Router for routing requests from consumers to devices and services and notifications from devices to consumers
+* Digitwin directory serves a digital twin of the inventory of available devices
 
 The digital twin part of the runtime is designed using the W3C WoT standards and
 handles Thing Description Documents, events, actions and properties.
 
 ### Events
-Event messages follow a publish/subscribe approach. Thing agents publish events while consumers subscribe to Thing events. Each can use their own protocol binding.
+Event messages follow a publish/subscribe approach. Devices and services publish notifications with events while consumers subscribe to Thing events. Each can use their preferred transport protocol.
 
 The general event flow is:
-> thing -> agent -> transport protocol -> [digital twin outbox]
->   [digital twin outbox] -> transport protocols -> subscribers
+> thing -> transport client -> digital twin
+>   digital twin -> transport server -> subscribers
 
-Events delivered by Thing agents are stored in the digital twin's outbox. There is no reply other than the confirmation the event is received by the Hub.
+Events delivered by Things are stored in its digital twin. The twin retains events until they expire which can vary between immediately to years. 
 
-The outbox retains events until they expire which can vary between immediately to years. 
-
-Consumers can request the latest event and property values of a Thing from the outbox.
+Consumers can request the latest event and property values of a Thing from the digital twin.
 
 ![Event Flow](../docs/event-flow.jpg)
 
 ### Actions
-Actions are messages targeted at a specific Thing or service. Consumers publish action requests while agents receive these requests. Each can use their own protocol binding.
+Actions are messages targeted at a specific Thing or service. Consumers publish action requests while devices receive these requests. Each can use their own protocol binding.
 
 The general action delivery flow is:
-> consumer -> transport protocol -> [digital twin inbox]
->   [digital twin inbox] -> transport protocol -> agent -> Thing
-> 
+> consumer -> transport client -> digital twin
+>   digital twin -> router -> transport server -> RC-device -> Thing
+>                          -> transport client -> device server -> thing
 
-Agents send a status update when actions are applied and completed:
-> Thing -> agent -> transport protocol -> [digital twin inbox]
->   [digital twin inbox] -> transport protocol -> consumer
+Devices send a status update when actions are applied and completed:
+> Thing -> transport client -> transport server -> digital twin 
+>   digital twin -> transport server -> consumer
 
 ![Action Flow](../docs/action-flow.jpg)
 
-Action requests are delivered by the transport protocol binding to the digital twin inbox for the targeted Thing. Action requests always return with a delivery status containing the delivery progress and possibly a reply value. The action flow can hold one of the following delivery status values: 
+Action requests are delivered by the transport protocol to the digital twin inbox for the targeted Thing. Action requests always return with a delivery status containing the delivery progress and possibly a reply value. The action flow can hold one of the following delivery status values: 
 * pending   - the action is received by the hub, placed in the outbox, but not yet delivered to the thing agent 
 * delivered - the action request is delivered to the Thing agent but not yet applied
 * waiting   - the action is waiting to be applied by the agent, eg device is asleep or offline
@@ -87,39 +77,35 @@ When the digital twin inbox receives a status update from the agent, it is passe
 
 ## Transport Protocols
 
-A transport protocol is an embedded server that listens for incoming connections and authenticates the client. Transport protocols can also push messages to connected clients based on their subscriptions. 
-
-Connectionless protocols are complemented with a connection-based return channel, or a polling features. 
+The runtime operations multiple transport protocols provided by HiveKit, including http-basic, WoT websockets, HiveOT gRPC, and (once completed) WoT MQTT.
 
 If a connection based return channel is available, for example using SSE with HTTPS then the client's 'connected status' is based on the return channel. For example, the HTTPS protocol binding uses SSE as a return channel. SSE sessions are used to determine if the client is connected.
 
 If a transport protocol does not support a return channel then it can fall back to polling on a prescribed interval. If polling doesn't take place within the interval, the connection is deemed lost. Some queuing is needed in this case to bridge the time between polling. This is specific to the protocol binding. 
   
 
-## RPC requests
-
-Some Hub clients use RPC style requests for reading available services. An rpc request is implemented as an action for the service and waiting for delivery update event containing the response.
-
-RPC requests are implemented client side. When a consumer sends an RPC request, the protocol client waits for a delivery update event from the Hub before returning the result. This works independently from the protocol used by the agent.
-
-
 ## Built-in Services
 
-The runtime includes essential built-in services to support the digital twin:
-1. Authentication service. Intended for use by transport protocols to authenticate and verify a client's identity. The service client provides an RPC interface for managing clients including agents, consumers and services.
-2. Authorization service. Intended for use by transport protocols to verify the ability of clients to publish or subscribe to certain agents, depending on the client's role.
-3. Digital Twin services:
-   a. The directory service stores TD documents
-   b. The outbox service stores and forwards Thing events received from agents
-   c. The inbox service stores and forwards Thing actions sent by consumers
+The runtime uses the digitwin recipe which includes essential built-in services to support the digital twin:
+1. Transport servers (see previous paragraph).
+2. Authentication (authn) services. Intended for use by transport protocols to authenticate and verify a client's identity. 
+2. Authorization (authz) service. Intended for use by transport protocols to verify the ability of clients to publish or subscribe to certain agents, depending on the client's role.
+3. Certificate management for creating server certificate.
+4. Logging service for logging of requests and responses.
+5. History service for tracking select requests and notifications.
+6. Directory service for serving TD's from digital twins, RC devices and TDs uploaded by an administrator.
+7. Discovery service for serving the discovery process of the directory TDD.
+8. Router service for routing requests to RC devices and stand-alone devices.
+9. Digital Twin service.
 
 
 ---
 
 ## Q & A
 
-1. When to use events vs properties? (option 2 - consumer centric)
-    * Properties are used to report persisted internal device state.
+1. When to use events vs properties? 
+    This recommendation is based on the following assertions:
+    * Properties are used to report persistent internal device state.
         * Configurations are writable properties.
         * Immutable information are read-only properties.
         * Sensor status are read-only properties
@@ -129,51 +115,40 @@ The runtime includes essential built-in services to support the digital twin:
         * doorbell button (and other push buttons)
         * actuator state changes are reported with events
         * sensor state changes are reported with events (the state is external)
-    * Consumer notifications are events.
-        * Alarms are always events.
-        * Sensor updates are events as they are consumer focused. They can also be properties if they represent internal state. In this case they have the same name.
-        * An actuator state change is an event as it is consumer focused. It also has a property that reflects the current actuator state.
-        * events are recorded in the history store
-    * Many events have corresponding properties. These should have the same name.
-    * Events and writable properties have a history.
-    * The final decision is up to the Thing agent.
+    * Events can have related read-only properties to reflect the last known value. For example, the alarm state of a motion sensor could be presented with a property which the state change is an event.
+    * The final decision is of course up to the Thing developer.
 
 2. When to use actions vs properties?
-    * Consumer facing controls are always actions.
-        * Differentiates from properties which are not consumer centric.
-        * Actuators are always actions (lights, blinds, etc)
-    * Stateless device operations are always actions
-    * Action progress is reported with response messages and running status
-    * If it is not idempotent (same changes, different outcome) it is an action.
-    * Light/dimmer switch is a consumer action so an action.
-    * Do not control a switch through a property.
-    * If it requires multiple input parameters then it is an action.
+    This recommendation is based on the following assertions:
+    * Actions are operations used to control a device.
+      * For example, controlling a light dimmer, blinds, water valves.
+      * Service requests are actions. 
+        * For example, adding a user account.
+        * Service requests typically involves one or more input parameters and only actions can provide multiple inputs per request. It would be non-intuitive to change action vs property based on the number of input parameters.
+      * Stateless device operations are always actions. Since there is no state, there is no property that reflects the state.
+      * Action progress for long running actions can be reported through a (read-only) property or an event. For example, progress in opening blinds.
+      * If it requires multiple input parameters then it is an action.
+    * Properties reflect status or control configuration.
+      * Properties must be idempotent. Setting a value always has the same outcome that is reflected by that property.
 
 3. How is action state stored in properties by digitwin?
    The state affected by actions are available through properties.
     * Option 1: as a single object property with nested properties for each value. Property name is the action name (just a convention)
     * Option 2: as individual properties. The action output is an object containing each affected property. (also just a convention)
 
-4. How to track the action progress?
-    * An action returns one or more response messages or action status messages. This is protocol dependent.
-    * Response contains the progress status of the action using the http-basic specified states: pending, running, completed, failed
-    * 'correlationID' is used to link the action with the response
+4. How to track the action progress for long running actions?
+   Since WoT doesn't specify tracking progress on long running actions, the recommended approach is that actions are always instant, eg they complete immediately. State changes after the action are presented through events or properties.
+    * An action returns immediately as either completed or failed. The status reflects the successful start of the action, not its completion. If an action takes time to complete then an event can be used to report the final result.
+    * To open blinds, the action to open is completed once the blinds start opening. A property can indicate how for blinds are opened and an event can be posted when the blinds are fully opened. 
+    * Similarly, when setting a dimmer with delay, the action is completed when the requested outcome is set. The dimmer will use the delay to slowly change its state, which can be obtained through a property. Once the dimming set value is reached an event is posted indicating the dimmer has reached the set value.
+    * To link intermediate state changes with the action that initiated it, the correlation ID of the request can be included in the property or event notification.
 
 5. How to track property write progress?
-    * Property write operations return a response just like actions.
-    * This is protocol dependent. Not all WoT protocols specify this.
+    * Property write operations return an immediate response just like actions.
     * In protocols that don't support acknowledgement, hiveot assumes completion on return.
-    * Property values are not changed until observeproperty subscription sends an update.
+    * After a property write, a property update notification indicates the actual property value. Callers can of course also send an action to read the property value.
 
-6. How to integrate agents with the Hub
-    * Agents connect to the hub, just like consumers
-    * Agents serve requests and return responses. This is protocol dependent.
-    * The Hub reconstructs a ResponseMessage contain the operation and correlationID and output. This is protocol dependent.
-
-7. How do agents receive invokeaction and writeproperty requests?
-    * The hub sends the request to the agent as if it is a consumer. The method is protocol dependent.
-    * The agent returns an asynchronous ResponseMessage containing the correlationID and operation. This is protocol dependent.
-    * The hub reconstructs the ResponseMessage when using non-hive message envelopes.
- 
-
+6. How to integrate devices with the Hub
+    * Devices connect to the hub, just like consumers.
+    * Devices serve requests and return responses independent from how they are connected. RC devices connect to the Hub use reverse-connection and handle requests send to them over this connection.
 

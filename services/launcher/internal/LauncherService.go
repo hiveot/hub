@@ -14,9 +14,9 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/hiveot/hivekit/go/api"
 	"github.com/hiveot/hivekit/go/api/msg"
-	"github.com/hiveot/hivekit/go/cells/agent"
 	"github.com/hiveot/hivekit/go/cells/transport/wss"
 	"github.com/hiveot/hivekit/go/utils"
+	"github.com/hiveot/hub/services/hiveoview/src/views/thing"
 	"github.com/hiveot/hub/services/launcher"
 	"github.com/hiveot/hub/services/launcher/tm"
 )
@@ -39,7 +39,7 @@ const DefaultLocalServerURL = "wss://localhost" + wss.WotWebsocketPath
 // C: Combine A and B, direct access to the launcher while linking to a gateway server
 // > {gRPC server} <=> Launcher <=> {transport client} <=> {gateway runtime}
 type LauncherService struct {
-	*agent.Agent
+	*thing.ExposedThing
 
 	// service configuration
 	cfg *launcher.LauncherConfig
@@ -306,14 +306,14 @@ func (svc *LauncherService) WatchPlugins() error {
 // env is the application environment with bin, certs, log and plugin directories
 // cfg is the launcher configuration
 func NewLauncherService(
-	sink api.IHiveCell, env *api.AppEnvironment, cfg *launcher.LauncherConfig,
+	sink api.IHiveCell, env *api.HiveEnvironment, cfg *launcher.LauncherConfig,
 
 	// ag transports.IClientConnection,
 ) *LauncherService {
 
 	svc := &LauncherService{
-		Agent: agent.NewAgent(env.AppID, nil),
-		env:   env,
+		ExposedThing: thing.NewExposedThing(env.AppID, nil),
+		env:          env,
 		// serverURL: serverURL,
 		cfg:     cfg,
 		plugins: make(map[string]launcher.PluginInfo),

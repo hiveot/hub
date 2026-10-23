@@ -11,12 +11,11 @@ import (
 	"time"
 
 	"github.com/hiveot/hivekit/go/api"
-	"github.com/hiveot/hivekit/go/cells/agent"
-	authnpkg "github.com/hiveot/hivekit/go/cells/authn/pkg"
 	"github.com/hiveot/hivekit/go/cells/bucketstore"
 	"github.com/hiveot/hivekit/go/cells/consumer"
 	"github.com/hiveot/hivekit/go/cells/transport/clients"
 	"github.com/hiveot/hub/services/hiveoview/src"
+	"github.com/hiveot/hub/services/hiveoview/src/views/thing"
 )
 
 // WebSessionManager tracks client sessions using session cookies
@@ -38,7 +37,7 @@ type WebSessionManager struct {
 	// Hub CA certificate
 	caCert *x509.Certificate
 	// this service's agent for publishing events
-	ag *agent.Agent
+	ag *thing.ExposedThing
 
 	// persistence of dashboard configuration
 	configStore bucketstore.IBucketStore
@@ -200,7 +199,7 @@ func (sm *WebSessionManager) HandleConnectWithPassword(
 
 	// Authentication uses its own client that knows the auth protocol
 	parts, _ := url.Parse(sm.hubURL)
-	authCl := authnpkg.NewUserAuthnHttpClient(parts.Host, sm.caCert)
+	authCl := authn_client.NewUserAuthnHttpClient(parts.Host, sm.caCert)
 	authCl.SetTimeout(sm.timeout)
 
 	// attempt to login
@@ -334,7 +333,7 @@ func (sm *WebSessionManager) GetSessionFromCookie(r *http.Request) (
 //	configStore data store for client configuration
 //	timeout of hub connections
 func NewWebSessionManager(
-	ag *agent.Agent, signingKey crypto.PrivateKey, caCert *x509.Certificate,
+	ag *thing.ExposedThing, signingKey crypto.PrivateKey, caCert *x509.Certificate,
 	configStore bucketstore.IBucketStore,
 	timeout time.Duration) *WebSessionManager {
 

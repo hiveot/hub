@@ -9,7 +9,7 @@ import (
 	"github.com/hiveot/hivekit/go/testenv"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/bindings/isy99x/config"
-	"github.com/hiveot/hub/bindings/isy99x/service"
+	"github.com/hiveot/hub/bindings/isy99x/internal"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -62,19 +62,18 @@ func TestStartStop(t *testing.T) {
 	_ = os.Remove(nodesFile)
 
 	// appconfig, read from test/isy99.yaml, contains simulated gateway file
-	hc, _ := testEnv.AddConnectService(agentID)
-	defer hc.Disconnect()
-
-	svc := service.NewIsyBinding(appConfig)
-	err := svc.Start(hc)
+	gw, err := internal.NewIsyGateway(agentID, appConfig)
 	require.NoError(t, err)
-	defer svc.Stop()
+	cc1, _ := testEnv.NewRCConnection(agentID, gw)
+	defer cc1.Close()
+	gw.Start()
+	defer gw.Stop()
 
-	err = svc.IsyGW.ReadIsyThings()
+	err = gw.ReadIsyThings()
 	require.NoError(t, err)
 
 	time.Sleep(time.Second)
-	devices := svc.IsyGW.GetIsyThings()
+	devices := gw.GetIsyThings()
 	assert.True(t, len(devices) > 5, "Expected 6 ISY nodes. Got fewer.")
 
 	time.Sleep(time.Millisecond)
@@ -84,18 +83,17 @@ func TestBadAddress(t *testing.T) {
 	t.Logf("---%s---\n", t.Name())
 	_ = os.Remove(nodesFile)
 
-	hc, _ := testEnv.AddConnectService(agentID)
-	defer hc.Disconnect()
-
 	// error case - use real url
 	badConfig := *appConfig
 	badConfig.IsyAddress = "localhost"
-	svc := service.NewIsyBinding(&badConfig)
-	err := svc.Start(hc)
-	assert.NoError(t, err)
+	svc, err := internal.NewIsyGateway(agentID, &badConfig)
+	require.NoError(t, err)
+	cc1, _ := testEnv.NewRCConnection(agentID, svc)
+	defer cc1.Close()
+	svc.Start()
 	defer svc.Stop()
 
-	err = svc.IsyGW.ReadIsyThings()
+	err = svc.ReadIsyThings()
 	assert.Error(t, err)
 	time.Sleep(time.Millisecond * 100)
 }
@@ -103,16 +101,16 @@ func TestBadAddress(t *testing.T) {
 func TestIsyAppPoll(t *testing.T) {
 	t.Logf("---%s---\n", t.Name())
 	_ = os.Remove(nodesFile)
-	// appconfig, read from test/isy99.yaml, contains simulated gateway file
-	hc, _ := testEnv.AddConnectService(agentID)
-	defer hc.Disconnect()
 
-	svc := service.NewIsyBinding(appConfig)
-	err := svc.Start(hc)
+	// appconfig, read from test/isy99.yaml, contains simulated gateway file
+	svc, err := internal.NewIsyGateway(agentID, appConfig)
 	require.NoError(t, err)
+	cc1, _ := testEnv.NewRCConnection(agentID, svc)
+	defer cc1.Close()
+	svc.Start()
 	defer svc.Stop()
 
-	err = svc.PublishTDs()
+	err = svc.ReadIsyThings()
 	assert.NoError(t, err)
 	time.Sleep(2 * time.Second)
 }
@@ -125,15 +123,14 @@ func TestSwitch(t *testing.T) {
 
 	_ = os.Remove(nodesFile)
 	// appconfig, read from test/isy99.yaml, contains simulated gateway file
-	hc, _ := testEnv.AddConnectService(agentID)
-	defer hc.Disconnect()
-
-	svc := service.NewIsyBinding(appConfig)
-	err := svc.Start(hc)
+	svc, err := internal.NewIsyGateway(agentID, appConfig)
 	require.NoError(t, err)
+	cc1, _ := testEnv.NewRCConnection(agentID, svc)
+	defer cc1.Close()
+	svc.Start()
 	defer svc.Stop()
 
-	err = svc.PublishTDs()
+	err = svc.ReadIsyThings()
 	assert.NoError(t, err)
 	// some time to publish stuff
 	time.Sleep(1 * time.Second)

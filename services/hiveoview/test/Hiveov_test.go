@@ -13,9 +13,7 @@ import (
 	"github.com/hiveot/hivekit/go/api"
 	"github.com/hiveot/hivekit/go/api/msg"
 	"github.com/hiveot/hivekit/go/api/td"
-	"github.com/hiveot/hivekit/go/cells/authn"
-	ssescpkg "github.com/hiveot/hivekit/go/cells/transport/ssesc/pkg"
-	tlsclientpkg "github.com/hiveot/hivekit/go/cells/transport/tlsclient/pkg"
+	"github.com/hiveot/hivekit/go/cells/transport/tlsclient"
 	"github.com/hiveot/hivekit/go/testenv"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/services/hiveoview/src"
@@ -89,7 +87,7 @@ func WebLogin(sseURL string, clientID string,
 	// htmx sse triggers rely on this format. (for now)
 	// FIXME: can htmx sse trigger using additional fields (type=notification, thingID/name=blah?)
 	// or is this too painful in htmx.
-	sseCl := ssescpkg.NewHiveotSseClient(sseURL,
+	sseCl := ssesc_client.NewHiveotSseClient(sseURL,
 		clientID, nil, testEnv.CertBundle.CaCert,
 		getHiveoviewForm, time.Minute)
 
@@ -154,7 +152,7 @@ func TestStartStop(t *testing.T) {
 	t.Log("--- TestStartStop ---")
 
 	storeDir := testFolder
-	ag1, _ := testEnv.NewConnectedClient(serviceID, authn.ClientRoleService)
+	ag1, _ := testEnv.NewConnectedClient(serviceID, api.ClientRoleService)
 	svc := service.NewHiveovService(ag1, servicePort, true, nil, "",
 		testEnv.CertBundle.ServerCert, testEnv.CertBundle.CaCert, timeout, storeDir)
 
@@ -181,7 +179,7 @@ func TestLogin(t *testing.T) {
 	defer svc.Stop()
 
 	// make sure the client to login exists
-	cl1, _, token1 := testEnv.NewConnectedConsumer(clientID1, authn.ClientRoleOperator, false)
+	cl1, _, token1 := testEnv.NewConnectedConsumer(clientID1, api.ClientRoleOperator, false)
 	//defer cl1.Disconnect()
 	cl1.Stop()
 	_ = token1
@@ -189,7 +187,7 @@ func TestLogin(t *testing.T) {
 
 	// 2: login using plain TLS connection and a form
 	hostPort := fmt.Sprintf("localhost:%d", servicePort)
-	cl2 := tlsclientpkg.NewTLSClient(hostPort, testEnv.CertBundle.CaCert, time.Second*60)
+	cl2 := tlsclient.NewTLSClient(hostPort, testEnv.CertBundle.CaCert, time.Second*60)
 
 	// hiveot http requires a connection-id to link the return channel.
 	cl2.SetHeader(api.ConnectionIDHeader, shortid.MustGenerate())
@@ -250,7 +248,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	// create the user account this test is going to connect as.
 	// no notifications are expected as it doesnt subscribe
 	// hiveoview server only supports HTTP/SSE
-	co1, _, token1 := testEnv.AddConnectConsumer(clientID1, authn.ClientRoleOperator)
+	co1, _, token1 := testEnv.AddConnectConsumer(clientID1, api.ClientRoleOperator)
 	defer co1.Disconnect()
 	require.NoError(t, err)
 	time.Sleep(waitamoment)

@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	authnpkg "github.com/hiveot/hivekit/go/cells/authn/pkg"
 	"github.com/hiveot/hivekit/go/cells/consumer"
 	"github.com/urfave/cli/v3"
 	"golang.org/x/exp/rand"
@@ -41,7 +40,7 @@ func HandleSetPassword(co *consumer.Consumer, loginID string, newPassword string
 	if newPassword == "" {
 		newPassword = GeneratePassword(9, true)
 	}
-	authnClient := authnpkg.NewAuthnAdminClient(co)
+	authnClient := authn_client.NewAuthnAdminClient(co)
 	err := authnClient.SetClientPassword(loginID, newPassword)
 
 	if err != nil {

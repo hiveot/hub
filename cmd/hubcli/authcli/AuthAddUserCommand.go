@@ -9,8 +9,6 @@ import (
 	"os"
 	"path"
 
-	"github.com/hiveot/hivekit/go/cells/authn"
-	authnpkg "github.com/hiveot/hivekit/go/cells/authn/pkg"
 	"github.com/hiveot/hivekit/go/cells/consumer"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/urfave/cli/v3"
@@ -19,10 +17,10 @@ import (
 // AuthAddUserCommand adds a user
 func AuthAddUserCommand(hc **consumer.Consumer) *cli.Command {
 	displayName := ""
-	var role string = string(authn.ClientRoleViewer)
+	var role string = string(api.ClientRoleViewer)
 	rolesTxt := fmt.Sprintf("[%s, %s, %s, %s]",
-		authn.ClientRoleViewer, authn.ClientRoleOperator,
-		authn.ClientRoleManager, authn.ClientRoleAdmin,
+		api.ClientRoleViewer, api.ClientRoleOperator,
+		api.ClientRoleManager, api.ClientRoleAdmin,
 	)
 
 	return &cli.Command{
@@ -146,9 +144,9 @@ func HandleAddUser(
 	co *consumer.Consumer, loginID string, displayName string, role string) (err error) {
 
 	newPassword := GeneratePassword(9, true)
-	authnAdmin := authnpkg.NewAuthnAdminClient(co)
+	authnAdmin := authn_client.NewAuthnAdminClient(co)
 
-	token, err := authnAdmin.AddClient(loginID, displayName, authn.ClientRoleViewer, "")
+	token, err := authnAdmin.AddClient(loginID, displayName, api.ClientRoleViewer, "")
 	_ = token
 	authnAdmin.SetClientPassword(loginID, newPassword)
 	prof, _ := authnAdmin.GetClientProfile(loginID)
@@ -194,9 +192,9 @@ func HandleAddService(
 		slog.Error("Failed creating or loading key", "err", err.Error())
 		return
 	}
-	authAdmin := authnpkg.NewAuthnAdminClient(co)
+	authAdmin := authn_client.NewAuthnAdminClient(co)
 	pubKeyPem := utils.PublicKeyToPem(pubKey)
-	authToken, err := authAdmin.AddClient(serviceID, displayName, authn.ClientRoleService, pubKeyPem)
+	authToken, err := authAdmin.AddClient(serviceID, displayName, api.ClientRoleService, pubKeyPem)
 	_ = authToken
 	if err != nil {
 		slog.Error("Failed adding service",
@@ -226,7 +224,7 @@ func HandleAddService(
 // HandleListClients shows a list of user profiles
 func HandleListClients(co *consumer.Consumer) (err error) {
 
-	authnClient := authnpkg.NewAuthnAdminClient(co)
+	authnClient := authn_client.NewAuthnAdminClient(co)
 	authnClient.SetRequestSink(co)
 
 	profileList, err := authnClient.GetProfiles()
@@ -235,7 +233,7 @@ func HandleListClients(co *consumer.Consumer) (err error) {
 	fmt.Println("Login ID             Display Name              Role            Modified")
 	fmt.Println("--------             ------------              ----            -------")
 	for _, profile := range profileList {
-		if profile.Role != authn.ClientRoleAgent && profile.Role != authn.ClientRoleService {
+		if profile.Role != api.ClientRoleAgent && profile.Role != api.ClientRoleService {
 			fmt.Printf("%-20s %-25s %-15s %s\n",
 				profile.ClientID,
 				profile.DisplayName,
@@ -249,7 +247,7 @@ func HandleListClients(co *consumer.Consumer) (err error) {
 	fmt.Println("SenderID             Type            Modified")
 	fmt.Println("--------             ----            -------")
 	for _, profile := range profileList {
-		if profile.Role == authn.ClientRoleAgent || profile.Role == authn.ClientRoleService {
+		if profile.Role == api.ClientRoleAgent || profile.Role == api.ClientRoleService {
 			fmt.Printf("%-20s %-15s %s\n",
 				profile.ClientID,
 				profile.Role,
@@ -262,7 +260,7 @@ func HandleListClients(co *consumer.Consumer) (err error) {
 
 // HandleRemoveClient removes a user
 func HandleRemoveClient(co *consumer.Consumer, clientID string) (err error) {
-	authnClient := authnpkg.NewAuthnAdminClient(co)
+	authnClient := authn_client.NewAuthnAdminClient(co)
 	authnClient.RemoveClient(clientID)
 
 	if err != nil {

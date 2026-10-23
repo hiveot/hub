@@ -1,34 +1,31 @@
 package main
 
 import (
+	"fmt"
 	"os"
+	"path"
 
 	"github.com/hiveot/hivekit/go/api"
-	factorypkg "github.com/hiveot/hivekit/go/cells/factory/pkg"
+	rcdevice_recipe "github.com/hiveot/hivekit/go/factory/recipes/rcdevice"
 	"github.com/hiveot/hub/bindings/owserver"
 	owserverpkg "github.com/hiveot/hub/bindings/owserver/pkg"
 )
 
 // Start the OWServer protocol binding
 func main() {
-	env := api.NewAppEnvironment("", true)
-	f := factorypkg.NewModuleFactory(env, nil)
+	env := api.NewHiveEnvironment("", true)
 
-	// Use the recipe template for building devices using reverse connection.
-	// the factory is configured for auto-discovery the hub and authentication
-	// using the app environment.
-	//
-	// Recipe contains discovery, logging, client auth (token|cert), and transport client
-	// The app module is added at the end.
-	owserverModDef := api.CellDefinition{
-		Type:        owserver.DefaultOWServerThingID,
-		Constructor: owserverpkg.NewOWServerFactory,
-	}
-	r := factorypkg.NewRCDeviceRecipe(f, &owserverModDef)
+	owsConfig := owserver.NewOWServerConfig()
+	_ = env.LoadConfig(env.AppID, &owsConfig)
+	storePath := path.Join(env.StoresDir, env.ClientID)
+	binding, err := owserverpkg.NewOWServerBinding("", storePath, owsConfig)
 
-	// start the recipe services
-	err := r.Start()
+	// link it to the RC device recipe that handles connections.
+	r, _, err := rcdevice_recipe.NewRCDeviceRecipe(env, binding)
 	if err != nil {
+		fmt.Println("Startup failed: " + err.Error())
 		os.Exit(1)
 	}
+	r.Run()
+
 }

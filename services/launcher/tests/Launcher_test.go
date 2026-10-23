@@ -8,13 +8,10 @@ import (
 	"time"
 
 	"github.com/hiveot/hivekit/go/cells/authn"
-	authnpkg "github.com/hiveot/hivekit/go/cells/authn/pkg"
 	"github.com/hiveot/hivekit/go/cells/consumer"
-	directorypkg "github.com/hiveot/hivekit/go/cells/directory/pkg"
 	"github.com/hiveot/hivekit/go/testenv"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/services/launcher"
-	launcherpkg "github.com/hiveot/hub/services/launcher/pkg"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -43,7 +40,7 @@ func startService() (l *consumer.Consumer, stopFn func()) {
 	const launcherID = launcher.LauncherServiceID
 	const adminID = "admin"
 
-	appEnv := api.NewAppEnvironment(homeDir, false)
+	appEnv := api.NewHiveEnvironment(homeDir, false)
 	appEnv.LogsDir = appEnv.HomeDir
 	appEnv.PluginsDir = appEnv.HomeDir
 
@@ -55,9 +52,9 @@ func startService() (l *consumer.Consumer, stopFn func()) {
 
 	// authn is needed to create auth tokens
 	authnConfig := authn.NewAuthnConfig(appEnv.CertsDir, homeDir)
-	authnSvc := authnpkg.NewAuthnService(authnConfig)
+	authnSvc := authn_service.NewAuthnService(authnConfig)
 	// directory is needed to write TD (optional - WriteTD)
-	dirSvc := directorypkg.NewDirectoryService("", "", nil, nil)
+	dirSvc := directory_service.NewDirectoryService("", "", nil, nil)
 
 	if err != nil {
 		slog.Error(err.Error())
@@ -75,7 +72,7 @@ func startService() (l *consumer.Consumer, stopFn func()) {
 	launcherConfig.WriteTD = false
 
 	// launcher uses authn to create credentials and dirSvc to write TD
-	svc := launcherpkg.NewLauncherService(authnSvc, appEnv, launcherConfig)
+	svc := launcher_service.NewLauncherService(authnSvc, appEnv, launcherConfig)
 	authnSvc.SetRequestSink(dirSvc)
 
 	err = svc.Start()
@@ -88,7 +85,8 @@ func startService() (l *consumer.Consumer, stopFn func()) {
 	//_ = agent
 
 	//--- connect the launcher user
-	co1, co1cc, _ := testEnv.NewConnectedConsumer(adminID, authn.ClientRoleAdmin, false)
+	co1, co1cc, _ := testEnv.NewTestConsumer(adminID, api.ClientRoleAdmin, false)
+	_ = co1cc.Connect()
 	return co1, func() {
 		co1cc.Close()
 		time.Sleep(time.Millisecond)
@@ -118,12 +116,13 @@ func TestList(t *testing.T) {
 	defer cancelFunc()
 	require.NotNil(t, co1)
 	// using the /bin directory yields a larger number of potential plugins
-	launcherCl := launcherpkg.NewLauncherClient("", co1)
+	launcherCl := launcher_client.NewLauncherClient("", co1)
 	infoList, err := launcherCl.ListPlugins(false)
 	require.NoError(t, err)
 	assert.Greater(t, len(infoList), 10)
 
-	cc2, _ := testEnv.NewConnectedClient(userID, authn.ClientRoleAdmin)
+	cc2, _ := testEnv.NewTestClient(userID, api.ClientRoleAdmin)
+	_ = cc2.Connect()
 	defer cc2.Close()
 	infoList2, err := launcherCl.ListPlugins(false)
 	require.NoError(t, err)
@@ -138,9 +137,10 @@ func TestListNoPermission(t *testing.T) {
 	defer cancelFunc()
 	require.NotNil(t, co1)
 
-	cc2, _ := testEnv.NewConnectedClient(userID, authn.ClientRoleNone)
+	cc2, _ := testEnv.NewTestClient(userID, api.ClientRoleNone)
+	cc2.Connect()
 	defer cc2.Close()
-	launcherCl := launcherpkg.NewLauncherClient("", cc2)
+	launcherCl := launcher_client.NewLauncherClient("", cc2)
 	info2, err := launcherCl.ListPlugins(false)
 	require.Error(t, err, "user without role should not be able to use launcher")
 	require.Empty(t, info2)
@@ -157,7 +157,7 @@ func TestStartYes(t *testing.T) {
 	defer cancelFunc()
 
 	assert.NotNil(t, co1)
-	launcherCl := launcherpkg.NewLauncherClient("", co1)
+	launcherCl := launcher_client.NewLauncherClient("", co1)
 	info, err := launcherCl.StartPlugin("yes")
 	require.NoError(t, err)
 	assert.True(t, info.Running)
@@ -183,7 +183,7 @@ func TestStartBadName(t *testing.T) {
 
 	// FIXME: the error is not received - how to return an error in an action response?!
 
-	launcherCl := launcherpkg.NewLauncherClient("", co1)
+	launcherCl := launcher_client.NewLauncherClient("", co1)
 	_, err := launcherCl.StartPlugin("notaservicename")
 	require.Error(t, err)
 	//
@@ -197,7 +197,7 @@ func TestStartStopTwice(t *testing.T) {
 	defer cancelFunc()
 	assert.NotNil(t, co1)
 
-	launcherCl := launcherpkg.NewLauncherClient("", co1)
+	launcherCl := launcher_client.NewLauncherClient("", co1)
 
 	info, err := launcherCl.StartPlugin("yes")
 	assert.NoError(t, err)
@@ -225,7 +225,7 @@ func TestStartStopAll(t *testing.T) {
 	defer cancelFunc()
 	assert.NotNil(t, co1)
 
-	launcherCl := launcherpkg.NewLauncherClient("", co1)
+	launcherCl := launcher_client.NewLauncherClient("", co1)
 	_, err := launcherCl.StartPlugin("yes")
 	assert.NoError(t, err)
 

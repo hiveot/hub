@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/hiveot/hivekit/go/cells/bucketstore"
-	bucketstorepkg "github.com/hiveot/hivekit/go/cells/bucketstore/pkg"
 	"github.com/hiveot/hub/bindings/weather"
 	jsoniter "github.com/json-iterator/go"
 )

@@ -5,11 +5,12 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/hiveot/hivekit/go/api"
 	"github.com/hiveot/hivekit/go/api/msg"
 	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/api/vocab"
-	"github.com/hiveot/hivekit/go/cells/agent"
-	"github.com/hiveot/hub/bindings/isy99x/service/isy"
+	"github.com/hiveot/hivekit/go/cells/thing"
+	"github.com/hiveot/hub/bindings/isy99x/internal/isy"
 )
 
 // mapping from insteon device category to TD device type
@@ -32,33 +33,37 @@ type IsyEventHandler func(thingID, name string, value any)
 
 // IIsyThing is the interface implemented by nodes that are things
 type IIsyThing interface {
+	// *thing.ExposedThing
+	api.IHiveCell
+
 	// GetID returns the thingID of the node
-	GetID() string
-	// GetPropValues returns the property values of the thing
-	GetPropValues(onlyChanges bool) map[string]any
+	// GetID() string
+
+	// RefreshProperties loads and publishes node property values
+	RefreshProperties(onlyChanges bool)
+
 	// HandleActionRequest passes incoming actions to the Thing for execution
-	HandleActionRequest(req *msg.RequestMessage, replyTo msg.ResponseHandler) error
+	// HandleActionRequest(req *msg.RequestMessage, replyTo msg.ResponseHandler) error
 	// HandleConfigRequest passes configuration changes to the Thing for execution
-	HandleConfigRequest(req *msg.RequestMessage, replyTo msg.ResponseHandler) error
+	// HandleConfigRequest(req *msg.RequestMessage, replyTo msg.ResponseHandler) error
+
 	// HandleValueUpdate updates the Thing properties with value obtained via the ISY gateway
 	HandleValueUpdate(propID string, uom string, newValue string) error
+
 	// Init assigns the ISY connection and node this Thing represents
-	Init(ic *isy.IsyAPI, thingID string, node *isy.IsyNode, prodInfo InsteonProduct, hwVersion string)
+	// Init(ic *isy.IsyAPI, thingID string, node *isy.IsyNode, prodInfo InsteonProduct, hwVersion string)
 	// MakeTD returns the generated TD document describing the Thing
-	MakeTD() *td.TD
+	// MakeTD() *td.TD
 }
 
 // IsyThing is the generic base of Things constructed out of ISY Insteon nodes.
 // Intended for building specialized Things or for defining a basic Thing.
 // This implements the IThing interface.
 type IsyThing struct {
-	*agent.Agent
+	*thing.ExposedThing
 
-	// The node ID, also used as the ThingID
-	nodeID string
-
-	// ThingID derived from the nodeID
-	thingID string
+	// The underlying ISY node
+	node *isy.IsyNode
 
 	// vocab device type derived from productInfo (@type)
 	deviceType string
@@ -72,42 +77,40 @@ type IsyThing struct {
 	// REST/SOAP/WS connection to the ISY hub
 	isyAPI *isy.IsyAPI
 
-	// callback handler for events
-	evHandler IsyEventHandler
+	// The TD to publish on start
+	tdoc *td.TD
 }
 
-// GetID returns the ThingID for the node it represents.
-// No assumptions should be made on how this is constructed. The only
-// guarantee is that it identifies, directly or indirectly, the node.
-func (it *IsyThing) GetID() string {
-	return it.thingID
+// RefreshProperties returns the property values, set with read
+func (it *IsyThing) RefreshProperties(onlyChanges bool) {
+	// nothing to do here
 }
-
-// GetPropValues returns the property values, set with read
-// func (it *IsyThing) GetPropValues(onlyChanges bool) map[string]any {
-// 	propValues := it.propValues.GetValues(onlyChanges)
-// 	return propValues
-// }
 
 // GetOutputValue returns the default 'value' property
 //func (it *IsyThing) GetOutputValue() (string, bool) {
 //	return it.propValues.GetOutputValue(vocab.PropDeviceValue)
 //}
 
+func (it *IsyThing) GetNode() *isy.IsyNode {
+	return it.node
+}
+
 // HandleActionRequest invokes the action handler of the specialized thing
 func (it *IsyThing) HandleActionRequest(
-	ag *agent.Agent, req *msg.RequestMessage) *msg.ResponseMessage {
+	req *msg.RequestMessage, replyTo msg.ResponseHandler) error {
 
-	err := fmt.Errorf("HandleRequest not supported for this thing")
-	return req.CreateResponse(nil, err)
+	err := fmt.Errorf("HandleActionRequest this thing has no actions")
+	return err
 }
 
 // HandleConfigRequest invokes the config handler of the specialized thing
-func (it *IsyThing) HandleConfigRequest(req *msg.RequestMessage, replyTo msg.ResponseHandler) error {
+func (it *IsyThing) HandleConfigRequest(
+	req *msg.RequestMessage, replyTo msg.ResponseHandler) error {
+
 	// The title is the friendly name of the node
 	if req.Name == td.WoTTitle {
 		newName := req.ToString(0)
-		err := it.isyAPI.Rename(it.nodeID, newName)
+		err := it.isyAPI.Rename(it.node.Address, newName)
 		if err == nil {
 			// TODO: use ISY WebSocket to receive confirmation of change
 			_ = it.HandleValueUpdate(td.WoTTitle, "", newName)
@@ -129,41 +132,6 @@ func (it *IsyThing) HandleValueUpdate(propID string, uom string, newValue string
 	return err
 }
 
-// Init initializes the IsyThing base class
-// This determines the device type from prodInfo and sets property values for
-// product and model.
-func (it *IsyThing) Init(ic *isy.IsyAPI, thingID string, node *isy.IsyNode, prodInfo InsteonProduct, hwVersion string) {
-	var found bool
-	it.mux.Lock()
-	defer it.mux.Unlock()
-	it.deviceType, found = deviceCatMap[prodInfo.Cat]
-	if !found {
-		it.deviceType = vocab.Device
-	}
-
-	it.isyAPI = ic
-	it.nodeID = node.Address
-	it.thingID = thingID
-	it.productInfo = prodInfo
-
-	enabledDisabled := "enabled"
-	if strings.ToLower(node.Enabled) != "true" {
-		enabledDisabled = "disabled"
-	}
-
-	props := map[string]any{
-		"deviceType":                    it.deviceType,
-		"flag":                          fmt.Sprintf("0x%X", node.Flag),
-		vocab.PropDeviceEnabledDisabled: enabledDisabled,
-		vocab.PropDeviceDescription:     prodInfo.ProductName,
-		td.WoTTitle:                     node.Name,
-		vocab.PropDeviceModel:           prodInfo.Model,
-		vocab.PropDeviceHardwareVersion: hwVersion,
-		"nodeType":                      node.Type,
-	}
-	it.PubProperties("", props, false)
-}
-
 // MakeTD return a basic TD document that describes the Thing represented here.
 // The parent should add properties, events and actions specific to their capabilities.
 func (it *IsyThing) MakeTD() *td.TD {
@@ -173,11 +141,11 @@ func (it *IsyThing) MakeTD() *td.TD {
 		title, _ = titleProp.(string)
 	}
 	it.mux.RLock()
-	td := td.NewTD(it.thingID, title, it.deviceType)
+	tdoc := td.NewTD(it.GetID(), title, it.deviceType)
 	it.mux.RUnlock()
 
 	//--- read-only properties
-	prop := td.AddPropertyAsInt("flag", "Node Flag", "")
+	prop := tdoc.AddPropertyAsInt("flag", "Node Flag", "")
 	prop.Description = "A bit mask: 0x01 -- Node is initialized (internal)," +
 		" 0x02 -- Node is going to be crawled (internal)," +
 		" 0x04 -- This is a group node," +
@@ -186,27 +154,52 @@ func (it *IsyThing) MakeTD() *td.TD {
 		" 0x20 -- Brand new node," +
 		" 0x40 -- Node shall be deleted," +
 		" 0x80 -- Node is device root"
-	prop = td.AddPropertyAsString("deviceType", "Hiveot device type", "")
-	prop = td.AddPropertyAsString("nodeType", "Insteon device type", "")
+	prop = tdoc.AddPropertyAsString("deviceType", "Hiveot device type", "")
+	prop = tdoc.AddPropertyAsString("nodeType", "Insteon device type", "")
 	prop.Description = "<device cat>.<sub cat>.<version>.<reserved>"
-	prop = td.AddPropertyAsString(vocab.PropDeviceDescription, "Product description", "").
+	prop = tdoc.AddPropertyAsString(vocab.PropDeviceDescription, "Product description", "").
 		SetAtType(vocab.PropDeviceDescription)
-	prop = td.AddPropertyAsString(vocab.PropDeviceModel, "Product model", "").
+	prop = tdoc.AddPropertyAsString(vocab.PropDeviceModel, "Product model", "").
 		SetAtType(vocab.PropDeviceModel)
-	prop = td.AddPropertyAsString(vocab.PropDeviceHardwareVersion, "Hardware version", "Device hardware version").
+	prop = tdoc.AddPropertyAsString(vocab.PropDeviceHardwareVersion, "Hardware version", "Device hardware version").
 		SetAtType(vocab.PropDeviceHardwareVersion)
 
 	//--- configuration
-	prop = td.AddPropertyAsString(vocab.PropDeviceEnabledDisabled, "Enabled/disabled", "")
+	prop = tdoc.AddPropertyAsString(vocab.PropDeviceEnabledDisabled, "Enabled/disabled", "")
 	prop.SetAtType(vocab.PropDeviceEnabledDisabled)
 	prop.Description = "Whether or not the node is enabled (plugged in). Note: this feature only works on 99 Series"
 	prop.Enum = []interface{}{"enabled", "disabled"}
 	//prop.ReadOnly = false // TODO: support for enabled/disabled
 
-	prop = td.AddPropertyAsString(td.Title, "Title", "").
+	prop = tdoc.AddPropertyAsString(tdoc.Title, "Title", "").
 		SetAtType(vocab.PropDeviceTitle)
 	prop.ReadOnly = false
-	return td
+	return tdoc
+}
+
+// Start using the ISY Thing.
+//
+// This publishes the Thing TD and its static properties.
+func (it *IsyThing) Start() {
+
+	it.PublishTD(it.tdoc)
+
+	enabledDisabled := "enabled"
+	if strings.ToLower(it.node.Enabled) != "true" {
+		enabledDisabled = "disabled"
+	}
+	prodInfo := it.productInfo
+	props := map[string]any{
+		"deviceType":                    it.deviceType,
+		"flag":                          fmt.Sprintf("0x%X", it.node.Flag),
+		vocab.PropDeviceEnabledDisabled: enabledDisabled,
+		vocab.PropDeviceDescription:     prodInfo.ProductName,
+		td.WoTTitle:                     it.node.Name,
+		vocab.PropDeviceModel:           prodInfo.Model,
+		vocab.PropDeviceHardwareVersion: prodInfo.HWVersion,
+		"nodeType":                      it.node.Type,
+	}
+	it.PubProperties("", props, false)
 }
 
 // PubPropValues gets the thing properties and publish them
@@ -220,13 +213,40 @@ func (it *IsyThing) MakeTD() *td.TD {
 
 // NewIsyThing constructs a general purpose ISY thing with basic properties
 // Intended to be used for 'unknown' nodes.
-// Init() must be called before use.
-func NewIsyThing //(thingID string, evHandler IsyEventHandler) *IsyThing {
-(ic *isy.IsyAPI, thingID string, node *isy.IsyNode, prodInfo InsteonProduct, hwVersion string) *IsyThing {
+func NewIsyThing(ic *isy.IsyAPI,
+	thingID string, node *isy.IsyNode, prodInfo InsteonProduct, hwVersion string) *IsyThing {
+
 	it := &IsyThing{
-		Agent: agent.NewAgent(thingID, nil),
-		// HiveCellBase: cells.NewHiveCellBase(thingID, timeout),
-		evHandler: evHandler,
+		ExposedThing: thing.NewExposedThing(thingID, nil),
+		isyAPI:       ic,
+		node:         node,
+		productInfo:  prodInfo,
 	}
+	it.tdoc = it.MakeTD()
+
+	deviceType, found := deviceCatMap[prodInfo.Cat]
+	if !found {
+		deviceType = vocab.Device
+	}
+	it.deviceType = deviceType
+	it.isyAPI = ic
+	prodInfo.HWVersion = hwVersion
+
+	// enabledDisabled := "enabled"
+	// if strings.ToLower(node.Enabled) != "true" {
+	// 	enabledDisabled = "disabled"
+	// }
+	// props := map[string]any{
+	// 	"deviceType":                    it.deviceType,
+	// 	"flag":                          fmt.Sprintf("0x%X", node.Flag),
+	// 	vocab.PropDeviceEnabledDisabled: enabledDisabled,
+	// 	vocab.PropDeviceDescription:     prodInfo.ProductName,
+	// 	td.WoTTitle:                     node.Name,
+	// 	vocab.PropDeviceModel:           prodInfo.Model,
+	// 	vocab.PropDeviceHardwareVersion: hwVersion,
+	// 	"nodeType":                      node.Type,
+	// }
+	// it.PubProperties("", props, false)
+
 	return it
 }

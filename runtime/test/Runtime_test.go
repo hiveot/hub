@@ -8,12 +8,9 @@ import (
 
 	"github.com/hiveot/hivekit/go/api"
 	"github.com/hiveot/hivekit/go/api/msg"
-	"github.com/hiveot/hivekit/go/cells/authn"
-	authnpkg "github.com/hiveot/hivekit/go/cells/authn/pkg"
 	"github.com/hiveot/hivekit/go/testenv"
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hub/runtime/internal"
-	runtimepkg "github.com/hiveot/hub/runtime/pkg"
+	"github.com/hiveot/hub/runtime/pkg"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -21,11 +18,11 @@ import (
 var testEnv *testenv.TestEnv
 
 // start the test runtime
-func startRuntime() *internal.Runtime {
+func startRuntime() *pkg.HubRuntime {
 	utils.SetLogging("info", "")
 	testEnv = testenv.NewTestEnv(true)
 	testEnv.StartTestServer("")
-	rt := runtimepkg.NewRuntime(testEnv.AppEnv)
+	rt := pkg.NewHubRuntime(testEnv.AppEnv)
 	return rt
 }
 
@@ -51,7 +48,7 @@ func TestLoginAsAgent(t *testing.T) {
 	agent, ccag, token := testEnv.NewRCAgent(agentID, nil) //AddConnectAgent(agentID)
 	defer agent.Stop()
 	defer ccag.Close()
-	authCl := authnpkg.NewAuthnUserClient(agent)
+	authCl := authn_client.NewAuthnUserClient(agent)
 	t2, err := authCl.RefreshToken(token)
 	require.NoError(t, err)
 	assert.NotEmpty(t, t2)
@@ -69,10 +66,10 @@ func TestLoginAsConsumer(t *testing.T) {
 	t.Logf("---%s---\n", t.Name())
 
 	r := startRuntime()
-	co1, cc, token := testEnv.NewConnectedConsumer(clientID, authn.ClientRoleManager, false)
+	co1, cc, token := testEnv.NewConnectedConsumer(clientID, api.ClientRoleManager, false)
 	defer co1.Stop()
 	defer cc.Close()
-	authCl := authnpkg.NewAuthnUserClient(cc)
+	authCl := authn_client.NewAuthnUserClient(cc)
 	t2, err := authCl.RefreshToken(token)
 
 	require.NoError(t, err)
@@ -107,7 +104,7 @@ func TestMultiConnectSingleClient(t *testing.T) {
 	defer ccag.Close()
 
 	// td1 := testEnv.AddTD(agentID, nil)
-	cl1, _, token1 := testEnv.NewConnectedConsumer(clientID1, authn.ClientRoleOperator, false)
+	cl1, _, token1 := testEnv.NewConnectedConsumer(clientID1, api.ClientRoleOperator, false)
 
 	onConnection := func(newStatus api.ConnectionStatus, c api.ITransportClient) {
 		if newStatus == api.StatusConnected {
@@ -125,7 +122,7 @@ func TestMultiConnectSingleClient(t *testing.T) {
 	}
 	// 2: connect and subscribe clients and verify
 	for range testConnections {
-		co, cc, _ := testEnv.NewConnectedConsumer(clientID1, authn.ClientRoleOperator, false)
+		co, cc, _ := testEnv.NewConnectedConsumer(clientID1, api.ClientRoleOperator, false)
 		cc.SetConnectHandler(onConnection)
 		co.SetNotificationHook(onNotification)
 		err := cc.AuthenticateWithToken(clientID1, token1)
@@ -184,14 +181,14 @@ func TestAccess(t *testing.T) {
 	r := startRuntime()
 	defer r.Stop()
 
-	cc1, token := testEnv.NewConnectedClient(clientID, authn.ClientRoleAdmin)
+	cc1, token := testEnv.NewConnectedClient(clientID, api.ClientRoleAdmin)
 	defer cc1.Close()
 	_ = token
 
 	//f := r.GetForm(td.OpInvokeAction, hc.GetProtocolType())
 
 	// regulars users should not have authn and authz admin access
-	authnAdmin := authnpkg.NewAuthnAdminClient(cc1)
+	authnAdmin := authn_client.NewAuthnAdminClient(cc1)
 	clientProfiles, err := authnAdmin.GetProfiles()
 
 	require.Error(t, err, "regular users should not have access to authn.Admin")

@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hiveot/hivekit/go/cells/authn"
 	"github.com/hiveot/hivekit/go/testenv"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/bindings/ipnet/config"
 	"github.com/hiveot/hub/bindings/ipnet/service"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -48,9 +48,11 @@ func TestStartStop(t *testing.T) {
 	cfg.ScanAsRoot = false
 
 	svc := service.NewIpNetBinding(cfg)
-	cc1, _ := testEnv.NewConnectedClient("ipnet", authn.ClientRoleService)
+	cc1, _ := testEnv.NewTestClient("ipnet", api.ClientRoleService)
+	err := cc1.Connect()
+	assert.NoError(t, err)
 	defer cc1.Close()
-	err := svc.Start(cc1)
+	err = svc.Start(cc1)
 
 	require.NoError(t, err)
 	defer svc.Stop()

@@ -1,8 +1,5 @@
-# ISY99x binding configuration
-# The name of this config must match the plugin binary
-
-# logging level debug, info, warn (default), error.
-#logLevel: info
+# ISY99x gateway configuration
+# The name of this config must match the gateway binary name
 
 # ISY OWServer info
 #isyAddr: "127.0.0.1"

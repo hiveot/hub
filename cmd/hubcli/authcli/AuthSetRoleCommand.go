@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hiveot/hivekit/go/cells/authn"
-	authnpkg "github.com/hiveot/hivekit/go/cells/authn/pkg"
 	"github.com/hiveot/hivekit/go/cells/consumer"
 	"github.com/urfave/cli/v3"
 )
@@ -14,8 +12,8 @@ import (
 // AuthSetRoleCommand changes a user's role
 func AuthSetRoleCommand(hc **consumer.Consumer) *cli.Command {
 	validRoles := []string{
-		string(authn.ClientRoleViewer), string(authn.ClientRoleOperator),
-		string(authn.ClientRoleManager), string(authn.ClientRoleAdmin),
+		string(api.ClientRoleViewer), string(api.ClientRoleOperator),
+		string(api.ClientRoleManager), string(api.ClientRoleAdmin),
 	}
 
 	return &cli.Command{
@@ -43,7 +41,7 @@ func AuthSetRoleCommand(hc **consumer.Consumer) *cli.Command {
 //	newPassword can be empty to auto-generate a password
 func HandleSetRole(co *consumer.Consumer, loginID string, newRole string) error {
 
-	authnClient := authnpkg.NewAuthnAdminClient(co)
+	authnClient := authn_client.NewAuthnAdminClient(co)
 	prof, err := authnClient.GetClientProfile(loginID)
 	if err != nil {
 		return err

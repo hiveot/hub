@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/hiveot/hivekit/go/api"
-	authnpkg "github.com/hiveot/hivekit/go/cells/authn/pkg"
 	"github.com/hiveot/hivekit/go/cells/consumer"
 	"github.com/hiveot/hivekit/go/cells/transport/clients"
 	"github.com/hiveot/hivekit/go/utils"
@@ -121,7 +120,7 @@ func main() {
 			if password != "" {
 				cc, err = clients.NewTransportClient("", serverURL, caCert)
 				if err == nil {
-					authncl := authnpkg.NewUserAuthnHttpClient(serverURL, caCert)
+					authncl := authn.NewUserAuthnHttpClient(serverURL, caCert)
 					authToken, err = authncl.LoginWithPassword(loginID, password)
 				}
 				cc, err = clients.NewTransportClient("", serverURL, caCert)

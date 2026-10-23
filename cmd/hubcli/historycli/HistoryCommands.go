@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/hiveot/hivekit/go/cells/consumer"
-	historypkg "github.com/hiveot/hivekit/go/cells/history/pkg"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/urfave/cli/v3"
 )
@@ -115,7 +114,7 @@ func HandleListEvents(co *consumer.Consumer, dThingID string, name string, limit
 	// FIXME: hc has a bootstrap algo to read the needed TD
 	//histTD := hc.GetTD(historyapi.ReadHistoryServiceID)
 	//f := histTD.GetForm(td.OpInvokeAction)
-	hc := historypkg.NewReadHistoryClient(co)
+	hc := history_client.NewReadHistoryClient(co)
 	hc.SetRequestSink(co)
 
 	cursor, releaseFn, err := hc.GetCursor(dThingID, name)

@@ -5,7 +5,7 @@ Use this method during development to easily build and upgrade hiveot from sourc
 Prerequisites:
 
 1. An x86 or arm based Linux system. Ubuntu, Debian, Raspberrian
-2. Golang 1.22 or newer (with GOPATH set)
+2. Golang 1.25 or newer (with GOPATH set)
 3. GCC Make any 2020+ version
 
 ## Step 1: setup the 'hiveot' user
@@ -41,9 +41,10 @@ Verify a recent version of golang is installed, eg v1.25 or up
 
 Installing and upgrading golang is out of scope of these instructions.
 
-### Setup Node v22
+### Setup Node v22 
 
-(alternatives are considered - Deno or Bun)
+
+(alternatives are considered - Deno, Bun, npx)
 
 Install node version manager:
 

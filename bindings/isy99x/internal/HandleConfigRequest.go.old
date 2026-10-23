@@ -6,11 +6,11 @@ import (
 
 	"github.com/hiveot/hivekit/go/api/msg"
 	"github.com/hiveot/hivekit/go/api/td"
-	jsoniter "github.com/json-iterator/go"
 )
 
 // handleConfigRequest for handling device configuration changes
-func (svc *IsyBinding) handleConfigRequest(req *msg.RequestMessage, replyTo msg.ResponseHandler) error {
+func (svc *IsyBinding) handleConfigRequest(
+	req *msg.RequestMessage, replyTo msg.ResponseHandler) error {
 
 	slog.Info("handleConfigRequest",
 		slog.String("thingID", req.ThingID),
@@ -37,7 +37,7 @@ func (svc *IsyBinding) handleConfigRequest(req *msg.RequestMessage, replyTo msg.
 		slog.Warn(resp.Error.String())
 		return replyTo(resp)
 	}
-	resp := isyThing.HandleConfigRequest(req)
+	err := isyThing.HandleConfigRequest(req, replyTo)
 
 	// publish changed values after returning
 	go func() {
@@ -46,11 +46,10 @@ func (svc *IsyBinding) handleConfigRequest(req *msg.RequestMessage, replyTo msg.
 
 		// re-submit the TD if the title changes
 		if req.Name == td.WoTTitle {
-			tdi := isyThing.MakeTD()
-			tdJSON, _ := jsoniter.MarshalToString(tdi)
-			svc.WriteTD(tdJSON)
+			tdoc := isyThing.MakeTD()
+			svc.PublishTD(tdoc)
 			//_ = svc.ag.UpdateThing(tdi)
 		}
 	}()
-	return replyTo(resp)
+	return err
 }

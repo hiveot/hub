@@ -9,14 +9,15 @@ import (
 )
 
 // NewOWServerBinding creates an instance of the OWServer service
-// thingID of the server instance or "" for default
-// storePath where to store weather locations data
-// cfg service configuration
-func NewOWServerBinding(sink api.IHiveCell,
-	thingID string, storePath string, cfg *owserver.OWServerConfig) owserver.IOWServer {
+//
+//	thingID of the server instance or "" for default
+//	storePath is the location to store custom Thing titles. (OWServer doesnt store this)
+//	cfg service configuration
+func NewOWServerBinding(
+	thingID string, storePath string, cfg *owserver.OWServerConfig) (owserver.IOWServer, error) {
 
-	svc := internal.NewOWServerBinding(sink, thingID, storePath, cfg)
-	return svc
+	svc, err := internal.NewOWServerBinding(thingID, storePath, cfg)
+	return svc, err
 }
 
 // Factory method for creating a service instance
@@ -26,6 +27,6 @@ func NewOWServerFactory(f api.ICellFactory) (api.IHiveCell, error) {
 	thingID := owserver.DefaultOWServerThingID
 	storePath := filepath.Join(env.StoresDir, thingID)
 	cfg := owserver.NewOWServerConfig()
-	svc := NewOWServerBinding(nil, thingID, storePath, cfg)
-	return svc, nil
+	svc, err := NewOWServerBinding(thingID, storePath, cfg)
+	return svc, err
 }

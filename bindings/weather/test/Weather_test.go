@@ -7,14 +7,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hiveot/hivekit/go/cells/agent"
-	"github.com/hiveot/hivekit/go/cells/authn"
 	"github.com/hiveot/hivekit/go/testenv"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/bindings/weather"
 	"github.com/hiveot/hub/bindings/weather/internal"
 	weatherpkg "github.com/hiveot/hub/bindings/weather/pkg"
 	"github.com/hiveot/hub/bindings/weather/providers"
+	"github.com/hiveot/hub/services/hiveoview/src/views/thing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -43,7 +42,7 @@ var storePath string
 var tempFolder string
 var weatherConfig = weather.NewWeatherConfig()
 
-func Setup() (testEnv *testenv.TestEnv, ag *agent.Agent, stopFn func()) {
+func Setup() (testEnv *testenv.TestEnv, ag *thing.ExposedThing, stopFn func()) {
 	var cancelFn func()
 
 	utils.SetLogging("warn", "")
@@ -162,7 +161,7 @@ func TestDisableCurrent(t *testing.T) {
 	// give heartbeat time to run
 	time.Sleep(time.Millisecond * 1)
 
-	co1, cc1, _ := testEnv.NewConnectedConsumer(client1ID, authn.ClientRoleAdmin, false)
+	co1, cc1, _ := testEnv.NewConnectedConsumer(client1ID, api.ClientRoleAdmin, false)
 	defer co1.Stop()
 	defer cc1.Stop()
 

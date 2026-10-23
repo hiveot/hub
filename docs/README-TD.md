@@ -11,13 +11,13 @@ The WoT specification is closer to a framework than an application. As such it d
 
 ## What Are 'Things'?
 
-Things are I/O Devices and Services that consumers interact with. 
+Things are Devices and Services that consumers interact with. 
 
-Most IoT 'things' are pieces of hardware that have embedded software that manages its behavior. Virtual IoT devices build with software are also considered Things as are Services that provide a capability to retrieve information, for example a weather forecasting service.
+Most IoT Things are pieces of hardware that have embedded software that manages its behavior. Virtual IoT devices build with software are also considered Things as are Services that provide a capability to retrieve information, for example a weather forecasting service.
 
 HiveOT makes the following distinction based on the primary role of the device. These are identified by their device type as provided in the TD @type field and defined in the HiveOT vocabulary.
 
-* A gateway is a device that provides access to other Things. A Z-Wave controller USB-stick is a gateway that uses the Z-Wave protocol to connect to Z-Wave devices. A gateway is a Thing independent of the Things it provides access to and can have its own inputs, outputs or configuration. When gateways are not WoT compatible, an agent is used as a bridge to the Hub.
+* A gateway is a device that provides access to other Things. A Z-Wave controller USB-stick is a gateway that uses the Z-Wave protocol to connect to Z-Wave devices. A gateway therefore is a Thing independent of the Things it provides access to and can have its own inputs, outputs or configuration. When gateways are not WoT compatible, an agent is used as a bridge to the Hub.
 * An agent is a protocol binding service that provides access to the 'Exposed Things' it manages using a WoT compatible API. HiveOT agents use connection reversal, in that they connect to the Hub instead of the other way around. 
 For example, the Z-Wave agent publishes Thing information of the Z-Wave controller and the devices obtained from that controller, whose digital twin representation can be interacted with by consumers. 
 * A service is a software agent that offers its capabilities as Things. For example, a history service provides a Thing that contains actions to read the history of collected data.
@@ -81,6 +81,8 @@ HiveOT uses this field for the Thing class to help the client organize devices b
 
 To facilitate developers, each classification defines a minimum set of properties, events and actions to include in the TD. Additional properties, events and actions can freely be added to a TD regardless its classification.
 
+Two predefined @Type's worth mentioning are '[ThingDirectory](https://www.w3.org/TR/wot-discovery/#exploration-td-type-thingdirectory)', which is defined by the WoT directory specification, and 'hiveot:ThingGateway' which is defined by the hiveot vocabulary.
+
 HiveOT classification is inspired by ETSI Saref classifications, found here: https://saref.etsi.org/core/v3.1.1/. Saref's classification hierarchy seems more of an example than a complete classification and no widely adopted classification exists. For this reason hiveot defines its own classification using the "hiveot" namespace.
 
 The basis for HiveOT's device classification is a hierarchy that can be extended with specialization terms to narrow down the classification. The full list of HiveOT device classes can be found in [api/vocab/ht-device-classes.yaml]("../api/vocab/ht-device-classes.yaml")
@@ -110,8 +112,8 @@ For example:
 Services have their own namespace:
 ```
 * hiveot:service - general purpose service offering capabilities
-* hiveot:service:directory - directory service offering a directory of information
-* hiveot:service:history - history service offering stored messages
+* hiveot:directory - directory service offering a directory of information
+* hiveot:history - history service offering stored messages
 ```
 
 For the full list of Thing classes, see [ht-thing-classes.yaml](../api/src/vocab/ht-thing-classes.yaml). Note that this list is an initial attempt for a core classification of IoT devices and services. When a more suited standard is found, it might replace this one. For this reason the vocabulary definitions are imported at runtime and mapped from their keys. See the section on vocabulary maps below.

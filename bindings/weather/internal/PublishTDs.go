@@ -3,9 +3,9 @@ package internal
 import (
 	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/api/vocab"
-	"github.com/hiveot/hivekit/go/cells/agent"
 	"github.com/hiveot/hub/bindings/weather"
 	"github.com/hiveot/hub/bindings/weather/providers"
+	"github.com/hiveot/hub/services/hiveoview/src/views/thing"
 )
 
 // read-only properties
@@ -220,7 +220,7 @@ func CreateTDOfLocation(defaultCfg *weather.WeatherConfig, cfg *weather.WeatherL
 }
 
 // PublishBindingTD publishes the TD of the binding itself
-func PublishBindingTD(ag *agent.Agent, cfg *weather.WeatherConfig) error {
+func PublishBindingTD(ag *thing.ExposedThing, cfg *weather.WeatherConfig) error {
 	thingID := ag.GetThingID()
 	tdoc := CreateBindingTD(thingID)
 	tdJson, _ := td.MarshalTD(tdoc)
@@ -232,7 +232,7 @@ func PublishBindingTD(ag *agent.Agent, cfg *weather.WeatherConfig) error {
 }
 
 // PublishLocationTDs publishes the TD of all locationStore and current properties
-func PublishLocationTDs(ag *agent.Agent, defaultCfg *weather.WeatherConfig, locationStore *LocationStore) (err error) {
+func PublishLocationTDs(ag *thing.ExposedThing, defaultCfg *weather.WeatherConfig, locationStore *LocationStore) (err error) {
 	locationStore.ForEach(func(loc weather.WeatherLocation) {
 		err2 := PublishLocationTD(ag, defaultCfg, loc)
 		if err2 != nil {
@@ -243,7 +243,7 @@ func PublishLocationTDs(ag *agent.Agent, defaultCfg *weather.WeatherConfig, loca
 }
 
 // PublishLocationTD publishes the TD of the given location and its current values
-func PublishLocationTD(ag *agent.Agent, defaultCfg *weather.WeatherConfig, loc weather.WeatherLocation) error {
+func PublishLocationTD(ag *thing.ExposedThing, defaultCfg *weather.WeatherConfig, loc weather.WeatherLocation) error {
 	tdoc := CreateTDOfLocation(defaultCfg, &loc)
 	tdJson, _ := td.MarshalTD(tdoc)
 	err := ag.WriteTD(tdJson)

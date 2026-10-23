@@ -11,7 +11,7 @@ import (
 // co is the link to the consumer sending requests and consuming notifications, like an RC Agent or a server chain. nil to manually link.
 // storePath where to store weather locations data
 // cfg service configuration
-func NewWeatherService(co api.IHiveCell, storePath string, cfg *weather.WeatherConfig) api.IHiveCell {
-	svc := internal.NewWeatherService(co, storePath, cfg)
+func NewWeatherService(storePath string, cfg *weather.WeatherConfig) api.IHiveCell {
+	svc := internal.NewWeatherService(storePath, cfg)
 	return svc
 }

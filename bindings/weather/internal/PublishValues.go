@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/hiveot/hivekit/go/api/vocab"
-	"github.com/hiveot/hivekit/go/cells/agent"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/bindings/weather"
 	"github.com/hiveot/hub/bindings/weather/providers"
+	"github.com/hiveot/hub/services/hiveoview/src/views/thing"
 )
 
 // Poll for current and forecast weather updates and publish events.
@@ -56,7 +56,7 @@ func (svc *WeatherService) Poll() error {
 					slog.String("temp", currentWeather.Temperature),
 					slog.String("showers", currentWeather.Showers),
 				)
-				PublishCurrent(svc.Agent, loc.ID, currentWeather)
+				PublishCurrent(loc.ID, currentWeather)
 			}
 			// keep track of the last error but don't stop polling
 			if err2 != nil {
@@ -99,7 +99,7 @@ func (svc *WeatherService) Poll() error {
 }
 
 // PublishBindingProperties publish attributes and configuration of the binding
-func PublishBindingProperties(ag *agent.Agent, thingID string, cfg *weather.WeatherConfig) error {
+func PublishBindingProperties(ag *thing.ExposedThing, thingID string, cfg *weather.WeatherConfig) error {
 	propMap := map[string]any{
 		PropNameWeatherProvider: cfg.DefaultProvider,
 		PropNameUnitsWindSpeed:  cfg.WindSpeedUnits,
@@ -109,7 +109,7 @@ func PublishBindingProperties(ag *agent.Agent, thingID string, cfg *weather.Weat
 }
 
 // PublishLocationProperties publish attributes and configuration of a location
-func PublishLocationProperties(ag *agent.Agent, thingID string, config weather.WeatherLocation) error {
+func PublishLocationProperties(ag *thing.ExposedThing, thingID string, config weather.WeatherLocation) error {
 	propMap := map[string]any{
 		PropNameCurrentEnabled:      config.CurrentEnabled,
 		PropNameCurrentInterval:     config.CurrentInterval,
@@ -125,7 +125,7 @@ func PublishLocationProperties(ag *agent.Agent, thingID string, config weather.W
 }
 
 // PublishCurrent publish events with the current weather
-func PublishCurrent(ag *agent.Agent, thingID string, current providers.CurrentWeather) {
+func PublishCurrent(ag *thing.ExposedThing, thingID string, current providers.CurrentWeather) {
 	ag.PubProperty(thingID, PropNameCurrentUpdated, current.Updated, true)
 
 	// convert wind speed to configured units

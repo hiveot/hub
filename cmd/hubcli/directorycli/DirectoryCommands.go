@@ -9,7 +9,6 @@ import (
 
 	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/cells/consumer"
-	directorypkg "github.com/hiveot/hivekit/go/cells/directory/pkg"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/urfave/cli/v3"
 )
@@ -48,7 +47,7 @@ func DirectoryListCommand(co **consumer.Consumer) *cli.Command {
 // HandleListDirectory lists the directory content
 func HandleListDirectory(co *consumer.Consumer) (err error) {
 	// todo: iterate with offset and limit
-	dirClient := directorypkg.NewDirectoryClient("", co)
+	dirClient := directory_client.NewDirectoryClient("", co)
 
 	tdListJson, err := dirClient.RetrieveAllThings(300, 0)
 	tdList, err2 := td.UnmarshalTDList(tdListJson)
@@ -87,7 +86,7 @@ func HandleListDirectory(co *consumer.Consumer) (err error) {
 // HandleListThing lists details of a Thing in the directory
 func HandleListThing(co *consumer.Consumer, thingID string) error {
 
-	dirClient := directorypkg.NewDirectoryClient("", co)
+	dirClient := directory_client.NewDirectoryClient("", co)
 
 	tdDocJson, err := dirClient.RetrieveThing(thingID)
 	tdDoc, err2 := td.UnmarshalTD(tdDocJson)
@@ -176,7 +175,7 @@ func HandleListThing(co *consumer.Consumer, thingID string) error {
 
 // HandleListThingVerbose lists a Thing full TD
 func HandleListThingVerbose(co *consumer.Consumer, thingID string) error {
-	dirClient := directorypkg.NewDirectoryClient("", co)
+	dirClient := directory_client.NewDirectoryClient("", co)
 	tdJSON, err := dirClient.RetrieveThing(thingID)
 
 	if err != nil {

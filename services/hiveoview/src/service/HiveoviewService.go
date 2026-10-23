@@ -16,15 +16,12 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hivekit/go/api"
-	"github.com/hiveot/hivekit/go/cells"
-	"github.com/hiveot/hivekit/go/cells/agent"
 	"github.com/hiveot/hivekit/go/cells/bucketstore"
-	bucketstorepkg "github.com/hiveot/hivekit/go/cells/bucketstore/pkg"
 	"github.com/hiveot/hivekit/go/cells/transport/tlsserver"
-	tlsserverpkg "github.com/hiveot/hivekit/go/cells/transport/tlsserver/pkg"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views"
+	"github.com/hiveot/hub/services/hiveoview/src/views/thing"
 )
 
 const HiveoviewStoreName = "hiveoview.kvbtree"
@@ -33,7 +30,7 @@ const HiveoviewStoreName = "hiveoview.kvbtree"
 // It utilizes gin, htmx and TempL for serving html.
 // credits go to: https://github.com/marco-souza/gx/blob/main/cmd/server/server.go
 type HiveoviewService struct {
-	cells.HiveCellBase
+	*thing.ExposedThing
 
 	//serverAddr   string // listening address
 	port         int  // listening port
@@ -52,10 +49,6 @@ type HiveoviewService struct {
 
 	// a web session per connections
 	sm *session.WebSessionManager
-
-	// ag agent hub client of this service.
-	// This client's CA and URL is also used to establish client sessions.
-	ag *agent.Agent
 
 	// cookie signing
 	signingKey crypto.PrivateKey
@@ -87,11 +80,11 @@ func (svc *HiveoviewService) GetSM() *session.WebSessionManager {
 //
 //	ag is the service agent connection to the hub for publishing notifications
 func (svc *HiveoviewService) Start() error {
-	slog.Info("Starting HiveoviewService", "clientID", svc.ag.GetThingID())
+	slog.Info("Starting HiveoviewService", "clientID", svc.GetID())
 
 	storePath := path.Join(svc.storeDir, HiveoviewStoreName)
 	// svc.configStore = kvbtree.NewKVStore(storePath)
-	svc.configStore = bucketstorepkg.NewKVBTreeStore(storePath)
+	svc.configStore = bucketstore.NewKVBTreeStore(storePath)
 	err := svc.configStore.Open()
 	if err != nil {
 		return err
@@ -128,7 +121,7 @@ func (svc *HiveoviewService) Start() error {
 	if svc.serverCert != nil {
 
 		httpCfg := tlsserver.NewTLSServerConfig("", svc.port, svc.serverCert, svc.caCert, true)
-		tlsServer := tlsserverpkg.NewTLSServer(httpCfg, authenticator)
+		tlsServer := tlsserver.NewTLSServer(httpCfg, authenticator)
 
 		router := tlsServer.GetProtectedRoute()
 		svc.CreateRoutes(router, svc.rootPath)
@@ -181,7 +174,6 @@ func (svc *HiveoviewService) Stop() {
 // This must contain static/, views/ and webc/ directories.
 // If empty, the embedded filesystem is used.
 //
-//	ag is the agent used to connect to the hub
 //	serverPort is the port of the web server will listen on
 //	debug to enable debugging output
 //	signingKey used to sign cookies. Using nil means that a server restart will invalidate the cookies
@@ -191,7 +183,7 @@ func (svc *HiveoviewService) Stop() {
 //	timeout of client hub connections
 //	storeDir path to directory holding client session and dashboard data
 func NewHiveovService(
-	ag *agent.Agent, serverPort int, debug bool,
+	serverPort int, debug bool,
 	signingKey crypto.PrivateKey, rootPath string,
 	serverCert *tls.Certificate, caCert *x509.Certificate,
 	timeout time.Duration,
@@ -206,8 +198,8 @@ func NewHiveovService(
 	}
 	tm := views.InitTemplateManager(templatePath)
 	svc := &HiveoviewService{
-		HiveCellBase: *cells.NewHiveCellBase(src.HiveoviewServiceID, 0),
-		ag:           ag,
+		ExposedThing: thing.NewExposedThing(src.HiveoviewServiceID, nil),
+
 		port:         serverPort,
 		shouldUpdate: true,
 		debug:        debug,

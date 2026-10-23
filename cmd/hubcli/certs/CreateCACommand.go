@@ -8,7 +8,6 @@ import (
 	"path"
 
 	"github.com/hiveot/hivekit/go/cells/certs"
-	certspkg "github.com/hiveot/hivekit/go/cells/certs/pkg"
 	"github.com/urfave/cli/v3"
 )
 
@@ -74,7 +73,7 @@ func HandleCreateCACert(certsFolder string, validityDays int, force bool) error 
 		}
 	}
 	// the certsservice creates the CA cert and key on start
-	svc := certspkg.NewCertsService(certsFolder)
+	svc := certs.NewCertsService(certsFolder)
 	err := svc.Start()
 	// caCert, caKey, err := svc.CreateCACert("Hub CA", validityDays)
 	// if err != nil {

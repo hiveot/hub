@@ -5,22 +5,25 @@ import (
 
 	"github.com/hiveot/hivekit/go/api/msg"
 	"github.com/hiveot/hivekit/go/api/td"
+	"github.com/hiveot/hub/bindings/isy99x/internal/isy"
 )
 
 // IsySensorThing is a general-purpose sensor
 type IsySensorThing struct {
-	IsyThing
+	*IsyThing
 }
 
 // GetPropValues returns the property and event values for publication
-func (it *IsySensorThing) GetPropValues(onlyChanges bool) map[string]any {
-	propValues := it.IsyThing.GetPropValues(onlyChanges)
-	return propValues
-}
+// func (it *IsySensorThing) GetPropValues(onlyChanges bool) map[string]any {
+// 	propValues := it.IsyThing.GetPropValues(onlyChanges)
+// 	return propValues
+// }
 
-func (it *IsySensorThing) HandleConfigRequest(req *msg.RequestMessage) *msg.ResponseMessage {
+func (it *IsySensorThing) HandleConfigRequest(
+	req *msg.RequestMessage, replyTo msg.ResponseHandler) (err error) {
+
 	// TODO: sensor configuration
-	return req.CreateResponse(nil, errors.New("unknown config: "+req.Name))
+	return errors.New("unknown config: " + req.Name)
 }
 
 // MakeTD returns the TD document representing the node
@@ -32,7 +35,11 @@ func (it *IsySensorThing) MakeTD() *td.TD {
 
 // NewIsySensorThing creates a ISY sensor device instance.
 // Call Init() before use.
-func NewIsySensorThing(evHandler IsyEventHandler) *IsySensorThing {
-	thing := &IsySensorThing{IsyThing{evHandler: evHandler}}
+func NewIsySensorThing(ic *isy.IsyAPI,
+	thingID string, node *isy.IsyNode, prodInfo InsteonProduct, hwVersion string) *IsySensorThing {
+
+	thing := &IsySensorThing{
+		IsyThing: NewIsyThing(ic, thingID, node, prodInfo, hwVersion),
+	}
 	return thing
 }

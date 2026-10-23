@@ -9,18 +9,17 @@ import (
 	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/api/vocab"
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hub/bindings/isy99x/service/isy"
+	"github.com/hiveot/hub/bindings/isy99x/internal/isy"
 )
 
 // IsySwitchThing is a general-purpose on/off switch
 type IsySwitchThing struct {
-	IsyThing
+	*IsyThing
 }
 
-// GetPropValues returns the property and event values for publication
-func (it *IsySwitchThing) GetPropValues(onlyChanges bool) map[string]any {
-	propValues := it.IsyThing.GetPropValues(onlyChanges)
-	return propValues
+// RefreshProperties reloads the state of the device and publish changes
+func (it *IsySwitchThing) RefreshProperties(onlyChanges bool) {
+	// TODO: load device
 }
 
 //func (it *IsySwitchThing) HandleConfigRequest(tv *things.ThingMessage) (err error) {
@@ -31,12 +30,15 @@ func (it *IsySwitchThing) GetPropValues(onlyChanges bool) map[string]any {
 // HandleActionRequest handles request to execute an action on this device
 // actionID string as defined in the action affordance
 // newValue is not used as these actions do not carry a parameter
-func (it *IsySwitchThing) HandleActionRequest(req *msg.RequestMessage, replyTo msg.ResponseHandler) error {
-	// ag *agent.Agent, req *msg.RequestMessage) *msg.ResponseMessage {
+func (it *IsySwitchThing) HandleActionRequest(
+	req *msg.RequestMessage, replyTo msg.ResponseHandler) error {
+
 	var restPath = ""
 	var newValue = ""
 	var input bool
 	var output bool
+
+	nodeAddr := it.GetNode().Address
 
 	// FIXME: req keys are the raw keys, not @type
 	// supported actions: on, off
@@ -50,18 +52,16 @@ func (it *IsySwitchThing) HandleActionRequest(req *msg.RequestMessage, replyTo m
 		// unknown req
 		newValue = ""
 		err := fmt.Errorf("HandleRequest. Unknown req: %s", req.Name)
-		resp := req.CreateResponse(nil, err)
-		return replyTo(resp)
+		return err
 	}
 
 	// Post a new value
-	restPath = fmt.Sprintf("/rest/nodes/%s/cmd/%s", it.nodeID, newValue)
+	restPath = fmt.Sprintf("/rest/nodes/%s/cmd/%s", nodeAddr, newValue)
 	err := it.isyAPI.SendRequest("GET", restPath, "", nil)
 
 	// read the result. As this takes a while, retry every second for 5 seconds
 	if err != nil {
-		resp := req.CreateResponse(nil, err)
-		return replyTo(resp)
+		return err
 	}
 	// return a 'running' status while reading back the result
 	//send a 'running' ActionStatus message
@@ -73,7 +73,7 @@ func (it *IsySwitchThing) HandleActionRequest(req *msg.RequestMessage, replyTo m
 		hasUpdated := false
 		// TODO: clean this up. Use websocket instead of repeated polling.
 		for i := 0; i < 5; i++ {
-			nodeInfo, err := it.isyAPI.ReadNodeInfo(it.nodeID)
+			nodeInfo, err := it.isyAPI.ReadNodeInfo(nodeAddr)
 			if err == nil {
 				// TODO: repeat a few times in the background and send a response
 				// last response is completed
@@ -122,29 +122,24 @@ func (it *IsySwitchThing) HandleValueUpdate(propName string, uom string, newValu
 		if newValue == "1" || newValue == "255" {
 			boolValue = true
 		}
-		it.propValues.SetValueBool(propName, boolValue)
+		it.PubProperty(it.GetID(), propName, boolValue, true)
+		// it.propValues.SetValueBool(propName, boolValue)
 	} else {
-		it.propValues.SetValue(propName, newValue)
+		it.PubProperty(it.GetID(), propName, newValue, true)
+		// it.propValues.SetValue(propName, newValue)
 	}
 	return nil
 }
 
-// Init initializes the IsyThing base class
-// This determines the device type from prodInfo and sets property values for
-// product and model.
-func (it *IsySwitchThing) Init(ic *isy.IsyAPI, thingID string, node *isy.IsyNode, prodInfo InsteonProduct, hwVersion string) {
-	it.IsyThing.Init(ic, thingID, node, prodInfo, hwVersion)
-}
-
 func (it *IsySwitchThing) MakeTD() *td.TD {
-	tdi := it.IsyThing.MakeTD()
+	tdoc := it.IsyThing.MakeTD()
 	// value of switch property ID "ST" is "0" or "255"
 	// TODO: support for switch events
 	//td.AddEvent("ST", "On/Off", "",
 	//	&tdd.DataSchema{Type: vocab.DataTypeBool}).
 	//	SetAtType(vocab.ActionSwitchOnOff)
 
-	action := tdi.AddAction("ST", "Switch on/off", "",
+	action := tdoc.AddAction("ST", "Switch on/off", "",
 		&td.DataSchema{
 			AtType: vocab.ActionSwitchOnOff,
 			Type:   td.DataTypeBool,
@@ -154,17 +149,33 @@ func (it *IsySwitchThing) MakeTD() *td.TD {
 	action.Output = action.Input
 
 	// add a corresponding property for the switch state
-	tdi.AddProperty("ST", "Switch on/off", "On/Off switch", td.DataTypeBool)
+	tdoc.AddProperty("ST", "Switch on/off", "On/Off switch", td.DataTypeBool)
 
 	//td.AddSwitchAction(vocab.ActionSwitchOff, "Switch off")
 	//td.AddSwitchAction(vocab.ActionSwitchToggle, "Toggle switch")
 
-	return tdi
+	return tdoc
+}
+
+// Start using the ISY switch.
+//
+// This publishes the Thing TD and its static properties.
+func (it *IsySwitchThing) Start() {
+
+	it.IsyThing.Start()
+
+	// TODO: publish the switch property
 }
 
 // NewIsySwitchThing creates a new instance of an ISY switch.
-// Call Init() before use
-func NewIsySwitchThing(evHandler IsyEventHandler) *IsySwitchThing {
-	thing := &IsySwitchThing{IsyThing{evHandler: evHandler}}
-	return thing
+func NewIsySwitchThing(
+	ic *isy.IsyAPI, thingID string, node *isy.IsyNode, prodInfo InsteonProduct, hwVersion string,
+) *IsySwitchThing {
+
+	isySwitch := &IsySwitchThing{
+		IsyThing: NewIsyThing(ic, thingID, node, prodInfo, hwVersion),
+	}
+	isySwitch.tdoc = isySwitch.MakeTD()
+
+	return isySwitch
 }
