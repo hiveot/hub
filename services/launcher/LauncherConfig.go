@@ -37,7 +37,7 @@ type LauncherConfig struct {
 	// optional override of the logging location; default is ./logs
 	// LogsDir string `yaml:"logsDir"`
 
-	// logging level. default is warning
+	// logging level override
 	LogLevel string `yaml:"logLevel"`
 
 	// log the launcher to file logs/launcher.log
@@ -72,7 +72,7 @@ func NewLauncherConfig() *LauncherConfig {
 		Autostart:           make([]string, 0),
 		RuntimeBin:          "",
 		CreatePluginCred:    true,
-		LogLevel:            "warning",
+		LogLevel:            "",
 		LogToFile:           true,
 		LogPlugins:          true,
 		ProvideDirectoryURL: true,

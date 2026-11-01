@@ -6,20 +6,23 @@ import (
 	"os"
 	"path"
 
+	"github.com/hiveot/hivekit/go/api"
+	rcdevice_recipe "github.com/hiveot/hivekit/go/factory/recipes/rcdevice"
 	"github.com/hiveot/hub/bindings/weather"
-	weatherpkg "github.com/hiveot/hub/bindings/weather/pkg"
+	weather_pkg "github.com/hiveot/hub/bindings/weather/pkg"
 )
 
 // Start the Weather binding
 func main() {
-	env := api.NewAppEnvironment("", true)
+	env := api.NewHiveEnvironment("", true)
+
 	cfg := weather.NewWeatherConfig()
-	err := env.LoadConfig(&cfg)
+	err := env.LoadConfig(env.AppID, &cfg)
 	if err != nil {
 		slog.Error("Failed loading configuration", "err", err.Error())
 	}
 	storePath := path.Join(env.StoresDir, env.AppID)
-	binding := weatherpkg.NewWeatherService(storePath, cfg)
+	binding, err := weather_pkg.NewWeatherService("", storePath, cfg)
 
 	// link it to the RC device recipe that handles connections.
 	r, _, err := rcdevice_recipe.NewRCDeviceRecipe(env, binding)

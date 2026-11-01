@@ -1,9 +1,9 @@
-package launcherpkg
+package launcher_service
 
 import (
 	"github.com/hiveot/hivekit/go/api"
 	"github.com/hiveot/hub/services/launcher"
-	"github.com/hiveot/hub/services/launcher/internal"
+	"github.com/hiveot/hub/services/launcher/service/internal"
 )
 
 // Create a new launcher service instance
@@ -12,7 +12,8 @@ import (
 // env is the application environment with bin, certs, log and plugin directories
 // cfg is the launcher configuration
 func NewLauncherService(
-	sink api.IHiveCell, env *api.AppEnvironment, cfg *launcher.LauncherConfig) launcher.ILauncherService {
-	svc := internal.NewLauncherService(sink, env, cfg)
-	return svc
+	env *api.HiveEnvironment, cfg *launcher.LauncherConfig) (launcher.ILauncherService, error) {
+
+	svc, err := internal.NewLauncherService(env, cfg)
+	return svc, err
 }

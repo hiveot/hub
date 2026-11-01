@@ -1,4 +1,4 @@
-package weatherpkg
+package weather_pkg
 
 import (
 	"github.com/hiveot/hivekit/go/api"
@@ -8,10 +8,10 @@ import (
 
 // NewWeatherService creates a new weaether service module
 //
-// co is the link to the consumer sending requests and consuming notifications, like an RC Agent or a server chain. nil to manually link.
-// storePath where to store weather locations data
-// cfg service configuration
-func NewWeatherService(storePath string, cfg *weather.WeatherConfig) api.IHiveCell {
-	svc := internal.NewWeatherService(storePath, cfg)
-	return svc
+//	serviceID is the thingID of the weather service, "" for default
+//	storePath where to store weather configuration
+//	cfg weather configuration
+func NewWeatherService(serviceID string, storePath string, cfg *weather.WeatherConfig) (api.IHiveCell, error) {
+	svc, err := internal.NewWeatherService(serviceID, storePath, cfg)
+	return svc, err
 }

@@ -5,8 +5,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-	"github.com/hiveot/hivekit/go/cells/transport/httpbasic"
+	"github.com/hiveot/hivekit/go/cells/transport/tlsserver"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/about"
@@ -25,12 +24,12 @@ const WebSsePath = "/websse"
 
 // CreateRoutes sets-up the chain of routes used by the service and return the router
 // rootPath points to the filesystem containing /static and template files
-func (svc *HiveoviewService) CreateRoutes(router *chi.Mux, rootPath string) http.Handler {
+func (svc *HiveoviewService) CreateRoutes(router chi.Router, rootPath string) http.Handler {
 	var staticFileServer http.Handler
 
 	if rootPath == "" {
 		staticFileServer = http.FileServer(
-			&httpbasic.StaticFSWrapper{
+			&tlsserver.StaticFSWrapper{
 				FileSystem:   http.FS(src.EmbeddedStatic),
 				FixedModTime: time.Now(),
 			})
@@ -45,12 +44,12 @@ func (svc *HiveoviewService) CreateRoutes(router *chi.Mux, rootPath string) http
 	//	csrf.SameSite(csrf.SameSiteStrictMode))
 
 	//-- add the routes and middleware
-	router.Use(middleware.Logger)
-	router.Use(middleware.Recoverer)
-	router.Use(middleware.StripSlashes) // /dashboard/(missing id) -> /dashboard
+	// router.Use(middleware.Logger)
+	// router.Use(middleware.Recoverer)
+	// router.Use(middleware.StripSlashes) // /dashboard/(missing id) -> /dashboard
 	//router.Use(csrfMiddleware)
-	router.Use(middleware.Compress(5,
-		"text/html", "text/css", "text/javascript", "image/svg+xml"))
+	// router.Use(middleware.Compress(5,
+	// "text/html", "text/css", "text/javascript", "image/svg+xml"))
 
 	//--- public routes do not require a Hub connection
 	router.Group(func(r chi.Router) {

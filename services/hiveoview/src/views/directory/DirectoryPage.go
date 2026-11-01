@@ -3,13 +3,15 @@ package directory
 import (
 	"bytes"
 	"fmt"
-	"github.com/hiveot/hub/services/hiveoview/src/session"
-	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 	"log/slog"
 	"net/http"
+
+	"github.com/hiveot/hub/services/hiveoview/src/session"
+	"github.com/hiveot/hub/services/hiveoview/src/views/app"
 )
 
 const RenderDirectoryPageTemplate = "DirectoryPage.gohtml"
+const DefaultMaxThings = 1000
 
 //type DirGroup struct {
 //	AgentID string
@@ -40,11 +42,11 @@ func RenderDirectory(w http.ResponseWriter, r *http.Request) {
 		sess.WriteError(w, err, 0)
 		return
 	}
-	cts := sess.GetConsumedThingsDirectory()
-
-	tdMap, err := cts.ReadDirectory(false)
-	if err != nil {
-		err = fmt.Errorf("unable to load directory: %w", err)
+	// cts := sess.GetConsumedThingsDirectory()
+	dirCl := sess.GetDirectory()
+	tdMap, cacheOnly := dirCl.RetrieveAllThings(0, DefaultMaxThings)
+	if cacheOnly {
+		err = fmt.Errorf("unable to load directory, using cached values")
 		slog.Error(err.Error())
 		sess.SendNotify(session.NotifyError, "", err.Error())
 	}

@@ -17,12 +17,17 @@ func main() {
 	cfg := config.NewIsy99xConfig()
 	_ = env.LoadConfig(env.AppID, &cfg)
 
-	binding := internal.NewIsyBinding(env.AppID, cfg)
+	binding, err := internal.NewIsyGateway(env.AppID, cfg)
+	if err != nil {
+		fmt.Println("NewIsyGateway failed: " + err.Error())
+		os.Exit(1)
+	}
 
 	// link it to the RC device recipe that handles connections.
 	r, _, err := rcdevice_recipe.NewRCDeviceRecipe(env, binding)
+
 	if err != nil {
-		fmt.Println("Startup failed: " + err.Error())
+		fmt.Println("NewRCDeviceRecipe failed: " + err.Error())
 		os.Exit(1)
 	}
 	r.Run()

@@ -9,6 +9,7 @@ import (
 	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/cells/consumer"
 	"github.com/hiveot/hivekit/go/cells/directory"
+	consumer_recipe "github.com/hiveot/hivekit/go/factory/recipes/consumer"
 	"github.com/hiveot/hivekit/go/utils"
 	jsoniter "github.com/json-iterator/go"
 
@@ -17,19 +18,19 @@ import (
 )
 
 // SubTDCommand shows TD publications
-func SubTDCommand(hc **consumer.Consumer) *cli.Command {
+func SubTDCommand(r **consumer_recipe.ConsumerRecipe) *cli.Command {
 	return &cli.Command{
 		Name:     "subtd",
 		Usage:    "SubscribeEvent to TD publications",
 		Category: "pubsub",
 		Action: func(ctx context.Context, cmd *cli.Command) error {
-			err := HandleSubTD(*hc)
+			err := HandleSubTD((*r).Consumer)
 			return err
 		},
 	}
 }
 
-func SubEventsCommand(hc **consumer.Consumer) *cli.Command {
+func SubEventsCommand(r **consumer_recipe.ConsumerRecipe) *cli.Command {
 	return &cli.Command{
 		Name:      "subev",
 		Usage:     "SubscribeEvent to Thing events",
@@ -48,7 +49,7 @@ func SubEventsCommand(hc **consumer.Consumer) *cli.Command {
 				return fmt.Errorf("unexpected arguments")
 			}
 
-			err := HandleSubEvents(*hc, thingID, key)
+			err := HandleSubEvents((*r).Consumer, thingID, key)
 			return err
 		},
 	}
@@ -57,7 +58,8 @@ func SubEventsCommand(hc **consumer.Consumer) *cli.Command {
 // HandleSubTD subscribes and prints TD publications
 func HandleSubTD(co *consumer.Consumer) error {
 
-	err := co.Subscribe(directory.DefaultDirectoryThingID, directory.ThingUpdatedEvent)
+	// FIXME: discover to get the directory ID
+	err := co.Subscribe(directory.DefaultDirectoryServiceThingID, directory.ThingUpdatedEvent)
 	if err != nil {
 		return err
 	}
@@ -113,7 +115,7 @@ func HandleSubEvents(co *consumer.Consumer, thingID string, name string) error {
 		//		}
 		//	}
 		//}
-		if msg.ThingID == directory.DefaultDirectoryThingID &&
+		if msg.ThingID == directory.DefaultDirectoryServiceThingID &&
 			msg.Name == directory.ThingUpdatedEvent {
 			var tdi td.TD
 			tdJSON := msg.ToString(0)

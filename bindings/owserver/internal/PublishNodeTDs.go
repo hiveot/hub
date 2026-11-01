@@ -125,7 +125,7 @@ func (svc *OWServer) PollNodes() ([]*eds.OneWireNode, error) {
 func (svc *OWServer) PublishNodeTD(node *eds.OneWireNode) (err error) {
 	tdoc := svc.CreateTDFromNode(node)
 	svc.things[tdoc.ID] = tdoc
-	svc.PublishTD(tdoc)
+	svc.WriteTD(tdoc)
 	//err = svc.ag.UpdateThing(td)
 	return err
 }

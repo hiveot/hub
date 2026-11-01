@@ -3,12 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"os"
 
 	"github.com/hiveot/hivekit/go/api"
-	"github.com/hiveot/hivekit/go/cells/consumer"
-	"github.com/hiveot/hivekit/go/cells/transport/clients"
+	consumerrecipe "github.com/hiveot/hivekit/go/factory/recipes/consumer"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/cmd/hubcli/authcli"
 	"github.com/hiveot/hub/cmd/hubcli/certs"
@@ -29,23 +27,25 @@ var nowrap bool
 // commandline:  hubcli command options
 
 func main() {
-	var co *consumer.Consumer
+	// var co *consumer.Consumer
+	var r *consumerrecipe.ConsumerRecipe
 	var verbose bool
-	var loginID = "admin"
 	var password = ""
 	var homeDir string
 	var certsDir string
 	var serverURL string
 	var authToken string
 
-	// environment defaults
-	env := api.NewAppEnvironment("", false)
+	// first obtain the environment defaults
+	env := api.NewHiveEnvironment("", false)
 	homeDir = env.HomeDir
 	certsDir = env.CertsDir
 
 	//defaultHome := env.HomeDir // to detect changes to the home directory
 	utils.SetLogging("warning", "")
 	nowrap = false
+
+	// FIXME: use the flag from env?
 
 	app := &cli.Command{
 		EnableShellCompletion: true,
@@ -66,12 +66,12 @@ func main() {
 				Value:       nowrap,
 				Destination: &nowrap,
 			},
-			&cli.StringFlag{
-				Name:        "login",
-				Usage:       "login ID",
-				Value:       loginID,
-				Destination: &loginID,
-			},
+			// &cli.StringFlag{
+			// 	Name:        "login",
+			// 	Usage:       "login ID",
+			// 	Value:       loginID,
+			// 	Destination: &loginID,
+			// },
 			&cli.StringFlag{
 				Name:        "password",
 				Usage:       "optional password for alt user",
@@ -92,10 +92,10 @@ func main() {
 			},
 		},
 		Before: func(ctx context.Context, c *cli.Command) (context.Context, error) {
-			var cc api.ITransportClient
+			// var cc api.ITransportClient
 			var err error
 			// reload env in case home changes
-			env = api.NewAppEnvironment(homeDir, false)
+			env = api.NewHiveEnvironment(homeDir, false)
 			certsDir = env.CertsDir
 			if verbose {
 				utils.SetLogging("info", "")
@@ -105,7 +105,7 @@ func main() {
 			}
 
 			// most commands need auth
-			authToken = env.GetAppToken()
+			authToken, _ = env.GetAuthToken()
 
 			// TODO: cleanup: don't connect for these commands
 			cmd := c.Args().First()
@@ -116,53 +116,62 @@ func main() {
 			if authToken == "" && password == "" {
 				return ctx, fmt.Errorf("hubcli: missing authentication token")
 			}
-			caCert, _ := env.GetCA()
-			if password != "" {
-				cc, err = clients.NewTransportClient("", serverURL, caCert)
-				if err == nil {
-					authncl := authn.NewUserAuthnHttpClient(serverURL, caCert)
-					authToken, err = authncl.LoginWithPassword(loginID, password)
-				}
-				cc, err = clients.NewTransportClient("", serverURL, caCert)
-				err = cc.SetAuthToken(loginID, authToken)
-			} else {
-				cc, err = clients.NewTransportClient("", serverURL, caCert)
-				err = cc.SetAuthToken(loginID, authToken)
+
+			// Note that not all commands need a consumer connection, but create one anyways for simplicity.
+			// The recipe has api for directory
+			r, _, err = consumerrecipe.NewConsumerRecipe(env, false)
+			if err != nil {
+				os.Exit(1)
 			}
 
-			if err != nil {
-				slog.Error("Unable to connect to the server", "err", err)
-				return ctx, fmt.Errorf("unable to connect to the hub")
-			}
-			co = consumer.NewConsumer(cc, nil)
+			// caCert, _ := env.GetCACert()
+			// if password != "" {
+			// 	cc, err = clients.NewTransportClient("", serverURL, caCert)
+			// 	if err == nil {
+			// 		authncl := authn_client.NewUserAuthnHttpClient(serverURL, caCert)
+			// 		authToken, err = authncl.LoginWithPassword(loginID, password)
+			// 	}
+			// 	cc, err = clients.NewTransportClient("", serverURL, caCert)
+			// 	err = cc.SetAuthToken(loginID, authToken)
+			// } else {
+			// 	cc, err = clients.NewTransportClient("", serverURL, caCert)
+			// 	err = cc.SetAuthToken(loginID, authToken)
+			// }
+
+			// if err != nil {
+			// 	slog.Error("Unable to connect to the server", "err", err)
+			// 	return ctx, fmt.Errorf("unable to connect to the hub")
+			// }
+			// co = consumer.NewConsumer(cc, nil)
 			return ctx, nil
 		},
-		// commands arguments are passed by reference so they are updated in the Before section
+		// FIXME: commands arguments must be passed by reference so because the
+		// provided argument 'r' is instantiated in the Before section.
 		Commands: []*cli.Command{
 			// these commands work without a server connection
 			certs.CreateCACommand(&certsDir),
 			certs.ViewCACommand(&certsDir),
 
-			authcli.AuthAddUserCommand(&co),
-			authcli.AuthAddServiceCommand(&co, &env.CertsDir),
-			authcli.AuthListClientsCommand(&co),
-			authcli.AuthRemoveClientCommand(&co),
-			authcli.AuthSetRoleCommand(&co),
-			authcli.AuthSetPasswordCommand(&co),
+			authcli.AuthAddUserCommand(&r),
+			authcli.AuthAddServiceCommand(&r, &env.CertsDir),
+			authcli.AuthListClientsCommand(&r),
+			authcli.AuthRemoveClientCommand(&r),
+			authcli.AuthSetRoleCommand(&r),
+			authcli.AuthSetPasswordCommand(&r),
 
-			launchercli.LauncherListCommand(&co),
-			launchercli.LauncherStartCommand(&co),
-			launchercli.LauncherStopCommand(&co),
+			launchercli.LauncherListCommand(&r),
+			launchercli.LauncherStartCommand(&r),
+			launchercli.LauncherStopCommand(&r),
 
-			directorycli.DirectoryListCommand(&co),
-			directorycli.DiscoListCommand(loginID, &authToken),
+			directorycli.DirectoryListCommand(&r),
+			directorycli.DiscoListCommand(&env),
 
 			//historycli.HistoryLatestCommand(&hc),
-			historycli.HistoryListCommand(&co),
+			historycli.HistoryListCommand(&r),
 
-			pubsubcli.PubActionCommand(&co),
-			pubsubcli.SubEventsCommand(&co),
-			pubsubcli.SubTDCommand(&co),
+			pubsubcli.PubActionCommand(&r),
+			pubsubcli.SubEventsCommand(&r),
+			pubsubcli.SubTDCommand(&r),
 		},
 	}
 

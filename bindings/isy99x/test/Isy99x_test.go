@@ -39,7 +39,7 @@ func TestMain(m *testing.M) {
 	var closeFn func()
 
 	cwd, _ := os.Getwd()
-	simulationRoot := "file://" + path.Join(cwd, "test")
+	simulationRoot := "file://" + cwd
 	utils.SetLogging("info", "")
 
 	appConfig.IsyAddress = simulationRoot

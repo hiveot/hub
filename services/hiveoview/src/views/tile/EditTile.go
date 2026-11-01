@@ -23,6 +23,7 @@ type EditTileTemplateData struct {
 	// Values of the tile sources by sourceID (affType/thingID/name)
 	// FIXME: used consumed thing directory to get values?
 	ctDir *consumer.ConsumedThingsDirectory
+
 	//Values map[string]*consumer.InteractionOutput
 	// human labels for each tile type
 	TileTypeLabels map[string]string

@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/hiveot/hivekit/go/cells/bucketstore"
+	"github.com/hiveot/hivekit/go/cells/bucketstore/kvbtreestore"
 	"github.com/hiveot/hub/bindings/weather"
 	jsoniter "github.com/json-iterator/go"
 )
@@ -75,29 +76,6 @@ func (svc *LocationStore) ForEach(cb func(location weather.WeatherLocation)) {
 	}
 }
 
-// Open the storage bucket
-func (svc *LocationStore) Open() error {
-	svc.mux.Lock()
-	defer svc.mux.Unlock()
-	// load locationStore
-	err := svc.bucketStore.Open()
-	if err != nil {
-		return err
-	}
-	// load locationStore from store
-	svc.locationsBucket = svc.bucketStore.GetBucket(weatherLocationsKey)
-	cursor, err := svc.locationsBucket.Cursor()
-	if err != nil {
-		return err
-	}
-	for _, v, valid := cursor.First(); valid; _, v, valid = cursor.Next() {
-		var weatherLocation weather.WeatherLocation
-		err = jsoniter.Unmarshal(v, &weatherLocation)
-		svc.locations = append(svc.locations, weatherLocation)
-	}
-	return err
-}
-
 // Remove a location from the store
 func (svc *LocationStore) Remove(id string) {
 	svc.mux.Lock()
@@ -111,11 +89,26 @@ func (svc *LocationStore) Update(loc weather.WeatherLocation) {
 }
 
 // Location store for weather locations
-func NewLocationStore(storePath string) *LocationStore {
-	bucketStore := bucketstorepkg.NewKVBTreeStore(storePath)
+func NewLocationStore(storePath string) (*LocationStore, error) {
+	bucketStore, err := kvbtreestore.OpenKVBTreeStore(storePath)
+	locationsBucket := bucketStore.GetBucket(weatherLocationsKey)
 
 	store := &LocationStore{
-		bucketStore: bucketStore,
+		bucketStore:     bucketStore,
+		locations:       make([]weather.WeatherLocation, 0),
+		locationsBucket: locationsBucket,
 	}
-	return store
+
+	// iterate the store to load the locations in memory
+	cursor, err := locationsBucket.Cursor()
+	if err != nil {
+		return nil, err
+	}
+	for _, v, valid := cursor.First(); valid; _, v, valid = cursor.Next() {
+		var weatherLocation weather.WeatherLocation
+		err = jsoniter.Unmarshal(v, &weatherLocation)
+		store.locations = append(store.locations, weatherLocation)
+	}
+
+	return store, err
 }

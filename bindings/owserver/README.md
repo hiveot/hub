@@ -8,7 +8,7 @@ Make EDS OWServer 1-wire devices available as WoT Things.
 
 ## Status
 
-This binding status is alpha and breaking changes should be expected.
+This binding  is being reworked to use HiveKit.
 
 Limitations:
 
@@ -37,7 +37,8 @@ This binding:
 ## Dependencies
 
 1. A working EDS OWServer gateway on the local network.
-2. This binding works with the [HiveOT Hub](https://github.com/hiveot/hub).
+2. This binding is build with [HiveKit](https://github.com/hiveot/hivekit).
+
 
 ## Usage
 

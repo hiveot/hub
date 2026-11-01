@@ -17,6 +17,8 @@ type NodeValueStamp struct {
 }
 
 func (svc *OWServer) getPrevValue(nodeID, attrName string) (value NodeValueStamp, found bool) {
+	svc.mux.RLock()
+	defer svc.mux.RUnlock()
 	nodeValues, found := svc.values[nodeID]
 	if found {
 		value, found = nodeValues[attrName]
@@ -25,6 +27,8 @@ func (svc *OWServer) getPrevValue(nodeID, attrName string) (value NodeValueStamp
 }
 
 func (svc *OWServer) setPrevValue(nodeID, attrName string, value any) {
+	svc.mux.Lock()
+	defer svc.mux.Unlock()
 	nodeValues, found := svc.values[nodeID]
 	if !found {
 		nodeValues = make(map[string]NodeValueStamp)

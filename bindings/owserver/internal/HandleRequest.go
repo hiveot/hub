@@ -10,9 +10,9 @@ import (
 	"github.com/hiveot/hub/bindings/owserver/internal/eds"
 )
 
-const MaxUpdateWaitTime = 10
+const MaxUpdateWaitTime = 3
 
-// HandleRequest handles action or property write requests
+// HandleRequest handles action and property requests.
 // For 1-wire, configuration and actions are the same thing
 func (svc *OWServer) HandleRequest(
 	req *msg.RequestMessage, replyTo msg.ResponseHandler) error {
@@ -26,43 +26,40 @@ func (svc *OWServer) HandleRequest(
 	var err error
 
 	// Custom config. Change device title.
-	if req.Name == td.WoTTitle {
-		err = svc.SetTitle(req)
-		deviceTitleByte, _ := svc.customTitles.Get(req.ThingID)
-		resp := req.CreateResponse(string(deviceTitleByte), err)
-		return replyTo(resp)
-	}
+	if req.Operation == td.OpWriteProperty {
+		if req.Name == td.WoTTitle {
+			err = svc.SetTitle(req)
+			deviceTitleByte, _ := svc.customTitles.Get(req.ThingID)
+			resp := req.CreateResponse(string(deviceTitleByte), err)
+			return replyTo(resp)
+		} else {
+			// This is a node update
+			err = svc.WriteNode(req)
+			if err != nil {
+				return err
+			}
 
-	// This is a node update
-	err = svc.WriteNode(req)
-	if err != nil {
-		resp := req.CreateResponse(nil, err)
-		return replyTo(resp)
-	}
+			// poll the result a few times until the requested status is reached or until timeout.
+			newValue, hasUpdated := svc.WaitForValueUpdate(req, MaxUpdateWaitTime)
+			if !hasUpdated {
+				err = fmt.Errorf("Node didn't update property within %d seconds", MaxUpdateWaitTime)
+			}
+			// complete or fail the request
+			resp := req.CreateResponse(newValue, err)
+			replyTo(resp)
 
-	// Actions do not return a value
-	if req.Operation == td.OpInvokeAction {
-		resp := req.CreateResponse(nil, nil)
-		return replyTo(resp)
-	}
-
-	// in the background poll the result a few times until the requested
-	// status is reached or until timeout.
-	go func() {
-		newValue, hasUpdated := svc.WaitForValueUpdate(req, MaxUpdateWaitTime)
-		if !hasUpdated {
-			err = fmt.Errorf("Node didn't update property within %d seconds", MaxUpdateWaitTime)
+			// finally do a full refresh that sends notifications to subscribers
+			go svc.RefreshPropertyValues(false)
 		}
-		// complete or fail the request
-		resp := req.CreateResponse(newValue, err)
-		replyTo(resp)
+	} else if req.Operation == td.OpInvokeAction {
+		// no actions supported
+		err = fmt.Errorf("Actions not supported")
+	} else {
+		// default
+		err = svc.ExposedThing.HandleRequest(req, replyTo)
+		return err
+	}
 
-		// finally do a full refresh that sends notifications to subscribers
-		_ = svc.RefreshPropertyValues(false)
-
-	}()
-	//return req.CreateNotification(err)
-	// nothing to return yet
 	return nil
 }
 

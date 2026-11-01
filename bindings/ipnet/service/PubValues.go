@@ -20,8 +20,8 @@ func (svc *IPNetBinding) MakeDeviceProps(deviceInfo *IPDeviceInfo) map[string]st
 	return pv
 }
 
+// Publish the properties of this binding
 func (svc *IPNetBinding) PubBindingProps(onlyChanges bool) {
-	thingID := svc.config.AgentID
-	svc.ag.PubProperty(thingID, vocab.PropDevicePollinterval, svc.config.PollInterval, onlyChanges)
-	svc.ag.PubProperty(thingID, "deviceCount", len(svc.devicesMap), onlyChanges)
+	svc.PubProperty("", vocab.PropDevicePollinterval, svc.config.PollInterval, onlyChanges)
+	svc.PubProperty("", "deviceCount", len(svc.devicesMap), onlyChanges)
 }

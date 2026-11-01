@@ -7,7 +7,7 @@ import (
 	"path"
 	"time"
 
-	"github.com/hiveot/hivekit/go/cells/certs"
+	"github.com/hiveot/hivekit/go/api"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/urfave/cli/v3"
 )
@@ -35,9 +35,9 @@ func ViewCACommand(certsFolder *string) *cli.Command {
 
 // HandleViewCACert shows CA certificate information
 func HandleViewCACert(certsFolder string) error {
-	caCertPath := path.Join(certsFolder, certs.DefaultCaCertFile)
+	caCertPath := path.Join(certsFolder, api.DefaultCaCertFile)
 
-	caCert, err := utils.LoadX509CertFromPEM(caCertPath)
+	caCert, err := utils.LoadCACert(caCertPath)
 	if err != nil {
 		slog.Error("Unable to load the CA certificate", "err", err)
 		return err
@@ -52,11 +52,13 @@ func HandleViewCACert(certsFolder string) error {
 	fmt.Println()
 
 	hubCertPath := path.Join(certsFolder, "hubCert.pem")
-	serverCert, err := utils.LoadX509CertFromPEM(hubCertPath)
+	x509Cert, err := utils.LoadX509Cert(hubCertPath)
 	if err != nil {
 		slog.Error("Unable to load the server certificate", "err", err)
 		return err
 	}
+	// TODO: show it as a cert chain
+	serverCert := x509Cert[0]
 	fmt.Println("Server certificate path: ", hubCertPath)
 	fmt.Println("  IsCA        : ", serverCert.IsCA)
 	fmt.Println("  Version     : ", serverCert.Version)

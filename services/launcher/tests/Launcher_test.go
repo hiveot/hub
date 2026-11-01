@@ -7,11 +7,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hiveot/hivekit/go/api"
 	"github.com/hiveot/hivekit/go/cells/authn"
+	authn_service "github.com/hiveot/hivekit/go/cells/authn/service"
 	"github.com/hiveot/hivekit/go/cells/consumer"
+	directory_service "github.com/hiveot/hivekit/go/cells/directory/service"
 	"github.com/hiveot/hivekit/go/testenv"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/services/launcher"
+	launcher_client "github.com/hiveot/hub/services/launcher/client"
+	launcher_service "github.com/hiveot/hub/services/launcher/service"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -48,13 +53,14 @@ func startService() (l *consumer.Consumer, stopFn func()) {
 
 	testEnv = testenv.NewTestEnv(true)
 	srv := testEnv.StartTestServer("")
-	err := srv.Start()
+	_ = srv
 
 	// authn is needed to create auth tokens
-	authnConfig := authn.NewAuthnConfig(appEnv.CertsDir, homeDir)
-	authnSvc := authn_service.NewAuthnService(authnConfig)
+	tokenDir := testEnv.Env.CertsDir
+	storeDir := testEnv.Env.GetStorageDir(authn.AuthnServiceCellType)
+	authnSvc, err := authn_service.NewAuthnService(tokenDir, storeDir, false)
 	// directory is needed to write TD (optional - WriteTD)
-	dirSvc := directory_service.NewDirectoryService("", "", nil, nil)
+	dirSvc, err := directory_service.NewDirectoryService("", "", nil)
 
 	if err != nil {
 		slog.Error(err.Error())
@@ -72,21 +78,21 @@ func startService() (l *consumer.Consumer, stopFn func()) {
 	launcherConfig.WriteTD = false
 
 	// launcher uses authn to create credentials and dirSvc to write TD
-	svc := launcher_service.NewLauncherService(authnSvc, appEnv, launcherConfig)
-	authnSvc.SetRequestSink(dirSvc)
-
-	err = svc.Start()
+	svc, err := launcher_service.NewLauncherService(appEnv, launcherConfig)
 	if err != nil {
 		slog.Error(err.Error())
 		panic(err.Error())
 	}
+
+	authnSvc.SetRequestSink(dirSvc)
+
+	svc.Start()
 	// the agent receives actions to execute on the service
 	//agent := service.StartLauncherAgent(svc, hc1)
 	//_ = agent
 
 	//--- connect the launcher user
-	co1, co1cc, _ := testEnv.NewTestConsumer(adminID, api.ClientRoleAdmin, false)
-	_ = co1cc.Connect()
+	co1, co1cc, _ := testEnv.NewConnectedConsumer(adminID, api.ClientRoleAdmin)
 	return co1, func() {
 		co1cc.Close()
 		time.Sleep(time.Millisecond)

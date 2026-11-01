@@ -75,7 +75,7 @@ type IsyThing struct {
 	mux sync.RWMutex
 
 	// REST/SOAP/WS connection to the ISY hub
-	isyAPI *isy.IsyAPI
+	isyAPI *isy.IsyGWAPI
 
 	// The TD to publish on start
 	tdoc *td.TD
@@ -126,8 +126,8 @@ func (it *IsyThing) HandleConfigRequest(
 // Invoked by the gateway thing when polling node values.
 // This submits an event to the registered callback if the value differs.
 func (it *IsyThing) HandleValueUpdate(propID string, uom string, newValue string) (err error) {
-	tstate := it.GetState("")
-	tstate.SetProperty(propID, newValue)
+
+	it.SetProperty(it.GetID(), propID, newValue)
 
 	return err
 }
@@ -136,7 +136,7 @@ func (it *IsyThing) HandleValueUpdate(propID string, uom string, newValue string
 // The parent should add properties, events and actions specific to their capabilities.
 func (it *IsyThing) MakeTD() *td.TD {
 	title := it.productInfo.ProductName
-	titleProp, _ := it.GetState("").GetProperty(td.WoTTitle)
+	titleProp, _ := it.GetProperty(td.WoTTitle)
 	if titleProp != nil {
 		title, _ = titleProp.(string)
 	}
@@ -182,7 +182,7 @@ func (it *IsyThing) MakeTD() *td.TD {
 // This publishes the Thing TD and its static properties.
 func (it *IsyThing) Start() {
 
-	it.PublishTD(it.tdoc)
+	it.WriteTD(it.tdoc)
 
 	enabledDisabled := "enabled"
 	if strings.ToLower(it.node.Enabled) != "true" {
@@ -213,7 +213,7 @@ func (it *IsyThing) Start() {
 
 // NewIsyThing constructs a general purpose ISY thing with basic properties
 // Intended to be used for 'unknown' nodes.
-func NewIsyThing(ic *isy.IsyAPI,
+func NewIsyThing(ic *isy.IsyGWAPI,
 	thingID string, node *isy.IsyNode, prodInfo InsteonProduct, hwVersion string) *IsyThing {
 
 	it := &IsyThing{

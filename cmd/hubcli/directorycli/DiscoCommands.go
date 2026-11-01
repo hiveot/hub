@@ -6,6 +6,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hiveot/hivekit/go/api"
+	"github.com/hiveot/hivekit/go/cells/discovery"
+	discovery_client "github.com/hiveot/hivekit/go/cells/discovery/client"
+	"github.com/hiveot/hivekit/go/cells/transport/tlsclient"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/urfave/cli/v3"
 )
@@ -13,7 +17,7 @@ import (
 // DiscoListCommand lists discovered Thing and Directory servers
 //
 // authToken used to read the TD
-func DiscoListCommand(clientID string, authToken *string) *cli.Command {
+func DiscoListCommand(env **api.HiveEnvironment) *cli.Command {
 	var readtd = false
 	return &cli.Command{
 		Name: "disco",
@@ -32,16 +36,20 @@ func DiscoListCommand(clientID string, authToken *string) *cli.Command {
 			if cmd.NArg() != 0 {
 				return fmt.Errorf("no arguments expected")
 			}
-			err := HandleDiscover(clientID, *authToken, readtd)
+			err := HandleDiscover(*env, readtd)
 			return err
 		},
 	}
 }
 
 // HandleDiscover prints a list of discovered Things and Directories
-func HandleDiscover(clientID string, authToken string, readtd bool) error {
-	discoClient := discovery_client.NewDiscoveryClient()
-	allRecords, err := discoClient.DiscoverDirectories("", time.Second*2, false, nil)
+func HandleDiscover(env *api.HiveEnvironment, readtd bool) error {
+	discoClient, err := discovery_client.NewDiscoveryClient(env, true)
+	authToken, _ := env.GetAuthToken()
+	if err != nil {
+		return err
+	}
+	allRecords, err := discoClient.DiscoverThings("", discovery.DISCO_TYPE_THING, false, time.Second*2, nil)
 	if err != nil {
 		fmt.Println("Discovery failed: ", err.Error())
 		return err
@@ -65,8 +73,8 @@ func HandleDiscover(clientID string, authToken string, readtd bool) error {
 			var tdObj map[string]any
 
 			hostPort := fmt.Sprintf("%s:%d", entry.Addr, entry.Port)
-			cl := tls_client.NewTLSClient(hostPort, nil, 0)
-			err := cl.AuthenticateWithToken(clientID, authToken)
+			cl := tlsclient.NewTLSClient(hostPort, nil)
+			err := cl.SetAuthToken(env.ClientID, authToken)
 			if err != nil {
 				break
 			}

@@ -103,7 +103,7 @@ func (it *IsyDimmerThing) Start() {
 
 // NewIsyDimmerThing creates a new instance of an ISY dimmer.
 // Call Init() before use
-func NewIsyDimmerThing(ic *isy.IsyAPI,
+func NewIsyDimmerThing(ic *isy.IsyGWAPI,
 	thingID string, node *isy.IsyNode, prodInfo InsteonProduct, hwVersion string,
 ) *IsyDimmerThing {
 

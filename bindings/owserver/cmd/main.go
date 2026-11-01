@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path"
 
@@ -16,7 +17,10 @@ func main() {
 	env := api.NewHiveEnvironment("", true)
 
 	owsConfig := owserver.NewOWServerConfig()
-	_ = env.LoadConfig(env.AppID, &owsConfig)
+	err := env.LoadConfig(env.AppID, &owsConfig)
+	if err != nil {
+		slog.Error("Failed loading configuration", "err", err.Error())
+	}
 	storePath := path.Join(env.StoresDir, env.ClientID)
 	binding, err := owserverpkg.NewOWServerBinding("", storePath, owsConfig)
 

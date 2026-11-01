@@ -5,10 +5,11 @@ import (
 	"fmt"
 
 	"github.com/hiveot/hivekit/go/cells/consumer"
+	consumer_recipe "github.com/hiveot/hivekit/go/factory/recipes/consumer"
 	"github.com/urfave/cli/v3"
 )
 
-func PubActionCommand(hc **consumer.Consumer) *cli.Command {
+func PubActionCommand(r **consumer_recipe.ConsumerRecipe) *cli.Command {
 	return &cli.Command{
 		Name:      "pub",
 		Usage:     "Publish action for Thing",
@@ -25,7 +26,7 @@ func PubActionCommand(hc **consumer.Consumer) *cli.Command {
 			dThingID := cmd.Args().First()
 			action := cmd.Args().Get(1)
 			args := cmd.Args().Get(2)
-			err := HandlePubActions(*hc, dThingID, action, args)
+			err := HandlePubActions((*r).Consumer, dThingID, action, args)
 			return err
 		},
 	}

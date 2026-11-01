@@ -82,7 +82,8 @@ func SetSessionCookie(w http.ResponseWriter,
 	pToken.SetNotBefore(time.Now())
 	// custom claims
 	pToken.SetString("authToken", authToken)
-	secretKey, err := paseto.NewV4AsymmetricSecretKeyFromEd25519(privKey)
+	// secretKey, err := paseto.NewV4AsymmetricSecretKeyFromEd25519(privKey)
+	secretKey, err := paseto.NewV4AsymmetricSecretKeyFromBytes(privKey)
 	signedToken := pToken.V4Sign(secretKey, nil)
 
 	if err != nil {

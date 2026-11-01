@@ -11,7 +11,6 @@ import (
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
-	jsoniter "github.com/json-iterator/go"
 )
 
 const RenderConfirmDeleteTDTemplate = "DeleteTD.gohtml"
@@ -24,8 +23,7 @@ type ConfirmDeleteTDTemplateData struct {
 
 func RenderConfirmDeleteTD(w http.ResponseWriter, r *http.Request) {
 	thingID := chi.URLParam(r, "thingID")
-	td := td.TD{}
-	tdJson := ""
+	var tdoc *td.TD
 
 	// Read the TD being displayed and its latest values
 	_, sess, err := session.GetSessionFromContext(r)
@@ -35,11 +33,8 @@ func RenderConfirmDeleteTD(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	co := sess.GetConsumer()
-	tdJson, err = co.RetrieveThing(thingID)
-	if err == nil {
-		err = jsoniter.UnmarshalFromString(tdJson, &td)
-	}
+	dirCl := sess.GetDirectory()
+	tdoc, err = dirCl.RetrieveThing(thingID)
 	if err != nil {
 		sess.WriteError(w, err, http.StatusBadRequest)
 		return
@@ -47,7 +42,7 @@ func RenderConfirmDeleteTD(w http.ResponseWriter, r *http.Request) {
 	tdParams := map[string]string{"thingID": thingID}
 	data := ConfirmDeleteTDTemplateData{
 		ThingID:            thingID,
-		TD:                 &td,
+		TD:                 tdoc,
 		SubmitDeleteTDPath: utils.Substitute(src.DeleteThingPath, tdParams),
 	}
 	buff, err := app.RenderAppOrFragment(r, RenderConfirmDeleteTDTemplate, data)
@@ -68,12 +63,12 @@ func SubmitDeleteTD(w http.ResponseWriter, r *http.Request) {
 	}
 
 	slog.Info("Deleting TD", slog.String("thingID", thingID))
-	co := sess.GetConsumer()
-	err = co.DeleteThing(thingID)
+	dirCl := sess.GetDirectory()
+	err = dirCl.DeleteThing(thingID)
 
 	// reload the cached directory
-	cts := sess.GetConsumedThingsDirectory()
-	_, err = cts.ReadDirectory(true)
+	// cts := sess.GetConsumedThingsDirectory()
+	// tdList, err = dirCl.RetrieveAllThings(0, 1000, true)
 
 	// report the result
 	if err != nil {

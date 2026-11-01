@@ -92,7 +92,7 @@
   },
   "properties": {
     "nrPlugins": {
-      "title": "Number of plugins",
+      "title": "Number of available plugins",
       "type": "integer",
       "readOnly": true
     },

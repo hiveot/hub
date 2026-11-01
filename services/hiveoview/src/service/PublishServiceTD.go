@@ -8,7 +8,6 @@ import (
 	"github.com/hiveot/hivekit/go/api/vocab"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/services/hiveoview/src"
-	jsoniter "github.com/json-iterator/go"
 )
 
 // CreateServiceTD creates a new Thing TD document for this service
@@ -37,8 +36,7 @@ func (svc *HiveoviewService) CreateServiceTD() *td.TD {
 func (svc *HiveoviewService) PublishServiceTD() error {
 
 	myTD := svc.CreateServiceTD()
-	tdJSON, _ := jsoniter.MarshalToString(myTD)
-	err := svc.ag.WriteTD(tdJSON)
+	err := svc.WriteTD(myTD)
 	//err := svc.ag.UpdateThing(myTD)
 
 	if err != nil {
@@ -49,5 +47,5 @@ func (svc *HiveoviewService) PublishServiceTD() error {
 
 // PublishServiceProps publishes the service properties
 func (svc *HiveoviewService) PublishServiceProps() {
-	svc.ag.PubProperty(src.HiveoviewServiceID, vocab.PropNetPort, svc.port, false)
+	svc.PubProperty(src.HiveoviewServiceID, vocab.PropNetPort, svc.port, false)
 }

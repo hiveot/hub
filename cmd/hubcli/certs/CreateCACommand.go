@@ -7,7 +7,9 @@ import (
 	"os"
 	"path"
 
+	"github.com/hiveot/hivekit/go/api"
 	"github.com/hiveot/hivekit/go/cells/certs"
+	certs_service "github.com/hiveot/hivekit/go/cells/certs/service"
 	"github.com/urfave/cli/v3"
 )
 
@@ -19,22 +21,22 @@ import (
 //	hubcli newca [--certs=CertFolder]  [--force]
 func CreateCACommand(certsFolder *string) *cli.Command {
 	var force = false
-	var validityDays = 365 * 5
+	// var validityDays = 365 * 5
 
 	return &cli.Command{
 		Name:     "cca",
 		Usage:    "Create a new Hub CA certificate",
 		Category: "certs",
 		Flags: []cli.Flag{
-			&cli.IntFlag{
-				Name:        "days",
-				Usage:       "Number of `days` the certificate is valid.",
-				Value:       validityDays,
-				Destination: &validityDays,
-			},
+			// &cli.IntFlag{
+			// 	Name:        "days",
+			// 	Usage:       "Number of `days` the certificate is valid.",
+			// 	Value:       validityDays,
+			// 	Destination: &validityDays,
+			// },
 			&cli.BoolFlag{
 				Name:        "force",
-				Usage:       "Force overwrites an existing certificate and key.",
+				Usage:       "Force replacing an existing certificate and key.",
 				Destination: &force,
 			},
 		},
@@ -42,7 +44,7 @@ func CreateCACommand(certsFolder *string) *cli.Command {
 			if cmd.NArg() > 0 {
 				return fmt.Errorf("unexpected argument(s) '%s'", cmd.Args().First())
 			}
-			err := HandleCreateCACert(*certsFolder, cmd.Int("days"), cmd.Bool("force"))
+			err := HandleCreateCACert(*certsFolder, cmd.Bool("force"))
 			return err
 		},
 	}
@@ -50,39 +52,41 @@ func CreateCACommand(certsFolder *string) *cli.Command {
 
 // HandleCreateCACert generates the hub self-signed CA private key and certificate
 // in the given folder.
-// Use force to create the folder and overwrite existing certificate if it exists
-func HandleCreateCACert(certsFolder string, validityDays int, force bool) error {
-	caCertPath := path.Join(certsFolder, certs.DefaultCaCertFile)
-	caKeyPath := path.Join(certsFolder, certs.DefaultCaKeyFile)
+// If force is set then force replacing the existing certificate
+func HandleCreateCACert(certsFolder string, force bool) error {
+	caCertPath := path.Join(certsFolder, api.DefaultCaCertFile)
+	caKeyPath := path.Join(certsFolder, api.DefaultCaKeyFile)
 
 	// folder doesn't exist
 	if _, err := os.Stat(certsFolder); err != nil {
-		if force {
-			_ = os.Mkdir(certsFolder, 0744)
-		} else {
-			return fmt.Errorf("certificate folder '%s' doesn't exist", certsFolder)
+		fmt.Printf("Certificate folder '%s' doesn't exist. Creating it.\n", certsFolder)
+		err = os.Mkdir(certsFolder, 0744)
+		if err != nil {
+			return fmt.Errorf("Failed creating certificate folder '%s' doesn't exist", certsFolder)
 		}
 	}
-	// do not overwrite existing certificate unless force is used
-	if !force {
+	// replace existing certificate if force is used
+	if force {
+		os.Remove(caCertPath)
+		os.Remove(caKeyPath)
 		if _, err := os.Stat(caCertPath); err == nil {
-			return fmt.Errorf("CA certificate already exists in '%s'. Use --force to replace", caCertPath)
+			fmt.Printf("Deleting CA certificate in '%s'", caCertPath)
+			err = os.Remove(caCertPath)
 		}
 		if _, err := os.Stat(caKeyPath); err == nil {
-			return fmt.Errorf("CA key alread exists in '%s'", caKeyPath)
+			fmt.Printf("Deleting CA key in '%s'", caKeyPath)
+			err = os.Remove(caKeyPath)
 		}
 	}
 	// the certsservice creates the CA cert and key on start
-	svc := certs.NewCertsService(certsFolder)
-	err := svc.Start()
-	// caCert, caKey, err := svc.CreateCACert("Hub CA", validityDays)
-	// if err != nil {
-	// 	return err
-	// }
-	// err = certutils.SaveX509CertToPEM(caCert, caCertPath)
-	// if err == nil {
-	// 	err = caKey.ExportPrivateToFile(caKeyPath)
-	// }
+	cfg := certs.CertsConfig{
+		CertsDir: certsFolder,
+	}
+	svc, err := certs_service.NewCertsService(&cfg)
+	_ = svc
+	if err != nil {
+		return err
+	}
 
 	slog.Info("Generated CA certificate", "caCertPath", caCertPath, "caKeyPath", caKeyPath)
 	return err

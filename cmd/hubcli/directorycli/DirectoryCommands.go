@@ -9,11 +9,13 @@ import (
 
 	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/cells/consumer"
+	"github.com/hiveot/hivekit/go/cells/directory"
+	consumer_recipe "github.com/hiveot/hivekit/go/factory/recipes/consumer"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/urfave/cli/v3"
 )
 
-func DirectoryListCommand(co **consumer.Consumer) *cli.Command {
+func DirectoryListCommand(r **consumer_recipe.ConsumerRecipe) *cli.Command {
 	var verbose = false
 	return &cli.Command{
 		Name:      "ld",
@@ -29,14 +31,16 @@ func DirectoryListCommand(co **consumer.Consumer) *cli.Command {
 			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
+			dirClient := (*r).GetDirectory()
+			co := (*r).Consumer
 			var err = fmt.Errorf("expected 0 or 1 parameters")
 			if cmd.NArg() == 0 {
-				err = HandleListDirectory(*co)
+				err = HandleListDirectory(dirClient)
 			} else if cmd.NArg() == 1 {
 				if !verbose {
-					err = HandleListThing(*co, cmd.Args().First())
+					err = HandleListThing(dirClient, co, cmd.Args().First())
 				} else {
-					err = HandleListThingVerbose(*co, cmd.Args().First())
+					err = HandleListThingVerbose(dirClient, co, cmd.Args().First())
 				}
 			}
 			return err
@@ -45,17 +49,14 @@ func DirectoryListCommand(co **consumer.Consumer) *cli.Command {
 }
 
 // HandleListDirectory lists the directory content
-func HandleListDirectory(co *consumer.Consumer) (err error) {
+func HandleListDirectory(dirClient directory.IDirectoryClient) (err error) {
 	// todo: iterate with offset and limit
-	dirClient := directory_client.NewDirectoryClient("", co)
 
-	tdListJson, err := dirClient.RetrieveAllThings(300, 0)
-	tdList, err2 := td.UnmarshalTDList(tdListJson)
-
-	if err != nil || err2 != nil {
-		return err
-	}
+	tdList, cacheOnly := dirClient.RetrieveAllThings(300, 0)
 	td.SortThingsByID(tdList)
+	if cacheOnly {
+		fmt.Printf("Directory server not reachable. Using cache only\n")
+	}
 
 	fmt.Printf("Thing ID                            Title                                 @type                                #props  #events #actions   Modified         \n")
 	fmt.Printf("----------------------------------  ------------------------------------  -----------------------------------  ------  ------- --------   -----------------------------\n")
@@ -84,13 +85,10 @@ func HandleListDirectory(co *consumer.Consumer) (err error) {
 }
 
 // HandleListThing lists details of a Thing in the directory
-func HandleListThing(co *consumer.Consumer, thingID string) error {
+func HandleListThing(dirClient directory.IDirectoryClient, co *consumer.Consumer, thingID string) error {
 
-	dirClient := directory_client.NewDirectoryClient("", co)
-
-	tdDocJson, err := dirClient.RetrieveThing(thingID)
-	tdDoc, err2 := td.UnmarshalTD(tdDocJson)
-	if err != nil || err2 != nil {
+	tdDoc, err := dirClient.RetrieveThing(thingID)
+	if err != nil {
 		return err
 	}
 	propValueMap, err := co.ReadAllProperties(thingID)
@@ -174,15 +172,15 @@ func HandleListThing(co *consumer.Consumer, thingID string) error {
 }
 
 // HandleListThingVerbose lists a Thing full TD
-func HandleListThingVerbose(co *consumer.Consumer, thingID string) error {
-	dirClient := directory_client.NewDirectoryClient("", co)
-	tdJSON, err := dirClient.RetrieveThing(thingID)
+func HandleListThingVerbose(dirClient directory.IDirectoryClient, co *consumer.Consumer, thingID string) error {
+	tdoc, err := dirClient.RetrieveThing(thingID)
 
 	if err != nil {
 		return err
 	}
 	fmt.Println("TD of", thingID)
 	var buf bytes.Buffer
+	tdJSON := td.MarshalTD(tdoc)
 	_ = json.Indent(&buf, []byte(tdJSON), "", "\t")
 	fmt.Printf("%s\n", buf.Bytes())
 	return err

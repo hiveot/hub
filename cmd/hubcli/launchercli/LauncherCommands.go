@@ -6,12 +6,13 @@ import (
 	"time"
 
 	"github.com/hiveot/hivekit/go/cells/consumer"
+	consumer_recipe "github.com/hiveot/hivekit/go/factory/recipes/consumer"
 	"github.com/hiveot/hivekit/go/utils"
-	launcherpkg "github.com/hiveot/hub/services/launcher/pkg"
+	launcher_client "github.com/hiveot/hub/services/launcher/client"
 	"github.com/urfave/cli/v3"
 )
 
-func LauncherListCommand(hc **consumer.Consumer) *cli.Command {
+func LauncherListCommand(r **consumer_recipe.ConsumerRecipe) *cli.Command {
 
 	return &cli.Command{
 		Name: "ls",
@@ -23,13 +24,13 @@ func LauncherListCommand(hc **consumer.Consumer) *cli.Command {
 			if cmd.NArg() != 0 {
 				return fmt.Errorf("no arguments expected")
 			}
-			err := HandleListServices(*hc)
+			err := HandleListServices((*r).Consumer)
 			return err
 		},
 	}
 }
 
-func LauncherStartCommand(hc **consumer.Consumer) *cli.Command {
+func LauncherStartCommand(r **consumer_recipe.ConsumerRecipe) *cli.Command {
 
 	return &cli.Command{
 		Name: "start",
@@ -42,13 +43,13 @@ func LauncherStartCommand(hc **consumer.Consumer) *cli.Command {
 			if cmd.NArg() != 1 {
 				return fmt.Errorf("expected service name")
 			}
-			err := HandleStartService(cmd.Args().First(), *hc)
+			err := HandleStartService(cmd.Args().First(), (*r).Consumer)
 			return err
 		},
 	}
 }
 
-func LauncherStopCommand(hc **consumer.Consumer) *cli.Command {
+func LauncherStopCommand(r **consumer_recipe.ConsumerRecipe) *cli.Command {
 
 	return &cli.Command{
 		Name: "stop",
@@ -60,7 +61,7 @@ func LauncherStopCommand(hc **consumer.Consumer) *cli.Command {
 			if cmd.NArg() != 1 {
 				return fmt.Errorf("expected service name")
 			}
-			err := HandleStopService(cmd.Args().First(), *hc)
+			err := HandleStopService(cmd.Args().First(), (*r).Consumer)
 			return err
 		},
 	}
@@ -77,7 +78,7 @@ func HandleListServices(co *consumer.Consumer) error {
 
 	fmt.Println("Service                      Size   Starts       PID    CPU   Memory   Status    Since (" + localTZ + ")          Last Error")
 	fmt.Println("-------                      ----   ------   -------   ----   ------   -------   -------------------  -----------")
-	entries, err := launcherpkg.NewLauncherClient("", co).ListPlugins(false)
+	entries, err := launcher_client.NewLauncherClient("", co).ListPlugins(false)
 	if err != nil {
 		return err
 	}
@@ -120,7 +121,7 @@ func HandleStartService(pluginID string, co *consumer.Consumer) error {
 	if co == nil {
 		return fmt.Errorf("no Hub connection")
 	}
-	lc := launcherpkg.NewLauncherClient("", co)
+	lc := launcher_client.NewLauncherClient("", co)
 
 	if pluginID == "all" {
 		err = lc.StartAllPlugins()
@@ -150,7 +151,7 @@ func HandleStopService(serviceName string, co *consumer.Consumer) error {
 	if co == nil {
 		return fmt.Errorf("no Hub connection")
 	}
-	lc := launcherpkg.NewLauncherClient("", co)
+	lc := launcher_client.NewLauncherClient("", co)
 
 	if serviceName == "all" {
 		err := lc.StopAllPlugins(false)

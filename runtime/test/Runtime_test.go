@@ -8,6 +8,8 @@ import (
 
 	"github.com/hiveot/hivekit/go/api"
 	"github.com/hiveot/hivekit/go/api/msg"
+	"github.com/hiveot/hivekit/go/api/td"
+	authn_client "github.com/hiveot/hivekit/go/cells/authn/client"
 	"github.com/hiveot/hivekit/go/testenv"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/runtime/pkg"
@@ -21,8 +23,10 @@ var testEnv *testenv.TestEnv
 func startRuntime() *pkg.HubRuntime {
 	utils.SetLogging("info", "")
 	testEnv = testenv.NewTestEnv(true)
-	testEnv.StartTestServer("")
-	rt := pkg.NewHubRuntime(testEnv.AppEnv)
+	// testEnv.StartTestServer("")
+	rt, f, err := pkg.NewHubRuntime(testEnv.Env)
+	_ = f
+	_ = err
 	return rt
 }
 
@@ -45,10 +49,10 @@ func TestLoginAsAgent(t *testing.T) {
 	t.Logf("---%s---\n", t.Name())
 
 	r := startRuntime()
-	agent, ccag, token := testEnv.NewRCAgent(agentID, nil) //AddConnectAgent(agentID)
-	defer agent.Stop()
+	rcThing, ccag, token := testEnv.NewRCThing(agentID, nil) //AddConnectAgent(agentID)
+	defer rcThing.Stop()
 	defer ccag.Close()
-	authCl := authn_client.NewAuthnUserClient(agent)
+	authCl := authn_client.NewAuthnUserClient("", rcThing)
 	t2, err := authCl.RefreshToken(token)
 	require.NoError(t, err)
 	assert.NotEmpty(t, t2)
@@ -66,10 +70,10 @@ func TestLoginAsConsumer(t *testing.T) {
 	t.Logf("---%s---\n", t.Name())
 
 	r := startRuntime()
-	co1, cc, token := testEnv.NewConnectedConsumer(clientID, api.ClientRoleManager, false)
+	co1, cc1, token := testEnv.NewConnectedConsumer(clientID, api.ClientRoleManager)
 	defer co1.Stop()
-	defer cc.Close()
-	authCl := authn_client.NewAuthnUserClient(cc)
+	defer cc1.Stop()
+	authCl := authn_client.NewAuthnUserClient("", co1)
 	t2, err := authCl.RefreshToken(token)
 
 	require.NoError(t, err)
@@ -100,11 +104,12 @@ func TestMultiConnectSingleClient(t *testing.T) {
 
 	// 1: setup: start a runtime and connect N clients
 	r := startRuntime()
-	ag1, ccag, _ := testEnv.NewRCAgent(agentID, nil)
+	rcThing, ccag, _ := testEnv.NewRCThing(agentID, nil)
 	defer ccag.Close()
 
 	// td1 := testEnv.AddTD(agentID, nil)
-	cl1, _, token1 := testEnv.NewConnectedConsumer(clientID1, api.ClientRoleOperator, false)
+	co1, cc1, token1 := testEnv.NewConnectedConsumer(clientID1, api.ClientRoleOperator)
+	_ = co1
 
 	onConnection := func(newStatus api.ConnectionStatus, c api.ITransportClient) {
 		if newStatus == api.StatusConnected {
@@ -122,10 +127,10 @@ func TestMultiConnectSingleClient(t *testing.T) {
 	}
 	// 2: connect and subscribe clients and verify
 	for range testConnections {
-		co, cc, _ := testEnv.NewConnectedConsumer(clientID1, api.ClientRoleOperator, false)
+		co, cc, _ := testEnv.NewConnectedConsumer(clientID1, api.ClientRoleOperator)
 		cc.SetConnectHandler(onConnection)
 		co.SetNotificationHook(onNotification)
-		err := cc.AuthenticateWithToken(clientID1, token1)
+		err := cc.SetAuthToken(clientID1, token1, td.SecSchemeBearer)
 		require.NoError(t, err)
 		// allow server to register its connection
 		time.Sleep(waitafterconnect)
@@ -139,7 +144,7 @@ func TestMultiConnectSingleClient(t *testing.T) {
 	//require.Equal(t, testConnections, ts.Runtime.TransportsMgr.GetNrConnections(), "ts connect count mismatch")
 
 	// 3: agent publishes an event, which should be received N times
-	ag1.PubEvent(thing1ID, eventName, "a value")
+	rcThing.PubEvent(thing1ID, eventName, "a value")
 	//err := ag1.PubEvent(td1.ID, eventName, "a value", "message1")
 	// require.NoError(t, err)
 
@@ -151,16 +156,16 @@ func TestMultiConnectSingleClient(t *testing.T) {
 	for _, c := range clients {
 		c.Close()
 	}
-	cl1.Stop()
+	cc1.Stop()
 	// disconnection notification should have been received N times
 	time.Sleep(waitafterconnect * 3)
 	require.Equal(t, testConnections, disConnectCount.Load(), "disconnect count mismatch")
 
 	// 5: no more messages should be received after disconnecting
 	messageCount.Store(0)
-	ag1.PubEvent(thing1ID, eventName, "a value")
+	rcThing.PubEvent(thing1ID, eventName, "a value")
 	// require.NoError(t, err)
-	ag1.Stop()
+	rcThing.Stop()
 
 	// zero events should have been received
 	time.Sleep(time.Millisecond * 100)
@@ -181,20 +186,21 @@ func TestAccess(t *testing.T) {
 	r := startRuntime()
 	defer r.Stop()
 
-	cc1, token := testEnv.NewConnectedClient(clientID, api.ClientRoleAdmin)
+	cc1, token := testEnv.NewTestClient(clientID, api.ClientRoleAdmin)
+	cc1.Connect()
 	defer cc1.Close()
 	_ = token
 
 	//f := r.GetForm(td.OpInvokeAction, hc.GetProtocolType())
 
 	// regulars users should not have authn and authz admin access
-	authnAdmin := authn_client.NewAuthnAdminClient(cc1)
+	authnAdmin := authn_client.NewAuthnAdminClient("", cc1)
 	clientProfiles, err := authnAdmin.GetProfiles()
 
 	require.Error(t, err, "regular users should not have access to authn.Admin")
 	require.Empty(t, clientProfiles)
 	//time.Sleep(time.Millisecond * 100)
-	prof, err := authnAdmin.GetClientProfile(clientID)
+	prof, err := authnAdmin.GetProfile(clientID)
 	require.Error(t, err, "regular users should not have access to authn.Admin")
 	require.Empty(t, prof.Role)
 	//time.Sleep(time.Millisecond * 100)

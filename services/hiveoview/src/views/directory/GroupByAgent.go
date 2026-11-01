@@ -4,7 +4,6 @@ import (
 	"sort"
 
 	"github.com/hiveot/hivekit/go/api/td"
-	"github.com/hiveot/hivekit/go/cells/digitwin"
 )
 
 // ReadDirLimit is the maximum amount of TDs to read in one call
@@ -17,11 +16,12 @@ type AgentThings struct {
 }
 
 // GroupByAgent groups Things by agent and sorts them by Thing title
-func GroupByAgent(tds map[string]*td.TD) []*AgentThings {
+func GroupByAgent(tds []*td.TD) []*AgentThings {
 	agentMap := make(map[string]*AgentThings)
-	// first split the things by their agent
-	for thingID, tdi := range tds {
-		agentID, _, _ := digitwin.SplitDigitwinID(thingID)
+
+	// first split the things by their agent (reverse connection ID?)
+	for _, tdoc := range tds {
+		agentID := tdoc.GetRCID()
 		agentGroup, found := agentMap[agentID]
 		if !found {
 			agentGroup = &AgentThings{
@@ -30,7 +30,7 @@ func GroupByAgent(tds map[string]*td.TD) []*AgentThings {
 			}
 			agentMap[agentID] = agentGroup
 		}
-		agentGroup.Things = append(agentGroup.Things, tdi)
+		agentGroup.Things = append(agentGroup.Things, tdoc)
 	}
 	// next, sort the agent things
 	agentsList := make([]*AgentThings, 0, len(agentMap))

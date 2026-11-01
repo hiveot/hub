@@ -8,15 +8,15 @@ import (
 	"path"
 	"sort"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/hiveot/hivekit/go/api"
 	"github.com/hiveot/hivekit/go/api/msg"
+	"github.com/hiveot/hivekit/go/api/td"
+	"github.com/hiveot/hivekit/go/cells/thing"
 	"github.com/hiveot/hivekit/go/cells/transport/wss"
 	"github.com/hiveot/hivekit/go/utils"
-	"github.com/hiveot/hub/services/hiveoview/src/views/thing"
 	"github.com/hiveot/hub/services/launcher"
 	"github.com/hiveot/hub/services/launcher/tm"
 )
@@ -45,7 +45,7 @@ type LauncherService struct {
 	cfg *launcher.LauncherConfig
 
 	//
-	env *api.AppEnvironment
+	env *api.HiveEnvironment
 
 	// map of plugin name to running status
 	plugins map[string]launcher.PluginInfo
@@ -57,7 +57,7 @@ type LauncherService struct {
 	// watch plugin folders for updates
 	serviceWatcher *fsnotify.Watcher
 	// service is running
-	isRunning atomic.Bool
+	// isRunning atomic.Bool
 	// closing channel
 	done chan bool
 
@@ -173,12 +173,162 @@ func (svc *LauncherService) ScanPlugins() error {
 // to be able to create auth keys and tokens, and to subscribe to rpc requests.
 //
 // Call stop to end
-func (svc *LauncherService) Start() error {
+func (svc *LauncherService) Start() {
 	slog.Info("Starting LauncherService")
-	svc.isRunning.Store(true)
 
-	env := svc.env
-	cfg := svc.cfg
+	// publish this service TD if connected to a directory or discovery
+	if svc.cfg.WriteTD {
+		tdoc, err := td.UnmarshalTD(string(tm.LauncherTM))
+		if err == nil {
+			err = svc.WriteTD(tdoc)
+		}
+		if err != nil {
+			slog.Error("failed to publish the launcher service TD", "err", err.Error())
+		}
+	}
+	nrPlugins := len(svc.plugins)
+	svc.PubProperty("", launcher.PropNrPlugins, nrPlugins, false)
+
+	// svc.isRunning.Store(true)
+
+	// cfg := svc.cfg
+
+	// // include the runtime
+	// runtimeBin := cfg.RuntimeBin
+	// if runtimeBin != "" {
+	// 	err := svc.addRuntime(runtimeBin)
+	// 	if err != nil {
+	// 		slog.Error(err.Error())
+	// 		return err
+	// 	}
+	// }
+	// // 1: determine the inventory of plugins
+	// _ = svc.WatchPlugins()
+	// err := svc.ScanPlugins()
+	// if err != nil {
+	// 	return err
+	// }
+
+	// // 2: start the runtime, if configured
+	// svc.mux.Lock()
+	// _, foundRuntime := svc.plugins[runtimeBin]
+	// svc.mux.Unlock()
+	// if foundRuntime {
+	// 	// runtime is added and starts first
+	// 	pi, err := svc._startPlugin(runtimeBin)
+	// 	if err != nil {
+	// 		slog.Error("Starting runtime failed", "runtimeBin", runtimeBin, "err", err)
+	// 		return err
+	// 	} else {
+	// 		slog.Warn("Runtime started successfully", "runtimeBin", runtimeBin)
+
+	// 		// a bit of a stopgap for slow systems
+	// 		// FIXME: runtime should signal readiness
+	// 		time.Sleep(time.Millisecond * time.Duration(cfg.RuntimeWait))
+
+	// 		// some extra time if its still busy
+	// 		if pi.Cpu >= 99 {
+	// 			time.Sleep(time.Second)
+	// 		}
+	// 	}
+	// 	// since the runtime is launched locally a local connection is the most efficient
+	// 	// unless a server address is already configured.
+	// 	if env.ServerURL == "" {
+	// 		env.ServerURL = DefaultLocalServerURL
+	// 	}
+	// }
+
+	// // 3. publish this service TD if connected to a directory or discovery
+	// if cfg.WriteTD {
+	// 	err = svc.WriteTD(string(tm.LauncherTM))
+	// 	if err != nil {
+	// 		slog.Error("failed to publish the launcher service TD", "err", err.Error())
+	// 	}
+	// }
+
+	// // 4. Set permissions for using this service for administrators and managers
+	// // err = authz.UserSetPermissions(svc.ag.Consumer, authz.ThingPermissions{
+	// // 	AgentID: svc.ag.GetClientID(),
+	// // 	ThingID: launcher.AdminServiceID,
+	// // 	Allow:   []authz.ClientRole{authz.ClientRoleManager, authz.ClientRoleAdmin, authz.ClientRoleService},
+	// // 	Deny:    nil,
+	// // })
+
+	// 5: autostart the configured 'autostart' plugins
+	// Log errors but do not stop the launcher
+	for _, name := range svc.cfg.Autostart {
+		_, _ = svc._startPlugin(name)
+	}
+
+}
+
+// Stop the launcher, all running plugins and disconnect
+func (svc *LauncherService) Stop() {
+	slog.Info("Stopping launcher service")
+
+	// svc.isRunning.Store(false)
+
+	_ = svc.serviceWatcher.Close()
+
+	svc.StopAllPlugins(true)
+}
+
+// WatchPlugins watches the bin and plugins folder for changes and reloads
+// This will detect adding new plugins without requiring a restart.
+func (svc *LauncherService) WatchPlugins() error {
+	svc.serviceWatcher, _ = fsnotify.NewWatcher()
+
+	err := svc.serviceWatcher.Add(svc.env.BinDir)
+	if err == nil {
+		err = svc.serviceWatcher.Add(svc.env.PluginsDir)
+	}
+	if err == nil {
+		go func() {
+			for {
+				select {
+				case <-svc.done:
+					slog.Info("service watcher ended")
+					return
+				case event := <-svc.serviceWatcher.Events:
+					// isRunning := svc.isRunning.Load()
+					// if isRunning {
+					slog.Info("watcher event", "event", event)
+					_ = svc.ScanPlugins()
+					// } else {
+					// 	slog.Info("service watcher stopped")
+					// 	return
+					// }
+				case err := <-svc.serviceWatcher.Errors:
+					if err != nil {
+						slog.Error("error", "err", err)
+					}
+				}
+			}
+		}()
+
+	}
+	return err
+}
+
+// NewLauncherService returns a new launcher service instance for the plugins in the
+// given plugins folder.
+// This scans the folder for executables, adds these to the list of available plugins and autostarts plugins
+// Logging will be enabled based on LauncherConfig.
+//
+// env is the application environment with bin, certs, log and plugin directories
+// cfg is the launcher configuration
+func NewLauncherService(env *api.HiveEnvironment, cfg *launcher.LauncherConfig,
+) (*LauncherService, error) {
+
+	svc := &LauncherService{
+		ExposedThing: thing.NewExposedThing(env.AppID, nil),
+		env:          env,
+		// serverURL: serverURL,
+		cfg:     cfg,
+		plugins: make(map[string]launcher.PluginInfo),
+		cmds:    make([]*exec.Cmd, 0),
+		//ag:        ag,
+	}
 
 	// include the runtime
 	runtimeBin := cfg.RuntimeBin
@@ -186,26 +336,25 @@ func (svc *LauncherService) Start() error {
 		err := svc.addRuntime(runtimeBin)
 		if err != nil {
 			slog.Error(err.Error())
-			return err
+			return nil, err
 		}
 	}
 	// 1: determine the inventory of plugins
 	_ = svc.WatchPlugins()
 	err := svc.ScanPlugins()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// 2: start the runtime, if configured
-	svc.mux.Lock()
 	_, foundRuntime := svc.plugins[runtimeBin]
-	svc.mux.Unlock()
 	if foundRuntime {
 		// runtime is added and starts first
 		pi, err := svc._startPlugin(runtimeBin)
 		if err != nil {
+			svc.Stop() // stop the serviceWatcher
 			slog.Error("Starting runtime failed", "runtimeBin", runtimeBin, "err", err)
-			return err
+			return nil, err
 		} else {
 			slog.Warn("Runtime started successfully", "runtimeBin", runtimeBin)
 
@@ -225,15 +374,7 @@ func (svc *LauncherService) Start() error {
 		}
 	}
 
-	// 3. publish this service TD if connected to a directory or discovery
-	if cfg.WriteTD {
-		err = svc.WriteTD(string(tm.LauncherTM))
-		if err != nil {
-			slog.Error("failed to publish the launcher service TD", "err", err.Error())
-		}
-	}
-
-	// 4. Set permissions for using this service for administrators and managers
+	// 3. Set permissions for using this service for administrators and managers
 	// err = authz.UserSetPermissions(svc.ag.Consumer, authz.ThingPermissions{
 	// 	AgentID: svc.ag.GetClientID(),
 	// 	ThingID: launcher.AdminServiceID,
@@ -241,88 +382,9 @@ func (svc *LauncherService) Start() error {
 	// 	Deny:    nil,
 	// })
 
-	// 5: autostart the configured 'autostart' plugins
-	// Log errors but do not stop the launcher
-	for _, name := range cfg.Autostart {
-		_, _ = svc._startPlugin(name)
-	}
-
-	return err
-}
-
-// Stop the launcher, all running plugins and disconnect
-func (svc *LauncherService) Stop() {
-	slog.Info("Stopping launcher service")
-
-	svc.isRunning.Store(false)
-
-	_ = svc.serviceWatcher.Close()
-
-	svc.StopAllPlugins(true)
-}
-
-// WatchPlugins watches the bin and plugins folder for changes and reloads
-// This will detect adding new plugins without requiring a restart.
-func (svc *LauncherService) WatchPlugins() error {
-	svc.serviceWatcher, _ = fsnotify.NewWatcher()
-	err := svc.serviceWatcher.Add(svc.env.BinDir)
-	if err == nil && svc.env.PluginsDir != "" {
-		err = svc.serviceWatcher.Add(svc.env.PluginsDir)
-	}
-	if err == nil {
-		go func() {
-			for {
-				select {
-				case <-svc.done:
-					slog.Info("service watcher ended")
-					return
-				case event := <-svc.serviceWatcher.Events:
-					isRunning := svc.isRunning.Load()
-					if isRunning {
-						slog.Info("watcher event", "event", event)
-						_ = svc.ScanPlugins()
-					} else {
-						slog.Info("service watcher stopped")
-						return
-					}
-				case err := <-svc.serviceWatcher.Errors:
-					if err != nil {
-						slog.Error("error", "err", err)
-					}
-				}
-			}
-		}()
-
-	}
-	return err
-}
-
-// NewLauncherService returns a new launcher service instance for the plugins in the
-// given plugins folder.
-// This scans the folder for executables, adds these to the list of available plugins and autostarts plugins
-// Logging will be enabled based on LauncherConfig.
-//
-// The sink forwards requests to create service accounts to authn service.
-// env is the application environment with bin, certs, log and plugin directories
-// cfg is the launcher configuration
-func NewLauncherService(
-	sink api.IHiveCell, env *api.HiveEnvironment, cfg *launcher.LauncherConfig,
-
-	// ag transports.IClientConnection,
-) *LauncherService {
-
-	svc := &LauncherService{
-		ExposedThing: thing.NewExposedThing(env.AppID, nil),
-		env:          env,
-		// serverURL: serverURL,
-		cfg:     cfg,
-		plugins: make(map[string]launcher.PluginInfo),
-		cmds:    make([]*exec.Cmd, 0),
-		//ag:        ag,
-	}
 	// check property api implementation
 	var _ launcher.ILauncherService = svc
 	var _ api.IHiveCell = svc
 
-	return svc
+	return svc, nil
 }

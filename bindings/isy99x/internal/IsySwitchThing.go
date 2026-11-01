@@ -169,7 +169,7 @@ func (it *IsySwitchThing) Start() {
 
 // NewIsySwitchThing creates a new instance of an ISY switch.
 func NewIsySwitchThing(
-	ic *isy.IsyAPI, thingID string, node *isy.IsyNode, prodInfo InsteonProduct, hwVersion string,
+	ic *isy.IsyGWAPI, thingID string, node *isy.IsyNode, prodInfo InsteonProduct, hwVersion string,
 ) *IsySwitchThing {
 
 	isySwitch := &IsySwitchThing{

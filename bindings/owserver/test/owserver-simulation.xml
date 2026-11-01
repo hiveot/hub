@@ -117,13 +117,10 @@
         <HumidexLowAlarmValue Writable="True">-40</HumidexLowAlarmValue>
         <HeatIndexHighAlarmValue Writable="True" Units="Centigrade">40</HeatIndexHighAlarmValue>
         <HeatIndexLowAlarmValue Writable="True" Units="Centigrade">-20</HeatIndexLowAlarmValue>
-        <BarometricPressureMbHighAlarmValue Writable="True" Units="Millibars">2000.000
-        </BarometricPressureMbHighAlarmValue>
+        <BarometricPressureMbHighAlarmValue Writable="True" Units="Millibars">2000.000</BarometricPressureMbHighAlarmValue>
         <BarometricPressureMbLowAlarmValue Writable="True" Units="Millibars">0.000</BarometricPressureMbLowAlarmValue>
-        <BarometricPressureHgHighAlarmValue Writable="True" Units="InchesOfMercury">100.000
-        </BarometricPressureHgHighAlarmValue>
-        <BarometricPressureHgLowAlarmValue Writable="True" Units="InchesOfMercury">0.000
-        </BarometricPressureHgLowAlarmValue>
+        <BarometricPressureHgHighAlarmValue Writable="True" Units="InchesOfMercury">100.000</BarometricPressureHgHighAlarmValue>
+        <BarometricPressureHgLowAlarmValue Writable="True" Units="InchesOfMercury">0.000</BarometricPressureHgLowAlarmValue>
         <LightHighAlarmValue Writable="True" Units="Lux">100000</LightHighAlarmValue>
         <LightLowAlarmValue Writable="True" Units="Lux">0</LightLowAlarmValue>
         <LEDFunction Writable="True">0</LEDFunction>

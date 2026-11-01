@@ -1,4 +1,4 @@
-package launcherpkg
+package launcher_client
 
 import (
 	"github.com/hiveot/hivekit/go/api"

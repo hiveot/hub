@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -11,16 +10,16 @@ import (
 
 	"github.com/hiveot/hivekit/go/api"
 	rcdevice_recipe "github.com/hiveot/hivekit/go/factory/recipes/rcdevice"
-	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/services/hiveoview/config"
 	"github.com/hiveot/hub/services/hiveoview/src/service"
 )
 
 const defaultServerPort = 8443
-const serverCertFile = certs.DefaultServerCertFile
+
+// const serverCertFile = api.DefaultServerCertFile
 
 // FYI, not all browsers support certificates with ed25519 keys, so this file contains a ecdsa key
-const serverKeyFile = certs.DefaultServerKeyFile
+// const serverKeyFile = api.DefaultServerKeyFile
 const TemplateRootPath = "services/hiveoview/src"
 
 // hiveoview will use the 'hubKey.pem' key and hubCert.pem for the server cert
@@ -38,7 +37,7 @@ const TemplateRootPath = "services/hiveoview/src"
 // By default the templates are embedded. For development it can be useful to reload
 // the templates for each request. Use the --extfs flag for this.
 func main() {
-	var signingKey crypto.PrivateKey
+	// var signingKey crypto.PrivateKey
 	serverPort := defaultServerPort
 	extfs := false
 
@@ -48,18 +47,30 @@ func main() {
 
 	// this config will be replaced with hiveoview Thing config
 	cfg := config.NewHiveoviewConfig(serverPort)
-	_ = env.LoadConfig(&cfg)
-	// each app instance has its own storage directory
-	storageDir := path.Join(env.StoresDir, env.AppID)
+	_ = env.LoadConfig(env.AppID, &cfg)
+	storageDir := env.GetStorageDir(env.AppID)
+	err := env.CreateDir(storageDir, 0700)
+	if err != nil {
+		slog.Error("Unable to create session store", "err", err.Error())
+		os.Exit(1)
+	}
 
-	//storeDir := path.Join(env.StoresDir, "hiveoview")
-	//err := os.MkdirAll(storeDir, 0700)
-	//if err != nil {
-	//	slog.Error("Unable to create session store", "err", err.Error())
-	//	panic(err.Error())
-	//}
-	// serve the hiveoview web pages
-	signingKey, _, err := utils.LoadPrivateKey(env.KeyFile)
+	// need a hub connection
+	r, f, err := rcdevice_recipe.NewRCDeviceRecipe(env, nil)
+	_ = f
+
+	if err != nil {
+		fmt.Println("Startup failed: " + err.Error())
+		os.Exit(1)
+	}
+
+	// TLS Cert to serve the hiveoview web pages
+	// Its private key is used to sign the cookies.
+	serverCert, err := env.GetServerCert()
+	if err != nil {
+		slog.Error("Unable to load server certificate: " + err.Error())
+		return
+	}
 
 	// development only, serve files and parse templates from filesystem
 	rootPath := ""
@@ -67,23 +78,20 @@ func main() {
 		cwd, _ := os.Getwd()
 		rootPath = path.Join(cwd, TemplateRootPath)
 	}
-	// A server certificate is needed in the certs directory
-	serverCertPath := path.Join(env.CertsDir, serverCertFile)
-	serverKeyPath := path.Join(env.CertsDir, serverKeyFile)
-	serverCert, err := utils.LoadTLSCertFromPEM(serverCertPath, serverKeyPath)
+	// FIXME: currently timeout is set to 20 sec to allow slow requests to complete.
+	// However these requests should handle multiple async updates instead.
+	// for example zwavejs refresh device info can take up to 20sec
 	if err != nil {
 		slog.Error("Unable to load server certificate: " + err.Error())
 		return
 	}
-	// FIXME: currently timeout is set to 20 sec to allow slow requests to complete.
-	// However these requests should handle multiple async updates instead.
-	// for example zwavejs refresh device info can take up to 20sec
-	svc := service.NewHiveovService(
-		cfg.ServerPort, false, signingKey, rootPath, serverCert, env.CaCert,
+	hubURL := r.GetClient().GetConnectURL()
+	svc, err := service.NewHiveovService(hubURL,
+		cfg.ServerPort, false, rootPath, serverCert, env.GetRootCAs(),
 		time.Second*20, storageDir)
+	r.SetRequestSink(svc)
+	svc.SetNotificationSink(r)
 
-	// link it to the RC device recipe that handles connections.
-	r, _, err := rcdevice_recipe.NewRCDeviceRecipe(env, svc)
 	if err != nil {
 		fmt.Println("Startup failed: " + err.Error())
 		os.Exit(1)

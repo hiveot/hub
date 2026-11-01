@@ -6,12 +6,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hiveot/hivekit/go/cells/consumer"
 	"github.com/hiveot/hivekit/go/testenv"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/bindings/ipnet/config"
 	"github.com/hiveot/hub/bindings/ipnet/service"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 var tempFolder string
@@ -22,17 +21,15 @@ const agentUsesWSS = true
 // TestMain run test server and use the project test folder as the home folder.
 // All tests are run using the simulation file.
 func TestMain(m *testing.M) {
-	var stopFn func()
+
 	// setup environment
 	tempFolder = path.Join(os.TempDir(), "test-ipnet")
 	utils.SetLogging("info", "")
-
-	//
-	testEnv, stopFn = testenv.StartTestEnv("")
+	testEnv = testenv.NewTestEnv(true)
 
 	result := m.Run()
 	time.Sleep(time.Millisecond)
-	stopFn()
+
 	if result == 0 {
 		_ = os.RemoveAll(tempFolder)
 	}
@@ -48,13 +45,12 @@ func TestStartStop(t *testing.T) {
 	cfg.ScanAsRoot = false
 
 	svc := service.NewIpNetBinding(cfg)
-	cc1, _ := testEnv.NewTestClient("ipnet", api.ClientRoleService)
-	err := cc1.Connect()
-	assert.NoError(t, err)
-	defer cc1.Close()
-	err = svc.Start(cc1)
-
-	require.NoError(t, err)
 	defer svc.Stop()
+	// create and link the consumer
+	co1 := consumer.NewConsumer(svc, nil)
+	defer co1.Stop()
+	svc.Start()
+	co1.Start()
+
 	time.Sleep(time.Second)
 }

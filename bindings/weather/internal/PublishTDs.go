@@ -5,7 +5,6 @@ import (
 	"github.com/hiveot/hivekit/go/api/vocab"
 	"github.com/hiveot/hub/bindings/weather"
 	"github.com/hiveot/hub/bindings/weather/providers"
-	"github.com/hiveot/hub/services/hiveoview/src/views/thing"
 )
 
 // read-only properties
@@ -219,36 +218,24 @@ func CreateTDOfLocation(defaultCfg *weather.WeatherConfig, cfg *weather.WeatherL
 	return tdoc
 }
 
-// PublishBindingTD publishes the TD of the binding itself
-func PublishBindingTD(ag *thing.ExposedThing, cfg *weather.WeatherConfig) error {
-	thingID := ag.GetThingID()
+// PublishBindingTD publishes the TD and properties of the binding itself
+func (svc *WeatherService) PublishBindingTD() {
+	thingID := svc.GetID()
 	tdoc := CreateBindingTD(thingID)
-	tdJson, _ := td.MarshalTD(tdoc)
-	err := ag.WriteTD(tdJson)
-	if err == nil {
-		err = PublishBindingProperties(ag, thingID, cfg)
-	}
-	return err
+	svc.WriteTD(tdoc)
+	svc.PublishBindingProperties(thingID)
 }
 
 // PublishLocationTDs publishes the TD of all locationStore and current properties
-func PublishLocationTDs(ag *thing.ExposedThing, defaultCfg *weather.WeatherConfig, locationStore *LocationStore) (err error) {
-	locationStore.ForEach(func(loc weather.WeatherLocation) {
-		err2 := PublishLocationTD(ag, defaultCfg, loc)
-		if err2 != nil {
-			err = err2
-		}
+func (svc *WeatherService) PublishLocationTDs() {
+	svc.locationStore.ForEach(func(loc weather.WeatherLocation) {
+		svc.PublishLocationTD(loc)
 	})
-	return err
 }
 
 // PublishLocationTD publishes the TD of the given location and its current values
-func PublishLocationTD(ag *thing.ExposedThing, defaultCfg *weather.WeatherConfig, loc weather.WeatherLocation) error {
-	tdoc := CreateTDOfLocation(defaultCfg, &loc)
-	tdJson, _ := td.MarshalTD(tdoc)
-	err := ag.WriteTD(tdJson)
-	if err == nil {
-		err = PublishLocationProperties(ag, loc.ID, loc)
-	}
-	return err
+func (svc *WeatherService) PublishLocationTD(loc weather.WeatherLocation) {
+	tdoc := CreateTDOfLocation(svc.cfg, &loc)
+	svc.WriteTD(tdoc)
+	svc.PublishLocationProperties(loc.ID, loc)
 }

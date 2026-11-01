@@ -35,7 +35,7 @@ func (it *IsySensorThing) MakeTD() *td.TD {
 
 // NewIsySensorThing creates a ISY sensor device instance.
 // Call Init() before use.
-func NewIsySensorThing(ic *isy.IsyAPI,
+func NewIsySensorThing(ic *isy.IsyGWAPI,
 	thingID string, node *isy.IsyNode, prodInfo InsteonProduct, hwVersion string) *IsySensorThing {
 
 	thing := &IsySensorThing{

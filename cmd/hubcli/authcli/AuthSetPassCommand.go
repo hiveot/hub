@@ -6,13 +6,15 @@ import (
 	"strings"
 	"time"
 
+	authn_client "github.com/hiveot/hivekit/go/cells/authn/client"
 	"github.com/hiveot/hivekit/go/cells/consumer"
+	corecipe "github.com/hiveot/hivekit/go/factory/recipes/consumer"
 	"github.com/urfave/cli/v3"
 	"golang.org/x/exp/rand"
 )
 
 // AuthSetPasswordCommand sets a client's password
-func AuthSetPasswordCommand(hc **consumer.Consumer) *cli.Command {
+func AuthSetPasswordCommand(r **corecipe.ConsumerRecipe) *cli.Command {
 	return &cli.Command{
 		Name:      "setpass",
 		Usage:     "Set password. (careful, no confirmation)",
@@ -26,7 +28,7 @@ func AuthSetPasswordCommand(hc **consumer.Consumer) *cli.Command {
 			}
 			loginID := cmd.Args().Get(0)
 			newPassword = cmd.Args().Get(1)
-			err := HandleSetPassword(*hc, loginID, newPassword)
+			err := HandleSetPassword(*r, loginID, newPassword)
 			return err
 		},
 	}
@@ -36,11 +38,11 @@ func AuthSetPasswordCommand(hc **consumer.Consumer) *cli.Command {
 //
 //	loginID is the ID or email of the user
 //	newPassword can be empty to auto-generate a password
-func HandleSetPassword(co *consumer.Consumer, loginID string, newPassword string) error {
+func HandleSetPassword(co consumer.IConsumer, loginID string, newPassword string) error {
 	if newPassword == "" {
 		newPassword = GeneratePassword(9, true)
 	}
-	authnClient := authn_client.NewAuthnAdminClient(co)
+	authnClient := authn_client.NewAuthnAdminClient("", co)
 	err := authnClient.SetClientPassword(loginID, newPassword)
 
 	if err != nil {

@@ -7,13 +7,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hiveot/hivekit/go/cells/consumer"
 	"github.com/hiveot/hivekit/go/testenv"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/bindings/weather"
 	"github.com/hiveot/hub/bindings/weather/internal"
-	weatherpkg "github.com/hiveot/hub/bindings/weather/pkg"
+	weather_pkg "github.com/hiveot/hub/bindings/weather/pkg"
 	"github.com/hiveot/hub/bindings/weather/providers"
-	"github.com/hiveot/hub/services/hiveoview/src/views/thing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -42,22 +42,6 @@ var storePath string
 var tempFolder string
 var weatherConfig = weather.NewWeatherConfig()
 
-func Setup() (testEnv *testenv.TestEnv, ag *thing.ExposedThing, stopFn func()) {
-	var cancelFn func()
-
-	utils.SetLogging("warn", "")
-	testEnv, cancelFn = testenv.StartTestEnv("", true)
-
-	ag, _, _ = testEnv.NewRCAgent(agentID, nil)
-	utils.SetLogging("info", "")
-
-	return testEnv, ag, func() {
-		utils.SetLogging("warn", "")
-		ag.Stop()
-		cancelFn()
-	}
-}
-
 // TestMain run test server and use the project test folder as the home folder.
 // All tests are run using the simulation file.
 func TestMain(m *testing.M) {
@@ -80,11 +64,8 @@ func TestMain(m *testing.M) {
 func TestStartStop(t *testing.T) {
 	t.Logf("---%s---\n", t.Name())
 
-	_, ag, stopFn := Setup()
-	defer stopFn()
-
-	svc := weatherpkg.NewWeatherService(ag, storePath, weatherConfig)
-	err := svc.Start()
+	svc, err := weather_pkg.NewWeatherService("", storePath, weatherConfig)
+	require.NoError(t, err)
 
 	require.NoError(t, err)
 	// give heartbeat time to run
@@ -114,13 +95,13 @@ func TestPollDirect(t *testing.T) {
 
 func TestPollFromService(t *testing.T) {
 	t.Logf("---%s---\n", t.Name())
-	_, ag, stopFn := Setup()
-	defer stopFn()
 
-	svc := internal.NewWeatherService(ag, storePath, weatherConfig)
-	err := svc.Start()
+	testEnv := testenv.NewTestEnv(true)
+	storePath := testEnv.Env.GetStorageDir("weather")
 
+	svc, err := internal.NewWeatherService("", storePath, weatherConfig)
 	require.NoError(t, err)
+
 	err = svc.LocationStore().Add(testLocation1)
 	err = svc.LocationStore().Add(testLocation2)
 	require.NoError(t, err)
@@ -144,15 +125,10 @@ func TestPollFromService(t *testing.T) {
 
 func TestDisableCurrent(t *testing.T) {
 	t.Logf("---%s---\n", t.Name())
-	client1ID := "client1"
 
-	testEnv, ag, stopFn := Setup()
-	defer stopFn()
-
-	svc := internal.NewWeatherService(ag, storePath, weatherConfig)
-	err := svc.Start()
-
+	svc, err := internal.NewWeatherService("", storePath, weatherConfig)
 	require.NoError(t, err)
+
 	err = svc.AddLocation(testLocation1)
 	err = svc.AddLocation(testLocation2)
 	require.NoError(t, err)
@@ -161,9 +137,8 @@ func TestDisableCurrent(t *testing.T) {
 	// give heartbeat time to run
 	time.Sleep(time.Millisecond * 1)
 
-	co1, cc1, _ := testEnv.NewConnectedConsumer(client1ID, api.ClientRoleAdmin, false)
+	co1 := consumer.NewConsumer(svc, nil)
 	defer co1.Stop()
-	defer cc1.Stop()
 
 	thingID := testLocation1.ID
 	err = co1.WriteProperty(thingID, internal.PropNameCurrentEnabled, false, true)

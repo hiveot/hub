@@ -75,19 +75,19 @@ func RenderSelectSources(w http.ResponseWriter, r *http.Request) {
 		sess.WriteError(w, err, http.StatusBadRequest)
 		return
 	}
-	ctDir := sess.GetConsumedThingsDirectory()
+	dirCl := sess.GetDirectory()
 	// provide a list of things for each agent and show a nested
 	// list of events per thing: agent -> thing title -> event title
 	// each list is sorted by title.
-	tds, err := ctDir.ReadDirectory(false)
-	if err != nil {
-		sess.WriteError(w, err, http.StatusBadRequest)
-		return
-	}
+	tds, _ := dirCl.RetrieveAllThings(0, directory.DefaultMaxThings)
+	// if err != nil {
+	// 	sess.WriteError(w, err, http.StatusBadRequest)
+	// 	return
+	// }
 	// this gets all values of all things. Maybe more efficient
 	// to establish a shared cache?
 	data := RenderSelectSourcesTemplateData{
-		ctDir: ctDir,
+		ctDir: dirCl,
 	}
 	data.AgentThings = directory.GroupByAgent(tds)
 	buff, err := app.RenderAppOrFragment(r, RenderSelectSourceTemplate, data)

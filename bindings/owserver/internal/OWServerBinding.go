@@ -109,17 +109,13 @@ func (svc *OWServer) Start() {
 
 	svc.customTitles = svc.store.GetBucket(customTitlesKey)
 
-	// publish this binding's TD document
+	// publish this binding's properties including its TD
 	tdoc := svc.CreateBindingTD()
 	svc.things[tdoc.ID] = tdoc
-	err := svc.PublishTD(tdoc)
-	if err != nil {
-		slog.Error("failed publishing service TD. Continuing...",
-			slog.String("err", err.Error()))
-	} else {
-		props := svc.GetBindingPropValues()
-		svc.PubProperties(tdoc.ID, props, true)
-	}
+
+	svc.WriteTD(tdoc)
+	props := svc.GetBindingPropValues()
+	svc.PubProperties(tdoc.ID, props, true)
 
 	// last, start polling heartbeat
 	svc.stopFn = svc.startHeartBeat()
@@ -181,12 +177,17 @@ func (svc *OWServer) Stop() {
 	slog.Info("OWServer binding stopped")
 }
 
-// NewOWServerService creates a new OWServer Protocol Binding agent
-// This agent can be linked to a server module or to a RC client.
-// Intended to be used with the factory.
+// NewOWServerService creates a new OWServer protocol binding.
 //
-//	serviceID is the service thingID. Typically the environment appID. "" for default.
+// This returns a HiveKit cell that can be linked to a HiveKit transport or included
+// as part of a hivekit recipe.
+//
+// For testing this support the use of a simulation file instead of a OWServer URL.
+//
+//	serviceID is the instance ThingID. Typically the environment appID.
+//	 Use "" for default if only a single instance is used.
 //	storePath is the location to store custom Thing titles. (OWServer doesnt store this)
+//	 Use "" for in-memory storage.
 //	config holds the configuration of the service
 func NewOWServerBinding(serviceID string, storePath string, config *owserver.OWServerConfig) (*OWServer, error) {
 

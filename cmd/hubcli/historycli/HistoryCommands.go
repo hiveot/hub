@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	"github.com/hiveot/hivekit/go/cells/consumer"
+	history_client "github.com/hiveot/hivekit/go/cells/history/client"
+	consumer_recipe "github.com/hiveot/hivekit/go/factory/recipes/consumer"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/urfave/cli/v3"
 )
@@ -25,7 +27,7 @@ import (
 //	}
 //}
 
-func HistoryListCommand(hc **consumer.Consumer) *cli.Command {
+func HistoryListCommand(r **consumer_recipe.ConsumerRecipe) *cli.Command {
 	limit := 100
 	return &cli.Command{
 		Name:      "hev",
@@ -48,7 +50,7 @@ func HistoryListCommand(hc **consumer.Consumer) *cli.Command {
 			if cmd.NArg() == 2 {
 				key = cmd.Args().Get(1)
 			}
-			err := HandleListEvents(*hc, cmd.Args().First(), key, limit)
+			err := HandleListEvents((*r).Consumer, cmd.Args().First(), key, limit)
 			return err
 		},
 	}

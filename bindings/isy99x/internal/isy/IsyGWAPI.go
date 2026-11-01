@@ -6,7 +6,6 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
-	"github.com/huin/goupnp"
 	"io"
 	"log/slog"
 	"net/http"
@@ -17,6 +16,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/huin/goupnp"
 )
 
 // GET /rest/config
@@ -47,10 +48,10 @@ type ISYConfiguration struct {
 	//} `xml:"configuration"`
 }
 
-// IsyAPI manages the connection to the ISY99x gateway
+// IsyGWAPI manages the connection to the ISY99x gateway
 // This supports publishing REST and Soap requests.
 // Use of WebSockets is tbd
-type IsyAPI struct {
+type IsyGWAPI struct {
 	// address contains the IP address of the ISY gateway, or a path to a file.
 	// if address starts with file:// then this is used to read from a
 	// (simulation) file named <address>/<restPath>.xml
@@ -69,7 +70,7 @@ type IsyAPI struct {
 }
 
 // Connect to the gateway and read its ID
-func (isyAPI *IsyAPI) Connect(
+func (isyAPI *IsyGWAPI) Connect(
 	gwAddr string, login string, password string) (err error) {
 
 	if gwAddr == "" {
@@ -98,14 +99,14 @@ func (isyAPI *IsyAPI) Connect(
 	return err
 }
 
-func (isyAPI *IsyAPI) Disconnect() {
+func (isyAPI *IsyGWAPI) Disconnect() {
 	isyAPI.isConnected.Store(false)
 	// TODO: websocket disconnect
 }
 
 // Discover any ISY99x gateway on the local network for 3 seconds.
 // If successful this returns the ISY99x gateway address, otherwise an error is returned.
-func (isyAPI *IsyAPI) Discover(timeout time.Duration) (addr string, err error) {
+func (isyAPI *IsyGWAPI) Discover(timeout time.Duration) (addr string, err error) {
 	slog.Info("Starting discovery")
 	insteonDeviceType := "urn:udi-com:device:X_Insteon_Lighting_Device:1"
 	ctx, cancelFn := context.WithTimeout(context.Background(), timeout)
@@ -149,24 +150,24 @@ func (isyAPI *IsyAPI) Discover(timeout time.Duration) (addr string, err error) {
 //}
 
 // GetID returns the ISY Gateway ID
-func (isyAPI *IsyAPI) GetID() string {
+func (isyAPI *IsyGWAPI) GetID() string {
 	// Use the 'app' field as the gateway ID
 	return isyAPI.isyConfig.App
 }
 
-func (isyAPI *IsyAPI) IsConnected() bool {
+func (isyAPI *IsyGWAPI) IsConnected() bool {
 	return isyAPI.isConnected.Load()
 }
 
 // ReadNodes reads the ISY Node list
-func (isyAPI *IsyAPI) ReadNodes() (*IsyNodes, error) {
+func (isyAPI *IsyGWAPI) ReadNodes() (*IsyNodes, error) {
 	isyNodes := IsyNodes{}
 	err := isyAPI.SendRequest("GET", "/rest/nodes", "", &isyNodes)
 
 	return &isyNodes, err
 }
 
-func (isyAPI *IsyAPI) ReadNodeInfo(id string) (IsyNodeInfo, error) {
+func (isyAPI *IsyGWAPI) ReadNodeInfo(id string) (IsyNodeInfo, error) {
 	var nodeInfo IsyNodeInfo
 
 	err := isyAPI.SendRequest("GET", "/rest/nodes/"+id, "", &nodeInfo)
@@ -174,7 +175,7 @@ func (isyAPI *IsyAPI) ReadNodeInfo(id string) (IsyNodeInfo, error) {
 }
 
 // Rename sets a new friendly name of the ISY device
-func (isyAPI *IsyAPI) Rename(nodeID string, newName string) error {
+func (isyAPI *IsyGWAPI) Rename(nodeID string, newName string) error {
 	// Post a SOAP message as no REST api exists for this
 	soapTemplate := `<s:Envelope><s:Body>
   <u:RenameNode xmlns:u="urn:udi-com:service:X_Insteon_Lighting_Service:1">
@@ -193,11 +194,11 @@ func (isyAPI *IsyAPI) Rename(nodeID string, newName string) error {
 
 // SendRequest sends a GET or PUT request to the ISY device
 //
-//		method is the GET or POST method to use.
-//		restPath contains REST or /services SOAP path to send the request to.
-//	 body optional body for post
-//		If it starts with file:// then read from (simulation) file named <address>/<restPath>.xml
-func (isyAPI *IsyAPI) SendRequest(method string, restPath string, body string, response interface{}) error {
+//	method is the GET or POST method to use.
+//	restPath contains REST or /services SOAP path to send the request to.
+//	body optional body for post
+//	 If it starts with file:// then read from (simulation) file named <address>/<restPath>.xml
+func (isyAPI *IsyGWAPI) SendRequest(method string, restPath string, body string, response interface{}) error {
 	// if address is a file then load content from file. Intended for testing
 	if strings.HasPrefix(isyAPI.address, "file://") {
 		filename := path.Join(isyAPI.address[7:], restPath+".xml")
@@ -263,8 +264,8 @@ func (isyAPI *IsyAPI) SendRequest(method string, restPath string, body string, r
 //	gwAddress is the ip address of the gateway, or "file://<path>" to a simulation xml file
 //	login to gateway device
 //	password to gateway device
-func NewIsyAPI() *IsyAPI {
-	isy := &IsyAPI{}
+func NewIsyAPI() *IsyGWAPI {
+	isy := &IsyGWAPI{}
 	//isy.simulation = make(map[string]string)
 	return isy
 }

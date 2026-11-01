@@ -152,12 +152,15 @@ func TestStartStop(t *testing.T) {
 	t.Log("--- TestStartStop ---")
 
 	storeDir := testFolder
-	ag1, _ := testEnv.NewConnectedClient(serviceID, api.ClientRoleService)
-	svc := service.NewHiveovService(ag1, servicePort, true, nil, "",
+	cc1, _ := testEnv.NewTestClient(serviceID, api.ClientRoleService)
+	svc, err := service.NewHiveovService(servicePort, true, nil, "",
 		testEnv.CertBundle.ServerCert, testEnv.CertBundle.CaCert, timeout, storeDir)
-
-	err := svc.Start()
 	require.NoError(t, err)
+
+	cc1.SetRequestSink(svc)
+	svc.SetNotificationSink(cc1)
+
+	svc.Start()
 	time.Sleep(time.Second * 3)
 	svc.Stop()
 }
@@ -169,17 +172,20 @@ func TestLogin(t *testing.T) {
 
 	// 1: setup: start a runtime and service; this generates an error that
 	//    the state service isnt found. ignore it.
-	ag1, cc1, _ := testEnv.NewRCAgent(serviceID, nil)
-	require.NotNil(t, ag1)
+	rcThing1, cc1, _ := testEnv.NewRCThing(serviceID, nil)
+	require.NotNil(t, rcThing1)
 	defer cc1.Close()
-	svc := service.NewHiveovService(ag1, servicePort, true, nil,
+
+	svc := service.NewHiveovService(servicePort, true, nil,
 		"", testEnv.CertBundle.ServerCert, testEnv.CertBundle.CaCert, timeout, storeDir)
+	rcThing1.SetRequestSink(svc)
+
 	err := svc.Start()
 	require.NoError(t, err)
 	defer svc.Stop()
 
 	// make sure the client to login exists
-	cl1, _, token1 := testEnv.NewConnectedConsumer(clientID1, api.ClientRoleOperator, false)
+	cl1, _, token1 := testEnv.NewConnectedConsumer(clientID1, api.ClientRoleOperator)
 	//defer cl1.Disconnect()
 	cl1.Stop()
 	_ = token1
@@ -187,7 +193,8 @@ func TestLogin(t *testing.T) {
 
 	// 2: login using plain TLS connection and a form
 	hostPort := fmt.Sprintf("localhost:%d", servicePort)
-	cl2 := tlsclient.NewTLSClient(hostPort, testEnv.CertBundle.CaCert, time.Second*60)
+	cl2 := tlsclient.NewTLSClient(hostPort, testEnv.Env.GetRootCAs())
+	cl2.SetTimeout(testEnv.Env.RpcTimeout)
 
 	// hiveot http requires a connection-id to link the return channel.
 	cl2.SetHeader(api.ConnectionIDHeader, shortid.MustGenerate())
@@ -231,8 +238,8 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	utils.SetLogging("info", "")
 	// 1: setup: start a runtime and service; this generates an error that
 	//    the state service isnt found. ignore it.
-	avcAg, _ := testEnv.AddConnectService(serviceID)
-	svc := service.NewHiveovService(avcAg, servicePort, true, nil,
+	// avcAg, _ := testEnv.AddConnectService(serviceID)
+	svc := service.NewHiveovService(servicePort, true, nil,
 		"", testEnv.CertBundle.ServerCert, testEnv.CertBundle.CaCert, timeout, storeDir)
 	err := svc.Start()
 
@@ -240,16 +247,18 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	defer svc.Stop()
 
 	// the agent for publishing events. A TD is needed for them to be accepted.
-	ag1, _, _ := testEnv.AddConnectAgent(agentID)
-	_ = ag1
-	td1 := testEnv.AddTD(agentID, nil)
+	eThing, _, _ := testEnv.NewRCThing(agentID, nil)
+	_ = eThing
+	td1 := testEnv.CreateTestTD(42, false)
+	td1.ID = agentID
 	_ = td1
 
 	// create the user account this test is going to connect as.
 	// no notifications are expected as it doesnt subscribe
 	// hiveoview server only supports HTTP/SSE
-	co1, _, token1 := testEnv.AddConnectConsumer(clientID1, api.ClientRoleOperator)
-	defer co1.Disconnect()
+	co1, cc1, token1 := testEnv.NewConnectedConsumer(clientID1, api.ClientRoleOperator)
+	defer co1.Stop()
+	defer cc1.Close()
 	require.NoError(t, err)
 	time.Sleep(waitamoment)
 
@@ -266,7 +275,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	onNotification := func(notif *msg.NotificationMessage) {
 		// the UI expects this format for triggering htmx
 		expectedType := fmt.Sprintf("event/dtw:%s:%s/%s", agentID, td1.ID, eventName)
-		if notif.Operation == expectedType {
+		if string(notif.AffordanceType) == expectedType {
 			messageCount.Add(1)
 		}
 		return
@@ -278,8 +287,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	// The hiveoview server only supports SSE on a fixed (WebSsePath) path
 	hiveoviewURL := fmt.Sprintf("https://localhost:%d%s", servicePort, service.WebSsePath)
 	for range testConnections {
-		sseCl, err := WebLogin(hiveoviewURL, clientID1,
-			onConnection, onNotification, nil, nil)
+		sseCl, err := WebLogin(hiveoviewURL, clientID1, onConnection, onNotification, nil, nil)
 		// an event streamm error occurs when auth fails
 		require.NoError(t, err)
 		require.NotNil(t, sseCl)
@@ -294,8 +302,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	require.Equal(t, testConnections, nrSessions)
 
 	// 3: agent publishes an event, which should be received N times
-	err = ag1.PubEvent(td1.ID, eventName, "a value")
-	require.NoError(t, err)
+	eThing.PubEvent(td1.ID, eventName, "a value")
 
 	// event should have been received N times
 	time.Sleep(time.Millisecond * 100)
@@ -317,16 +324,15 @@ func TestMultiConnectDisconnect(t *testing.T) {
 
 	// 5: no more messages should be received after disconnecting
 	messageCount.Store(0)
-	err = ag1.PubEvent(td1.ID, eventName, "a value")
-	require.NoError(t, err)
+	eThing.PubEvent(td1.ID, eventName, "a value")
 
 	// zero events should have been received
 	time.Sleep(waitamoment)
 	assert.Equal(t, int32(0), messageCount.Load(), "still receiving events afer disconnect")
 
 	// last, the service should have no connections
-	ag1.Disconnect()
-	avcAg.Disconnect()
+	eThing.Stop()
+	// avcAg.Disconnect()
 	time.Sleep(waitamoment)
 
 	// FIXME: currently one or two connections remain

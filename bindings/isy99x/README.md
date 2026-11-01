@@ -6,6 +6,7 @@ The intent of this binding implementation is to be able to use some basic device
 
 ## Status
 
+This binding is being reworked to use the hivekit IoT framework.
 This binding is a bare bones functional POC that is able to identify the Insteon device and issue basic commands.
 
 Limitations:
@@ -17,14 +18,20 @@ Limitations:
 6. no support for ISY ZWave or UPB  
 7. the vocabulary mapping of property/event/action names is inconsistent. This needs to be fixed in hiveot itself first. 
 
-Above restrictions can be fixed with some development and a working ISY/PLM for testing. Unfortunately
+Future:
+A planned improvement is to use ISY websocket interface.
+
+Other restrictions need further development. The question is whether it is worth the effort.
+
+
 
 ## Dependencies
 
 This binding requires the use of an ISY99x INSTEON gateway device and a PLM device modem for connecting to the power net.
+For testing this uses a simulation file.
 
 ## Configuration
 
-Edit isy99.yaml with the ISY99 gateway address and login name/password. The gateway can also be configured through the gateway node 'gatewayAddress' configuration.
+Edit isy99.yaml with the ISY99 gateway address and login name/password. The gateway can also be configured through the gateway Thing 'gatewayAddress' configuration.
 
-See config files in ./test as examples
+See config files in ./test as examples.

@@ -18,14 +18,14 @@ func main() {
 	env := api.NewHiveEnvironment("", true)
 
 	cfg := config.NewIPNetConfig()
-	_ = env.LoadConfig(&cfg)
+	_ = env.LoadConfig("ipnet", &cfg)
 
 	binding := service.NewIpNetBinding(cfg)
 
 	// link it to the RC device recipe that handles connections.
 	r, _, err := rcdevice_recipe.NewRCDeviceRecipe(env, binding)
 	if err != nil {
-		fmt.Println("Startup failed: " + err.Error())
+		fmt.Println("IPNet startup failed: " + err.Error())
 		os.Exit(1)
 	}
 	r.Run()

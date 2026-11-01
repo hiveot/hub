@@ -6,8 +6,8 @@ import (
 )
 
 type HubRuntime struct {
-	f api.IFactory
-	r *api.IHiveCell
+	f api.ICellFactory
+	r api.IHiveCell
 }
 
 func (rt *HubRuntime) Start() {
@@ -18,7 +18,7 @@ func (rt *HubRuntime) Stop() {
 	rt.r.Stop()
 }
 
-func NewHubRuntime(env *api.HiveEnvironment) (*HubRuntime, error) {
+func NewHubRuntime(env *api.HiveEnvironment) (*HubRuntime, api.ICellFactory, error) {
 
 	r, f, err := gatewayrecipe.NewGatewayRecipe(env)
 
@@ -26,5 +26,5 @@ func NewHubRuntime(env *api.HiveEnvironment) (*HubRuntime, error) {
 		r: r,
 		f: f,
 	}
-	return rt, err
+	return rt, f, err
 }

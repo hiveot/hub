@@ -39,7 +39,7 @@ type IsyGatewayThing struct {
 	config *config.Isy99xConfig
 
 	// REST/SOAP/WS connection to the ISY hub
-	gwAPI *isy.IsyAPI
+	gwAPI *isy.IsyGWAPI
 
 	// product identification map by {cat}.{subcat}
 	prodMap map[string]InsteonProduct
@@ -550,7 +550,7 @@ func (svc *IsyGatewayThing) RefreshStatus() error {
 // Start publishes the gateway TD, its properties and start the heartbeat
 func (svc *IsyGatewayThing) Start() {
 	tdoc := svc.MakeTD()
-	svc.PublishTD(tdoc)
+	svc.WriteTD(tdoc)
 
 	svc.stopHeartbeatFn = svc.startHeartbeat()
 }
@@ -595,7 +595,7 @@ func (svc *IsyGatewayThing) startHeartbeat() (stopFn func()) {
 		// publish node TDs and values
 		if isConnected && tdCountDown <= 0 {
 			tdoc := svc.MakeTD()
-			svc.PublishTD(tdoc)
+			svc.WriteTD(tdoc)
 			tdCountDown = svc.config.TDInterval
 			// after publishing the TD, republish all values
 			forceRepublish = true

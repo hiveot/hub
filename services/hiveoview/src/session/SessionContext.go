@@ -26,7 +26,7 @@ func AddSessionToContext(sm *WebSessionManager) func(next http.Handler) http.Han
 			//var hc transports.IConsumer
 
 			// get the current connection object
-			cs, clientID, cid, authToken, err := sm.GetSessionFromCookie(r)
+			sess, clientID, cid, authToken, err := sm.GetSessionFromCookie(r)
 			if err != nil {
 				// FIXME: if this is an SSE connection request then ask to back off
 				slog.Warn("Hiveoview.AddSessionToContext: No valid authentication. Redirect to login.",
@@ -46,8 +46,8 @@ func AddSessionToContext(sm *WebSessionManager) func(next http.Handler) http.Han
 				SessionLogout(w, r)
 				return
 			}
-			if cs != nil {
-				if !cs.IsActive() {
+			if sess != nil {
+				if !sess.IsActive() {
 					// this should normally not happen unless logout is called
 					slog.Error("Session available but it is disconnected from the hub")
 					http.Error(w, "session has no hub connection", http.StatusInternalServerError)
@@ -56,7 +56,7 @@ func AddSessionToContext(sm *WebSessionManager) func(next http.Handler) http.Han
 				}
 				// active session exists. make it available in the context
 				ctx := context.WithValue(r.Context(), SessionManagerContextID, sm)
-				ctx = context.WithValue(ctx, ClientSessionContextID, cs)
+				ctx = context.WithValue(ctx, ClientSessionContextID, sess)
 				next.ServeHTTP(w, r.WithContext(ctx))
 				return
 			}
@@ -75,7 +75,7 @@ func AddSessionToContext(sm *WebSessionManager) func(next http.Handler) http.Han
 				slog.String("Method", r.Method),
 				slog.String("RequestURI", r.RequestURI),
 			)
-			cs, err = sm.ConnectWithToken(w, r, clientID, cid, authToken)
+			sess, err = sm.ConnectWithToken(w, r, clientID, cid, authToken)
 			if err != nil {
 				slog.Warn("AddSessionToContext: Session is no longer valid. Redirect to login.",
 					slog.String("remoteAdd", r.RemoteAddr),
@@ -88,7 +88,7 @@ func AddSessionToContext(sm *WebSessionManager) func(next http.Handler) http.Han
 			//slog.Info("found session",
 			//	slog.String("clientID", status.SenderID),
 			//	slog.String("connected", string(status.ConnectionStatus)))
-			if !cs.IsActive() {
+			if !sess.IsActive() {
 				slog.Error("Session just added but shows as disconnected from the hub")
 				http.Error(w, "session has no hub connection", http.StatusInternalServerError)
 				return
@@ -96,7 +96,7 @@ func AddSessionToContext(sm *WebSessionManager) func(next http.Handler) http.Han
 
 			// make the session is available through the context
 			ctx := context.WithValue(r.Context(), SessionManagerContextID, sm)
-			ctx = context.WithValue(ctx, ClientSessionContextID, cs)
+			ctx = context.WithValue(ctx, ClientSessionContextID, sess)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

@@ -1,17 +1,14 @@
 package service
 
 import (
-	"log/slog"
-
 	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/api/vocab"
-	jsoniter "github.com/json-iterator/go"
 )
 
 // MakeBindingTD generates a TD document for this binding
 // containing configuration properties, event and action definitions
 func (svc *IPNetBinding) MakeBindingTD() *td.TD {
-	tdi := td.NewTD(svc.config.AgentID, "IPNet binding", vocab.DeviceTypeService)
+	tdi := td.NewTD(svc.config.ThingID, "IPNet binding", vocab.DeviceTypeService)
 
 	// these are configured through the configuration file.
 	prop := tdi.AddPropertyAsInt(vocab.PropDevicePollinterval, "Poll Interval", "")
@@ -56,27 +53,7 @@ func (svc *IPNetBinding) MakeDeviceTD(deviceInfo *IPDeviceInfo) *td.TD {
 	return tdi
 }
 
-func (svc *IPNetBinding) PubBindingTD() error {
-	tdi := svc.MakeBindingTD()
-	tdJSON, _ := jsoniter.MarshalToString(tdi)
-	err := svc.ag.WriteTD(tdJSON)
-	//err := svc.ag.UpdateThing(tdi)
-	if err != nil {
-		slog.Error("failed publishing service TD. Continuing...",
-			slog.String("err", err.Error()))
-	}
-	return err
-}
-
-func (svc *IPNetBinding) PubDeviceTD(deviceInfo *IPDeviceInfo) error {
-	tdi := svc.MakeDeviceTD(deviceInfo)
-	tdJSON, _ := jsoniter.MarshalToString(tdi)
-	err := svc.ag.WriteTD(tdJSON)
-	//err := svc.ag.UpdateThing(tdi)
-	if err != nil {
-		slog.Error("failed publishing device TD. Continuing...",
-			slog.String("deviceID", deviceInfo.IP4),
-			slog.String("err", err.Error()))
-	}
-	return err
+func (svc *IPNetBinding) PubDeviceTD(deviceInfo *IPDeviceInfo) {
+	tdoc := svc.MakeDeviceTD(deviceInfo)
+	svc.WriteTD(tdoc)
 }

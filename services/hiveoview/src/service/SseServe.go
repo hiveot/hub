@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/hiveot/hivekit/go/cells/transport/ssesc"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 )
 
@@ -23,8 +24,8 @@ func SseServe(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream")
 
 	// An active session is required before accepting the request
-	_, cs, err := session.GetSessionFromContext(r)
-	if cs == nil || err != nil {
+	_, sess, err := session.GetSessionFromContext(r)
+	if sess == nil || err != nil {
 		slog.Warn("SSE Connection attempt but no session exists. Delay retry to 10 seconds",
 			"remoteAddr", r.RemoteAddr)
 
@@ -40,17 +41,17 @@ func SseServe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// request the session event channel
-	sseChan := cs.NewSseChan()
+	sseChan := sess.NewSseChan()
 	// _send a ping event as the go-sse client doesn't have a 'connected callback'
 	// (borrow the event name from the transports SSE server)
-	pingEvent := session.SSEEvent{Event: SSEPingEvent}
+	pingEvent := session.SSEEvent{Event: ssesc.SSEPingEvent}
 	sseChan <- pingEvent
 
-	clientID := cs.GetConsumer().GetClientID()
+	// clientID := cs.GetID()
 
 	slog.Debug("SseServe. New SSE incoming connection",
-		slog.String("clientID", clientID),
-		slog.String("clcid", cs.GetCLCID()),
+		slog.String("clientID", sess.GetClientID()),
+		slog.String("clcid", sess.GetCLCID()),
 		slog.String("RemoteAddr", r.RemoteAddr),
 	)
 	//var sseMsg SSEEvent
@@ -64,7 +65,7 @@ func SseServe(w http.ResponseWriter, r *http.Request) {
 			slog.Debug("Remote client disconnected (read context)")
 			// close channel in the background when no-one is writing
 			// in the meantime keep reading. (DeleteSSEChan uses mutex lock)
-			go cs.HandleWebConnectionClosed()
+			go sess.HandleWebConnectionClosed()
 		}
 	}()
 
@@ -75,7 +76,7 @@ func SseServe(w http.ResponseWriter, r *http.Request) {
 		case sseMsg, ok := <-sseChan: // received event
 			slog.Debug("SseServe: received event from sseChan",
 				slog.String("remote", r.RemoteAddr),
-				slog.String("clientID", clientID),
+				slog.String("clientID", sess.GetClientID()),
 				slog.String("event", sseMsg.Event),
 				slog.Bool("ok", ok),
 			)

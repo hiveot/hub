@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hiveot/hivekit/go/cells/thing"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/bindings/weather"
 	"github.com/hiveot/hub/bindings/weather/providers"
@@ -13,6 +14,7 @@ import (
 // the key under which custom Thing titles are stored in the state service
 const weatherLocationsKey = "weatherLocations"
 const DefaultWeatherProvider = providers.OpenMeteoProviderID
+const DefaultWeatherServiceID = "weather"
 
 // WeatherService is the hub protocol binding plugin for integrating with Open-Meteo weather provider.
 type WeatherService struct {
@@ -41,7 +43,7 @@ type WeatherService struct {
 func (svc *WeatherService) AddLocation(loc weather.WeatherLocation) error {
 	err := svc.locationStore.Add(loc)
 	if err == nil {
-		err = PublishLocationTD(svc.Agent, svc.cfg, loc)
+		svc.PublishLocationTD(loc)
 	}
 	return err
 }
@@ -75,31 +77,14 @@ func (svc *WeatherService) RemoveLocation(thingID string) {
 }
 
 // Start the weather binding using the given agent
-func (svc *WeatherService) Start() error {
+func (svc *WeatherService) Start() {
 
-	// load the saved and add the pre-configured locations
-	// Note that this will remove any modifications
-	err := svc.locationStore.Open()
-	for id, loc := range svc.cfg.Locations {
-		loc.ID = id
-		_ = svc.locationStore.Add(loc)
-	}
+	svc.PublishBindingTD()
+	svc.PublishLocationTDs()
 
-	if err == nil {
-		err = PublishBindingTD(svc.Agent, svc.cfg)
-	}
-	if err == nil {
-		err = PublishLocationTDs(svc.Agent, svc.cfg, svc.locationStore)
-	}
-	if err == nil {
-		slog.Info("Starting heartBeat")
-		svc.stopFn = utils.StartHeartbeat(time.Second*60, svc.heartBeat)
-	}
-	if err != nil {
-		svc.Stop()
-	}
+	slog.Info("Starting heartBeat")
+	svc.stopFn = utils.StartHeartbeat(time.Second*60, svc.heartBeat)
 
-	return err
 }
 
 // Stop the service and heartbeat
@@ -112,17 +97,31 @@ func (svc *WeatherService) Stop() {
 
 // NewWeatherService creates a new weather service binding
 //
-// co is the link to the consumer sending requests and consuming notifications, like an RC Agent or a server chain. nil to manually link.
-// storePath where to store weather configuration
-// cfg weather configuration
-func NewWeatherService(storePath string, cfg *weather.WeatherConfig) *WeatherService {
+//	serviceID is the thingID of the weather service, "" for default
+//	storePath where to store weather configuration
+//	cfg weather configuration
+func NewWeatherService(serviceID string, storePath string, cfg *weather.WeatherConfig) (*WeatherService, error) {
+
+	if serviceID == "" {
+		serviceID = DefaultWeatherServiceID
+	}
+	locationStore, err := NewLocationStore(storePath)
+	if err != nil {
+		return nil, err
+	}
+	// load the saved and add the pre-configured locations
+	// Note that this will remove any modifications to the locations
+	for id, loc := range cfg.Locations {
+		loc.ID = id
+		_ = locationStore.Add(loc)
+	}
 
 	// these are from hub configuration
 	svc := &WeatherService{
-		ExposedThing:           thing.NewExposedThing(appID, nil),
+		ExposedThing:           thing.NewExposedThing(serviceID, nil),
 		cfg:                    cfg,
 		providers:              make(map[string]providers.IWeatherProvider),
-		locationStore:          NewLocationStore(storePath),
+		locationStore:          locationStore,
 		currentWeather:         make(map[string]providers.CurrentWeather),
 		lastCurrentPoll:        make(map[string]time.Time),
 		hourlyForecasts:        make(map[string]providers.HourlyWeatherForecast),
@@ -132,5 +131,5 @@ func NewWeatherService(storePath string, cfg *weather.WeatherConfig) *WeatherSer
 	svc.providers[providers.OpenMeteoProviderID] = providers.NewOpenMeteoProvider()
 	//svc.providers[providers.EnvCanadaProviderID] = providers.NewEnvCanadaProvider()
 
-	return svc
+	return svc, err
 }

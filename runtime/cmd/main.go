@@ -19,14 +19,14 @@ func main() {
 
 	env := api.NewHiveEnvironment("", true)
 	utils.SetLogging(env.LogLevel, "")
-	hub, err := pkg.NewHubRuntime(env)
+	hub, f, err := pkg.NewHubRuntime(env)
 
 	if err != nil {
 		fmt.Println("Runtime startup failed: " + err.Error())
 		os.Exit(1)
 	}
 	fmt.Printf("main: homeDir: %s\n", env.HomeDir)
-	fmt.Printf("main: Hub is running and listening on '%v'\n", hub.f.GetConnectURLs())
+	fmt.Printf("main: Hub is running and listening on '%v'\n", f.GetConnectURLs())
 
 	// Startup Successful
 	// wait until signal
