@@ -1,8 +1,8 @@
 package internal
 
 import (
-	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/api/vocab"
+	"github.com/hiveot/hivekit/go/api/wot"
 	"github.com/hiveot/hub/bindings/owserver/internal/eds"
 )
 
@@ -11,7 +11,7 @@ import (
 // - Writable non-sensors attributes are marked as writable configuration
 // - Sensors are also added as events.
 // - Writable sensors are also added as actions.
-func (svc *OWServer) CreateTDFromNode(node *eds.OneWireNode) (tdoc *td.TD) {
+func (svc *OWServer) CreateTDFromNode(node *eds.OneWireNode) (tdoc *wot.TD) {
 
 	// Should we bother with the URI? In HiveOT things have pubsub addresses that include the ID. The ID is not the address.
 	//thingID := things.CreateThingID(svc.config.ID, node.NodeID, node.DeviceType)
@@ -25,7 +25,7 @@ func (svc *OWServer) CreateTDFromNode(node *eds.OneWireNode) (tdoc *td.TD) {
 		deviceType = vocab.Device
 	}
 	thingTitle := node.Name
-	tdoc = td.NewTD(thingID, thingTitle, deviceType)
+	tdoc = wot.NewTD(thingID, thingTitle, deviceType)
 	tdoc.UpdateTitleDescription(thingTitle, node.Description)
 
 	// Add a writable 'title' property so consumer can edit the device's title.
@@ -33,7 +33,7 @@ func (svc *OWServer) CreateTDFromNode(node *eds.OneWireNode) (tdoc *td.TD) {
 	// The UI should prefer a title property over the TD title.
 	// how does the dtw know if to forward a title property write request?
 	//  look into the device's TD
-	prop := tdoc.AddProperty(td.WoTTitle, "Title", "", td.DataTypeString)
+	prop := tdoc.AddProperty(wot.WoTTitle, "Title", "", wot.DataTypeString)
 	prop.SetAtType(vocab.PropDeviceTitle)
 	prop.ReadOnly = false
 
@@ -68,11 +68,11 @@ func (svc *OWServer) CreateTDFromNode(node *eds.OneWireNode) (tdoc *td.TD) {
 			}
 		}
 		if attrInfo.IsEvent {
-			var evSchema *td.DataSchema
+			var evSchema *wot.DataSchema
 			// only add data schema if the event carries a value
-			if attrInfo.DataType != td.DataTypeNone {
+			if attrInfo.DataType != wot.DataTypeNone {
 				unit, _ := UnitNameVocab[attr.Unit]
-				evSchema = &td.DataSchema{
+				evSchema = &wot.DataSchema{
 					Type:     attrInfo.DataType,
 					Unit:     unit,
 					ReadOnly: true,
@@ -83,11 +83,11 @@ func (svc *OWServer) CreateTDFromNode(node *eds.OneWireNode) (tdoc *td.TD) {
 				SetAtType(attrInfo.VocabType)
 		}
 		if attrInfo.IsActuator {
-			var inputSchema *td.DataSchema
+			var inputSchema *wot.DataSchema
 			// only add data schema if the action accepts parameters
-			if attrInfo.DataType != td.DataTypeNone {
+			if attrInfo.DataType != wot.DataTypeNone {
 				unit, _ := UnitNameVocab[attr.Unit]
-				inputSchema = &td.DataSchema{
+				inputSchema = &wot.DataSchema{
 					Type:      attrInfo.DataType,
 					Unit:      unit,
 					ReadOnly:  false,

@@ -12,7 +12,8 @@ import (
 
 	"github.com/hiveot/hivekit/go/api"
 	"github.com/hiveot/hivekit/go/api/msg"
-	"github.com/hiveot/hivekit/go/api/td"
+	"github.com/hiveot/hivekit/go/api/wot"
+	ssesc_client "github.com/hiveot/hivekit/go/cells/transport/ssesc/client"
 	"github.com/hiveot/hivekit/go/cells/transport/tlsclient"
 	"github.com/hiveot/hivekit/go/testenv"
 	"github.com/hiveot/hivekit/go/utils"
@@ -39,7 +40,7 @@ var testEnv *testenv.TestEnv
 
 // return the form with href for login operations to the hiveoview server
 // these must match the paths in hiveoview createRoutes.
-func getHiveoviewForm(op, thingID, name string) *td.Form {
+func getHiveoviewForm(op, thingID, name string) *wot.Form {
 	var href string
 	var method string
 	switch op {
@@ -58,7 +59,7 @@ func getHiveoviewForm(op, thingID, name string) *td.Form {
 	default:
 		panic("Unexpected operation: " + op)
 	}
-	f := td.NewForm(op, href)
+	f := wot.NewForm(op, href)
 	f.SetMethodName(method)
 	return &f
 }
@@ -87,9 +88,13 @@ func WebLogin(sseURL string, clientID string,
 	// htmx sse triggers rely on this format. (for now)
 	// FIXME: can htmx sse trigger using additional fields (type=notification, thingID/name=blah?)
 	// or is this too painful in htmx.
-	sseCl := ssesc_client.NewHiveotSseClient(sseURL,
-		clientID, nil, testEnv.CertBundle.CaCert,
-		getHiveoviewForm, time.Minute)
+	sseCl := ssesc_client.NewSseScClient(
+		sseURL,
+		testEnv.CertBundle.CaCert,
+		getHiveoviewForm)
+
+	sseCl.SetTimeout(time.Minute)
+	err = sseCl.SetAuthToken(clientID, authToken)
 
 	// hiveoview uses a different login path as the hub
 	//sseCl.SetSSEPath(service.WebSsePath)

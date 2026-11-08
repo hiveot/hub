@@ -13,7 +13,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/hiveot/hivekit/go/api"
 	"github.com/hiveot/hivekit/go/api/msg"
-	"github.com/hiveot/hivekit/go/api/td"
+	"github.com/hiveot/hivekit/go/api/wot"
 	"github.com/hiveot/hivekit/go/cells/thing"
 	"github.com/hiveot/hivekit/go/cells/transport/wss"
 	"github.com/hiveot/hivekit/go/utils"
@@ -178,7 +178,7 @@ func (svc *LauncherService) Start() {
 
 	// publish this service TD if connected to a directory or discovery
 	if svc.cfg.WriteTD {
-		tdoc, err := td.UnmarshalTD(string(tm.LauncherTM))
+		tdoc, err := wot.UnmarshalTD(string(tm.LauncherTM))
 		if err == nil {
 			err = svc.WriteTD(tdoc)
 		}

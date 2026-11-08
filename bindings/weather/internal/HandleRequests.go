@@ -5,8 +5,8 @@ import (
 	"log/slog"
 
 	"github.com/hiveot/hivekit/go/api/msg"
-	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/api/vocab"
+	"github.com/hiveot/hivekit/go/api/wot"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/bindings/weather"
 )
@@ -17,7 +17,7 @@ func (svc *WeatherService) HandleRequest(
 
 	var err error
 
-	if req.Operation == td.OpWriteProperty {
+	if req.Operation == wot.OpWriteProperty {
 		return svc.handleConfigRequest(req, replyTo)
 	}
 

@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/hiveot/hivekit/go/api/td"
+	"github.com/hiveot/hivekit/go/api/wot"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/services/hiveoview/src"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
@@ -17,13 +17,13 @@ const RenderConfirmDeleteTDTemplate = "DeleteTD.gohtml"
 
 type ConfirmDeleteTDTemplateData struct {
 	ThingID            string
-	TD                 *td.TD
+	TD                 *wot.TD
 	SubmitDeleteTDPath string
 }
 
 func RenderConfirmDeleteTD(w http.ResponseWriter, r *http.Request) {
 	thingID := chi.URLParam(r, "thingID")
-	var tdoc *td.TD
+	var tdoc *wot.TD
 
 	// Read the TD being displayed and its latest values
 	_, sess, err := session.GetSessionFromContext(r)
@@ -52,7 +52,7 @@ func RenderConfirmDeleteTD(w http.ResponseWriter, r *http.Request) {
 // SubmitDeleteTD handles removal of a thing TD document
 func SubmitDeleteTD(w http.ResponseWriter, r *http.Request) {
 	thingID := chi.URLParam(r, "thingID")
-	tdi := td.TD{}
+	tdi := wot.TD{}
 
 	// get the hub client connection and read the existing TD
 	_, sess, err := session.GetSessionFromContext(r)

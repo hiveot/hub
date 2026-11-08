@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/hiveot/hivekit/go/api/td"
+	"github.com/hiveot/hivekit/go/api/wot"
 
 	"github.com/hiveot/hub/bindings/owserver/internal/eds"
 )
@@ -65,7 +65,7 @@ func (svc *OWServer) PublishNodeValues(nodes []*eds.OneWireNode, force bool) (er
 		// inject the writable device title, if set. Default is model name.
 		deviceTitleByte, _ := svc.customTitles.Get(thingID)
 		if deviceTitleByte != nil && force {
-			propMap[td.WoTTitle] = string(deviceTitleByte)
+			propMap[wot.WoTTitle] = string(deviceTitleByte)
 		}
 		// first and unknown values are always changed
 		for attrID, attr := range node.Attr {
@@ -112,7 +112,7 @@ func (svc *OWServer) PublishNodeValues(nodes []*eds.OneWireNode, force bool) (er
 // GetValueChange parses the attribute value and track changes to the
 // value.
 func (svc *OWServer) GetValueChange(
-	attrName string, attrValue string, info AttrConversion, tdDoc *td.TD) (
+	attrName string, attrValue string, info AttrConversion, tdDoc *wot.TD) (
 	value any, changed bool) {
 
 	var err error
@@ -122,7 +122,7 @@ func (svc *OWServer) GetValueChange(
 	prevValue, prevFound := svc.getPrevValue(tdDoc.ID, attrName)
 
 	switch info.DataType {
-	case td.DataTypeNumber:
+	case wot.DataTypeNumber:
 		valueFloat, err2 := strconv.ParseFloat(attrValue, 32)
 		prec := math.Pow10(info.Precision)
 		roundedInt := int(valueFloat * prec)
@@ -143,7 +143,7 @@ func (svc *OWServer) GetValueChange(
 		// return the rounded /truncated result
 		value = roundedFloat
 
-	case td.DataTypeInteger, td.DataTypeUnsignedInt:
+	case wot.DataTypeInteger, wot.DataTypeUnsignedInt:
 		valueInt64, err2 := strconv.ParseInt(attrValue, 10, 32)
 		valueInt := int(valueInt64)
 		err = err2
@@ -162,7 +162,7 @@ func (svc *OWServer) GetValueChange(
 		}
 		value = valueInt
 
-	case td.DataTypeBool:
+	case wot.DataTypeBool:
 		valueBool, err2 := strconv.ParseBool(attrValue)
 		err = err2
 		if prevFound {

@@ -3,7 +3,7 @@ package directory
 import (
 	"sort"
 
-	"github.com/hiveot/hivekit/go/api/td"
+	"github.com/hiveot/hivekit/go/api/wot"
 )
 
 // ReadDirLimit is the maximum amount of TDs to read in one call
@@ -12,11 +12,11 @@ import (
 // AgentThings holds a collection of Things from an agent
 type AgentThings struct {
 	AgentID string
-	Things  []*td.TD
+	Things  []*wot.TD
 }
 
 // GroupByAgent groups Things by agent and sorts them by Thing title
-func GroupByAgent(tds []*td.TD) []*AgentThings {
+func GroupByAgent(tds []*wot.TD) []*AgentThings {
 	agentMap := make(map[string]*AgentThings)
 
 	// first split the things by their agent (reverse connection ID?)
@@ -26,7 +26,7 @@ func GroupByAgent(tds []*td.TD) []*AgentThings {
 		if !found {
 			agentGroup = &AgentThings{
 				AgentID: agentID,
-				Things:  make([]*td.TD, 0),
+				Things:  make([]*wot.TD, 0),
 			}
 			agentMap[agentID] = agentGroup
 		}
@@ -36,7 +36,7 @@ func GroupByAgent(tds []*td.TD) []*AgentThings {
 	agentsList := make([]*AgentThings, 0, len(agentMap))
 	for _, grp := range agentMap {
 		agentsList = append(agentsList, grp)
-		td.SortThingsByTitle(grp.Things)
+		wot.SortThingsByTitle(grp.Things)
 	}
 	// last sort the agents
 	sort.Slice(agentsList, func(i, j int) bool {

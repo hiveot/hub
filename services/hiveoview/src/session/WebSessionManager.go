@@ -2,7 +2,6 @@ package session
 
 import (
 	"crypto/ed25519"
-	"crypto/x509"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -10,11 +9,8 @@ import (
 	"time"
 
 	"github.com/hiveot/hivekit/go/api"
-	"github.com/hiveot/hivekit/go/api/td"
 	authn_client "github.com/hiveot/hivekit/go/cells/authn/client"
 	"github.com/hiveot/hivekit/go/cells/bucketstore"
-	"github.com/hiveot/hivekit/go/cells/consumer"
-	"github.com/hiveot/hivekit/go/cells/transport/clients"
 )
 
 // WebSessionManager tracks client sessions using session cookies
@@ -26,15 +22,21 @@ type WebSessionManager struct {
 	sessions map[string]*WebClientSession
 	// mutex to access the sessions
 	mux sync.RWMutex
+
 	// signing key for creating and verifying cookies
 	signingKey ed25519.PrivateKey
 	pubKey     ed25519.PublicKey
 
+	// copy of the environment used to connect to the hub
+	// Do not make this a pointer as this is used as a template for
+	// sessions, each with its own clientID and auth.
+	env api.HiveEnvironment
+
 	// Full Hub address for new sessions
-	hubURL string
+	// hubURL string
 
 	// Hub CA certificates
-	rootCAs *x509.CertPool
+	// rootCAs *x509.CertPool
 	// this service's agent for publishing events
 	// ag *thing.ExposedThing
 
@@ -47,21 +49,21 @@ type WebSessionManager struct {
 	onSessionEnded func(*WebClientSession, int)
 
 	// timeout for hub connections
-	timeout time.Duration
+	// timeout time.Duration
 }
 
 // add a new session with the given hub connection and send a session count event
 func (sm *WebSessionManager) _addSession(
-	r *http.Request, cid string, cc api.ITransportClient) (
+	r *http.Request, cid string, recipe *SessionRecipe) (
 	cs *WebClientSession, err error) {
 
 	// if the browser does not provide a CID until after the first connection,
 	// then browser refresh (F5) will replace this non-cid connection.
 	// (htmx sse-connect doesn't provide a cid in spite of hx-header field)
 	//
-	// FIXME: the first connection (without cid) doesn't shutdown until it gains
+	// FIXME: the first connection (without cid) doesn't shutdown until it obtains
 	// a sse connection and loses it again.
-	clientID := cc.GetClientID()
+	clientID := recipe.GetConnection().GetClientID()
 
 	sm.mux.Lock()
 	clcid := clientID + "-" + cid
@@ -71,6 +73,7 @@ func (sm *WebSessionManager) _addSession(
 		// This it can happen if a client invokes connect-with-password or token, and
 		// provides an existing or empty cid.
 		// Instead of throwing out the session, replace the consumer connection.
+		// This should not happen often.
 		cs = existingSession
 		//exhccid := existingSession.cid //GetConnectionID()
 		slog.Warn("session with clcid already exists. replace its connection.",
@@ -82,13 +85,14 @@ func (sm *WebSessionManager) _addSession(
 		// session (plus its waiting for a lock).
 		// If the connection has been replaced then it won't match so ignore the
 		// callback if the connection differs.
-		existingSession.ReplaceConnection(cc)
+		existingSession.ReplaceConnection(recipe)
 	} else {
-		co := consumer.NewConsumer(cc, nil)
-		co.SetTimeout(sm.timeout)
+		// co := consumer.NewConsumer(cc, nil)
+		// co.SetTimeout(sm.timeout)
 		clientBucket := sm.configStore.GetBucket(clientID)
 
-		cs = NewWebClientSession(cid, cc, r.RemoteAddr, clientBucket, sm.onClose)
+		cs, err = NewWebClientSession(
+			recipe, cid, r.RemoteAddr, clientBucket, sm.onClose)
 	}
 	sm.sessions[cs.clcid] = cs
 	nrSessions := len(sm.sessions)
@@ -149,7 +153,8 @@ func (sm *WebSessionManager) _removeSession(cs *WebClientSession) {
 	}()
 }
 
-// CloseAllWebSessions disconnects all the web client sessions by disconnecting the client side
+// CloseAllWebSessions disconnects all the web client sessions by disconnecting
+// the client side.
 func (sm *WebSessionManager) CloseAllWebSessions() {
 	sm.mux.RLock()
 	// shallow copy of the map into an array of remaining sesions
@@ -159,8 +164,8 @@ func (sm *WebSessionManager) CloseAllWebSessions() {
 	}
 	sm.mux.RUnlock()
 	for _, sess := range sessions {
-		slog.Warn("CloseAllWebSessions", "clientID", sess.cc.GetID())
-		sess.cc.Stop()
+		slog.Warn("CloseAllWebSessions", "clientID", sess.GetClientID())
+		sess.recipe.Stop()
 	}
 }
 
@@ -200,39 +205,49 @@ func (sm *WebSessionManager) HandleConnectWithPassword(
 	w http.ResponseWriter, r *http.Request,
 	loginID string, password string, cid string) (newToken string, err error) {
 
-	// Authentication uses its own client that knows the auth protocol
-	parts, _ := url.Parse(sm.hubURL)
-	authCl := authn_client.NewUserAuthnHttpClient(parts.Host, sm.rootCAs)
-	authCl.SetTimeout(sm.timeout)
-
-	// attempt to login
+	// Obtain the client's auth token by logging in using the http client
+	parts, _ := url.Parse(sm.env.ServerURL)
+	authCl := authn_client.NewUserAuthnHttpClient(parts.Host, sm.env.GetRootCAs())
+	authCl.SetTimeout(sm.env.RpcTimeout)
 	newToken, err = authCl.LoginWithPassword(loginID, password)
-
 	if err != nil {
+		// well that didnt work as expected
 		return "", err
 	}
-	// FIXME: use the session's directory cache to get the form
-	// cc, err := clients.ConnectWithToken(loginID, newToken, sm.caCert, sm.hubURL, sm.timeout)
-	cc, err := clients.NewTransportClientFromURL("", sm.hubURL, sm.rootCAs)
-	cc.SetTimeout(sm.timeout)
-	cc.SetAuthToken(loginID, newToken, td.SecSchemeBearer)
-	err = cc.Connect()
-	if err == nil {
-		if cid != "" {
-			_, err = sm._addSession(r, cid, cc)
-			_ = err
-		} else {
-			cc.Close()
-		}
-		// Update the session cookie with the new auth token (default 14 days)
-		maxAge := time.Hour * 24 * 14
-		err = SetSessionCookie(w, loginID, newToken, maxAge, sm.signingKey)
 
-		// this will prevent a redirect from working
-		//newTokenJSON, _ := jsoniter.Marshal(newToken)
-		//w.Write(newTokenJSON)
-	}
+	cs, err := sm.ConnectWithToken(w, r, loginID, newToken, cid)
+	_ = cs
 	return newToken, err
+
+	// clone the hub environment settings for the new client connection
+	// env := sm.env // (env is a struct, not a pointer)
+	// env.ClientID = loginID
+	// env.SetAuthToken(newToken)
+	// // One recipe per client session. Clearly not for large numbers.
+	// recipe, err := NewSessionRecipe(&env)
+
+	// // FIXME: use the session's directory cache to get the form
+	// // cc, err := clients.ConnectWithToken(loginID, newToken, sm.caCert, sm.hubURL, sm.timeout)
+	// // cc, err := clients.NewTransportClientFromURL("", sm.hubURL, sm.rootCAs)
+	// cc.SetTimeout(sm.timeout)
+	// cc.SetAuthToken(loginID, newToken, td.SecSchemeBearer)
+	// err = cc.Connect()
+	// if err == nil {
+	// 	if cid != "" {
+	// 		_, err = sm._addSession(r, cid, cc)
+	// 		_ = err
+	// 	} else {
+	// 		cc.Close()
+	// 	}
+	// 	// Update the session cookie with the new auth token (default 14 days)
+	// 	maxAge := time.Hour * 24 * 14
+	// 	err = SetSessionCookie(w, loginID, newToken, maxAge, sm.signingKey)
+
+	// 	// this will prevent a redirect from working
+	// 	//newTokenJSON, _ := jsoniter.Marshal(newToken)
+	// 	//w.Write(newTokenJSON)
+	// }
+	// return newToken, err
 }
 
 // ConnectWithToken logs-in to the hub using the given valid auth token.
@@ -255,23 +270,31 @@ func (sm *WebSessionManager) ConnectWithToken(
 	slog.Info("ConnectWithToken",
 		"loginID", loginID, "cid", cid, "remoteAddr", r.RemoteAddr,
 		"nr websessions", len(sm.sessions))
-	//var newToken string
-	cc, err := clients.NewTransportClientFromURL(sm.hubURL, "", sm.rootCAs)
-	cc.SetAuthToken(loginID, authToken, td.SecSchemeBearer)
-	cc.SetTimeout(sm.timeout)
-	err = cc.Connect()
+
+	// clone the hub environment settings for the new client connection
+	env := sm.env // (env is a struct, not a pointer)
+	env.ClientID = loginID
+	env.SetAuthToken(authToken)
+	// One recipe per client session. Clearly not for large numbers.
+	recipe, err := NewSessionRecipe(&env)
+
+	// 	//var newToken string
+	// cc, err := clients.NewTransportClientFromURL(sm.hubURL, "", sm.rootCAs)
+	// cc.SetAuthToken(loginID, authToken, td.SecSchemeBearer)
+	// cc.SetTimeout(sm.timeout)
+	// err = cc.Connect()
 	// cc, err := clients.ConnectWithToken(
 	// loginID, authToken, sm.rootCAs, sm.hubURL, sm.timeout)
 	if err == nil {
-		cs, err = sm._addSession(r, cid, cc)
+		cs, err = sm._addSession(r, cid, recipe)
 		_ = err
 		// Update the session cookie with the new auth token (default 14 days)
 		maxAge := time.Hour * 24 * 14
 		err = SetSessionCookie(w, loginID, authToken, maxAge, sm.signingKey)
 	}
-
 	return cs, err
 }
+
 func (sm *WebSessionManager) GetNrSessions() int {
 	sm.mux.RLock()
 	defer sm.mux.RUnlock()
@@ -340,37 +363,37 @@ func (sm *WebSessionManager) GetSessionFromCookie(r *http.Request) (
 // An 'exposed thing' hub connection must be provided for having the service
 // publish connect/disconnect notifications and handling config
 //
+//	env is the hub environment used for new web client connections to the hub.
 //	onSessionStarted callback to invoke when a new session started
 //	onSessionEnded callback to invoke when a session ended
 //	full URL to connect the session to the hub
 //	signingKey for use with session cookies
-//	rootCAs of the hub
 //	configStore data store for client configuration
-//	timeout of hub connections
 func NewWebSessionManager(
+	env api.HiveEnvironment,
 	onSessionStarted func(*WebClientSession, int),
 	onSessionEnded func(*WebClientSession, int),
-	hubURL string,
 	// ag *thing.ExposedThing,
-	signingKey ed25519.PrivateKey, rootCAs *x509.CertPool,
+	signingKey ed25519.PrivateKey,
 	configStore bucketstore.IBucketStore,
-	timeout time.Duration) *WebSessionManager {
+) *WebSessionManager {
 
 	// cc := ag.GetConnection()
 	// cinfo := cc.GetConnectionInfo()
 	// hubURL := cinfo.ConnectURL
 	sm := &WebSessionManager{
+		env:              env,
 		sessions:         make(map[string]*WebClientSession),
 		mux:              sync.RWMutex{},
 		onSessionStarted: onSessionStarted,
 		onSessionEnded:   onSessionEnded,
 		signingKey:       signingKey,
 		pubKey:           signingKey.Public().(ed25519.PublicKey),
-		hubURL:           hubURL,
-		rootCAs:          rootCAs,
+		// hubURL:           hubURL,
+		// rootCAs:          rootCAs,
 		// ag:               ag,
 		configStore: configStore,
-		timeout:     timeout,
+		// timeout:     timeout,
 	}
 	return sm
 }

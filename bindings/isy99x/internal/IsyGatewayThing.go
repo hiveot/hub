@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/hiveot/hivekit/go/api/msg"
-	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/api/vocab"
+	"github.com/hiveot/hivekit/go/api/wot"
 	"github.com/hiveot/hivekit/go/cells/thing"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/bindings/isy99x/config"
@@ -270,12 +270,12 @@ func (svc *IsyGatewayThing) HandleRequest(
 	// request is either for this gateway or gateway nodes
 	if req.ThingID == svc.GetID() {
 		switch req.Operation {
-		case td.OpInvokeAction:
+		case wot.OpInvokeAction:
 			// FIXME-1: how to determine the output of an action with ISY?
 			// FIXME-2: how to determine an action has completed?
 			// nothing to do
 			err = fmt.Errorf("HandleGatewayRequest: Unknown action '%s'", req.Name)
-		case td.OpWriteProperty:
+		case wot.OpWriteProperty:
 			err = svc.HandleConfigRequest(req, replyTo)
 		default:
 			// handle property read operations
@@ -328,17 +328,18 @@ func (svc *IsyGatewayThing) HandleConfigRequest(
 }
 
 // MakeTD returns the Gateway TD document
-func (svc *IsyGatewayThing) MakeTD() *td.TD {
+func (svc *IsyGatewayThing) MakeTD() *wot.TD {
 
-	tdoc := td.NewTD(svc.GetID(), svc.Configuration.DeviceSpecs.Model, vocab.DeviceNetGateway)
+	tdoc := wot.NewTD(svc.GetID(), svc.Configuration.DeviceSpecs.Model, vocab.DeviceNetGateway)
 	tdoc.Description = svc.Configuration.DeviceSpecs.Make + "-" + svc.Configuration.DeviceSpecs.Model
 
 	//--- connection and polling info
-	prop := tdoc.AddProperty(vocab.PropNetConnection, "Connected", "Device is connected", td.DataTypeBool).
+	prop := tdoc.AddProperty(vocab.PropNetConnection, "Connected", "Device is connected", wot.DataTypeBool).
 		SetAtType(vocab.PropNetConnection)
 	prop.Description = "Whether the a connection to the ISY gateway exists"
 
-	prop = tdoc.AddProperty(vocab.PropDevicePollinterval, "Poll Interval", "Poll for updates in seconds", td.DataTypeInteger).
+	prop = tdoc.AddProperty(vocab.PropDevicePollinterval,
+		"Poll Interval", "Poll for updates in seconds", wot.DataTypeInteger).
 		SetAtType(vocab.PropDevicePollinterval)
 	prop.Description = "Interval the binding polls the gateway for data value updates."
 	prop.Unit = vocab.UnitSecond
@@ -352,7 +353,7 @@ func (svc *IsyGatewayThing) MakeTD() *td.TD {
 	// prop.ReadOnly = false
 	// prop.WriteOnly = true
 
-	// prop = tdoc.AddProperty(vocab.PropNetAddress, "Network Address", "", td.DataTypeString).
+	// prop = tdoc.AddProperty(vocab.PropNetAddress, "Network Address", "", wot.DataTypeString).
 	// 	SetAtType(vocab.PropNetAddress)
 	// prop.Description = "ISY99x gateway IP address; empty to auto discover."
 	// prop.ReadOnly = false
@@ -360,7 +361,7 @@ func (svc *IsyGatewayThing) MakeTD() *td.TD {
 	// events
 	tdoc.AddEvent(vocab.PropNetConnection,
 		"Connection changed", "Connection with ISY gateway device has changed",
-		&td.DataSchema{Type: td.DataTypeBool},
+		&wot.DataSchema{Type: wot.DataTypeBool},
 	).SetAtType(vocab.PropNetConnection)
 
 	//--- device read-only attributes
@@ -491,7 +492,7 @@ func (svc *IsyGatewayThing) RefreshProperties(onlyChanges bool) (err error) {
 		vocab.PropDeviceSoftwareVersion: svc.Configuration.AppVersion,
 		vocab.PropNetMAC:                svc.Configuration.Root.ID,
 		vocab.PropDeviceDescription:     svc.Configuration.Product.Description,
-		td.WoTTitle:                     svc.Configuration.Root.Name, // custom name
+		wot.WoTTitle:                    svc.Configuration.Root.Name, // custom name
 		vocab.PropNetIP4:                svc.Network.Interface.IP,
 		vocab.PropNetPort:               svc.Network.WebServer.HttpPort,
 

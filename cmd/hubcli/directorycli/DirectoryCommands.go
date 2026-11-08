@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/hiveot/hivekit/go/api/td"
+	"github.com/hiveot/hivekit/go/api/wot"
 	"github.com/hiveot/hivekit/go/cells/consumer"
 	"github.com/hiveot/hivekit/go/cells/directory"
 	consumer_recipe "github.com/hiveot/hivekit/go/factory/recipes/consumer"
@@ -53,7 +53,7 @@ func HandleListDirectory(dirClient directory.IDirectoryClient) (err error) {
 	// todo: iterate with offset and limit
 
 	tdList, cacheOnly := dirClient.RetrieveAllThings(300, 0)
-	td.SortThingsByID(tdList)
+	wot.SortThingsByID(tdList)
 	if cacheOnly {
 		fmt.Printf("Directory server not reachable. Using cache only\n")
 	}
@@ -142,7 +142,7 @@ func HandleListThing(dirClient directory.IDirectoryClient, co *consumer.Consumer
 			dataType = ev.Data.Type
 		}
 		value := eventValueMap[key]
-		valueStr := utils.DecodeAsString(value.Data, 15)
+		valueStr := value.ToString(15)
 		if ev.Data.Type != "" {
 			//initialValue = ev.Data.InitialValue
 		}
@@ -180,7 +180,7 @@ func HandleListThingVerbose(dirClient directory.IDirectoryClient, co *consumer.C
 	}
 	fmt.Println("TD of", thingID)
 	var buf bytes.Buffer
-	tdJSON := td.MarshalTD(tdoc)
+	tdJSON := wot.MarshalTD(tdoc)
 	_ = json.Indent(&buf, []byte(tdJSON), "", "\t")
 	fmt.Printf("%s\n", buf.Bytes())
 	return err

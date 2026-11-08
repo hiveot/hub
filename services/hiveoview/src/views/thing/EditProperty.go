@@ -7,7 +7,8 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/hiveot/hivekit/go/api/td"
+	"github.com/hiveot/hivekit/go/api/msg"
+	"github.com/hiveot/hivekit/go/api/wot"
 	"github.com/hiveot/hivekit/go/cells/consumer"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/services/hiveoview/src"
@@ -21,17 +22,19 @@ const RenderEditPropertyTemplate = "EditProperty.gohtml"
 type RenderEditPropertyTemplateData struct {
 	ThingID    string
 	Name       string
-	DataSchema *td.DataSchema
+	DataSchema *wot.DataSchema
 	//Value      string
 	// The last known value of the property to edit
 	PropertyValue      consumer.InteractionOutput
 	PropertyInput      consumer.InteractionInput
+	TD                 *wot.TD
+	Property           wot.PropertyAffordance
 	SubmitPropertyPath string
 }
 
 //
 //func getPropAff(hc transports.IConsumerConnection, thingID string, name string) (
-//	td *td.TD, propAff *td.PropertyAffordance, err error) {
+//	td *wot.TD, propAff *td.PropertyAffordance, err error) {
 //
 //	tdJson, err := digitwin.DirectoryReadTD(hc, thingID)
 //	if err != nil {
@@ -52,15 +55,15 @@ type RenderEditPropertyTemplateData struct {
 func getConfigValue(
 	sess *session.WebClientSession, thingID string, name string) (sv RenderEditPropertyTemplateData, err error) {
 
-	ct, err := sess.Consume(thingID)
+	ct, err := sess.GetConsumedThing(thingID)
 	if err != nil {
 		return sv, err
 	}
-	iout := ct.GetPropertyOutput(name)
+	iout := ct.GetIOutput(msg.AffordanceTypeProperty, name)
 	if iout == nil {
 		return sv, errors.New("No such property: " + name)
 	}
-	iin := ct.GetPropertyInput(name)
+	iin := consumer.NewInteractionInput(ct.GetTD(), name, iout.Value.Raw)
 
 	// FIXME: Readproperty - handled by whom? is the digitwin service name relevant
 	// What does the wot specification for directory say?
@@ -105,8 +108,7 @@ func RenderEditProperty(w http.ResponseWriter, r *http.Request) {
 // The posted form value contains a 'value' field
 func SubmitProperty(w http.ResponseWriter, r *http.Request) {
 	var newValue any
-	var ct *consumer.ConsumedThing
-	var propAff *td.PropertyAffordance
+	var propAff *wot.PropertyAffordance
 	//stat := transports.ActionStatus{}
 	thingID := chi.URLParam(r, "thingID")
 	propName := chi.URLParam(r, "name")
@@ -123,10 +125,11 @@ func SubmitProperty(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-
-	ct, err = sess.Consume(thingID)
+	dirCl := sess.GetDirectory()
+	tdoc, err := dirCl.RetrieveThing(thingID)
+	// ct, err = sess.Consume(thingID)
 	if err == nil {
-		propAff = ct.GetPropertyAff(propName)
+		propAff = tdoc.GetProperty(propName)
 	}
 	if propAff == nil {
 		err = fmt.Errorf("no such property '%s'", propName)
@@ -134,13 +137,13 @@ func SubmitProperty(w http.ResponseWriter, r *http.Request) {
 
 	// form values are strings. Convert to their native type before posting
 	if err == nil && propAff != nil {
-		newValue, err = td.ConvertToNative(valueStr, &propAff.DataSchema)
+		newValue, err = wot.ConvertToNative(valueStr, &propAff.DataSchema)
 
 		// TODO: update progress while waiting for completion. Options
 		// 1. provide callback that receives updates
 		// 2. send request without waiting and update in onResponse
 
-		err = sess.GetConsumer().WriteProperty(thingID, propName, newValue, true)
+		err = sess.GetRecipe().WriteProperty(thingID, propName, newValue, true)
 	}
 	if err != nil {
 		sess.SendNotify(session.NotifyError, "", "Property update failed: "+err.Error())

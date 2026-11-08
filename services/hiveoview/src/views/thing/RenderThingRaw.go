@@ -5,27 +5,25 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/hiveot/hivekit/go/api/wot"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
-	jsoniter "github.com/json-iterator/go"
 )
 
 // Write the raw TD
 func RenderThingRaw(w http.ResponseWriter, r *http.Request) {
 	thingID := chi.URLParam(r, "thingID")
-	var tdJSON string
+	var tdoc *wot.TD
 	var tdPretty []byte
+
 	// Read the TD being displayed and its latest values
 	_, sess, err := session.GetSessionFromContext(r)
-	co := sess.GetConsumer()
 	if err == nil {
-
-		tdJSON, err = co.RetrieveThing(thingID)
+		dirCl := sess.GetDirectory()
+		tdoc, err = dirCl.RetrieveThing(thingID)
 	}
 	if err == nil {
 		// re-marshal with pretty-print JSON
-		var tdObj any
-		err = jsoniter.UnmarshalFromString(tdJSON, &tdObj)
-		tdPretty, _ = json.MarshalIndent(tdObj, "", "    ")
+		tdPretty, _ = json.MarshalIndent(tdoc, "", "    ")
 	}
 	if err != nil {
 		sess.WriteError(w, err, http.StatusInternalServerError)

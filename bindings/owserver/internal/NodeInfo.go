@@ -1,8 +1,8 @@
 package internal
 
 import (
-	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/api/vocab"
+	"github.com/hiveot/hivekit/go/api/wot"
 )
 
 // define 1-wire node information
@@ -75,7 +75,7 @@ type AttrConversion struct {
 	// the amount of change that should trigger an event
 	ChangeNotify float64
 	Description  string
-	Enum         []td.DataSchema
+	Enum         []wot.DataSchema
 	// ignore the attribute
 	Ignore bool
 	// IsActuator defines the attribute as an action
@@ -100,7 +100,7 @@ var AttrConfig = map[string]AttrConversion{
 		Title:       "Pressure",
 		Description: "Atmospheric pressure",
 		VocabType:   vocab.PropEnvPressureSurface,
-		DataType:    td.DataTypeNumber, Precision: 0, ChangeNotify: 3.0,
+		DataType:    wot.DataTypeNumber, Precision: 0, ChangeNotify: 3.0,
 		Unit: vocab.UnitMilliBar,
 	},
 	"BarometricPressureMbHighAlarmValue": {
@@ -108,7 +108,7 @@ var AttrConfig = map[string]AttrConversion{
 		Title:       "Pressure High Threshold",
 		Description: "High atmospheric pressure alarm set value",
 		//VocabType: vocab.PropAlarmConfig,
-		DataType: td.DataTypeNumber, ChangeNotify: 1,
+		DataType: wot.DataTypeNumber, ChangeNotify: 1,
 		Unit: vocab.UnitMilliBar,
 	},
 	"BarometricPressureMbHighAlarmState": {
@@ -116,14 +116,14 @@ var AttrConfig = map[string]AttrConversion{
 		Title:       "Pressure High Alarm",
 		Description: "High atmospheric pressure alarm status",
 		VocabType:   vocab.PropAlarmStatus,
-		DataType:    td.DataTypeBool, ChangeNotify: 1,
+		DataType:    wot.DataTypeBool, ChangeNotify: 1,
 	},
 	"BarometricPressureMbLowAlarmValue": {
 		IsProp: true, Ignore: false,
 		Title:       "Pressure Low Threshold",
 		Description: "Low atmospheric pressure alarm set value",
 		//VocabType: vocab.PropAlarmConfig,
-		DataType: td.DataTypeNumber, ChangeNotify: 1,
+		DataType: wot.DataTypeNumber, ChangeNotify: 1,
 		Unit: vocab.UnitMilliBar,
 	},
 	"BarometricPressureMbLowAlarmState": {
@@ -131,125 +131,125 @@ var AttrConfig = map[string]AttrConversion{
 		Title:       "Pressure Low Alarm",
 		Description: "Low atmospheric pressure alarm status",
 		VocabType:   vocab.PropAlarmStatus,
-		DataType:    td.DataTypeBool, ChangeNotify: 1,
+		DataType:    wot.DataTypeBool, ChangeNotify: 1,
 	},
 	// "BarometricPressureHg": vocab.PropNameAtmosphericPressure, // unit Hg
 	"Channel": {
 		IsProp: true, Ignore: false,
 		Title: "Channel", Description: "OWServer connection port",
-		DataType: td.DataTypeInteger, ChangeNotify: 1,
+		DataType: wot.DataTypeInteger, ChangeNotify: 1,
 	},
 	"ClearAlarms": {
 		IsActuator: true, Ignore: false,
 		Title:    "Clear Alarms",
-		DataType: td.DataTypeNone, // no data with this action
+		DataType: wot.DataTypeNone, // no data with this action
 	},
 	"Counter1": {
 		IsProp: true, Ignore: true,
-		Title: "Sample counter 1", DataType: td.DataTypeInteger, ChangeNotify: 1,
+		Title: "Sample counter 1", DataType: wot.DataTypeInteger, ChangeNotify: 1,
 	},
 	"Counter2": {
 		IsProp: true, Ignore: true,
-		Title: "Sample counter 2", DataType: td.DataTypeInteger, ChangeNotify: 1,
+		Title: "Sample counter 2", DataType: wot.DataTypeInteger, ChangeNotify: 1,
 	},
 	"DataErrorsChannel1": {
 		IsProp: true,
-		Title:  "Data Errors Channel 1", DataType: td.DataTypeInteger, ChangeNotify: 1,
+		Title:  "Data Errors Channel 1", DataType: wot.DataTypeInteger, ChangeNotify: 1,
 	},
 	"DataErrorsChannel2": {
 		IsProp: true,
-		Title:  "Data Errors Channel 2", DataType: td.DataTypeInteger, ChangeNotify: 1,
+		Title:  "Data Errors Channel 2", DataType: wot.DataTypeInteger, ChangeNotify: 1,
 	},
 	"DataErrorsChannel3": {
 		IsProp: true,
-		Title:  "Data Errors Channel 3", DataType: td.DataTypeInteger, ChangeNotify: 1,
+		Title:  "Data Errors Channel 3", DataType: wot.DataTypeInteger, ChangeNotify: 1,
 	},
 	"DateTime": {
 		IsProp: true,
-		Title:  "Device date/time", DataType: td.DataTypeDateTime,
+		Title:  "Device date/time", DataType: wot.DataTypeDateTime,
 		ChangeNotify: -1, // do not report changes to time
 	},
 	// gateway has 'DeviceName', nodes use 'Name'
 	"DeviceName": {
 		IsProp:    true,
 		Title:     "Device Name",
-		VocabType: vocab.PropDeviceTitle, DataType: td.DataTypeString, ChangeNotify: 1,
+		VocabType: vocab.PropDeviceTitle, DataType: wot.DataTypeString, ChangeNotify: 1,
 	},
 	"DevicesConnectedChannel1": {
 		IsProp: true,
-		Title:  "Nr Devices on Channel 1", DataType: td.DataTypeInteger, ChangeNotify: 1,
+		Title:  "Nr Devices on Channel 1", DataType: wot.DataTypeInteger, ChangeNotify: 1,
 	},
 	"DevicesConnectedChannel2": {
 		IsProp: true,
-		Title:  "Nr Devices on Channel 2", DataType: td.DataTypeInteger, ChangeNotify: 1,
+		Title:  "Nr Devices on Channel 2", DataType: wot.DataTypeInteger, ChangeNotify: 1,
 	},
 	"DevicesConnectedChannel3": {
 		IsProp: true,
-		Title:  "Nr Devices on Channel 3", DataType: td.DataTypeInteger, ChangeNotify: 1,
+		Title:  "Nr Devices on Channel 3", DataType: wot.DataTypeInteger, ChangeNotify: 1,
 	},
 	"DewPoint": {
 		IsProp: true, Ignore: true,
 		Title:     "Dew point",
 		VocabType: vocab.PropEnvDewpoint,
-		DataType:  td.DataTypeNumber, Precision: 1, ChangeNotify: 1.0,
+		DataType:  wot.DataTypeNumber, Precision: 1, ChangeNotify: 1.0,
 		Unit: vocab.UnitCelcius, //tbd
 	},
 	"Family": {
 		IsProp:      true,
 		Title:       "Family",
 		Description: "Family number as read from 1-wire device",
-		DataType:    td.DataTypeString,
+		DataType:    wot.DataTypeString,
 	},
 	"Health": {
 		IsProp: true,
 		Title:  "Health", Description: "Sensor connection health. Range 0-7",
-		DataType: td.DataTypeNumber, Precision: 0, ChangeNotify: 1,
+		DataType: wot.DataTypeNumber, Precision: 0, ChangeNotify: 1,
 	},
 	"HeatIndex": {Ignore: true},
 	"HostName": {
 		IsProp:    true,
 		VocabType: vocab.PropNetHostname,
 		Title:     "Hostname",
-		DataType:  td.DataTypeString, ChangeNotify: 1,
+		DataType:  wot.DataTypeString, ChangeNotify: 1,
 	},
-	//"HeatIndex":  {AtType: vocab.PropEnvHeatindex, Title: "Heat Index", DataType: td.DataTypeNumber, Precision: 1},
+	//"HeatIndex":  {AtType: vocab.PropEnvHeatindex, Title: "Heat Index", DataType: wot.DataTypeNumber, Precision: 1},
 	"Humidity": {
 		IsEvent: true, IsProp: true,
 		Title: "Humidity", Description: "Relative humidity in %",
 		VocabType: vocab.PropEnvHumidity,
-		DataType:  td.DataTypeNumber, Precision: 0, ChangeNotify: 3.0,
+		DataType:  wot.DataTypeNumber, Precision: 0, ChangeNotify: 3.0,
 		Unit: vocab.UnitPercent,
 	},
 	"Humidex": {
 		IsEvent: true,
 		Title:   "Humidex", Description: "Feels-like temperature",
 		VocabType: vocab.PropEnvHumidex,
-		DataType:  td.DataTypeNumber, Precision: 0, ChangeNotify: 1.0,
+		DataType:  wot.DataTypeNumber, Precision: 0, ChangeNotify: 1.0,
 		Unit: vocab.UnitCelcius,
 	},
 	"HumidityHighAlarmState": {
 		IsProp: true, IsEvent: true, Ignore: true,
 		Title:     "Humidity High Alarm",
 		VocabType: vocab.PropAlarmStatus,
-		DataType:  td.DataTypeBool,
+		DataType:  wot.DataTypeBool,
 	},
 	"HumidityLowAlarmState": {
 		IsProp: true, IsEvent: true, Ignore: true,
 		Title:     "Humidity Low Alarm",
 		VocabType: vocab.PropAlarmStatus,
-		DataType:  td.DataTypeBool,
+		DataType:  wot.DataTypeBool,
 	},
 	"LED": {
 		IsProp:   true,
 		Title:    "LED on/off State",
-		DataType: td.DataTypeBool, // On/Off
+		DataType: wot.DataTypeBool, // On/Off
 	},
 	"LEDFunction": {
 		IsProp:      true,
 		Title:       "LED function",
 		Description: "LED on/off behavior on alarm or manual command",
-		DataType:    td.DataTypeInteger, ChangeNotify: 1,
-		Enum: []td.DataSchema{
+		DataType:    wot.DataTypeInteger, ChangeNotify: 1,
+		Enum: []wot.DataSchema{
 			{Const: "0", Title: "On with alarms, off with no alarms"},
 			{Const: "1", Title: "On with alarms, Off with clear alarms command"},
 			{Const: "2", Title: "On/Off under command"},
@@ -259,59 +259,59 @@ var AttrConfig = map[string]AttrConversion{
 	"LEDState": {
 		IsProp: true, Ignore: true,
 		Title:    "LED switch",
-		DataType: td.DataTypeBool,
+		DataType: wot.DataTypeBool,
 	},
 	"Light": {
 		IsEvent:   true,
 		Title:     "Luminance",
 		VocabType: vocab.PropEnvLuminance,
-		DataType:  td.DataTypeNumber, Precision: 0, ChangeNotify: 20.0,
+		DataType:  wot.DataTypeNumber, Precision: 0, ChangeNotify: 20.0,
 	},
 	"MACAddress": {
 		IsProp:    true,
 		Title:     "MAC Address",
-		VocabType: vocab.PropNetMAC, DataType: td.DataTypeString,
+		VocabType: vocab.PropNetMAC, DataType: wot.DataTypeString,
 	},
 	"Manufacturer": {
 		IsProp:    true,
 		Title:     "Manufacturer",
-		VocabType: vocab.PropDeviceMake, DataType: td.DataTypeString,
+		VocabType: vocab.PropDeviceMake, DataType: wot.DataTypeString,
 	},
 	"Model": {
 		IsProp:    true,
 		Title:     "Model",
-		VocabType: vocab.PropDeviceModel, DataType: td.DataTypeString,
+		VocabType: vocab.PropDeviceModel, DataType: wot.DataTypeString,
 	},
 	"Name": {
 		IsProp: true,
 		// the name seems to hold the model number
 		Title:     "Device model",
-		VocabType: vocab.PropDeviceModel, DataType: td.DataTypeString,
+		VocabType: vocab.PropDeviceModel, DataType: wot.DataTypeString,
 	},
 	"PollCount": {
 		IsProp: true, Ignore: true,
 		Title:    "Poll Count",
-		DataType: td.DataTypeInteger, ChangeNotify: 1,
+		DataType: wot.DataTypeInteger, ChangeNotify: 1,
 	},
 	"PowerSource": {
 		IsProp:   true,
 		Title:    "Power Source",
-		DataType: td.DataTypeInteger, ChangeNotify: 1,
+		DataType: wot.DataTypeInteger, ChangeNotify: 1,
 	},
 	"PrimaryValue": {
 		IsProp: false, Ignore: true,
 		Title:    "Primary Value",
-		DataType: td.DataTypeString,
+		DataType: wot.DataTypeString,
 	},
 	"Resolution": {
 		IsProp:   true,
 		Title:    "Resolution",
-		DataType: td.DataTypeInteger, Unit: "bits", ChangeNotify: 1,
+		DataType: wot.DataTypeInteger, Unit: "bits", ChangeNotify: 1,
 	},
 	"RawData": {
 		IsProp: true, Ignore: true,
 		Title:    "Raw Data",
-		DataType: td.DataTypeString,
+		DataType: wot.DataTypeString,
 	},
 	"Relay": { // relay is read-only status, RelayState is input control
 		IsProp:      true,
@@ -319,9 +319,9 @@ var AttrConfig = map[string]AttrConversion{
 		Description: "Current alarm status of the relay (function 0 and 1)",
 		// the internal data type is integer 0=off, 1=on
 		// how to present as a switch?
-		DataType: td.DataTypeInteger, ChangeNotify: 1,
+		DataType: wot.DataTypeInteger, ChangeNotify: 1,
 		VocabType: vocab.PropAlarmStatus,
-		Enum: []td.DataSchema{
+		Enum: []wot.DataSchema{
 			{Const: "0", Title: "Off"},
 			{Const: "1", Title: "On"},
 		},
@@ -331,8 +331,8 @@ var AttrConfig = map[string]AttrConversion{
 		VocabType:   vocab.PropStatusOnOff,
 		Title:       "Relay function",
 		Description: "Relay on/off behavior on alarm or manual command",
-		DataType:    td.DataTypeInteger, ChangeNotify: 1,
-		Enum: []td.DataSchema{
+		DataType:    wot.DataTypeInteger, ChangeNotify: 1,
+		Enum: []wot.DataSchema{
 			{Const: "0", Title: "On with alarms, off with no alarms"},
 			{Const: "1", Title: "On with alarms, Off with clear alarms command"},
 			{Const: "2", Title: "On/Off under command"},
@@ -343,9 +343,9 @@ var AttrConfig = map[string]AttrConversion{
 		IsProp: true, IsActuator: false,
 		Title:       "Relay control",
 		Description: "On/off relay control (Relay Function 2)",
-		DataType:    td.DataTypeInteger, ChangeNotify: 1,
+		DataType:    wot.DataTypeInteger, ChangeNotify: 1,
 		VocabType: vocab.ActionSwitchOnOff,
-		Enum: []td.DataSchema{
+		Enum: []wot.DataSchema{
 			{Const: "0", Title: "Off"},
 			{Const: "1", Title: "On"},
 		},
@@ -353,14 +353,14 @@ var AttrConfig = map[string]AttrConversion{
 	"ROMId": {
 		IsProp:   true,
 		Title:    "Device ROM ID",
-		DataType: td.DataTypeString,
+		DataType: wot.DataTypeString,
 	},
 	"Temperature": {
 		IsEvent: true, IsProp: true,
 		Title:     "Temperature",
 		VocabType: vocab.PropEnvTemperature,
 		// prevent a lot of events if temperature is on the edge of two values
-		DataType: td.DataTypeNumber, Precision: 1, ChangeNotify: 0.1,
+		DataType: wot.DataTypeNumber, Precision: 1, ChangeNotify: 0.1,
 		Unit: vocab.UnitCelcius,
 	},
 	"TemperatureHighAlarmValue": {
@@ -368,70 +368,70 @@ var AttrConfig = map[string]AttrConversion{
 		Title:       "Temperature High Threshold",
 		Description: "High temperature alarm set value",
 		//VocabType: vocab.PropAlarmConfig,
-		DataType: td.DataTypeNumber, Precision: 1, ChangeNotify: 0.1,
+		DataType: wot.DataTypeNumber, Precision: 1, ChangeNotify: 0.1,
 		Unit: vocab.UnitCelcius,
 	},
 	"TemperatureHighAlarmState": {
 		IsProp: true, IsEvent: true, Ignore: false,
 		Title:     "Temperature High Alarm",
 		VocabType: vocab.PropAlarmStatus,
-		DataType:  td.DataTypeBool,
+		DataType:  wot.DataTypeBool,
 	},
 	"TemperatureLowAlarmValue": {
 		IsProp: true, Ignore: false,
 		Title:       "Temperature Low Threshold",
 		Description: "Low temperature alarm set value",
 		//VocabType: vocab.PropAlarmConfig,
-		DataType: td.DataTypeNumber, Precision: 1, ChangeNotify: 0.1,
+		DataType: wot.DataTypeNumber, Precision: 1, ChangeNotify: 0.1,
 		Unit: vocab.UnitCelcius,
 	},
 	"TemperatureLowAlarmState": {
 		IsProp: true, IsEvent: true, Ignore: false,
 		Title:     "Temperature Low Alarm",
 		VocabType: vocab.PropAlarmStatus,
-		DataType:  td.DataTypeBool,
+		DataType:  wot.DataTypeBool,
 	},
 	"UserByte1": {
 		IsProp:   true, //Ignore: true,
 		Title:    "User Byte 1",
-		DataType: td.DataTypeInteger, ChangeNotify: 1,
+		DataType: wot.DataTypeInteger, ChangeNotify: 1,
 	},
 	"UserByte2": {
 		IsProp:   true, //Ignore: true,
 		Title:    "User Byte 2",
-		DataType: td.DataTypeInteger, ChangeNotify: 1,
+		DataType: wot.DataTypeInteger, ChangeNotify: 1,
 	},
 	"Version": {
 		IsProp:    true,
 		VocabType: vocab.PropDeviceFirmwareVersion,
 		Title:     "Firmware version",
-		DataType:  td.DataTypeString,
+		DataType:  wot.DataTypeString,
 	},
 	"VoltageChannel1": {
 		IsProp:    true,
 		Title:     "Voltage Channel 1",
-		DataType:  td.DataTypeNumber,
+		DataType:  wot.DataTypeNumber,
 		VocabType: vocab.PropElectricVoltage,
 		Unit:      vocab.UnitVolt, Precision: 1, ChangeNotify: 0.1,
 	},
 	"VoltageChannel2": {
 		IsProp:    true,
 		Title:     "Voltage Channel 2",
-		DataType:  td.DataTypeNumber,
+		DataType:  wot.DataTypeNumber,
 		VocabType: vocab.PropElectricVoltage,
 		Unit:      vocab.UnitVolt, Precision: 1, ChangeNotify: 0.1,
 	},
 	"VoltageChannel3": {
 		IsProp:    true,
 		Title:     "Voltage Channel 3",
-		DataType:  td.DataTypeNumber,
+		DataType:  wot.DataTypeNumber,
 		VocabType: vocab.PropElectricVoltage,
 		Unit:      vocab.UnitVolt, Precision: 1, ChangeNotify: 0.1,
 	},
 	"VoltagePower": {
 		IsProp:    true,
 		Title:     "Voltage powerline",
-		DataType:  td.DataTypeNumber,
+		DataType:  wot.DataTypeNumber,
 		VocabType: vocab.PropElectricVoltage,
 		Unit:      vocab.UnitVolt, Precision: 1, ChangeNotify: 0.1,
 	},

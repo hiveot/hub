@@ -16,7 +16,7 @@ import (
 //	DataType     string
 //}{
 //	// "BarometricPressureHg": vocab.PropNameAtmosphericPressure, // unit Hg
-//	"Relay": {AtType: vocab.ActionSwitchOff, Title: "Relay", DataType: td.DataTypeBool},
+//	"Relay": {AtType: vocab.ActionSwitchOff, Title: "Relay", DataType: wot.DataTypeBool},
 //}
 
 // EdsAPI EDS device API properties and methods

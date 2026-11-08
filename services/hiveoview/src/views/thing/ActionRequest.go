@@ -10,8 +10,8 @@ import (
 	"github.com/araddon/dateparse"
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hivekit/go/api/msg"
-	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/api/vocab"
+	"github.com/hiveot/hivekit/go/api/wot"
 	"github.com/hiveot/hivekit/go/cells/consumer"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/services/hiveoview/src"
@@ -29,10 +29,10 @@ type ActionRequestTemplateData struct {
 	Description string
 
 	// the thing instance used to apply the action
-	CT *consumer.ConsumedThing
+	// CT *consumer.ConsumedThing
 
 	// Affordance of the action to issue containing the input dataschema
-	Action *td.ActionAffordance
+	Action *wot.ActionAffordance
 
 	// input value to edit
 	// This defaults to the last action input
@@ -53,7 +53,7 @@ type ActionRequestTemplateData struct {
 
 //// Return the action affordance
 //func getActionAff(hc transports.IConsumerConnection, thingID string, name string) (
-//	td *td.TD, actionAff *td.ActionAffordance, err error) {
+//	td *wot.TD, actionAff *wot.ActionAffordance, err error) {
 //
 //	tdJson, err := digitwin.DirectoryReadTD(hc, thingID)
 //	if err != nil {
@@ -86,24 +86,32 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 		sess.WriteError(w, err, http.StatusBadRequest)
 		return
 	}
-	ct, err := sess.Consume(thingID)
-	if err != nil {
-		sess.WriteError(w, err, http.StatusBadRequest)
-	}
-	tdi := ct.TD()
-	actionAff := ct.GetActionAff(name)
+	// ct, err := sess.Consume(thingID)
+	// if err != nil {
+	// sess.WriteError(w, err, http.StatusBadRequest)
+	// }
+	tdoc := sess.GetDirectory().GetTD(thingID)
+	actionAff := tdoc.GetAction(name)
+	// tdi := ct.TD()
+	// actionAff := ct.GetActionAff(name)
 	//_, actionAff, err := getActionAff(sess.GetConsumer(), thingID, name)
 	if actionAff == nil {
 		sess.WriteError(w, errors.New("No such action: "+name), http.StatusBadRequest)
 		return
 	}
+	recipe := sess.GetRecipe()
+	values := recipe.GetValues()
+	actionStatus, found := values.ReadAction(thingID, name)
+	iinput := consumer.NewInteractionInput(tdoc, name, actionStatus.Input)
+	_ = found
 	data := ActionRequestTemplateData{
 		ThingID: thingID,
 		Name:    name,
 		Action:  actionAff,
-		CT:      ct,
+		// CT:      ct,
 		// The input value will be set to the last action value, if available
-		InputValue:  consumer.NewInteractionInput(tdi, name, nil),
+		// InputValue:  consumer.NewInteractionInput(tdi, name, nil),
+		InputValue:  iinput,
 		Description: actionAff.Description,
 	}
 	if data.Description == "" {
@@ -112,15 +120,16 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 
 	// get last action request that was received
 	// reading a latest value is optional
-	co := sess.GetConsumer()
+	co := sess.GetRecipe()
 	actionVal, err := co.QueryAction(name, thingID)
-	if err == nil && actionVal.Name != "" {
+	if err == nil {
 		data.LastActionRecord = &actionVal
 		//data.PrevValue = &lastActionRecord
 		updatedTime, _ := dateparse.ParseAny(data.LastActionRecord.TimeUpdated)
 		data.LastActionTime = updatedTime.Format(time.RFC1123)
 		data.LastActionAge = Age(updatedTime)
-		data.InputValue.Value.Raw = data.LastActionRecord.Input
+		data.InputValue = consumer.NewInteractionInput(
+			tdoc, name, data.LastActionRecord.Input)
 	}
 
 	pathArgs := map[string]string{"thingID": data.ThingID, "name": data.Name}
@@ -142,7 +151,7 @@ func RenderActionStatus(w http.ResponseWriter, r *http.Request) {
 
 // SubmitActionRequest posts the request to start an action
 func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
-	//var tdi *td.TD
+	//var tdi *wot.TD
 	var newValue any
 	actionTitle := ""
 
@@ -162,15 +171,17 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// convert the input value from string to the data type
-	ct, err := sess.Consume(thingID)
+	dirCl := sess.GetDirectory()
+	tdoc, err := dirCl.RetrieveThing(thingID)
+	// ct, err := sess.Consume(thingID)
 	//tdi, actionAff, err = getActionAff(sess.GetConsumer(), thingID, actionName)
-	if err != nil || ct == nil {
-		sess.WriteError(w, err, http.StatusInternalServerError)
+	if err != nil {
+		sess.WriteError(w, err, http.StatusBadRequest)
 		return
 	}
-	actionAff := ct.GetActionAff(actionName)
+	actionAff := tdoc.GetAction(actionName)
 	if actionAff.Input != nil {
-		newValue, err = td.ConvertToNative(valueStr, actionAff.Input)
+		newValue, err = wot.ConvertToNative(valueStr, actionAff.Input)
 	}
 	if err == nil {
 		slog.Info("SubmitActionRequest starting",
@@ -182,7 +193,7 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 		//stat = hc.HandleActionFlow(thingID, actionName, newValue)
 		var resp interface{}
 		//iout,err = ct.InvokeAction(actionName, newValue, &resp)
-		err = sess.GetConsumer().InvokeAction(thingID, actionName, newValue, &resp)
+		err = sess.GetRecipe().InvokeAction(thingID, actionName, newValue, &resp)
 		if resp != nil {
 			// stringify the reply for presenting in the notification
 			reply = fmt.Sprintf("%v", resp)
@@ -213,7 +224,7 @@ func SubmitActionRequest(w http.ResponseWriter, r *http.Request) {
 		}
 
 		err = fmt.Errorf("action '%s' of Thing '%s' failed: %w",
-			actionTitle, ct.Title, err)
+			actionTitle, tdoc.Title, err)
 		sess.WriteError(w, err, http.StatusBadRequest)
 		return
 	} else {

@@ -44,7 +44,7 @@ import (
 // @param thingID of the thing the event belongs to
 // @param key of the event affordance to add as source
 func RenderTileSourceRow(w http.ResponseWriter, r *http.Request) {
-	affType := chi.URLParam(r, "affordanceType")
+	affType := msg.AffordanceType(chi.URLParam(r, "affordanceType"))
 	thingID := chi.URLParam(r, "thingID")
 	name := chi.URLParam(r, "name")
 
@@ -53,29 +53,28 @@ func RenderTileSourceRow(w http.ResponseWriter, r *http.Request) {
 		sess.WriteError(w, err, 0)
 		return
 	}
+	ct, err := sess.GetConsumedThing(thingID)
+	if err != nil {
+		sess.WriteError(w, err, 0)
+		return
+	}
 
 	// obtain the TD and the event/action affordance to display
 	var sourceID = fmt.Sprintf("%s/%s/%s", affType, thingID, name)
 
-	cts := sess.GetConsumedThingsDirectory()
-	// get the latest event values of this source
-	var iout *consumer.InteractionOutput
-	ct, err := cts.Consume(thingID)
-	if ct != nil {
-		iout = ct.GetValue(msg.AffordanceType(affType), name)
-	}
-	if err == nil && iout == nil {
+	iout := ct.GetIOutput(affType, name)
+	if iout == nil {
 		err = fmt.Errorf("RenderTileSourceRow: No such affordance!?: %s", sourceID)
-	}
-	if err != nil {
-		sess.WriteError(w, err, http.StatusInternalServerError)
-		return
+		if err != nil {
+			sess.WriteError(w, err, http.StatusInternalServerError)
+			return
+		}
 	}
 
 	// if no value was ever received then use n/a
 	latestValue := iout.Value.Text() + " " + iout.UnitSymbol()
 	latestUpdated := utils.FormatAge(iout.Timestamp)
-	title := ct.Title + " " + iout.Title
+	title := ct.GetTD().Title + " " + iout.Title
 
 	// the input hidden hold the real source value
 	// this must match the list in RenderEditTile.gohtml

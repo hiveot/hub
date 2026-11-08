@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/hiveot/hivekit/go/api/msg"
-	"github.com/hiveot/hivekit/go/api/td"
+	"github.com/hiveot/hivekit/go/api/wot"
 	"github.com/hiveot/hivekit/go/cells/consumer"
 	"github.com/hiveot/hivekit/go/cells/directory"
 	consumer_recipe "github.com/hiveot/hivekit/go/factory/recipes/consumer"
@@ -69,7 +69,7 @@ func HandleSubTD(co *consumer.Consumer) error {
 			return
 		}
 
-		var tdi td.TD
+		var tdi wot.TD
 		//fmt.Printf("%s\n", event.ValueJSON)
 		err := resp.Decode(&tdi)
 
@@ -117,7 +117,7 @@ func HandleSubEvents(co *consumer.Consumer, thingID string, name string) error {
 		//}
 		if msg.ThingID == directory.DefaultDirectoryServiceThingID &&
 			msg.Name == directory.ThingUpdatedEvent {
-			var tdi td.TD
+			var tdi wot.TD
 			tdJSON := msg.ToString(0)
 			_ = jsoniter.UnmarshalFromString(tdJSON, &tdi)
 			valueStr = fmt.Sprintf("{title:%s, type:%s, nrProps=%d, nrEvents=%d, nrActions=%d}",

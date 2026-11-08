@@ -7,8 +7,8 @@ import (
 
 	"github.com/hiveot/hivekit/go/api"
 	"github.com/hiveot/hivekit/go/api/msg"
-	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/api/vocab"
+	wot "github.com/hiveot/hivekit/go/api/wot"
 	"github.com/hiveot/hivekit/go/cells/thing"
 	"github.com/hiveot/hub/bindings/isy99x/internal/isy"
 )
@@ -53,7 +53,7 @@ type IIsyThing interface {
 	// Init assigns the ISY connection and node this Thing represents
 	// Init(ic *isy.IsyAPI, thingID string, node *isy.IsyNode, prodInfo InsteonProduct, hwVersion string)
 	// MakeTD returns the generated TD document describing the Thing
-	// MakeTD() *td.TD
+	// MakeTD() *wot.TD
 }
 
 // IsyThing is the generic base of Things constructed out of ISY Insteon nodes.
@@ -78,7 +78,7 @@ type IsyThing struct {
 	isyAPI *isy.IsyGWAPI
 
 	// The TD to publish on start
-	tdoc *td.TD
+	tdoc *wot.TD
 }
 
 // RefreshProperties returns the property values, set with read
@@ -108,12 +108,12 @@ func (it *IsyThing) HandleConfigRequest(
 	req *msg.RequestMessage, replyTo msg.ResponseHandler) error {
 
 	// The title is the friendly name of the node
-	if req.Name == td.WoTTitle {
+	if req.Name == wot.WoTTitle {
 		newName := req.ToString(0)
 		err := it.isyAPI.Rename(it.node.Address, newName)
 		if err == nil {
 			// TODO: use ISY WebSocket to receive confirmation of change
-			_ = it.HandleValueUpdate(td.WoTTitle, "", newName)
+			_ = it.HandleValueUpdate(wot.WoTTitle, "", newName)
 		}
 		resp := req.CreateResponse(nil, err)
 		return replyTo(resp)
@@ -134,14 +134,14 @@ func (it *IsyThing) HandleValueUpdate(propID string, uom string, newValue string
 
 // MakeTD return a basic TD document that describes the Thing represented here.
 // The parent should add properties, events and actions specific to their capabilities.
-func (it *IsyThing) MakeTD() *td.TD {
+func (it *IsyThing) MakeTD() *wot.TD {
 	title := it.productInfo.ProductName
-	titleProp, _ := it.GetProperty(td.WoTTitle)
+	titleProp, _ := it.GetProperty(wot.WoTTitle)
 	if titleProp != nil {
 		title, _ = titleProp.(string)
 	}
 	it.mux.RLock()
-	tdoc := td.NewTD(it.GetID(), title, it.deviceType)
+	tdoc := wot.NewTD(it.GetID(), title, it.deviceType)
 	it.mux.RUnlock()
 
 	//--- read-only properties
@@ -194,7 +194,7 @@ func (it *IsyThing) Start() {
 		"flag":                          fmt.Sprintf("0x%X", it.node.Flag),
 		vocab.PropDeviceEnabledDisabled: enabledDisabled,
 		vocab.PropDeviceDescription:     prodInfo.ProductName,
-		td.WoTTitle:                     it.node.Name,
+		wot.WoTTitle:                    it.node.Name,
 		vocab.PropDeviceModel:           prodInfo.Model,
 		vocab.PropDeviceHardwareVersion: prodInfo.HWVersion,
 		"nodeType":                      it.node.Type,

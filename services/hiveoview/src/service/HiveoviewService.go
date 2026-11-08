@@ -28,9 +28,11 @@ const HiveoviewStoreName = "hiveoview.kvbtree"
 type HiveoviewService struct {
 	*thing.ExposedThing
 
+	env *api.HiveEnvironment
+
 	// URL to connect to the hub with
 	// TODO: use a hub TD instead
-	hubURL string
+	// hubURL string
 
 	// listening port on which to serve the UI
 	port int
@@ -46,7 +48,7 @@ type HiveoviewService struct {
 	tm *views.TemplateManager
 
 	// The CA's for client auth
-	rootCAs *x509.CertPool
+	// rootCAs *x509.CertPool
 	// The server's TLS certificate
 	serverCert *tls.Certificate
 	// The TLS server does serves the UI
@@ -62,7 +64,7 @@ type HiveoviewService struct {
 	debug bool
 
 	// timeout to use with of hub client connections
-	timeout time.Duration
+	// timeout time.Duration
 
 	// backend storage of UI configuration for clients by clientID
 	storeDir    string
@@ -203,7 +205,7 @@ func (svc *HiveoviewService) Stop() {
 // This must contain static/, views/ and webc/ directories.
 // If empty, the embedded filesystem is used.
 //
-//	hubURL is the URL for creating session connections to the hub.
+//	env is the environment with server URL and certs to connect with
 //	serverPort is the port of the web server will listen on
 //	debug to enable debugging output
 //	rootPath containing the templates in the given folder or "" to use the embedded templates
@@ -212,7 +214,7 @@ func (svc *HiveoviewService) Stop() {
 //	timeout of client hub connections
 //	storeDir path to directory holding client session and dashboard data
 func NewHiveovService(
-	hubURL string,
+	env *api.HiveEnvironment,
 	serverPort int, debug bool,
 	rootPath string,
 	serverCert *tls.Certificate, rootCAs *x509.CertPool,
@@ -233,18 +235,15 @@ func NewHiveovService(
 	svc := &HiveoviewService{
 		ExposedThing: thing.NewExposedThing(src.HiveoviewServiceID, nil),
 		// ExposedThing: thing.NewExposedThing(env.AppID, nil),
-		// env:          env,
+		env:          env,
 		port:         serverPort,
 		shouldUpdate: true,
 		debug:        debug,
-		hubURL:       hubURL,
 		signingKey:   signingKey,
 		rootPath:     rootPath,
 		tm:           tm,
 		serverCert:   serverCert,
-		rootCAs:      rootCAs,
 		storeDir:     storeDir,
-		timeout:      timeout,
 	}
 
 	var err error
@@ -259,8 +258,9 @@ func NewHiveovService(
 	// Setup the handling of incoming web sessions
 	// re-use the runtime connection manager
 	svc.sm = session.NewWebSessionManager(
-		svc.onSessionOpened, svc.onSessionClosed, hubURL,
-		svc.signingKey, svc.rootCAs, svc.configStore, svc.timeout)
+		*svc.env,
+		svc.onSessionOpened, svc.onSessionClosed,
+		svc.signingKey, svc.configStore)
 
 	// parse the templates
 	svc.tm.ParseAllTemplates()

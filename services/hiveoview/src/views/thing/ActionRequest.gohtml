@@ -80,8 +80,8 @@
 			        onclick="this.dispatchEvent(new Event('close-modal',{bubbles:true}))"
 			        class="secondary">Cancel
 			</button>
-        {{/* FIXME-1: disable submit if input type is not supported*/}}
-        {{/* FIXME-2: disable submit while waiting for the result*/}}
+        {{/* disable submit if input type is not supported*/}}
+        {{/* TODO: disable submit while waiting for the result*/}}
 			<button type="submit"
               {{if .Action.Input}}
                   {{if not .Action.Input.IsNative}}

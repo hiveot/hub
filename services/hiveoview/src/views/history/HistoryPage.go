@@ -8,7 +8,6 @@ import (
 	"github.com/araddon/dateparse"
 	"github.com/go-chi/chi/v5"
 	"github.com/hiveot/hivekit/go/api/msg"
-	history_client "github.com/hiveot/hivekit/go/cells/history/client"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/services/hiveoview/src/session"
 	"github.com/hiveot/hub/services/hiveoview/src/views/app"
@@ -48,23 +47,37 @@ func RenderHistoryPage(w http.ResponseWriter, r *http.Request) {
 		sess.WriteError(w, err, 0)
 		return
 	}
-	cts := sess.GetConsumedThingsDirectory()
+	// cts := sess.GetConsumedThingsDirectory()
 	// read the TD
-	ct, err := cts.Consume(thingID)
-	if err != nil {
-		sess.WriteError(w, err, 0)
-		return
-	}
+	// ct, err := cts.Consume(thingID)
+	// if err != nil {
+	// sess.WriteError(w, err, 0)
+	// return
+	// }
+	recipe := sess.GetRecipe()
+	dirCl := recipe.GetDirectory()
+	tdoc := dirCl.GetTD(thingID)
+
+	// dirCl := sess.GetDirectory()
+	// vCache := recipe.GetValues()
+
+	// readetermine the value aspects ... ?uh?
 	duration := time.Second * time.Duration(durationSec)
-	iout := ct.GetValue(msg.AffordanceType(affType), name)
-	hist := history_client.NewReadHistoryClient(ct.GetConsumer())
+
+	// iout := vCache.ReadValue(thingID, msg.AffordanceType(affType), name)
+
+	hist := recipe.GetHistoryClient()
+	// FIXME: readHistory returns notification messages.
+	// Should it return ThingValues instead?
+
 	values, itemsRemaining, err := hist.ReadHistory(
-		iout.ThingID, iout.Name, timestamp, duration, 500)
+		thingID, name, timestamp, duration, 500)
 	_ = itemsRemaining
 
 	var data *HistoryTemplateData
 	if err == nil {
-		data, err = NewHistoryTemplateData(iout, values, timestamp, duration)
+		data, err = NewHistoryTemplateData(
+			tdoc, msg.AffordanceType(affType), name, values, timestamp, duration)
 	}
 	if err != nil {
 		sess.WriteError(w, err, 0)

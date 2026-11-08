@@ -6,7 +6,8 @@ import (
 	"time"
 
 	"github.com/hiveot/hivekit/go/api/msg"
-	"github.com/hiveot/hivekit/go/api/td"
+	"github.com/hiveot/hivekit/go/api/wot"
+	"github.com/hiveot/hivekit/go/cells/consumer"
 	history_client "github.com/hiveot/hivekit/go/cells/history/client"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/services/hiveoview/src"
@@ -17,6 +18,7 @@ import (
 
 const RenderTileTemplate = "RenderTile.gohtml"
 
+// Data for RenderTile that renders the single Tile element
 type RenderTileTemplateData struct {
 	// Tile Title to display
 	Tile session.DashboardTile
@@ -37,29 +39,27 @@ type RenderTileTemplateData struct {
 	Locked bool
 
 	// viewmodel to draw live data from
+	sess *session.WebClientSession
 	//VM *session.ClientViewModel
-	cts *consumer.ConsumedThingsDirectory
+	// cts *consumer.ConsumedThingsDirectory
 }
 
 // GetHistory returns the 24 hour history for the given thing affordance.
 // This truncates the result if there are too many values in the range.
 // The max amount of values is the limit set in historyapi.DefaultLimit (1000)
 func (dt RenderTileTemplateData) GetHistory(
-	affType msg.AffordanceType, thingID string, name string) *history.HistoryTemplateData {
+	thingID string, affType msg.AffordanceType, name string) *history.HistoryTemplateData {
 
 	timestamp := time.Now().Local()
-	ct, err := dt.cts.Consume(thingID)
-	if err != nil {
-		return nil
-	}
 	duration, _ := time.ParseDuration("-24h")
-	iout := ct.GetValue(affType, name)
-	hist := history_client.NewReadHistoryClient(ct.GetConsumer())
+	tdoc := dt.sess.GetTD(thingID)
+	hist := history_client.NewReadHistoryClient(dt.sess.GetConsumer())
 	values, itemsRemaining, err := hist.ReadHistory(
-		iout.ThingID, iout.Name, timestamp, duration, 500)
+		thingID, name, timestamp, duration, 500)
 	_ = itemsRemaining
 	_ = err // ignore for now
-	hsd, err := history.NewHistoryTemplateData(iout, values, timestamp, duration)
+	hsd, err := history.NewHistoryTemplateData(
+		tdoc, affType, name, values, timestamp, duration)
 	_ = err
 	return hsd
 }
@@ -71,71 +71,58 @@ func (dt RenderTileTemplateData) GetHistory(
 //
 //	This returns the interaction output to display
 func (d RenderTileTemplateData) GetOutputValue(tileSource session.TileSource) (iout *consumer.InteractionOutput) {
-	ct, _ := d.cts.Consume(tileSource.ThingID)
-	if ct == nil {
+
+	// TODO: should this read a value if it isnt found?
+
+	iout = d.sess.GetOutput(tileSource.ThingID, tileSource.AffordanceType, tileSource.Name)
+	if iout == nil {
+		title := "n/a"
+		tdoc := d.sess.GetTD(tileSource.ThingID)
+		if tdoc == nil {
+			title = "Unknown thing"
+		}
+
 		// Thing not found. return a dummy interaction output with a non-schema
 		dummy := consumer.InteractionOutput{}
 		dummy.AffordanceType = "unknown"
 		dummy.ThingID = tileSource.ThingID
 		dummy.Name = tileSource.Name
-		dummy.Value = consumer.NewDataSchemaValue("n/a")
-		dummy.Schema = &td.DataSchema{
-			Title: "NewInteractionOutput: unknown thing",
-		}
-
+		dummy.Value = msg.ThingValue{Raw: "n/a"}
+		dummy.Schema = &wot.DataSchema{Title: title}
 		return &dummy
-	}
-
-	if tileSource.AffordanceType == msg.AffordanceTypeAction {
-		aff := ct.GetActionAff(tileSource.Name)
-		if aff != nil {
-			ct.QueryAction(tileSource.Name)
-			iout = ct.GetActionOutput(tileSource.Name)
-		}
-	} else if tileSource.AffordanceType == msg.AffordanceTypeEvent {
-		iout = ct.GetEventOutput(tileSource.Name)
-	} else {
-		// must be a property
-		iout = ct.GetPropertyOutput(tileSource.Name)
-	}
-
-	if iout == nil {
-		iout = consumer.NewInteractionOutput(ct,
-			tileSource.AffordanceType, tileSource.Name,
-			"no output value", "")
 	}
 	return iout
 }
 
 // GetUnit return the value unit of a tile source
-func (d RenderTileTemplateData) GetUnit(thingID string, name string) string {
+// func (d RenderTileTemplateData) GetUnit(thingID string, name string) string {
 
-	cs, err := d.cts.Consume(thingID)
-	if err != nil {
-		return ""
-	}
-	iout := cs.ReadEvent(name)
-	if iout == nil {
-		return ""
-	}
-	unitSymbol := iout.UnitSymbol()
-	return unitSymbol
-}
+// 	cs, err := d.sess.GetConsumedThing(thingID)
+// 	if err != nil {
+// 		return ""
+// 	}
+// 	iout := cs.ReadEvent(name)
+// 	if iout == nil {
+// 		return ""
+// 	}
+// 	unitSymbol := iout.UnitSymbol()
+// 	return unitSymbol
+// }
 
 // GetUpdated return the timestamp of a tile source value
-func (d RenderTileTemplateData) GetUpdated(thingID string, name string) string {
+// func (d RenderTileTemplateData) GetUpdated(thingID string, name string) string {
 
-	cs, err := d.cts.Consume(thingID)
-	if err != nil {
-		return "n/a"
-	}
-	iout := cs.ReadEvent(name)
-	if iout == nil {
-		return "n/a"
-	}
-	val := utils.FormatDateTime(iout.Timestamp)
-	return val
-}
+// 	cs, err := d.sess.GetConsumedThing(thingID)
+// 	if err != nil {
+// 		return "n/a"
+// 	}
+// 	iout := cs.ReadEvent(name)
+// 	if iout == nil {
+// 		return "n/a"
+// 	}
+// 	val := utils.FormatDateTime(iout.Timestamp)
+// 	return val
+// }
 
 // RenderTile renders the single Tile element
 // TODO: values from the sources
@@ -158,7 +145,7 @@ func RenderTile(w http.ResponseWriter, r *http.Request) {
 		RenderConfirmDeleteTilePath: utils.Substitute(src.RenderTileConfirmDeletePath, pathArgs),
 		ReRenderTilePath:            utils.Substitute(src.RenderTilePath, pathArgs),
 		TileUpdatedEvent:            utils.Substitute(src.TileUpdatedEvent, pathArgs),
-		cts:                         sess.GetConsumedThingsDirectory(),
+		sess:                        sess,
 		Locked:                      ctc.dashboard.Locked,
 	}
 	buff, err := app.RenderAppOrFragment(r, RenderTileTemplate, data)

@@ -55,10 +55,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	// need a hub connection
+	// create a hub connection for this service
+	// this performs discovery and obtains a directory TDD, and connects to
+	// the server using either env.ServerURL or the directory URL.
 	r, f, err := rcdevice_recipe.NewRCDeviceRecipe(env, nil)
 	_ = f
-
 	if err != nil {
 		fmt.Println("Startup failed: " + err.Error())
 		os.Exit(1)
@@ -85,8 +86,11 @@ func main() {
 		slog.Error("Unable to load server certificate: " + err.Error())
 		return
 	}
+
+	// The client's URL is used to connect by all sessions.
 	hubURL := r.GetClient().GetConnectURL()
-	svc, err := service.NewHiveovService(hubURL,
+	env.ServerURL = hubURL
+	svc, err := service.NewHiveovService(env,
 		cfg.ServerPort, false, rootPath, serverCert, env.GetRootCAs(),
 		time.Second*20, storageDir)
 	r.SetRequestSink(svc)

@@ -49,11 +49,13 @@ func RenderLatestValueRow(w http.ResponseWriter, r *http.Request) {
 		sess.WriteError(w, err, 0)
 		return
 	}
-	ct, err := sess.Consume(thingID)
+	// tdoc := sess.GetTD(thingID)
+	ct, err := sess.GetConsumedThing(thingID)
+	// ct, err := consumer.NewConsumedThing(tdoc, sess.GetRecipe().Consumer)
 	if err == nil {
 		iout := ct.GetValue(msg.AffordanceType(affType), name)
 		fragment = fmt.Sprintf(addRowTemplate,
-			utils.FormatDateTime(iout.Timestamp, "S"), iout.Value.Text(), unit)
+			utils.FormatDateTime(iout.Timestamp, "S"), iout.Text(), unit)
 	} else {
 		fragment = fmt.Sprintf("")
 	}

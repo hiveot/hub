@@ -4,29 +4,29 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/api/vocab"
+	"github.com/hiveot/hivekit/go/api/wot"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/services/hiveoview/src"
 )
 
 // CreateServiceTD creates a new Thing TD document for this service
-func (svc *HiveoviewService) CreateServiceTD() *td.TD {
+func (svc *HiveoviewService) CreateServiceTD() *wot.TD {
 	title := "Web Server"
 	deviceType := vocab.DeviceTypeService
-	tdi := td.NewTD(src.HiveoviewServiceID, title, deviceType)
+	tdi := wot.NewTD(src.HiveoviewServiceID, title, deviceType)
 	//TODO: add properties or events for : uptime, nr connections, nr clients, etc
 
 	tdi.AddEvent(src.NrActiveSessionsEvent,
 		"Nr Sessions", "Number of active sessions",
-		&td.DataSchema{
+		&wot.DataSchema{
 			//AtType: vocab.SessionCount,
-			Type: td.DataTypeInteger,
+			Type: wot.DataTypeInteger,
 		})
 	myAddress := fmt.Sprintf("%s:%d", utils.GetOutboundIP("").String(), svc.port)
 	prop := tdi.AddProperty(vocab.PropNetPort, "Server Listening Port",
 		fmt.Sprintf("Web server listening port (for example: %d in https://%s)", svc.port, myAddress),
-		td.DataTypeInteger)
+		wot.DataTypeInteger)
 	prop.AtType = vocab.PropNetPort
 
 	return tdi

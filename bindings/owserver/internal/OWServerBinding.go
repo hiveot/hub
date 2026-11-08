@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/api/vocab"
+	"github.com/hiveot/hivekit/go/api/wot"
 	"github.com/hiveot/hivekit/go/cells/bucketstore"
 	"github.com/hiveot/hivekit/go/cells/bucketstore/kvbtreestore"
 	"github.com/hiveot/hivekit/go/cells/thing"
@@ -38,7 +38,7 @@ type OWServer struct {
 
 	// The discovered and publishable things, containing instructions on
 	// if and how properties and events are published
-	things map[string]*td.TD
+	things map[string]*wot.TD
 
 	// track the last value for change detection
 	// map of [node/device ID] [attribute Title] value
@@ -60,27 +60,27 @@ type OWServer struct {
 }
 
 // CreateBindingTD generates a TD document for this service. Its thingID is the same as its agentID
-func (svc *OWServer) CreateBindingTD() *td.TD {
+func (svc *OWServer) CreateBindingTD() *wot.TD {
 	// This binding exposes the TD of itself.
 	// Currently its configuration comes from file.
-	tdi := td.NewTD(svc.GetID(), "OWServer binding", vocab.DeviceTypeService)
+	tdi := wot.NewTD(svc.GetID(), "OWServer binding", vocab.DeviceTypeService)
 	tdi.Description = "Driver for the OWServer V2 Gateway 1-wire interface"
 
-	prop := tdi.AddProperty(bindingMake, "Developer", "", td.DataTypeString).
+	prop := tdi.AddProperty(bindingMake, "Developer", "", wot.DataTypeString).
 		SetAtType(vocab.PropDeviceMake)
 
 	// these are configured through the configuration file.
-	prop = tdi.AddProperty(bindingValuePollIntervalID, "Poll Interval", "Value polling", td.DataTypeInteger).
+	prop = tdi.AddProperty(bindingValuePollIntervalID, "Poll Interval", "Value polling", wot.DataTypeInteger).
 		SetAtType(vocab.PropDevicePollinterval)
 	prop.Unit = vocab.UnitSecond
 
 	prop = tdi.AddProperty(bindingValuePublishIntervalID, "Value Republish Interval",
 		"Interval the values are published even if they haven't changed.",
-		td.DataTypeInteger)
+		wot.DataTypeInteger)
 	prop.Unit = vocab.UnitSecond
 
 	prop = tdi.AddProperty(bindingOWServerAddressID, "IP Address", "OWServer gateway IP address",
-		td.DataTypeString).SetAtType(vocab.PropNetAddress)
+		wot.DataTypeString).SetAtType(vocab.PropNetAddress)
 	return tdi
 }
 
@@ -207,7 +207,7 @@ func NewOWServerBinding(serviceID string, storePath string, config *owserver.OWS
 		store:        store,
 		values:       make(map[string]map[string]NodeValueStamp),
 		nodes:        make(map[string]*eds.OneWireNode),
-		things:       make(map[string]*td.TD),
+		things:       make(map[string]*wot.TD),
 	}
 
 	var _ owserver.IOWServer = svc // interface check

@@ -20,9 +20,9 @@ const RenderEditTileTemplate = "EditTile.gohtml"
 type EditTileTemplateData struct {
 	Dashboard session.DashboardModel
 	Tile      session.DashboardTile
-	// Values of the tile sources by sourceID (affType/thingID/name)
-	// FIXME: used consumed thing directory to get values?
-	ctDir *consumer.ConsumedThingsDirectory
+
+	// session provides the interaction output
+	sess *session.WebClientSession
 
 	//Values map[string]*consumer.InteractionOutput
 	// human labels for each tile type
@@ -33,7 +33,7 @@ type EditTileTemplateData struct {
 	SubmitEditTilePath          string // submit the edited tile
 }
 
-func (data EditTileTemplateData) GetTypeLabel(typeID string) string {
+func (data *EditTileTemplateData) GetTypeLabel(typeID string) string {
 	label, found := session.TileTypesLabels[typeID]
 	if !found {
 		return typeID
@@ -41,31 +41,23 @@ func (data EditTileTemplateData) GetTypeLabel(typeID string) string {
 	return label
 }
 
-func (data EditTileTemplateData) GetUpdated(tileSource session.TileSource) string {
-	ct, err := data.ctDir.Consume(tileSource.ThingID)
-	if err != nil {
+func (data *EditTileTemplateData) GetUpdated(tileSource session.TileSource) string {
+
+	iout := data.sess.GetOutput(tileSource.ThingID, tileSource.AffordanceType, tileSource.Name)
+	if iout == nil {
 		return ""
 	}
-	iout := ct.GetValue(tileSource.AffordanceType, tileSource.Name)
-	if iout != nil {
-		return utils.FormatAge(iout.Timestamp)
-		//return utils.FormatDateTime(iout.Timestamp, "S")
-	}
-	return ""
+	//return utils.FormatDateTime(iout.Timestamp, "S")
+	return utils.FormatAge(iout.Timestamp)
 }
 
 // GetValue returns the value of a tile source
 func (data EditTileTemplateData) GetValue(tileSource session.TileSource) string {
-	ct, err := data.ctDir.Consume(tileSource.ThingID)
-	if err != nil {
-		// should never happen, but just in case
-		return err.Error()
+	iout := data.sess.GetOutput(tileSource.ThingID, tileSource.AffordanceType, tileSource.Name)
+	if iout == nil {
+		return ""
 	}
-	iout := ct.GetValue(tileSource.AffordanceType, tileSource.Name)
-	if iout != nil {
-		return iout.ToString()
-	}
-	return ""
+	return iout.ToString()
 }
 
 // RenderEditTile renders the Tile editor dialog
@@ -80,9 +72,9 @@ func RenderEditTile(w http.ResponseWriter, r *http.Request) {
 	if ctc.tileID == "" {
 		ctc.tileID = shortid.MustGenerate()
 	}
-	ctDir := sess.GetConsumedThingsDirectory()
+	// ctDir := sess.GetConsumedThingsDirectory()
 	data := EditTileTemplateData{
-		ctDir:                       ctDir,
+		sess:                        sess,
 		Dashboard:                   ctc.dashboard,
 		Tile:                        ctc.tile,
 		TileTypeLabels:              session.TileTypesLabels,

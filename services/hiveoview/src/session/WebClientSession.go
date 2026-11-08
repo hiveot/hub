@@ -11,6 +11,7 @@ import (
 
 	"github.com/hiveot/hivekit/go/api"
 	"github.com/hiveot/hivekit/go/api/msg"
+	"github.com/hiveot/hivekit/go/api/wot"
 	"github.com/hiveot/hivekit/go/cells/bucketstore"
 	"github.com/hiveot/hivekit/go/cells/consumer"
 	"github.com/hiveot/hivekit/go/cells/directory"
@@ -42,16 +43,14 @@ const DefaultExpiryHours = 72
 
 // WebClientSession manages the connection and state of a web client session.
 //
-//		cause?: When webserver restarts all sessions are cleared. Then sse
-//		eventlistener reconnects, using a new sessionID while the browser still
-//		uses the old one in sending requests???
-//	     how can 2 session ids exist from the same browser tab
+// This uses a custom SessionRecipe which has a hub connection, a directory client
+// with cache for reading a TD, and a value cache for reading values.
 type WebClientSession struct {
 	// This is a consumer representing the web client on the hub
 	co *consumer.Consumer
 
 	// The client connection to the hub used by this session
-	cc api.ITransportClient
+	// cc api.ITransportClient
 
 	// connection-id as provided by the client
 	cid string
@@ -72,7 +71,7 @@ type WebClientSession struct {
 	// ctDir *consumedthing.ConsumedThingsDirectory
 
 	// The directory client with TD cache
-	dirClient directory.IDirectoryClient
+	// dirClient directory.IDirectoryClient
 
 	// flag, this session is active and can be used to send messages to
 	// the hub. If sseChan is set then the return channel is active too.
@@ -80,6 +79,9 @@ type WebClientSession struct {
 
 	// RemoteAddr of the user
 	remoteAddr string
+
+	// The recipe for communicating with the hub
+	recipe *SessionRecipe
 
 	lastActivity time.Time
 	//lastError    error
@@ -126,19 +128,53 @@ func (sess *WebClientSession) GetClientData() *SessionData {
 	return sess.clientData
 }
 
-// GetDirectory returns the session directory of known things
-func (sess *WebClientSession) GetDirectory() directory.IDirectoryClient {
-	return sess.dirClient
+// GetConsumer returns the Thing consumer
+func (sess *WebClientSession) GetConsumer() *consumer.Consumer {
+	return sess.co
 }
 
-// // GetConsumer returns the hub client connection for use in pub/sub
-// func (sess *WebClientSession) GetConsumer() *consumer.Consumer {
-// 	return sess.co
-// }
+// GetConsumedThing returns the consumed thing.
+// This loads it from a cache or creates a new one if not found.
+func (sess *WebClientSession) GetConsumedThing(thingID string) (*consumer.ConsumedThing, error) {
+	tdoc := sess.GetTD(thingID)
+	ct, err := sess.co.Consume(tdoc)
+	return ct, err
+}
+
+// GetDirectory returns the session directory of known things
+func (sess *WebClientSession) GetDirectory() directory.IDirectoryClient {
+	return sess.recipe.GetDirectory()
+}
+
+// GetOutput returns the interaction output of a thing value
+// This gets the consumed thing from the session consumer and asks it for
+// the interaction output.
+func (sess *WebClientSession) GetOutput(
+	thingID string, affType msg.AffordanceType, name string) *consumer.InteractionOutput {
+
+	ct, err := sess.GetConsumedThing(thingID)
+	if err != nil {
+		return nil
+	}
+	iout := ct.GetIOutput(affType, name)
+	return iout
+}
+
+// GetTD returns the TD using the directory
+func (sess *WebClientSession) GetTD(thingID string) *wot.TD {
+	dirCl := sess.GetDirectory()
+	tdoc := dirCl.GetTD(thingID)
+	return tdoc
+}
 
 // GetLastError returns the most recent error, if any
 func (sess *WebClientSession) GetLastError() error {
 	return sess.clientStateError
+}
+
+// GetRecipe returns the recipe for communication with the hub
+func (sess *WebClientSession) GetRecipe() *SessionRecipe {
+	return sess.recipe
 }
 
 // GetConsumedThingsDirectory returns the directory of consumed things of this client
@@ -190,7 +226,7 @@ func (sess *WebClientSession) HandleWebConnectionClosed() {
 	if sess.sseChan == nil {
 		// disconnect from the hub. This will call back into 'HandleHubConnectionClosed'
 		// which will end the session.
-		sess.cc.Stop()
+		sess.recipe.Stop()
 	}
 	sess.mux.RUnlock()
 	//}()
@@ -242,9 +278,9 @@ func (sess *WebClientSession) IsActive() bool {
 
 // IsConnected returns the 'connected' status of hub connection
 func (sess *WebClientSession) IsConnected() bool {
-	stat := sess.cc.GetConnectionStatus()
+	isConnected := sess.recipe.IsConnected()
 
-	return stat == api.StatusConnected
+	return isConnected
 }
 
 func (sess *WebClientSession) Logout() {
@@ -305,7 +341,7 @@ func (sess *WebClientSession) onHubConnectionChange(
 
 // onHubNotification notifies SSE clients of incoming notifications from the Hub
 // This is intended for notifying the client UI of the update to props or events.
-// The consumed thing itself is already updated.
+// The other cells in the recipe are already updated.
 func (sess *WebClientSession) onHubNotification(notif *msg.NotificationMessage) {
 
 	//slog.Debug("received notification",
@@ -316,9 +352,6 @@ func (sess *WebClientSession) onHubNotification(notif *msg.NotificationMessage) 
 	//		slog.String("senderID", notif.SenderID),
 	//		slog.String("receiver cid", sess.cid),
 	//	)
-
-	// update the directory
-	sess.dirClient.HandleNotification(notif)
 
 	// update the clients
 	if notif.AffordanceType == msg.AffordanceTypeProperty {
@@ -350,12 +383,13 @@ func (sess *WebClientSession) onHubNotification(notif *msg.NotificationMessage) 
 
 // ReplaceConnection replaces the hub client connection for this client session.
 // This closes the old connection and ignores the callback it gives.
-func (sess *WebClientSession) ReplaceConnection(newCc api.ITransportClient) {
-	oldCc := sess.cc
-	oldCc.Close()
-	sess.cc = newCc
-	newCc.SetConnectHandler(sess.onHubConnectionChange)
-	newCc.SetNotificationSink(sess.co)
+func (sess *WebClientSession) ReplaceConnection(newCc *SessionRecipe) {
+	oldCc := sess.recipe
+	oldCc.Stop()
+	sess.recipe = newCc
+	cl := newCc.GetConnection()
+	cl.SetConnectHandler(sess.onHubConnectionChange)
+	// cl.SetNotificationSink(sess.co)
 }
 
 // SendNotify sends a 'notify' event for showing in a toast popup.
@@ -462,15 +496,18 @@ func (sess *WebClientSession) WritePage(w http.ResponseWriter, buff *bytes.Buffe
 // after the SSE connection closes but if it is never established then it
 // can hang around indefinitely.
 //
+//	recipe handles the connection to the hub for reading TD's and values.
 //	cid is the web client provided connectionID used to associate http request with SSE clients
 //	co is the consumer connected to the Hub
 //	remoteAddr is the web client remote address
 //	configBucket to store dashboards. This will be closed when this session is removed.
 //	onClose is the callback to invoke when this session is closed.
 func NewWebClientSession(
-	cid string, cc api.ITransportClient, remoteAddr string,
+	recipe *SessionRecipe,
+	cid string,
+	remoteAddr string,
 	configBucket bucketstore.IBucket,
-	onClosed func(*WebClientSession)) *WebClientSession {
+	onClosed func(*WebClientSession)) (*WebClientSession, error) {
 	var err error
 
 	// Each web client session has their own connection to the Hub through
@@ -480,32 +517,31 @@ func NewWebClientSession(
 	// by the web client. Consumed things are automatically updated when Thing
 	// subscription updates are received.
 	// coDir := consumer.NewConsumedThingsDirectory(cc)
-
+	cc := recipe.GetConnection()
+	clientID := cc.GetClientID()
 	webSess := &WebClientSession{
-		co:           consumer.NewConsumer(cc, nil),
+		co:           recipe.Consumer,
 		cid:          cid,
-		clcid:        cc.GetID() + "-" + cid,
-		clientID:     cc.GetID(),
+		clcid:        clientID + "-" + cid,
+		clientID:     clientID,
 		remoteAddr:   remoteAddr,
 		lastActivity: time.Now(),
 		clientData:   NewClientDataModel(configBucket),
-		//viewModel:    NewClientViewModel(hc),
-		cc: cc,
-		// ctDir:    coDir,
-		onClosed: onClosed,
+		recipe:       recipe,
+		onClosed:     onClosed,
 	}
 	cc.SetConnectHandler(webSess.onHubConnectionChange)
 
 	// onNotification is called with async responses to requests
-	cc.SetNotificationSink(webSess.co)
+	// cc.SetNotificationSink(webSess.co)
 
 	isConnected := cc.GetConnectionStatus() == api.StatusConnected
 	webSess.isActive.Store(isConnected)
 
 	// TODO: selectively subscribe instead of everything, but, based on what?
-	err = webSess.co.Subscribe("", "")
+	err = recipe.Subscribe("", "")
 	if err == nil {
-		err = webSess.co.ObserveProperty("", "")
+		err = recipe.ObserveProperty("", "")
 	}
 	if err != nil {
 		//webSess.lastError = err
@@ -521,9 +557,9 @@ func NewWebClientSession(
 
 		if !hasSSE && webSess.IsActive() {
 			slog.Info("Removing orphaned web-session (no sse connection) within 3 seconds", "cid", webSess.cid)
-			webSess.cc.Stop()
+			recipe.Stop()
 		}
 	}()
 
-	return webSess
+	return webSess, nil
 }

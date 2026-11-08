@@ -72,7 +72,7 @@ func (svc *IsyBinding) HandleRequest(
 		isyThing := svc.GetIsyThing(req.ThingID)
 		return isyThing.HandleRequest(req, replyTo)
 	}
-	if req.Operation == td.OpWriteProperty {
+	if req.Operation == wot.OpWriteProperty {
 		return svc.handleConfigRequest(req, replyTo)
 	}
 
@@ -139,20 +139,20 @@ func (svc *IsyBinding) HandleWriteBindingProperty(
 
 // MakeBindingTD generates a TD document for this binding containing properties,
 // event and action definitions.
-func (svc *IsyBinding) MakeBindingTD() *td.TD {
+func (svc *IsyBinding) MakeBindingTD() *wot.TD {
 	tdi := td.NewTD(svc.thingID, "ISY99x binding", vocab.DeviceTypeService)
 
 	// binding attributes
-	prop := tdi.AddProperty(vocab.PropNetConnection, "Connected", "Device is connected", td.DataTypeBool).
+	prop := tdi.AddProperty(vocab.PropNetConnection, "Connected", "Device is connected", wot.DataTypeBool).
 		SetAtType(vocab.PropNetConnection)
 	prop.Description = "Whether the Binding has a connection to an ISY gateway"
 	//
-	prop = tdi.AddProperty(vocab.PropDeviceMake, "Manufacturer", "Device Manufacturer", td.DataTypeString).
+	prop = tdi.AddProperty(vocab.PropDeviceMake, "Manufacturer", "Device Manufacturer", wot.DataTypeString).
 		SetAtType(vocab.PropDeviceMake)
 	prop.Description = "Developer of the binding"
 
 	// TODO: persist configuration
-	prop = tdi.AddProperty(vocab.PropDevicePollinterval, "Poll Interval", "Poll for updates in seconds", td.DataTypeInteger).
+	prop = tdi.AddProperty(vocab.PropDevicePollinterval, "Poll Interval", "Poll for updates in seconds", wot.DataTypeInteger).
 		SetAtType(vocab.PropDevicePollinterval)
 	prop.Description = "Interval the binding polls the gateway for data value updates."
 	prop.Unit = vocab.UnitSecond
@@ -165,7 +165,7 @@ func (svc *IsyBinding) MakeBindingTD() *td.TD {
 	prop.ReadOnly = false
 	prop.WriteOnly = true
 	//
-	prop = tdi.AddProperty(vocab.PropNetAddress, "Network Address", "", td.DataTypeString).
+	prop = tdi.AddProperty(vocab.PropNetAddress, "Network Address", "", wot.DataTypeString).
 		SetAtType(vocab.PropNetAddress)
 	prop.Description = "ISY99x gateway IP address; empty to auto discover."
 	prop.ReadOnly = false
@@ -173,7 +173,7 @@ func (svc *IsyBinding) MakeBindingTD() *td.TD {
 	// binding events
 	tdi.AddEvent(vocab.PropNetConnection,
 		"Connection changed", "Connection with ISY gateway has changed",
-		&td.DataSchema{Type: td.DataTypeBool},
+		&wot.DataSchema{Type: wot.DataTypeBool},
 	).SetAtType(vocab.PropNetConnection)
 
 	// no binding actions

@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/hiveot/hivekit/go/api/msg"
-	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/api/vocab"
+	"github.com/hiveot/hivekit/go/api/wot"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/bindings/isy99x/internal/isy"
 )
@@ -131,7 +131,7 @@ func (it *IsySwitchThing) HandleValueUpdate(propName string, uom string, newValu
 	return nil
 }
 
-func (it *IsySwitchThing) MakeTD() *td.TD {
+func (it *IsySwitchThing) MakeTD() *wot.TD {
 	tdoc := it.IsyThing.MakeTD()
 	// value of switch property ID "ST" is "0" or "255"
 	// TODO: support for switch events
@@ -140,16 +140,16 @@ func (it *IsySwitchThing) MakeTD() *td.TD {
 	//	SetAtType(vocab.ActionSwitchOnOff)
 
 	action := tdoc.AddAction("ST", "Switch on/off", "",
-		&td.DataSchema{
+		&wot.DataSchema{
 			AtType: vocab.ActionSwitchOnOff,
-			Type:   td.DataTypeBool,
+			Type:   wot.DataTypeBool,
 			Enum:   []interface{}{"on", "off"},
 		})
 	// output data same as input
 	action.Output = action.Input
 
 	// add a corresponding property for the switch state
-	tdoc.AddProperty("ST", "Switch on/off", "On/Off switch", td.DataTypeBool)
+	tdoc.AddProperty("ST", "Switch on/off", "On/Off switch", wot.DataTypeBool)
 
 	//td.AddSwitchAction(vocab.ActionSwitchOff, "Switch off")
 	//td.AddSwitchAction(vocab.ActionSwitchToggle, "Toggle switch")

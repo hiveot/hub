@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/hiveot/hivekit/go/api/msg"
-	"github.com/hiveot/hivekit/go/api/td"
+	"github.com/hiveot/hivekit/go/api/wot"
 	"github.com/hiveot/hub/bindings/owserver/internal/eds"
 )
 
@@ -26,8 +26,8 @@ func (svc *OWServer) HandleRequest(
 	var err error
 
 	// Custom config. Change device title.
-	if req.Operation == td.OpWriteProperty {
-		if req.Name == td.WoTTitle {
+	if req.Operation == wot.OpWriteProperty {
+		if req.Name == wot.WoTTitle {
 			err = svc.SetTitle(req)
 			deviceTitleByte, _ := svc.customTitles.Get(req.ThingID)
 			resp := req.CreateResponse(string(deviceTitleByte), err)
@@ -51,7 +51,7 @@ func (svc *OWServer) HandleRequest(
 			// finally do a full refresh that sends notifications to subscribers
 			go svc.RefreshPropertyValues(false)
 		}
-	} else if req.Operation == td.OpInvokeAction {
+	} else if req.Operation == wot.OpInvokeAction {
 		// no actions supported
 		err = fmt.Errorf("Actions not supported")
 	} else {
@@ -76,7 +76,7 @@ func (svc *OWServer) SetTitle(req *msg.RequestMessage) (err error) {
 	}
 	if err == nil {
 		// publish notification with the new title after returning
-		go svc.PubProperty(req.ThingID, td.WoTTitle, valueStr, true)
+		go svc.PubProperty(req.ThingID, wot.WoTTitle, valueStr, true)
 	}
 	return err
 }

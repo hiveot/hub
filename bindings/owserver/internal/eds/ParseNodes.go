@@ -32,7 +32,7 @@ func ParseOneWireNodes(
 	//		Name:     vocab.PropNetLatency,
 	//		Value:    fmt.Sprintf("%.2f", latency.Seconds()),
 	//		Unit:     "sec",
-	//		DataType: td.DataTypeNumber,
+	//		DataType: wot.DataTypeNumber,
 	//	}
 	//	owNode.Attr[owAttr.Name] = owAttr
 	//}

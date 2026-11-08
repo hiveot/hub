@@ -4,19 +4,19 @@ Hive of Things Viewer, written in golang, html/htmx, web components, and sse usi
 
 ## Status
 
-This viewer has reached alpha status with Phase 1-3 completed. The information below is subject to change.
+This viewer is reworked to use HiveKit. It is no longer functional.
 
-### Phase 1: SSR infrastructure and session management [done]
-### Phase 2: Directory view [done]
-### Phase 3: Basic Dashboard (v1) [done]
-### Phase 4: Request/Response Handling Improvements [in progress]
-* Show action progress using async response messages (ActionStatus) [done]
-* Indication of pending property writes (owserver updates can take 10 seconds) [partial]
-* redirect to login when SSE receives unauthorized error (after server restart)
-* Use cached values instead of reload when adding sources to a tile
-* Only view authorized sources
+### Phase 0: rework to use HiveKit
 
-### Phase 5: Dashboard enhancements [in progress]
+### Phase 2: Use web workers in the browser to manage connectivity better
+tbd
+
+### Phase 3: Go to a more pure web component solution 
+
+tbd
+
+
+### Phase 5: Dashboard enhancements (old))
 * multiple dashboards [done]
 * Only show current dashboard tab on small screens
 * Manual sort of tile sources in edit tile [done]

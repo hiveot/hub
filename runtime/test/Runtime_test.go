@@ -8,7 +8,7 @@ import (
 
 	"github.com/hiveot/hivekit/go/api"
 	"github.com/hiveot/hivekit/go/api/msg"
-	"github.com/hiveot/hivekit/go/api/td"
+	"github.com/hiveot/hivekit/go/api/wot"
 	authn_client "github.com/hiveot/hivekit/go/cells/authn/client"
 	"github.com/hiveot/hivekit/go/testenv"
 	"github.com/hiveot/hivekit/go/utils"
@@ -130,7 +130,7 @@ func TestMultiConnectSingleClient(t *testing.T) {
 		co, cc, _ := testEnv.NewConnectedConsumer(clientID1, api.ClientRoleOperator)
 		cc.SetConnectHandler(onConnection)
 		co.SetNotificationHook(onNotification)
-		err := cc.SetAuthToken(clientID1, token1, td.SecSchemeBearer)
+		err := cc.SetAuthToken(clientID1, token1, wot.SecSchemeBearer)
 		require.NoError(t, err)
 		// allow server to register its connection
 		time.Sleep(waitafterconnect)
@@ -191,7 +191,7 @@ func TestAccess(t *testing.T) {
 	defer cc1.Close()
 	_ = token
 
-	//f := r.GetForm(td.OpInvokeAction, hc.GetProtocolType())
+	//f := r.GetForm(wot.OpInvokeAction, hc.GetProtocolType())
 
 	// regulars users should not have authn and authz admin access
 	authnAdmin := authn_client.NewAuthnAdminClient("", cc1)

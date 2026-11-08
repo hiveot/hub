@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/hiveot/hivekit/go/api/msg"
-	"github.com/hiveot/hivekit/go/api/td"
 	"github.com/hiveot/hivekit/go/api/vocab"
+	"github.com/hiveot/hivekit/go/api/wot"
 	"github.com/hiveot/hub/bindings/isy99x/internal/isy"
 )
 
@@ -22,14 +22,14 @@ type IsyDimmerThing struct {
 // 	return propValues
 // }
 
-func (it *IsyDimmerThing) MakeTD() *td.TD {
+func (it *IsyDimmerThing) MakeTD() *wot.TD {
 	tdi := it.IsyThing.MakeTD()
 	// AddSwitchEvent is short for adding an event for a switch
 	// TODO: add dimmer change events
 	//td.AddDimmerEvent(vocab.PropSwitchDimmer)
 
 	a := tdi.AddAction(vocab.ActionDimmerSet, "Set Dimmer", "",
-		&td.DataSchema{Type: td.DataTypeInteger},
+		&wot.DataSchema{Type: wot.DataTypeInteger},
 	)
 	a.SetAtType(vocab.ActionDimmer)
 

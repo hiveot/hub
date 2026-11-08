@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/hiveot/hivekit/go/api/msg"
-	"github.com/hiveot/hivekit/go/api/td"
+	"github.com/hiveot/hivekit/go/api/wot"
 	"github.com/hiveot/hub/bindings/isy99x/internal/isy"
 )
 
@@ -27,7 +27,7 @@ func (it *IsySensorThing) HandleConfigRequest(
 }
 
 // MakeTD returns the TD document representing the node
-func (it *IsySensorThing) MakeTD() *td.TD {
+func (it *IsySensorThing) MakeTD() *wot.TD {
 	td := it.IsyThing.MakeTD()
 	// TODO: add sensor properties and events
 	return td

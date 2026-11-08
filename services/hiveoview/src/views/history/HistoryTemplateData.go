@@ -2,12 +2,13 @@ package history
 
 import (
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"sort"
 	"time"
 
 	"github.com/hiveot/hivekit/go/api/msg"
-	"github.com/hiveot/hivekit/go/api/td"
+	"github.com/hiveot/hivekit/go/api/wot"
 	"github.com/hiveot/hivekit/go/cells/consumer"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/services/hiveoview/src"
@@ -15,8 +16,20 @@ import (
 
 // HistoryTemplateData holds the data for rendering a history table or graph
 type HistoryTemplateData struct {
+	ct consumer.ConsumedThing
+
 	// history of this interaction output
-	consumer.InteractionOutput
+	tdoc    *wot.TD
+	affType msg.AffordanceType
+
+	Name string
+
+	// latest value
+	Value msg.ThingValue
+	// data type
+	Schema *wot.DataSchema
+	// unit symbol derived from the dataschema
+	UnitSymbol string
 
 	Title string // allow override to data description
 
@@ -25,10 +38,11 @@ type HistoryTemplateData struct {
 	//ID string //
 
 	// history information
-	EndTime        time.Time
-	EndTimeStr     string
-	DurationSec    int
-	Values         []*msg.ThingValue
+	EndTime     time.Time
+	EndTimeStr  string
+	DurationSec int
+	// historical values used in template
+	Values         []*msg.NotificationMessage
 	ItemsRemaining bool // for paging, if supported
 	Stepped        bool // stepped graph
 
@@ -47,12 +61,12 @@ type HistoryDataPoint struct {
 
 // AsJSON returns the values as a json string
 // Booleans are converted to 0 and 1
-func (ht HistoryTemplateData) AsJSON() string {
+func (ht *HistoryTemplateData) AsJSON() string {
 	dataList := []HistoryDataPoint{}
 
 	for _, m := range ht.Values {
 		yValue := m.Data
-		if ht.Schema.Type == td.DataTypeBool {
+		if ht.Schema.Type == wot.DataTypeBool {
 			boolValue := utils.DecodeAsBool(m.Data)
 			yValue = 0
 			if boolValue {
@@ -70,9 +84,11 @@ func (ht HistoryTemplateData) AsJSON() string {
 // GetObjectValues returns the history as an array of interaction objects
 // If this is an object then return an element for each object property, otherwise
 // return an array with 1 element.
-func (ht HistoryTemplateData) GetObjectValues() []consumer.InteractionOutput {
+func (ht *HistoryTemplateData) GetObjectValues() []consumer.InteractionOutput {
 	if ht.Schema.Type != "object" {
-		return []consumer.InteractionOutput{ht.InteractionOutput}
+		iout := consumer.NewInteractionOutput(
+			ht.tdoc, ht.affType, ht.Name, ht.Value.Raw, ht.Value.Timestamp)
+		return []consumer.InteractionOutput{*iout}
 	}
 
 	objectValues := map[string]any{}
@@ -80,39 +96,36 @@ func (ht HistoryTemplateData) GetObjectValues() []consumer.InteractionOutput {
 	if err == nil {
 		err = json.Unmarshal(objectAsJson, &objectValues)
 	}
-	values := make([]consumer.InteractionOutput, 0, len(objectValues))
+	ioutList := make([]consumer.InteractionOutput, 0, len(objectValues))
 
 	if err != nil {
 		slog.Error("failed decoding object", "err", err.Error())
-		return values
+		return ioutList
 	}
 	// each object property is a row in the list
 	// history of object values is currently not supported
 	for name, schema := range ht.Schema.Properties {
 		raw, found := objectValues[name]
 		_ = found
-		value := consumer.NewDataSchemaValue(raw)
 
-		iout := ht.InteractionOutput // copy
+		iout := consumer.NewInteractionOutput(
+			ht.tdoc, ht.affType, ht.Name, raw, ht.Value.Timestamp)
 		iout.Title = ht.Title + " - " + schema.Title
-		iout.Name = name
-		iout.Schema = schema
-		iout.Value = value
-		values = append(values, iout)
+		ioutList = append(ioutList, *iout)
 	}
-	sort.Slice(values, func(i, j int) bool {
-		return values[i].Title < values[j].Title
+	sort.Slice(ioutList, func(i, j int) bool {
+		return ioutList[i].Title < ioutList[j].Title
 	})
-	return values
+	return ioutList
 }
 
 // NextDay return the time +1 day
-func (ht HistoryTemplateData) NextDay() time.Time {
+func (ht *HistoryTemplateData) NextDay() time.Time {
 	return ht.EndTime.Add(time.Hour * 24)
 }
 
 // PrevDay return the time -1 day
-func (ht HistoryTemplateData) PrevDay() time.Time {
+func (ht *HistoryTemplateData) PrevDay() time.Time {
 	return ht.EndTime.Add(-time.Hour * 24)
 }
 
@@ -120,7 +133,7 @@ func (ht HistoryTemplateData) PrevDay() time.Time {
 // this returns -1 if time is less than today and 1 if greater than today
 //
 // 'today' is different in that it refreshes if a value changes
-func (ht HistoryTemplateData) CompareToday() int {
+func (ht *HistoryTemplateData) CompareToday() int {
 	// 'today' accepts any time in the current local day
 	yy, mm, dd := time.Now().Date()
 	tsYY, tsmm, tsdd := ht.EndTime.Date()
@@ -138,14 +151,43 @@ func (ht HistoryTemplateData) CompareToday() int {
 //	endTime of the end-time of the history range
 //	duration to read (negative for history)
 func NewHistoryTemplateData(
-	iout *consumer.InteractionOutput,
-	values []*msg.ThingValue,
+	// iout *consumer.InteractionOutput,
+	tdoc *wot.TD,
+	affType msg.AffordanceType,
+	name string,
+	values []*msg.NotificationMessage,
 	endTime time.Time, duration time.Duration) (
 	data *HistoryTemplateData, err error) {
 
-	hs := HistoryTemplateData{
-		InteractionOutput: *iout,
-		//ID:                iout.ID,
+	var title string
+	// Get the current schema for the value to show
+	var schema *wot.DataSchema
+
+	switch affType {
+	case msg.AffordanceTypeProperty:
+		aff := tdoc.GetProperty(name)
+		schema = &aff.DataSchema
+		title = aff.Title
+	case msg.AffordanceTypeEvent:
+		aff := tdoc.GetEvent(name)
+		schema = aff.Data
+		title = aff.Title
+	case msg.AffordanceTypeAction:
+		aff := tdoc.GetAction(name)
+		schema = aff.Output
+		title = aff.Title
+	default:
+		err = fmt.Errorf("Unknown affordance '%s'", affType)
+		return nil, err
+	}
+
+	histData := &HistoryTemplateData{
+		// InteractionOutput: *iout,
+		// ID:                iout.ID,
+		Schema:  schema,
+		tdoc:    tdoc,
+		affType: affType,
+		Name:    name,
 		EndTime: endTime,
 		// chart expects ISO timestamp: yyyy-mm-ddTHH:MM:SS.sss-07:00
 		EndTimeStr:     utils.FormatUTCMilli(endTime),
@@ -154,14 +196,11 @@ func NewHistoryTemplateData(
 		Values:         values,
 		ItemsRemaining: false,
 	}
-	// Get the current schema for the value to show
-	//iout := ct.GetValue(affType, name)
 
-	//hs.DataSchema = iout.Schema
-	//hs.UnitSymbol = iout.UnitSymbol()
-	hs.Title = iout.Title //+ " of " + ct.Title
+	histData.UnitSymbol = schema.UnitSymbol()
+	histData.Title = title //+ " of " + ct.Title
 	//hs.DataSchema.Title = hs.Title
-	hs.Stepped = iout.Schema.Type == td.DataTypeBool
+	histData.Stepped = schema.Type == wot.DataTypeBool
 
 	// TODO: (if needed) if items remaining, get the rest in an additional call
 	//hist := historypkg.NewReadHistoryClient(ct.GetConsumer())
@@ -169,14 +208,18 @@ func NewHistoryTemplateData(
 	//	iout.ThingID, iout.Name, timestamp, duration, 500)
 
 	// Add the URL paths for navigating around the history
-	pathParams := map[string]string{"affordanceType": string(iout.AffordanceType), "thingID": iout.ThingID, "name": iout.Name}
-	prevDayTime := hs.PrevDay().Format(time.RFC3339)
-	nextDayTime := hs.NextDay().Format(time.RFC3339)
+	pathParams := map[string]string{
+		"affordanceType": string(affType),
+		"thingID":        tdoc.ID,
+		"name":           name,
+	}
+	prevDayTime := histData.PrevDay().Format(time.RFC3339)
+	nextDayTime := histData.NextDay().Format(time.RFC3339)
 	todayTime := time.Now().Format(time.RFC3339)
-	hs.PrevDayPath = utils.Substitute(src.RenderHistoryTimePath+prevDayTime, pathParams)
-	hs.NextDayPath = utils.Substitute(src.RenderHistoryTimePath+nextDayTime, pathParams)
-	hs.TodayPath = utils.Substitute(src.RenderHistoryTimePath+todayTime, pathParams)
-	hs.RenderHistoryLatestRow = utils.Substitute(src.RenderHistoryLatestValueRowPath, pathParams)
-	hs.RenderThingDetailsPath = utils.Substitute(src.RenderThingDetailsPath, pathParams)
-	return &hs, err
+	histData.PrevDayPath = utils.Substitute(src.RenderHistoryTimePath+prevDayTime, pathParams)
+	histData.NextDayPath = utils.Substitute(src.RenderHistoryTimePath+nextDayTime, pathParams)
+	histData.TodayPath = utils.Substitute(src.RenderHistoryTimePath+todayTime, pathParams)
+	histData.RenderHistoryLatestRow = utils.Substitute(src.RenderHistoryLatestValueRowPath, pathParams)
+	histData.RenderThingDetailsPath = utils.Substitute(src.RenderThingDetailsPath, pathParams)
+	return histData, err
 }
