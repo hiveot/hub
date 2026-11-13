@@ -98,7 +98,7 @@ func (r *SessionRecipe) Stop() {
 //
 // The resulting consumer is the start of the recipe chain.
 // Invoke Start on the recipe to run the consumer.
-func NewSessionRecipe(env *api.HiveEnvironment) (r *SessionRecipe, err error) {
+func NewSessionRecipe(env *api.AppEnvironment) (r *SessionRecipe, err error) {
 
 	f := factory_service.NewCellFactory(env, nil)
 	formation, err := factory_service.NewChainFormation(f, SessionRecipeChain, nil, false)

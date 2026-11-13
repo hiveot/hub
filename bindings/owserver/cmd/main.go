@@ -14,7 +14,7 @@ import (
 
 // Start the OWServer protocol binding
 func main() {
-	env := api.NewHiveEnvironment("", true)
+	env := api.NewAppEnvironment("", true)
 
 	owsConfig := owserver.NewOWServerConfig()
 	err := env.LoadConfig(env.AppID, &owsConfig)

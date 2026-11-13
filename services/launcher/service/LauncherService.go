@@ -12,7 +12,7 @@ import (
 // env is the application environment with bin, certs, log and plugin directories
 // cfg is the launcher configuration
 func NewLauncherService(
-	env *api.HiveEnvironment, cfg *launcher.LauncherConfig) (launcher.ILauncherService, error) {
+	env *api.AppEnvironment, cfg *launcher.LauncherConfig) (launcher.ILauncherService, error) {
 
 	svc, err := internal.NewLauncherService(env, cfg)
 	return svc, err

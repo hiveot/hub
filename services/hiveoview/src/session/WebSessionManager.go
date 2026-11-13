@@ -30,7 +30,7 @@ type WebSessionManager struct {
 	// copy of the environment used to connect to the hub
 	// Do not make this a pointer as this is used as a template for
 	// sessions, each with its own clientID and auth.
-	env api.HiveEnvironment
+	env api.AppEnvironment
 
 	// Full Hub address for new sessions
 	// hubURL string
@@ -208,7 +208,7 @@ func (sm *WebSessionManager) HandleConnectWithPassword(
 	// Obtain the client's auth token by logging in using the http client
 	parts, _ := url.Parse(sm.env.ServerURL)
 	authCl := authn_client.NewUserAuthnHttpClient(parts.Host, sm.env.GetRootCAs())
-	authCl.SetTimeout(sm.env.RpcTimeout)
+
 	newToken, err = authCl.LoginWithPassword(loginID, password)
 	if err != nil {
 		// well that didnt work as expected
@@ -370,7 +370,7 @@ func (sm *WebSessionManager) GetSessionFromCookie(r *http.Request) (
 //	signingKey for use with session cookies
 //	configStore data store for client configuration
 func NewWebSessionManager(
-	env api.HiveEnvironment,
+	env api.AppEnvironment,
 	onSessionStarted func(*WebClientSession, int),
 	onSessionEnded func(*WebClientSession, int),
 	// ag *thing.ExposedThing,

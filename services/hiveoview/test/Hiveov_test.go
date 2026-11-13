@@ -11,9 +11,6 @@ import (
 	"time"
 
 	"github.com/hiveot/hivekit/go/api"
-	"github.com/hiveot/hivekit/go/api/msg"
-	"github.com/hiveot/hivekit/go/api/wot"
-	ssesc_client "github.com/hiveot/hivekit/go/cells/transport/ssesc/client"
 	"github.com/hiveot/hivekit/go/cells/transport/tlsclient"
 	"github.com/hiveot/hivekit/go/testenv"
 	"github.com/hiveot/hivekit/go/utils"
@@ -40,80 +37,46 @@ var testEnv *testenv.TestEnv
 
 // return the form with href for login operations to the hiveoview server
 // these must match the paths in hiveoview createRoutes.
-func getHiveoviewForm(op, thingID, name string) *wot.Form {
-	var href string
-	var method string
-	switch op {
-	//case td.HTOpLogin:
-	//	href = "/login"
-	//	method = "POST"
-	//case td.HTOpLoginWithForm:
-	//	href = "/loginForm"
-	//	method = "GET"
-	//case td.HTOpLogout:
-	//	href = "/logout"
-	//	method = "POST"
-	//case td.HTOpRefresh:
-	//	href = "/refresh" // todo
-	//	method = "POST"
-	default:
-		panic("Unexpected operation: " + op)
-	}
-	f := wot.NewForm(op, href)
-	f.SetMethodName(method)
-	return &f
-}
+// func getHiveoviewForm(op, thingID, name string) *wot.Form {
+// 	var href string
+// 	var method string
+// 	switch op {
+// 	//case td.HTOpLogin:
+// 	//	href = "/login"
+// 	//	method = "POST"
+// 	//case td.HTOpLoginWithForm:
+// 	//	href = "/loginForm"
+// 	//	method = "GET"
+// 	//case td.HTOpLogout:
+// 	//	href = "/logout"
+// 	//	method = "POST"
+// 	//case td.HTOpRefresh:
+// 	//	href = "/refresh" // todo
+// 	//	method = "POST"
+// 	default:
+// 		panic("Unexpected operation: " + op)
+// 	}
+// 	f := wot.NewForm(op, href)
+// 	f.SetMethodName(method)
+// 	return &f
+// }
 
-// Helper function to login as a web client to the hiveoview server using
-// the same sse client as the transport provides.
+// Helper function to login as a web client to the hiveoview server.
+//
 // The TestLogin test must succeed before using this.
 // This returns a client. Call Close() when done.
 func WebLogin(sseURL string, clientID string,
-	onConnection func(bool, error, api.IConnection),
-	onNotification msg.NotificationHandler,
-	onRequest msg.RequestHandler,
-	onResponse msg.ResponseHandler,
+	onConnection func(isConnected bool),
+	onMessage func(eventName string, evData []byte),
+	// onRequest msg.RequestHandler,
+	// onResponse msg.ResponseHandler,
 ) (
-	cl api.IConnection, err error) {
+	cl *SSEWebClient, err error) {
 
-	//sseCl := clients.NewHubClient(sseURL, clientID, ts.Certs.CaCert)
-	// websocket client
-	//sseCl := wssclient.NewWssTransportClient(
-	//	sseURL, clientID, nil, ts.Certs.CaCert, time.Minute)
-	// or ssesc client
-
-	// use the hub's SSE client to connect to the hiveoview server as a browser.
-	// FIXME: hiveoview server uses different SSE event payload than hiveoview
-	// the 'event' ID contains thingID etc. We can't change this because
-	// htmx sse triggers rely on this format. (for now)
-	// FIXME: can htmx sse trigger using additional fields (type=notification, thingID/name=blah?)
-	// or is this too painful in htmx.
-	sseCl := ssesc_client.NewSseScClient(
-		sseURL,
-		testEnv.CertBundle.CaCert,
-		getHiveoviewForm)
-
+	// This client is just for testing to mimick what the browser uses in JS
+	sseCl := NewSSEWebClient(
+		sseURL, testEnv.CertBundle.RootCAs, onConnection, onMessage)
 	sseCl.SetTimeout(time.Minute)
-	err = sseCl.SetAuthToken(clientID, authToken)
-
-	// hiveoview uses a different login path as the hub
-	//sseCl.SetSSEPath(service.WebSsePath)
-	sseCl.SetConnectHandler(onConnection)
-	sseCl.SetNotificationHandler(onNotification)
-	sseCl.SetResponseHandler(onResponse)
-	sseCl.SetRequestHandler(onRequest)
-
-	// a login is needed to create a session tied to the token
-	//cid := sseCl.GetConnectionID()
-	//token, err := authenticator.AuthenticateWithPassword(
-	//	sseURL, src.UIPostLoginPath, clientID, clientID, ts.Certs.CaCert, cid)
-	// FIXME: password is clientID
-	//token, err := ts.LoginWithPassword(clientID, clientID)
-	if err != nil {
-		return nil, err
-	}
-	// hiveot http requires a connection-id to link the return channel.
-	//cl2.SetHeader(httpserver.ConnectionIDHeader, shortid.MustGenerate())
 
 	// The hiveoview server will set a cookie,needed for further requests.
 	// So the login must use the same client as the requests.
@@ -122,12 +85,13 @@ func WebLogin(sseURL string, clientID string,
 		"password": clientID,
 	}
 	loginJSON, _ := jsoniter.Marshal(loginMessage)
-	outputRaw, _, status, err := sseCl.Send(http.MethodPost, src.UIPostLoginPath, loginJSON)
+	outputRaw, status, err := sseCl.Send(
+		http.MethodPost, src.UIPostLoginPath, loginJSON)
 	if err == nil {
 		var token string
 		err = jsoniter.Unmarshal(outputRaw, &token)
 		_ = status
-		err = sseCl.ConnectWithToken(token)
+		sseCl.Connect(clientID, token)
 	}
 	return sseCl, err
 }
@@ -142,9 +106,9 @@ func TestMain(m *testing.M) {
 	_ = os.RemoveAll(testFolder)
 	err = os.MkdirAll(testFolder, 0700)
 
-	testEnv, cancelFn = testenv.StartTestEnv(true)
+	// need a test environment to represent a wot server
+	testEnv, cancelFn = testenv.StartTestEnv(api.WotWebsocketProtocolType, true)
 	if err != nil {
-		cancelFn()
 		panic(err)
 	}
 
@@ -158,13 +122,16 @@ func TestStartStop(t *testing.T) {
 
 	storeDir := testFolder
 	cc1, _ := testEnv.NewTestClient(serviceID, api.ClientRoleService)
-	svc, err := service.NewHiveovService(servicePort, true, nil, "",
-		testEnv.CertBundle.ServerCert, testEnv.CertBundle.CaCert, timeout, storeDir)
-	require.NoError(t, err)
+	svc, err := service.NewHiveovService(
+		testEnv.Env, servicePort, true, "",
+		testEnv.CertBundle.ServerCert, testEnv.CertBundle.RootCAs,
+		timeout, storeDir)
 
+	require.NoError(t, err)
 	cc1.SetRequestSink(svc)
 	svc.SetNotificationSink(cc1)
 
+	cc1.Start()
 	svc.Start()
 	time.Sleep(time.Second * 3)
 	svc.Stop()
@@ -181,12 +148,13 @@ func TestLogin(t *testing.T) {
 	require.NotNil(t, rcThing1)
 	defer cc1.Close()
 
-	svc := service.NewHiveovService(servicePort, true, nil,
-		"", testEnv.CertBundle.ServerCert, testEnv.CertBundle.CaCert, timeout, storeDir)
+	svc, err := service.NewHiveovService(
+		testEnv.Env, servicePort, true, "",
+		testEnv.CertBundle.ServerCert, testEnv.CertBundle.RootCAs,
+		timeout, storeDir)
 	rcThing1.SetRequestSink(svc)
-
-	err := svc.Start()
 	require.NoError(t, err)
+	svc.Start()
 	defer svc.Stop()
 
 	// make sure the client to login exists
@@ -199,7 +167,6 @@ func TestLogin(t *testing.T) {
 	// 2: login using plain TLS connection and a form
 	hostPort := fmt.Sprintf("localhost:%d", servicePort)
 	cl2 := tlsclient.NewTLSClient(hostPort, testEnv.Env.GetRootCAs())
-	cl2.SetTimeout(testEnv.Env.RpcTimeout)
 
 	// hiveot http requires a connection-id to link the return channel.
 	cl2.SetHeader(api.ConnectionIDHeader, shortid.MustGenerate())
@@ -232,7 +199,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	const agentID = "agent1"
 	const testConnections = 1
 	const eventName = "event1"
-	var webClients = make([]api.IConnection, 0)
+	var webClients = make([]*SSEWebClient, 0)
 	var connectCount atomic.Int32
 	var disConnectCount atomic.Int32
 	var messageCount atomic.Int32
@@ -244,11 +211,13 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	// 1: setup: start a runtime and service; this generates an error that
 	//    the state service isnt found. ignore it.
 	// avcAg, _ := testEnv.AddConnectService(serviceID)
-	svc := service.NewHiveovService(servicePort, true, nil,
-		"", testEnv.CertBundle.ServerCert, testEnv.CertBundle.CaCert, timeout, storeDir)
-	err := svc.Start()
+	svc, err := service.NewHiveovService(
+		testEnv.Env, servicePort, true, "",
+		testEnv.CertBundle.ServerCert, testEnv.CertBundle.RootCAs,
+		timeout, storeDir)
 
 	require.NoError(t, err)
+	svc.Start()
 	defer svc.Stop()
 
 	// the agent for publishing events. A TD is needed for them to be accepted.
@@ -269,18 +238,19 @@ func TestMultiConnectDisconnect(t *testing.T) {
 
 	_ = token1
 	//handler for web connection notifications
-	onConnection := func(connected bool, err error, _ api.IConnection) {
-		if connected {
+	onConnection := func(isConnected bool) {
+		if isConnected {
 			connectCount.Add(1)
 		} else {
 			disConnectCount.Add(1)
 		}
 	}
 	// handler hiveoview SSE notifications
-	onNotification := func(notif *msg.NotificationMessage) {
+	onNotification := func(eventName string, evData []byte) {
 		// the UI expects this format for triggering htmx
-		expectedType := fmt.Sprintf("event/dtw:%s:%s/%s", agentID, td1.ID, eventName)
-		if string(notif.AffordanceType) == expectedType {
+		expectedName := fmt.Sprintf("event/dtw:%s:%s/%s", agentID, td1.ID, eventName)
+
+		if eventName == expectedName {
 			messageCount.Add(1)
 		}
 		return
@@ -292,7 +262,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	// The hiveoview server only supports SSE on a fixed (WebSsePath) path
 	hiveoviewURL := fmt.Sprintf("https://localhost:%d%s", servicePort, service.WebSsePath)
 	for range testConnections {
-		sseCl, err := WebLogin(hiveoviewURL, clientID1, onConnection, onNotification, nil, nil)
+		sseCl, err := WebLogin(hiveoviewURL, clientID1, onConnection, onNotification)
 		// an event streamm error occurs when auth fails
 		require.NoError(t, err)
 		require.NotNil(t, sseCl)

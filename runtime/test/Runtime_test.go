@@ -10,6 +10,7 @@ import (
 	"github.com/hiveot/hivekit/go/api/msg"
 	"github.com/hiveot/hivekit/go/api/wot"
 	authn_client "github.com/hiveot/hivekit/go/cells/authn/client"
+	rcdevice_recipe "github.com/hiveot/hivekit/go/factory/recipes/rcdevice"
 	"github.com/hiveot/hivekit/go/testenv"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/runtime/pkg"
@@ -20,14 +21,15 @@ import (
 var testEnv *testenv.TestEnv
 
 // start the test runtime
-func startRuntime() *pkg.HubRuntime {
+func startRuntime() (*pkg.HubRuntime, *api.AppEnvironment) {
 	utils.SetLogging("info", "")
 	testEnv = testenv.NewTestEnv(true)
 	// testEnv.StartTestServer("")
 	rt, f, err := pkg.NewHubRuntime(testEnv.Env)
+	rt.Start()
 	_ = f
 	_ = err
-	return rt
+	return rt, testEnv.Env
 }
 
 // TestMain for all authn tests, setup of default folders and filenames
@@ -39,7 +41,10 @@ func TestMain(m *testing.M) {
 
 func TestStartStop(t *testing.T) {
 	t.Logf("---%s---\n", t.Name())
-	r := startRuntime()
+	r, env := startRuntime()
+	require.NotNil(t, r)
+	require.NotEmpty(t, env)
+	r.Start()
 	r.Stop()
 	//time.Sleep(time.Millisecond * 100)
 }
@@ -48,28 +53,41 @@ func TestLoginAsAgent(t *testing.T) {
 	const agentID = "agent1"
 	t.Logf("---%s---\n", t.Name())
 
-	r := startRuntime()
-	rcThing, ccag, token := testEnv.NewRCThing(agentID, nil) //AddConnectAgent(agentID)
-	defer rcThing.Stop()
-	defer ccag.Close()
-	authCl := authn_client.NewAuthnUserClient("", rcThing)
-	t2, err := authCl.RefreshToken(token)
+	r, env := startRuntime()
+	defer r.Stop()
+	deviceToken, _, err := r.AddAccount(agentID, agentID, api.ClientRoleDevice, true, false)
 	require.NoError(t, err)
+	require.NotEmpty(t, deviceToken)
+
+	// Share the same environment for testing but with the device client
+	deviceEnv := *env
+	deviceEnv.ClientID = agentID
+	rcDevice, _, err := rcdevice_recipe.NewRCDeviceRecipe(&deviceEnv, nil)
+	rcDevice.Start()
+	defer rcDevice.Stop()
+	cc := rcDevice.GetClient()
+	cc.SetAuthToken(agentID, deviceToken, wot.SecSchemeBearer)
+	time.Sleep(time.Millisecond * 10)
+	// Create a refresh token using the auth client
+	authCl := authn_client.NewAuthnUserClient("", rcDevice)
+	t2, err := authCl.RefreshToken(deviceToken)
+	assert.NoError(t, err)
 	assert.NotEmpty(t, t2)
+	time.Sleep(time.Millisecond * 10)
 
 	// use the refresh token
 	t3, err := authCl.RefreshToken(t2)
 	_ = t3
-	require.NoError(t, err)
-
-	r.Stop()
-	//time.Sleep(time.Millisecond * 100)
+	time.Sleep(time.Millisecond * 10)
+	assert.NoError(t, err)
 }
+
 func TestLoginAsConsumer(t *testing.T) {
 	const clientID = "user1"
 	t.Logf("---%s---\n", t.Name())
 
-	r := startRuntime()
+	r, env := startRuntime()
+	_ = env
 	co1, cc1, token := testEnv.NewConnectedConsumer(clientID, api.ClientRoleManager)
 	defer co1.Stop()
 	defer cc1.Stop()
@@ -103,7 +121,8 @@ func TestMultiConnectSingleClient(t *testing.T) {
 	const waitafterconnect = time.Millisecond * 10
 
 	// 1: setup: start a runtime and connect N clients
-	r := startRuntime()
+	r, env := startRuntime()
+	_ = env
 	rcThing, ccag, _ := testEnv.NewRCThing(agentID, nil)
 	defer ccag.Close()
 
@@ -183,7 +202,8 @@ func TestAccess(t *testing.T) {
 	t.Logf("---%s---\n", t.Name())
 	const clientID = "user1"
 
-	r := startRuntime()
+	r, env := startRuntime()
+	_ = env
 	defer r.Stop()
 
 	cc1, token := testEnv.NewTestClient(clientID, api.ClientRoleAdmin)

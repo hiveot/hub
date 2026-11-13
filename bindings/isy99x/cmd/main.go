@@ -13,7 +13,7 @@ import (
 // Start the ISY99x protocol binding
 func main() {
 
-	env := api.NewHiveEnvironment("", true)
+	env := api.NewAppEnvironment("", true)
 	cfg := config.NewIsy99xConfig()
 	_ = env.LoadConfig(env.AppID, &cfg)
 

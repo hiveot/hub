@@ -43,7 +43,7 @@ func main() {
 
 	flag.IntVar(&serverPort, "defaultServerPort", serverPort, "Webserver listening defaultServerPort")
 	flag.BoolVar(&extfs, "extfs", extfs, "Use external gohtml filesystem")
-	env := api.NewHiveEnvironment("", true)
+	env := api.NewAppEnvironment("", true)
 
 	// this config will be replaced with hiveoview Thing config
 	cfg := config.NewHiveoviewConfig(serverPort)

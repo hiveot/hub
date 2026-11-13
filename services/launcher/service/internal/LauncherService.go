@@ -45,7 +45,7 @@ type LauncherService struct {
 	cfg *launcher.LauncherConfig
 
 	//
-	env *api.HiveEnvironment
+	env *api.AppEnvironment
 
 	// map of plugin name to running status
 	plugins map[string]launcher.PluginInfo
@@ -317,7 +317,7 @@ func (svc *LauncherService) WatchPlugins() error {
 //
 // env is the application environment with bin, certs, log and plugin directories
 // cfg is the launcher configuration
-func NewLauncherService(env *api.HiveEnvironment, cfg *launcher.LauncherConfig,
+func NewLauncherService(env *api.AppEnvironment, cfg *launcher.LauncherConfig,
 ) (*LauncherService, error) {
 
 	svc := &LauncherService{

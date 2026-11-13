@@ -2,33 +2,15 @@
 	"folders": [
 		{
 			"path": "."
+		},
+		{
+			"path": "../hivekit"
 		}
 	],
 	"settings": {
-		"importSorter.sortConfiguration.customOrderingRules.rules": [
-			{
-				"type": "importMember",
-				"regex": "^$",
-				"orderLevel": 5,
-				"disableSort": true
-			},
-			{
-				"regex": "^[^.@]",
-				"orderLevel": 10
-			},
-			{
-				"regex": "^[@]",
-				"orderLevel": 15
-			},
-			{
-				"regex": "^[.]",
-				"orderLevel": 30
-			}
-		],
 		"editor.rulers": [
-			80,
-			120
+			100,120
 		],
-		"makefile.configureOnOpen": false
+		"editor.fontLigatures": false
 	}
 }

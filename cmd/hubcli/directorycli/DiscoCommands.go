@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"time"
 
 	"github.com/hiveot/hivekit/go/api"
-	"github.com/hiveot/hivekit/go/cells/discovery"
+	"github.com/hiveot/hivekit/go/api/wot"
 	discovery_client "github.com/hiveot/hivekit/go/cells/discovery/client"
 	"github.com/hiveot/hivekit/go/cells/transport/tlsclient"
 	jsoniter "github.com/json-iterator/go"
@@ -17,7 +19,7 @@ import (
 // DiscoListCommand lists discovered Thing and Directory servers
 //
 // authToken used to read the TD
-func DiscoListCommand(env **api.HiveEnvironment) *cli.Command {
+func DiscoListCommand(env **api.AppEnvironment) *cli.Command {
 	var readtd = false
 	return &cli.Command{
 		Name: "disco",
@@ -43,13 +45,13 @@ func DiscoListCommand(env **api.HiveEnvironment) *cli.Command {
 }
 
 // HandleDiscover prints a list of discovered Things and Directories
-func HandleDiscover(env *api.HiveEnvironment, readtd bool) error {
+func HandleDiscover(env *api.AppEnvironment, readtd bool) error {
 	discoClient, err := discovery_client.NewDiscoveryClient(env, true)
 	authToken, _ := env.GetAuthToken()
 	if err != nil {
 		return err
 	}
-	allRecords, err := discoClient.DiscoverThings("", discovery.DISCO_TYPE_THING, false, time.Second*2, nil)
+	allRecords, err := discoClient.DiscoverThings("", "", false, time.Second*2, nil)
 	if err != nil {
 		fmt.Println("Discovery failed: ", err.Error())
 		return err
@@ -58,15 +60,34 @@ func HandleDiscover(env *api.HiveEnvironment, readtd bool) error {
 	//allRecords := append(hiveotRecords, wotRecords...)
 
 	// create a client for reading TD's
-	fmt.Println("Address                     Port  Instance       Type      Schema   TD path")
-	fmt.Println("-------                    -----  --------       ----      ------   -------")
+	fmt.Println("Discovered Things and Directories on the local network")
+	fmt.Println("Type       Address         Port   Hostname              Instance                 Schema   ThingID                           TD URL   ")
+	fmt.Println("---------- -------         -----  --------------------  --------                 ------   --------------------------------  -------  ")
 	for _, entry := range allRecords {
-		fmt.Printf("%-25s %6d  %-11s %10s   %-8s %s\n",
+		// Read the TD if possible
+		var tdoc *wot.TD
+		var thingID string = "n/a"
+		tdURL := entry.AsURL()
+		if tdURL != "" {
+			resp, err := http.Get(tdURL)
+			if err == nil {
+				raw, _ := io.ReadAll(resp.Body)
+				tdoc, err = wot.UnmarshalTD(string(raw))
+			}
+			if err != nil {
+				fmt.Printf(" Error reading TD: %s\n", err.Error())
+			} else {
+				thingID = tdoc.ID
+			}
+		}
+		fmt.Printf("%-10s %-15s %-5d  %-21s %-22s   %-8s %-33s %s\n",
+			entry.Type,
 			entry.Addr,
 			entry.Port,
+			entry.Hostname,
 			entry.Instance,
-			entry.Type,
 			entry.Schema,
+			thingID,
 			entry.TD,
 		)
 		if readtd {

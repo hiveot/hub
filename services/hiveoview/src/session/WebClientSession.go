@@ -41,7 +41,8 @@ type SSEEvent struct {
 // DefaultExpiryHours TODO: set default expiry in config
 const DefaultExpiryHours = 72
 
-// WebClientSession manages the connection and state of a web client session.
+// WebClientSession manages the connection and state of a web client session
+// and link it to the hub.
 //
 // This uses a custom SessionRecipe which has a hub connection, a directory client
 // with cache for reading a TD, and a value cache for reading values.
@@ -288,7 +289,8 @@ func (sess *WebClientSession) Logout() {
 	panic("TODO")
 }
 
-// NewSseChan creates a new SSE return channel.
+// NewSseChan creates a new SSE return channel to send notifications to the UI.
+//
 // Intended for use by the sse connection handler.
 func (sess *WebClientSession) NewSseChan() chan SSEEvent {
 	slog.Debug("NewSseChan", "clientID", sess.GetClientID(),
@@ -418,8 +420,7 @@ func (sess *WebClientSession) SendNotify(ntype NotifyType, msgID string, text st
 	}
 }
 
-// SendSSE encodes and sends an SSE event to clients of this session
-// Intended to notify the browser of changes.
+// SendSSE encodes and sends an SSE event to the browser UI client.
 func (sess *WebClientSession) SendSSE(event string, content string) {
 
 	// the browser htmx sse handler matches 'event' with htmx hx-trigger name

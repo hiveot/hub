@@ -15,7 +15,7 @@ import (
 func main() {
 
 	// use the rcdevice recipe and link the binding ExposedThing
-	env := api.NewHiveEnvironment("", true)
+	env := api.NewAppEnvironment("", true)
 
 	cfg := config.NewIPNetConfig()
 	_ = env.LoadConfig("ipnet", &cfg)

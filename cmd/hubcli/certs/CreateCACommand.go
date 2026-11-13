@@ -53,16 +53,16 @@ func CreateCACommand(certsFolder *string) *cli.Command {
 // HandleCreateCACert generates the hub self-signed CA private key and certificate
 // in the given folder.
 // If force is set then force replacing the existing certificate
-func HandleCreateCACert(certsFolder string, force bool) error {
-	caCertPath := path.Join(certsFolder, api.DefaultCaCertFile)
-	caKeyPath := path.Join(certsFolder, api.DefaultCaKeyFile)
+func HandleCreateCACert(certsDir string, force bool) error {
+	caCertPath := path.Join(certsDir, api.DefaultCaCertFile)
+	caKeyPath := path.Join(certsDir, api.DefaultCaKeyFile)
 
 	// folder doesn't exist
-	if _, err := os.Stat(certsFolder); err != nil {
-		fmt.Printf("Certificate folder '%s' doesn't exist. Creating it.\n", certsFolder)
-		err = os.Mkdir(certsFolder, 0744)
+	if _, err := os.Stat(certsDir); err != nil {
+		fmt.Printf("Certificate folder '%s' doesn't exist. Creating it.\n", certsDir)
+		err = os.Mkdir(certsDir, 0744)
 		if err != nil {
-			return fmt.Errorf("Failed creating certificate folder '%s' doesn't exist", certsFolder)
+			return fmt.Errorf("Failed creating certificate folder '%s' doesn't exist", certsDir)
 		}
 	}
 	// replace existing certificate if force is used
@@ -79,10 +79,8 @@ func HandleCreateCACert(certsFolder string, force bool) error {
 		}
 	}
 	// the certsservice creates the CA cert and key on start
-	cfg := certs.CertsConfig{
-		CertsDir: certsFolder,
-	}
-	svc, err := certs_service.NewCertsService(&cfg)
+	cfg := certs.CertsConfig{}
+	svc, err := certs_service.NewCertsService(certsDir, &cfg)
 	_ = svc
 	if err != nil {
 		return err

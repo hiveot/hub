@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/user"
+	"path/filepath"
 
 	"github.com/hiveot/hivekit/go/api"
 	consumerrecipe "github.com/hiveot/hivekit/go/factory/recipes/consumer"
@@ -27,22 +29,21 @@ var nowrap bool
 // commandline:  hubcli command options
 
 func main() {
-	// var co *consumer.Consumer
 	var r *consumerrecipe.ConsumerRecipe
+	var env *api.AppEnvironment
 	var verbose bool
-	var password = ""
+	var showEnv bool
 	var homeDir string
+	var clientID string
 	var certsDir string
+	var dirTDURL string
 	var serverURL string
-	var authToken string
 
-	// first obtain the environment defaults
-	env := api.NewHiveEnvironment("", false)
-	homeDir = env.HomeDir
-	certsDir = env.CertsDir
-
-	//defaultHome := env.HomeDir // to detect changes to the home directory
-	utils.SetLogging("warning", "")
+	// obtain the environment defaults
+	userHome, _ := os.UserHomeDir()
+	homeDir = filepath.Join(userHome, "bin", "hiveot")
+	currentUser, _ := user.Current()
+	clientID = currentUser.Username
 	nowrap = false
 
 	// FIXME: use the flag from env?
@@ -52,6 +53,7 @@ func main() {
 		Name:                  "hubcli",
 		Usage:                 "Hub Commandline Interface",
 		Version:               Version,
+		HideVersion:           true, // the -v flag is mine
 
 		Flags: []cli.Flag{
 			&cli.StringFlag{
@@ -59,6 +61,18 @@ func main() {
 				Usage:       "Path to application home directory",
 				Value:       homeDir,
 				Destination: &homeDir,
+			},
+			&cli.StringFlag{
+				Name:        "clientID",
+				Usage:       "ClientID to authenticate with",
+				Value:       clientID,
+				Destination: &clientID,
+			},
+			&cli.StringFlag{
+				Name:        "dirTD",
+				Usage:       "URL where to download the directory TD",
+				Value:       dirTDURL,
+				Destination: &dirTDURL,
 			},
 			&cli.BoolFlag{
 				Name:        "nowrap",
@@ -73,51 +87,55 @@ func main() {
 			// 	Destination: &loginID,
 			// },
 			&cli.StringFlag{
-				Name:        "password",
-				Usage:       "optional password for alt user",
-				Value:       password,
-				Destination: &password,
-			},
-			&cli.StringFlag{
 				Name:        "serverURL",
 				Usage:       "schema://addr:port/path (default: use DNS-SD discovery)",
 				Value:       serverURL,
 				Destination: &serverURL,
 			},
 			&cli.BoolFlag{
-				Name:        "loginfo",
+				Name:        "env",
+				Usage:       "Print environment info",
+				Value:       showEnv,
+				Destination: &showEnv,
+			},
+			&cli.BoolFlag{
+				Name:        "v",
 				Usage:       "verbose logging",
 				Value:       verbose,
 				Destination: &verbose,
 			},
 		},
 		Before: func(ctx context.Context, c *cli.Command) (context.Context, error) {
-			// var cc api.ITransportClient
 			var err error
-			// reload env in case home changes
-			env = api.NewHiveEnvironment(homeDir, false)
-			certsDir = env.CertsDir
+			// load env after 'home' is set
+			env = api.NewAppEnvironment(homeDir, false)
+			env.ClientID = clientID
+			utils.SetLogging(env.LogLevel, "")
+			certsDir = env.CertsDir // some commands need a certs dir
 			if verbose {
 				utils.SetLogging("info", "")
 			}
+			if showEnv {
+				level := 1
+				if verbose {
+					level = 2
+				}
+				env.Print(level)
+			}
+
 			if nowrap {
 				fmt.Printf(utils.WrapOff)
 			}
 
 			// most commands need auth
-			authToken, _ = env.GetAuthToken()
+			// authToken, _ = env.GetAuthToken()
 
-			// TODO: cleanup: don't connect for these commands
+			// These commands don't need a connection.
 			cmd := c.Args().First()
 			if cmd == "" || cmd == "disco" || cmd == "cca" || cmd == "vca" {
 				return ctx, nil
 			}
 
-			if authToken == "" && password == "" {
-				return ctx, fmt.Errorf("hubcli: missing authentication token")
-			}
-
-			// Note that not all commands need a consumer connection, but create one anyways for simplicity.
 			// The recipe has api for directory
 			r, _, err = consumerrecipe.NewConsumerRecipe(env, false)
 			if err != nil {
@@ -150,10 +168,10 @@ func main() {
 		Commands: []*cli.Command{
 			// these commands work without a server connection
 			certs.CreateCACommand(&certsDir),
-			certs.ViewCACommand(&certsDir),
+			certs.ViewCACommand(&env),
 
 			authcli.AuthAddUserCommand(&r),
-			authcli.AuthAddServiceCommand(&r, &env.CertsDir),
+			authcli.AuthAddServiceCommand(&r, &certsDir),
 			authcli.AuthListClientsCommand(&r),
 			authcli.AuthRemoveClientCommand(&r),
 			authcli.AuthSetRoleCommand(&r),

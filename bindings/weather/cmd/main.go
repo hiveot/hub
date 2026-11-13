@@ -14,7 +14,7 @@ import (
 
 // Start the Weather binding
 func main() {
-	env := api.NewHiveEnvironment("", true)
+	env := api.NewAppEnvironment("", true)
 
 	cfg := weather.NewWeatherConfig()
 	err := env.LoadConfig(env.AppID, &cfg)

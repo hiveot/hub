@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/hiveot/hivekit/go/api"
-	"github.com/hiveot/hivekit/go/utils"
 	"github.com/urfave/cli/v3"
 )
 
@@ -16,7 +15,7 @@ import (
 // This does not require any services to run.
 //
 //	hubcli vca [--certs=CertFolder] view
-func ViewCACommand(certsFolder *string) *cli.Command {
+func ViewCACommand(env **api.AppEnvironment) *cli.Command {
 
 	return &cli.Command{
 		Name:     "vca",
@@ -27,21 +26,20 @@ func ViewCACommand(certsFolder *string) *cli.Command {
 			if cmd.NArg() > 0 {
 				return fmt.Errorf("unexpected argument(s) '%s'", cmd.Args().First())
 			}
-			err := HandleViewCACert(*certsFolder)
+			err := HandleViewCACert(*env)
 			return err
 		},
 	}
 }
 
 // HandleViewCACert shows CA certificate information
-func HandleViewCACert(certsFolder string) error {
-	caCertPath := path.Join(certsFolder, api.DefaultCaCertFile)
-
-	caCert, err := utils.LoadCACert(caCertPath)
+func HandleViewCACert(env *api.AppEnvironment) error {
+	caCert, err := env.GetCACert()
 	if err != nil {
 		slog.Error("Unable to load the CA certificate", "err", err)
 		return err
 	}
+	caCertPath := path.Join(env.CertsDir, api.DefaultCaCertFile)
 	fmt.Println("CA certificate path: ", caCertPath)
 	fmt.Println("  IsCA       : ", caCert.IsCA)
 	fmt.Println("  Version    : ", caCert.Version)
@@ -51,15 +49,15 @@ func HandleViewCACert(certsFolder string) error {
 	fmt.Println("  DNS names  : ", caCert.DNSNames)
 	fmt.Println()
 
-	hubCertPath := path.Join(certsFolder, "hubCert.pem")
-	x509Cert, err := utils.LoadX509Cert(hubCertPath)
+	serverTLSCert, err := env.GetServerCert()
 	if err != nil {
 		slog.Error("Unable to load the server certificate", "err", err)
 		return err
 	}
 	// TODO: show it as a cert chain
-	serverCert := x509Cert[0]
-	fmt.Println("Server certificate path: ", hubCertPath)
+	serverCert := serverTLSCert.Leaf
+	serverCertPath := path.Join(env.CertsDir, api.DefaultServerCertFile)
+	fmt.Println("Server certificate path: ", serverCertPath)
 	fmt.Println("  IsCA        : ", serverCert.IsCA)
 	fmt.Println("  Version     : ", serverCert.Version)
 	fmt.Println("  Valid until : ", serverCert.NotAfter.Format(time.RFC1123Z))

@@ -45,7 +45,7 @@ func startService() (l *consumer.Consumer, stopFn func()) {
 	const launcherID = launcher.LauncherServiceID
 	const adminID = "admin"
 
-	appEnv := api.NewHiveEnvironment(homeDir, false)
+	appEnv := api.NewAppEnvironment(homeDir, false)
 	appEnv.LogsDir = appEnv.HomeDir
 	appEnv.PluginsDir = appEnv.HomeDir
 

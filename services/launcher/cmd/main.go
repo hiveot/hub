@@ -15,7 +15,7 @@ import (
 // Connect the launcher service to the hub
 func main() {
 	// setup environment and config
-	env := api.NewHiveEnvironment("", true)
+	env := api.NewAppEnvironment("", true)
 	utils.SetLogging(env.LogLevel, "")
 
 	cfg := launcher.NewLauncherConfig()

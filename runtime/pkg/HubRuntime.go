@@ -6,24 +6,26 @@ import (
 )
 
 type HubRuntime struct {
+	*gatewayrecipe.GatewayRecipe
 	f api.ICellFactory
-	r api.IHiveCell
+	// r api.IHiveCell
 }
 
-func (rt *HubRuntime) Start() {
-	rt.r.Start()
+// func (rt *HubRuntime) Start() {
+// 	rt.r.Start()
 
-}
-func (rt *HubRuntime) Stop() {
-	rt.r.Stop()
-}
+// }
+// func (rt *HubRuntime) Stop() {
+// 	rt.r.Stop()
+// }
 
-func NewHubRuntime(env *api.HiveEnvironment) (*HubRuntime, api.ICellFactory, error) {
+func NewHubRuntime(env *api.AppEnvironment) (*HubRuntime, api.ICellFactory, error) {
 
 	r, f, err := gatewayrecipe.NewGatewayRecipe(env)
 
 	rt := &HubRuntime{
-		r: r,
+		GatewayRecipe: r,
+		// r: r,
 		f: f,
 	}
 	return rt, f, err

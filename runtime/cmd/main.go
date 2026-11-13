@@ -17,7 +17,7 @@ import (
 // This runs
 func main() {
 
-	env := api.NewHiveEnvironment("", true)
+	env := api.NewAppEnvironment("", true)
 	utils.SetLogging(env.LogLevel, "")
 	hub, f, err := pkg.NewHubRuntime(env)
 

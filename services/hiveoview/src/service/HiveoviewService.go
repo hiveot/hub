@@ -28,7 +28,7 @@ const HiveoviewStoreName = "hiveoview.kvbtree"
 type HiveoviewService struct {
 	*thing.ExposedThing
 
-	env *api.HiveEnvironment
+	env *api.AppEnvironment
 
 	// URL to connect to the hub with
 	// TODO: use a hub TD instead
@@ -162,10 +162,10 @@ func (svc *HiveoviewService) Start() {
 	// 	}()
 	// }
 	// last, publish this service's TD and properties
-	_ = svc.PublishServiceTD()
-	svc.PublishServiceProps()
-
-	return
+	err := svc.PublishServiceTD()
+	if err == nil {
+		svc.PublishServiceProps()
+	}
 }
 
 // Start the web server
@@ -214,7 +214,7 @@ func (svc *HiveoviewService) Stop() {
 //	timeout of client hub connections
 //	storeDir path to directory holding client session and dashboard data
 func NewHiveovService(
-	env *api.HiveEnvironment,
+	env *api.AppEnvironment,
 	serverPort int, debug bool,
 	rootPath string,
 	serverCert *tls.Certificate, rootCAs *x509.CertPool,
@@ -251,7 +251,7 @@ func NewHiveovService(
 	// svc.configStore = kvbtree.NewKVStore(storePath)
 	svc.configStore, err = kvbtreestore.OpenKVBTreeStore(storePath)
 	if err != nil {
-		slog.Error("Start: failed", err.Error())
+		slog.Error("Start: failed", "err", err.Error())
 		return nil, err
 	}
 
