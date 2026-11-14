@@ -20,7 +20,7 @@ type HubRuntime struct {
 // }
 
 func NewHubRuntime(env *api.AppEnvironment) (*HubRuntime, api.ICellFactory, error) {
-
+	// this recipe does most of the work
 	r, f, err := gatewayrecipe.NewGatewayRecipe(env)
 
 	rt := &HubRuntime{

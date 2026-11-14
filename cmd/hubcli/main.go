@@ -167,8 +167,8 @@ func main() {
 		// provided argument 'r' is instantiated in the Before section.
 		Commands: []*cli.Command{
 			// these commands work without a server connection
-			certs.CreateCACommand(&certsDir),
-			certs.ViewCACommand(&env),
+			certs.ViewCertsCommand(&env),
+			// certs.CreateCACommand(&env),
 
 			authcli.AuthAddUserCommand(&r),
 			authcli.AuthAddServiceCommand(&r, &certsDir),

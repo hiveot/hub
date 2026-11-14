@@ -174,21 +174,20 @@ func HandleAddUser(
 func HandleAddService(
 	co consumer.IConsumer, serviceID string, displayName string, certsDir string) (err error) {
 
-	var pubKey crypto.PublicKey
-	var privKey crypto.PrivateKey
+	var privKey crypto.Signer
 	//TODO: use standardized extensions from launcher
 	keyFile := serviceID + ".key"
 
 	// if a key exists, use it
 	keyPath := path.Join(certsDir, keyFile)
 	if _, err = os.Stat(keyPath); errors.Is(err, os.ErrNotExist) {
-		privKey, pubKey = utils.NewEcdsaKey()
+		privKey = utils.NewEcdsaKey()
 		err = utils.SavePrivateKey(privKey, keyPath) // ExportPrivateToFile(keyPath)
 		pubKeyPath := path.Join(certsDir, serviceID+".pub")
-		err = utils.SavePublicKey(pubKey, pubKeyPath)
+		err = utils.SavePublicKey(privKey.Public(), pubKeyPath)
 		fmt.Printf("New private/public keys written to file '%s'\n", keyPath)
 	} else {
-		privKey, pubKey, err = utils.LoadPrivateKey(keyPath)
+		privKey, err = utils.LoadPrivateKey(keyPath)
 		fmt.Printf("Private key loaded from file '%s'\n", keyPath)
 	}
 	if err != nil {
@@ -196,7 +195,7 @@ func HandleAddService(
 		return
 	}
 	authAdmin := authn_client.NewAuthnAdminClient("", co)
-	pubKeyPem := utils.PublicKeyToPem(pubKey)
+	pubKeyPem := utils.PublicKeyToPem(privKey.Public())
 	authToken, err := authAdmin.AddClient(serviceID, displayName, api.ClientRoleService, pubKeyPem)
 	_ = authToken
 	if err != nil {

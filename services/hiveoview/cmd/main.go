@@ -67,7 +67,7 @@ func main() {
 
 	// TLS Cert to serve the hiveoview web pages
 	// Its private key is used to sign the cookies.
-	serverCert, err := env.GetServerCert()
+	serverCert, err := env.GetServerCert("")
 	if err != nil {
 		slog.Error("Unable to load server certificate: " + err.Error())
 		return

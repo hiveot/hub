@@ -127,15 +127,15 @@ func HandleListEvents(co *consumer.Consumer, dThingID string, name string, limit
 	fmt.Println("ThingID                        Timestamp                      Event                Value (truncated)")
 	fmt.Println("-----------                    ---------                      -----                ---------------- ")
 	count := 0
-	for tv, valid, err := hc.Last(cursor); err == nil && valid && count < limit; tv, valid, err = hc.Prev(cursor) {
+	for notif, valid, err := hc.Last(cursor); err == nil && valid && count < limit; notif, valid, err = hc.Prev(cursor) {
 
 		count++
-		value := utils.DecodeAsString(tv.Data, 30)
-		updated := utils.FormatDateTime(tv.Timestamp)
+		value := utils.DecodeAsString(notif.Data, 30)
+		updated := utils.FormatDateTime(notif.Timestamp)
 		fmt.Printf("%-30s %-30s %-20.20s %-30s\n",
-			tv.ThingID,
+			notif.ThingID,
 			updated,
-			tv.Name,
+			notif.Name,
 			value,
 		)
 	}

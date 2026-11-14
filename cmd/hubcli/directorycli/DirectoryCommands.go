@@ -52,7 +52,7 @@ func DirectoryListCommand(r **consumer_recipe.ConsumerRecipe) *cli.Command {
 func HandleListDirectory(dirClient directory.IDirectoryClient) (err error) {
 	// todo: iterate with offset and limit
 
-	tdList, cacheOnly := dirClient.RetrieveAllThings(300, 0)
+	tdList, cacheOnly := dirClient.RetrieveAllThings(0, 300)
 	wot.SortThingsByID(tdList)
 	if cacheOnly {
 		fmt.Printf("Directory server not reachable. Using cache only\n")

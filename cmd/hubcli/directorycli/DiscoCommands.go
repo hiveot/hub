@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"time"
 
 	"github.com/hiveot/hivekit/go/api"
@@ -69,11 +67,7 @@ func HandleDiscover(env *api.AppEnvironment, readtd bool) error {
 		var thingID string = "n/a"
 		tdURL := entry.AsURL()
 		if tdURL != "" {
-			resp, err := http.Get(tdURL)
-			if err == nil {
-				raw, _ := io.ReadAll(resp.Body)
-				tdoc, err = wot.UnmarshalTD(string(raw))
-			}
+			tdoc, _, err = discoClient.LoadTD(tdURL)
 			if err != nil {
 				fmt.Printf(" Error reading TD: %s\n", err.Error())
 			} else {
@@ -88,7 +82,7 @@ func HandleDiscover(env *api.AppEnvironment, readtd bool) error {
 			entry.Instance,
 			entry.Schema,
 			thingID,
-			entry.TD,
+			tdURL,
 		)
 		if readtd {
 			var tdObj map[string]any

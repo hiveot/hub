@@ -45,14 +45,9 @@ func AuthSetRoleCommand(r **consumer_recipe.ConsumerRecipe) *cli.Command {
 func HandleSetRole(co consumer.IConsumer, loginID string, newRole string) error {
 
 	authnClient := authn_client.NewAuthnAdminClient("", co)
-	prof, err := authnClient.GetProfile(loginID)
+	err := authnClient.SetRole(loginID, newRole)
 	if err != nil {
-		return err
-	}
-	prof.Role = newRole
-	err = authnClient.UpdateClientProfile(prof)
-	if err != nil {
-		//fmt.Println("Error: " + err.Error())
+		fmt.Println("Error: " + err.Error())
 	} else {
 		fmt.Println("User " + loginID + " role has been updated to " + newRole)
 	}

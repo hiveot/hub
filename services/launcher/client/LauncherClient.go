@@ -79,10 +79,9 @@ func NewLauncherClient(serviceID string, sink api.IHiveCell) *LauncherClient {
 		serviceID = launcher.LauncherServiceID
 	}
 	cl := &LauncherClient{
+		Consumer:  consumer.NewConsumer(sink, nil),
 		serviceID: serviceID,
 	}
-	cl.SetRequestSink(sink)
-	sink.SetNotificationSink(cl, serviceID)
 
 	var _ api.IHiveCell = cl
 
