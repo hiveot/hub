@@ -16,6 +16,7 @@ import (
 func main() {
 	// setup environment and config
 	env := api.NewAppEnvironment("", true)
+	env.Print(1)
 	utils.SetLogging(env.LogLevel, "")
 
 	cfg := launcher.NewLauncherConfig()

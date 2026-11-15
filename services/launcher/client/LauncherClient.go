@@ -76,7 +76,7 @@ func (cl *LauncherClient) StopAllPlugins(fullStop bool) error {
 //	sink is the transport module sink.
 func NewLauncherClient(serviceID string, sink api.IHiveCell) *LauncherClient {
 	if serviceID == "" {
-		serviceID = launcher.LauncherServiceID
+		serviceID = launcher.LauncherServiceCellType
 	}
 	cl := &LauncherClient{
 		Consumer:  consumer.NewConsumer(sink, nil),

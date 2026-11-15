@@ -1,5 +1,7 @@
 package config
 
+const IPNetCellType = "ipnet"
+
 type IPNetConfig struct {
 	// ThingID is this service thingID to publish as. Default is "ipnet"
 	ThingID      string `yaml:"thingID,omitempty" `

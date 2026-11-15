@@ -12,13 +12,11 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/hiveot/hivekit/go/api"
-	"github.com/hiveot/hivekit/go/api/msg"
 	"github.com/hiveot/hivekit/go/api/wot"
 	"github.com/hiveot/hivekit/go/cells/thing"
 	"github.com/hiveot/hivekit/go/cells/transport/wss"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/services/launcher"
-	"github.com/hiveot/hub/services/launcher/tm"
 )
 
 // Use this default path instead of discovery when running locally and no server is configured
@@ -44,11 +42,12 @@ type LauncherService struct {
 	// service configuration
 	cfg *launcher.LauncherConfig
 
-	//
+	// environment to use for starting plugins
 	env *api.AppEnvironment
 
 	// map of plugin name to running status
 	plugins map[string]launcher.PluginInfo
+
 	// list of started commands in startup order
 	cmds []*exec.Cmd
 
@@ -60,9 +59,6 @@ type LauncherService struct {
 	// isRunning atomic.Bool
 	// closing channel
 	done chan bool
-
-	// request handler
-	adminHandler msg.RequestHandler
 }
 
 // Add discovered runtime to svc.plugins
@@ -176,10 +172,15 @@ func (svc *LauncherService) ScanPlugins() error {
 func (svc *LauncherService) Start() {
 	slog.Info("Starting LauncherService")
 
-	// publish this service TD if connected to a directory or discovery
+	// 1: start the runtime, if configured
+	svc._startRuntime()
+
+	// 2. publish this service TD if connected to a directory or discovery
 	if svc.cfg.WriteTD {
-		tdoc, err := wot.UnmarshalTD(string(tm.LauncherTM))
+		tdoc, err := wot.UnmarshalTD(string(launcher.LauncherTD))
 		if err == nil {
+			tdoc.ID = svc.GetID()
+			tdoc.SetType(launcher.LauncherServiceCellType)
 			err = svc.WriteTD(tdoc)
 		}
 		if err != nil {
@@ -189,62 +190,13 @@ func (svc *LauncherService) Start() {
 	nrPlugins := len(svc.plugins)
 	svc.PubProperty("", launcher.PropNrPlugins, nrPlugins, false)
 
-	// svc.isRunning.Store(true)
-
-	// cfg := svc.cfg
-
-	// // include the runtime
-	// runtimeBin := cfg.RuntimeBin
-	// if runtimeBin != "" {
-	// 	err := svc.addRuntime(runtimeBin)
-	// 	if err != nil {
-	// 		slog.Error(err.Error())
-	// 		return err
-	// 	}
-	// }
-	// // 1: determine the inventory of plugins
-	// _ = svc.WatchPlugins()
-	// err := svc.ScanPlugins()
-	// if err != nil {
-	// 	return err
-	// }
-
-	// // 2: start the runtime, if configured
-	// svc.mux.Lock()
-	// _, foundRuntime := svc.plugins[runtimeBin]
-	// svc.mux.Unlock()
-	// if foundRuntime {
-	// 	// runtime is added and starts first
-	// 	pi, err := svc._startPlugin(runtimeBin)
-	// 	if err != nil {
-	// 		slog.Error("Starting runtime failed", "runtimeBin", runtimeBin, "err", err)
-	// 		return err
-	// 	} else {
-	// 		slog.Warn("Runtime started successfully", "runtimeBin", runtimeBin)
-
-	// 		// a bit of a stopgap for slow systems
-	// 		// FIXME: runtime should signal readiness
-	// 		time.Sleep(time.Millisecond * time.Duration(cfg.RuntimeWait))
-
-	// 		// some extra time if its still busy
-	// 		if pi.Cpu >= 99 {
-	// 			time.Sleep(time.Second)
-	// 		}
-	// 	}
-	// 	// since the runtime is launched locally a local connection is the most efficient
-	// 	// unless a server address is already configured.
-	// 	if env.ServerURL == "" {
-	// 		env.ServerURL = DefaultLocalServerURL
-	// 	}
-	// }
-
-	// // 3. publish this service TD if connected to a directory or discovery
-	// if cfg.WriteTD {
-	// 	err = svc.WriteTD(string(tm.LauncherTM))
-	// 	if err != nil {
-	// 		slog.Error("failed to publish the launcher service TD", "err", err.Error())
-	// 	}
-	// }
+	// 3. Set permissions for using this service for administrators and managers
+	// err = authz.UserSetPermissions(svc.ag.Consumer, authz.ThingPermissions{
+	// 	AgentID: svc.ag.GetClientID(),
+	// 	ThingID: launcher.AdminServiceID,
+	// 	Allow:   []authz.ClientRole{authz.ClientRoleManager, authz.ClientRoleAdmin, authz.ClientRoleService},
+	// 	Deny:    nil,
+	// })
 
 	// // 4. Set permissions for using this service for administrators and managers
 	// // err = authz.UserSetPermissions(svc.ag.Consumer, authz.ThingPermissions{
@@ -320,6 +272,14 @@ func (svc *LauncherService) WatchPlugins() error {
 func NewLauncherService(env *api.AppEnvironment, cfg *launcher.LauncherConfig,
 ) (*LauncherService, error) {
 
+	// FIXME: is the launcher thingID the AppID or the default?
+	// the TD is published with the default 'launcher'
+	// but AppID is the binary name, eg 'main' or so.
+	// option 1: Use AppID because there can be multiple launchers
+	//      - this doesn't guarantee uniqueness
+	// option 2: Use default
+	//		- doesn't support multiple instances on different machines...
+	//
 	svc := &LauncherService{
 		ExposedThing: thing.NewExposedThing(env.AppID, nil),
 		env:          env,
@@ -330,6 +290,7 @@ func NewLauncherService(env *api.AppEnvironment, cfg *launcher.LauncherConfig,
 		//ag:        ag,
 	}
 
+	// 1: determine the inventory of plugins
 	// include the runtime
 	runtimeBin := cfg.RuntimeBin
 	if runtimeBin != "" {
@@ -339,48 +300,11 @@ func NewLauncherService(env *api.AppEnvironment, cfg *launcher.LauncherConfig,
 			return nil, err
 		}
 	}
-	// 1: determine the inventory of plugins
 	_ = svc.WatchPlugins()
 	err := svc.ScanPlugins()
 	if err != nil {
 		return nil, err
 	}
-
-	// 2: start the runtime, if configured
-	_, foundRuntime := svc.plugins[runtimeBin]
-	if foundRuntime {
-		// runtime is added and starts first
-		pi, err := svc._startPlugin(runtimeBin)
-		if err != nil {
-			svc.Stop() // stop the serviceWatcher
-			slog.Error("Starting runtime failed", "runtimeBin", runtimeBin, "err", err)
-			return nil, err
-		} else {
-			slog.Warn("Runtime started successfully", "runtimeBin", runtimeBin)
-
-			// a bit of a stopgap for slow systems
-			// FIXME: runtime should signal readiness
-			time.Sleep(time.Millisecond * time.Duration(cfg.RuntimeWait))
-
-			// some extra time if its still busy
-			if pi.Cpu >= 99 {
-				time.Sleep(time.Second)
-			}
-		}
-		// since the runtime is launched locally a local connection is the most efficient
-		// unless a server address is already configured.
-		if env.ServerURL == "" {
-			env.ServerURL = DefaultLocalServerURL
-		}
-	}
-
-	// 3. Set permissions for using this service for administrators and managers
-	// err = authz.UserSetPermissions(svc.ag.Consumer, authz.ThingPermissions{
-	// 	AgentID: svc.ag.GetClientID(),
-	// 	ThingID: launcher.AdminServiceID,
-	// 	Allow:   []authz.ClientRole{authz.ClientRoleManager, authz.ClientRoleAdmin, authz.ClientRoleService},
-	// 	Deny:    nil,
-	// })
 
 	// check property api implementation
 	var _ launcher.ILauncherService = svc

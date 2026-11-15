@@ -59,7 +59,7 @@ func SubEventsCommand(r **consumer_recipe.ConsumerRecipe) *cli.Command {
 func HandleSubTD(co *consumer.Consumer) error {
 
 	// FIXME: discover to get the directory ID
-	err := co.Subscribe(directory.DefaultDirectoryServiceThingID, directory.ThingUpdatedEvent)
+	err := co.Subscribe(directory.DirectoryServiceCellType, directory.ThingUpdatedEvent)
 	if err != nil {
 		return err
 	}
@@ -115,7 +115,7 @@ func HandleSubEvents(co *consumer.Consumer, thingID string, name string) error {
 		//		}
 		//	}
 		//}
-		if msg.ThingID == directory.DefaultDirectoryServiceThingID &&
+		if msg.ThingID == directory.DirectoryServiceCellType &&
 			msg.Name == directory.ThingUpdatedEvent {
 			var tdi wot.TD
 			tdJSON := msg.ToString(0)

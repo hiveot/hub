@@ -2,7 +2,15 @@
 
 ## Status 
 
-The Hub runtime is being reworked to use HiveKit.
+The Hub runtime was reworked to use HiveKit. It is based on the hivekit gateway recipe which does most of the heavy lifting.
+
+This is in alpha. 
+
+TODO:
+- update this readme
+- fix services
+- fix bindings
+- add JS support
 
 
 ## Summary

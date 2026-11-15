@@ -1,12 +1,21 @@
 package launcher
 
-import "github.com/hiveot/hivekit/go/api"
+import (
+	_ "embed"
+
+	"github.com/hiveot/hivekit/go/api"
+)
+
+// Embed service TD
+//
+//go:embed "launcher-td.json"
+var LauncherTD []byte
 
 // ThingID, actions, properties, and events
 const (
 
-	// LauncherServiceID is the thingID of the launcher service
-	LauncherServiceID = "launcher"
+	// LauncherServiceCellType is the thingID of the launcher service
+	LauncherServiceCellType = "launcher"
 
 	// properties
 	PropNrPlugins = "nrPlugins"

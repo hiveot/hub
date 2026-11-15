@@ -3,22 +3,25 @@ package service
 import (
 	"github.com/hiveot/hivekit/go/api/vocab"
 	"github.com/hiveot/hivekit/go/api/wot"
+	"github.com/hiveot/hub/bindings/ipnet/config"
 )
 
 // MakeBindingTD generates a TD document for this binding
 // containing configuration properties, event and action definitions
 func (svc *IPNetBinding) MakeBindingTD() *wot.TD {
-	tdi := wot.NewTD(svc.config.ThingID, "IPNet binding", vocab.DeviceTypeService)
+	tdoc := wot.NewTD(svc.config.ThingID, "IPNet binding", vocab.DeviceTypeService)
+	tdoc.ID = svc.GetID()
+	tdoc.SetType(config.IPNetCellType)
 
 	// these are configured through the configuration file.
-	prop := tdi.AddPropertyAsInt(vocab.PropDevicePollinterval, "Poll Interval", "")
+	prop := tdoc.AddPropertyAsInt(vocab.PropDevicePollinterval, "Poll Interval", "")
 	prop.SetAtType(vocab.PropDevicePollinterval)
 	prop.Unit = vocab.UnitSecond
 
 	// nr of discovered devices is a readonly attr
-	prop = tdi.AddPropertyAsInt("deviceCount", "Device Count", "Nr discovered devices")
+	prop = tdoc.AddPropertyAsInt("deviceCount", "Device Count", "Nr discovered devices")
 	_ = prop
-	return tdi
+	return tdoc
 }
 
 // MakeDeviceTD generates a TD document for discovered devices

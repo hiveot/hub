@@ -19,6 +19,8 @@ func main() {
 
 	env := api.NewAppEnvironment("", true)
 	utils.SetLogging(env.LogLevel, "")
+	env.Print(1)
+
 	hub, f, err := pkg.NewHubRuntime(env)
 
 	if err != nil {

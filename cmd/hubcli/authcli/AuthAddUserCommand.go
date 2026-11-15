@@ -11,6 +11,7 @@ import (
 
 	"github.com/hiveot/hivekit/go/api"
 	authn_client "github.com/hiveot/hivekit/go/cells/authn/client"
+	certs_client "github.com/hiveot/hivekit/go/cells/certs/client"
 	"github.com/hiveot/hivekit/go/cells/consumer"
 	corecipe "github.com/hiveot/hivekit/go/factory/recipes/consumer"
 	"github.com/hiveot/hivekit/go/utils"
@@ -63,7 +64,7 @@ func AuthAddServiceCommand(r **corecipe.ConsumerRecipe, certsDir *string) *cli.C
 
 	return &cli.Command{
 		Name:      "addsvc",
-		Usage:     "Add a service with its key and auth token in the certs folder.",
+		Usage:     "[-name displayName] Add a service with a client cert in the certs folder.",
 		ArgsUsage: "<serviceID>",
 		Category:  "auth",
 		Flags: []cli.Flag{
@@ -166,7 +167,7 @@ func HandleAddUser(
 	return err
 }
 
-// HandleAddService adds a service with key and token
+// HandleAddService adds a service with client certificate
 //
 //	loginID is required
 //	displayName is optional
@@ -175,17 +176,15 @@ func HandleAddService(
 	co consumer.IConsumer, serviceID string, displayName string, certsDir string) (err error) {
 
 	var privKey crypto.Signer
-	//TODO: use standardized extensions from launcher
-	keyFile := serviceID + ".key"
 
 	// if a key exists, use it
-	keyPath := path.Join(certsDir, keyFile)
+	certPath := path.Join(certsDir, serviceID+api.DefaultCertFileSuffix)
+	keyPath := path.Join(certsDir, serviceID+api.DefaultKeyFileSuffix)
+
 	if _, err = os.Stat(keyPath); errors.Is(err, os.ErrNotExist) {
-		privKey = utils.NewEcdsaKey()
+		privKey = utils.NewEd25519Key()
 		err = utils.SavePrivateKey(privKey, keyPath) // ExportPrivateToFile(keyPath)
-		pubKeyPath := path.Join(certsDir, serviceID+".pub")
-		err = utils.SavePublicKey(privKey.Public(), pubKeyPath)
-		fmt.Printf("New private/public keys written to file '%s'\n", keyPath)
+		fmt.Printf("New private key written to file '%s'\n", keyPath)
 	} else {
 		privKey, err = utils.LoadPrivateKey(keyPath)
 		fmt.Printf("Private key loaded from file '%s'\n", keyPath)
@@ -206,20 +205,19 @@ func HandleAddService(
 		fmt.Printf("Service '%s' added succesfully\n", serviceID)
 	}
 
-	// service needs an auth token, remove existing
-	//tokenFile := serviceID + ".token"
-	//tokenPath := path.Join(certsDir, tokenFile)
-	//if _, err = os.Stat(tokenPath); errors.Is(err, os.ErrNotExist) {
-	//	authToken, _ := authnAdmin.NewAgentToken(serviceID, 0)
-	//	err = os.WriteFile(tokenPath, []byte(authToken), 0400)
-	//	fmt.Printf("Auth token written to file '%s'\n", tokenPath)
-	//} else {
-	//	fmt.Printf("Token file %s already exists. No changes made.\n", tokenPath)
-	//}
-
-	if err != nil {
-		fmt.Println("Error: " + err.Error())
+	// create/refresh a client certificate
+	certsClient := certs_client.NewCertsClient("", co)
+	x509cert, err := certsClient.CreateClientCert(serviceID, api.ClientRoleService, 0, privKey.Public())
+	if err == nil {
+		err = utils.SaveX509Cert(x509cert, certPath)
 	}
+	if err != nil {
+		slog.Error("Failed creating Client cert",
+			"serviceID", serviceID, "err", err.Error())
+	} else {
+		fmt.Printf("Client cert for '%s' created succesfully\n", serviceID)
+	}
+
 	return err
 }
 

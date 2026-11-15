@@ -42,7 +42,7 @@ const agentUsesWSS = false
 //}}
 
 func startService() (l *consumer.Consumer, stopFn func()) {
-	const launcherID = launcher.LauncherServiceID
+	const launcherID = launcher.LauncherServiceCellType
 	const adminID = "admin"
 
 	appEnv := api.NewAppEnvironment(homeDir, false)

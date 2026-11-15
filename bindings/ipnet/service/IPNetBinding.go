@@ -70,7 +70,7 @@ func NewIpNetBinding(cfg *config.IPNetConfig) *IPNetBinding {
 
 	thingID := cfg.ThingID
 	if thingID == "" {
-		thingID = "ipnet"
+		thingID = config.IPNetCellType
 	}
 	svc := &IPNetBinding{
 		ExposedThing: thing.NewExposedThing(thingID, nil),

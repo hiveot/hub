@@ -33,6 +33,7 @@ func (svc *LauncherService) _startPlugin(pluginID string) (pi launcher.PluginInf
 	svc.mux.Lock()
 	defer svc.mux.Unlock()
 	cfg := svc.cfg
+	env := svc.env
 
 	// step 1: pre-launch checks
 	pluginInfo, found := svc.plugins[pluginID]
@@ -67,12 +68,12 @@ func (svc *LauncherService) _startPlugin(pluginID string) (pi launcher.PluginInf
 	}
 
 	// forward the serverURL argument if provided
-	if svc.env.ServerURL != "" && cfg.ProvideServerURL {
-		svcCmd.Args = append(svcCmd.Args, fmt.Sprintf("--serverURL=%s", svc.env.ServerURL))
+	if env.ServerURL != "" && cfg.ProvideServerURL {
+		svcCmd.Args = append(svcCmd.Args, fmt.Sprintf("--serverURL=%s", env.ServerURL))
 	}
 	// forward a Thing Directory TD url if provided
-	if svc.env.DirTDURL != "" && cfg.ProvideDirectoryURL {
-		svcCmd.Args = append(svcCmd.Args, fmt.Sprintf("--dirTD=%s", svc.env.DirTDURL))
+	if env.DirTDURL != "" && cfg.ProvideDirectoryURL {
+		svcCmd.Args = append(svcCmd.Args, fmt.Sprintf("--dirTD=%s", env.DirTDURL))
 	}
 
 	// step3: setup logging before starting service
@@ -81,8 +82,8 @@ func (svc *LauncherService) _startPlugin(pluginID string) (pi launcher.PluginInf
 		svcCmd.Env = append(os.Environ(), "LOGLEVEL="+cfg.LogLevel)
 
 		// inspired by https://gist.github.com/jerblack/4b98ba48ed3fb1d9f7544d2b1a1be287
-		logfile := path.Join(svc.env.LogsDir, pluginID+".log")
-		_ = os.MkdirAll(svc.env.LogsDir, 0700)
+		logfile := path.Join(env.LogsDir, pluginID+".log")
+		_ = os.MkdirAll(env.LogsDir, 0700)
 		fp, err := os.OpenFile(logfile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 		if err == nil {
 			if cfg.AttachStderr {
@@ -119,10 +120,10 @@ func (svc *LauncherService) _startPlugin(pluginID string) (pi launcher.PluginInf
 	// step 4: add the plugin account and generate its credentials
 	//  (this does not apply to the gateway runtime itself as it provides authn access)
 	if pluginID != cfg.RuntimeBin && cfg.CreatePluginCred {
-		tokenPath := path.Join(svc.env.CertsDir, pluginID+".token")
+		tokenPath := path.Join(env.CertsDir, pluginID+".token")
 
 		slog.Info("Adding plugin service client with key and token",
-			"pluginID", pluginID, "certsDir", svc.env.CertsDir, "tokenPath", tokenPath)
+			"pluginID", pluginID, "certsDir", env.CertsDir, "tokenPath", tokenPath)
 
 		// add a service account. Authn admin generates a new token file in the keys directory
 		// the service must have read access to this directory, or the keys must be
@@ -207,6 +208,47 @@ func (svc *LauncherService) _startPlugin(pluginID string) (pi launcher.PluginInf
 	}
 	svc.plugins[pluginID] = pluginInfo
 	return pluginInfo, err
+}
+
+// Start the runtime, if configured
+// This returns nil if no runtime is configured.
+func (svc *LauncherService) _startRuntime() (err error) {
+	runtimeBin := svc.cfg.RuntimeBin
+	if runtimeBin == "" {
+		return nil
+	}
+
+	svc.mux.Lock()
+	_, foundRuntime := svc.plugins[runtimeBin]
+	svc.mux.Unlock()
+	if !foundRuntime {
+		return nil
+	}
+	if foundRuntime {
+		// runtime is added and starts first
+		pi, err := svc._startPlugin(runtimeBin)
+		if err != nil {
+			slog.Error("Starting runtime failed", "runtimeBin", runtimeBin, "err", err)
+			return err
+		} else {
+			slog.Warn("Runtime started successfully", "runtimeBin", runtimeBin)
+
+			// a bit of a stopgap for slow systems
+			// FIXME: runtime should signal readiness
+			time.Sleep(time.Millisecond * time.Duration(svc.cfg.RuntimeWait))
+
+			// some extra time if its still busy
+			if pi.Cpu >= 99 {
+				time.Sleep(time.Second)
+			}
+		}
+		// since the runtime is launched locally a local connection is the most efficient
+		// unless a server address is already configured.
+		if svc.env.ServerURL == "" {
+			svc.env.ServerURL = DefaultLocalServerURL
+		}
+	}
+	return nil
 }
 
 // StartAllPlugins starts all enabled plugins
