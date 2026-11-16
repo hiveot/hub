@@ -28,7 +28,7 @@ import (
 // # This passes the server URL to the plugin using the --server
 //
 // This places a mux lock until start is complete.
-func (svc *LauncherService) _startPlugin(pluginID string) (pi launcher.PluginInfo, err error) {
+func (svc *LauncherServiceImpl) _startPlugin(pluginID string) (pi launcher.PluginInfo, err error) {
 
 	svc.mux.Lock()
 	defer svc.mux.Unlock()
@@ -212,7 +212,7 @@ func (svc *LauncherService) _startPlugin(pluginID string) (pi launcher.PluginInf
 
 // Start the runtime, if configured
 // This returns nil if no runtime is configured.
-func (svc *LauncherService) _startRuntime() (err error) {
+func (svc *LauncherServiceImpl) _startRuntime() (err error) {
 	runtimeBin := svc.cfg.RuntimeBin
 	if runtimeBin == "" {
 		return nil
@@ -252,7 +252,7 @@ func (svc *LauncherService) _startRuntime() (err error) {
 }
 
 // StartAllPlugins starts all enabled plugins
-func (svc *LauncherService) StartAllPlugins() (err error) {
+func (svc *LauncherServiceImpl) StartAllPlugins() (err error) {
 
 	slog.Info("StartAllPlugins")
 	// start services in order from config
@@ -283,7 +283,7 @@ func (svc *LauncherService) StartAllPlugins() (err error) {
 // StartPlugin starts the plugin with the given name
 // This creates a plugin authentication key and token files in the credentials directory (certs)
 // before starting the plugin.
-func (svc *LauncherService) StartPlugin(pluginID string) (launcher.PluginInfo, error) {
+func (svc *LauncherServiceImpl) StartPlugin(pluginID string) (launcher.PluginInfo, error) {
 
 	slog.Info("StartPlugin",
 		slog.String("pluginID", pluginID),
@@ -293,7 +293,7 @@ func (svc *LauncherService) StartPlugin(pluginID string) (launcher.PluginInfo, e
 	if err != nil {
 		// notify subscribers publish a started event
 		go func() {
-			svc.PubEvent("", launcher.PluginStartedEvent, pluginID)
+			svc.PubEvent(launcher.PluginStartedEvent, pluginID, true)
 		}()
 	}
 	return pluginInfo, err
@@ -301,7 +301,7 @@ func (svc *LauncherService) StartPlugin(pluginID string) (launcher.PluginInfo, e
 
 // StopAllPlugins stops all running plugins in reverse order they were started
 // If fullStop is set then also stop the runtime.
-func (svc *LauncherService) StopAllPlugins(fullStop bool) (err error) {
+func (svc *LauncherServiceImpl) StopAllPlugins(fullStop bool) (err error) {
 
 	svc.mux.Lock()
 
@@ -328,7 +328,7 @@ func (svc *LauncherService) StopAllPlugins(fullStop bool) (err error) {
 	return err
 }
 
-func (svc *LauncherService) StopPlugin(pluginID string) (pluginInfo launcher.PluginInfo, err error) {
+func (svc *LauncherServiceImpl) StopPlugin(pluginID string) (pluginInfo launcher.PluginInfo, err error) {
 	slog.Info("Stopping plugin",
 		slog.String("pluginID", pluginID))
 
@@ -352,14 +352,14 @@ func (svc *LauncherService) StopPlugin(pluginID string) (pluginInfo launcher.Plu
 
 	// notify subscribers publish a stopped event
 	go func() {
-		svc.PubEvent("", launcher.PluginStoppedEvent, pluginID)
+		svc.PubEvent(launcher.PluginStoppedEvent, pluginID, true)
 	}()
 
 	return pluginInfo, nil
 }
 
 // updateStatus updates the service running cpu/mem in the  status
-func (svc *LauncherService) updateStatus(svcInfo *launcher.PluginInfo) {
+func (svc *LauncherServiceImpl) updateStatus(svcInfo *launcher.PluginInfo) {
 	if svcInfo.Pid != 0 {
 
 		//Option A: use pidusage - doesn't work on Windows though

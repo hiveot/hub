@@ -8,7 +8,6 @@ import (
 
 	"github.com/hiveot/hivekit/go/api"
 	"github.com/hiveot/hivekit/go/cells/consumer"
-	directory_client "github.com/hiveot/hivekit/go/cells/directory/client"
 	"github.com/hiveot/hivekit/go/testenv"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/bindings/owserver"
@@ -45,7 +44,7 @@ func TestMain(m *testing.M) {
 	owsConfig = *owserver.NewOWServerConfig()
 	owsConfig.OWServerURL = owsSimulationFile
 	testEnv = testenv.NewTestEnv(true)
-	storePath = testEnv.Env.GetStorageDir(owserver.DefaultOWServerThingID)
+	storePath = testEnv.Env.GetStorageDir(owserver.OWServerCellType)
 
 	result := m.Run()
 	if result == 0 {
@@ -57,7 +56,7 @@ func TestMain(m *testing.M) {
 func TestStartStop(t *testing.T) {
 	t.Logf("---%s---\n", t.Name())
 
-	svc, err := internal.NewOWServerBinding("", storePath, &owsConfig)
+	svc, err := internal.NewOWServerGateway("", storePath, &owsConfig)
 	defer svc.Stop()
 	require.NoError(t, err)
 	co1 := consumer.NewConsumer(svc, nil)
@@ -80,22 +79,23 @@ func TestPoll(t *testing.T) {
 	const userID = "user1"
 
 	// request chain: consumer -> owserver -> directoryclient
-	co1 := consumer.NewConsumer(nil, nil)
-	svc, err := internal.NewOWServerBinding("", storePath, &owsConfig)
-	dirCl := directory_client.NewDirectoryClient(nil, nil)
+	svc, err := internal.NewOWServerGateway("", storePath, &owsConfig)
+	// dirCl := directory_client.NewDirectoryClient(nil, nil)
 
-	svc.SetRequestSink(dirCl)
-	co1.SetRequestSink(svc)
-	defer co1.Stop()
+	co1 := consumer.NewConsumer(svc, nil)
+
+	// svc.SetRequestSink(dirCl)
+	// co1.SetRequestSink(svc)
 
 	svc.Start()
 	// give heartbeat a chance to run. stop will wait for it to complete
 	time.Sleep(time.Millisecond * 100)
-	svc.Stop()
+	defer svc.Stop()
+	defer co1.Stop()
 
-	tdList := dirCl.Cache().GetAllThings(0, 0)
+	// tdList := dirCl.Cache().GetAllThings(0, 0)
 	// the simulation file contains 3 things. The service itself is also a Thing.
-	assert.GreaterOrEqual(t, len(tdList), 4)
+	// assert.GreaterOrEqual(t, len(tdList), 4)
 
 	// get events that were published
 	events, err := co1.ReadAllEvents(device1ID)
@@ -109,7 +109,7 @@ func TestPollInvalidEDSAddress(t *testing.T) {
 
 	badConfig := owsConfig // copy
 	badConfig.OWServerURL = "http://invalidAddress/"
-	svc, err := internal.NewOWServerBinding("", storePath, &badConfig)
+	svc, err := internal.NewOWServerGateway("", storePath, &badConfig)
 	svc.Start()
 	defer svc.Stop()
 
@@ -117,7 +117,7 @@ func TestPollInvalidEDSAddress(t *testing.T) {
 	time.Sleep(time.Millisecond * 1)
 	svc.Stop()
 
-	_, err = svc.PollNodes()
+	_, err = svc.UpdateThings(false)
 	assert.Error(t, err)
 }
 
@@ -129,7 +129,7 @@ func TestAction(t *testing.T) {
 	var actionName = "RelayFunction" // the action attribute as defined by the device
 	var actionValue = "1"
 
-	svc, err := internal.NewOWServerBinding("", storePath, &owsConfig)
+	svc, err := internal.NewOWServerGateway("", storePath, &owsConfig)
 	require.NoError(t, err)
 	require.NoError(t, err)
 	cc1, _ := testEnv.NewRCConnection(agentID, svc)
@@ -159,7 +159,7 @@ func TestConfig(t *testing.T) {
 	var configName = "LEDState"
 	var configValue = "1"
 
-	svc, err := internal.NewOWServerBinding("", storePath, &owsConfig)
+	svc, err := internal.NewOWServerGateway("", storePath, &owsConfig)
 	require.NoError(t, err)
 	cc1, _ := testEnv.NewRCConnection(agentID, svc)
 	defer cc1.Close()

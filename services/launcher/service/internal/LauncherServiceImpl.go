@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"sort"
 	"sync"
 	"time"
@@ -15,14 +16,13 @@ import (
 	"github.com/hiveot/hivekit/go/api/wot"
 	"github.com/hiveot/hivekit/go/cells/thing"
 	"github.com/hiveot/hivekit/go/cells/transport/wss"
-	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/services/launcher"
 )
 
 // Use this default path instead of discovery when running locally and no server is configured
 const DefaultLocalServerURL = "wss://localhost" + wss.WotWebsocketPath
 
-// LauncherService manages starting and stopping of plugins
+// LauncherServiceImpl manages starting and stopping of plugins
 // This implements the ILauncher interface and is an Agent module.
 //
 // Note that this module does not create server connections. It is a module that should
@@ -36,7 +36,7 @@ const DefaultLocalServerURL = "wss://localhost" + wss.WotWebsocketPath
 //
 // C: Combine A and B, direct access to the launcher while linking to a gateway server
 // > {gRPC server} <=> Launcher <=> {transport client} <=> {gateway runtime}
-type LauncherService struct {
+type LauncherServiceImpl struct {
 	*thing.ExposedThing
 
 	// service configuration
@@ -62,73 +62,87 @@ type LauncherService struct {
 }
 
 // Add discovered runtime to svc.plugins
-func (svc *LauncherService) addRuntime(runtimeBin string) error {
+func (svc *LauncherServiceImpl) addRuntime(runtimeBin string) error {
 	if runtimeBin != "" {
 		runtimePath := path.Join(svc.env.BinDir, runtimeBin)
-		runtimeInfo, err := os.Stat(runtimePath)
+		_, err := os.Stat(runtimePath)
 		if err != nil {
 			err = fmt.Errorf("addRuntime. runtime in config not found. Path=%s", runtimePath)
 			return err
 		}
-		pluginInfo, found := svc.plugins[runtimeBin]
-		if !found {
-			// add new entry for runtime
-			pluginInfo = launcher.PluginInfo{
-				PluginID: runtimeInfo.Name(),
-				ExecPath: runtimePath,
-				Uptime:   0,
-				Running:  false,
-			}
-			svc.plugins[runtimeBin] = pluginInfo
-		}
-		pluginInfo.ModifiedTime = utils.FormatUTCMilli(runtimeInfo.ModTime())
-		pluginInfo.Size = runtimeInfo.Size()
+		svc.addPlugin(runtimePath)
 	}
+	return nil
+}
+
+// Add a newly discovered executable plugin to svc.plugins
+// If the plugin is already know, only update its size and timestamp
+func (svc *LauncherServiceImpl) addPlugin(filepath string) error {
+	fileInfo, err := os.Stat(filepath)
+	if err != nil {
+		slog.Error("addPlugin: Unable to read plugin info. Skipped", "err", err.Error())
+		return err
+	}
+	if fileInfo.IsDir() {
+		// ignore directory
+		return nil
+	}
+	fileMode := fileInfo.Mode()
+	isExecutable := fileMode&0100 != 0
+	if !isExecutable {
+		// ignore non executable
+		slog.Info("addPlugin: Ignored non-executable.", "file", filepath)
+		return nil
+	}
+	size := fileInfo.Size()
+	if size == 0 {
+		slog.Info("addPlugin: Ignored empty file.", "file", filepath)
+		return nil
+	}
+
+	pluginInfo, found := svc.plugins[fileInfo.Name()]
+	if !found {
+		pluginInfo = launcher.PluginInfo{
+			PluginID:     fileInfo.Name(),
+			ExecPath:     filepath,
+			ModifiedTime: fileInfo.ModTime().Format(time.RFC3339),
+			Size:         size,
+			Uptime:       0,
+			Running:      false,
+		}
+		svc.plugins[pluginInfo.PluginID] = pluginInfo
+		slog.Info("addPlugin: found new plugin", "file", filepath)
+	} else {
+		// updated
+		pluginInfo.ModifiedTime = fileInfo.ModTime().Format(time.RFC3339)
+		pluginInfo.Size = size
+	}
+
 	return nil
 }
 
 // Add newly discovered executable plugins to svc.plugins
 // If the service is already know, only update its size and timestamp
-func (svc *LauncherService) addPlugins(folder string) error {
+func (svc *LauncherServiceImpl) addPlugins(folder string) error {
 	count := 0
 	entries, err := os.ReadDir(folder)
 	if err != nil {
 		return err
 	}
 	for _, entry := range entries {
-		// ignore directories and non executable files
-		fileInfo, err := entry.Info()
-		if err != nil {
-			slog.Error("Unable to read plugin info. Skipped", "err", err.Error())
-		} else {
-			size := fileInfo.Size()
-			fileMode := fileInfo.Mode()
-			isExecutable := fileMode&0100 != 0
-			isFile := !entry.IsDir()
-			if isFile && isExecutable && size > 0 {
-				count++
-				pluginInfo, found := svc.plugins[entry.Name()]
-				if !found {
-					pluginInfo = launcher.PluginInfo{
-						PluginID: entry.Name(),
-						ExecPath: path.Join(folder, entry.Name()),
-						Uptime:   0,
-						Running:  false,
-					}
-					svc.plugins[pluginInfo.PluginID] = pluginInfo
-				}
-				pluginInfo.ModifiedTime = fileInfo.ModTime().Format(time.RFC3339)
-				pluginInfo.Size = size
-			}
-		}
+
+		filePath := filepath.Join(folder, entry.Name())
+		svc.addPlugin(filePath)
 	}
-	slog.Info("found plugins", "count", count, "directory", folder)
+	if count > 0 {
+		slog.Info("addPlugins: found new plugins", "count", count, "directory", folder)
+	}
 	return nil
 }
 
 // ListPlugins lists all available or just the running plugins and their status
 // This returns the list of plugins sorted by name
-func (svc *LauncherService) ListPlugins(onlyRunning bool) ([]launcher.PluginInfo, error) {
+func (svc *LauncherServiceImpl) ListPlugins(onlyRunning bool) ([]launcher.PluginInfo, error) {
 	svc.mux.Lock()
 	defer svc.mux.Unlock()
 
@@ -150,8 +164,22 @@ func (svc *LauncherService) ListPlugins(onlyRunning bool) ([]launcher.PluginInfo
 	return infoList, nil
 }
 
+// Remove a deleted plugin
+func (svc *LauncherServiceImpl) removePlugin(path string) {
+	svc.mux.Lock()
+	defer svc.mux.Unlock()
+
+	filename := filepath.Base(path)
+	_, found := svc.plugins[filename]
+	if found {
+		delete(svc.plugins, filename)
+		slog.Info("removePlugin", "path", path)
+	}
+
+}
+
 // ScanPlugins scans the plugin folder for changes and updates the plugins list
-func (svc *LauncherService) ScanPlugins() error {
+func (svc *LauncherServiceImpl) ScanPlugins() error {
 	svc.mux.Lock()
 	defer svc.mux.Unlock()
 
@@ -169,7 +197,7 @@ func (svc *LauncherService) ScanPlugins() error {
 // to be able to create auth keys and tokens, and to subscribe to rpc requests.
 //
 // Call stop to end
-func (svc *LauncherService) Start() {
+func (svc *LauncherServiceImpl) Start() {
 	slog.Info("Starting LauncherService")
 
 	// 1: start the runtime, if configured
@@ -188,7 +216,7 @@ func (svc *LauncherService) Start() {
 		}
 	}
 	nrPlugins := len(svc.plugins)
-	svc.PubProperty("", launcher.PropNrPlugins, nrPlugins, false)
+	svc.PubProperty(launcher.PropNrPlugins, nrPlugins, false)
 
 	// 3. Set permissions for using this service for administrators and managers
 	// err = authz.UserSetPermissions(svc.ag.Consumer, authz.ThingPermissions{
@@ -215,7 +243,7 @@ func (svc *LauncherService) Start() {
 }
 
 // Stop the launcher, all running plugins and disconnect
-func (svc *LauncherService) Stop() {
+func (svc *LauncherServiceImpl) Stop() {
 	slog.Info("Stopping launcher service")
 
 	// svc.isRunning.Store(false)
@@ -227,8 +255,11 @@ func (svc *LauncherService) Stop() {
 
 // WatchPlugins watches the bin and plugins folder for changes and reloads
 // This will detect adding new plugins without requiring a restart.
-func (svc *LauncherService) WatchPlugins() error {
+func (svc *LauncherServiceImpl) WatchPlugins() error {
 	svc.serviceWatcher, _ = fsnotify.NewWatcher()
+	var timers = make(map[string]*time.Timer)
+	var debounceMux sync.Mutex
+	debounceDuration := time.Second
 
 	err := svc.serviceWatcher.Add(svc.env.BinDir)
 	if err == nil {
@@ -238,21 +269,43 @@ func (svc *LauncherService) WatchPlugins() error {
 		go func() {
 			for {
 				select {
-				case <-svc.done:
-					slog.Info("service watcher ended")
-					return
-				case event := <-svc.serviceWatcher.Events:
+				// case <-svc.done:
+				// 	slog.Info("service watcher ended")
+				// 	return
+				case event, ok := <-svc.serviceWatcher.Events:
+					if !ok {
+						slog.Info("service watcher ended")
+						return
+					}
+					// debounce multiple events. Wait until write has stopped
+					if event.Has(fsnotify.Write) || event.Has(fsnotify.Create) {
+						debounceMux.Lock()
+						if t, exists := timers[event.Name]; exists {
+							t.Stop()
+						}
+						timers[event.Name] = time.AfterFunc(debounceDuration, func() {
+							debounceMux.Lock()
+							delete(timers, event.Name)
+							debounceMux.Unlock()
+							svc.addPlugin(event.Name)
+							slog.Info("WatchPlugins file updated", "event", event.Name)
+							// _ = svc.ScanPlugins()
+						})
+						debounceMux.Unlock()
+					}
+					if event.Has(fsnotify.Remove) {
+						slog.Info("WatchPlugins file removed", "event", event.Name)
+						svc.removePlugin(event.Name)
+					}
 					// isRunning := svc.isRunning.Load()
 					// if isRunning {
-					slog.Info("watcher event", "event", event)
-					_ = svc.ScanPlugins()
 					// } else {
 					// 	slog.Info("service watcher stopped")
 					// 	return
 					// }
 				case err := <-svc.serviceWatcher.Errors:
 					if err != nil {
-						slog.Error("error", "err", err)
+						slog.Error("WatchPlugins error", "err", err)
 					}
 				}
 			}
@@ -262,17 +315,17 @@ func (svc *LauncherService) WatchPlugins() error {
 	return err
 }
 
-// NewLauncherService returns a new launcher service instance for the plugins in the
+// NewLauncherServiceImpl returns a new launcher service instance for the plugins in the
 // given plugins folder.
 // This scans the folder for executables, adds these to the list of available plugins and autostarts plugins
 // Logging will be enabled based on LauncherConfig.
 //
 // env is the application environment with bin, certs, log and plugin directories
 // cfg is the launcher configuration
-func NewLauncherService(env *api.AppEnvironment, cfg *launcher.LauncherConfig,
-) (*LauncherService, error) {
+func NewLauncherServiceImpl(env *api.AppEnvironment, cfg *launcher.LauncherConfig,
+) (*LauncherServiceImpl, error) {
 
-	// FIXME: is the launcher thingID the AppID or the default?
+	// FIXME: is the launcher thingID the AppID or the cell Type?
 	// the TD is published with the default 'launcher'
 	// but AppID is the binary name, eg 'main' or so.
 	// option 1: Use AppID because there can be multiple launchers
@@ -280,7 +333,7 @@ func NewLauncherService(env *api.AppEnvironment, cfg *launcher.LauncherConfig,
 	// option 2: Use default
 	//		- doesn't support multiple instances on different machines...
 	//
-	svc := &LauncherService{
+	svc := &LauncherServiceImpl{
 		ExposedThing: thing.NewExposedThing(env.AppID, nil),
 		env:          env,
 		// serverURL: serverURL,

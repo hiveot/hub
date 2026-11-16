@@ -10,14 +10,13 @@ import (
 )
 
 // HandleRequest handles service requests
-func (svc *LauncherService) HandleRequest(req *msg.RequestMessage, replyTo msg.ResponseHandler) (err error) {
+func (svc *LauncherServiceImpl) HandleRequest(req *msg.RequestMessage, replyTo msg.ResponseHandler) (err error) {
 	var output any
-
-	slog.Info("HandleRequest", slog.String("name", req.Name), slog.String("sender", req.SenderID))
 
 	if req.ThingID != svc.GetID() && req.ThingID != launcher.LauncherServiceCellType {
 		return svc.ForwardRequest(req, replyTo)
 	}
+
 	slog.Info("HandleRequest", slog.String("name", req.Name), slog.String("sender", req.SenderID))
 	switch req.Name {
 	case launcher.StartPluginAction:

@@ -127,7 +127,7 @@ func (it *IsyThing) HandleConfigRequest(
 // This submits an event to the registered callback if the value differs.
 func (it *IsyThing) HandleValueUpdate(propID string, uom string, newValue string) (err error) {
 
-	it.SetProperty(it.GetID(), propID, newValue)
+	it.SetProperty(propID, newValue)
 
 	return err
 }
@@ -199,7 +199,7 @@ func (it *IsyThing) Start() {
 		vocab.PropDeviceHardwareVersion: prodInfo.HWVersion,
 		"nodeType":                      it.node.Type,
 	}
-	it.PubProperties("", props, false)
+	it.PubProperties(props, false)
 }
 
 // PubPropValues gets the thing properties and publish them

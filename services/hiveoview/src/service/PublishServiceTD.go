@@ -47,5 +47,5 @@ func (svc *HiveoviewService) PublishServiceTD() error {
 
 // PublishServiceProps publishes the service properties
 func (svc *HiveoviewService) PublishServiceProps() {
-	svc.PubProperty(src.HiveoviewServiceID, vocab.PropNetPort, svc.port, false)
+	svc.PubProperty(vocab.PropNetPort, svc.port, false)
 }

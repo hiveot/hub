@@ -14,6 +14,6 @@ import (
 func NewLauncherService(
 	env *api.AppEnvironment, cfg *launcher.LauncherConfig) (launcher.ILauncherService, error) {
 
-	svc, err := internal.NewLauncherService(env, cfg)
+	svc, err := internal.NewLauncherServiceImpl(env, cfg)
 	return svc, err
 }

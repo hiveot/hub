@@ -13,6 +13,7 @@ import (
 	"github.com/hiveot/hivekit/go/api/wot"
 	"github.com/hiveot/hivekit/go/cells/thing"
 	"github.com/hiveot/hivekit/go/utils"
+	"github.com/hiveot/hub/bindings/isy99x"
 	"github.com/hiveot/hub/bindings/isy99x/config"
 	"github.com/hiveot/hub/bindings/isy99x/internal/isy"
 )
@@ -30,9 +31,9 @@ const (
 	PropIDTMZOffset  = "TMZOffset"
 )
 
-// IsyGatewayThing is a Thing representing the ISY gateway device.
+// IsyGateway is a Thing representing the ISY gateway device.
 // This implements IThing interface.
-type IsyGatewayThing struct {
+type IsyGateway struct {
 	*thing.ExposedThing
 
 	// Configuration of this gateway thing
@@ -167,7 +168,7 @@ func nodeID2ThingID(nodeID string) string {
 
 // AddIsyThing adds a representing of an Insteon device
 // If the node thing already exists it is updated.
-func (svc *IsyGatewayThing) AddIsyThing(node *isy.IsyNode) (IIsyThing, error) {
+func (svc *IsyGateway) AddIsyThing(node *isy.IsyNode) (IIsyThing, error) {
 	var isyThing IIsyThing
 	var err error
 
@@ -223,7 +224,7 @@ func (svc *IsyGatewayThing) AddIsyThing(node *isy.IsyNode) (IIsyThing, error) {
 
 // GetIsyThing returns the ISY device Thing with the given ThingID
 // Returns nil of a thing with this ID doesn't exist
-func (svc *IsyGatewayThing) GetIsyThing(thingID string) IIsyThing {
+func (svc *IsyGateway) GetIsyThing(thingID string) IIsyThing {
 	svc.mux.RLock()
 	defer svc.mux.RUnlock()
 	it, _ := svc.isyThings[thingID]
@@ -232,7 +233,7 @@ func (svc *IsyGatewayThing) GetIsyThing(thingID string) IIsyThing {
 
 // GetIsyThingByNodeID returns the ISY device Thing with the given Node address
 // Returns nil if a thing with this address doesn't exist
-func (svc *IsyGatewayThing) GetIsyThingByNodeID(nodeAddr string) IIsyThing {
+func (svc *IsyGateway) GetIsyThingByNodeID(nodeAddr string) IIsyThing {
 	thingID := nodeID2ThingID(nodeAddr)
 	svc.mux.RLock()
 	defer svc.mux.RUnlock()
@@ -242,7 +243,7 @@ func (svc *IsyGatewayThing) GetIsyThingByNodeID(nodeAddr string) IIsyThing {
 
 // GetIsyThings returns a list of ISY devices for publishing TD or values as updated in
 // the last call to ReadIsyThings().
-func (t *IsyGatewayThing) GetIsyThings() []IIsyThing {
+func (t *IsyGateway) GetIsyThings() []IIsyThing {
 	t.mux.RLock()
 	defer t.mux.RUnlock()
 	thingList := make([]IIsyThing, 0, len(t.isyThings))
@@ -264,11 +265,11 @@ func (t *IsyGatewayThing) GetIsyThings() []IIsyThing {
 
 // HandleRequest passes the request to the associated Thing.
 // This distributes the requests to the thing identified in the thingID
-func (svc *IsyGatewayThing) HandleRequest(
+func (svc *IsyGateway) HandleRequest(
 	req *msg.RequestMessage, replyTo msg.ResponseHandler) (err error) {
 
 	// request is either for this gateway or gateway nodes
-	if req.ThingID == svc.GetID() {
+	if req.ThingID == svc.GetID() || req.ThingID == isy99x.Isy99xCellType {
 		switch req.Operation {
 		case wot.OpInvokeAction:
 			// FIXME-1: how to determine the output of an action with ISY?
@@ -294,7 +295,7 @@ func (svc *IsyGatewayThing) HandleRequest(
 }
 
 // Handle property request for this device
-func (svc *IsyGatewayThing) HandleConfigRequest(
+func (svc *IsyGateway) HandleConfigRequest(
 	req *msg.RequestMessage, replyTo msg.ResponseHandler) (err error) {
 
 	slog.Info("HandleConfigRequest",
@@ -328,7 +329,7 @@ func (svc *IsyGatewayThing) HandleConfigRequest(
 }
 
 // MakeTD returns the Gateway TD document
-func (svc *IsyGatewayThing) MakeTD() *wot.TD {
+func (svc *IsyGateway) MakeTD() *wot.TD {
 
 	tdoc := wot.NewTD(svc.GetID(), svc.Configuration.DeviceSpecs.Model, vocab.DeviceNetGateway)
 	tdoc.Description = svc.Configuration.DeviceSpecs.Make + "-" + svc.Configuration.DeviceSpecs.Model
@@ -439,7 +440,7 @@ func (svc *IsyGatewayThing) MakeTD() *wot.TD {
 //}
 
 // ReadIsyThings reads the ISY Node list and update the collection of ISY Things
-func (svc *IsyGatewayThing) ReadIsyThings() error {
+func (svc *IsyGateway) ReadIsyThings() error {
 	if !svc.gwAPI.IsConnected() {
 		return fmt.Errorf("No ISY connection")
 	}
@@ -464,7 +465,7 @@ func (svc *IsyGatewayThing) ReadIsyThings() error {
 // RefreshProperties reads ISY gateway properties and publish changes.
 // This loads the gateway 'Configuration', 'System', 'Time' and 'Network' data.
 // See also: https://wiki.universal-devices.com/index.php?title=ISY_Developers:API:REST_Interface#Return_Values_/_Codes
-func (svc *IsyGatewayThing) RefreshProperties(onlyChanges bool) (err error) {
+func (svc *IsyGateway) RefreshProperties(onlyChanges bool) (err error) {
 	if !svc.gwAPI.IsConnected() {
 		return fmt.Errorf("No gateway connection")
 	}
@@ -482,7 +483,6 @@ func (svc *IsyGatewayThing) RefreshProperties(onlyChanges bool) (err error) {
 		err = svc.gwAPI.SendRequest("GET", "/rest/network", "", &svc.Network)
 	}
 
-	thingID := svc.GetID()
 	sunrise := int64(svc.Time.Sunrise-svc.Time.TMZOffset) - NTP_OFFSET
 	sunset := int64(svc.Time.Sunset-svc.Time.TMZOffset) - NTP_OFFSET
 
@@ -509,7 +509,7 @@ func (svc *IsyGatewayThing) RefreshProperties(onlyChanges bool) (err error) {
 		PropIDTMZOffset:  strconv.FormatInt(int64(svc.Time.TMZOffset), 10),
 		PropIDDSTEnabled: strconv.FormatBool(svc.Time.DST),
 	}
-	svc.PubProperties(thingID, props, onlyChanges)
+	svc.PubProperties(props, onlyChanges)
 
 	return err
 }
@@ -525,7 +525,7 @@ func (svc *IsyGatewayThing) RefreshProperties(onlyChanges bool) (err error) {
 //
 // Each ISY Thing will be updated with the latest status. It is up to them
 // to notify their uses with an event if the status has changed.
-func (svc *IsyGatewayThing) RefreshStatus() error {
+func (svc *IsyGateway) RefreshStatus() error {
 	if !svc.gwAPI.IsConnected() {
 		return fmt.Errorf("No ISY connection")
 	}
@@ -549,7 +549,7 @@ func (svc *IsyGatewayThing) RefreshStatus() error {
 }
 
 // Start publishes the gateway TD, its properties and start the heartbeat
-func (svc *IsyGatewayThing) Start() {
+func (svc *IsyGateway) Start() {
 	tdoc := svc.MakeTD()
 	svc.WriteTD(tdoc)
 
@@ -558,7 +558,7 @@ func (svc *IsyGatewayThing) Start() {
 
 // heartbeat polls the gateway device every X seconds and publishes updates
 // This returns a stop function that can be used to end the loop
-func (svc *IsyGatewayThing) startHeartbeat() (stopFn func()) {
+func (svc *IsyGateway) startHeartbeat() (stopFn func()) {
 
 	var tdCountDown = 0
 	var pollCountDown = 0
@@ -579,7 +579,7 @@ func (svc *IsyGatewayThing) startHeartbeat() (stopFn func()) {
 		if !isConnected {
 			// if the connection dropped, send an event
 			if wasConnected {
-				svc.PubEvent("", vocab.PropNetConnection, isConnected)
+				svc.PubEvent(vocab.PropNetConnection, isConnected, true)
 			}
 			err = svc.gwAPI.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
 			// if err == nil {
@@ -588,7 +588,7 @@ func (svc *IsyGatewayThing) startHeartbeat() (stopFn func()) {
 			// }
 			isConnected = svc.gwAPI.IsConnected()
 			if isConnected {
-				svc.PubEvent("", vocab.PropNetConnection, isConnected)
+				svc.PubEvent(vocab.PropNetConnection, isConnected, true)
 			}
 		}
 		wasConnected = isConnected
@@ -623,7 +623,7 @@ func (svc *IsyGatewayThing) startHeartbeat() (stopFn func()) {
 }
 
 // Stop the heartbeat
-func (svc *IsyGatewayThing) Stop() {
+func (svc *IsyGateway) Stop() {
 	slog.Info("Stopping the ISY99x gateway service")
 	//svc.isRunning.Store(false)
 	svc.mux.Lock()
@@ -638,7 +638,7 @@ func (svc *IsyGatewayThing) Stop() {
 
 // NewIsyGateway creates a new instance of the ISY gateway device.
 // This connects to the gateway and returns an error if the gateway is unreachable.
-func NewIsyGateway(appID string, cfg *config.Isy99xConfig) (*IsyGatewayThing, error) {
+func NewIsyGateway(appID string, cfg *config.Isy99xConfig) (*IsyGateway, error) {
 
 	prodMap, err := LoadProductMapCSV("")
 	_ = err
@@ -653,7 +653,7 @@ func NewIsyGateway(appID string, cfg *config.Isy99xConfig) (*IsyGatewayThing, er
 	// }
 	thingID := gwAPI.GetID()
 
-	isyGW := &IsyGatewayThing{
+	isyGW := &IsyGateway{
 		ExposedThing: thing.NewExposedThing(thingID, nil),
 		config:       cfg,
 		prodMap:      prodMap,

@@ -163,7 +163,7 @@ func TestMultiConnectSingleClient(t *testing.T) {
 	//require.Equal(t, testConnections, ts.Runtime.TransportsMgr.GetNrConnections(), "ts connect count mismatch")
 
 	// 3: agent publishes an event, which should be received N times
-	rcThing.PubEvent(thing1ID, eventName, "a value")
+	rcThing.PubThingEvent(thing1ID, eventName, "a value")
 	//err := ag1.PubEvent(td1.ID, eventName, "a value", "message1")
 	// require.NoError(t, err)
 
@@ -182,7 +182,7 @@ func TestMultiConnectSingleClient(t *testing.T) {
 
 	// 5: no more messages should be received after disconnecting
 	messageCount.Store(0)
-	rcThing.PubEvent(thing1ID, eventName, "a value")
+	rcThing.PubThingEvent(thing1ID, eventName, "a value")
 	// require.NoError(t, err)
 	rcThing.Stop()
 

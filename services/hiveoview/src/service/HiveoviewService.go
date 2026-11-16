@@ -78,13 +78,13 @@ type HiveoviewService struct {
 // callback handler when a new session is opened
 // This publishes an event notification.
 func (svc *HiveoviewService) onSessionOpened(sm *session.WebClientSession, nrSessions int) {
-	svc.PubEvent(src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions)
+	svc.PubEvent(src.NrActiveSessionsEvent, nrSessions, true)
 }
 
 // callback handler when a new session is closed
 // This publishes an event notification.
 func (svc *HiveoviewService) onSessionClosed(sm *session.WebClientSession, nrSessions int) {
-	svc.PubEvent(src.HiveoviewServiceID, src.NrActiveSessionsEvent, nrSessions)
+	svc.PubEvent(src.NrActiveSessionsEvent, nrSessions, true)
 }
 
 // GetSM returns the web session manager

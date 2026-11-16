@@ -21,11 +21,11 @@ package owserver
 //	do services hold history? - nothing stopping them from doing so
 type OWServerConfig struct {
 	// Optional loglevel for use, default is warning
-	LogLevel string `yaml:"logLevel,omitempty"`
+	// LogLevel string `yaml:"logLevel,omitempty"`
 
 	// HubURL optional hub address to connect to.
 	// Default "" for auto discovery.
-	HubURL string `yaml:"hubUrl,omitempty"`
+	// HubURL string `yaml:"hubUrl,omitempty"`
 
 	// Keyfile with the client's public/private key
 	// Generated on first startup if not found.
@@ -58,7 +58,7 @@ func NewOWServerConfig() *OWServerConfig {
 	cfg := OWServerConfig{}
 
 	// ensure valid defaults
-	cfg.LogLevel = ""
+	// cfg.LogLevel = ""
 	// re-publish node TDs docs every 3 days
 	cfg.TDInterval = 3600 * 24 * 3
 	// poll for value updates every 60 seconds

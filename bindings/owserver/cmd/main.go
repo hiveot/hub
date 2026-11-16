@@ -22,7 +22,7 @@ func main() {
 		slog.Error("Failed loading configuration", "err", err.Error())
 	}
 	storePath := path.Join(env.StoresDir, env.ClientID)
-	binding, err := owserverpkg.NewOWServerBinding("", storePath, owsConfig)
+	binding, err := owserverpkg.NewOWServerBinding(env.AppID, storePath, owsConfig)
 
 	// link it to the RC device recipe that handles connections.
 	r, _, err := rcdevice_recipe.NewRCDeviceRecipe(env, binding)

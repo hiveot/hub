@@ -16,7 +16,7 @@ import (
 func NewOWServerBinding(
 	thingID string, storePath string, cfg *owserver.OWServerConfig) (owserver.IOWServer, error) {
 
-	svc, err := internal.NewOWServerBinding(thingID, storePath, cfg)
+	svc, err := internal.NewOWServerGateway(thingID, storePath, cfg)
 	return svc, err
 }
 
@@ -24,7 +24,7 @@ func NewOWServerBinding(
 // todo handle config
 func NewOWServerFactory(f api.ICellFactory) (api.IHiveCell, error) {
 	env := f.GetEnvironment()
-	thingID := owserver.DefaultOWServerThingID
+	thingID := owserver.OWServerCellType
 	storePath := filepath.Join(env.StoresDir, thingID)
 	cfg := owserver.NewOWServerConfig()
 	svc, err := NewOWServerBinding(thingID, storePath, cfg)

@@ -97,18 +97,19 @@ func (svc *WeatherService) Poll() error {
 	return err
 }
 
-// PublishBindingProperties publish attributes and configuration of the binding
-func (svc *WeatherService) PublishBindingProperties(thingID string) error {
+// PublishBindingProperties publish attributes and configuration of the binding itself
+func (svc *WeatherService) PublishBindingProperties() error {
 	propMap := map[string]any{
 		PropNameWeatherProvider: svc.cfg.DefaultProvider,
 		PropNameUnitsWindSpeed:  svc.cfg.WindSpeedUnits,
 	}
-	svc.PubProperties(thingID, propMap, true)
+	svc.PubProperties(propMap, true)
 	return nil
 }
 
 // PublishLocationProperties publish attributes and configuration of a location
 func (svc *WeatherService) PublishLocationProperties(thingID string, config weather.WeatherLocation) error {
+	// TODO: create an ExposedThing instance per location
 	propMap := map[string]any{
 		PropNameCurrentEnabled:      config.CurrentEnabled,
 		PropNameCurrentInterval:     config.CurrentInterval,
@@ -119,13 +120,14 @@ func (svc *WeatherService) PublishLocationProperties(thingID string, config weat
 		vocab.PropLocationLongitude: config.Longitude,
 		vocab.PropLocationName:      config.Name,
 	}
-	svc.PubProperties(thingID, propMap, true)
+	svc.PubThingProperties(thingID, propMap)
 	return nil
 }
 
 // PublishCurrent publish events with the current weather
 func (svc *WeatherService) PublishCurrent(thingID string, current providers.CurrentWeather) {
-	svc.PubProperty(thingID, PropNameCurrentUpdated, current.Updated, true)
+
+	svc.PubThingProperty(thingID, PropNameCurrentUpdated, current.Updated)
 
 	// convert wind speed to configured units
 	windSpeed := utils.DecodeAsNumber(current.WindSpeed)
@@ -133,19 +135,19 @@ func (svc *WeatherService) PublishCurrent(thingID string, current providers.Curr
 	// convert wind gusts to configured units
 	windGusts := utils.DecodeAsNumber(current.WindGusts)
 
-	svc.PubEvent(thingID, vocab.PropEnvHumidity, current.Humidity)
-	svc.PubEvent(thingID, vocab.PropEnvPrecipitation, current.Precipitation)
-	svc.PubEvent(thingID, vocab.PropEnvPressureSeaLevel, current.AtmoPressureMsl)
-	svc.PubEvent(thingID, vocab.PropEnvPressureSurface, current.AtmoPressureSurface)
-	svc.PubEvent(thingID, vocab.PropEnvPrecipitationRain, current.Rain)
-	svc.PubEvent(thingID, vocab.PropEnvPrecipitationSnow, current.Snowfall)
-	svc.PubEvent(thingID, vocab.PropEnvPrecipitation, current.Precipitation)
-	svc.PubEvent(thingID, vocab.PropEnvTemperature, current.Temperature)
-	svc.PubEvent(thingID, vocab.PropEnvWindHeading, current.WindHeading)
+	svc.PubThingEvent(thingID, vocab.PropEnvHumidity, current.Humidity)
+	svc.PubThingEvent(thingID, vocab.PropEnvPrecipitation, current.Precipitation)
+	svc.PubThingEvent(thingID, vocab.PropEnvPressureSeaLevel, current.AtmoPressureMsl)
+	svc.PubThingEvent(thingID, vocab.PropEnvPressureSurface, current.AtmoPressureSurface)
+	svc.PubThingEvent(thingID, vocab.PropEnvPrecipitationRain, current.Rain)
+	svc.PubThingEvent(thingID, vocab.PropEnvPrecipitationSnow, current.Snowfall)
+	svc.PubThingEvent(thingID, vocab.PropEnvPrecipitation, current.Precipitation)
+	svc.PubThingEvent(thingID, vocab.PropEnvTemperature, current.Temperature)
+	svc.PubThingEvent(thingID, vocab.PropEnvWindHeading, current.WindHeading)
 
 	// todo: configure unit
 	windGustsKph := math.Round(float64(windGusts) * 3.6)
 	windSpeedKph := math.Round(float64(windSpeed) * 3.6)
-	svc.PubEvent(thingID, vocab.PropEnvWindGusts, windGustsKph) // m/s -> km/h
-	svc.PubEvent(thingID, vocab.PropEnvWindSpeed, windSpeedKph) // m/s -> km/h
+	svc.PubThingEvent(thingID, vocab.PropEnvWindGusts, windGustsKph) // m/s -> km/h
+	svc.PubThingEvent(thingID, vocab.PropEnvWindSpeed, windSpeedKph) // m/s -> km/h
 }

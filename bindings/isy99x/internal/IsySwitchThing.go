@@ -122,10 +122,10 @@ func (it *IsySwitchThing) HandleValueUpdate(propName string, uom string, newValu
 		if newValue == "1" || newValue == "255" {
 			boolValue = true
 		}
-		it.PubProperty(it.GetID(), propName, boolValue, true)
+		it.PubProperty(propName, boolValue, true)
 		// it.propValues.SetValueBool(propName, boolValue)
 	} else {
-		it.PubProperty(it.GetID(), propName, newValue, true)
+		it.PubProperty(propName, newValue, true)
 		// it.propValues.SetValue(propName, newValue)
 	}
 	return nil

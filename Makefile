@@ -26,7 +26,7 @@ services: launcher idprov certs history hiveoview
 launcher: .FORCE
 	go build -o $(BIN_FOLDER)/$@ services/$@/cmd/main.go
 	mkdir -p $(DIST_FOLDER)/config
-	cp services/$@/config/*.yaml $(DIST_FOLDER)/config
+	cp services/$@/*.yaml $(DIST_FOLDER)/config
 
 certs: .FORCE
 	go build -o $(PLUGINS_FOLDER)/$@ services/$@/cmd/main.go

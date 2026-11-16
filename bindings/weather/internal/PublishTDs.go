@@ -223,7 +223,7 @@ func (svc *WeatherService) PublishBindingTD() {
 	thingID := svc.GetID()
 	tdoc := CreateBindingTD(thingID)
 	svc.WriteTD(tdoc)
-	svc.PublishBindingProperties(thingID)
+	svc.PublishBindingProperties()
 }
 
 // PublishLocationTDs publishes the TD of all locationStore and current properties

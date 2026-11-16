@@ -196,7 +196,7 @@ func TestLogin(t *testing.T) {
 // test many connections from a single client and confirm they open close and receive messages properly.
 func TestMultiConnectDisconnect(t *testing.T) {
 	const clientID1 = "user1"
-	const agentID = "agent1"
+	const rcClientID = "agent1"
 	const testConnections = 1
 	const eventName = "event1"
 	var webClients = make([]*SSEWebClient, 0)
@@ -220,12 +220,11 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	svc.Start()
 	defer svc.Stop()
 
-	// the agent for publishing events. A TD is needed for them to be accepted.
-	eThing, _, _ := testEnv.NewRCThing(agentID, nil)
+	// the client for publishing events.
+	eThing, _, _ := testEnv.NewRCThing(rcClientID, nil)
 	_ = eThing
-	td1 := testEnv.CreateTestTD(42, false)
-	td1.ID = agentID
-	_ = td1
+	rcTD := testEnv.CreateTestTD(42, false)
+	rcTD.ID = rcClientID
 
 	// create the user account this test is going to connect as.
 	// no notifications are expected as it doesnt subscribe
@@ -248,7 +247,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	// handler hiveoview SSE notifications
 	onNotification := func(eventName string, evData []byte) {
 		// the UI expects this format for triggering htmx
-		expectedName := fmt.Sprintf("event/dtw:%s:%s/%s", agentID, td1.ID, eventName)
+		expectedName := fmt.Sprintf("event/dtw:%s:%s/%s", rcClientID, rcTD.ID, eventName)
 
 		if eventName == expectedName {
 			messageCount.Add(1)
@@ -277,7 +276,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 	require.Equal(t, testConnections, nrSessions)
 
 	// 3: agent publishes an event, which should be received N times
-	eThing.PubEvent(td1.ID, eventName, "a value")
+	eThing.PubThingEvent(rcTD.ID, eventName, "a value")
 
 	// event should have been received N times
 	time.Sleep(time.Millisecond * 100)
@@ -299,7 +298,7 @@ func TestMultiConnectDisconnect(t *testing.T) {
 
 	// 5: no more messages should be received after disconnecting
 	messageCount.Store(0)
-	eThing.PubEvent(td1.ID, eventName, "a value")
+	eThing.PubThingEvent(rcTD.ID, eventName, "a value")
 
 	// zero events should have been received
 	time.Sleep(waitamoment)

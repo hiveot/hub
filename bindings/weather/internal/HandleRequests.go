@@ -110,7 +110,7 @@ func (svc *WeatherService) handleConfigRequest(
 	if err == nil && newValue != nil {
 		svc.locationStore.Update(loc)
 		go func() {
-			svc.PubProperty(req.ThingID, req.Name, newValue, true)
+			svc.PubThingProperty(req.ThingID, req.Name, newValue)
 		}()
 	}
 	return replyTo(resp)

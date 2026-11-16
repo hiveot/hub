@@ -7,14 +7,16 @@ import (
 
 	"github.com/hiveot/hivekit/go/api/msg"
 	"github.com/hiveot/hivekit/go/api/wot"
-	"github.com/hiveot/hub/bindings/owserver/internal/eds"
+	"github.com/hiveot/hub/bindings/owserver"
 )
 
 const MaxUpdateWaitTime = 3
 
-// HandleRequest handles action and property requests.
+// HandleRequest handles action and property requests for Things managed
+// by the OWServer gateway.
+//
 // For 1-wire, configuration and actions are the same thing
-func (svc *OWServer) HandleRequest(
+func (svc *OWServerGateway) HandleRequest(
 	req *msg.RequestMessage, replyTo msg.ResponseHandler) error {
 
 	slog.Info("HandleRequest",
@@ -23,50 +25,39 @@ func (svc *OWServer) HandleRequest(
 		slog.String("name", req.Name),
 		slog.String("payload", req.ToString(20)),
 	)
-	var err error
-
-	// Custom config. Change device title.
+	// Custom config. Change device title for any node.
 	if req.Operation == wot.OpWriteProperty {
 		if req.Name == wot.WoTTitle {
-			err = svc.SetTitle(req)
+			err := svc.SetTitle(req)
 			deviceTitleByte, _ := svc.customTitles.Get(req.ThingID)
 			resp := req.CreateResponse(string(deviceTitleByte), err)
 			return replyTo(resp)
-		} else {
-			// This is a node update
-			err = svc.WriteNode(req)
-			if err != nil {
-				return err
-			}
-
-			// poll the result a few times until the requested status is reached or until timeout.
-			newValue, hasUpdated := svc.WaitForValueUpdate(req, MaxUpdateWaitTime)
-			if !hasUpdated {
-				err = fmt.Errorf("Node didn't update property within %d seconds", MaxUpdateWaitTime)
-			}
-			// complete or fail the request
-			resp := req.CreateResponse(newValue, err)
-			replyTo(resp)
-
-			// finally do a full refresh that sends notifications to subscribers
-			go svc.RefreshPropertyValues(false)
 		}
-	} else if req.Operation == wot.OpInvokeAction {
-		// no actions supported
-		err = fmt.Errorf("Actions not supported")
-	} else {
-		// default
+	}
+	if req.ThingID == svc.GetID() || req.ThingID == owserver.OWServerCellType {
+		// this is a property update for the gateway service itself
+		var err error
+
+		// Custom config. Change device title.
+		// let the base handle read operations
 		err = svc.ExposedThing.HandleRequest(req, replyTo)
 		return err
+	} else {
+		// pass it on to the node
+		owThing, _ := svc.GetOWThing(req.ThingID)
+		if owThing == nil {
+			err := fmt.Errorf("HandleRequest: Thing '%s' is not a known 1-wire device", req.ThingID)
+			slog.Warn(err.Error())
+			return err
+		}
+		return owThing.HandleRequest(req, replyTo)
 	}
-
-	return nil
 }
 
 // SetTitle configures a new title of a thing
 //
 // OWServer doesn't support this so store this in the service store.
-func (svc *OWServer) SetTitle(req *msg.RequestMessage) (err error) {
+func (svc *OWServerGateway) SetTitle(req *msg.RequestMessage) (err error) {
 
 	valueStr := req.ToString(0)
 
@@ -76,54 +67,13 @@ func (svc *OWServer) SetTitle(req *msg.RequestMessage) (err error) {
 	}
 	if err == nil {
 		// publish notification with the new title after returning
-		go svc.PubProperty(req.ThingID, wot.WoTTitle, valueStr, true)
+		go svc.PubThingProperty(req.ThingID, wot.WoTTitle, valueStr)
 	}
-	return err
-}
-
-// WriteNode validates and writes the new value to the node
-// in 1-wire actions and configuration is the same thing
-func (svc *OWServer) WriteNode(req *msg.RequestMessage) (err error) {
-
-	var attr eds.OneWireAttr
-	valueStr := req.ToString(0)
-
-	// This is a node update
-	node, found := svc.nodes[req.ThingID]
-	if !found {
-		// delivery failed as the thingID doesn't exist
-		err = fmt.Errorf("ID '%s' is not a known node", req.ThingID)
-		return err
-	}
-	attr, found = node.Attr[req.Name]
-	if !found {
-		// delivery completed with error
-		err = fmt.Errorf("node '%s' found but it doesn't have an attribute '%s'",
-			req.ThingID, req.Name)
-		return err
-	} else if !attr.Writable {
-		// delivery completed with error
-		err = fmt.Errorf("node '%s' attribute '%s' is read-only",
-			req.ThingID, req.Name)
-		return err
-	}
-
-	// the thingID is the device identifier, eg the ROMId
-	edsName := req.Name
-	//if valueStr is a boolean then convert it to a number as 1-wire doesn't have booleans
-	if valueStr == "true" {
-		valueStr = "1"
-	} else if valueStr == "false" {
-		valueStr = "0"
-	}
-
-	err = svc.edsAPI.WriteNode(req.ThingID, edsName, valueStr)
-
 	return err
 }
 
 // WaitForValueUpdate waits for the node value to be applied
-func (svc *OWServer) WaitForValueUpdate(
+func (svc *OWServerGateway) WaitForValueUpdate(
 	req *msg.RequestMessage, seconds int) (newValue string, hasUpdated bool) {
 
 	var err error

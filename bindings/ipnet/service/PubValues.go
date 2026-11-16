@@ -22,6 +22,6 @@ func (svc *IPNetBinding) MakeDeviceProps(deviceInfo *IPDeviceInfo) map[string]st
 
 // Publish the properties of this binding
 func (svc *IPNetBinding) PubBindingProps(onlyChanges bool) {
-	svc.PubProperty("", vocab.PropDevicePollinterval, svc.config.PollInterval, onlyChanges)
-	svc.PubProperty("", "deviceCount", len(svc.devicesMap), onlyChanges)
+	svc.PubProperty(vocab.PropDevicePollinterval, svc.config.PollInterval, onlyChanges)
+	svc.PubProperty("deviceCount", len(svc.devicesMap), onlyChanges)
 }
