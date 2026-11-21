@@ -1,6 +1,8 @@
 package internal
 
 import (
+	"log/slog"
+
 	"github.com/hiveot/hivekit/go/api/wot"
 )
 
@@ -115,16 +117,14 @@ import (
 // is set then publish the TDs of all known nodes instead.
 // This returns a list of newly discovered 1-wire devices Things or an error
 // if polling the EDS device failed.
-
-func (svc *OWServerGateway) UpdateThings(forceRepublish bool) ([]*StandardOWThing, error) {
+func (svc *OWServerGateway) UpdateThings(onlyChanges bool) ([]*StandardOWThing, error) {
 	newThings := make([]*StandardOWThing, 0)
-
+	slog.Info("UpdateThings start")
 	nodes, err := svc.edsAPI.PollNodes()
 	if err != nil {
 		return nil, err
 	}
 	svc.mux.Lock()
-	defer svc.mux.Unlock()
 	for _, node := range nodes {
 		// TBD: for now this is a 1:1 mapping...
 		thingID := node.ROMId
@@ -138,7 +138,8 @@ func (svc *OWServerGateway) UpdateThings(forceRepublish bool) ([]*StandardOWThin
 			newThings = append(newThings, owt)
 		}
 	}
-	if forceRepublish {
+	svc.mux.Unlock()
+	if !onlyChanges {
 		svc.PublishAllTDs()
 	} else {
 		// only publish the new TDs
@@ -150,6 +151,7 @@ func (svc *OWServerGateway) UpdateThings(forceRepublish bool) ([]*StandardOWThin
 			}
 		}
 	}
+	slog.Info("UpdateThings complete")
 	return newThings, nil
 }
 

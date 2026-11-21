@@ -13,13 +13,50 @@ import (
 	"time"
 
 	"github.com/hiveot/hivekit/go/api"
-	authn_client "github.com/hiveot/hivekit/go/cells/authn/client"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/services/launcher"
 	"github.com/struCoder/pidusage"
 
 	"github.com/samber/lo"
 )
+
+// Update the account for a plugin
+// 1. Create a key-pair if it doesn't exist and save it in the certs directory.
+// 2. If the plugin account does not exist, add the account.
+// 3. If the plugin account exists but a key is created, update the account public key.
+func (svc *LauncherServiceImpl) _updatePluginAccount(certsDir string, pluginID string) error {
+
+	var newKey bool
+
+	// 1. Create a key-pair if it doesn't exist and save it in the certs directory.
+	keyFile := path.Join(certsDir, pluginID+api.DefaultKeyFileSuffix)
+
+	certKey, err := utils.LoadPrivateKey(keyFile)
+	if err != nil {
+		certKey = utils.NewEd25519Key()
+		utils.SavePrivateKey(certKey, keyFile)
+		newKey = true
+	}
+
+	// 2. If the plugin account does not exist, add the account.
+	acctProfile, err := svc.authnAdmin.GetProfile(pluginID)
+	if err != nil {
+		slog.Info("Adding plugin account", "pluginID", pluginID)
+		_, err = svc.authnAdmin.AddClient(pluginID, pluginID, api.ClientRoleService)
+	} else if newKey {
+		acctProfile.PubKeyPem = utils.PublicKeyToPem(certKey.Public())
+		err = svc.authnAdmin.UpdateClientProfile(acctProfile)
+	}
+
+	// 3. Refresh the client certificate
+	certFile := path.Join(certsDir, pluginID+api.DefaultCertFileSuffix)
+	slog.Info("Refreshing plugin client cert", "pluginID", pluginID, "certsDir", certsDir)
+	pluginCert, err := svc.certsClient.CreateClientCert(pluginID, api.ClientRoleService, 0, certKey.Public())
+	if err == nil {
+		err = utils.SaveX509Cert(pluginCert, certFile)
+	}
+	return err
+}
 
 // _startPlugin starts the plugin with the given name
 // This creates a plugin authentication key and token files in the credentials directory (certs)
@@ -30,13 +67,13 @@ import (
 // This places a mux lock until start is complete.
 func (svc *LauncherServiceImpl) _startPlugin(pluginID string) (pi launcher.PluginInfo, err error) {
 
-	svc.mux.Lock()
-	defer svc.mux.Unlock()
 	cfg := svc.cfg
 	env := svc.env
 
 	// step 1: pre-launch checks
+	svc.mux.Lock()
 	pluginInfo, found := svc.plugins[pluginID]
+	svc.mux.Unlock()
 	if !found {
 		err = fmt.Errorf("plugin ID '%s' not found", pluginID)
 		slog.Error("_startPlugin: plugin not found", "name", pluginID)
@@ -62,7 +99,7 @@ func (svc *LauncherServiceImpl) _startPlugin(pluginID string) (pi launcher.Plugi
 	}
 
 	// step 2: create the command to start the service ... but wait for step 5
-	svcCmd := exec.Command(pluginInfo.ExecPath)
+	svcCmd := exec.Command(pluginInfo.ExecPath, "localhost")
 	svcCmd.SysProcAttr = &syscall.SysProcAttr{
 		Pdeathsig: syscall.SIGTERM,
 	}
@@ -120,18 +157,10 @@ func (svc *LauncherServiceImpl) _startPlugin(pluginID string) (pi launcher.Plugi
 	// step 4: add the plugin account and generate its credentials
 	//  (this does not apply to the gateway runtime itself as it provides authn access)
 	if pluginID != cfg.RuntimeBin && cfg.CreatePluginCred {
-		tokenPath := path.Join(env.CertsDir, pluginID+".token")
-
-		slog.Info("Adding plugin service client with key and token",
-			"pluginID", pluginID, "certsDir", env.CertsDir, "tokenPath", tokenPath)
-
-		// add a service account. Authn admin generates a new token file in the keys directory
-		// the service must have read access to this directory, or the keys must be
-		// copied elsewhere by the administrator.
-		authnAdmin := authn_client.NewAuthnAdminClient("", svc)
-		_, err = authnAdmin.AddClient(pluginID, pluginID, api.ClientRoleService, "")
+		err = svc._updatePluginAccount(env.CertsDir, pluginID)
 		if err != nil {
-			slog.Error("Unable to add plugin to hub and create credentials. Continuing anyways", "err", err)
+			slog.Error(err.Error())
+			return pi, err
 		}
 	}
 
@@ -141,7 +170,9 @@ func (svc *LauncherServiceImpl) _startPlugin(pluginID string) (pi launcher.Plugi
 		pluginInfo.Status = fmt.Sprintf("failed starting '%s': %s", pluginID, err.Error())
 		err = errors.New(pluginInfo.Status)
 		slog.Error(err.Error())
+		svc.mux.Lock()
 		svc.plugins[pluginID] = pluginInfo
+		svc.mux.Unlock()
 
 		return pluginInfo, err
 	}
@@ -154,11 +185,12 @@ func (svc *LauncherServiceImpl) _startPlugin(pluginID string) (pi launcher.Plugi
 	pluginInfo.StartCount++
 	pluginInfo.Running = true
 
-	// step 6: handle command termination and cleanup
+	// step 6: handle command termination and cleanup in the background
 	var exitError error
 	go func() {
 		// cleanup after the process ends
 		exitError = svcCmd.Wait()
+
 		svc.mux.Lock()
 		defer svc.mux.Unlock()
 		pluginInfo.StoppedTime = utils.FormatNowUTCMilli()
@@ -188,8 +220,9 @@ func (svc *LauncherServiceImpl) _startPlugin(pluginID string) (pi launcher.Plugi
 		svc.cmds = append(svc.cmds[:i], svc.cmds[i+1:]...) // this is so daft!
 	}()
 
-	// Give it some minimal time to get up and running in case this service is needed as a dependency of another
-	time.Sleep(time.Millisecond * time.Duration(cfg.StartWait))
+	// Give it some minimal time to get up and running in case this service is needed as a
+	// dependency of another or fails on start.
+	time.Sleep(time.Millisecond * time.Duration(time.Duration(cfg.StartWait)))
 
 	// check if it is still running
 	if exitError != nil {
@@ -206,7 +239,9 @@ func (svc *LauncherServiceImpl) _startPlugin(pluginID string) (pi launcher.Plugi
 	} else {
 		slog.Info("Plugin '"+pluginID+"' startup succeeded", "cpu", pluginInfo.Cpu)
 	}
+	svc.mux.Lock()
 	svc.plugins[pluginID] = pluginInfo
+	svc.mux.Unlock()
 	return pluginInfo, err
 }
 

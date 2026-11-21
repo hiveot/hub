@@ -16,11 +16,14 @@ import (
 func main() {
 	// setup environment and config
 	env := api.NewAppEnvironment("", true)
+	if env.ClientID == "" {
+		env.ClientID = env.AppID
+	}
 	env.Print(1)
 	utils.SetLogging(env.LogLevel, "")
 
 	cfg := launcher.NewLauncherConfig()
-	err := env.LoadConfig(env.AppID, &cfg)
+	err := env.LoadConfig(env.ClientID, &cfg)
 	if err != nil {
 		slog.Error("Failed loading launcher config: ", "err", err)
 		os.Exit(1)

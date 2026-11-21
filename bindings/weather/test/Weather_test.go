@@ -137,7 +137,7 @@ func TestDisableCurrent(t *testing.T) {
 	// give heartbeat time to run
 	time.Sleep(time.Millisecond * 1)
 
-	co1 := consumer.NewConsumer(svc, nil)
+	co1 := consumer.NewConsumer("testDisableCurrent", nil, svc)
 	defer co1.Stop()
 
 	thingID := testLocation1.ID

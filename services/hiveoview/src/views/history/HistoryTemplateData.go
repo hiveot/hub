@@ -146,6 +146,7 @@ func (ht *HistoryTemplateData) CompareToday() int {
 
 // NewHistoryTemplateData reads the value history for the given time range
 //
+//	tdoc TD of the Thing to read the history from
 //	iout is the interaction output to display
 //	values are the historical values to display
 //	endTime of the end-time of the history range

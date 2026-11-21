@@ -103,7 +103,7 @@ func NewSessionRecipe(env *api.AppEnvironment) (r *SessionRecipe, err error) {
 	f := factory_service.NewCellFactory(env, nil)
 	formation, err := factory_service.NewChainFormation(f, SessionRecipeChain, nil, false)
 
-	co := consumer.NewConsumer(nil, nil)
+	co := consumer.NewConsumer("SessionRecipe", nil, nil)
 	r = &SessionRecipe{
 		Consumer:  co,
 		f:         f,

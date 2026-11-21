@@ -17,11 +17,11 @@ func main() {
 	env := api.NewAppEnvironment("", true)
 
 	cfg := weather.NewWeatherConfig()
-	err := env.LoadConfig(env.AppID, &cfg)
+	err := env.LoadConfig(env.ClientID, &cfg)
 	if err != nil {
 		slog.Error("Failed loading configuration", "err", err.Error())
 	}
-	storePath := path.Join(env.StoresDir, env.AppID)
+	storePath := path.Join(env.StoresDir, env.ClientID)
 	binding, err := weather_pkg.NewWeatherService("", storePath, cfg)
 
 	// link it to the RC device recipe that handles connections.

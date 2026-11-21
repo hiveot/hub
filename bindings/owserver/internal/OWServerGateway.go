@@ -115,11 +115,13 @@ func (svc *OWServerGateway) Start() {
 	tdoc.ID = svc.GetID()
 	tdoc.SetType(owserver.OWServerCellType)
 	svc.WriteTD(tdoc)
+
 	props := svc.GetBindingPropValues()
 	svc.PubProperties(props, true)
 
 	// poll the nodes and publish their things too
 	svc.UpdateThings(true)
+	svc.UpdateThingValues(true)
 
 	// last, start polling heartbeat
 	svc.stopFn = svc.startHeartBeat()
@@ -188,8 +190,8 @@ func (svc *OWServerGateway) Stop() {
 //
 // For testing this support the use of a simulation file instead of a OWServer URL.
 //
-//	serviceID is the instance ThingID. Typically the environment appID.
-//	 Use "" for default if only a single instance is used.
+//	serviceID is the instance ThingID. Typically the app clientID.
+//	 Use "" for the cell type default if only a single instance is used.
 //	storePath is the location to store custom Thing titles. (OWServer doesnt store this)
 //	 Use "" for in-memory storage.
 //	config holds the configuration of the service

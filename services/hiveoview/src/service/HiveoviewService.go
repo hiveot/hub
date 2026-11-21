@@ -233,8 +233,7 @@ func NewHiveovService(
 	}
 	tm := views.InitTemplateManager(templatePath)
 	svc := &HiveoviewService{
-		ExposedThing: thing.NewExposedThing(src.HiveoviewServiceID, nil),
-		// ExposedThing: thing.NewExposedThing(env.AppID, nil),
+		ExposedThing: thing.NewExposedThing(env.ClientID, nil),
 		env:          env,
 		port:         serverPort,
 		shouldUpdate: true,

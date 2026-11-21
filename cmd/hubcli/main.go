@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"time"
 
 	"github.com/hiveot/hivekit/go/api"
 	consumerrecipe "github.com/hiveot/hivekit/go/factory/recipes/consumer"
@@ -31,13 +32,15 @@ var nowrap bool
 func main() {
 	var r *consumerrecipe.ConsumerRecipe
 	var env *api.AppEnvironment
-	var verbose bool
-	var showEnv bool
-	var homeDir string
+	// var verbose bool
 	var clientID string
 	var certsDir string
 	var dirTDURL string
+	var homeDir string
+	var logLevel string = "warn"
 	var serverURL string
+	var showEnv bool
+	var timeout time.Duration = time.Second * 5
 
 	// obtain the environment defaults
 	userHome, _ := os.UserHomeDir()
@@ -70,7 +73,7 @@ func main() {
 			},
 			&cli.StringFlag{
 				Name:        "dirTD",
-				Usage:       "URL where to download the directory TD",
+				Usage:       "URL where to download the directory TD (default: use DNS-SD discovery)",
 				Value:       dirTDURL,
 				Destination: &dirTDURL,
 			},
@@ -98,37 +101,46 @@ func main() {
 				Value:       showEnv,
 				Destination: &showEnv,
 			},
-			&cli.BoolFlag{
-				Name:        "v",
-				Usage:       "verbose logging",
-				Value:       verbose,
-				Destination: &verbose,
+			&cli.StringFlag{
+				Name:        "loglevel",
+				Usage:       "Logging level debug|info|warn|error",
+				Value:       logLevel,
+				Destination: &logLevel,
 			},
+			&cli.DurationFlag{
+				Name:        "timeout",
+				Usage:       "RPC timeout for testing",
+				Value:       timeout,
+				Destination: &timeout,
+			},
+			// &cli.BoolFlag{
+			// 	Name:        "v",
+			// 	Usage:       "verbose logging",
+			// 	Value:       verbose,
+			// 	Destination: &verbose,
+			// },
 		},
 		Before: func(ctx context.Context, c *cli.Command) (context.Context, error) {
 			var err error
 			// load env after 'home' is set
 			env = api.NewAppEnvironment(homeDir, false)
 			env.ClientID = clientID
+			env.DirTDURL = dirTDURL
+			env.LogLevel = logLevel
+			env.ServerURL = serverURL
+			env.SetRpcTimeout(timeout)
 			utils.SetLogging(env.LogLevel, "")
 			certsDir = env.CertsDir // some commands need a certs dir
-			if verbose {
-				utils.SetLogging("info", "")
-			}
+			// if verbose {
+			// utils.SetLogging("info", "")
+			// }
 			if showEnv {
-				level := 1
-				if verbose {
-					level = 2
-				}
-				env.Print(level)
+				env.Print(2)
 			}
 
 			if nowrap {
 				fmt.Printf(utils.WrapOff)
 			}
-
-			// most commands need auth
-			// authToken, _ = env.GetAuthToken()
 
 			// These commands don't need a connection.
 			cmd := c.Args().First()
@@ -142,29 +154,10 @@ func main() {
 				os.Exit(1)
 			}
 
-			// caCert, _ := env.GetCACert()
-			// if password != "" {
-			// 	cc, err = clients.NewTransportClient("", serverURL, caCert)
-			// 	if err == nil {
-			// 		authncl := authn_client.NewUserAuthnHttpClient(serverURL, caCert)
-			// 		authToken, err = authncl.LoginWithPassword(loginID, password)
-			// 	}
-			// 	cc, err = clients.NewTransportClient("", serverURL, caCert)
-			// 	err = cc.SetAuthToken(loginID, authToken)
-			// } else {
-			// 	cc, err = clients.NewTransportClient("", serverURL, caCert)
-			// 	err = cc.SetAuthToken(loginID, authToken)
-			// }
-
-			// if err != nil {
-			// 	slog.Error("Unable to connect to the server", "err", err)
-			// 	return ctx, fmt.Errorf("unable to connect to the hub")
-			// }
-			// co = consumer.NewConsumer(cc, nil)
 			return ctx, nil
 		},
-		// FIXME: commands arguments must be passed by reference so because the
-		// provided argument 'r' is instantiated in the Before section.
+		// FIXME: commands arguments must be passed by reference because the provided argument
+		// is instantiated in the Before section above, instead of when creating the commands.
 		Commands: []*cli.Command{
 			// these commands work without a server connection
 			certs.ViewCertsCommand(&env),

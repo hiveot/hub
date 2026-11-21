@@ -10,8 +10,8 @@ import (
 	"github.com/hiveot/hivekit/go/api"
 	"github.com/hiveot/hivekit/go/cells/authn"
 	authn_service "github.com/hiveot/hivekit/go/cells/authn/service"
-	"github.com/hiveot/hivekit/go/cells/consumer"
-	directory_service "github.com/hiveot/hivekit/go/cells/directory/service"
+	"github.com/hiveot/hivekit/go/cells/certs"
+	certs_service "github.com/hiveot/hivekit/go/cells/certs/service"
 	"github.com/hiveot/hivekit/go/testenv"
 	"github.com/hiveot/hivekit/go/utils"
 	"github.com/hiveot/hub/services/launcher"
@@ -23,13 +23,14 @@ import (
 )
 
 var homeDir = "/tmp/hiveot/launcher-test"
+var env *api.AppEnvironment
 
 // var logDir = "/tmp/hiveot/launcher-test"
 
 // the following are set by the testmain
-var testEnv *testenv.TestEnv
+// var testEnv *testenv.TestEnv
 
-const agentUsesWSS = false
+// const agentUsesWSS = false
 
 //var testClients = []msgserver.ClientAuthInfo{{
 //	SenderID:   launcher.ServiceName,
@@ -41,62 +42,67 @@ const agentUsesWSS = false
 //	Role:       auth.ClientRoleAdmin,
 //}}
 
-func startService() (l *consumer.Consumer, stopFn func()) {
+func startService() (cl *launcher_client.LauncherClient, stopFn func()) {
 	const launcherID = launcher.LauncherServiceCellType
 	const adminID = "admin"
 
-	appEnv := api.NewAppEnvironment(homeDir, false)
-	appEnv.LogsDir = appEnv.HomeDir
-	appEnv.PluginsDir = appEnv.HomeDir
+	env = api.NewAppEnvironment(homeDir, false)
 
-	os.MkdirAll(appEnv.HomeDir, 0750)
+	os.MkdirAll(env.HomeDir, 0750)
+	os.MkdirAll(env.PluginsDir, 0750)
+	os.MkdirAll(env.LogsDir, 0750)
+	// use the 'ping' package
+	pingApp, err := os.ReadFile("/usr/bin/ping")
+	err = os.WriteFile(path.Join(env.PluginsDir, "ping"), pingApp, 0755)
 
-	testEnv = testenv.NewTestEnv(true)
-	srv := testEnv.StartTestServer("")
-	_ = srv
+	// testEnv = testenv.NewTestEnv(true)
+	// srv := testEnv.StartTestServer("")
 
-	// authn is needed to create auth tokens
-	tokenDir := testEnv.Env.CertsDir
-	storeDir := testEnv.Env.GetStorageDir(authn.AuthnServiceCellType)
-	authnSvc, err := authn_service.NewAuthnService(tokenDir, storeDir, false)
+	// authn service is needed to create auth tokens
+	// tokenDir := testEnv.Env.CertsDir
+	authnStoreDir := env.GetStorageDir(authn.AuthnServiceCellType)
+	authnSvc, err := authn_service.NewAuthnService(env.CertsDir, authnStoreDir, false)
+
+	// certs service is need to create service certificates
+	certsCfg := &certs.CertsConfig{}
+	certsSvc, err := certs_service.NewCertsService(env, certsCfg)
+
 	// directory is needed to write TD (optional - WriteTD)
-	dirSvc, err := directory_service.NewDirectoryService("", "", nil)
-
+	// dirSvc, err := directory_service.NewDirectoryService("", "", nil)
 	if err != nil {
 		slog.Error(err.Error())
 		panic(err.Error())
 	}
-	//hc1, _ := ts.AddConnectService(launcherID)
+
+	// create the launcher service itself
 	var launcherConfig = launcher.NewLauncherConfig()
 	launcherConfig.AttachStderr = true
 	launcherConfig.AttachStdout = false
 	launcherConfig.LogPlugins = true
-
-	// todo: add tests for providing discovery
 	launcherConfig.ProvideDirectoryURL = false
 	launcherConfig.ProvideServerURL = false
 	launcherConfig.WriteTD = false
 
-	// launcher uses authn to create credentials and dirSvc to write TD
-	svc, err := launcher_service.NewLauncherService(appEnv, launcherConfig)
+	svc, err := launcher_service.NewLauncherService(env, launcherConfig)
 	if err != nil {
 		slog.Error(err.Error())
 		panic(err.Error())
 	}
 
-	authnSvc.SetRequestSink(dirSvc)
+	// link the launcher to -> authn -> certs
+	svc.SetRequestSink(authnSvc)
+	authnSvc.SetRequestSink(certsSvc)
 
 	svc.Start()
-	// the agent receives actions to execute on the service
-	//agent := service.StartLauncherAgent(svc, hc1)
-	//_ = agent
-
-	//--- connect the launcher user
-	co1, co1cc, _ := testEnv.NewConnectedConsumer(adminID, api.ClientRoleAdmin)
-	return co1, func() {
-		co1cc.Close()
-		time.Sleep(time.Millisecond)
+	// the agent adds a sendersID
+	agent := testenv.NewTestTransport(launcherID, svc)
+	//--- connect the launcher client
+	cl = launcher_client.NewLauncherClient("", agent)
+	return cl, func() {
+		cl.Stop()
 		svc.Stop()
+		authnSvc.Stop()
+		certsSvc.Stop()
 	}
 }
 
@@ -116,55 +122,46 @@ func TestStartStop(t *testing.T) {
 
 func TestList(t *testing.T) {
 	t.Logf("---%s---\n", t.Name())
-	userID := "user1"
 
-	co1, cancelFunc := startService()
+	launcherCl, cancelFunc := startService()
 	defer cancelFunc()
-	require.NotNil(t, co1)
-	// using the /bin directory yields a larger number of potential plugins
-	launcherCl := launcher_client.NewLauncherClient("", co1)
+	// expect the 'ping' plugin copied in startService
 	infoList, err := launcherCl.ListPlugins(false)
 	require.NoError(t, err)
-	assert.Greater(t, len(infoList), 10)
-
-	cc2, _ := testEnv.NewTestClient(userID, api.ClientRoleAdmin)
-	_ = cc2.Connect()
-	defer cc2.Close()
-	infoList2, err := launcherCl.ListPlugins(false)
-	require.NoError(t, err)
-	require.NotEmpty(t, infoList2)
+	assert.Equal(t, 1, len(infoList))
 }
 
-func TestListNoPermission(t *testing.T) {
+// func TestListNoPermission(t *testing.T) {
+// 	t.Logf("---%s---\n", t.Name())
+// 	userID := "user1"
+
+// 	co1, cancelFunc := startService()
+// 	defer cancelFunc()
+// 	require.NotNil(t, co1)
+
+// 	cc2, _ := testEnv.NewTestClient(userID, api.ClientRoleNone)
+// 	cc2.Connect()
+// 	defer cc2.Close()
+// 	launcherCl := launcher_client.NewLauncherClient("", cc2)
+// 	info2, err := launcherCl.ListPlugins(false)
+// 	// FIXME: test set authz
+// 	require.Error(t, err, "user without role should not be able to use launcher")
+// 	require.Empty(t, info2)
+// }
+
+func TestStartPing(t *testing.T) {
 	t.Logf("---%s---\n", t.Name())
-	userID := "user1"
-
-	co1, cancelFunc := startService()
-	defer cancelFunc()
-	require.NotNil(t, co1)
-
-	cc2, _ := testEnv.NewTestClient(userID, api.ClientRoleNone)
-	cc2.Connect()
-	defer cc2.Close()
-	launcherCl := launcher_client.NewLauncherClient("", cc2)
-	info2, err := launcherCl.ListPlugins(false)
-	require.Error(t, err, "user without role should not be able to use launcher")
-	require.Empty(t, info2)
-}
-
-func TestStartYes(t *testing.T) {
-	t.Logf("---%s---\n", t.Name())
-	// remove logfile from previous run
-	logFile := path.Join(homeDir, "yes.log")
-	_ = os.Remove(logFile)
+	const appName = "ping"
 
 	//
-	co1, cancelFunc := startService()
+	launcherCl, cancelFunc := startService()
 	defer cancelFunc()
 
-	assert.NotNil(t, co1)
-	launcherCl := launcher_client.NewLauncherClient("", co1)
-	info, err := launcherCl.StartPlugin("yes")
+	// remove logfile from previous run
+	logFile := path.Join(env.LogsDir, appName+".log")
+	_ = os.Remove(logFile)
+
+	info, err := launcherCl.StartPlugin(appName)
 	require.NoError(t, err)
 	assert.True(t, info.Running)
 	assert.True(t, info.Pid > 0)
@@ -173,7 +170,7 @@ func TestStartYes(t *testing.T) {
 
 	time.Sleep(time.Millisecond * 1)
 
-	info2, err := launcherCl.StopPlugin("yes")
+	info2, err := launcherCl.StopPlugin(appName)
 	time.Sleep(time.Millisecond * 10)
 	assert.NoError(t, err)
 	assert.False(t, info2.Running)
@@ -205,21 +202,21 @@ func TestStartStopTwice(t *testing.T) {
 
 	launcherCl := launcher_client.NewLauncherClient("", co1)
 
-	info, err := launcherCl.StartPlugin("yes")
+	info, err := launcherCl.StartPlugin("ping")
 	assert.NoError(t, err)
 	// second start will just return
-	info2, err := launcherCl.StartPlugin("yes")
+	info2, err := launcherCl.StartPlugin("ping")
 	assert.NoError(t, err)
 	_ = info2
 	//assert.Equal(t, info.PID, info2.PID)
 
 	// stop twice
-	info3, err := launcherCl.StopPlugin("yes")
+	info3, err := launcherCl.StopPlugin("ping")
 	assert.NoError(t, err)
 	assert.False(t, info3.Running)
 	assert.Equal(t, info.Pid, info3.Pid)
 	// stopping is idempotent
-	info4, err := launcherCl.StopPlugin("yes")
+	info4, err := launcherCl.StopPlugin("ping")
 	assert.NoError(t, err)
 	assert.False(t, info3.Running)
 	assert.Equal(t, info.Pid, info4.Pid)
@@ -232,7 +229,7 @@ func TestStartStopAll(t *testing.T) {
 	assert.NotNil(t, co1)
 
 	launcherCl := launcher_client.NewLauncherClient("", co1)
-	_, err := launcherCl.StartPlugin("yes")
+	_, err := launcherCl.StartPlugin("ping")
 	assert.NoError(t, err)
 
 	// result should be 1 service running

@@ -7,7 +7,6 @@ import (
 
 	"github.com/hiveot/hivekit/go/api"
 	authn_client "github.com/hiveot/hivekit/go/cells/authn/client"
-	"github.com/hiveot/hivekit/go/cells/consumer"
 	consumer_recipe "github.com/hiveot/hivekit/go/factory/recipes/consumer"
 	"github.com/urfave/cli/v3"
 )
@@ -42,7 +41,7 @@ func AuthSetRoleCommand(r **consumer_recipe.ConsumerRecipe) *cli.Command {
 //
 //	loginID is the ID or email of the user
 //	newPassword can be empty to auto-generate a password
-func HandleSetRole(co consumer.IConsumer, loginID string, newRole string) error {
+func HandleSetRole(co api.IConsumer, loginID string, newRole string) error {
 
 	authnClient := authn_client.NewAuthnAdminClient("", co)
 	err := authnClient.SetRole(loginID, newRole)

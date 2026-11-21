@@ -638,7 +638,8 @@ func (svc *IsyGateway) Stop() {
 
 // NewIsyGateway creates a new instance of the ISY gateway device.
 // This connects to the gateway and returns an error if the gateway is unreachable.
-func NewIsyGateway(appID string, cfg *config.Isy99xConfig) (*IsyGateway, error) {
+// The gateway thingID is that of the device API 'App' field.
+func NewIsyGateway(cfg *config.Isy99xConfig) (*IsyGateway, error) {
 
 	prodMap, err := LoadProductMapCSV("")
 	_ = err

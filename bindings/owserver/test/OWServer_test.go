@@ -1,12 +1,14 @@
 package owserver_test
 
 import (
+	"log/slog"
 	"os"
 	"path"
+	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/hiveot/hivekit/go/api"
+	"github.com/hiveot/hivekit/go/api/msg"
 	"github.com/hiveot/hivekit/go/cells/consumer"
 	"github.com/hiveot/hivekit/go/testenv"
 	"github.com/hiveot/hivekit/go/utils"
@@ -25,7 +27,10 @@ var owsSimulationFile string // simulation file
 var testEnv *testenv.TestEnv
 var storePath string
 
-const agentID = "owserver"
+// --- set liveTest to discover and test with a real owserver ---
+const liveTest = false
+
+// const agentID = "owserver"
 
 // const device1ID = "2A000003BB170B28" // <-- from the simulation file
 const device1ID = "C100100000267C7E" // <-- from the simulation file
@@ -37,8 +42,10 @@ func TestMain(m *testing.M) {
 	cwd, _ := os.Getwd()
 	testFolder := path.Join(cwd, "./")
 	owsSimulationFile = "file://" + path.Join(testFolder, "owserver-simulation.xml")
-	// uncomment the next line to discover and test with a real owserver
-	//owsSimulationFile = ""
+
+	if liveTest {
+		owsSimulationFile = ""
+	}
 	utils.SetLogging("info", "")
 
 	owsConfig = *owserver.NewOWServerConfig()
@@ -59,7 +66,8 @@ func TestStartStop(t *testing.T) {
 	svc, err := internal.NewOWServerGateway("", storePath, &owsConfig)
 	defer svc.Stop()
 	require.NoError(t, err)
-	co1 := consumer.NewConsumer(svc, nil)
+	// link the test consumer directly to the owserver cell.
+	co1 := consumer.NewConsumer("owserver-test", nil, svc)
 	defer co1.Stop()
 
 	// cc1, _ := testEnv.NewRCConnection(agentID, svc)
@@ -75,33 +83,32 @@ func TestStartStop(t *testing.T) {
 
 func TestPoll(t *testing.T) {
 	t.Logf("---%s---\n", t.Name())
-	// var tdCount atomic.Int32
+	var notifCount atomic.Int32
 	const userID = "user1"
 
-	// request chain: consumer -> owserver -> directoryclient
 	svc, err := internal.NewOWServerGateway("", storePath, &owsConfig)
-	// dirCl := directory_client.NewDirectoryClient(nil, nil)
 
-	co1 := consumer.NewConsumer(svc, nil)
-
-	// svc.SetRequestSink(dirCl)
-	// co1.SetRequestSink(svc)
+	// co1 will receive all notifications
+	co1 := consumer.NewConsumer("owserver-test", func(notif *msg.NotificationMessage) {
+		notifCount.Add(1)
+	}, svc)
 
 	svc.Start()
-	// give heartbeat a chance to run. stop will wait for it to complete
-	time.Sleep(time.Millisecond * 100)
 	defer svc.Stop()
 	defer co1.Stop()
 
-	// tdList := dirCl.Cache().GetAllThings(0, 0)
-	// the simulation file contains 3 things. The service itself is also a Thing.
-	// assert.GreaterOrEqual(t, len(tdList), 4)
+	// give heartbeat a chance to run. stop will wait for it to complete
 
 	// get events that were published
 	events, err := co1.ReadAllEvents(device1ID)
 	require.NoError(t, err)
+
+	// time.Sleep(time.Millisecond * 300)
+	assert.Greater(t, int(notifCount.Load()), 10)
+
 	// this thing has 5 sensors and 4 alarm events
 	require.Equal(t, 9, len(events))
+
 }
 
 func TestPollInvalidEDSAddress(t *testing.T) {
@@ -124,33 +131,27 @@ func TestPollInvalidEDSAddress(t *testing.T) {
 func TestAction(t *testing.T) {
 	t.Logf("---%s---\n", t.Name())
 	const user1ID = "operator1"
-	// node in test data
-	// var dThingID = digitwin.MakeDigitwinID(agentID, device1ID)
 	var actionName = "RelayFunction" // the action attribute as defined by the device
 	var actionValue = "1"
 
+	// increase timeout for debugging
+	msg.CellTimeout = time.Minute * 2
+
 	svc, err := internal.NewOWServerGateway("", storePath, &owsConfig)
 	require.NoError(t, err)
-	require.NoError(t, err)
-	cc1, _ := testEnv.NewRCConnection(agentID, svc)
-	defer cc1.Close()
 	svc.Start()
 	defer svc.Stop()
 
-	// give Start time to run
-	time.Sleep(time.Millisecond * 10)
-
 	// note that the simulation file doesn't support writes so this logs an error
-	co1, cc2, _ := testEnv.NewConnectedConsumer(user1ID, api.ClientRoleOperator)
-	require.NoError(t, err)
-	defer cc2.Stop()
+	slog.Error("--- Expect an error below. Can't write to simulation file ---")
+	co1 := consumer.NewConsumer("testaction", nil, svc)
+
 	err = co1.WriteProperty(device1ID, actionName, &actionValue, true)
-
-	//err = co1.SendRequest(dThingID, actionName, &actionValue, nil)
-	// can't write to a simulation
-	assert.Error(t, err)
-
-	//time.Sleep(time.Second * 1) // debugging delay
+	if liveTest {
+		assert.NoError(t, err)
+	} else {
+		assert.Error(t, err)
+	}
 }
 
 func TestConfig(t *testing.T) {
@@ -161,8 +162,6 @@ func TestConfig(t *testing.T) {
 
 	svc, err := internal.NewOWServerGateway("", storePath, &owsConfig)
 	require.NoError(t, err)
-	cc1, _ := testEnv.NewRCConnection(agentID, svc)
-	defer cc1.Close()
 	svc.Start()
 	defer svc.Stop()
 
@@ -170,13 +169,12 @@ func TestConfig(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 
 	// note that the simulation file doesn't support writes so this logs an error
-	co1, cc2, _ := testEnv.NewConnectedConsumer(user1ID, api.ClientRoleManager)
-	defer cc2.Close()
-	// dThingID := digitwin.MakeDigitwinID(agentID, device1ID)
+	slog.Error("--- Expect an error below. Can't write to simulation file ---")
+	co1 := consumer.NewConsumer("testConfig", nil, svc)
 	err = co1.WriteProperty(device1ID, configName, &configValue, true)
-
-	// can't write to a simulation file. Write should fail.
-	assert.Error(t, err)
-
-	//time.Sleep(time.Second*10)  // debugging delay
+	if liveTest {
+		assert.NoError(t, err)
+	} else {
+		assert.Error(t, err)
+	}
 }

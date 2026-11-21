@@ -10,6 +10,7 @@ import (
 )
 
 // HandleRequest handles service requests
+// TODO: add sender role check
 func (svc *LauncherServiceImpl) HandleRequest(req *msg.RequestMessage, replyTo msg.ResponseHandler) (err error) {
 	var output any
 

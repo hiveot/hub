@@ -47,8 +47,8 @@ func main() {
 
 	// this config will be replaced with hiveoview Thing config
 	cfg := config.NewHiveoviewConfig(serverPort)
-	_ = env.LoadConfig(env.AppID, &cfg)
-	storageDir := env.GetStorageDir(env.AppID)
+	_ = env.LoadConfig(env.ClientID, &cfg)
+	storageDir := env.GetStorageDir(env.ClientID)
 	err := env.CreateDir(storageDir, 0700)
 	if err != nil {
 		slog.Error("Unable to create session store", "err", err.Error())

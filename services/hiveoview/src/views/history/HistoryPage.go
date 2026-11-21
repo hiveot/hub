@@ -54,22 +54,24 @@ func RenderHistoryPage(w http.ResponseWriter, r *http.Request) {
 	// sess.WriteError(w, err, 0)
 	// return
 	// }
-	recipe := sess.GetRecipe()
-	dirCl := recipe.GetDirectory()
-	tdoc := dirCl.GetTD(thingID)
-
-	// dirCl := sess.GetDirectory()
-	// vCache := recipe.GetValues()
 
 	// readetermine the value aspects ... ?uh?
 	duration := time.Second * time.Duration(durationSec)
 
+	recipe := sess.GetRecipe()
+	hist := recipe.GetHistoryClient()
+
+	dirCl := recipe.GetDirectory()
+	tdoc, err := dirCl.GetTD(thingID)
+	if err != nil {
+		sess.WriteError(w, err, 0)
+		return
+	}
+
 	// iout := vCache.ReadValue(thingID, msg.AffordanceType(affType), name)
 
-	hist := recipe.GetHistoryClient()
 	// FIXME: readHistory returns notification messages.
 	// Should it return ThingValues instead?
-
 	values, itemsRemaining, err := hist.ReadHistory(
 		thingID, name, timestamp, duration, 500)
 	_ = itemsRemaining
@@ -78,10 +80,6 @@ func RenderHistoryPage(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		data, err = NewHistoryTemplateData(
 			tdoc, msg.AffordanceType(affType), name, values, timestamp, duration)
-	}
-	if err != nil {
-		sess.WriteError(w, err, 0)
-		return
 	}
 
 	// full render or fragment render

@@ -9,7 +9,7 @@ import (
 // LauncherClient is a marshaller for service messages using a provided hub connection.
 // This uses the default serializer to marshal and unmarshal messages.
 type LauncherClient struct {
-	*consumer.Consumer
+	*consumer.Consumer // FIXME: why is this a consumer, not HiveCellBase?
 
 	// ID of the launcher service that handles the requests
 	serviceID string
@@ -79,11 +79,12 @@ func NewLauncherClient(serviceID string, sink api.IHiveCell) *LauncherClient {
 		serviceID = launcher.LauncherServiceCellType
 	}
 	cl := &LauncherClient{
-		Consumer:  consumer.NewConsumer(sink, nil),
+		Consumer:  consumer.NewConsumer(serviceID+"-client", nil, sink),
 		serviceID: serviceID,
 	}
 
 	var _ api.IHiveCell = cl
+	var _ api.IConsumer = cl
 
 	return cl
 }

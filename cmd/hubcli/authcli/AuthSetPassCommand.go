@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hiveot/hivekit/go/api"
 	authn_client "github.com/hiveot/hivekit/go/cells/authn/client"
-	"github.com/hiveot/hivekit/go/cells/consumer"
 	corecipe "github.com/hiveot/hivekit/go/factory/recipes/consumer"
 	"github.com/urfave/cli/v3"
 	"golang.org/x/exp/rand"
@@ -38,7 +38,7 @@ func AuthSetPasswordCommand(r **corecipe.ConsumerRecipe) *cli.Command {
 //
 //	loginID is the ID or email of the user
 //	newPassword can be empty to auto-generate a password
-func HandleSetPassword(co consumer.IConsumer, loginID string, newPassword string) error {
+func HandleSetPassword(co api.IConsumer, loginID string, newPassword string) error {
 	if newPassword == "" {
 		newPassword = GeneratePassword(9, true)
 	}

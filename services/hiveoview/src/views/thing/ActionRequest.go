@@ -90,8 +90,13 @@ func RenderActionRequest(w http.ResponseWriter, r *http.Request) {
 	// if err != nil {
 	// sess.WriteError(w, err, http.StatusBadRequest)
 	// }
-	tdoc := sess.GetDirectory().GetTD(thingID)
+	tdoc, err := sess.GetDirectory().GetTD(thingID)
+	if err != nil {
+		sess.WriteError(w, err, http.StatusInternalServerError)
+		return
+	}
 	actionAff := tdoc.GetAction(name)
+
 	// tdi := ct.TD()
 	// actionAff := ct.GetActionAff(name)
 	//_, actionAff, err := getActionAff(sess.GetConsumer(), thingID, name)

@@ -47,7 +47,7 @@ func TestStartStop(t *testing.T) {
 	svc := service.NewIpNetBinding(cfg)
 	defer svc.Stop()
 	// create and link the consumer
-	co1 := consumer.NewConsumer(svc, nil)
+	co1 := consumer.NewConsumer("TestStartStop", nil, svc)
 	defer co1.Stop()
 	svc.Start()
 	co1.Start()

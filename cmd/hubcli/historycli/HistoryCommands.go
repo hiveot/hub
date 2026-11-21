@@ -117,7 +117,6 @@ func HandleListEvents(co *consumer.Consumer, dThingID string, name string, limit
 	//histTD := hc.GetTD(historyapi.ReadHistoryServiceID)
 	//f := histTD.GetForm(wot.OpInvokeAction)
 	hc := history_client.NewReadHistoryClient(co)
-	hc.SetRequestSink(co)
 
 	cursor, releaseFn, err := hc.CreateCursor(dThingID, name)
 	defer releaseFn()

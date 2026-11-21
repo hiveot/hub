@@ -57,7 +57,7 @@ func (edsAPI *EdsAPI) PollNodes() (nodeList []*OneWireNode, err error) {
 
 	// Extract the nodes and convert properties to vocab names
 	nodeList = ParseOneWireNodes(rootNode, latency, true)
-	slog.Debug("PollNodes: Nodes found", "count", len(nodeList))
+	slog.Info("PollNodes: Nodes found", "count", len(nodeList))
 	return nodeList, nil
 }
 

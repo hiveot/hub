@@ -52,7 +52,7 @@ func (dt RenderTileTemplateData) GetHistory(
 
 	timestamp := time.Now().Local()
 	duration, _ := time.ParseDuration("-24h")
-	tdoc := dt.sess.GetTD(thingID)
+	tdoc, err := dt.sess.GetTD(thingID)
 	hist := history_client.NewReadHistoryClient(dt.sess.GetConsumer())
 	values, itemsRemaining, err := hist.ReadHistory(
 		thingID, name, timestamp, duration, 500)
@@ -77,8 +77,8 @@ func (d RenderTileTemplateData) GetOutputValue(tileSource session.TileSource) (i
 	iout = d.sess.GetOutput(tileSource.ThingID, tileSource.AffordanceType, tileSource.Name)
 	if iout == nil {
 		title := "n/a"
-		tdoc := d.sess.GetTD(tileSource.ThingID)
-		if tdoc == nil {
+		_, err := d.sess.GetTD(tileSource.ThingID)
+		if err != nil {
 			title = "Unknown thing"
 		}
 

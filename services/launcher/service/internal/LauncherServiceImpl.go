@@ -14,6 +14,8 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/hiveot/hivekit/go/api"
 	"github.com/hiveot/hivekit/go/api/wot"
+	authn_client "github.com/hiveot/hivekit/go/cells/authn/client"
+	certs_client "github.com/hiveot/hivekit/go/cells/certs/client"
 	"github.com/hiveot/hivekit/go/cells/thing"
 	"github.com/hiveot/hivekit/go/cells/transport/wss"
 	"github.com/hiveot/hub/services/launcher"
@@ -41,6 +43,9 @@ type LauncherServiceImpl struct {
 
 	// service configuration
 	cfg *launcher.LauncherConfig
+
+	certsClient *certs_client.CertsClient
+	authnAdmin  *authn_client.AuthnAdminClient
 
 	// environment to use for starting plugins
 	env *api.AppEnvironment
@@ -77,10 +82,10 @@ func (svc *LauncherServiceImpl) addRuntime(runtimeBin string) error {
 
 // Add a newly discovered executable plugin to svc.plugins
 // If the plugin is already know, only update its size and timestamp
-func (svc *LauncherServiceImpl) addPlugin(filepath string) error {
-	fileInfo, err := os.Stat(filepath)
+func (svc *LauncherServiceImpl) addPlugin(filePath string) error {
+	fileInfo, err := os.Stat(filePath)
 	if err != nil {
-		slog.Error("addPlugin: Unable to read plugin info. Skipped", "err", err.Error())
+		slog.Error("addPlugin: Unable to read plugin info. Skipped", "filepath", filePath, "err", err.Error())
 		return err
 	}
 	if fileInfo.IsDir() {
@@ -91,12 +96,12 @@ func (svc *LauncherServiceImpl) addPlugin(filepath string) error {
 	isExecutable := fileMode&0100 != 0
 	if !isExecutable {
 		// ignore non executable
-		slog.Info("addPlugin: Ignored non-executable.", "file", filepath)
+		slog.Info("addPlugin: Ignored non-executable.", "file", filePath)
 		return nil
 	}
 	size := fileInfo.Size()
 	if size == 0 {
-		slog.Info("addPlugin: Ignored empty file.", "file", filepath)
+		slog.Info("addPlugin: Ignored empty file.", "file", filePath)
 		return nil
 	}
 
@@ -104,14 +109,14 @@ func (svc *LauncherServiceImpl) addPlugin(filepath string) error {
 	if !found {
 		pluginInfo = launcher.PluginInfo{
 			PluginID:     fileInfo.Name(),
-			ExecPath:     filepath,
+			ExecPath:     filePath,
 			ModifiedTime: fileInfo.ModTime().Format(time.RFC3339),
 			Size:         size,
 			Uptime:       0,
 			Running:      false,
 		}
 		svc.plugins[pluginInfo.PluginID] = pluginInfo
-		slog.Info("addPlugin: found new plugin", "file", filepath)
+		slog.Info("addPlugin: found new plugin", "file", filePath)
 	} else {
 		// updated
 		pluginInfo.ModifiedTime = fileInfo.ModTime().Format(time.RFC3339)
@@ -218,6 +223,7 @@ func (svc *LauncherServiceImpl) Start() {
 	nrPlugins := len(svc.plugins)
 	svc.PubProperty(launcher.PropNrPlugins, nrPlugins, false)
 
+	// FIXME:
 	// 3. Set permissions for using this service for administrators and managers
 	// err = authz.UserSetPermissions(svc.ag.Consumer, authz.ThingPermissions{
 	// 	AgentID: svc.ag.GetClientID(),
@@ -261,10 +267,10 @@ func (svc *LauncherServiceImpl) WatchPlugins() error {
 	var debounceMux sync.Mutex
 	debounceDuration := time.Second
 
-	err := svc.serviceWatcher.Add(svc.env.BinDir)
-	if err == nil {
-		err = svc.serviceWatcher.Add(svc.env.PluginsDir)
-	}
+	// err := svc.serviceWatcher.Add(svc.env.BinDir)
+	// if err == nil {
+	err := svc.serviceWatcher.Add(svc.env.PluginsDir)
+	// }
 	if err == nil {
 		go func() {
 			for {
@@ -325,23 +331,23 @@ func (svc *LauncherServiceImpl) WatchPlugins() error {
 func NewLauncherServiceImpl(env *api.AppEnvironment, cfg *launcher.LauncherConfig,
 ) (*LauncherServiceImpl, error) {
 
-	// FIXME: is the launcher thingID the AppID or the cell Type?
-	// the TD is published with the default 'launcher'
-	// but AppID is the binary name, eg 'main' or so.
-	// option 1: Use AppID because there can be multiple launchers
-	//      - this doesn't guarantee uniqueness
-	// option 2: Use default
-	//		- doesn't support multiple instances on different machines...
-	//
-	svc := &LauncherServiceImpl{
-		ExposedThing: thing.NewExposedThing(env.AppID, nil),
-		env:          env,
-		// serverURL: serverURL,
-		cfg:     cfg,
-		plugins: make(map[string]launcher.PluginInfo),
-		cmds:    make([]*exec.Cmd, 0),
-		//ag:        ag,
+	clientID := env.ClientID
+	if clientID == "" {
+		clientID = launcher.LauncherServiceCellType
 	}
+
+	svc := &LauncherServiceImpl{
+		ExposedThing: thing.NewExposedThing(clientID, nil),
+		env:          env,
+		cfg:          cfg,
+		plugins:      make(map[string]launcher.PluginInfo),
+		cmds:         make([]*exec.Cmd, 0),
+	}
+	// both authn and certs client send their request via this service. Notifications are no used.
+	svc.authnAdmin = authn_client.NewAuthnAdminClient("", nil)
+	svc.certsClient = certs_client.NewCertsClient("", nil)
+	svc.authnAdmin.SetRequestSink(svc)
+	svc.certsClient.SetRequestSink(svc)
 
 	// 1: determine the inventory of plugins
 	// include the runtime

@@ -137,7 +137,10 @@ func (sess *WebClientSession) GetConsumer() *consumer.Consumer {
 // GetConsumedThing returns the consumed thing.
 // This loads it from a cache or creates a new one if not found.
 func (sess *WebClientSession) GetConsumedThing(thingID string) (*consumer.ConsumedThing, error) {
-	tdoc := sess.GetTD(thingID)
+	tdoc, err := sess.GetTD(thingID)
+	if err != nil {
+		return nil, err
+	}
 	ct, err := sess.co.Consume(tdoc)
 	return ct, err
 }
@@ -162,10 +165,10 @@ func (sess *WebClientSession) GetOutput(
 }
 
 // GetTD returns the TD using the directory
-func (sess *WebClientSession) GetTD(thingID string) *wot.TD {
+func (sess *WebClientSession) GetTD(thingID string) (*wot.TD, error) {
 	dirCl := sess.GetDirectory()
-	tdoc := dirCl.GetTD(thingID)
-	return tdoc
+	tdoc, err := dirCl.GetTD(thingID)
+	return tdoc, err
 }
 
 // GetLastError returns the most recent error, if any

@@ -3,39 +3,22 @@ DIST_FOLDER=./dist
 BIN_FOLDER=./dist/bin
 PLUGINS_FOLDER=./dist/plugins
 INSTALL_HOME=~/bin/hiveot
-GENAPI=go run cmd/tm2go/main.go
 .DEFAULT_GOAL := help
 
 .FORCE: 
 
-all: api runtime hubcli services bindings    ## Build Core, Bindings and hubcli
+all: runtime hubcli launcher hiveoview bindings    ## Build Core, Bindings and hubcli
 
 # --- Runtime services
-
-api: .FORCE
-	go run cmd/genvocab/main.go
-	$(GENAPI) generate -r all runtime
-	$(GENAPI) generate -r all services
 
 runtime: .FORCE
 	mkdir -p $(BIN_FOLDER)
 	go build -o $(BIN_FOLDER)/$@ runtime/cmd/main.go
 
-services: launcher idprov certs history hiveoview
-
 launcher: .FORCE
 	go build -o $(BIN_FOLDER)/$@ services/$@/cmd/main.go
 	mkdir -p $(DIST_FOLDER)/config
 	cp services/$@/*.yaml $(DIST_FOLDER)/config
-
-certs: .FORCE
-	go build -o $(PLUGINS_FOLDER)/$@ services/$@/cmd/main.go
-
-history: .FORCE
-	go build -o $(PLUGINS_FOLDER)/$@ services/$@/cmd/main.go
-
-idprov: .FORCE
-	go build -o $(PLUGINS_FOLDER)/$@ services/$@/cmd/main.go
 
 hiveoview: .FORCE ## build the SSR web viewer binding
 	go build -o $(PLUGINS_FOLDER)/$@  services/$@/cmd/main.go
@@ -56,7 +39,7 @@ isy99x: .FORCE ## Build the ISY99x INSTEON protocol binding
 
 owserver: .FORCE ## Build the 1-wire owserver protocol binding
 	go build -o $(PLUGINS_FOLDER)/$@  bindings/$@/cmd/main.go
-	cp bindings/$@/config/*.yaml $(DIST_FOLDER)/config
+	cp bindings/$@/*.yaml $(DIST_FOLDER)/config
 
 weather: .FORCE ## Build the weather service binding
 	go build -o $(PLUGINS_FOLDER)/$@  bindings/$@/cmd/main.go

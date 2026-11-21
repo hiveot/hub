@@ -15,9 +15,9 @@ func main() {
 
 	env := api.NewAppEnvironment("", true)
 	cfg := config.NewIsy99xConfig()
-	_ = env.LoadConfig(env.AppID, &cfg)
+	_ = env.LoadConfig(env.ClientID, &cfg)
 
-	binding, err := internal.NewIsyGateway(env.AppID, cfg)
+	binding, err := internal.NewIsyGateway(cfg)
 	if err != nil {
 		fmt.Println("NewIsyGateway failed: " + err.Error())
 		os.Exit(1)
