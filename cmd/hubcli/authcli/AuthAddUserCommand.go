@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"path"
+	"path/filepath"
 
 	"github.com/hiveot/hivekit/go/api"
 	authn_client "github.com/hiveot/hivekit/go/cells/authn/client"
@@ -123,7 +124,7 @@ func AuthRemoveClientCommand(r **corecipe.ConsumerRecipe) *cli.Command {
 }
 
 // AuthRoleCommand changes a user's role
-func AuthRoleCommand(r *api.IConsumer) *cli.Command {
+func AuthRoleCommand(co *api.IConsumer) *cli.Command {
 	return &cli.Command{
 		Name:      "setrole",
 		Usage:     "Set a new role",
@@ -136,7 +137,7 @@ func AuthRoleCommand(r *api.IConsumer) *cli.Command {
 			}
 			loginID := cmd.Args().Get(0)
 			newRole := cmd.Args().Get(1)
-			err := HandleSetRole(*r, loginID, newRole)
+			err := HandleSetRole(*co, loginID, newRole)
 			return err
 		},
 	}
@@ -144,16 +145,24 @@ func AuthRoleCommand(r *api.IConsumer) *cli.Command {
 
 // HandleAddUser adds a user and displays a temporary password
 func HandleAddUser(
-	r api.IConsumer, loginID string, displayName string, role string) (err error) {
+	r *corecipe.ConsumerRecipe, loginID string, displayName string, role string) (err error) {
 
+	env := r.GetEnv()
 	newPassword := GeneratePassword(9, true)
-	authnAdmin := authn_client.NewAuthnAdminClient("", r)
+	authnAdmin := authn_client.NewAuthnAdminClient("", r.Consumer)
 
 	token, err := authnAdmin.AddClient(loginID, displayName, api.ClientRoleViewer)
-	_ = token
-	authnAdmin.SetClientPassword(loginID, newPassword)
-	prof, _ := authnAdmin.GetProfile(loginID)
-	_ = authnAdmin.UpdateClientProfile(prof)
+	if err == nil {
+		err = authnAdmin.SetClientPassword(loginID, newPassword)
+	}
+	if err == nil && token != "" {
+		tokenFile := filepath.Join(env.CertsDir, loginID+api.DefaultTokenFileSuffix)
+		os.Remove(tokenFile)
+		err = os.WriteFile(tokenFile, []byte(token), 0400)
+	}
+
+	// prof, _ := authnAdmin.GetProfile(loginID)
+	// _ = authnAdmin.UpdateClientProfile(prof)
 
 	if err != nil {
 		fmt.Println("Error: " + err.Error())
@@ -258,7 +267,7 @@ func HandleListClients(co api.IConsumer) (err error) {
 // HandleRemoveClient removes a user
 func HandleRemoveClient(co api.IConsumer, clientID string) (err error) {
 	authnClient := authn_client.NewAuthnAdminClient("", co)
-	authnClient.RemoveClient(clientID)
+	err = authnClient.RemoveClient(clientID)
 
 	if err != nil {
 		fmt.Println("Error: " + err.Error())

@@ -3,6 +3,8 @@ package internal
 import (
 	"fmt"
 	"log/slog"
+	"math"
+	"strconv"
 
 	"github.com/hiveot/hivekit/go/api/msg"
 	"github.com/hiveot/hivekit/go/api/vocab"
@@ -20,6 +22,42 @@ type StandardOWThing struct {
 
 	node *eds.OneWireNode
 	td   *wot.TD
+}
+
+// Convert the attribute value to published value
+func (owt *StandardOWThing) ConvertValue(
+	attrValue string, info AttrConversion) any {
+
+	var pubValue any = attrValue
+
+	// parse all data values to their native types and round as per conversion spec
+	switch info.DataType {
+	case wot.DataTypeNumber:
+		valueFloat, err := strconv.ParseFloat(attrValue, 32)
+		if err != nil {
+			return attrValue
+		}
+		prec := math.Pow10(info.Precision)
+		roundedInt := int(valueFloat * prec)
+		// FIXME: check for changenotify
+		pubValue = float64(roundedInt) / prec
+
+	case wot.DataTypeInteger, wot.DataTypeUnsignedInt:
+		valueInt64, err := strconv.ParseInt(attrValue, 10, 32)
+		if err != nil {
+			return attrValue
+		}
+		// FIXME: check for changenotify
+		pubValue = int(valueInt64)
+
+	case wot.DataTypeBool:
+		valueBool, err := strconv.ParseBool(attrValue)
+		if err != nil {
+			return attrValue
+		}
+		pubValue = valueBool
+	}
+	return pubValue
 }
 
 // Return the TD for this 1-wire device
@@ -168,6 +206,8 @@ func (owt *StandardOWThing) UpdateProperties(
 	if deviceTitle != "" {
 		owt.PubProperty(vocab.PropDeviceTitle, deviceTitle, onlyChanges)
 	}
+	slog.Info("UpdateProperties",
+		"ROMId", node.ROMId, "Name", node.Name, "onlyChanges", onlyChanges)
 
 	// first and unknown values are always changed
 	for attrID, attr := range node.Attr {
@@ -180,10 +220,12 @@ func (owt *StandardOWThing) UpdateProperties(
 		} else if info.Ignore {
 			// do nothing when ignore is set
 		} else {
+			// adjust the precision
+			pubValue := owt.ConvertValue(attr.Value, info)
 			if info.IsEvent {
-				owt.PubEvent(attrID, attr.Value, onlyChanges)
+				owt.PubEvent(attrID, pubValue, onlyChanges)
 			} else if info.IsProp {
-				owt.PubProperty(attrID, attr.Value, onlyChanges)
+				owt.PubProperty(attrID, pubValue, onlyChanges)
 			}
 		}
 	}

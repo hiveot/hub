@@ -3,7 +3,6 @@ package launchercli
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/hiveot/hivekit/go/cells/consumer"
 	consumer_recipe "github.com/hiveot/hivekit/go/factory/recipes/consumer"
@@ -74,10 +73,10 @@ func HandleListServices(co *consumer.Consumer) error {
 		return fmt.Errorf("no Hub connection")
 	}
 	//lc := launcherclient.NewLauncherClient("", co)
-	localTZ, _ := time.Now().Zone()
+	// localTZ, _ := time.Now().Zone()
 
-	fmt.Println("Service                      Size   Starts       PID    CPU   Memory   Status    Since (" + localTZ + ")          Last Error")
-	fmt.Println("-------                      ----   ------   -------   ----   ------   -------   -------------------  -----------")
+	fmt.Println("Service                      Size   Starts       PID    CPU   Memory   Status    Since                     Last Error")
+	fmt.Println("-------                    ------   ------   -------   ----   ------   -------   ------------------------  -----------")
 	entries, err := launcher_client.NewLauncherClient("", co).ListPlugins(false)
 	if err != nil {
 		return err
@@ -97,7 +96,7 @@ func HandleListServices(co *consumer.Consumer) error {
 		} else if entry.StoppedTime != "" {
 			sinceTime = utils.FormatDateTime(entry.StoppedTime)
 		}
-		fmt.Printf("%-25s %4d MB   %6d   %7s   %4s   %6s   %6s   %-20s %s\n",
+		fmt.Printf("%-25s %4d MB   %6d   %7s   %4s   %6s   %6s   %-25s %s\n",
 			entry.PluginID,
 			entry.Size/1024/1024,
 			entry.StartCount,
@@ -140,7 +139,7 @@ func HandleStartService(pluginID string, co *consumer.Consumer) error {
 		fmt.Printf("Service '%s' started\n", info.PluginID)
 	}
 	// last, show a list of running services
-	err = HandleListServices(co)
+	err = HandleListServices(lc.Consumer)
 	return err
 }
 
@@ -170,7 +169,17 @@ func HandleStopService(serviceName string, co *consumer.Consumer) error {
 		}
 		fmt.Printf("Service '%s' stopped\n", info.PluginID)
 	}
-	// last, show a list of running services
-	err = HandleListServices(co)
+	// last, show a list of running services; chain the consumer
+	// FIXME: it would be more elegant to reuse the given consumer without
+	// causing a replacement of the notitificationHandler.
+	// - option 1: manually set the request handler
+	//        con: wont receive notifications
+	// - option 2: support multiple notification handlers
+	//        con: more complicated, just for an edge case
+	// - option 3: setnotificationhandler automatically finds the head of the chain
+	//        con: wont work if the head filters notifications,
+	// - option 4: handle it manually. its an edge case
+	//        con: its not elegant
+	err = HandleListServices(lc.Consumer)
 	return err
 }

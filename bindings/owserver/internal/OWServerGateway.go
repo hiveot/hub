@@ -182,6 +182,28 @@ func (svc *OWServerGateway) Stop() {
 	slog.Info("OWServer binding stopped")
 }
 
+// UpdateThingValues polls the OWServer hub for changed Thing values.
+// Set 'onlyChanges' to only publish changed values.
+func (svc *OWServerGateway) UpdateThingValues(onlyChanges bool) error {
+
+	nodes, err := svc.edsAPI.PollNodes()
+	if err == nil {
+		for _, node := range nodes {
+			thingID := node.ROMId
+			owt, found := svc.owThings[thingID]
+			if found {
+				title, err := svc.customTitles.Get(thingID)
+				titleStr := ""
+				if err == nil && title != nil {
+					titleStr = string(title)
+				}
+				owt.UpdateProperties(node, titleStr, onlyChanges)
+			}
+		}
+	}
+	return err
+}
+
 // NewOWServerGateway creates a new OWServer gateway devices that servers
 // multiple 1-wire devices.
 //

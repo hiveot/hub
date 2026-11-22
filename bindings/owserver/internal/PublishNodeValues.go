@@ -1,13 +1,9 @@
 package internal
 
-import (
-	"time"
-)
-
-type NodeValueStamp struct {
-	timestamp time.Time
-	value     any
-}
+// type NodeValueStamp struct {
+// 	timestamp time.Time
+// 	value     any
+// }
 
 // func (svc *OWServerGateway) getPrevValue(nodeID, attrName string) (value NodeValueStamp, found bool) {
 // 	svc.mux.RLock()
@@ -120,22 +116,22 @@ type NodeValueStamp struct {
 
 // RefreshPropertyValues polls the OWServer hub for changed Thing values
 // Set 'onlyChanges' to only publish changed values.
-func (svc *OWServerGateway) UpdateThingValues(onlyChanges bool) error {
-	nodes, err := svc.edsAPI.PollNodes()
+// func (svc *OWServerGateway) UpdateThingValues(onlyChanges bool) error {
+// 	nodes, err := svc.edsAPI.PollNodes()
 
-	if err == nil {
-		for _, node := range nodes {
-			thingID := node.ROMId
-			owt, found := svc.owThings[thingID]
-			if found {
-				title, err := svc.customTitles.Get(thingID)
-				titleStr := ""
-				if err == nil && title != nil {
-					titleStr = string(title)
-				}
-				owt.UpdateProperties(node, titleStr, onlyChanges)
-			}
-		}
-	}
-	return err
-}
+// 	if err == nil {
+// 		for _, node := range nodes {
+// 			thingID := node.ROMId
+// 			owt, found := svc.owThings[thingID]
+// 			if found {
+// 				title, err := svc.customTitles.Get(thingID)
+// 				titleStr := ""
+// 				if err == nil && title != nil {
+// 					titleStr = string(title)
+// 				}
+// 				owt.UpdateProperties(node, titleStr, onlyChanges)
+// 			}
+// 		}
+// 	}
+// 	return err
+// }

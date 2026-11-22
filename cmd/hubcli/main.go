@@ -169,6 +169,7 @@ func main() {
 			authcli.AuthRemoveClientCommand(&r),
 			authcli.AuthSetRoleCommand(&r),
 			authcli.AuthSetPasswordCommand(&r),
+			authcli.AuthLoginCommand(&r),
 
 			launchercli.LauncherListCommand(&r),
 			launchercli.LauncherStartCommand(&r),
@@ -181,7 +182,7 @@ func main() {
 			historycli.HistoryListCommand(&r),
 
 			pubsubcli.PubActionCommand(&r),
-			pubsubcli.SubEventsCommand(&r),
+			pubsubcli.SubCommand(&r),
 			pubsubcli.SubTDCommand(&r),
 		},
 	}

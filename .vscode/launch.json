@@ -35,12 +35,15 @@
             "cwd": "${workspaceFolder}/cmd/hubcli",
             "showLog": false,
             "env": {},
-            "args": ["-clientID", "admin", "-home", "~/bin/hiveot", "-timeout", "2m",  "ls"],
+            "args": ["-clientID", "admin", "-home", "~/bin/hiveot", "-timeout", "2m",  "stop","owserver"],
+            // "args": ["-clientID", "admin", "-home", "~/bin/hiveot", "-timeout", "2m",  "subev"],
             // "args": ["-clientID", "admin", "-home", "~/bin/hiveot", "-timeout", "2m",  "-serverURL", "wss://10.3.3.40:8444/wot/wss", "ls"],
-            // "args": ["-clientID", "admin", "-home", "~/bin/hiveot", "disco"],
             // "args": [ "-v", "-dirTD","wss://10.3.3.40:8444/.well-known/wot","status", "authn:admin"],
             // "args": [ "-clientID", "admin", "-home","~/bin/hiveot", "-tddURL", "https://10.3.3.40:8444/.well-known/wot","ld"],
             // "args": [ "-clientID", "admin", "-home","~/bin/hiveot", "ld"],
+                        
+            // console input for login
+            "console": "integratedTerminal",
         },
         {
             "name": "Debug launcher", 

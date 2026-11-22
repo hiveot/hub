@@ -30,10 +30,10 @@ func SubTDCommand(r **consumer_recipe.ConsumerRecipe) *cli.Command {
 	}
 }
 
-func SubEventsCommand(r **consumer_recipe.ConsumerRecipe) *cli.Command {
+func SubCommand(r **consumer_recipe.ConsumerRecipe) *cli.Command {
 	return &cli.Command{
-		Name:      "subev",
-		Usage:     "SubscribeEvent to Thing events",
+		Name:      "sub",
+		Usage:     "Subscribe to Thing events and property changes",
 		ArgsUsage: "[<thingID> [<key>]]",
 		Category:  "pubsub",
 		Action: func(ctx context.Context, cmd *cli.Command) error {
@@ -49,7 +49,7 @@ func SubEventsCommand(r **consumer_recipe.ConsumerRecipe) *cli.Command {
 				return fmt.Errorf("unexpected arguments")
 			}
 
-			err := HandleSubEvents((*r).Consumer, thingID, key)
+			err := HandleSub((*r).Consumer, thingID, key)
 			return err
 		},
 	}
@@ -88,17 +88,18 @@ func HandleSubTD(co *consumer.Consumer) error {
 	return nil
 }
 
-// HandleSubEvents subscribes and prints events
-func HandleSubEvents(co *consumer.Consumer, thingID string, name string) error {
+// HandleSub subscribes to event and property changes
+func HandleSub(co *consumer.Consumer, thingID string, name string) error {
 	fmt.Printf("Subscribing to  thingID: '%s', name: '%s'\n\n", thingID, name)
 
-	fmt.Printf("Time             Agent ID        Thing ID                       Event Name                     Value\n")
-	fmt.Printf("---------------  --------------- -----------------------------  -----------------------------  ---------\n")
+	fmt.Printf("Time             Agent ID        Thing ID                       Type          Affordance Name                Value\n")
+	fmt.Printf("---------------  --------------- -----------------------------  ------------- -----------------------------  ---------\n")
 
 	err := co.Subscribe(thingID, name)
+	err = co.ObserveProperty(thingID, name)
 	co.SetNotificationHook(func(msg *msg.NotificationMessage) {
 		createdTime, _ := dateparse.ParseAny(msg.Timestamp)
-		timeStr := createdTime.Format("15:04:05.000")
+		timeStr := createdTime.Local().Format("15:04:05.000")
 
 		valueStr := msg.ToString(0)
 
@@ -124,8 +125,8 @@ func HandleSubEvents(co *consumer.Consumer, thingID string, name string) error {
 				tdi.Title, tdi.AtType, len(tdi.Properties), len(tdi.Events), len(tdi.Actions))
 		}
 
-		fmt.Printf("%-16.16s %-15.15s %-30.30s %-30.30s %-40.40s\n",
-			timeStr, "", msg.ThingID, msg.Name, valueStr)
+		fmt.Printf("%-16.16s %-15.15s %-30.30s %-13.13s %-30.30s %-40.40s\n",
+			timeStr, "", msg.ThingID, msg.AffordanceType, msg.Name, valueStr)
 	})
 	if err != nil {
 		return err
