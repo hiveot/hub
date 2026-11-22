@@ -42,21 +42,6 @@ func HandleLogin(r *consumer_recipe.ConsumerRecipe, loginID string) error {
 	rootCAs := env.GetRootCAs()
 	serverURL := env.ServerURL
 
-	// prompt := func(label string) string {
-	// 	var s string
-	// 	for {
-	// 		fmt.Fprint(os.Stderr, label+" ")
-	// 		b, _ := term.ReadPassword(int(syscall.Stdin))
-	// 		s = string(b)
-	// 		if s != "" {
-	// 			break
-	// 		}
-	// 	}
-	// 	fmt.Println()
-	// 	return s
-	// }
-	// passwd := prompt("Please enter the password for " + loginID)
-
 	// the serverURL comes from discovery
 	// authnThingID := authn.AuthnUserServiceCellType
 	if serverURL == "" {
@@ -78,8 +63,8 @@ func HandleLogin(r *consumer_recipe.ConsumerRecipe, loginID string) error {
 		return fmt.Errorf("not an input terminal")
 	}
 	fmt.Print("Password for " + loginID + ":")
-	// passwd, err := term.ReadPassword(fd)
-	passwd := "McHarg42"
+	passwd, err := term.ReadPassword(fd)
+
 	fmt.Println()
 
 	authnClient := authn_client.NewUserAuthnHttpClient(serverURL, rootCAs)

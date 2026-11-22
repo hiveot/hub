@@ -39,7 +39,6 @@ func main() {
 	var homeDir string
 	var logLevel string = "warn"
 	var serverURL string
-	var showEnv bool
 	var timeout time.Duration = time.Second * 5
 
 	// obtain the environment defaults
@@ -95,12 +94,6 @@ func main() {
 				Value:       serverURL,
 				Destination: &serverURL,
 			},
-			&cli.BoolFlag{
-				Name:        "env",
-				Usage:       "Print environment info",
-				Value:       showEnv,
-				Destination: &showEnv,
-			},
 			&cli.StringFlag{
 				Name:        "loglevel",
 				Usage:       "Logging level debug|info|warn|error",
@@ -134,9 +127,6 @@ func main() {
 			// if verbose {
 			// utils.SetLogging("info", "")
 			// }
-			if showEnv {
-				env.Print(2)
-			}
 
 			if nowrap {
 				fmt.Printf(utils.WrapOff)
@@ -161,7 +151,7 @@ func main() {
 		Commands: []*cli.Command{
 			// these commands work without a server connection
 			certs.ViewCertsCommand(&env),
-			// certs.CreateCACommand(&env),
+			certs.ShowEnvCommand(&env),
 
 			authcli.AuthAddUserCommand(&r),
 			authcli.AuthAddServiceCommand(&r, &certsDir),
