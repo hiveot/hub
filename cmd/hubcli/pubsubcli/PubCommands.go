@@ -21,6 +21,7 @@ func PubActionCommand(r **consumer_recipe.ConsumerRecipe) *cli.Command {
 		Category: "pubsub",
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			if cmd.NArg() < 2 {
+				cli.ShowSubcommandHelp(cmd)
 				return fmt.Errorf("missing arguments")
 			}
 			dThingID := cmd.Args().First()

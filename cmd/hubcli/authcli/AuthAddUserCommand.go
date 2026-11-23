@@ -29,7 +29,7 @@ func AuthAddUserCommand(r **corecipe.ConsumerRecipe) *cli.Command {
 
 	return &cli.Command{
 		Name:      "addu",
-		Usage:     "Add a user with role and generate a temporary password",
+		Usage:     "Add user with role and generate a temporary password",
 		ArgsUsage: "<userID>",
 		Category:  "auth",
 		Flags: []cli.Flag{
@@ -48,6 +48,7 @@ func AuthAddUserCommand(r **corecipe.ConsumerRecipe) *cli.Command {
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			if cmd.NArg() != 1 {
+				cli.ShowSubcommandHelp(cmd)
 				err := fmt.Errorf("expected 1 argument")
 				return err
 			}
@@ -64,7 +65,7 @@ func AuthAddServiceCommand(r **corecipe.ConsumerRecipe, certsDir *string) *cli.C
 
 	return &cli.Command{
 		Name:      "addsvc",
-		Usage:     "[-name displayName] Add a service with a client cert in the certs folder.",
+		Usage:     "Add a service with a client cert in the certs folder.",
 		ArgsUsage: "<serviceID>",
 		Category:  "auth",
 		Flags: []cli.Flag{
@@ -77,6 +78,7 @@ func AuthAddServiceCommand(r **corecipe.ConsumerRecipe, certsDir *string) *cli.C
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			if cmd.NArg() != 1 {
+				cli.ShowSubcommandHelp(cmd)
 				err := fmt.Errorf("expected 1 argument")
 				return err
 			}
@@ -87,32 +89,16 @@ func AuthAddServiceCommand(r **corecipe.ConsumerRecipe, certsDir *string) *cli.C
 	}
 }
 
-// AuthListClientsCommand lists user profiles
-func AuthListClientsCommand(r **corecipe.ConsumerRecipe) *cli.Command {
-	return &cli.Command{
-		Name:     "lu",
-		Usage:    "List users",
-		Category: "auth",
-		Action: func(ctx context.Context, cmd *cli.Command) error {
-			if cmd.NArg() > 0 {
-				err := fmt.Errorf("too many arguments")
-				return err
-			}
-			err := HandleListClients(*r)
-			return err
-		},
-	}
-}
-
 // AuthRemoveClientCommand removes a user
 func AuthRemoveClientCommand(r **corecipe.ConsumerRecipe) *cli.Command {
 	return &cli.Command{
 		Name:      "rm",
-		Usage:     "Remove a user or service. (careful, no confirmation)",
+		Usage:     "Remove user. (careful, no confirmation)",
 		ArgsUsage: "<loginID>",
 		Category:  "auth",
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			if cmd.NArg() != 1 {
+				cli.ShowSubcommandHelp(cmd)
 				err := fmt.Errorf("expected 1 arguments")
 				return err
 			}
@@ -225,42 +211,6 @@ func HandleAddService(
 		fmt.Printf("Client cert for '%s' created succesfully\n", serviceID)
 	}
 
-	return err
-}
-
-// HandleListClients shows a list of user profiles
-func HandleListClients(co api.IConsumer) (err error) {
-
-	authnClient := authn_client.NewAuthnAdminClient("", co)
-
-	profileList, err := authnClient.GetProfiles()
-
-	fmt.Println("Users")
-	fmt.Println("Login ID             Display Name              Role            Modified")
-	fmt.Println("--------             ------------              ----            -------")
-	for _, profile := range profileList {
-		if profile.Role != api.ClientRoleDevice && profile.Role != api.ClientRoleService {
-			fmt.Printf("%-20s %-25s %-15s %s\n",
-				profile.ClientID,
-				profile.DisplayName,
-				profile.Role,
-				utils.FormatDateTime(profile.TimeUpdated, ""),
-			)
-		}
-	}
-	fmt.Println()
-	fmt.Println("Devices/Services")
-	fmt.Println("SenderID             Type            Modified")
-	fmt.Println("--------             ----            -------")
-	for _, profile := range profileList {
-		if profile.Role == api.ClientRoleDevice || profile.Role == api.ClientRoleService {
-			fmt.Printf("%-20s %-15s %s\n",
-				profile.ClientID,
-				profile.Role,
-				utils.FormatDateTime(profile.TimeUpdated, ""),
-			)
-		}
-	}
 	return err
 }
 

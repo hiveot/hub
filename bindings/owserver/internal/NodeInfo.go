@@ -76,7 +76,7 @@ type AttrConversion struct {
 	ChangeNotify float64
 	Description  string
 	Enum         []wot.DataSchema
-	// ignore the attribute
+	// ignore changes
 	Ignore bool
 	// IsActuator defines the attribute as an action
 	IsActuator bool
@@ -165,9 +165,8 @@ var AttrConfig = map[string]AttrConversion{
 		Title:  "Data Errors Channel 3", DataType: wot.DataTypeInteger, ChangeNotify: 1,
 	},
 	"DateTime": {
-		IsProp: true,
-		Title:  "Device date/time", DataType: wot.DataTypeDateTime,
-		ChangeNotify: -1, // do not report changes to time
+		IsProp: true, Ignore: true,
+		Title: "Device date/time", DataType: wot.DataTypeDateTime,
 	},
 	// gateway has 'DeviceName', nodes use 'Name'
 	"DeviceName": {

@@ -17,12 +17,13 @@ func AuthLoginCommand(r **consumer_recipe.ConsumerRecipe) *cli.Command {
 
 	return &cli.Command{
 		Name:      "login",
-		Usage:     "Login and enter a password when prompted",
+		Usage:     "Login to enable -clientID <loginID> and enter a password when prompted",
 		ArgsUsage: "<loginID>",
 		UsageText: "",
 		Category:  "auth",
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			if cmd.NArg() != 1 {
+				cli.ShowSubcommandHelp(cmd)
 				err := fmt.Errorf("expected 1 arguments")
 				return err
 			}
@@ -77,6 +78,7 @@ func HandleLogin(r *consumer_recipe.ConsumerRecipe, loginID string) error {
 		fmt.Println("Error: " + err.Error())
 	} else {
 		fmt.Println("Login successful for user " + loginID)
+		fmt.Println("You can now use this CLI with this user ID")
 	}
 	return err
 }

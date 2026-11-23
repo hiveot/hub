@@ -42,6 +42,8 @@ func DirectoryListCommand(r **consumer_recipe.ConsumerRecipe) *cli.Command {
 				} else {
 					err = HandleListThingVerbose(dirClient, co, cmd.Args().First())
 				}
+			} else {
+				cli.ShowSubcommandHelp(cmd)
 			}
 			return err
 		},

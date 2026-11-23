@@ -88,7 +88,7 @@ func (owt *StandardOWThing) CreateTD() *wot.TD {
 		// The AttrInfo table determines what is in the TD as property, event or action
 		attrInfo, found := AttrConfig[attrID]
 
-		if !found || attrInfo.Ignore {
+		if !found {
 			// exclude from the TD
 			continue
 		}
@@ -218,7 +218,7 @@ func (owt *StandardOWThing) UpdateProperties(
 			// these values are unlisted and ignored
 			//slog.Info("Ignored value", "name", attrID, "value", attr.Value)
 		} else if info.Ignore {
-			// do nothing when ignore is set
+			// do nothing when ignore-changes is set
 		} else {
 			// adjust the precision
 			pubValue := owt.ConvertValue(attr.Value, info)

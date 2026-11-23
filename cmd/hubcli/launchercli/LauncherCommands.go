@@ -21,6 +21,7 @@ func LauncherListCommand(r **consumer_recipe.ConsumerRecipe) *cli.Command {
 		Category: "launcher",
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			if cmd.NArg() != 0 {
+				cli.ShowSubcommandHelp(cmd)
 				return fmt.Errorf("no arguments expected")
 			}
 			err := HandleListServices((*r).Consumer)
@@ -40,6 +41,7 @@ func LauncherStartCommand(r **consumer_recipe.ConsumerRecipe) *cli.Command {
 		//ArgsUsage: "start <serviceName> | all",
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			if cmd.NArg() != 1 {
+				cli.ShowSubcommandHelp(cmd)
 				return fmt.Errorf("expected service name")
 			}
 			err := HandleStartService(cmd.Args().First(), (*r).Consumer)
@@ -58,6 +60,7 @@ func LauncherStopCommand(r **consumer_recipe.ConsumerRecipe) *cli.Command {
 		Category:  "launcher",
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			if cmd.NArg() != 1 {
+				cli.ShowSubcommandHelp(cmd)
 				return fmt.Errorf("expected service name")
 			}
 			err := HandleStopService(cmd.Args().First(), (*r).Consumer)

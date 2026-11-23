@@ -3,6 +3,7 @@ package pubsubcli
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/hiveot/hivekit/go/api/msg"
@@ -24,7 +25,8 @@ func SubTDCommand(r **consumer_recipe.ConsumerRecipe) *cli.Command {
 		Usage:    "SubscribeEvent to TD publications",
 		Category: "pubsub",
 		Action: func(ctx context.Context, cmd *cli.Command) error {
-			err := HandleSubTD((*r).Consumer)
+			dirTD := (*r).GetEnv().GetDirTD()
+			err := HandleSubTD((*r).Consumer, dirTD)
 			return err
 		},
 	}
@@ -49,47 +51,58 @@ func SubCommand(r **consumer_recipe.ConsumerRecipe) *cli.Command {
 				return fmt.Errorf("unexpected arguments")
 			}
 
-			err := HandleSub((*r).Consumer, thingID, key)
+			err := HandleSubEvProp((*r).Consumer, thingID, key)
 			return err
 		},
 	}
 }
 
 // HandleSubTD subscribes and prints TD publications
-func HandleSubTD(co *consumer.Consumer) error {
+func HandleSubTD(co *consumer.Consumer, dirTD *wot.TD) error {
 
-	// FIXME: discover to get the directory ID
-	err := co.Subscribe(directory.DirectoryServiceCellType, directory.ThingUpdatedEvent)
+	// If a directory is provided, use its TD ID to subscribe
+	dirID := directory.DirectoryServiceCellType
+	if dirTD != nil {
+		dirID = dirTD.ID
+	}
+	err := co.Subscribe(dirID, directory.ThingUpdatedEvent)
 	if err != nil {
 		return err
 	}
+	fmtString := "%-20.20s %-35.35s %-30.30s %-30.30s %-30.30s\n"
 	co.SetNotificationHook(func(resp *msg.NotificationMessage) {
+		// slog.Info("HandleSubTD: received notification",
+		// 	"thingID", resp.ThingID,
+		// 	"name", resp.Name)
+
 		// only look for TD events, ignore directed events
 		if resp.Name != directory.ThingUpdatedEvent {
 			return
 		}
 
-		var tdi wot.TD
-		//fmt.Printf("%s\n", event.ValueJSON)
-		err := resp.Decode(&tdi)
-
-		if err == nil {
-			modifiedTime, _ := dateparse.ParseAny(tdi.Modified) // can be in any TZ
-			timeStr := utils.FormatMSE(modifiedTime.UnixMilli(), false)
-			fmt.Printf("%-20.20s %-35.35s %-30.30s %-30.30s %-30.30s\n",
-				"", resp.ThingID, tdi.Title, tdi.AtType, timeStr)
+		var tdJSON string
+		var tdoc *wot.TD
+		err := resp.Decode(&tdJSON)
+		tdoc, err = wot.UnmarshalTD(tdJSON)
+		if err != nil {
+			fmt.Printf("Unable to decode TD from %s: %s\n", resp.ThingID, err.Error())
+			return
 		}
-		return
+		modifiedTime, _ := dateparse.ParseAny(tdoc.Modified) // can be in any TZ
+		timeStr := utils.FormatMSE(modifiedTime.UnixMilli(), false)
+		atType := strings.Join(tdoc.GetAtTypes(), ",")
+		fmt.Printf(fmtString, resp.SenderID, resp.ThingID, tdoc.Title, atType, timeStr)
+
 	})
-	fmt.Printf("Sender ID            Thing ID                            Title                          @type                          Timestamp                       \n")
-	fmt.Printf("-------------------  ----------------------------------  -----------------------------  -----------------------------  ------------------------------\n")
+	fmt.Printf(fmtString, "Sender ID", "Thing ID", "Title", "@type", "Timestamp")
+	fmt.Printf(fmtString, "---------", "--------", "-----", "-----", "---------")
 
 	time.Sleep(time.Hour * 24)
 	return nil
 }
 
-// HandleSub subscribes to event and property changes
-func HandleSub(co *consumer.Consumer, thingID string, name string) error {
+// HandleSubEvProp subscribes to event and property changes
+func HandleSubEvProp(co *consumer.Consumer, thingID string, name string) error {
 	fmt.Printf("Subscribing to  thingID: '%s', name: '%s'\n\n", thingID, name)
 
 	fmt.Printf("Time             Agent ID        Thing ID                       Type          Affordance Name                Value\n")
@@ -121,8 +134,8 @@ func HandleSub(co *consumer.Consumer, thingID string, name string) error {
 			var tdi wot.TD
 			tdJSON := msg.ToString(0)
 			_ = jsoniter.UnmarshalFromString(tdJSON, &tdi)
-			valueStr = fmt.Sprintf("{title:%s, type:%s, nrProps=%d, nrEvents=%d, nrActions=%d}",
-				tdi.Title, tdi.AtType, len(tdi.Properties), len(tdi.Events), len(tdi.Actions))
+			valueStr = fmt.Sprintf("{ID: %s, title:%s, nrProps=%d, nrEvents=%d, nrActions=%d}",
+				tdi.ID, tdi.Title, len(tdi.Properties), len(tdi.Events), len(tdi.Actions))
 		}
 
 		fmt.Printf("%-16.16s %-15.15s %-30.30s %-13.13s %-30.30s %-40.40s\n",

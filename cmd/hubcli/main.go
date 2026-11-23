@@ -156,10 +156,10 @@ func main() {
 			authcli.AuthAddUserCommand(&r),
 			authcli.AuthAddServiceCommand(&r, &certsDir),
 			authcli.AuthListClientsCommand(&r),
-			authcli.AuthRemoveClientCommand(&r),
-			authcli.AuthSetRoleCommand(&r),
-			authcli.AuthSetPasswordCommand(&r),
 			authcli.AuthLoginCommand(&r),
+			authcli.AuthRemoveClientCommand(&r),
+			authcli.AuthSetPasswordCommand(&r),
+			authcli.AuthSetRoleCommand(&r),
 
 			launchercli.LauncherListCommand(&r),
 			launchercli.LauncherStartCommand(&r),
@@ -169,6 +169,7 @@ func main() {
 			directorycli.DiscoListCommand(&env),
 
 			//historycli.HistoryLatestCommand(&hc),
+			historycli.LatestValuesCommand(&r),
 			historycli.HistoryListCommand(&r),
 
 			pubsubcli.PubActionCommand(&r),
@@ -177,29 +178,10 @@ func main() {
 		},
 	}
 
-	// Show the arguments in the command line
-	//	cli.AppHelpTemplate = `NAME:
-	//  {{.ID}} - {{.Usage}}
-	//USAGE:
-	//  {{.HelpName}} {{if .VisibleFlags}}[global options]{{end}}{{if .Commands}} command [command options]{{end}} {{if .ArgsUsage}}{{.ArgsUsage}}{{else}}[arguments...]{{end}}
-	//  {{if len .Authors}}
-	//AUTHOR:
-	//  {{range .Authors}}{{ . }}{{end}}
-	//  {{end}}{{if .Commands}}
-	//COMMANDS: {{range .VisibleCategories}}{{if .ID}}
-	//   {{.ID }}:{{"\t"}}{{range .VisibleCommands}}
-	//      {{join .Names ", "}} {{.ArgsUsage}} {{"\t"}}{{.Usage}}{{end}}{{else}}{{template "visibleCommandTemplate" .}}{{end}}{{end}}
-	//
-	//GLOBAL OPTIONS:
-	//  {{range .VisibleFlags}}{{.}}
-	//  {{end}}
-	//{{end}}
-	//`
 	app.Suggest = true
 	app.HideHelpCommand = true
 	if err := app.Run(context.Background(), os.Args); err != nil {
+		println()
 		println("ERROR: ", err.Error())
-		//helpArgs := append(os.Args, "-h")
-		//_ = app.Run(helpArgs)
 	}
 }

@@ -26,6 +26,7 @@ func AuthSetRoleCommand(r **consumer_recipe.ConsumerRecipe) *cli.Command {
 		Category:  "auth",
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			if cmd.NArg() != 2 {
+				cli.ShowSubcommandHelp(cmd)
 				err := fmt.Errorf("expected 2 arguments")
 				return err
 			}

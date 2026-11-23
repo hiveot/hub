@@ -44,6 +44,7 @@ func HistoryListCommand(r **consumer_recipe.ConsumerRecipe) *cli.Command {
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			if cmd.NArg() < 1 {
+				cli.ShowSubcommandHelp(cmd)
 				return fmt.Errorf("thingID expected")
 			}
 			key := ""
@@ -56,21 +57,27 @@ func HistoryListCommand(r **consumer_recipe.ConsumerRecipe) *cli.Command {
 	}
 }
 
-//func HistoryLatestCommand(hc *hubclient.IConsumer) *cli.Command {
-//	return &cli.Command{
-//		Name:      "hla",
-//		Usage:     "History latest values of a things",
-//		ArgsUsage: "<pubID> <thingID>",
-//		Category:  "history",
-//		Action: func(ctx context.Context, cmd *cli.Command) error {
-//			if cmd.NArg() != 2 {
-//				return fmt.Errorf("publisherID and thingID expected")
-//			}
-//			err := HandleListLatestEvents(*hc, cmd.Args().First(), cmd.Args().Get(1))
-//			return err
-//		},
-//	}
-//}
+// func LatestValuesCommand(r **consumer_recipe.ConsumerRecipe) *cli.Command {
+// 	return &cli.Command{
+// 		Name:      "latest",
+// 		Usage:     "Show the latest values of a thing",
+// 		ArgsUsage: "<thingID> [affordanceName]",
+// 		Category:  "history",
+// 		Action: func(ctx context.Context, cmd *cli.Command) error {
+// 			if cmd.NArg() < 1 {
+// 				cli.ShowSubcommandHelp(cmd)
+// 				return fmt.Errorf("thingID and optional name expected")
+// 			}
+// 			thingID := cmd.Args().First()
+// 			name := ""
+// 			if cmd.NArg() >= 2 {
+// 				name = cmd.Args().Get(1)
+// 			}
+// 			err := HandleLatestValues(*r, thingID, name)
+// 			return err
+// 		},
+// 	}
+// }
 
 //func HistoryRetainCommand(hc **hubclient.HubClient) *cli.Command {
 //	return &cli.Command{

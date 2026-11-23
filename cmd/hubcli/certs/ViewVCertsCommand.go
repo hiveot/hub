@@ -24,6 +24,7 @@ func ViewCertsCommand(env **api.AppEnvironment) *cli.Command {
 
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			if cmd.NArg() > 0 {
+				cli.ShowSubcommandHelp(cmd)
 				return fmt.Errorf("unexpected argument(s) '%s'", cmd.Args().First())
 			}
 			err := HandleViewCerts(*env)

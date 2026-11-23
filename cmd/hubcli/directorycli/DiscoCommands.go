@@ -34,6 +34,7 @@ func DiscoListCommand(env **api.AppEnvironment) *cli.Command {
 			},
 		}, Action: func(ctx context.Context, cmd *cli.Command) error {
 			if cmd.NArg() != 0 {
+				cli.ShowSubcommandHelp(cmd)
 				return fmt.Errorf("no arguments expected")
 			}
 			err := HandleDiscover(*env, readtd)

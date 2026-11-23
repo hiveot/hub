@@ -17,12 +17,13 @@ import (
 func AuthSetPasswordCommand(r **corecipe.ConsumerRecipe) *cli.Command {
 	return &cli.Command{
 		Name:      "setpass",
-		Usage:     "Set password. (careful, no confirmation)",
+		Usage:     "Change user password. (careful, no confirmation)",
 		ArgsUsage: "<login> <password>",
 		Category:  "auth",
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			newPassword := ""
 			if cmd.NArg() != 2 {
+				cli.ShowSubcommandHelp(cmd)
 				err := fmt.Errorf("expected 2 arguments")
 				return err
 			}
