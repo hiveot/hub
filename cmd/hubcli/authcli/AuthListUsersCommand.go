@@ -36,28 +36,42 @@ func HandleListClients(co api.IConsumer) (err error) {
 
 	profileList, err := authnClient.GetProfiles()
 
+	fmtString := "%-20s %-25s %-15s %-26s %-15s\n"
 	fmt.Println("Users")
-	fmt.Println("Login ID             Display Name              Role            Modified")
-	fmt.Println("--------             ------------              ----            -------")
+	fmt.Printf(fmtString, "Login ID", "Display Name", "Role", "Created", "Last Login")
+	fmt.Printf(fmtString, "--------", "------------", "----", "-------", "----------")
+
 	for _, profile := range profileList {
 		if profile.Role != api.ClientRoleDevice && profile.Role != api.ClientRoleService {
-			fmt.Printf("%-20s %-25s %-15s %s\n",
-				profile.ClientID,
+			clientID := profile.ClientID
+			if profile.Disabled {
+				clientID = clientID + "(disabled)"
+			}
+			fmt.Printf(fmtString,
+				clientID,
 				profile.DisplayName,
 				profile.Role,
-				utils.FormatDateTime(profile.TimeUpdated, ""),
+				utils.FormatDateTime(profile.TimeCreated, ""),
+				utils.FormatDateTime(profile.LastLogin, "S"),
 			)
 		}
 	}
 	fmt.Println()
 	fmt.Println("Devices/Services")
-	fmt.Println("SenderID             Type            Modified")
-	fmt.Println("--------             ----            -------")
+	fmtString = "%-20s %-20s %-15s %-26s %-15s\n"
+	fmt.Printf(fmtString, "Client ID", "Display Name", "Type", "Created", "Modified")
+	fmt.Printf(fmtString, "---------", "------------", "----", "-------", "--------")
 	for _, profile := range profileList {
 		if profile.Role == api.ClientRoleDevice || profile.Role == api.ClientRoleService {
-			fmt.Printf("%-20s %-15s %s\n",
-				profile.ClientID,
+			clientID := profile.ClientID
+			if profile.Disabled {
+				clientID = clientID + "(disabled)"
+			}
+			fmt.Printf(fmtString,
+				clientID,
+				profile.DisplayName,
 				profile.Role,
+				utils.FormatDateTime(profile.TimeCreated, ""),
 				utils.FormatDateTime(profile.TimeUpdated, ""),
 			)
 		}

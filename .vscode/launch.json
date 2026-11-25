@@ -35,7 +35,7 @@
             "cwd": "${workspaceFolder}/cmd/hubcli",
             "showLog": false,
             "env": {},
-            "args": ["-timeout", "2m","-clientID", "admin","-loglevel","info", "-home", "~/bin/hiveot", "-timeout", "2m",  "-serverURL","dns:///10.3.3.40:50051", "sub"],
+            "args": ["-timeout", "2m","-clientID", "admin","-loglevel","info", "-home", "~/bin/hiveot", "-timeout", "2m",  "-serverURL","dns:///10.3.3.40:50051", "lu"],
             // "args": ["-clientID", "admin","-loglevel","info", "-home", "~/bin/hiveot", "-timeout", "2m",  "-serverURL","wss://10.3.3.40:8444/wot/wss", "sub"],
             // "args": [ "-clientID", "admin", "-home","~/bin/hiveot", "ld"],
                         

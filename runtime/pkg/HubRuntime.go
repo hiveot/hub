@@ -19,6 +19,9 @@ type HubRuntime struct {
 // 	rt.r.Stop()
 // }
 
+// Create a new hub runtime instance.
+// This runs the gateway recipe.
+// Call Start() before use.
 func NewHubRuntime(env *api.AppEnvironment) (*HubRuntime, api.ICellFactory, error) {
 	// this recipe does most of the work
 	r, f, err := gatewayrecipe.NewGatewayRecipe(env)

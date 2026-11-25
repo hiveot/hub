@@ -1,10 +1,40 @@
-Pre-Alpha Release High:
-    ☐ Ongoing bug fixes
-        ☐ Fix grpc schema confusion for unix/dns/tcp @started(26-11-24 21:18)
+Hub Pre-Alpha Release @High:
+    ☐ Ongoing bug fixes @started(26-11-01 00:01)
+        ✔ Fix grpc schema confusion for unix/dns/tcp @done(26-11-25 00:01)
+        ✔ Missing created/updated time in user profile @done(26-11-25 12:03)
     ✔ Migrate runtime to HiveKit @done(26-11-7 21:06)
+        ☐ Support for the digitwin module in the runtime
     ✔ Migrate launcher to HiveKit @done(26-11-14 21:06)
     ✔ Migrate hubcli to HiveKit @done(26-11-14 21:06)
+        ☐ Add the 'ccc' command for creating a client cert  
         ☐ Add the 'td' command for viewing a detailed TD  
-    ✔ Migrate owserver to HiveKit @done(26-11-24 21:07)
-    ☐ Migrate isy99x to HiveKit @started(26-11-20 21:18)
+        ✔ Add the session start time in user profile @done(26-11-25 14:18)
+    ✔ Migrate owserver binding to HiveKit @done(26-11-24 21:07)
+    ☐ Migrate isy99x binding to HiveKit @started(26-11-20 21:18)
+    ☐ Migrate weather binding to HiveKit
+    ☐ Migrate ipnet binding to HiveKit
+    ☐ Migrate hiveoview service to HiveKit
+    
     ☐ Fix binary sizes too large (v1 sizes were 40-60% of the size)
+
+Javascript Release:
+    ☐ Migrate JS wot definitions to HiveKit 
+    ☐ Migrate JS msg package to HiveKit JS    
+    ☐ Generate JS vocab from golang definitions    
+    ☐ Add JS factory/cell framework to HiveKit JS
+    ☐ Add JS Websocket transport client to HiveKit JS
+    ☐ Migrate zwave-js binding to HiveKit
+    
+Python Release:
+    ☐ Define Python wot definitions in HiveKit
+    ☐ Define Python msg package in HiveKit
+    ☐ Generate Python vocab from golang definitions
+    ☐ Add Python factory/cell framework to HiveKit 
+    ☐ Add Python Websocket transport client to HiveKit JS
+
+MQTT Release:
+    ☐ Add golang MQTT transport client to hivekit
+    ☐ Add JS MQTT transport client to hivekit
+    ☐ Add Python MQTT transport client to hivekit
+
+    

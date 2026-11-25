@@ -44,7 +44,7 @@ func (svc *LauncherServiceImpl) _updatePluginAccount(certsDir string, pluginID s
 		slog.Info("Adding plugin account", "pluginID", pluginID)
 		_, err = svc.authnAdmin.AddClient(pluginID, pluginID, api.ClientRoleService)
 	} else if newKey {
-		acctProfile.PubKeyPem = utils.PublicKeyToPem(certKey.Public())
+		acctProfile.PubKeyPEM = utils.PublicKeyToPem(certKey.Public())
 		err = svc.authnAdmin.UpdateClientProfile(acctProfile)
 	}
 

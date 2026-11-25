@@ -18,6 +18,7 @@ import (
 func main() {
 
 	env := api.NewAppEnvironment("", true)
+	env.AppID = "runtime"
 	if env.ClientID == "" {
 		env.ClientID = env.AppID
 	}
@@ -25,11 +26,12 @@ func main() {
 	utils.SetLogging(env.LogLevel, "")
 
 	hub, f, err := pkg.NewHubRuntime(env)
-
 	if err != nil {
 		fmt.Println("Runtime startup failed: " + err.Error())
 		os.Exit(1)
 	}
+	hub.Start()
+
 	fmt.Printf("main: homeDir: %s\n", env.HomeDir)
 	fmt.Printf("main: Hub is running and listening on '%v'\n", f.GetConnectURLs())
 

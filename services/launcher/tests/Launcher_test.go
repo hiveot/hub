@@ -32,15 +32,6 @@ var env *api.AppEnvironment
 
 // const agentUsesWSS = false
 
-//var testClients = []msgserver.ClientAuthInfo{{
-//	SenderID:   launcher.ServiceName,
-//	ClientType: auth.ClientTypeService,
-//	Role:       auth.ClientRoleService,
-//}, {
-//	SenderID:   testenv.TestAdminUserID,
-//	ClientType: auth.ClientTypeUser,
-//	Role:       auth.ClientRoleAdmin,
-//}}
 
 func startService() (cl *launcher_client.LauncherClient, stopFn func()) {
 	const launcherID = launcher.LauncherServiceCellType
