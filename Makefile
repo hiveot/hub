@@ -7,15 +7,21 @@ INSTALL_HOME=~/bin/hiveot
 
 .FORCE: 
 
-all: runtime hubcli launcher hiveoview bindings    ## Build Core, Bindings and hubcli
+all: core  bindings    ## Build core services and bindings
 
 # --- Runtime services
 
-runtime: .FORCE
+core: runtime launcher hubcli hiveoview ## Build runtime, launcher, hubcli and hiveoview
+
+runtime: .FORCE ## Build the Hub runtime
 	mkdir -p $(BIN_FOLDER)
 	go build -o $(BIN_FOLDER)/$@ runtime/cmd/main.go
 
-launcher: .FORCE
+
+hubcli: .FORCE ## Build Hub CLI
+	go build -o $(BIN_FOLDER)/$@ cmd/$@/main.go
+
+launcher: .FORCE ## Launcher of plugins
 	go build -o $(BIN_FOLDER)/$@ services/$@/cmd/main.go
 	mkdir -p $(DIST_FOLDER)/config
 	cp services/$@/*.yaml $(DIST_FOLDER)/config
@@ -50,14 +56,6 @@ zwavejs: .FORCE ## Build the zwave-js protocol binding
 	cd bindings/$@ && make dist
 	cp bindings/$@/dist/$@ $(PLUGINS_FOLDER)
 
-
-# --- user interfaces
-
-hubcli: .FORCE ## Build Hub CLI
-	go build -o $(BIN_FOLDER)/$@ cmd/$@/main.go
-
-
-
 clean: ## Clean distribution files
 	go clean -cache -testcache -modcache
 	cd bindings/zwavejs && make clean
@@ -70,7 +68,7 @@ clean: ## Clean distribution files
 	go mod tidy
 	go get all
 
-help: ## Show this help
+help: 
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 

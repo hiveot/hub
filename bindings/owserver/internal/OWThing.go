@@ -21,7 +21,7 @@ type StandardOWThing struct {
 	edsAPI *eds.EdsAPI
 
 	node *eds.OneWireNode
-	td   *wot.TD
+	tdoc *wot.TD
 }
 
 // Convert the attribute value to published value
@@ -39,7 +39,6 @@ func (owt *StandardOWThing) ConvertValue(
 		}
 		prec := math.Pow10(info.Precision)
 		roundedInt := int(valueFloat * prec)
-		// FIXME: check for changenotify
 		pubValue = float64(roundedInt) / prec
 
 	case wot.DataTypeInteger, wot.DataTypeUnsignedInt:
@@ -47,7 +46,6 @@ func (owt *StandardOWThing) ConvertValue(
 		if err != nil {
 			return attrValue
 		}
-		// FIXME: check for changenotify
 		pubValue = int(valueInt64)
 
 	case wot.DataTypeBool:
@@ -66,14 +64,13 @@ func (owt *StandardOWThing) CreateTD() *wot.TD {
 
 	// Should we bother with the URI? In HiveOT things have pubsub addresses that include the ID. The ID is not the address.
 	//thingID := things.CreateThingID(svc.config.ID, node.NodeID, node.DeviceType)
-	thingID := node.ROMId
 	deviceType := deviceTypeMap[node.Family]
 	if deviceType == "" {
 		// general purpose device
 		deviceType = vocab.Device
 	}
 	thingTitle := node.Name
-	tdoc := wot.NewTD(thingID, thingTitle, deviceType)
+	tdoc := wot.NewTD(owt.GetID(), thingTitle, deviceType)
 	tdoc.UpdateTitleDescription(thingTitle, node.Description)
 
 	// Add a writable 'title' property so consumer can edit the device's title.
@@ -168,17 +165,15 @@ func (owt *StandardOWThing) HandleRequest(
 		valueStr := req.ToString(0)
 
 		err := owt.WriteNode(req.Name, valueStr)
-		if err != nil {
-			return err
-		}
 
 		// poll the result a few times until the requested status is reached or until timeout.
 		// newValue, hasUpdated := owt.WaitForValueUpdate(req, MaxUpdateWaitTime)
 		// if !hasUpdated {
 		// err = fmt.Errorf("Node didn't update property within %d seconds", MaxUpdateWaitTime)
 		// }
+
 		// complete or fail the request
-		resp := req.CreateResponse(nil, nil)
+		resp := req.CreateResponse(nil, err)
 		replyTo(resp)
 
 		// always notify subscribers of the update
@@ -206,7 +201,7 @@ func (owt *StandardOWThing) UpdateProperties(
 	if deviceTitle != "" {
 		owt.PubProperty(vocab.PropDeviceTitle, deviceTitle, onlyChanges)
 	}
-	slog.Info("UpdateProperties",
+	slog.Debug("UpdateProperties",
 		"ROMId", node.ROMId, "Name", node.Name, "onlyChanges", onlyChanges)
 
 	// first and unknown values are always changed
@@ -217,15 +212,15 @@ func (owt *StandardOWThing) UpdateProperties(
 		if !found {
 			// these values are unlisted and ignored
 			//slog.Info("Ignored value", "name", attrID, "value", attr.Value)
-		} else if info.Ignore {
+		} else if info.IgnoreChanges && onlyChanges {
 			// do nothing when ignore-changes is set
 		} else {
 			// adjust the precision
 			pubValue := owt.ConvertValue(attr.Value, info)
 			if info.IsEvent {
-				owt.PubEvent(attrID, pubValue, onlyChanges)
+				owt.PubEvent(attrID, pubValue, onlyChanges, info.ChangeNotify)
 			} else if info.IsProp {
-				owt.PubProperty(attrID, pubValue, onlyChanges)
+				owt.PubProperty(attrID, pubValue, onlyChanges, info.ChangeNotify)
 			}
 		}
 	}

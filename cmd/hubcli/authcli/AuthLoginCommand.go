@@ -63,7 +63,7 @@ func HandleLogin(r *consumer_recipe.ConsumerRecipe, loginID string) error {
 	if !term.IsTerminal(fd) {
 		return fmt.Errorf("not an input terminal")
 	}
-	fmt.Print("Password for " + loginID + ":")
+	fmt.Print("Password for " + loginID + ": ")
 	passwd, err := term.ReadPassword(fd)
 
 	fmt.Println()
@@ -78,7 +78,7 @@ func HandleLogin(r *consumer_recipe.ConsumerRecipe, loginID string) error {
 		fmt.Println("Error: " + err.Error())
 	} else {
 		fmt.Println("Login successful for user " + loginID)
-		fmt.Println("You can now use this CLI with this user ID")
+		fmt.Println("You can now use this CLI with: -clientID " + loginID)
 	}
 	return err
 }

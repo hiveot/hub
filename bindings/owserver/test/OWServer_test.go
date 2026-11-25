@@ -63,7 +63,7 @@ func TestMain(m *testing.M) {
 func TestStartStop(t *testing.T) {
 	t.Logf("---%s---\n", t.Name())
 
-	svc, err := internal.NewOWServerGateway("", storePath, &owsConfig)
+	svc, err := internal.NewOWServerBinding("", storePath, &owsConfig)
 	defer svc.Stop()
 	require.NoError(t, err)
 	// link the test consumer directly to the owserver cell.
@@ -86,7 +86,7 @@ func TestPoll(t *testing.T) {
 	var notifCount atomic.Int32
 	const userID = "user1"
 
-	svc, err := internal.NewOWServerGateway("", storePath, &owsConfig)
+	svc, err := internal.NewOWServerBinding("", storePath, &owsConfig)
 
 	// co1 will receive all notifications
 	co1 := consumer.NewConsumer("owserver-test", func(notif *msg.NotificationMessage) {
@@ -116,7 +116,7 @@ func TestPollInvalidEDSAddress(t *testing.T) {
 
 	badConfig := owsConfig // copy
 	badConfig.OWServerURL = "http://invalidAddress/"
-	svc, err := internal.NewOWServerGateway("", storePath, &badConfig)
+	svc, err := internal.NewOWServerBinding("", storePath, &badConfig)
 	svc.Start()
 	defer svc.Stop()
 
@@ -137,7 +137,7 @@ func TestAction(t *testing.T) {
 	// increase timeout for debugging
 	msg.CellTimeout = time.Minute * 2
 
-	svc, err := internal.NewOWServerGateway("", storePath, &owsConfig)
+	svc, err := internal.NewOWServerBinding("", storePath, &owsConfig)
 	require.NoError(t, err)
 	svc.Start()
 	defer svc.Stop()
@@ -160,7 +160,7 @@ func TestConfig(t *testing.T) {
 	var configName = "LEDState"
 	var configValue = "1"
 
-	svc, err := internal.NewOWServerGateway("", storePath, &owsConfig)
+	svc, err := internal.NewOWServerBinding("", storePath, &owsConfig)
 	require.NoError(t, err)
 	svc.Start()
 	defer svc.Stop()

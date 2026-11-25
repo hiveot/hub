@@ -42,6 +42,9 @@ type IsyGateway struct {
 	// REST/SOAP/WS connection to the ISY hub
 	gwAPI *isy.IsyGWAPI
 
+	// The base ID of this gateway to include in thingIDs
+	baseID string
+
 	// product identification map by {cat}.{subcat}
 	prodMap map[string]InsteonProduct
 
@@ -159,16 +162,15 @@ type IsyGateway struct {
 	} `xml:"NetworkConfig"`
 }
 
-// derive a thingID from a ISY nodeID
-// ISY node IDs have spaces in them, which are not allowed in Thing IDs
-func nodeID2ThingID(nodeID string) string {
-	thingID := strings.ReplaceAll(nodeID, " ", "-")
-	return thingID
-}
+// // derive a thingID from a ISY nodeID
+// // ISY node IDs have spaces in them, which are not allowed in Thing IDs
+// func nodeID2ThingID(nodeID string) string {
+// 	thingID := strings.ReplaceAll(nodeID, " ", "-")
+// 	return thingID
+// }
 
-// AddIsyThing adds a representing of an Insteon device
-// If the node thing already exists it is updated.
-func (svc *IsyGateway) AddIsyThing(node *isy.IsyNode) (IIsyThing, error) {
+// CreatesIsyThing creates a new 'Thing' connected to this gateway.
+func (igw *IsyGateway) CreateIsyThing(node *isy.IsyNode) (IIsyThing, error) {
 	var isyThing IIsyThing
 	var err error
 
@@ -179,78 +181,92 @@ func (svc *IsyGateway) AddIsyThing(node *isy.IsyNode) (IIsyThing, error) {
 	cat, _ := strconv.ParseInt(parts[0], 10, 16)
 	subCat, _ := strconv.ParseInt(parts[1], 10, 16)
 	productID := fmt.Sprintf("0x%02X.0x%02X", cat, subCat)
-	prodInfo := svc.prodMap[productID]
+	prodInfo := igw.prodMap[productID]
 	hwVersion := parts[3]
-	thingID := nodeID2ThingID(node.Address)
+	thingID := igw.Node2ThingID(node.Address)
 
 	// determine what device this is using: <category.subcat.description.version>
 	//deviceType, title := determineNodeDeviceType(node.Type)
 	//the category determines the high level device type
 	switch cat {
 	case 0: // general controller, tabletop/remote/touch panel
-		isyThing = NewIsyThing(svc.gwAPI, thingID, node, prodInfo, hwVersion)
+		isyThing = NewIsyThing(igw.gwAPI, thingID, node, prodInfo, hwVersion)
 	case 1: // dimmer control
-		isyThing = NewIsyDimmerThing(svc.gwAPI, thingID, node, prodInfo, hwVersion)
+		isyThing = NewIsyDimmerThing(igw.gwAPI, thingID, node, prodInfo, hwVersion)
 	case 2: // OnOff switch
-		isyThing = NewIsySwitchThing(svc.gwAPI, thingID, node, prodInfo, hwVersion)
+		isyThing = NewIsySwitchThing(igw.gwAPI, thingID, node, prodInfo, hwVersion)
 	case 3: // network bridge
-		isyThing = NewIsyThing(svc.gwAPI, thingID, node, prodInfo, hwVersion)
+		isyThing = NewIsyThing(igw.gwAPI, thingID, node, prodInfo, hwVersion)
 	case 4: // irrigation control
-		isyThing = NewIsyThing(svc.gwAPI, thingID, node, prodInfo, hwVersion)
+		isyThing = NewIsyThing(igw.gwAPI, thingID, node, prodInfo, hwVersion)
 	case 5: // climate control
-		isyThing = NewIsyThing(svc.gwAPI, thingID, node, prodInfo, hwVersion)
+		isyThing = NewIsyThing(igw.gwAPI, thingID, node, prodInfo, hwVersion)
 	case 6: // pool/spa control
-		isyThing = NewIsyThing(svc.gwAPI, thingID, node, prodInfo, hwVersion)
+		isyThing = NewIsyThing(igw.gwAPI, thingID, node, prodInfo, hwVersion)
 	case 7: // sensor switch
-		isyThing = NewIsySensorThing(svc.gwAPI, thingID, node, prodInfo, hwVersion)
+		isyThing = NewIsySensorThing(igw.gwAPI, thingID, node, prodInfo, hwVersion)
 	case 9: // energy meter/management
-		isyThing = NewIsyThing(svc.gwAPI, thingID, node, prodInfo, hwVersion)
+		isyThing = NewIsyThing(igw.gwAPI, thingID, node, prodInfo, hwVersion)
 	case 14: // window/blinds
-		isyThing = NewIsyThing(svc.gwAPI, thingID, node, prodInfo, hwVersion)
+		isyThing = NewIsyThing(igw.gwAPI, thingID, node, prodInfo, hwVersion)
 	case 15: // access control/ door lock
-		isyThing = NewIsyThing(svc.gwAPI, thingID, node, prodInfo, hwVersion)
+		isyThing = NewIsyThing(igw.gwAPI, thingID, node, prodInfo, hwVersion)
 	default: // unknown general purpose thing
-		isyThing = NewIsyThing(svc.gwAPI, thingID, node, prodInfo, hwVersion)
+		isyThing = NewIsyThing(igw.gwAPI, thingID, node, prodInfo, hwVersion)
 	}
-	if isyThing != nil {
-		// thingID := nodeID2ThingID(node.Address)
-		// isyThing.Init(t.ic, thingID, node, prodInfo, hwVersion)
-		svc.mux.Lock()
-		svc.isyThings[isyThing.GetID()] = isyThing
-		svc.mux.Unlock()
-	}
+	// if isyThing != nil {
+	// 	//
+	// 	oldThing, found := igw.isyThings[isyThing.GetID()]
+	// 	if found {
+	// 		// this should never happen
+	// 		slog.Error("AddIsyThing: Thing already exists. Attempting to recover.")
+	// 		oldThing.Stop()
+	// 	}
+
+	// 	igw.mux.Lock()
+	// 	igw.isyThings[isyThing.GetID()] = isyThing
+	// 	igw.mux.Unlock()
+	// }
 	return isyThing, err
 }
 
 // GetIsyThing returns the ISY device Thing with the given ThingID
 // Returns nil of a thing with this ID doesn't exist
-func (svc *IsyGateway) GetIsyThing(thingID string) IIsyThing {
-	svc.mux.RLock()
-	defer svc.mux.RUnlock()
-	it, _ := svc.isyThings[thingID]
+func (igw *IsyGateway) GetIsyThing(thingID string) IIsyThing {
+	igw.mux.RLock()
+	defer igw.mux.RUnlock()
+	it, _ := igw.isyThings[thingID]
 	return it
 }
 
 // GetIsyThingByNodeID returns the ISY device Thing with the given Node address
 // Returns nil if a thing with this address doesn't exist
-func (svc *IsyGateway) GetIsyThingByNodeID(nodeAddr string) IIsyThing {
-	thingID := nodeID2ThingID(nodeAddr)
-	svc.mux.RLock()
-	defer svc.mux.RUnlock()
-	it, _ := svc.isyThings[thingID]
+func (igw *IsyGateway) GetIsyThingByNodeID(nodeAddr string) IIsyThing {
+	thingID := igw.Node2ThingID(nodeAddr)
+	igw.mux.RLock()
+	defer igw.mux.RUnlock()
+	it, _ := igw.isyThings[thingID]
 	return it
 }
 
 // GetIsyThings returns a list of ISY devices for publishing TD or values as updated in
 // the last call to ReadIsyThings().
-func (t *IsyGateway) GetIsyThings() []IIsyThing {
-	t.mux.RLock()
-	defer t.mux.RUnlock()
-	thingList := make([]IIsyThing, 0, len(t.isyThings))
-	for _, it := range t.isyThings {
+func (igw *IsyGateway) GetIsyThings() []IIsyThing {
+	igw.mux.RLock()
+	defer igw.mux.RUnlock()
+	thingList := make([]IIsyThing, 0, len(igw.isyThings))
+	for _, it := range igw.isyThings {
 		thingList = append(thingList, it)
 	}
 	return thingList
+}
+
+// derive a thingID from a ISY nodeID
+// ISY node IDs have spaces in them, which are not allowed in Thing IDs
+func (igw *IsyGateway) Node2ThingID(nodeAddr string) string {
+	nodeID := strings.ReplaceAll(nodeAddr, " ", "-")
+
+	return igw.baseID + ":" + nodeID
 }
 
 // GetPropValues returns the current or changed property values.
@@ -265,11 +281,11 @@ func (t *IsyGateway) GetIsyThings() []IIsyThing {
 
 // HandleRequest passes the request to the associated Thing.
 // This distributes the requests to the thing identified in the thingID
-func (svc *IsyGateway) HandleRequest(
+func (igw *IsyGateway) HandleRequest(
 	req *msg.RequestMessage, replyTo msg.ResponseHandler) (err error) {
 
 	// request is either for this gateway or gateway nodes
-	if req.ThingID == svc.GetID() || req.ThingID == isy99x.Isy99xCellType {
+	if req.ThingID == igw.GetID() || req.ThingID == isy99x.Isy99xCellType {
 		switch req.Operation {
 		case wot.OpInvokeAction:
 			// FIXME-1: how to determine the output of an action with ISY?
@@ -277,14 +293,14 @@ func (svc *IsyGateway) HandleRequest(
 			// nothing to do
 			err = fmt.Errorf("HandleGatewayRequest: Unknown action '%s'", req.Name)
 		case wot.OpWriteProperty:
-			err = svc.HandleConfigRequest(req, replyTo)
+			err = igw.HandleConfigRequest(req, replyTo)
 		default:
 			// handle property read operations
-			err = svc.ExposedThing.HandleRequest(req, replyTo)
+			err = igw.ExposedThing.HandleRequest(req, replyTo)
 		}
 		return err
 	} else {
-		isyThing := svc.GetIsyThing(req.ThingID)
+		isyThing := igw.GetIsyThing(req.ThingID)
 		if isyThing == nil {
 			err := fmt.Errorf("HandleRequest: thing '%s' not found", req.ThingID)
 			slog.Warn(err.Error())
@@ -295,7 +311,7 @@ func (svc *IsyGateway) HandleRequest(
 }
 
 // Handle property request for this device
-func (svc *IsyGateway) HandleConfigRequest(
+func (igw *IsyGateway) HandleConfigRequest(
 	req *msg.RequestMessage, replyTo msg.ResponseHandler) (err error) {
 
 	slog.Info("HandleConfigRequest",
@@ -311,16 +327,16 @@ func (svc *IsyGateway) HandleConfigRequest(
 		err = fmt.Errorf("HandleConfigRequest: not implemented '%s'", req.Name)
 
 	case vocab.PropNetAddress:
-		svc.config.IsyAddress = req.ToString(0)
-		_ = svc.gwAPI.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
+		igw.config.IsyAddress = req.ToString(0)
+		_ = igw.gwAPI.Connect(igw.config.IsyAddress, igw.config.LoginName, igw.config.Password)
 
 	case "loginName":
-		svc.config.LoginName = req.ToString(0)
-		_ = svc.gwAPI.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
+		igw.config.LoginName = req.ToString(0)
+		_ = igw.gwAPI.Connect(igw.config.IsyAddress, igw.config.LoginName, igw.config.Password)
 
 	case "password":
-		svc.config.Password = req.ToString(0)
-		_ = svc.gwAPI.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
+		igw.config.Password = req.ToString(0)
+		_ = igw.gwAPI.Connect(igw.config.IsyAddress, igw.config.LoginName, igw.config.Password)
 
 	default:
 		err = fmt.Errorf("HandleConfigRequest: Unknown config '%s'", req.Name)
@@ -329,10 +345,10 @@ func (svc *IsyGateway) HandleConfigRequest(
 }
 
 // MakeTD returns the Gateway TD document
-func (svc *IsyGateway) MakeTD() *wot.TD {
+func (igw *IsyGateway) MakeTD() *wot.TD {
 
-	tdoc := wot.NewTD(svc.GetID(), svc.Configuration.DeviceSpecs.Model, vocab.DeviceNetGateway)
-	tdoc.Description = svc.Configuration.DeviceSpecs.Make + "-" + svc.Configuration.DeviceSpecs.Model
+	tdoc := wot.NewTD(igw.GetID(), igw.Configuration.DeviceSpecs.Model, vocab.DeviceNetGateway)
+	tdoc.Description = igw.Configuration.DeviceSpecs.Make + "-" + igw.Configuration.DeviceSpecs.Model
 
 	//--- connection and polling info
 	prop := tdoc.AddProperty(vocab.PropNetConnection, "Connected", "Device is connected", wot.DataTypeBool).
@@ -394,9 +410,9 @@ func (svc *IsyGateway) MakeTD() *wot.TD {
 	prop.ReadOnly = false
 	prop = tdoc.AddPropertyAsString(vocab.PropNetIP4, "IP4 address", "")
 	prop.Description = "Configure gateway fix IP address"
-	prop.ReadOnly = svc.Network.Interface.IsDHCP == false
+	prop.ReadOnly = igw.Network.Interface.IsDHCP == false
 	prop = tdoc.AddPropertyAsString(vocab.PropNetPort, "Port", "Gateway connection port")
-	prop.ReadOnly = svc.Network.Interface.IsDHCP == false
+	prop.ReadOnly = igw.Network.Interface.IsDHCP == false
 	// prop = tdoc.AddPropertyAsString(PropIDLogin, "Login Name", "Gateway login name")
 	// prop.ReadOnly = false
 	// prop = tdoc.AddPropertyAsString(PropIDPassword, "Password", "Gateway password (hidden)")
@@ -440,22 +456,37 @@ func (svc *IsyGateway) MakeTD() *wot.TD {
 //}
 
 // ReadIsyThings reads the ISY Node list and update the collection of ISY Things
-func (svc *IsyGateway) ReadIsyThings() error {
-	if !svc.gwAPI.IsConnected() {
+func (igw *IsyGateway) ReadIsyThings() error {
+	if !igw.gwAPI.IsConnected() {
 		return fmt.Errorf("No ISY connection")
 	}
-	// this reads all nodes
-	isyNodes, err := svc.gwAPI.ReadNodes()
+	// read all nodes from the 99x gateway device
+	isyNodes, err := igw.gwAPI.ReadNodes()
 
 	if err != nil {
 		return err
 	}
+	// create a Thing for each node and link it to the sink
 	for _, node := range isyNodes.Nodes {
-		it := svc.GetIsyThingByNodeID(node.Address)
+		it := igw.GetIsyThingByNodeID(node.Address)
 		if it == nil {
-			it, err = svc.AddIsyThing(node)
+			it, err = igw.CreateIsyThing(node)
+			if it != nil {
+				igw.mux.Lock()
+				igw.isyThings[it.GetID()] = it
+				igw.mux.Unlock()
+
+				// enable it to publish its notifications
+				it.SetNotificationSink(igw.GetNotificationSink())
+
+				// start it right away
+				it.Start()
+			}
 			if err != nil {
 				slog.Error("Error adding ISY device. Ignored.", "err", err)
+			} else {
+				// publish the device TD
+				igw.WriteTD(it.MakeTD())
 			}
 		}
 	}
@@ -465,51 +496,51 @@ func (svc *IsyGateway) ReadIsyThings() error {
 // RefreshProperties reads ISY gateway properties and publish changes.
 // This loads the gateway 'Configuration', 'System', 'Time' and 'Network' data.
 // See also: https://wiki.universal-devices.com/index.php?title=ISY_Developers:API:REST_Interface#Return_Values_/_Codes
-func (svc *IsyGateway) RefreshProperties(onlyChanges bool) (err error) {
-	if !svc.gwAPI.IsConnected() {
+func (igw *IsyGateway) RefreshProperties(onlyChanges bool) (err error) {
+	if !igw.gwAPI.IsConnected() {
 		return fmt.Errorf("No gateway connection")
 	}
 
 	const NTP_OFFSET = 2208988800
 
-	err = svc.gwAPI.SendRequest("GET", "/rest/config", "", &svc.Configuration)
+	err = igw.gwAPI.SendRequest("GET", "/rest/config", "", &igw.Configuration)
 	if err == nil {
-		err = svc.gwAPI.SendRequest("GET", "/rest/sys", "", &svc.System)
+		err = igw.gwAPI.SendRequest("GET", "/rest/sys", "", &igw.System)
 	}
 	if err == nil {
-		err = svc.gwAPI.SendRequest("GET", "/rest/time", "", &svc.Time)
+		err = igw.gwAPI.SendRequest("GET", "/rest/time", "", &igw.Time)
 	}
 	if err == nil {
-		err = svc.gwAPI.SendRequest("GET", "/rest/network", "", &svc.Network)
+		err = igw.gwAPI.SendRequest("GET", "/rest/network", "", &igw.Network)
 	}
 
-	sunrise := int64(svc.Time.Sunrise-svc.Time.TMZOffset) - NTP_OFFSET
-	sunset := int64(svc.Time.Sunset-svc.Time.TMZOffset) - NTP_OFFSET
+	sunrise := int64(igw.Time.Sunrise-igw.Time.TMZOffset) - NTP_OFFSET
+	sunset := int64(igw.Time.Sunset-igw.Time.TMZOffset) - NTP_OFFSET
 
 	props := map[string]any{
-		vocab.PropDeviceMake:            svc.Configuration.DeviceSpecs.Make,
-		vocab.PropDeviceModel:           svc.Configuration.DeviceSpecs.Model,
-		vocab.PropDeviceSoftwareVersion: svc.Configuration.AppVersion,
-		vocab.PropNetMAC:                svc.Configuration.Root.ID,
-		vocab.PropDeviceDescription:     svc.Configuration.Product.Description,
-		wot.WoTTitle:                    svc.Configuration.Root.Name, // custom name
-		vocab.PropNetIP4:                svc.Network.Interface.IP,
-		vocab.PropNetPort:               svc.Network.WebServer.HttpPort,
+		vocab.PropDeviceMake:            igw.Configuration.DeviceSpecs.Make,
+		vocab.PropDeviceModel:           igw.Configuration.DeviceSpecs.Model,
+		vocab.PropDeviceSoftwareVersion: igw.Configuration.AppVersion,
+		vocab.PropNetMAC:                igw.Configuration.Root.ID,
+		vocab.PropDeviceDescription:     igw.Configuration.Product.Description,
+		wot.WoTTitle:                    igw.Configuration.Root.Name, // custom name
+		vocab.PropNetIP4:                igw.Network.Interface.IP,
+		vocab.PropNetPort:               igw.Network.WebServer.HttpPort,
 
-		"productID": svc.Configuration.Product.ID,
-		PropIDDHCP:  strconv.FormatBool(svc.Network.Interface.IsDHCP), // true or false
+		"productID": igw.Configuration.Product.ID,
+		PropIDDHCP:  strconv.FormatBool(igw.Network.Interface.IsDHCP), // true or false
 		//pv.SetValue(PropIDLogin, igw.Configuration.LoginName)
 
 		// isy provides NTP stamp in local time, not in GMT!
 		PropIDSunrise: time.Unix(sunrise, 0).Format(time.TimeOnly),
 		PropIDSunset:  time.Unix(sunset, 0).Format(time.TimeOnly), // seconds since epoc
 
-		PropIDNTPHost:    svc.System.NTPHost,
-		PropIDNTPEnabled: strconv.FormatBool(svc.System.NTPEnabled),
-		PropIDTMZOffset:  strconv.FormatInt(int64(svc.Time.TMZOffset), 10),
-		PropIDDSTEnabled: strconv.FormatBool(svc.Time.DST),
+		PropIDNTPHost:    igw.System.NTPHost,
+		PropIDNTPEnabled: strconv.FormatBool(igw.System.NTPEnabled),
+		PropIDTMZOffset:  strconv.FormatInt(int64(igw.Time.TMZOffset), 10),
+		PropIDDSTEnabled: strconv.FormatBool(igw.Time.DST),
 	}
-	svc.PubProperties(props, onlyChanges)
+	igw.PubProperties(props, onlyChanges)
 
 	return err
 }
@@ -525,40 +556,51 @@ func (svc *IsyGateway) RefreshProperties(onlyChanges bool) (err error) {
 //
 // Each ISY Thing will be updated with the latest status. It is up to them
 // to notify their uses with an event if the status has changed.
-func (svc *IsyGateway) RefreshStatus() error {
-	if !svc.gwAPI.IsConnected() {
+func (igw *IsyGateway) RefreshStatus() error {
+	if !igw.gwAPI.IsConnected() {
 		return fmt.Errorf("No ISY connection")
 	}
 
 	isyStatus := isy.IsyStatus{}
-	err := svc.gwAPI.SendRequest("GET", "/rest/status", "", &isyStatus)
+	err := igw.gwAPI.SendRequest("GET", "/rest/status", "", &isyStatus)
 	for _, node := range isyStatus.Nodes {
 		propID := node.Prop.ID
 		newValue := node.Prop.Value
 		uom := node.Prop.UOM
 
-		it := svc.GetIsyThingByNodeID(node.Address)
+		it := igw.GetIsyThingByNodeID(node.Address)
 		if it != nil {
 			err = it.HandleValueUpdate(propID, uom, newValue)
 		} else {
 			// new node found, refresh the node list
-			svc.newNodeFound = true
+			igw.newNodeFound = true
 		}
 	}
 	return err
 }
 
 // Start publishes the gateway TD, its properties and start the heartbeat
-func (svc *IsyGateway) Start() {
-	tdoc := svc.MakeTD()
-	svc.WriteTD(tdoc)
+func (igw *IsyGateway) Start() {
 
-	svc.stopHeartbeatFn = svc.startHeartbeat()
+	// publish the gateway TD
+	tdoc := igw.MakeTD()
+	tdoc.ID = igw.GetID()
+	tdoc.SetType(vocab.DeviceGatewayInsteon)
+	igw.WriteTD(tdoc)
+
+	// Load the available Things
+	igw.ReadIsyThings()
+
+	// // publish the TD of discovered Things
+	// isyThings := igw.GetIsyThings()
+
+	// heartbeat periodically publishes all TDs
+	igw.stopHeartbeatFn = igw.startHeartbeat()
 }
 
 // heartbeat polls the gateway device every X seconds and publishes updates
 // This returns a stop function that can be used to end the loop
-func (svc *IsyGateway) startHeartbeat() (stopFn func()) {
+func (igw *IsyGateway) startHeartbeat() (stopFn func()) {
 
 	var tdCountDown = 0
 	var pollCountDown = 0
@@ -575,29 +617,31 @@ func (svc *IsyGateway) startHeartbeat() (stopFn func()) {
 		forceRepublish = false
 
 		// if no gateway connection exists, try to reestablish a connection to the gateway
-		isConnected = svc.gwAPI.IsConnected()
+		isConnected = igw.gwAPI.IsConnected()
 		if !isConnected {
 			// if the connection dropped, send an event
 			if wasConnected {
-				svc.PubEvent(vocab.PropNetConnection, isConnected, true)
+				igw.PubEvent(vocab.PropNetConnection, isConnected, true)
 			}
-			err = svc.gwAPI.Connect(svc.config.IsyAddress, svc.config.LoginName, svc.config.Password)
+			err = igw.gwAPI.Connect(igw.config.IsyAddress, igw.config.LoginName, igw.config.Password)
 			// if err == nil {
 			// 	// re-establish the gateway device connection
 			// 	svc.IsyGW.Init(svc.isyAPI)
 			// }
-			isConnected = svc.gwAPI.IsConnected()
+			isConnected = igw.gwAPI.IsConnected()
 			if isConnected {
-				svc.PubEvent(vocab.PropNetConnection, isConnected, true)
+				igw.PubEvent(vocab.PropNetConnection, isConnected, true)
 			}
 		}
 		wasConnected = isConnected
 
 		// publish node TDs and values
 		if isConnected && tdCountDown <= 0 {
-			tdoc := svc.MakeTD()
-			svc.WriteTD(tdoc)
-			tdCountDown = svc.config.TDInterval
+			tdoc := igw.MakeTD()
+			tdoc.ID = igw.GetID()
+			tdoc.SetType(wot.AtTypeGateway)
+			igw.WriteTD(tdoc)
+			tdCountDown = igw.config.TDInterval
 			// after publishing the TD, republish all values
 			forceRepublish = true
 		}
@@ -605,17 +649,17 @@ func (svc *IsyGateway) startHeartbeat() (stopFn func()) {
 		if isConnected && pollCountDown <= 0 {
 			// publish changed values or periodically for publishing all values
 			if republishCountDown <= 0 {
-				republishCountDown = svc.config.RepublishInterval
+				republishCountDown = igw.config.RepublishInterval
 				forceRepublish = true
 			}
-			err = svc.RefreshProperties(!forceRepublish)
-			for _, thing := range svc.isyThings {
+			err = igw.RefreshProperties(!forceRepublish)
+			for _, thing := range igw.isyThings {
 				thing.RefreshProperties(!forceRepublish)
 			}
-			pollCountDown = svc.config.PollInterval
+			pollCountDown = igw.config.PollInterval
 			// slow down if this fails. Don't flood the logs
 			if err != nil {
-				pollCountDown = svc.config.PollInterval * 5
+				pollCountDown = igw.config.PollInterval * 5
 			}
 		}
 	})
@@ -623,14 +667,14 @@ func (svc *IsyGateway) startHeartbeat() (stopFn func()) {
 }
 
 // Stop the heartbeat
-func (svc *IsyGateway) Stop() {
+func (igw *IsyGateway) Stop() {
 	slog.Info("Stopping the ISY99x gateway service")
 	//svc.isRunning.Store(false)
-	svc.mux.Lock()
-	defer svc.mux.Unlock()
-	if svc.stopHeartbeatFn != nil {
-		svc.stopHeartbeatFn()
-		svc.stopHeartbeatFn = nil
+	igw.mux.Lock()
+	defer igw.mux.Unlock()
+	if igw.stopHeartbeatFn != nil {
+		igw.stopHeartbeatFn()
+		igw.stopHeartbeatFn = nil
 	}
 	// let processes finish
 	time.Sleep(time.Millisecond)
@@ -638,8 +682,11 @@ func (svc *IsyGateway) Stop() {
 
 // NewIsyGateway creates a new instance of the ISY gateway device.
 // This connects to the gateway and returns an error if the gateway is unreachable.
-// The gateway thingID is that of the device API 'App' field.
-func NewIsyGateway(cfg *config.Isy99xConfig) (*IsyGateway, error) {
+// The gateway serviceID is that of the device API 'App' field.
+//
+//	baseID is the ID prefix for all ThingIDs
+//	cfg for the gateway device access
+func NewIsyGateway(baseID string, cfg *config.Isy99xConfig) (*IsyGateway, error) {
 
 	prodMap, err := LoadProductMapCSV("")
 	_ = err
@@ -652,10 +699,11 @@ func NewIsyGateway(cfg *config.Isy99xConfig) (*IsyGateway, error) {
 	// if err != nil {
 	// 	return nil, err
 	// }
-	thingID := gwAPI.GetID()
+	thingID := baseID + ":" + gwAPI.GetID()
 
 	isyGW := &IsyGateway{
 		ExposedThing: thing.NewExposedThing(thingID, nil),
+		baseID:       baseID,
 		config:       cfg,
 		prodMap:      prodMap,
 		isyThings:    make(map[string]IIsyThing),

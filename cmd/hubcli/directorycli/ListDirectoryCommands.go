@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/hiveot/hivekit/go/api/wot"
 	"github.com/hiveot/hivekit/go/cells/consumer"
@@ -62,23 +63,24 @@ func HandleListDirectory(dirClient directory.IDirectoryClient) (err error) {
 
 	fmt.Printf("Thing ID                            Title                                 @type                                #props  #events #actions   Modified         \n")
 	fmt.Printf("----------------------------------  ------------------------------------  -----------------------------------  ------  ------- --------   -----------------------------\n")
-	for _, tdDoc := range tdList {
+	for _, tdoc := range tdList {
 		var updatedStr = ""
-		if tdDoc.Modified != "" {
+		if tdoc.Modified != "" {
 			//updatedStr = utils.DecodeAsDatetime(tdDoc.Modified)
-			updatedStr = utils.FormatDateTime(tdDoc.Modified)
-		} else if tdDoc.Created != "" {
+			updatedStr = utils.FormatDateTime(tdoc.Modified)
+		} else if tdoc.Created != "" {
 			//updatedStr = utils.DecodeAsDatetime(tdDoc.Created)
-			updatedStr = utils.FormatDateTime(tdDoc.Created)
+			updatedStr = utils.FormatDateTime(tdoc.Created)
 		}
+		typeString := strings.Join(tdoc.GetAtTypes(), ", ")
 
 		fmt.Printf("%-35s %-37.37s %-35.35s %7d  %7d  %7d   %-30s\n",
-			tdDoc.ID,
-			tdDoc.Title,
-			tdDoc.AtType,
-			len(tdDoc.Properties),
-			len(tdDoc.Events),
-			len(tdDoc.Actions),
+			tdoc.ID,
+			tdoc.Title,
+			typeString,
+			len(tdoc.Properties),
+			len(tdoc.Events),
+			len(tdoc.Actions),
 			updatedStr,
 		)
 	}

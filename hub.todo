@@ -1,0 +1,10 @@
+Pre-Alpha Release High:
+    ☐ Ongoing bug fixes
+        ☐ Fix grpc schema confusion for unix/dns/tcp @started(26-11-24 21:18)
+    ✔ Migrate runtime to HiveKit @done(26-11-7 21:06)
+    ✔ Migrate launcher to HiveKit @done(26-11-14 21:06)
+    ✔ Migrate hubcli to HiveKit @done(26-11-14 21:06)
+        ☐ Add the 'td' command for viewing a detailed TD  
+    ✔ Migrate owserver to HiveKit @done(26-11-24 21:07)
+    ☐ Migrate isy99x to HiveKit @started(26-11-20 21:18)
+    ☐ Fix binary sizes too large (v1 sizes were 40-60% of the size)

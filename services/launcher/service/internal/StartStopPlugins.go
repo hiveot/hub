@@ -127,20 +127,20 @@ func (svc *LauncherServiceImpl) _startPlugin(pluginID string) (pi launcher.Plugi
 				// log stderr to launcher stderr and to file
 				multiwriter := io.MultiWriter(os.Stderr, fp)
 				svcCmd.Stderr = multiwriter
-				slog.Info("attaching stderr using multiwriter")
+				// slog.Info("attaching stderr using multiwriter")
 			} else {
 				// just log stderr to file
-				slog.Info("attaching stderr using logfile", "logfile", logfile)
+				// slog.Info("attaching stderr using logfile", "logfile", logfile)
 				svcCmd.Stderr = fp
 			}
 			if cfg.AttachStdout {
 				// log stdout to launcher stdout and to file
 				multiwriter := io.MultiWriter(os.Stdout, fp)
-				slog.Info("attaching stdout using multiwriter")
+				// slog.Info("attaching stdout using multiwriter")
 				svcCmd.Stdout = multiwriter
 			} else {
 				// just log stdout to file
-				slog.Info("attaching stdout using logfile", "logfile", logfile)
+				// slog.Info("attaching stdout using logfile", "logfile", logfile)
 				svcCmd.Stdout = fp
 			}
 		} else {

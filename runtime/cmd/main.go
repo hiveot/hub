@@ -18,8 +18,11 @@ import (
 func main() {
 
 	env := api.NewAppEnvironment("", true)
-	utils.SetLogging(env.LogLevel, "")
+	if env.ClientID == "" {
+		env.ClientID = env.AppID
+	}
 	env.Print(1)
+	utils.SetLogging(env.LogLevel, "")
 
 	hub, f, err := pkg.NewHubRuntime(env)
 

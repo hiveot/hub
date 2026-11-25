@@ -62,7 +62,7 @@ func TestStartStop(t *testing.T) {
 	_ = os.Remove(nodesFile)
 
 	// appconfig, read from test/isy99.yaml, contains simulated gateway file
-	gw, err := internal.NewIsyGateway(appConfig)
+	gw, err := internal.NewIsyGateway("test", appConfig)
 	require.NoError(t, err)
 	cc1, _ := testEnv.NewRCConnection(agentID, gw)
 	defer cc1.Close()
@@ -86,7 +86,7 @@ func TestBadAddress(t *testing.T) {
 	// error case - use real url
 	badConfig := *appConfig
 	badConfig.IsyAddress = "localhost"
-	svc, err := internal.NewIsyGateway(&badConfig)
+	svc, err := internal.NewIsyGateway("test", &badConfig)
 	require.NoError(t, err)
 	cc1, _ := testEnv.NewRCConnection(agentID, svc)
 	defer cc1.Close()
@@ -103,7 +103,7 @@ func TestIsyAppPoll(t *testing.T) {
 	_ = os.Remove(nodesFile)
 
 	// appconfig, read from test/isy99.yaml, contains simulated gateway file
-	svc, err := internal.NewIsyGateway(appConfig)
+	svc, err := internal.NewIsyGateway("test", appConfig)
 	require.NoError(t, err)
 	cc1, _ := testEnv.NewRCConnection(agentID, svc)
 	defer cc1.Close()
@@ -123,7 +123,7 @@ func TestSwitch(t *testing.T) {
 
 	_ = os.Remove(nodesFile)
 	// appconfig, read from test/isy99.yaml, contains simulated gateway file
-	svc, err := internal.NewIsyGateway(appConfig)
+	svc, err := internal.NewIsyGateway("test", appConfig)
 	require.NoError(t, err)
 	cc1, _ := testEnv.NewRCConnection(agentID, svc)
 	defer cc1.Close()

@@ -23,12 +23,9 @@ const bindingMake = "make"
 // the key under which custom Thing titles are stored in the state service
 const customTitlesKey = "customTitles"
 
-// OWServerGateway is the 1-wire gateway for capturing 1-wire OWServerGateway V2 Data
-type OWServerGateway struct {
+// OWServerBinding is the 1-wire gateway for capturing 1-wire OWServerBinding V2 Data
+type OWServerBinding struct {
 	*thing.ExposedThing
-
-	// Connecting ID and service ID of this binding
-	// serviceID string
 
 	// Configuration of this protocol binding
 	config *owserver.OWServerConfig
@@ -39,13 +36,9 @@ type OWServerGateway struct {
 	// The 1-wire Things discovered via the gateway
 	owThings map[string]*StandardOWThing
 
-	// The discovered and publishable things, containing instructions on
-	// if and how properties and events are published
-	// things map[string]*wot.TD
-
-	// track the last value for change detection
-	// map of [node/device ID] [attribute Title] value
-	// values map[string]map[string]NodeValueStamp
+	// Service ID under which it is connected
+	// used as binding thingID and as the base for node thingIDs
+	bindingID string
 
 	// persistent store with device titles
 	store bucketstore.IBucketStore
@@ -63,7 +56,7 @@ type OWServerGateway struct {
 }
 
 // CreateBindingTD generates a TD document for this service. Its thingID is the same as its agentID
-func (svc *OWServerGateway) CreateBindingTD() *wot.TD {
+func (svc *OWServerBinding) CreateBindingTD() *wot.TD {
 	// This binding exposes the TD of itself.
 	// Currently its configuration comes from file.
 	tdi := wot.NewTD(svc.GetID(), "OWServer binding", vocab.DeviceTypeService)
@@ -88,7 +81,7 @@ func (svc *OWServerGateway) CreateBindingTD() *wot.TD {
 }
 
 // GetBindingPropValues generates a properties map for attribute and config properties of this binding
-func (svc *OWServerGateway) GetBindingPropValues() map[string]any {
+func (svc *OWServerBinding) GetBindingPropValues() map[string]any {
 	pv := make(map[string]any)
 	pv[bindingValuePollIntervalID] = svc.config.PollInterval
 	pv[bindingValuePublishIntervalID] = svc.config.RepublishInterval
@@ -97,18 +90,23 @@ func (svc *OWServerGateway) GetBindingPropValues() map[string]any {
 	return pv
 }
 
-func (svc *OWServerGateway) GetOWThing(thingID string) (*StandardOWThing, bool) {
+func (svc *OWServerBinding) GetOWThing(thingID string) (*StandardOWThing, bool) {
 	svc.mux.RLock()
 	defer svc.mux.RUnlock()
 	owt, found := svc.owThings[thingID]
 	return owt, found
 }
 
+// One place to define Node IDs
+func (svc *OWServerBinding) Node2ThingID(node *eds.OneWireNode) string {
+	return svc.bindingID + ":" + node.ROMId
+}
+
 // Start the OWServer protocol binding
 // This publishes a TD for this binding, starts a background heartbeat.
 //
 //	ag is the agent connection for receiving requests and sending responses.
-func (svc *OWServerGateway) Start() {
+func (svc *OWServerBinding) Start() {
 
 	// publish this binding's properties including its TD
 	tdoc := svc.CreateBindingTD()
@@ -128,7 +126,7 @@ func (svc *OWServerGateway) Start() {
 }
 
 // heartbeat polls the EDS server every X seconds and publishes TD and value updates
-func (svc *OWServerGateway) startHeartBeat() (stopFn func()) {
+func (svc *OWServerBinding) startHeartBeat() (stopFn func()) {
 	slog.Info("Starting heartBeat",
 		slog.Int("TD publish interval sec", svc.config.TDInterval),
 		slog.Int("polling interval sec", svc.config.PollInterval),
@@ -171,7 +169,7 @@ func (svc *OWServerGateway) startHeartBeat() (stopFn func()) {
 
 // Stop the heartbeat and remove subscriptions
 // This does not close the given hubclient connection.
-func (svc *OWServerGateway) Stop() {
+func (svc *OWServerBinding) Stop() {
 	slog.Info("Stopping OWServer binding")
 
 	if svc.stopFn != nil {
@@ -184,12 +182,12 @@ func (svc *OWServerGateway) Stop() {
 
 // UpdateThingValues polls the OWServer hub for changed Thing values.
 // Set 'onlyChanges' to only publish changed values.
-func (svc *OWServerGateway) UpdateThingValues(onlyChanges bool) error {
+func (svc *OWServerBinding) UpdateThingValues(onlyChanges bool) error {
 
 	nodes, err := svc.edsAPI.PollNodes()
 	if err == nil {
 		for _, node := range nodes {
-			thingID := node.ROMId
+			thingID := svc.Node2ThingID(node)
 			owt, found := svc.owThings[thingID]
 			if found {
 				title, err := svc.customTitles.Get(thingID)
@@ -204,24 +202,24 @@ func (svc *OWServerGateway) UpdateThingValues(onlyChanges bool) error {
 	return err
 }
 
-// NewOWServerGateway creates a new OWServer gateway devices that servers
-// multiple 1-wire devices.
+// NewOWServerBinding creates a new OWServer gateway binding that serves
+// multiple 1-wire devices connected to a OW-Server gateway.
 //
 // This returns a HiveKit cell that can be linked to a HiveKit transport or included
 // as part of a hivekit recipe.
 //
 // For testing this support the use of a simulation file instead of a OWServer URL.
 //
-//	serviceID is the instance ThingID. Typically the app clientID.
+//	bindingID is the binding ThingID. Typically the app clientID.
 //	 Use "" for the cell type default if only a single instance is used.
 //	storePath is the location to store custom Thing titles. (OWServer doesnt store this)
 //	 Use "" for in-memory storage.
 //	config holds the configuration of the service
-func NewOWServerGateway(
-	serviceID string, storePath string, config *owserver.OWServerConfig) (*OWServerGateway, error) {
+func NewOWServerBinding(
+	bindingID string, storePath string, config *owserver.OWServerConfig) (*OWServerBinding, error) {
 
-	if serviceID == "" {
-		serviceID = owserver.OWServerCellType
+	if bindingID == "" {
+		bindingID = owserver.OWServerCellType
 	}
 	slog.Info("New OWServer binding")
 
@@ -230,13 +228,14 @@ func NewOWServerGateway(
 		return nil, err
 	}
 
-	// Create the adapter for the OWServer 1-wire gateway
+	// Create the adapter for communicating with the OWServer 1-wire device
 	edsAPI := eds.NewEdsAPI(
 		config.OWServerURL, config.OWServerLogin, config.OWServerPassword)
 
 	// these are from hub configuration
-	svc := &OWServerGateway{
-		ExposedThing: thing.NewExposedThing(serviceID, nil),
+	svc := &OWServerBinding{
+		ExposedThing: thing.NewExposedThing(bindingID, nil),
+		bindingID:    bindingID, // base for thingIDs
 		config:       config,
 		customTitles: store.GetBucket(customTitlesKey),
 		store:        store,

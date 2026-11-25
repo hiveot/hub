@@ -2,6 +2,7 @@ package internal
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync"
 
@@ -17,8 +18,8 @@ import (
 var deviceCatMap = map[string]string{
 
 	"0x00": "Reserved",                    //• 0x00 - Reserved
-	"0x01": vocab.DeviceActuatorDimmer,    //• 0x01 - Dimmer device
-	"0x02": vocab.DeviceActuatorSwitch,    //• 0x02 - Relay or on/off switch device
+	"0x01": vocab.DeviceControlDimmer,     //• 0x01 - Dimmer device
+	"0x02": vocab.DeviceControlSwitch,     //• 0x02 - Relay or on/off switch device
 	"0x03": vocab.DeviceNet,               //• 0x03 - Network device
 	"0x04": vocab.DeviceControlIrrigation, //• 0x04 - Irrigation device
 	"0x05": vocab.DeviceControlClimate,    //• 0x05 - Climate control device
@@ -36,9 +37,6 @@ type IIsyThing interface {
 	// *thing.ExposedThing
 	api.IHiveCell
 
-	// GetID returns the thingID of the node
-	// GetID() string
-
 	// RefreshProperties loads and publishes node property values
 	RefreshProperties(onlyChanges bool)
 
@@ -53,7 +51,7 @@ type IIsyThing interface {
 	// Init assigns the ISY connection and node this Thing represents
 	// Init(ic *isy.IsyAPI, thingID string, node *isy.IsyNode, prodInfo InsteonProduct, hwVersion string)
 	// MakeTD returns the generated TD document describing the Thing
-	// MakeTD() *wot.TD
+	MakeTD() *wot.TD
 }
 
 // IsyThing is the generic base of Things constructed out of ISY Insteon nodes.
@@ -136,9 +134,9 @@ func (it *IsyThing) HandleValueUpdate(propID string, uom string, newValue string
 // The parent should add properties, events and actions specific to their capabilities.
 func (it *IsyThing) MakeTD() *wot.TD {
 	title := it.productInfo.ProductName
-	titleProp, _ := it.GetProperty(wot.WoTTitle)
+	titleProp := it.GetProperty(wot.WoTTitle)
 	if titleProp != nil {
-		title, _ = titleProp.(string)
+		title = titleProp.Text()
 	}
 	it.mux.RLock()
 	tdoc := wot.NewTD(it.GetID(), title, it.deviceType)
@@ -182,7 +180,10 @@ func (it *IsyThing) MakeTD() *wot.TD {
 // This publishes the Thing TD and its static properties.
 func (it *IsyThing) Start() {
 
-	it.WriteTD(it.tdoc)
+	err := it.WriteTD(it.tdoc)
+	if err != nil {
+		slog.Warn("Start: Publishing ISY Thing TD failed", "ThingID", it.GetID())
+	}
 
 	enabledDisabled := "enabled"
 	if strings.ToLower(it.node.Enabled) != "true" {

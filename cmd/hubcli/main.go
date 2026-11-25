@@ -48,8 +48,6 @@ func main() {
 	clientID = currentUser.Username
 	nowrap = false
 
-	// FIXME: use the flag from env?
-
 	app := &cli.Command{
 		EnableShellCompletion: true,
 		Name:                  "hubcli",
@@ -165,15 +163,16 @@ func main() {
 			launchercli.LauncherStartCommand(&r),
 			launchercli.LauncherStopCommand(&r),
 
-			directorycli.DirectoryListCommand(&r),
 			directorycli.DiscoListCommand(&env),
+			directorycli.DirectoryListCommand(&r),
+			directorycli.DirectoryRemoveTDCommand(&r),
 
 			//historycli.HistoryLatestCommand(&hc),
 			historycli.LatestValuesCommand(&r),
 			historycli.HistoryListCommand(&r),
 
 			pubsubcli.PubActionCommand(&r),
-			pubsubcli.SubCommand(&r),
+			pubsubcli.SubValueChanges(&r),
 			pubsubcli.SubTDCommand(&r),
 		},
 	}

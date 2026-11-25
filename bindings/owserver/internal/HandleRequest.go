@@ -16,7 +16,7 @@ const MaxUpdateWaitTime = 3
 // by the OWServer gateway.
 //
 // For 1-wire, configuration and actions are the same thing
-func (svc *OWServerGateway) HandleRequest(
+func (svc *OWServerBinding) HandleRequest(
 	req *msg.RequestMessage, replyTo msg.ResponseHandler) error {
 
 	slog.Info("HandleRequest",
@@ -57,7 +57,7 @@ func (svc *OWServerGateway) HandleRequest(
 // SetTitle configures a new title of a thing
 //
 // OWServer doesn't support this so store this in the service store.
-func (svc *OWServerGateway) SetTitle(req *msg.RequestMessage) (err error) {
+func (svc *OWServerBinding) SetTitle(req *msg.RequestMessage) (err error) {
 
 	valueStr := req.ToString(0)
 
@@ -73,7 +73,7 @@ func (svc *OWServerGateway) SetTitle(req *msg.RequestMessage) (err error) {
 }
 
 // WaitForValueUpdate waits for the node value to be applied
-func (svc *OWServerGateway) WaitForValueUpdate(
+func (svc *OWServerBinding) WaitForValueUpdate(
 	req *msg.RequestMessage, seconds int) (newValue string, hasUpdated bool) {
 
 	var err error

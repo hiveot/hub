@@ -59,11 +59,11 @@ func NewOWServerConfig() *OWServerConfig {
 
 	// ensure valid defaults
 	// cfg.LogLevel = ""
-	// re-publish node TDs docs every 3 days
-	cfg.TDInterval = 3600 * 24 * 3
+	// re-publish node TDs docs every day
+	cfg.TDInterval = 3600 * 24
 	// poll for value updates every 60 seconds
 	cfg.PollInterval = 60
-	// republish same-value after 60 minutes
+	// republish same-value after 1 hour
 	cfg.RepublishInterval = 60 * 60
 	return &cfg
 }

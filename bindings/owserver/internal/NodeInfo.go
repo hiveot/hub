@@ -31,13 +31,13 @@ var deviceTypeMap = map[string]string{
 	"01": "serialNumber",                // 2401,2411 (1990A): Silicon Serial Number
 	"02": "securityKey",                 // 1425 (1991): multikey 1153bit secure
 	"04": vocab.DeviceTime,              // 2404 (1994): econoram time chip
-	"05": vocab.DeviceActuatorSwitch,    // 2405: Addressable Switch
+	"05": vocab.DeviceControlSwitch,     // 2405: Addressable Switch
 	"06": vocab.DeviceComputerMemory,    // (1993) 4K memory ibutton
 	"08": vocab.DeviceComputerMemory,    // (1992) 1K memory ibutton
 	"0A": vocab.DeviceComputerMemory,    // (1995) 16K memory ibutton
 	"0C": vocab.DeviceComputerMemory,    // (1996) 64K memory ibutton
 	"10": vocab.DeviceSensorThermometer, // 18S20: high precision digital thermometer
-	"12": vocab.DeviceActuatorSwitch,    // 2406:  dual addressable switch plus 1k memory
+	"12": vocab.DeviceControlSwitch,     // 2406:  dual addressable switch plus 1k memory
 	"14": vocab.DeviceComputerMemory,    // 2430A (1971): 256 EEPROM
 	"1A": vocab.DeviceComputerMemory,    // (1963L) 4K Monetary
 	"1C": vocab.DeviceComputerMemory,    // 28E04-100: 4K EEPROM with PIO
@@ -50,7 +50,7 @@ var deviceTypeMap = map[string]string{
 	"26": vocab.DeviceBatteryMonitor,    // 2438:  smart battery monitor
 	"27": vocab.DeviceTime,              // 2417:  time chip with interrupt
 	"28": vocab.DeviceSensorThermometer, // 18B20: programmable resolution digital thermometer
-	"29": vocab.DeviceActuatorSwitch,    // 2408:  8-channel addressable switch
+	"29": vocab.DeviceControlSwitch,     // 2408:  8-channel addressable switch
 	"2C": vocab.DeviceSensor,            // 2890:  digital potentiometer"
 	"2D": vocab.DeviceComputerMemory,    // 2431:  1k eeprom
 	"2E": vocab.DeviceBatteryMonitor,    // 2770:  battery monitor and charge controller
@@ -76,8 +76,8 @@ type AttrConversion struct {
 	ChangeNotify float64
 	Description  string
 	Enum         []wot.DataSchema
-	// ignore changes
-	Ignore bool
+	// dont publish chatty changes
+	IgnoreChanges bool
 	// IsActuator defines the attribute as an action
 	IsActuator bool
 	// send changes as event
@@ -94,62 +94,62 @@ type AttrConversion struct {
 // AttrConfig defines known property/configuration attribute conversion
 var AttrConfig = map[string]AttrConversion{
 	//"BarometricPressureHg":               vocab.PropNameAtmosphericPressure,                                                                                  // unit Hg
-	"BarometricPressureHg": {Ignore: true},
+	"BarometricPressureHg": {IgnoreChanges: true},
 	"BarometricPressureMb": {
 		IsEvent: true, IsProp: true,
 		Title:       "Pressure",
 		Description: "Atmospheric pressure",
 		VocabType:   vocab.PropEnvPressureSurface,
-		DataType:    wot.DataTypeNumber, Precision: 0, ChangeNotify: 3.0,
+		DataType:    wot.DataTypeNumber, Precision: 0, ChangeNotify: 1.5,
 		Unit: vocab.UnitMilliBar,
 	},
 	"BarometricPressureMbHighAlarmValue": {
-		IsProp: true, Ignore: false,
+		IsProp:      true,
 		Title:       "Pressure High Threshold",
 		Description: "High atmospheric pressure alarm set value",
 		//VocabType: vocab.PropAlarmConfig,
-		DataType: wot.DataTypeNumber, ChangeNotify: 1,
+		DataType: wot.DataTypeNumber, ChangeNotify: 3,
 		Unit: vocab.UnitMilliBar,
 	},
 	"BarometricPressureMbHighAlarmState": {
-		IsEvent: true, IsProp: true, Ignore: false,
+		IsEvent: true, IsProp: true,
 		Title:       "Pressure High Alarm",
 		Description: "High atmospheric pressure alarm status",
 		VocabType:   vocab.PropAlarmStatus,
-		DataType:    wot.DataTypeBool, ChangeNotify: 1,
+		DataType:    wot.DataTypeBool, ChangeNotify: 3,
 	},
 	"BarometricPressureMbLowAlarmValue": {
-		IsProp: true, Ignore: false,
+		IsProp:      true,
 		Title:       "Pressure Low Threshold",
 		Description: "Low atmospheric pressure alarm set value",
 		//VocabType: vocab.PropAlarmConfig,
-		DataType: wot.DataTypeNumber, ChangeNotify: 1,
+		DataType: wot.DataTypeNumber, ChangeNotify: 3,
 		Unit: vocab.UnitMilliBar,
 	},
 	"BarometricPressureMbLowAlarmState": {
-		IsEvent: true, IsProp: true, Ignore: false,
+		IsEvent: true, IsProp: true,
 		Title:       "Pressure Low Alarm",
 		Description: "Low atmospheric pressure alarm status",
 		VocabType:   vocab.PropAlarmStatus,
-		DataType:    wot.DataTypeBool, ChangeNotify: 1,
+		DataType:    wot.DataTypeBool,
 	},
 	// "BarometricPressureHg": vocab.PropNameAtmosphericPressure, // unit Hg
 	"Channel": {
-		IsProp: true, Ignore: false,
-		Title: "Channel", Description: "OWServer connection port",
-		DataType: wot.DataTypeInteger, ChangeNotify: 1,
+		IsProp: true,
+		Title:  "Channel", Description: "OWServer connection port",
+		DataType: wot.DataTypeInteger,
 	},
 	"ClearAlarms": {
-		IsActuator: true, Ignore: false,
-		Title:    "Clear Alarms",
-		DataType: wot.DataTypeNone, // no data with this action
+		IsActuator: true,
+		Title:      "Clear Alarms",
+		DataType:   wot.DataTypeNone, // no data with this action
 	},
 	"Counter1": {
-		IsProp: true, Ignore: true,
+		IsProp: true, IgnoreChanges: true,
 		Title: "Sample counter 1", DataType: wot.DataTypeInteger, ChangeNotify: 1,
 	},
 	"Counter2": {
-		IsProp: true, Ignore: true,
+		IsProp: true, IgnoreChanges: true,
 		Title: "Sample counter 2", DataType: wot.DataTypeInteger, ChangeNotify: 1,
 	},
 	"DataErrorsChannel1": {
@@ -165,7 +165,7 @@ var AttrConfig = map[string]AttrConversion{
 		Title:  "Data Errors Channel 3", DataType: wot.DataTypeInteger, ChangeNotify: 1,
 	},
 	"DateTime": {
-		IsProp: true, Ignore: true,
+		IsProp: true, IgnoreChanges: true,
 		Title: "Device date/time", DataType: wot.DataTypeDateTime,
 	},
 	// gateway has 'DeviceName', nodes use 'Name'
@@ -187,7 +187,7 @@ var AttrConfig = map[string]AttrConversion{
 		Title:  "Nr Devices on Channel 3", DataType: wot.DataTypeInteger, ChangeNotify: 1,
 	},
 	"DewPoint": {
-		IsProp: true, Ignore: true,
+		IsProp: true, IgnoreChanges: true,
 		Title:     "Dew point",
 		VocabType: vocab.PropEnvDewpoint,
 		DataType:  wot.DataTypeNumber, Precision: 1, ChangeNotify: 1.0,
@@ -204,7 +204,7 @@ var AttrConfig = map[string]AttrConversion{
 		Title:  "Health", Description: "Sensor connection health. Range 0-7",
 		DataType: wot.DataTypeNumber, Precision: 0, ChangeNotify: 1,
 	},
-	"HeatIndex": {Ignore: true},
+	"HeatIndex": {IgnoreChanges: true},
 	"HostName": {
 		IsProp:    true,
 		VocabType: vocab.PropNetHostname,
@@ -223,17 +223,17 @@ var AttrConfig = map[string]AttrConversion{
 		IsEvent: true,
 		Title:   "Humidex", Description: "Feels-like temperature",
 		VocabType: vocab.PropEnvHumidex,
-		DataType:  wot.DataTypeNumber, Precision: 0, ChangeNotify: 1.0,
+		DataType:  wot.DataTypeNumber, Precision: 0, ChangeNotify: 1.5,
 		Unit: vocab.UnitCelcius,
 	},
 	"HumidityHighAlarmState": {
-		IsProp: true, IsEvent: true, Ignore: true,
+		IsProp: true, IsEvent: true,
 		Title:     "Humidity High Alarm",
 		VocabType: vocab.PropAlarmStatus,
 		DataType:  wot.DataTypeBool,
 	},
 	"HumidityLowAlarmState": {
-		IsProp: true, IsEvent: true, Ignore: true,
+		IsProp: true, IsEvent: true,
 		Title:     "Humidity Low Alarm",
 		VocabType: vocab.PropAlarmStatus,
 		DataType:  wot.DataTypeBool,
@@ -256,7 +256,7 @@ var AttrConfig = map[string]AttrConversion{
 		},
 	},
 	"LEDState": {
-		IsProp: true, Ignore: true,
+		IsProp: true, IgnoreChanges: true,
 		Title:    "LED switch",
 		DataType: wot.DataTypeBool,
 	},
@@ -288,7 +288,7 @@ var AttrConfig = map[string]AttrConversion{
 		VocabType: vocab.PropDeviceModel, DataType: wot.DataTypeString,
 	},
 	"PollCount": {
-		IsProp: true, Ignore: true,
+		IsProp: true, IgnoreChanges: true,
 		Title:    "Poll Count",
 		DataType: wot.DataTypeInteger, ChangeNotify: 1,
 	},
@@ -298,7 +298,7 @@ var AttrConfig = map[string]AttrConversion{
 		DataType: wot.DataTypeInteger, ChangeNotify: 1,
 	},
 	"PrimaryValue": {
-		IsProp: false, Ignore: true,
+		IsProp: false, IgnoreChanges: true,
 		Title:    "Primary Value",
 		DataType: wot.DataTypeString,
 	},
@@ -308,9 +308,9 @@ var AttrConfig = map[string]AttrConversion{
 		DataType: wot.DataTypeInteger, Unit: "bits", ChangeNotify: 1,
 	},
 	"RawData": {
-		IsProp: true, Ignore: true,
-		Title:    "Raw Data",
-		DataType: wot.DataTypeString,
+		IgnoreChanges: true,
+		Title:         "Raw Data",
+		DataType:      wot.DataTypeString,
 	},
 	"Relay": { // relay is read-only status, RelayState is input control
 		IsProp:      true,
@@ -359,33 +359,33 @@ var AttrConfig = map[string]AttrConversion{
 		Title:     "Temperature",
 		VocabType: vocab.PropEnvTemperature,
 		// prevent a lot of events if temperature is on the edge of two values
-		DataType: wot.DataTypeNumber, Precision: 1, ChangeNotify: 0.1,
+		DataType: wot.DataTypeNumber, Precision: 1, ChangeNotify: 0.15,
 		Unit: vocab.UnitCelcius,
 	},
 	"TemperatureHighAlarmValue": {
-		IsProp: true, Ignore: false,
+		IsProp:      true,
 		Title:       "Temperature High Threshold",
 		Description: "High temperature alarm set value",
 		//VocabType: vocab.PropAlarmConfig,
-		DataType: wot.DataTypeNumber, Precision: 1, ChangeNotify: 0.1,
+		DataType: wot.DataTypeNumber, Precision: 1, ChangeNotify: 0.15,
 		Unit: vocab.UnitCelcius,
 	},
 	"TemperatureHighAlarmState": {
-		IsProp: true, IsEvent: true, Ignore: false,
+		IsProp: true, IsEvent: true,
 		Title:     "Temperature High Alarm",
 		VocabType: vocab.PropAlarmStatus,
 		DataType:  wot.DataTypeBool,
 	},
 	"TemperatureLowAlarmValue": {
-		IsProp: true, Ignore: false,
+		IsProp:      true,
 		Title:       "Temperature Low Threshold",
 		Description: "Low temperature alarm set value",
 		//VocabType: vocab.PropAlarmConfig,
-		DataType: wot.DataTypeNumber, Precision: 1, ChangeNotify: 0.1,
+		DataType: wot.DataTypeNumber, Precision: 1, ChangeNotify: 0.15,
 		Unit: vocab.UnitCelcius,
 	},
 	"TemperatureLowAlarmState": {
-		IsProp: true, IsEvent: true, Ignore: false,
+		IsProp: true, IsEvent: true,
 		Title:     "Temperature Low Alarm",
 		VocabType: vocab.PropAlarmStatus,
 		DataType:  wot.DataTypeBool,
@@ -411,28 +411,28 @@ var AttrConfig = map[string]AttrConversion{
 		Title:     "Voltage Channel 1",
 		DataType:  wot.DataTypeNumber,
 		VocabType: vocab.PropElectricVoltage,
-		Unit:      vocab.UnitVolt, Precision: 1, ChangeNotify: 0.1,
+		Unit:      vocab.UnitVolt, Precision: 1, ChangeNotify: 0.15,
 	},
 	"VoltageChannel2": {
 		IsProp:    true,
 		Title:     "Voltage Channel 2",
 		DataType:  wot.DataTypeNumber,
 		VocabType: vocab.PropElectricVoltage,
-		Unit:      vocab.UnitVolt, Precision: 1, ChangeNotify: 0.1,
+		Unit:      vocab.UnitVolt, Precision: 1, ChangeNotify: 0.15,
 	},
 	"VoltageChannel3": {
 		IsProp:    true,
 		Title:     "Voltage Channel 3",
 		DataType:  wot.DataTypeNumber,
 		VocabType: vocab.PropElectricVoltage,
-		Unit:      vocab.UnitVolt, Precision: 1, ChangeNotify: 0.1,
+		Unit:      vocab.UnitVolt, Precision: 1, ChangeNotify: 0.15,
 	},
 	"VoltagePower": {
 		IsProp:    true,
 		Title:     "Voltage powerline",
 		DataType:  wot.DataTypeNumber,
 		VocabType: vocab.PropElectricVoltage,
-		Unit:      vocab.UnitVolt, Precision: 1, ChangeNotify: 0.1,
+		Unit:      vocab.UnitVolt, Precision: 1, ChangeNotify: 0.15,
 	},
 }
 

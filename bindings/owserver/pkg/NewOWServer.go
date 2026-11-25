@@ -16,7 +16,7 @@ import (
 func NewOWServerGateway(
 	thingID string, storePath string, cfg *owserver.OWServerConfig) (owserver.IOWServer, error) {
 
-	svc, err := internal.NewOWServerGateway(thingID, storePath, cfg)
+	svc, err := internal.NewOWServerBinding(thingID, storePath, cfg)
 	return svc, err
 }
 

@@ -10,7 +10,7 @@
             "request": "launch",
             "mode": "auto",
             "program": "${fileDirname}",
-            "args": ["-loglevel", "info", "-home", "~/bin/hiveot", "-clientID", "owserver"]
+            "args": ["-loglevel", "info", "-home", "~/bin/hiveot", "-clientID", "isy99x"]
         },
         {
             "name": "Debug Runtime", 
@@ -21,7 +21,7 @@
             "cwd": "${workspaceFolder}/runtime/cmd",
             "showLog": false,
             "env": {},
-            "args": ["-loglevel", "info", "-home", "~/bin/hiveot"],
+            "args": ["-timeout", "2m", "-loglevel", "info","-clientID", "runtime", "-home", "~/bin/hiveot"],
             // "args": [ "-v", "-dirTD","wss://10.3.3.40:8444/.well-known/wot","status", "authn:admin"],
             // "args": [ "-clientID", "admin", "-home","~/bin/hiveot", "-tddURL", "https://10.3.3.40:8444/.well-known/wot","ld"],
             // "args": [ "-clientID", "admin", "-home","~/bin/hiveot", "ld"],
@@ -35,11 +35,8 @@
             "cwd": "${workspaceFolder}/cmd/hubcli",
             "showLog": false,
             "env": {},
-            "args": ["-clientID", "admin","-loglevel","info", "-home", "~/bin/hiveot", "-timeout", "2m",  "-serverURL","wss://10.3.3.40:8444/wot/wss", "sub"],
-            // "args": ["-clientID", "admin", "-home", "~/bin/hiveot", "-timeout", "2m",  "subev"],
-            // "args": ["-clientID", "admin", "-home", "~/bin/hiveot", "-timeout", "2m",  "-serverURL", "wss://10.3.3.40:8444/wot/wss", "ls"],
-            // "args": [ "-v", "-dirTD","wss://10.3.3.40:8444/.well-known/wot","status", "authn:admin"],
-            // "args": [ "-clientID", "admin", "-home","~/bin/hiveot", "-tddURL", "https://10.3.3.40:8444/.well-known/wot","ld"],
+            "args": ["-timeout", "2m","-clientID", "admin","-loglevel","info", "-home", "~/bin/hiveot", "-timeout", "2m",  "-serverURL","dns:///10.3.3.40:50051", "sub"],
+            // "args": ["-clientID", "admin","-loglevel","info", "-home", "~/bin/hiveot", "-timeout", "2m",  "-serverURL","wss://10.3.3.40:8444/wot/wss", "sub"],
             // "args": [ "-clientID", "admin", "-home","~/bin/hiveot", "ld"],
                         
             // console input for login

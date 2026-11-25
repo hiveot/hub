@@ -117,7 +117,7 @@ import (
 // is set then publish the TDs of all known nodes instead.
 // This returns a list of newly discovered 1-wire devices Things or an error
 // if polling the EDS device failed.
-func (svc *OWServerGateway) UpdateThings(onlyChanges bool) ([]*StandardOWThing, error) {
+func (svc *OWServerBinding) UpdateThings(onlyChanges bool) ([]*StandardOWThing, error) {
 	newThings := make([]*StandardOWThing, 0)
 	slog.Info("UpdateThings start")
 	nodes, err := svc.edsAPI.PollNodes()
@@ -126,13 +126,17 @@ func (svc *OWServerGateway) UpdateThings(onlyChanges bool) ([]*StandardOWThing, 
 	}
 	svc.mux.Lock()
 	for _, node := range nodes {
-		// TBD: for now this is a 1:1 mapping...
-		thingID := node.ROMId
+		// This uses gwID:ROMId as the thingID
+		thingID := svc.Node2ThingID(node)
 		owt, found := svc.owThings[thingID]
 		if !found {
 			owt = NewStandardOWThing(thingID, node, svc.edsAPI)
 			// relay emitted requests and notifications to this service
-			owt.SetRequestSink(svc)
+			// FIXME: this doesn't forward the request... instead it is received
+			// by the gateway as if it is an incoming request ...
+			// owt.SetRequestSink(svc)
+
+			// pass changes up the chain to the server
 			owt.SetNotificationSink(svc)
 			svc.owThings[thingID] = owt
 			newThings = append(newThings, owt)
@@ -167,7 +171,7 @@ func (svc *OWServerGateway) UpdateThings(onlyChanges bool) ([]*StandardOWThing, 
 
 // PublishNodeTDs publishes the TD's of all nodes to the directory.
 // This returns an error if one or more publications fail
-func (svc *OWServerGateway) PublishAllTDs() (err error) {
+func (svc *OWServerBinding) PublishAllTDs() (err error) {
 	// Need a lock to read the TDs
 	svc.mux.RLock()
 	tdocs := make([]*wot.TD, 0, len(svc.owThings))

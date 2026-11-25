@@ -204,7 +204,7 @@ func (isyAPI *IsyGWAPI) SendRequest(method string, restPath string, body string,
 		filename := path.Join(isyAPI.address[7:], restPath+".xml")
 		buffer, err := os.ReadFile(filename)
 		if err != nil {
-			slog.Error("isyRequest: Unable to read ISY data from file", "filename", filename, "err", err)
+			slog.Error("IsyGWAPI.SendRequest: Unable to read ISY data from file", "filename", filename, "err", err)
 			return err
 		}
 		err = xml.Unmarshal(buffer, &response)
@@ -229,15 +229,15 @@ func (isyAPI *IsyGWAPI) SendRequest(method string, restPath string, body string,
 	resp, err := client.Do(req)
 
 	if err != nil {
-		slog.Error("isyRequest: Unable to read ISY device", "URL", isyURL, "err", err)
+		slog.Error("IsyGWAPI.SendRequest: Unable to read ISY device", "URL", isyURL, "err", err)
 		return err
 	} else if resp.StatusCode == 401 {
-		msg := fmt.Sprintf("isyRequest: Unauthorized")
+		msg := fmt.Sprintf("IsyGWAPI.SendRequest: '%s' is Unauthorized", isyAPI.login)
 		slog.Warn(msg)
 		err = errors.New(msg)
 		return err
 	} else if resp.StatusCode != 200 {
-		msg := fmt.Sprintf("isyRequest: Error code return by ISY device %s: %v", isyURL, resp.Status)
+		msg := fmt.Sprintf("IsyGWAPI.SendRequest: Error code return by ISY device %s: %v", isyURL, resp.Status)
 		slog.Warn(msg)
 		err = errors.New(msg)
 		return err

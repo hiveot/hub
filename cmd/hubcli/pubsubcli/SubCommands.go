@@ -3,7 +3,6 @@ package pubsubcli
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/hiveot/hivekit/go/api/msg"
@@ -11,28 +10,13 @@ import (
 	"github.com/hiveot/hivekit/go/cells/consumer"
 	"github.com/hiveot/hivekit/go/cells/directory"
 	consumer_recipe "github.com/hiveot/hivekit/go/factory/recipes/consumer"
-	"github.com/hiveot/hivekit/go/utils"
 	jsoniter "github.com/json-iterator/go"
 
 	"github.com/araddon/dateparse"
 	"github.com/urfave/cli/v3"
 )
 
-// SubTDCommand shows TD publications
-func SubTDCommand(r **consumer_recipe.ConsumerRecipe) *cli.Command {
-	return &cli.Command{
-		Name:     "subtd",
-		Usage:    "SubscribeEvent to TD publications",
-		Category: "pubsub",
-		Action: func(ctx context.Context, cmd *cli.Command) error {
-			dirTD := (*r).GetEnv().GetDirTD()
-			err := HandleSubTD((*r).Consumer, dirTD)
-			return err
-		},
-	}
-}
-
-func SubCommand(r **consumer_recipe.ConsumerRecipe) *cli.Command {
+func SubValueChanges(r **consumer_recipe.ConsumerRecipe) *cli.Command {
 	return &cli.Command{
 		Name:      "sub",
 		Usage:     "Subscribe to Thing events and property changes",
@@ -50,96 +34,50 @@ func SubCommand(r **consumer_recipe.ConsumerRecipe) *cli.Command {
 			if cmd.NArg() > 2 {
 				return fmt.Errorf("unexpected arguments")
 			}
-
-			err := HandleSubEvProp((*r).Consumer, thingID, key)
+			dirCl := (*r).GetDirectory()
+			err := HandleSubEvProp((*r).Consumer, dirCl, thingID, key)
 			return err
 		},
 	}
 }
 
-// HandleSubTD subscribes and prints TD publications
-func HandleSubTD(co *consumer.Consumer, dirTD *wot.TD) error {
-
-	// If a directory is provided, use its TD ID to subscribe
-	dirID := directory.DirectoryServiceCellType
-	if dirTD != nil {
-		dirID = dirTD.ID
-	}
-	err := co.Subscribe(dirID, directory.ThingUpdatedEvent)
-	if err != nil {
-		return err
-	}
-	fmtString := "%-20.20s %-35.35s %-30.30s %-30.30s %-30.30s\n"
-	co.SetNotificationHook(func(resp *msg.NotificationMessage) {
-		// slog.Info("HandleSubTD: received notification",
-		// 	"thingID", resp.ThingID,
-		// 	"name", resp.Name)
-
-		// only look for TD events, ignore directed events
-		if resp.Name != directory.ThingUpdatedEvent {
-			return
-		}
-
-		var tdJSON string
-		var tdoc *wot.TD
-		err := resp.Decode(&tdJSON)
-		tdoc, err = wot.UnmarshalTD(tdJSON)
-		if err != nil {
-			fmt.Printf("Unable to decode TD from %s: %s\n", resp.ThingID, err.Error())
-			return
-		}
-		modifiedTime, _ := dateparse.ParseAny(tdoc.Modified) // can be in any TZ
-		timeStr := utils.FormatMSE(modifiedTime.UnixMilli(), false)
-		atType := strings.Join(tdoc.GetAtTypes(), ",")
-		fmt.Printf(fmtString, resp.SenderID, resp.ThingID, tdoc.Title, atType, timeStr)
-
-	})
-	fmt.Printf(fmtString, "Sender ID", "Thing ID", "Title", "@type", "Timestamp")
-	fmt.Printf(fmtString, "---------", "--------", "-----", "-----", "---------")
-
-	time.Sleep(time.Hour * 24)
-	return nil
-}
-
 // HandleSubEvProp subscribes to event and property changes
-func HandleSubEvProp(co *consumer.Consumer, thingID string, name string) error {
-	fmt.Printf("Subscribing to  thingID: '%s', name: '%s'\n\n", thingID, name)
+func HandleSubEvProp(co *consumer.Consumer, dirCl directory.IDirectoryClient, thingID string, name string) error {
+	fmt.Printf("Subscribing to thingID: '%s', name: '%s'\n\n", thingID, name)
 
-	fmt.Printf("Time             Agent ID        Thing ID                       Type          Affordance Name                Value\n")
-	fmt.Printf("---------------  --------------- -----------------------------  ------------- -----------------------------  ---------\n")
+	fmt.Printf("Time             Sender          Title (Thing ID)                    Type          Affordance Name                Value\n")
+	fmt.Printf("---------------  --------------- -----------------------------       ------------- -----------------------------  ---------\n")
 
 	err := co.Subscribe(thingID, name)
 	err = co.ObserveProperty(thingID, name)
 	co.SetNotificationHook(func(msg *msg.NotificationMessage) {
+		var tdoc *wot.TD
+
+		tdoc, _ = dirCl.GetTD(msg.ThingID)
 		createdTime, _ := dateparse.ParseAny(msg.Timestamp)
 		timeStr := createdTime.Local().Format("15:04:05.000")
 
+		// FIXME: json unmarshals integers as float
 		valueStr := msg.ToString(0)
 
-		//if msg.Name == vocab.EventNameProperties {
-		//	var props map[string]interface{}
-		//	_ = utils.DecodeAsObject(msg.Data, &props)
-		//
-		//	valueStr = fmt.Sprintf("%d properties", len(props))
-		//
-		//	// if its only a single property then show the value
-		//	if len(props) == 1 {
-		//		for key, val := range props {
-		//			valueStr = fmt.Sprintf("{%s=%v}", key, val)
-		//		}
-		//	}
-		//}
+		// Make a TD presentable
 		if msg.ThingID == directory.DirectoryServiceCellType &&
 			msg.Name == directory.ThingUpdatedEvent {
-			var tdi wot.TD
+			var tdoc2 wot.TD
 			tdJSON := msg.ToString(0)
-			_ = jsoniter.UnmarshalFromString(tdJSON, &tdi)
+			_ = jsoniter.UnmarshalFromString(tdJSON, &tdoc2)
 			valueStr = fmt.Sprintf("{ID: %s, title:%s, nrProps=%d, nrEvents=%d, nrActions=%d}",
-				tdi.ID, tdi.Title, len(tdi.Properties), len(tdi.Events), len(tdi.Actions))
+				tdoc2.ID, tdoc2.Title, len(tdoc2.Properties), len(tdoc2.Events), len(tdoc2.Actions))
 		}
 
-		fmt.Printf("%-16.16s %-15.15s %-30.30s %-13.13s %-30.30s %-40.40s\n",
-			timeStr, "", msg.ThingID, msg.AffordanceType, msg.Name, valueStr)
+		title := "?"
+		if tdoc != nil {
+			title = tdoc.Title
+		}
+		thingIDTitle := fmt.Sprintf("%s (%s)", title, msg.ThingID)
+
+		fmt.Printf("%-16.16s %-15.15s %-35.35s %-13.13s %-30.30s %-40.40s\n",
+			timeStr, msg.SenderID, thingIDTitle, msg.AffordanceType, msg.Name, valueStr)
 	})
 	if err != nil {
 		return err
